@@ -346,12 +346,14 @@ pub mod lower {
                 body: convert_expression(body),
             },
             wipple_syntax::Statement::Instance {
+                pattern,
                 parameters,
                 bounds,
                 instance,
                 body,
                 default,
             } => wipple_lower::UnresolvedStatement::Instance {
+                pattern,
                 parameters: parameters.into_iter().map(convert_type_parameter).collect(),
                 bounds: bounds.into_iter().map(convert_instance).collect(),
                 instance: convert_instance(instance),

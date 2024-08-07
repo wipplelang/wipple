@@ -142,12 +142,14 @@ pub(crate) enum Statement<D: Driver> {
     },
     #[serde(rename_all = "camelCase")]
     DefaultInstanceDeclaration {
+        pattern: WithInfo<D::Info, ()>,
         parameters: WithInfo<D::Info, TypeFunction<D>>,
         instance: WithInfo<D::Info, Option<Instance<D>>>,
         body: Option<WithInfo<D::Info, Expression<D>>>,
     },
     #[serde(rename_all = "camelCase")]
     InstanceDeclaration {
+        pattern: WithInfo<D::Info, ()>,
         parameters: WithInfo<D::Info, TypeFunction<D>>,
         instance: WithInfo<D::Info, Option<Instance<D>>>,
         body: Option<WithInfo<D::Info, Expression<D>>>,
@@ -1289,6 +1291,10 @@ mod rules {
                             WithInfo {
                                 info,
                                 item: Statement::DefaultInstanceDeclaration {
+                                    pattern: WithInfo {
+                                        info: declaration.info,
+                                        item: (),
+                                    },
                                     parameters,
                                     instance,
                                     body: Some(body),
@@ -1326,6 +1332,10 @@ mod rules {
                                     |_, info, type_function, instance, _| WithInfo {
                                         info,
                                         item: Statement::DefaultInstanceDeclaration {
+                                            pattern: WithInfo {
+                                                info: D::Info::clone(&type_function.info),
+                                                item: (),
+                                            },
                                             parameters: type_function,
                                             instance,
                                             body: None,
@@ -1348,6 +1358,10 @@ mod rules {
                                     |_, info: D::Info, _, instance, _| WithInfo {
                                         info: info.clone(),
                                         item: Statement::DefaultInstanceDeclaration {
+                                            pattern: WithInfo {
+                                                info: info.clone(),
+                                                item: (),
+                                            },
                                             parameters: TypeFunction::default_from_info(info),
                                             instance,
                                             body: None,
@@ -1418,6 +1432,10 @@ mod rules {
                             WithInfo {
                                 info,
                                 item: Statement::InstanceDeclaration {
+                                    pattern: WithInfo {
+                                        info: declaration.info,
+                                        item: (),
+                                    },
                                     parameters,
                                     instance,
                                     body: Some(body),
@@ -1446,6 +1464,10 @@ mod rules {
                                     |_, info, type_function, instance, _| WithInfo {
                                         info,
                                         item: Statement::InstanceDeclaration {
+                                            pattern: WithInfo {
+                                                info: D::Info::clone(&type_function.info),
+                                                item: (),
+                                            },
                                             parameters: type_function,
                                             instance,
                                             body: None,
@@ -1461,6 +1483,10 @@ mod rules {
                                     |_, info: D::Info, instance, _| WithInfo {
                                         info: info.clone(),
                                         item: Statement::InstanceDeclaration {
+                                            pattern: WithInfo {
+                                                info: info.clone(),
+                                                item: (),
+                                            },
                                             parameters: TypeFunction::default_from_info(info),
                                             instance,
                                             body: None,
