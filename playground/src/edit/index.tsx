@@ -268,6 +268,23 @@ export const Editor = (props: {
                                 }),
                             );
                         }}
+                        canResetItem={(index) => {
+                            const page = props.playground!.pages[playgroundPageIndex!];
+                            const item = page.items[index];
+                            return item.type === "code" && item.originalCode != null;
+                        }}
+                        onResetItem={(index) => {
+                            props.setPlayground(
+                                produce((playground) => {
+                                    const page = playground!.pages[playgroundPageIndex!];
+                                    const item = page.items[index];
+
+                                    if (item.type === "code" && item.originalCode != null) {
+                                        item.code = item.originalCode;
+                                    }
+                                }),
+                            );
+                        }}
                     />
                 </div>
             </div>
@@ -285,6 +302,8 @@ const PlaygroundPageEditor = (props: {
     onMoveItemDown: (index: number) => void;
     onMoveItemUp: (index: number) => void;
     onDeleteItem: (index: number) => void;
+    canResetItem: (index: number) => boolean;
+    onResetItem: (index: number) => void;
 }) => {
     // HACK: Prevent layout bugs by rendering one item at a time
     const [maxRenderIndex, setMaxRenderIndex] = useState(0);
@@ -324,6 +343,11 @@ const PlaygroundPageEditor = (props: {
                                                 : undefined
                                         }
                                         onDelete={() => props.onDeleteItem(index)}
+                                        onReset={
+                                            props.canResetItem(index)
+                                                ? () => props.onResetItem(index)
+                                                : undefined
+                                        }
                                     />
                                 </TutorialItem>
                             ) : null,
@@ -395,6 +419,7 @@ const PlaygroundPageItemEditor = (props: {
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     onDelete: () => void;
+    onReset?: () => void;
 }) => {
     const theme = useMemo(() => defaultThemeConfig(), []);
 
@@ -418,6 +443,7 @@ const PlaygroundPageItemEditor = (props: {
                     onMoveUp={props.onMoveUp}
                     onMoveDown={props.onMoveDown}
                     onDelete={props.onDelete}
+                    onReset={props.onReset}
                     theme={theme}
                     runtime={
                         "setup" in props.item

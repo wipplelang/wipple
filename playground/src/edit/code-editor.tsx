@@ -34,8 +34,7 @@ import {
 import { defaultPaletteItems, runtimes } from "../runtimes";
 import { SetupIcon } from "./setup-icon";
 import { StateCommand } from "@codemirror/state";
-import editIcon from "./assets/edit.png";
-import formatIcon from "./assets/format.png";
+import actionsIcon from "./assets/actions.svg";
 import lookupIcon from "./assets/lookup.svg";
 import { NotePicker } from "./note-picker";
 import { AnimalPicker } from "./animal-picker";
@@ -61,6 +60,7 @@ export function CodeEditor<Settings>(props: {
     onMoveUp?: () => void;
     onMoveDown?: () => void;
     onDelete: () => void;
+    onReset?: () => void;
 }) {
     const [isFocused, setFocused] = useState(props.autofocus ?? false);
 
@@ -393,17 +393,15 @@ export function CodeEditor<Settings>(props: {
 
                     <div className="flex-1 flex flex-row items-center justify-end gap-1">
                         {!lookUpEnabled ? (
-                            <>
-                                <TutorialItem id="editButton">
-                                    <EditButton
-                                        onSelectAll={() => runCommand(commands.selectAll)}
-                                        onUndo={() => runCommand(commands.undo)}
-                                        onRedo={() => runCommand(commands.redo)}
-                                    />
-                                </TutorialItem>
-
-                                <FormatButton onClick={format} />
-                            </>
+                            <TutorialItem id="editButton">
+                                <ActionsButton
+                                    onSelectAll={() => runCommand(commands.selectAll)}
+                                    onUndo={() => runCommand(commands.undo)}
+                                    onRedo={() => runCommand(commands.redo)}
+                                    onFormat={format}
+                                    onReset={props.onReset}
+                                />
+                            </TutorialItem>
                         ) : null}
 
                         <LookUpToggle enabled={lookUpEnabled} onChange={setLookUpEnabled} />
@@ -563,19 +561,13 @@ const LookUpToggle = (props: { enabled: boolean; onChange?: (enabled: boolean) =
     </>
 );
 
-const FormatButton = (props: { onClick: () => void }) => (
-    <MenuContainer>
-        <button
-            className="group flex flex-row items-center justify-center transition-colors rounded-md gap-1 px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
-            onClick={props.onClick}
-        >
-            <img src={formatIcon} className="w-[18px] h-[18px]" />
-            <p className="text-xs">Format</p>
-        </button>
-    </MenuContainer>
-);
-
-const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo: () => void }) => (
+const ActionsButton = (props: {
+    onSelectAll: () => void;
+    onUndo: () => void;
+    onRedo: () => void;
+    onFormat: () => void;
+    onReset?: () => void;
+}) => (
     <ContextMenuButton
         items={[
             {
@@ -606,12 +598,28 @@ const EditButton = (props: { onSelectAll: () => void; onUndo: () => void; onRedo
                 icon: "redo",
                 onClick: props.onRedo,
             },
+            {
+                title: "Format",
+                icon: "format_align_left",
+                onClick: props.onFormat,
+            },
+            {
+                title: "Reset",
+                icon: "restart_alt",
+                role: "destructive",
+                onClick: props.onReset,
+                disabled: props.onReset == null,
+            },
         ]}
     >
         <MenuContainer>
             <button className="group flex flex-row items-center justify-center transition-colors rounded-md px-2 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                <img src={editIcon} className="w-[14px] h-[14px]" />
-                <p className="text-xs">Edit</p>
+                <img
+                    src={actionsIcon}
+                    className="w-[20px] h-[20px] translate-x-[1px] translate-y-[-1px]"
+                />
+
+                <p className="text-xs">Actions</p>
             </button>
         </MenuContainer>
     </ContextMenuButton>
