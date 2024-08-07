@@ -1117,6 +1117,32 @@ impl Render {
                 severity = RenderedDiagnosticSeverity::Error;
                 message = String::from("failed to produce IR for this code");
             }
+            wipple_driver::Diagnostic::Lint(lint) => match lint {
+                wipple_driver::lint::Lint::NamingConventions(lint) => {
+                    let convention = match lint.convention {
+                        wipple_driver::lint::lints::NamingConvention::Variable => "variable",
+                        wipple_driver::lint::lints::NamingConvention::Type => "type",
+                        wipple_driver::lint::lints::NamingConvention::Trait => "trait",
+                        wipple_driver::lint::lints::NamingConvention::Constant => "constant",
+                        wipple_driver::lint::lints::NamingConvention::TypeParameter => {
+                            "type parameter"
+                        }
+                    };
+
+                    severity = RenderedDiagnosticSeverity::Warning;
+                    message = format!(
+                        "{} should be written as `{}`",
+                        convention, lint.suggested_name
+                    );
+
+                    fix = Some(RenderedFix {
+                        message: String::from("rename"),
+                        before: None,
+                        replacement: Some(lint.suggested_name.clone()),
+                        after: None,
+                    });
+                }
+            },
         }
 
         let raw = {

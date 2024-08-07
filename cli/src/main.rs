@@ -108,8 +108,10 @@ async fn main() -> anyhow::Result<()> {
             let result = wipple_driver::compile(sources, dependencies);
 
             if !result.diagnostics.is_empty() {
-                print_diagnostics(&result.diagnostics, result.interface);
-                process::exit(1);
+                let contains_errors = print_diagnostics(&result.diagnostics, &result.interface);
+                if contains_errors {
+                    process::exit(1);
+                }
             }
 
             if let Some(output_interface_path) = output_interface_path {
@@ -216,8 +218,10 @@ async fn main() -> anyhow::Result<()> {
             let result = wipple_driver::compile(sources, dependencies);
 
             if !result.diagnostics.is_empty() {
-                print_diagnostics(&result.diagnostics, result.interface);
-                process::exit(1);
+                let contains_error = print_diagnostics(&result.diagnostics, &result.interface);
+                if contains_error {
+                    process::exit(1);
+                }
             }
 
             let output = PlaygroundBundle {
@@ -279,18 +283,29 @@ async fn main() -> anyhow::Result<()> {
     }
 }
 
+#[must_use]
 fn print_diagnostics(
     diagnostics: &[wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>],
-    interface: wipple_driver::Interface,
-) {
+    interface: &wipple_driver::Interface,
+) -> bool {
     let render = wipple_render::Render::new();
-    render.update(interface, Vec::new(), None);
+    render.update(interface.clone(), Vec::new(), None);
 
+    let mut contains_error = false;
     for diagnostic in diagnostics {
         if let Some(rendered_diagnostic) = render.render_diagnostic(diagnostic) {
+            if matches!(
+                rendered_diagnostic.severity,
+                wipple_render::RenderedDiagnosticSeverity::Error
+            ) {
+                contains_error = true;
+            }
+
             eprintln!("{}", rendered_diagnostic.raw);
         }
     }
+
+    contains_error
 }
 
 async fn run_executable(executable: wipple_driver::Executable) {

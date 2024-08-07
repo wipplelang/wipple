@@ -1,6 +1,7 @@
 //! Coordinates the compiler passes.
 
 mod convert;
+pub mod lint;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -64,6 +65,7 @@ pub fn resolve_attribute_like_trait(
 pub struct Driver {
     recursion_limit: u32,
     hide_source: bool,
+    lint: bool,
     interface: Interface,
     library: Library,
     ide: Ide,
@@ -74,6 +76,7 @@ impl Driver {
         Driver {
             recursion_limit: DEFAULT_RECURSION_LIMIT,
             hide_source: false,
+            lint: true,
             interface: Default::default(),
             library: Default::default(),
             ide: Default::default(),
@@ -189,6 +192,7 @@ pub enum Diagnostic {
     Lower(lower::Diagnostic),
     Typecheck(typecheck::Diagnostic<Driver>),
     Ir,
+    Lint(lint::Lint),
 }
 
 impl Driver {
@@ -592,6 +596,12 @@ impl Driver {
 
                 instances.entry(r#trait.clone()).or_default().push(instance);
             }
+        }
+
+        if self.lint {
+            let lints = lint::lint(&self.interface, &self.library);
+
+            diagnostics.extend(lints.into_iter().map(|lint| lint.map(Diagnostic::Lint)));
         }
 
         Result {
