@@ -39,11 +39,16 @@ use crate::lint::{
     Lint,
 };
 use serde::Serialize;
+use wipple_util::WithInfo;
 use Case::*;
 
 fn convert_case(s: &str, case: Case) -> Option<String> {
     let converted = convert_case::Converter::new()
-        .set_boundaries(&[convert_case::Boundary::Hyphen])
+        .set_boundaries(&[
+            convert_case::Boundary::Acronym,
+            convert_case::Boundary::Hyphen,
+            convert_case::Boundary::LowerUpper,
+        ])
         .set_delim('-')
         .set_pattern(match case {
             Lowercase => convert_case::Pattern::Lowercase,
@@ -90,7 +95,7 @@ impl<D: Driver> Rule<D> for NamingConventionsRule {
         declaration: wipple_util::WithInfo<<D>::Info, &wipple_typecheck::TypeDeclaration<D>>,
         add_lint: AddLint<'_, D>,
     ) {
-        if is_constructor(path) {
+        if is_constructor(path) || ignores_naming_conventions(&declaration.item.attributes) {
             return;
         }
 
@@ -115,7 +120,7 @@ impl<D: Driver> Rule<D> for NamingConventionsRule {
         declaration: wipple_util::WithInfo<<D>::Info, &wipple_typecheck::TraitDeclaration<D>>,
         add_lint: AddLint<'_, D>,
     ) {
-        if is_constructor(path) {
+        if is_constructor(path) || ignores_naming_conventions(&declaration.item.attributes) {
             return;
         }
 
@@ -140,7 +145,7 @@ impl<D: Driver> Rule<D> for NamingConventionsRule {
         declaration: wipple_util::WithInfo<<D>::Info, &wipple_typecheck::ConstantDeclaration<D>>,
         add_lint: AddLint<'_, D>,
     ) {
-        if is_constructor(path) {
+        if is_constructor(path) || ignores_naming_conventions(&declaration.item.attributes) {
             return;
         }
 
@@ -204,4 +209,18 @@ fn is_constructor(path: &wipple_lower::Path) -> bool {
     path.0
         .iter()
         .any(|component| matches!(component, wipple_lower::PathComponent::Constructor(_)))
+}
+
+fn ignores_naming_conventions<D: Driver>(
+    attributes: &[WithInfo<D::Info, wipple_typecheck::Attribute<D>>],
+) -> bool {
+    attributes.iter().any(|attribute| {
+        if let wipple_typecheck::Attribute::Name(name) = &attribute.item {
+            if name.item == "ignore-naming-conventions" {
+                return true;
+            }
+        }
+
+        false
+    })
 }

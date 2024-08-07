@@ -123,9 +123,11 @@ Body => default instance (Describe-Type {Body} "a block")
 
 -- Display a dropdown with the provided options. The dropdown will evaluate to
 -- the selected item at runtime.
+@ignore-naming-conventions
 Dropdown :: Value => (List Value) Value -> Value
 Dropdown : _ selection -> selection
 
 -- Display a slider with the provided value, minimum, and maximum.
+@ignore-naming-conventions
 Slider :: (Value : Number) where (As Number Value) => Number Number Number -> Value
 Slider : current _ _ -> current as Value
