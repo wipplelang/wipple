@@ -508,6 +508,7 @@ export function CodeEditor<Settings>(props: {
                         autoFocus
                         onChange={(value) => {
                             setDiagnostics([]);
+                            setLineIntelligentFixes(undefined);
                             props.onChange(value);
                         }}
                         onDrop={() => {
