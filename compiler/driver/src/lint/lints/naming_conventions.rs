@@ -1,6 +1,16 @@
+use crate::{
+    lint::{
+        lints::{AddLint, Rule},
+        Lint,
+    },
+    visit::{pattern_visitor, traverse_expression},
+};
+use serde::Serialize;
 use std::ops::ControlFlow;
 use wipple_linker::Driver;
 use wipple_typecheck::Pattern;
+use wipple_util::WithInfo;
+use Case::*;
 
 /// A lint that triggers when a name doesn't follow the correct conventions
 /// (separated by dashes, variables lowercase, types/traits capitalized).
@@ -33,15 +43,6 @@ enum Case {
     Uppercase,
 }
 
-use crate::lint::{
-    lints::{AddLint, Rule},
-    visitor::{pattern_visitor, traverse_expression},
-    Lint,
-};
-use serde::Serialize;
-use wipple_util::WithInfo;
-use Case::*;
-
 fn convert_case(s: &str, case: Case) -> Option<String> {
     let converted = convert_case::Converter::new()
         .set_boundaries(&[
@@ -73,7 +74,7 @@ impl<D: Driver> Rule<D> for NamingConventionsRule {
 
         traverse_expression(
             item.expression.as_ref(),
-            pattern_visitor(|pattern| {
+            pattern_visitor(|pattern, _| {
                 if let Pattern::Variable(name, _) = &pattern.item {
                     if let Some(name) = convert_case(name, Lowercase) {
                         add_lint(

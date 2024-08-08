@@ -62,7 +62,7 @@ pub struct UnlinkedItem<D: Driver> {
     pub expression: WithInfo<D::Info, wipple_typecheck::TypedExpression<D>>,
 
     /// The compiled IR.
-    pub ir: Vec<wipple_ir::Instruction<D>>,
+    pub ir: Option<Vec<wipple_ir::Instruction<D>>>,
 
     /// Whether to evaluate this item every time it is referenced, or just once.
     pub evaluate_once: bool,
@@ -214,7 +214,7 @@ fn convert_item<D: Driver>(item: UnlinkedItem<D>) -> Result<LinkedItem<D>, D> {
     Ok(LinkedItem {
         parameters: item.parameters,
         bounds: item.bounds,
-        ir: item.ir,
+        ir: item.ir.ok_or_else(|| item.expression.replace(Error::Ir))?,
         evaluate_once: item.evaluate_once,
     })
 }

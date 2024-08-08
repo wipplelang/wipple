@@ -1,13 +1,16 @@
 //! Coordinates the compiler passes.
 
 mod convert;
+pub mod fix;
 pub mod lint;
+mod visit;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
+    ops::Range,
     sync::Arc,
 };
 
@@ -57,6 +60,53 @@ pub fn resolve_attribute_like_trait(
     driver.interface = interface;
 
     typecheck::resolve_attribute_like_trait(&driver, name, r#type.as_ref(), number_of_parameters)
+}
+
+/// Attempt to fix the file mentioned in the provided diagnostic. See the
+/// documentation for [`fix`](mod@fix) for more information.
+pub fn fix_file(
+    diagnostic: util::WithInfo<Info, Diagnostic>,
+    files: Vec<File>,
+    dependencies: Option<Interface>,
+    mut apply_fix: impl FnMut(&fix::Fix, Range<usize>, &mut String) -> Range<usize>,
+) -> Option<(fix::Fix, String)> {
+    let path = diagnostic.info.location.path.as_ref();
+
+    let span = (diagnostic.info.location.span.start as usize)
+        ..(diagnostic.info.location.span.end as usize);
+
+    let result = Driver::new().compile(files.clone(), dependencies.clone());
+
+    let fix = fix::fix(
+        diagnostic.as_ref(),
+        &result.interface,
+        &result.library,
+        move |fix| {
+            let mut files = files.clone();
+            let file = files.iter_mut().find(|file| file.path == path)?;
+
+            let new_span = apply_fix(fix, span.clone(), &mut file.code);
+
+            let new_info = Info {
+                location: syntax::Location {
+                    path: Arc::from(file.path.as_str()),
+                    visible_path: Arc::from(file.visible_path.as_str()),
+                    span: (new_span.start as u32)..(new_span.end as u32),
+                },
+            };
+
+            let code = util::WithInfo {
+                info: new_info,
+                item: file.code.clone(),
+            };
+
+            let result = Driver::new().compile(files, dependencies.clone());
+
+            Some((code, result.interface, result.library))
+        },
+    )?;
+
+    Some(fix.item)
 }
 
 /// The driver.
@@ -391,31 +441,31 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            if let Some(ir_result) = ir::compile(
+            let ir_result = ir::compile(
                 &self,
                 path.clone(),
                 &declaration.item.attributes,
                 item.as_ref(),
                 &typecheck_result.captures,
-            ) {
-                for (path, item) in ir_result.items {
-                    self.library.items.insert(
-                        path,
-                        Item {
-                            parameters: declaration.item.parameters.clone(),
-                            bounds: declaration
-                                .item
-                                .bounds
-                                .clone()
-                                .into_iter()
-                                .filter_map(|bound| ir::instance_descriptor(&bound.item))
-                                .collect(),
-                            expression: item.expression,
-                            ir: item.instructions,
-                            evaluate_once: item.evaluate_once,
-                        },
-                    );
-                }
+            );
+
+            for (path, item) in ir_result.items {
+                self.library.items.insert(
+                    path,
+                    Item {
+                        parameters: declaration.item.parameters.clone(),
+                        bounds: declaration
+                            .item
+                            .bounds
+                            .clone()
+                            .into_iter()
+                            .filter_map(|bound| ir::instance_descriptor(&bound.item))
+                            .collect(),
+                        expression: item.expression,
+                        ir: Some(item.instructions),
+                        evaluate_once: item.evaluate_once,
+                    },
+                );
             }
         }
 
@@ -460,31 +510,31 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            if let Some(ir_result) = ir::compile(
+            let ir_result = ir::compile(
                 &self,
                 path.clone(),
                 &[],
                 item.as_ref(),
                 &typecheck_result.captures,
-            ) {
-                for (path, item) in ir_result.items {
-                    self.library.items.insert(
-                        path,
-                        Item {
-                            parameters: declaration.item.parameters.clone(),
-                            bounds: declaration
-                                .item
-                                .bounds
-                                .clone()
-                                .into_iter()
-                                .filter_map(|bound| ir::instance_descriptor(&bound.item))
-                                .collect(),
-                            expression: item.expression,
-                            ir: item.instructions,
-                            evaluate_once: item.evaluate_once,
-                        },
-                    );
-                }
+            );
+
+            for (path, item) in ir_result.items {
+                self.library.items.insert(
+                    path,
+                    Item {
+                        parameters: declaration.item.parameters.clone(),
+                        bounds: declaration
+                            .item
+                            .bounds
+                            .clone()
+                            .into_iter()
+                            .filter_map(|bound| ir::instance_descriptor(&bound.item))
+                            .collect(),
+                        expression: item.expression,
+                        ir: Some(item.instructions),
+                        evaluate_once: item.evaluate_once,
+                    },
+                );
             }
         }
 
@@ -511,28 +561,28 @@ impl Driver {
                         .map(|error| error.map(Diagnostic::Typecheck)),
                 );
 
-                if let Some(ir_result) = ir::compile(
+                let ir_result = ir::compile(
                     &self,
                     path.clone(),
                     &[],
                     item.as_ref(),
                     &typecheck_result.captures,
-                ) {
-                    for (path, item) in ir_result.items {
-                        self.library.items.insert(
-                            path,
-                            Item {
-                                parameters: Vec::new(),
-                                bounds: Vec::new(),
-                                expression: item.expression,
-                                ir: item.instructions,
-                                evaluate_once: item.evaluate_once,
-                            },
-                        );
-                    }
+                );
 
-                    self.library.entrypoints.push(path);
+                for (path, item) in ir_result.items {
+                    self.library.items.insert(
+                        path,
+                        Item {
+                            parameters: Vec::new(),
+                            bounds: Vec::new(),
+                            expression: item.expression,
+                            ir: Some(item.instructions),
+                            evaluate_once: item.evaluate_once,
+                        },
+                    );
                 }
+
+                self.library.entrypoints.push(path);
             }
         }
 

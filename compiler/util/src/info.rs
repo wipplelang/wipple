@@ -127,6 +127,20 @@ impl<I, T> WithInfo<I, Option<T>> {
     }
 }
 
+impl<I, T> WithInfo<I, &T>
+where
+    I: Clone,
+    T: Clone,
+{
+    /// Clone the value contained within the [`WithInfo`].
+    pub fn cloned(&self) -> WithInfo<I, T> {
+        WithInfo {
+            info: self.info.clone(),
+            item: self.item.clone(),
+        }
+    }
+}
+
 /// Like [`Default`], but for types wrapped in [`WithInfo`].
 pub trait DefaultFromInfo<I>: Sized {
     /// Produce the default value of `Self` with the given info.

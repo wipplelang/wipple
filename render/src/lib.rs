@@ -1228,6 +1228,17 @@ impl Render {
         })
     }
 
+    pub fn render_fix(&self, fix: &wipple_driver::fix::Fix) -> String {
+        match fix {
+            wipple_driver::fix::Fix::ReplaceWith(code) => {
+                format!("try replacing this code with `{code}`")
+            }
+            wipple_driver::fix::Fix::JoinWithNextLine => {
+                String::from("try joining this line with the following line")
+            }
+        }
+    }
+
     pub fn render_token(
         &self,
         token: &wipple_driver::syntax::tokenize::Token<'_>,
