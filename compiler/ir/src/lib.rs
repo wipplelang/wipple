@@ -39,9 +39,9 @@ pub fn compile<'a, D: Driver>(
     attributes: &'a [WithInfo<D::Info, wipple_typecheck::Attribute<D>>],
     expression: WithInfo<D::Info, &'a wipple_typecheck::TypedExpression<D>>,
     captures: &[D::Path],
-) -> Option<Result<D>> {
-    let items = compile::compile(driver, path, attributes, expression, captures)?;
-    Some(Result { items })
+) -> Result<D> {
+    let items = compile::compile(driver, path, attributes, expression, captures);
+    Result { items }
 }
 
 /// Generate a type descriptor from a type.

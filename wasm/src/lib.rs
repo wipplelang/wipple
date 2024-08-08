@@ -147,8 +147,11 @@ pub struct CompileOptions {
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CompileResult {
     pub executable: Option<wipple_driver::Executable>,
+    pub driver_diagnostics:
+        Vec<wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>>,
     pub diagnostics: Vec<wipple_render::RenderedDiagnostic>,
 }
 
@@ -176,29 +179,27 @@ pub async fn compile(options: JsValue) -> JsValue {
         );
 
         let compiled = Mutex::new(true);
-        let rendered_diagnostics =
-            future::join_all(result.diagnostics.into_iter().map(|diagnostic| {
-                let compiled = &compiled;
-                let id = &options.id;
-                async move {
-                    let rendered_diagnostic = render_for(id.clone())
-                        .await
-                        .render_diagnostic(&diagnostic)?;
+        let rendered_diagnostics = future::join_all(result.diagnostics.iter().map(|diagnostic| {
+            let compiled = &compiled;
+            let id = &options.id;
+            async move {
+                let rendered_diagnostic =
+                    render_for(id.clone()).await.render_diagnostic(diagnostic)?;
 
-                    if let wipple_render::RenderedDiagnosticSeverity::Error =
-                        rendered_diagnostic.severity
-                    {
-                        *compiled.lock().await = false;
-                    }
-
-                    Some(rendered_diagnostic)
+                if let wipple_render::RenderedDiagnosticSeverity::Error =
+                    rendered_diagnostic.severity
+                {
+                    *compiled.lock().await = false;
                 }
-                .boxed()
-            }))
-            .await
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>();
+
+                Some(rendered_diagnostic)
+            }
+            .boxed()
+        }))
+        .await
+        .into_iter()
+        .flatten()
+        .collect::<Vec<_>>();
 
         let executable = if compiled.into_inner() {
             wipple_driver::link(
@@ -213,6 +214,7 @@ pub async fn compile(options: JsValue) -> JsValue {
 
         CompileResult {
             executable,
+            driver_diagnostics: result.diagnostics,
             diagnostics: rendered_diagnostics,
         }
     })
@@ -329,6 +331,75 @@ pub async fn help(options: JsValue) -> JsValue {
 
         HelpResult { help }
     })
+    .await;
+
+    match result {
+        Ok(result) => to_value(&result).or_throw("failed to serialize result"),
+        Err(Canceled) => JsValue::UNDEFINED,
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetIntelligentFixOptions {
+    pub id: String,
+    pub path: String,
+    pub code: String,
+    pub interface: Option<Box<wipple_driver::Interface>>,
+    pub libraries: Vec<wipple_driver::Library>,
+    pub diagnostic: wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GetIntelligentFixResult {
+    fix: Option<IntelligentFix>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct IntelligentFix {
+    pub message: String,
+    pub fixed_code: String,
+}
+
+#[wasm_bindgen(js_name = "getIntelligentFix")]
+pub async fn get_intelligent_fix(options: JsValue) -> JsValue {
+    let options =
+        from_value::<GetIntelligentFixOptions>(options).or_throw("failed to deserialize options");
+
+    let result = run_on_thread(
+        format!("get_intelligent_fix-{}", options.id),
+        move || async move {
+            let sources = vec![wipple_driver::File {
+                path: options.path.clone(),
+                visible_path: options.path,
+                code: options.code,
+            }];
+
+            let fix_result = wipple_driver::fix_file(
+                options.diagnostic,
+                sources,
+                options.interface.map(|interface| *interface),
+            );
+
+            let (fix, fixed_code) = match fix_result {
+                Some((fix, code)) => (fix, code),
+                None => return GetIntelligentFixResult { fix: None },
+            };
+
+            let render = render_for(options.id).await;
+
+            let message = render.render_fix(&fix);
+
+            GetIntelligentFixResult {
+                fix: Some(IntelligentFix {
+                    message,
+                    fixed_code,
+                }),
+            }
+        },
+    )
     .await;
 
     match result {

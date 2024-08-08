@@ -762,12 +762,12 @@ impl Render {
                 }
             },
             wipple_driver::Diagnostic::Parse(parse_diagnostic) => {
-                match parse_diagnostic.direction {
+                match &parse_diagnostic.direction {
                     Some(wipple_driver::syntax::parse::Direction::Before(before)) => {
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!(
                             "expected {} before this {}",
-                            self.render_syntax_kind(parse_diagnostic.expected),
+                            self.render_syntax_kind(&parse_diagnostic.expected),
                             self.render_syntax_kind(before),
                         );
                     }
@@ -775,7 +775,7 @@ impl Render {
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!(
                             "expected {} after this {}",
-                            self.render_syntax_kind(parse_diagnostic.expected),
+                            self.render_syntax_kind(&parse_diagnostic.expected),
                             self.render_syntax_kind(after),
                         );
                     }
@@ -783,7 +783,7 @@ impl Render {
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!(
                             "expected {} here",
-                            self.render_syntax_kind(parse_diagnostic.expected),
+                            self.render_syntax_kind(&parse_diagnostic.expected),
                         );
                     }
                 }
@@ -1228,6 +1228,17 @@ impl Render {
         })
     }
 
+    pub fn render_fix(&self, fix: &wipple_driver::fix::Fix) -> String {
+        match fix {
+            wipple_driver::fix::Fix::ReplaceWith(code) => {
+                format!("try replacing this code with `{code}`")
+            }
+            wipple_driver::fix::Fix::JoinWithNextLine => {
+                String::from("try joining this line with the following line")
+            }
+        }
+    }
+
     pub fn render_token(
         &self,
         token: &wipple_driver::syntax::tokenize::Token<'_>,
@@ -1278,7 +1289,7 @@ impl Render {
         }
     }
 
-    pub fn render_syntax_kind(&self, kind: wipple_driver::syntax::parse::SyntaxKind) -> String {
+    pub fn render_syntax_kind(&self, kind: &wipple_driver::syntax::parse::SyntaxKind) -> String {
         use wipple_driver::syntax::parse::SyntaxKind;
 
         match kind {

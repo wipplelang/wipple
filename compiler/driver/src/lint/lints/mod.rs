@@ -4,7 +4,7 @@ mod naming_conventions;
 
 pub use naming_conventions::*;
 
-use crate::lint::{lints, Lint};
+use crate::lint::Lint;
 use wipple_linker::{Driver, UnlinkedItem};
 use wipple_util::WithInfo;
 
@@ -79,6 +79,6 @@ pub(super) trait Rule<D: Driver> {
 pub(super) type AddLint<'a, D> =
     &'a mut dyn FnMut(WithInfo<<D as wipple_typecheck::Driver>::Info, Lint>);
 
-pub(super) fn rules<D: Driver>() -> Vec<Box<dyn Rule<D>>> {
-    vec![Box::new(lints::naming_conventions::NamingConventionsRule)]
+pub(super) fn rules<D: Driver>() -> &'static [&'static dyn Rule<D>] {
+    &[&naming_conventions::NamingConventionsRule]
 }
