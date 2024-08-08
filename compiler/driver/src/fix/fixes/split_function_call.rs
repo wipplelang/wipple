@@ -31,7 +31,7 @@ impl Rule for SplitFunctionCallRule {
         // This fix only applies to function calls in statement position
         if !matches!(
             parent.map(|expression| expression.item.kind),
-            Some(TypedExpressionKind::Block { .. })
+            Some(TypedExpressionKind::Block { .. } | TypedExpressionKind::Initialize { .. })
         ) {
             return None;
         }

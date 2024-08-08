@@ -3,11 +3,11 @@
 pub mod lints;
 
 use crate::Info;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use wipple_util::WithInfo;
 
 /// The list of available lints.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[allow(missing_docs)]
 pub enum Lint {

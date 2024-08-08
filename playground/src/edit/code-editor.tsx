@@ -17,7 +17,7 @@ import * as commands from "@codemirror/commands";
 import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
 import { ThemeConfig } from "./codemirror/theme";
-import { Help, PaletteItem } from "../models";
+import { Help, IntelligentFix, PaletteItem } from "../models";
 import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
 import { ColorPicker } from "./color-picker";
@@ -42,6 +42,7 @@ import { InstrumentPicker } from "./instrument-picker";
 import { ObjectPicker } from "./object-picker";
 import { ErrorDoc, docForError } from "../docs/errors";
 import { FloatingPortal } from "@floating-ui/react";
+import { produce } from "immer";
 
 export function CodeEditor<Settings>(props: {
     children: string;
@@ -79,6 +80,7 @@ export function CodeEditor<Settings>(props: {
     const [runnerHasFocus, setRunnerHasFocus] = useState(false);
 
     const [diagnostics, setDiagnostics] = useState<any[]>([]);
+    const [driverDiagnostics, setDriverDiagnostics] = useState<any[]>([]);
     const [highlightItems, setHighlightItems] = useState<Record<string, any>>({});
 
     const [lookUpEnabled, setLookUpEnabled] = useState(false);
@@ -89,6 +91,10 @@ export function CodeEditor<Settings>(props: {
     const windowSize = useWindowSize();
 
     const lineDiagnostics = useMemo(() => {
+        if (driverDiagnostics.length !== diagnostics.length) {
+            return [];
+        }
+
         const editorView = codeMirrorRef.current?.editorView;
         if (!editorView) {
             return [];
@@ -98,7 +104,9 @@ export function CodeEditor<Settings>(props: {
 
         const coveredLines: number[] = [];
 
-        return diagnostics.flatMap((diagnostic) => {
+        return diagnostics.flatMap((diagnostic, index) => {
+            const driverDiagnostic = driverDiagnostics[index];
+
             if (diagnostic.location.start.index > editorView.state.doc.length) {
                 return [];
             }
@@ -129,10 +137,11 @@ export function CodeEditor<Settings>(props: {
                     width: Math.max(editorRect.width - width - 48, 32),
                     height,
                     diagnostic,
+                    driverDiagnostic,
                 },
             ];
         });
-    }, [diagnostics, windowSize]);
+    }, [diagnostics, driverDiagnostics, windowSize]);
 
     const applyFix = (fix: any, start: number, end: number) => {
         const editorView = codeMirrorRef.current?.editorView;
@@ -151,6 +160,52 @@ export function CodeEditor<Settings>(props: {
             changes: { from: start, to: end, insert: replacement },
         });
     };
+
+    const [lineIntelligentFixes, setLineIntelligentFixes] = useState<
+        {
+            top: number;
+            right: number;
+            width: number;
+            height: number;
+            intelligentFix: IntelligentFix;
+        }[]
+    >();
+
+    const requestIntelligentFixes = useCallback(async () => {
+        if (!runnerRef.current) {
+            setLineIntelligentFixes(undefined);
+            return;
+        }
+
+        setLineIntelligentFixes([]);
+
+        let hasIntelligentFixes = false;
+        for (const { top, right, width, height, driverDiagnostic } of lineDiagnostics) {
+            const intelligentFix = await runnerRef.current.getIntelligentFix(driverDiagnostic);
+            if (intelligentFix != null) {
+                const lineIntelligentFix = {
+                    top,
+                    right,
+                    width,
+                    height,
+                    intelligentFix,
+                };
+
+                setLineIntelligentFixes((intelligentFixes) =>
+                    intelligentFixes
+                        ? [...intelligentFixes, lineIntelligentFix]
+                        : [lineIntelligentFix],
+                );
+
+                hasIntelligentFixes = true;
+            }
+        }
+
+        if (!hasIntelligentFixes) {
+            alert("No fixes available.");
+            setLineIntelligentFixes(undefined);
+        }
+    }, [lineDiagnostics]);
 
     const getHelpForCode = useCallback(
         (position: number, code: string) => runnerRef.current!.help(position, code),
@@ -321,6 +376,34 @@ export function CodeEditor<Settings>(props: {
         }
     };
 
+    const renderBubble = (
+        index: number,
+        top: number,
+        right: number,
+        height: number,
+        content: JSX.Element,
+    ) => (
+        <FloatingPortal key={index}>
+            <div
+                className="absolute w-fit pr-4"
+                style={{
+                    top: top + props.theme.fontSize / 4 - 1,
+                    right,
+                    height,
+                }}
+            >
+                <Transition
+                    in={!lookUpEnabled}
+                    animateOnMount
+                    inStyle={{ opacity: 1, x: 0 }}
+                    outStyle={{ opacity: 0.5, x: "1rem" }}
+                >
+                    {content}
+                </Transition>
+            </div>
+        </FloatingPortal>
+    );
+
     return (
         <div
             autoFocus={props.autofocus}
@@ -399,6 +482,11 @@ export function CodeEditor<Settings>(props: {
                                     onUndo={() => runCommand(commands.undo)}
                                     onRedo={() => runCommand(commands.redo)}
                                     onFormat={format}
+                                    onSuggestFixes={
+                                        lineDiagnostics.length > 0
+                                            ? requestIntelligentFixes
+                                            : undefined
+                                    }
                                     onReset={props.onReset}
                                 />
                             </TutorialItem>
@@ -439,33 +527,39 @@ export function CodeEditor<Settings>(props: {
 
                     {!animationsSettled
                         ? null
-                        : lineDiagnostics.map(
-                              ({ top, right, width, height, diagnostic }, index) => (
-                                  <FloatingPortal key={index}>
-                                      <div
-                                          className="absolute w-fit pr-4"
-                                          style={{
-                                              top: top + props.theme.fontSize / 4 - 1,
-                                              right,
-                                              height,
+                        : lineIntelligentFixes != null
+                        ? lineIntelligentFixes.map(
+                              ({ top, right, width, height, intelligentFix }, index) =>
+                                  renderBubble(
+                                      index,
+                                      top,
+                                      right,
+                                      height,
+                                      <IntelligentFixBubble
+                                          width={width}
+                                          height={height}
+                                          theme={props.theme}
+                                          message={intelligentFix.message}
+                                          onClick={() => {
+                                              props.onChange(intelligentFix.fixedCode);
+                                              setLineIntelligentFixes(undefined);
                                           }}
-                                      >
-                                          <Transition
-                                              in={!lookUpEnabled}
-                                              animateOnMount
-                                              inStyle={{ opacity: 1, x: 0 }}
-                                              outStyle={{ opacity: 0.5, x: "1rem" }}
-                                          >
-                                              <DiagnosticBubble
-                                                  width={width}
-                                                  height={height}
-                                                  theme={props.theme}
-                                                  diagnostic={diagnostic}
-                                                  onApplyFix={applyFix}
-                                              />
-                                          </Transition>
-                                      </div>
-                                  </FloatingPortal>
+                                      />,
+                                  ),
+                          )
+                        : lineDiagnostics.map(({ top, right, width, height, diagnostic }, index) =>
+                              renderBubble(
+                                  index,
+                                  top,
+                                  right,
+                                  height,
+                                  <DiagnosticBubble
+                                      width={width}
+                                      height={height}
+                                      theme={props.theme}
+                                      diagnostic={diagnostic}
+                                      onApplyFix={applyFix}
+                                  />,
                               ),
                           )}
                 </div>
@@ -496,7 +590,10 @@ export function CodeEditor<Settings>(props: {
                             hasFocus={runnerHasFocus}
                             onFocus={() => setRunnerHasFocus(true)}
                             onBlur={() => setRunnerHasFocus(false)}
-                            onChangeDiagnostics={setDiagnostics}
+                            onChangeDiagnostics={(diagnostics, driverDiagnostics) => {
+                                setDiagnostics(diagnostics);
+                                setDriverDiagnostics(driverDiagnostics);
+                            }}
                             onChangeHighlightItems={setHighlightItems}
                         >
                             {props.children}
@@ -566,6 +663,7 @@ const ActionsButton = (props: {
     onUndo: () => void;
     onRedo: () => void;
     onFormat: () => void;
+    onSuggestFixes?: () => void;
     onReset?: () => void;
 }) => (
     <ContextMenuButton
@@ -602,6 +700,12 @@ const ActionsButton = (props: {
                 title: "Format",
                 icon: "format_align_left",
                 onClick: props.onFormat,
+            },
+            {
+                title: "Suggest Fixes",
+                icon: "build_circle",
+                onClick: props.onSuggestFixes,
+                disabled: props.onSuggestFixes == null,
             },
             {
                 title: "Reset",
@@ -846,6 +950,28 @@ const DiagnosticBubble = (props: {
         </div>
     );
 };
+
+const IntelligentFixBubble = (props: {
+    width: number;
+    height: number;
+    theme: ThemeConfig;
+    message: string;
+    onClick: () => void;
+}) => (
+    <div style={{ maxWidth: props.width }}>
+        <div className="flex flex-row items-start justify-end" style={{ height: props.height }}>
+            <button
+                className={`flex flex-row items-center gap-1.5 px-2 rounded-lg overflow-x-scroll no-scrollbar whitespace-nowrap transition-colors text-sky-600 dark:text-sky-500 h-full hover:text-white bg-sky-50 dark:bg-sky-950 hover:bg-sky-500`}
+                onClick={props.onClick}
+            >
+                <div className="flex flex-row items-center gap-1.5 py-1">
+                    <MaterialSymbol icon="build_circle" />
+                    <Markdown>{props.message}</Markdown>
+                </div>
+            </button>
+        </div>
+    </div>
+);
 
 const MenuContainer = (props: React.PropsWithChildren<{}>) => (
     <div className="flex flex-row items-center text-gray-800 dark:text-gray-400 text-opacity-50 h-7">

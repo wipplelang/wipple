@@ -10,7 +10,6 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     hash::Hash,
-    ops::Range,
     sync::Arc,
 };
 
@@ -68,7 +67,6 @@ pub fn fix_file(
     diagnostic: util::WithInfo<Info, Diagnostic>,
     files: Vec<File>,
     dependencies: Option<Interface>,
-    mut apply_fix: impl FnMut(&fix::Fix, Range<usize>, &mut String) -> Range<usize>,
 ) -> Option<(fix::Fix, String)> {
     let path = diagnostic.info.location.path.as_ref();
 
@@ -85,7 +83,7 @@ pub fn fix_file(
             let mut files = files.clone();
             let file = files.iter_mut().find(|file| file.path == path)?;
 
-            let new_span = apply_fix(fix, span.clone(), &mut file.code);
+            let new_span = fix.apply_to(&mut file.code, span.clone());
 
             let new_info = Info {
                 location: syntax::Location {
@@ -233,7 +231,7 @@ pub struct Result {
 
 /// Diagnostics produced by the compiler.
 #[allow(missing_docs)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 pub enum Diagnostic {
     Tokenize(syntax::tokenize::Diagnostic<SyntaxDriver>),

@@ -361,17 +361,9 @@ impl LanguageServer for Backend {
                 if let Some((sources, line_index)) = sources.clone() {
                     let dependencies = config.dependencies.clone();
 
-                    if let Some((fix, new_code)) = wipple_driver::fix_file(
-                        diagnostic.clone(),
-                        sources,
-                        dependencies,
-                        |fix, range, code| {
-                            // NOTE: Here, `code` is the full code of the file
-                            // referenced by the diagnostic, so using `line_index`
-                            // here is valid
-                            self.apply_fix(fix, range, code, &line_index)
-                        },
-                    ) {
+                    if let Some((fix, new_code)) =
+                        wipple_driver::fix_file(diagnostic.clone(), sources, dependencies)
+                    {
                         let message = config.render.render_fix(&fix);
 
                         let start = line_index.line_col(line_index::TextSize::new(0));
@@ -739,46 +731,6 @@ impl Backend {
         );
 
         result.diagnostics
-    }
-
-    fn apply_fix(
-        &self,
-        fix: &wipple_driver::fix::Fix,
-        range: std::ops::Range<usize>,
-        code: &mut String,
-        line_index: &LineIndex,
-    ) -> std::ops::Range<usize> {
-        use wipple_driver::fix::Fix;
-
-        match fix {
-            Fix::ReplaceWith(replacement) => {
-                code.replace_range(range.clone(), replacement);
-                range.start..(range.start + replacement.len())
-            }
-            Fix::JoinWithNextLine => {
-                let line = line_index
-                    .line_col(line_index::TextSize::new(range.end as u32))
-                    .line;
-
-                let (next_line_start, next_line_end) = match line_index
-                    .lines(line_index::TextRange::up_to(line_index.len()))
-                    .nth(line as usize + 1)
-                {
-                    Some(range) => (
-                        u32::from(range.start()) as usize,
-                        u32::from(range.end()) as usize,
-                    ),
-                    None => return range, // do nothing; no next line to join with
-                };
-
-                code.replace_range((next_line_start - 1)..next_line_start, " ");
-
-                // Remove the trailing newline (if there is one)
-                let next_line_end = next_line_end.saturating_sub(1);
-
-                range.start..next_line_end
-            }
-        }
     }
 }
 

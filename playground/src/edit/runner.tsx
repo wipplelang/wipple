@@ -10,7 +10,7 @@ import {
 import { useDebounceValue } from "usehooks-ts";
 import { Runtime, RuntimeComponent } from "../runtimes";
 import { MaterialSymbol } from "react-material-symbols";
-import { Help, Output } from "../models";
+import { Help, IntelligentFix, Output } from "../models";
 import { Mutex } from "async-mutex";
 import { Markdown, defaultAnimationDuration } from "../components";
 import { flushSync } from "react-dom";
@@ -21,6 +21,7 @@ export interface RunOptions {
 
 export interface RunnerRef {
     help: (position: number, code: string) => Promise<Help | undefined>;
+    getIntelligentFix: (diangostic: any) => Promise<IntelligentFix | undefined>;
     format: (code: string) => Promise<string>;
 }
 
@@ -36,7 +37,7 @@ export interface RunnerProps {
     onFocus: () => void;
     onBlur: () => void;
     options: RunOptions;
-    onChangeDiagnostics: (diagnostics: any[]) => void;
+    onChangeDiagnostics: (diagnostics: any[], driverDiagnostics: any[]) => void;
     onChangeHighlightItems: (highlightItems: Record<string, any>) => void;
 }
 
@@ -126,8 +127,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
             if (!compileResult) return;
 
-            const { executable, diagnostics } = compileResult;
-            props.onChangeDiagnostics(diagnostics);
+            const { executable, diagnostics, driverDiagnostics } = compileResult;
+            props.onChangeDiagnostics(diagnostics, driverDiagnostics);
 
             if (!executable) return;
 
@@ -280,6 +281,26 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             cachedHelp.current[code] = resolvedHelp;
 
             return resolvedHelp;
+        },
+        getIntelligentFix: async (diagnostic: any): Promise<IntelligentFix | undefined> => {
+            const dependencies = props.options.dependenciesPath
+                ? await fetchDependencies(props.options.dependenciesPath)
+                : null;
+
+            const fixResult = await props.wipple.getIntelligentFix({
+                id,
+                path: "playground",
+                code,
+                interface: dependencies?.interface,
+                libraries: dependencies?.libraries ?? [],
+                diagnostic,
+            });
+
+            if (!fixResult) {
+                return undefined;
+            }
+
+            return fixResult.fix;
         },
         format: async (code) => {
             const formatResult = await props.wipple.format({ code });

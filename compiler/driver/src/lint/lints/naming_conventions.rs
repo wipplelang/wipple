@@ -5,7 +5,7 @@ use crate::{
     },
     visit::{pattern_visitor, traverse_expression},
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::ops::ControlFlow;
 use wipple_linker::Driver;
 use wipple_typecheck::Pattern;
@@ -14,7 +14,7 @@ use Case::*;
 
 /// A lint that triggers when a name doesn't follow the correct conventions
 /// (separated by dashes, variables lowercase, types/traits capitalized).
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NamingConventionsLint {
     /// The type of value the name represents (variable, type, etc.)
@@ -26,7 +26,7 @@ pub struct NamingConventionsLint {
 
 /// The type of value a name represents.
 #[allow(missing_docs)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum NamingConvention {
     Variable,
