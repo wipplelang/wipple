@@ -1,3 +1,4 @@
+use futures::future::OptionFuture;
 use line_index::{LineCol, LineIndex};
 use serde::Deserialize;
 use std::{
@@ -50,7 +51,7 @@ struct Config {
     render: wipple_render::Render,
     dependencies: Option<wipple_driver::Interface>,
     libraries: Vec<wipple_driver::Library>,
-    diagnostics: Vec<wipple_render::RenderedDiagnostic>,
+    diagnostics: Vec<wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>>,
     files: HashMap<PathBuf, File>,
 }
 
@@ -214,9 +215,12 @@ impl LanguageServer for Backend {
             }
         };
 
-        let diagnostics = self.config.lock().unwrap().diagnostics.clone();
-        let diagnostics = diagnostics
-            .into_iter()
+        let config = self.config.lock().unwrap();
+
+        let diagnostics = config
+            .diagnostics
+            .iter()
+            .flat_map(|diagnostic| config.render.render_diagnostic(diagnostic))
             .filter(|diagnostic| path.to_str() == Some(&diagnostic.location.path))
             .enumerate()
             .map(|(index, diagnostic)| {
@@ -259,76 +263,142 @@ impl LanguageServer for Backend {
     }
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
+        let sources = OptionFuture::from(params.text_document.uri.to_file_path().ok().and_then(
+            |active_file_path| {
+                let config = self.config.lock().unwrap();
+
+                let active_file = config.files.get(&active_file_path)?;
+                let active_code = active_file.text.clone();
+                let active_line_index = active_file.line_index.clone();
+
+                Some(async move {
+                    (
+                        self.get_sources(&active_file_path, &active_code).await,
+                        active_line_index,
+                    )
+                })
+            },
+        ))
+        .await;
+
         let config = self.config.lock().unwrap();
 
         let actions = params
             .context
             .diagnostics
             .into_iter()
-            .filter_map(|diagnostic| {
-                let index = diagnostic.data.as_ref()?.as_u64()? as usize;
-                let rendered_diagnostic = config.diagnostics.get(index)?;
-                let fix = rendered_diagnostic.fix.as_ref()?.clone();
+            .filter_map(|context_diagnostic| {
+                let index = context_diagnostic.data.as_ref()?.as_u64()? as usize;
+                let diagnostic = config.diagnostics.get(index)?;
+                let rendered_diagnostic = config.render.render_diagnostic(diagnostic)?;
+                Some((context_diagnostic, diagnostic, rendered_diagnostic))
+            })
+            .flat_map(|(context_diagnostic, diagnostic, rendered_diagnostic)| {
+                let mut actions = Vec::new();
 
-                let before_edit = fix.before.map(|text| TextEdit {
-                    range: Range {
-                        start: Position {
-                            line: rendered_diagnostic.location.start.line,
-                            character: rendered_diagnostic.location.start.column,
+                if let Some(fix) = rendered_diagnostic.fix.clone() {
+                    let before_edit = fix.before.map(|text| TextEdit {
+                        range: Range {
+                            start: Position {
+                                line: rendered_diagnostic.location.start.line,
+                                character: rendered_diagnostic.location.start.column,
+                            },
+                            end: Position {
+                                line: rendered_diagnostic.location.start.line,
+                                character: rendered_diagnostic.location.start.column,
+                            },
                         },
-                        end: Position {
-                            line: rendered_diagnostic.location.start.line,
-                            character: rendered_diagnostic.location.start.column,
-                        },
-                    },
-                    new_text: text,
-                });
+                        new_text: text,
+                    });
 
-                let edit = fix.replacement.map(|text| TextEdit {
-                    range: Range {
-                        start: Position {
-                            line: rendered_diagnostic.location.start.line,
-                            character: rendered_diagnostic.location.start.column,
+                    let edit = fix.replacement.map(|text| TextEdit {
+                        range: Range {
+                            start: Position {
+                                line: rendered_diagnostic.location.start.line,
+                                character: rendered_diagnostic.location.start.column,
+                            },
+                            end: Position {
+                                line: rendered_diagnostic.location.end.line,
+                                character: rendered_diagnostic.location.end.column,
+                            },
                         },
-                        end: Position {
-                            line: rendered_diagnostic.location.end.line,
-                            character: rendered_diagnostic.location.end.column,
-                        },
-                    },
-                    new_text: text,
-                });
+                        new_text: text,
+                    });
 
-                let after_edit = fix.after.map(|text| TextEdit {
-                    range: Range {
-                        start: Position {
-                            line: rendered_diagnostic.location.end.line,
-                            character: rendered_diagnostic.location.end.column,
+                    let after_edit = fix.after.map(|text| TextEdit {
+                        range: Range {
+                            start: Position {
+                                line: rendered_diagnostic.location.end.line,
+                                character: rendered_diagnostic.location.end.column,
+                            },
+                            end: Position {
+                                line: rendered_diagnostic.location.end.line,
+                                character: rendered_diagnostic.location.end.column,
+                            },
                         },
-                        end: Position {
-                            line: rendered_diagnostic.location.end.line,
-                            character: rendered_diagnostic.location.end.column,
-                        },
-                    },
-                    new_text: text,
-                });
+                        new_text: text,
+                    });
 
-                Some(CodeActionOrCommand::CodeAction(CodeAction {
-                    title: fix.message,
-                    kind: Some(CodeActionKind::QUICKFIX),
-                    diagnostics: Some(vec![diagnostic]),
-                    edit: Some(WorkspaceEdit {
-                        changes: Some(HashMap::from([(
-                            params.text_document.uri.clone(),
-                            [before_edit, edit, after_edit]
-                                .into_iter()
-                                .flatten()
-                                .collect(),
-                        )])),
-                        document_changes: None,
-                        change_annotations: None,
-                    }),
-                    ..Default::default()
-                }))
+                    actions.push(CodeActionOrCommand::CodeAction(CodeAction {
+                        title: fix.message,
+                        kind: Some(CodeActionKind::QUICKFIX),
+                        diagnostics: Some(vec![context_diagnostic.clone()]),
+                        edit: Some(WorkspaceEdit {
+                            changes: Some(HashMap::from([(
+                                params.text_document.uri.clone(),
+                                [before_edit, edit, after_edit]
+                                    .into_iter()
+                                    .flatten()
+                                    .collect(),
+                            )])),
+                            document_changes: None,
+                            change_annotations: None,
+                        }),
+                        ..Default::default()
+                    }));
+                }
+
+                if let Some((sources, line_index)) = sources.clone() {
+                    let dependencies = config.dependencies.clone();
+
+                    if let Some((fix, new_code)) =
+                        wipple_driver::fix_file(diagnostic.clone(), sources, dependencies)
+                    {
+                        let message = config.render.render_fix(&fix);
+
+                        let start = line_index.line_col(line_index::TextSize::new(0));
+                        let end = line_index.line_col(line_index.len());
+
+                        actions.push(CodeActionOrCommand::CodeAction(CodeAction {
+                            title: message,
+                            kind: Some(CodeActionKind::QUICKFIX),
+                            diagnostics: Some(vec![context_diagnostic]),
+                            edit: Some(WorkspaceEdit {
+                                changes: Some(HashMap::from([(
+                                    params.text_document.uri.clone(),
+                                    vec![TextEdit {
+                                        range: Range {
+                                            start: Position {
+                                                line: start.line,
+                                                character: start.col,
+                                            },
+                                            end: Position {
+                                                line: end.line,
+                                                character: end.col,
+                                            },
+                                        },
+                                        new_text: new_code,
+                                    }],
+                                )])),
+                                document_changes: None,
+                                change_annotations: None,
+                            }),
+                            ..Default::default()
+                        }));
+                    }
+                }
+
+                actions
             })
             .collect::<Vec<_>>();
 
@@ -593,11 +663,7 @@ impl LanguageServer for Backend {
 }
 
 impl Backend {
-    async fn compile_all(
-        &self,
-        active_file: &Path,
-        active_code: &str,
-    ) -> Vec<wipple_render::RenderedDiagnostic> {
+    async fn get_sources(&self, active_file: &Path, active_code: &str) -> Vec<wipple_driver::File> {
         let active_file = match active_file.canonicalize().ok() {
             Some(path) => path,
             None => return Vec::new(),
@@ -608,35 +674,43 @@ impl Backend {
             None => return Vec::new(),
         };
 
-        let sources = match fs::read_dir(active_dir).ok().map(|entries| {
-            entries
-                .filter_map(|entry| {
-                    let entry = entry.ok()?;
-                    let path = entry.path();
+        fs::read_dir(active_dir)
+            .ok()
+            .map(|entries| {
+                entries
+                    .filter_map(|entry| {
+                        let entry = entry.ok()?;
+                        let path = entry.path();
 
-                    if !path.is_file() || path.extension()?.to_str() != Some("wipple") {
-                        return None;
-                    }
+                        if !path.is_file() || path.extension()?.to_str() != Some("wipple") {
+                            return None;
+                        }
 
-                    let code = if path == active_file {
-                        // Ensure we get the latest changes even if the file
-                        // isn't saved
-                        active_code.to_string()
-                    } else {
-                        fs::read_to_string(&path).ok()?
-                    };
+                        let code = if path == active_file {
+                            // Ensure we get the latest changes even if the file
+                            // isn't saved
+                            active_code.to_string()
+                        } else {
+                            fs::read_to_string(&path).ok()?
+                        };
 
-                    Some(wipple_driver::File {
-                        path: path.to_string_lossy().to_string(),
-                        visible_path: wipple_driver::util::get_visible_path(&path),
-                        code,
+                        Some(wipple_driver::File {
+                            path: path.to_string_lossy().to_string(),
+                            visible_path: wipple_driver::util::get_visible_path(&path),
+                            code,
+                        })
                     })
-                })
-                .collect::<Vec<_>>()
-        }) {
-            Some(paths) => paths,
-            None => return Vec::new(),
-        };
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    }
+
+    async fn compile_all(
+        &self,
+        active_file: &Path,
+        active_code: &str,
+    ) -> Vec<wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>> {
+        let sources = self.get_sources(active_file, active_code).await;
 
         let (result, render, libraries) = {
             let config = self.config.lock().unwrap();
@@ -656,11 +730,7 @@ impl Backend {
             Some(result.ide),
         );
 
-        result
-            .diagnostics
-            .iter()
-            .flat_map(|diagnostic| render.render_diagnostic(diagnostic))
-            .collect()
+        result.diagnostics
     }
 }
 

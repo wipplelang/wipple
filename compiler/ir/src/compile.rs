@@ -9,7 +9,7 @@ pub fn compile<'a, D: crate::Driver>(
     attributes: &'a [WithInfo<D::Info, wipple_typecheck::Attribute<D>>],
     expression: WithInfo<D::Info, &'a wipple_typecheck::TypedExpression<D>>,
     captures: &[D::Path],
-) -> Option<HashMap<D::Path, crate::Item<D>>> {
+) -> HashMap<D::Path, crate::Item<D>> {
     let mut info = Info {
         driver,
         path: path.clone(),
@@ -24,9 +24,9 @@ pub fn compile<'a, D: crate::Driver>(
         expression,
         &mut info,
         |expression, info| compile_expression(expression, true, info),
-    )?;
+    );
 
-    Some(info.items)
+    info.items
 }
 
 #[derive(Derivative)]
@@ -125,7 +125,6 @@ impl<D: crate::Driver> Info<'_, D> {
     }
 }
 
-#[must_use]
 fn compile_item_with_captures<'a, D: crate::Driver>(
     path: D::Path,
     captures_paths: &[D::Path],

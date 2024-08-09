@@ -11,6 +11,7 @@ codespan-reporting = "0.11"
 convert_case = "0.6"
 distance = "0.4"
 itertools = "0.12"
+line-index = "0.1"
 serde = { version = "1", features = ["derive"] }
 wipple-ir = { path = "../ir" }
 wipple-linker = { path = "../linker" }

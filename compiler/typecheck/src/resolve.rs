@@ -222,7 +222,7 @@ pub fn resolve<D: Driver>(
                 subexpression_types: None,
             };
 
-            break finalize_expression(queued.body, &mut finalize_context);
+            break finalize_expression(queued.body, false, &mut finalize_context);
         }
 
         let mut resolve_context = ResolveContext {
@@ -259,7 +259,7 @@ pub fn resolve<D: Driver>(
                 subexpression_types: Some(&mut subexpression_types),
             };
 
-            let item = finalize_expression(queued.body.clone(), &mut finalize_context);
+            let item = finalize_expression(queued.body.clone(), false, &mut finalize_context);
 
             if finalize_context.contains_unknown {
                 break item;
@@ -291,7 +291,7 @@ pub fn resolve<D: Driver>(
                     subexpression_types: None,
                 };
 
-                break finalize_expression(queued.body, &mut finalize_context);
+                break finalize_expression(queued.body, true, &mut finalize_context);
             }
         }
 
@@ -1944,7 +1944,7 @@ struct Expression<D: Driver> {
 #[derive(Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]
 enum ExpressionKind<D: Driver> {
-    Unknown(Option<D::Path>),
+    Unknown(Option<Box<ExpressionKind<D>>>),
     Variable(String, D::Path),
     UnresolvedConstant(D::Path),
     UnresolvedTrait(D::Path),
@@ -3379,7 +3379,9 @@ fn resolve_expression<D: Driver>(
                 Ok(None) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
                 Err(error) => {
                     context.error_queue.push(error);
-                    ExpressionKind::Unknown(Some(path))
+                    ExpressionKind::Unknown(Some(Box::new(ExpressionKind::UnresolvedConstant(
+                        path,
+                    ))))
                 }
             }
         }
@@ -3401,7 +3403,9 @@ fn resolve_expression<D: Driver>(
                         },
                         Err(error) => {
                             context.error_queue.push(error);
-                            ExpressionKind::Unknown(Some(query.item.r#trait))
+                            ExpressionKind::Unknown(Some(Box::new(
+                                ExpressionKind::UnresolvedTrait(query.item.r#trait),
+                            )))
                         }
                     }
                 }
@@ -3411,7 +3415,7 @@ fn resolve_expression<D: Driver>(
                         item: crate::Diagnostic::TraitHasNoValue(path.clone()),
                     });
 
-                    ExpressionKind::Unknown(Some(path))
+                    ExpressionKind::Unknown(Some(Box::new(ExpressionKind::UnresolvedTrait(path))))
                 }
             }
         }
@@ -3578,7 +3582,10 @@ fn resolve_expression<D: Driver>(
                 } else {
                     // Prevent duplicate errors caused by recreating the call
                     // expression
-                    ExpressionKind::Unknown(None)
+                    ExpressionKind::Unknown(Some(Box::new(ExpressionKind::Call {
+                        function: number.boxed(),
+                        inputs,
+                    })))
                 }
             } else if let TypeKind::Function {
                 inputs: input_types,
@@ -3626,7 +3633,10 @@ fn resolve_expression<D: Driver>(
                             item: QueuedError::MissingInputs(input_types[inputs.len()..].to_vec()),
                         });
 
-                        ExpressionKind::Unknown(None)
+                        ExpressionKind::Unknown(Some(Box::new(ExpressionKind::Call {
+                            function,
+                            inputs,
+                        })))
                     }
                     std::cmp::Ordering::Greater => {
                         for _ in &inputs[input_types.len()..] {
@@ -3636,7 +3646,10 @@ fn resolve_expression<D: Driver>(
                             });
                         }
 
-                        ExpressionKind::Unknown(None)
+                        ExpressionKind::Unknown(Some(Box::new(ExpressionKind::Call {
+                            function,
+                            inputs,
+                        })))
                     }
                 }
             } else {
@@ -4714,13 +4727,23 @@ fn finalize_type_reason<D: Driver>(
 
 fn finalize_expression<D: Driver>(
     mut expression: WithInfo<D::Info, Expression<D>>,
+    mut report_errors: bool,
     context: &mut FinalizeContext<'_, D>,
 ) -> WithInfo<D::Info, crate::TypedExpression<D>> {
-    let mut report_errors = true;
     let kind = match expression.item.kind {
-        ExpressionKind::Unknown(path) => {
+        ExpressionKind::Unknown(original) => {
             report_errors = false;
-            crate::TypedExpressionKind::Unknown(path)
+            crate::TypedExpressionKind::Unknown(original.map(|original| {
+                let expression = WithInfo {
+                    info: expression.info.clone(),
+                    item: Expression {
+                        r#type: expression.item.r#type.clone(),
+                        kind: *original,
+                    },
+                };
+
+                Box::new(finalize_expression(expression, false, context).item.kind)
+            }))
         }
         ExpressionKind::Variable(name, variable) => {
             crate::TypedExpressionKind::Variable(name, variable)
@@ -4728,7 +4751,9 @@ fn finalize_expression<D: Driver>(
         ExpressionKind::UnresolvedConstant(ref path) => {
             let path = path.clone();
 
-            if let Some((error_queue, errors)) = context
+            if !report_errors {
+                crate::TypedExpressionKind::Unknown(None)
+            } else if let Some((error_queue, errors)) = context
                 .error_queue
                 .as_deref_mut()
                 .zip(context.errors.as_deref_mut())
@@ -4745,13 +4770,13 @@ fn finalize_expression<D: Driver>(
 
                 match resolve_item(&path, expression.as_mut(), false, &mut resolve_context) {
                     Ok(Some((parameters, bounds))) => {
-                        finalize_type(expression.item.r#type.clone(), true, context);
+                        finalize_type(expression.item.r#type.clone(), report_errors, context);
 
                         crate::TypedExpressionKind::Constant {
                             path: path.clone(),
                             parameters: parameters
                                 .into_iter()
-                                .map(|r#type| finalize_type(r#type, true, context).item)
+                                .map(|r#type| finalize_type(r#type, report_errors, context).item)
                                 .collect(),
                             bounds: bounds
                                 .into_iter()
@@ -4765,29 +4790,31 @@ fn finalize_expression<D: Driver>(
                                 .collect(),
                         }
                     }
-                    Ok(None) => crate::TypedExpressionKind::Unknown(Some(path)),
+                    Ok(None) => crate::TypedExpressionKind::Unknown(None),
                     Err(error) => {
                         error_queue.push(error);
-                        crate::TypedExpressionKind::Unknown(Some(path))
+                        crate::TypedExpressionKind::Unknown(None)
                     }
                 }
             } else {
-                crate::TypedExpressionKind::Unknown(Some(path))
+                crate::TypedExpressionKind::Unknown(None)
             }
         }
-        ExpressionKind::UnresolvedTrait(path) => {
+        ExpressionKind::UnresolvedTrait(_) => {
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Diagnostic::UnknownType(
-                    finalize_type(expression.item.r#type.clone(), true, context).item,
+                    finalize_type(expression.item.r#type.clone(), report_errors, context).item,
                 ),
             };
 
-            if let Some(errors) = context.errors.as_deref_mut() {
-                errors.push(error);
+            if report_errors {
+                if let Some(errors) = context.errors.as_deref_mut() {
+                    errors.push(error);
+                }
             }
 
-            crate::TypedExpressionKind::Unknown(Some(path))
+            crate::TypedExpressionKind::Unknown(None)
         }
         ExpressionKind::ResolvedConstant {
             path,
@@ -4797,7 +4824,7 @@ fn finalize_expression<D: Driver>(
             path,
             parameters: parameters
                 .into_iter()
-                .map(|r#type| finalize_type(r#type, true, context).item)
+                .map(|r#type| finalize_type(r#type, report_errors, context).item)
                 .collect(),
             bounds: bounds
                 .into_iter()
@@ -4815,7 +4842,7 @@ fn finalize_expression<D: Driver>(
             path: trait_path,
             parameters: parameters
                 .into_iter()
-                .map(|r#type| finalize_type(r#type, true, context).item)
+                .map(|r#type| finalize_type(r#type, report_errors, context).item)
                 .collect(),
             instance: instance
                 .map(|instance| instance.map_err(|bound| finalize_instance(bound, context))),
@@ -4837,7 +4864,7 @@ fn finalize_expression<D: Driver>(
                         let is_last_statement = index + 1 == statement_count;
 
                         let statement_type = statement.item.r#type.clone();
-                        let statement = finalize_expression(statement, context);
+                        let statement = finalize_expression(statement, report_errors, context);
 
                         // Report errors for unused values in statement position...
                         if top_level
@@ -4861,13 +4888,15 @@ fn finalize_expression<D: Driver>(
                                     | crate::TypedExpressionKind::Variable { .. } =
                                         &statement.item.kind
                                     {
-                                        if let Some(errors) = context.errors.as_deref_mut() {
-                                            errors.push(WithInfo {
-                                                info: statement.info.clone(),
-                                                item: crate::Diagnostic::MissingInputs(
-                                                    inputs.clone(),
-                                                ),
-                                            });
+                                        if report_errors {
+                                            if let Some(errors) = context.errors.as_deref_mut() {
+                                                errors.push(WithInfo {
+                                                    info: statement.info.clone(),
+                                                    item: crate::Diagnostic::MissingInputs(
+                                                        inputs.clone(),
+                                                    ),
+                                                });
+                                            }
                                         }
                                     }
                                 }
@@ -4880,25 +4909,25 @@ fn finalize_expression<D: Driver>(
                 captures,
             }
         }
-        ExpressionKind::Do(block) => {
-            crate::TypedExpressionKind::Do(finalize_expression(block.unboxed(), context).boxed())
-        }
+        ExpressionKind::Do(block) => crate::TypedExpressionKind::Do(
+            finalize_expression(block.unboxed(), report_errors, context).boxed(),
+        ),
         ExpressionKind::Function {
             inputs,
             body,
             captures,
         } => crate::TypedExpressionKind::Function {
             inputs,
-            body: finalize_expression(body.unboxed(), context).boxed(),
+            body: finalize_expression(body.unboxed(), report_errors, context).boxed(),
             captures,
         },
         ExpressionKind::Call { function, inputs } => {
             let inputs = inputs
                 .into_iter()
-                .map(|input| finalize_expression(input, context))
+                .map(|input| finalize_expression(input, report_errors, context))
                 .collect::<Vec<_>>();
 
-            let function = finalize_expression(function.unboxed(), context);
+            let function = finalize_expression(function.unboxed(), report_errors, context);
 
             crate::TypedExpressionKind::Call {
                 function: function.boxed(),
@@ -4906,13 +4935,13 @@ fn finalize_expression<D: Driver>(
             }
         }
         ExpressionKind::When { input, arms } => crate::TypedExpressionKind::When {
-            input: finalize_expression(input.unboxed(), context).boxed(),
+            input: finalize_expression(input.unboxed(), report_errors, context).boxed(),
             arms: arms
                 .into_iter()
                 .map(|arm| {
                     arm.map(|arm| crate::TypedArm {
                         pattern: arm.pattern,
-                        body: finalize_expression(arm.body, context),
+                        body: finalize_expression(arm.body, report_errors, context),
                     })
                 })
                 .collect(),
@@ -4921,24 +4950,24 @@ fn finalize_expression<D: Driver>(
             name,
             inputs: inputs
                 .into_iter()
-                .map(|expression| finalize_expression(expression, context))
+                .map(|expression| finalize_expression(expression, report_errors, context))
                 .collect(),
         },
         ExpressionKind::Initialize { pattern, value } => crate::TypedExpressionKind::Initialize {
             pattern,
-            value: finalize_expression(value.unboxed(), context).boxed(),
+            value: finalize_expression(value.unboxed(), report_errors, context).boxed(),
         },
         ExpressionKind::Mutate { name, path, value } => crate::TypedExpressionKind::Mutate {
             name,
             path,
-            value: finalize_expression(value.unboxed(), context).boxed(),
+            value: finalize_expression(value.unboxed(), report_errors, context).boxed(),
         },
         ExpressionKind::Marker(r#type) => crate::TypedExpressionKind::Marker(r#type),
         ExpressionKind::UnresolvedStructure(_) => {
             let error = WithInfo {
                 info: expression.info.clone(),
                 item: crate::Diagnostic::UnknownType(
-                    finalize_type(expression.item.r#type.clone(), true, context).item,
+                    finalize_type(expression.item.r#type.clone(), report_errors, context).item,
                 ),
             };
 
@@ -4971,26 +5000,26 @@ fn finalize_expression<D: Driver>(
                         field_value.map(|field_value| crate::TypedStructureFieldValue {
                             name: field_value.name.clone(),
                             index: field_indices.get(&field_value.name).copied(),
-                            value: finalize_expression(field_value.value, context),
+                            value: finalize_expression(field_value.value, report_errors, context),
                         })
                     })
                     .collect(),
             }
         }
         ExpressionKind::Wrapper(value) => crate::TypedExpressionKind::Wrapper(
-            finalize_expression(value.unboxed(), context).boxed(),
+            finalize_expression(value.unboxed(), report_errors, context).boxed(),
         ),
         ExpressionKind::Variant { variant, values } => crate::TypedExpressionKind::Variant {
             variant,
             values: values
                 .into_iter()
-                .map(|expression| finalize_expression(expression, context))
+                .map(|expression| finalize_expression(expression, report_errors, context))
                 .collect(),
         },
         ExpressionKind::Tuple(elements) => crate::TypedExpressionKind::Tuple(
             elements
                 .into_iter()
-                .map(|expression| finalize_expression(expression, context))
+                .map(|expression| finalize_expression(expression, report_errors, context))
                 .collect(),
         ),
         ExpressionKind::Format { segments, trailing } => crate::TypedExpressionKind::Format {
@@ -4998,7 +5027,7 @@ fn finalize_expression<D: Driver>(
                 .into_iter()
                 .map(|segment| crate::TypedFormatSegment {
                     text: segment.text.clone(),
-                    value: finalize_expression(segment.value, context),
+                    value: finalize_expression(segment.value, report_errors, context),
                 })
                 .collect(),
             trailing,

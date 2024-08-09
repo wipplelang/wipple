@@ -814,8 +814,9 @@ pub struct TypedExpression<D: Driver> {
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
 pub enum TypedExpressionKind<D: Driver> {
-    /// An expression that could not be resolved.
-    Unknown(Option<D::Path>),
+    /// An expression that could not be resolved, along with the original
+    /// expression if available.
+    Unknown(Option<Box<TypedExpressionKind<D>>>),
 
     /// The value of a variable.
     Variable(String, D::Path),
@@ -1249,6 +1250,66 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a Pattern<D>> 
             | Pattern::Number(_)
             | Pattern::Text(_)
             | Pattern::Variable(_, _) => {}
+        }
+    }
+}
+
+impl<D: Driver> Type<D> {
+    /// Check if `self` could potentially unify with `other`. This doesn't
+    /// guarantee the two types unify (because of trait bounds), but it's useful
+    /// for diagnostics.
+    pub fn could_unify_with(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Type::Unknown, _) | (_, Type::Unknown) => true,
+            (Type::Parameter(left), Type::Parameter(right)) => left == right,
+            (
+                Type::Declared {
+                    path: left,
+                    parameters: left_parameters,
+                },
+                Type::Declared {
+                    path: right,
+                    parameters: right_parameters,
+                },
+            ) => {
+                left == right
+                    && left_parameters.len() == right_parameters.len()
+                    && left_parameters
+                        .iter()
+                        .zip(right_parameters)
+                        .all(|(left, right)| left.item.could_unify_with(&right.item))
+            }
+            (
+                Type::Function {
+                    inputs: left_inputs,
+                    output: left_output,
+                },
+                Type::Function {
+                    inputs: right_inputs,
+                    output: right_output,
+                },
+            ) => {
+                left_inputs.len() == right_inputs.len()
+                    && left_inputs
+                        .iter()
+                        .zip(right_inputs)
+                        .all(|(left, right)| left.item.could_unify_with(&right.item))
+                    && left_output.item.could_unify_with(&right_output.item)
+            }
+            (Type::Tuple(left), Type::Tuple(right)) => {
+                left.len() == right.len()
+                    && left
+                        .iter()
+                        .zip(right)
+                        .all(|(left, right)| left.item.could_unify_with(&right.item))
+            }
+            (Type::Block(left), Type::Block(right)) => left.item.could_unify_with(&right.item),
+            (Type::Intrinsic, Type::Intrinsic) => true,
+            (Type::Message { .. }, Type::Message { .. }) => false,
+            (Type::Equal { left, right }, other) | (other, Type::Equal { left, right }) => {
+                left.item.could_unify_with(other) && right.item.could_unify_with(other)
+            }
+            _ => false,
         }
     }
 }
