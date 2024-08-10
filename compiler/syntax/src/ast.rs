@@ -446,35 +446,6 @@ fn statements<D: Driver>(
                                         representation,
                                     })
                                 }
-                                parse::Statement::TypeAliasDeclaration {
-                                    attributes: attributes_syntaxes,
-                                    name,
-                                    parameters: type_function_syntax,
-                                    r#type: type_syntax,
-                                } => {
-                                    let attributes = attributes_syntaxes
-                                        .into_iter()
-                                        .map(attribute)
-                                        .collect();
-
-                                    let name = name.try_unwrap()?;
-
-                                    expected_constant_value!(Some(statement_info.clone()));
-
-                                    let (parameters, bounds) =
-                                        type_function(type_function_syntax, info);
-
-                                    disallow_bounds(bounds, info);
-
-                                    let r#type = r#type(type_syntax, info);
-
-                                    Some(crate::Statement::TypeAlias {
-                                        attributes,
-                                        name,
-                                        parameters,
-                                        r#type,
-                                    })
-                                }
                                 parse::Statement::TraitDeclaration {
                                     attributes: attributes_syntaxes,
                                     name,
@@ -505,6 +476,7 @@ fn statements<D: Driver>(
                                     })
                                 }
                                 parse::Statement::DefaultInstanceDeclaration {
+                                    pattern: pattern_syntax,
                                     parameters: type_function_syntax,
                                     instance: instance_syntax,
                                     body: body_syntax,
@@ -521,6 +493,7 @@ fn statements<D: Driver>(
                                     let body = body_syntax.map(|body_syntax| expression(body_syntax, info));
 
                                     Some(crate::Statement::Instance {
+                                        pattern: pattern_syntax,
                                         parameters,
                                         bounds,
                                         instance,
@@ -529,6 +502,7 @@ fn statements<D: Driver>(
                                     })
                                 }
                                 parse::Statement::InstanceDeclaration {
+                                    pattern: pattern_syntax,
                                     parameters: type_function_syntax,
                                     instance: instance_syntax,
                                     body: body_syntax,
@@ -545,6 +519,7 @@ fn statements<D: Driver>(
                                     let body = body_syntax.map(|body_syntax| expression(body_syntax, info));
 
                                     Some(crate::Statement::Instance {
+                                        pattern: pattern_syntax,
                                         parameters,
                                         bounds,
                                         instance,

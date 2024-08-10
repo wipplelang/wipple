@@ -1,0 +1,8 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+tests/function-arrow.test.wipple:3:2: error: expected code after this `->`
+tests/function-arrow.test.wipple:3:2: error: expected pattern before this `->`
+tests/function-arrow.test.wipple:4:4: error: expected code after this `->`
+tests/function-arrow.test.wipple:5:2: error: expected pattern before this `->`

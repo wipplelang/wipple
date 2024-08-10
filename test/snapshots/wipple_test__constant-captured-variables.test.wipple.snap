@@ -2,6 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics:
-  - "tests/constant-captured-variables.test.wipple:7:13: error: can't find `n`"
-output: []
+tests/constant-captured-variables.test.wipple:7:13: error: can't find `n`

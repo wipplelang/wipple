@@ -1,0 +1,23 @@
+.ansi .ansi-bright-red-fg {
+    @apply text-red-400;
+}
+
+.ansi .ansi-bright-green-fg {
+    @apply text-green-400;
+}
+
+.ansi .ansi-bright-yellow-fg {
+    @apply text-yellow-400;
+}
+
+.ansi .ansi-bright-blue-fg {
+    @apply text-blue-400;
+}
+
+.ansi .ansi-bright-magenta-fg {
+    @apply text-fuchsia-400;
+}
+
+.ansi .ansi-bright-cyan-fg {
+    @apply text-cyan-400;
+}

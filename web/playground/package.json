@@ -1,5 +1,5 @@
 {
-    "name": "wipple-playground",
+    "name": "wipple-playground-web",
     "private": true,
     "version": "0.0.0",
     "type": "module",
@@ -9,13 +9,11 @@
         "preview": "vite preview"
     },
     "dependencies": {
-        "@emotion/react": "^11.11.4",
-        "@emotion/styled": "^11.11.5",
-        "@floating-ui/react": "^0.26.9",
+        "@floating-ui/react": "^0.26.18",
         "@lezer/common": "^1.2.1",
         "@lezer/generator": "^1.6.0",
-        "@mui/material": "^5.15.18",
         "@react-spring/web": "^9.7.3",
+        "@sentry/react": "^8.12.0",
         "@uiw/codemirror-theme-github": "^4.21.21",
         "array-move": "^4.0.0",
         "async-mutex": "^0.4.1",
@@ -27,12 +25,14 @@
         "fastiles": "^2.1.0",
         "firebase": "^10.8.0",
         "framer-motion": "^11.0.20",
+        "fuse.js": "^7.0.0",
         "html2canvas": "^1.4.1",
         "immer": "^10.0.3",
         "matter-js": "^0.19.0",
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-firebase-hooks": "^5.1.1",
+        "react-ga4": "^2.1.0",
         "react-hotkeys-hook": "^4.5.0",
         "react-loading-skeleton": "^3.4.0",
         "react-markdown": "^9.0.1",
@@ -41,7 +41,6 @@
         "react-qr-code": "^2.0.12",
         "react-resizable": "^3.0.5",
         "react-router-dom": "^6.22.0",
-        "react-sortable-hoc": "^2.0.0",
         "react-transition-group": "^4.4.5",
         "real-turtle": "^1.1.6",
         "recharts": "^2.12.5",
@@ -51,10 +50,12 @@
         "soundfont-player": "^0.12.0",
         "usehooks-ts": "^2.14.0",
         "vite-plugin-svgr": "^4.2.0",
-        "wipple-wasm": "file:wasm"
+        "wipple-playground": "file:../../playground",
+        "wipple-wasm": "file:../../wasm"
     },
     "devDependencies": {
-        "@tailwindcss/typography": "^0.5.10",
+        "@sentry/vite-plugin": "^2.20.1",
+        "@tailwindcss/typography": "^0.5.13",
         "@types/color-namer": "^1.3.3",
         "@types/matter-js": "^0.19.6",
         "@types/react": "^18.2.43",
@@ -64,18 +65,13 @@
         "@vitejs/plugin-react-swc": "^3.5.0",
         "autoprefixer": "^10.4.17",
         "postcss": "^8.4.34",
-        "tailwindcss": "^3.4.1",
+        "tailwindcss": "^3.4.4",
         "tailwindcss-animate": "^1.0.7",
-        "tailwindcss-animated": "^1.0.1",
+        "tailwindcss-animated": "^1.1.2",
         "typescript": "^5.2.2",
         "vite": "^5.0.8",
+        "vite-plugin-markdown": "^2.2.0",
         "vite-plugin-static-copy": "^1.0.5",
         "vite-plugin-top-level-await": "^1.4.1"
-    },
-    "overrides": {
-        "react-sortable-hoc": {
-            "react": "^18.2.0",
-            "react-dom": "^18.2.0"
-        }
     }
 }

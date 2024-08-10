@@ -134,13 +134,6 @@ pub(crate) enum Statement<D: Driver> {
         representation: WithInfo<D::Info, TypeRepresentation<D>>,
     },
     #[serde(rename_all = "camelCase")]
-    TypeAliasDeclaration {
-        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
-        name: WithInfo<D::Info, Option<String>>,
-        parameters: WithInfo<D::Info, TypeFunction<D>>,
-        r#type: WithInfo<D::Info, Type<D>>,
-    },
-    #[serde(rename_all = "camelCase")]
     TraitDeclaration {
         attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
         name: WithInfo<D::Info, Option<String>>,
@@ -149,12 +142,14 @@ pub(crate) enum Statement<D: Driver> {
     },
     #[serde(rename_all = "camelCase")]
     DefaultInstanceDeclaration {
+        pattern: WithInfo<D::Info, ()>,
         parameters: WithInfo<D::Info, TypeFunction<D>>,
         instance: WithInfo<D::Info, Option<Instance<D>>>,
         body: Option<WithInfo<D::Info, Expression<D>>>,
     },
     #[serde(rename_all = "camelCase")]
     InstanceDeclaration {
+        pattern: WithInfo<D::Info, ()>,
         parameters: WithInfo<D::Info, TypeFunction<D>>,
         instance: WithInfo<D::Info, Option<Instance<D>>>,
         body: Option<WithInfo<D::Info, Expression<D>>>,
@@ -616,15 +611,15 @@ pub struct Diagnostic<D: Driver> {
 /// Whether a [`Diagnostic`] refers to the token before of after the expected
 /// syntax.
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Direction {
-    Before,
-    After,
+    Before(SyntaxKind),
+    After(SyntaxKind),
 }
 
 #[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, strum::Display, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, strum::Display, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[strum(serialize_all = "kebab-case")]
 pub enum SyntaxKind {
@@ -635,8 +630,10 @@ pub enum SyntaxKind {
     Number,
     Text,
     Statement,
-    Keyword,
-    Operator,
+    Keyword(Keyword),
+    ContextualKeyword(String),
+    Operator(Operator),
+    NonAssociativeOperator(NonAssociativeOperator),
     Instance,
     TypeParameter,
     Pattern,
@@ -666,7 +663,6 @@ pub enum SyntaxKind {
     TypeFunction,
     TypeRepresentation,
     TypeDeclaration,
-    TypeAliasDeclaration,
     TraitDeclaration,
     InstanceDeclaration,
     ConstantDeclaration,
@@ -741,7 +737,7 @@ where
         item: SyntaxKind::TopLevel,
     });
 
-    let parsed = rule.parse(&mut parser, tree, &stack);
+    let parsed = rule.parse(&mut parser, tree, &stack, None);
 
     Result {
         parsed,
@@ -916,7 +912,6 @@ mod rules {
             top_level::<D>().render(),
             statement::<D>().render(),
             type_declaration::<D>().render(),
-            type_alias_declaration::<D>().render(),
             trait_declaration::<D>().render(),
             default_instance_declaration::<D>().render(),
             instance_declaration::<D>().render(),
@@ -1039,7 +1034,6 @@ mod rules {
             SyntaxKind::Statement,
             [
                 type_declaration,
-                type_alias_declaration,
                 trait_declaration,
                 default_instance_declaration,
                 instance_declaration,
@@ -1134,95 +1128,6 @@ mod rules {
             },
         )
         .named("A type declaration.")
-    }
-
-    pub fn type_alias_declaration<D: Driver>() -> Rule<D, Statement<D>> {
-        Rule::non_associative_operator(
-            SyntaxKind::TypeAliasDeclaration,
-            NonAssociativeOperator::Assign,
-            || name().wrapped().attributed_with(attribute()).in_list(),
-            || {
-                Rule::switch(
-                    SyntaxKind::TypeAliasDeclaration,
-                    [
-                        || {
-                            Rule::keyword2(
-                                SyntaxKind::TypeAliasDeclaration,
-                                Keyword::Type,
-                                || {
-                                    Rule::match_terminal(
-                                        SyntaxKind::InstanceDeclaration,
-                                        RuleToRender::Keyword(String::from("alias")),
-                                        |_, tree, _| match tree.item {
-                                            TokenTree::Name(name) if name == "alias" => {
-                                                Some(WithInfo {
-                                                    info: tree.info,
-                                                    item: (),
-                                                })
-                                            }
-                                            _ => None,
-                                        },
-                                    )
-                                },
-                                r#type,
-                                |_, info: D::Info, _, r#type, _| WithInfo {
-                                    info: info.clone(),
-                                    item: (TypeFunction::default_from_info(info), r#type),
-                                },
-                            )
-                        },
-                        || {
-                            Rule::non_associative_operator(
-                                SyntaxKind::TypeAliasDeclaration,
-                                NonAssociativeOperator::TypeFunction,
-                                type_function,
-                                || {
-                                    Rule::keyword2(
-                                        SyntaxKind::Type,
-                                        Keyword::Type,
-                                        || {
-                                            Rule::match_terminal(
-                                                SyntaxKind::InstanceDeclaration,
-                                                RuleToRender::Keyword(String::from("alias")),
-                                                |_, tree, _| match tree.item {
-                                                    TokenTree::Name(name) if name == "alias" => {
-                                                        Some(WithInfo {
-                                                            info: tree.info,
-                                                            item: (),
-                                                        })
-                                                    }
-                                                    _ => None,
-                                                },
-                                            )
-                                        },
-                                        r#type,
-                                        |_, _, _, r#type, _| r#type,
-                                    )
-                                },
-                                |_, info, type_function, r#type, _| WithInfo {
-                                    info,
-                                    item: (type_function, r#type),
-                                },
-                            )
-                        },
-                    ],
-                )
-            },
-            |_, info, name, r#type, _| {
-                let (parameters, r#type) = r#type.item;
-
-                WithInfo {
-                    info,
-                    item: Statement::TypeAliasDeclaration {
-                        attributes: name.item.attributes,
-                        name: name.item.value,
-                        parameters,
-                        r#type,
-                    },
-                }
-            },
-        )
-        .named("A type alias declaration.")
     }
 
     pub fn trait_declaration<D: Driver>() -> Rule<D, Statement<D>> {
@@ -1333,7 +1238,7 @@ mod rules {
                                             || {
                                                 Rule::contextual_keyword2(
                                                     SyntaxKind::InstanceDeclaration,
-                                                    "default",
+                                                    String::from("default"),
                                                     || {
                                                         Rule::match_terminal(
                                                             SyntaxKind::InstanceDeclaration,
@@ -1356,7 +1261,7 @@ mod rules {
                                     || {
                                         Rule::contextual_keyword2(
                                             SyntaxKind::InstanceDeclaration,
-                                            "default",
+                                            String::from("default"),
                                             || {
                                                 Rule::match_terminal(
                                                     SyntaxKind::InstanceDeclaration,
@@ -1386,6 +1291,10 @@ mod rules {
                             WithInfo {
                                 info,
                                 item: Statement::DefaultInstanceDeclaration {
+                                    pattern: WithInfo {
+                                        info: declaration.info,
+                                        item: (),
+                                    },
                                     parameters,
                                     instance,
                                     body: Some(body),
@@ -1406,7 +1315,7 @@ mod rules {
                                     || {
                                         Rule::contextual_keyword2(
                                             SyntaxKind::InstanceDeclaration,
-                                            "default",
+                                            String::from("default"),
                                             || {
                                                 Rule::match_terminal(
                                                     SyntaxKind::InstanceDeclaration,
@@ -1423,6 +1332,10 @@ mod rules {
                                     |_, info, type_function, instance, _| WithInfo {
                                         info,
                                         item: Statement::DefaultInstanceDeclaration {
+                                            pattern: WithInfo {
+                                                info: D::Info::clone(&type_function.info),
+                                                item: (),
+                                            },
                                             parameters: type_function,
                                             instance,
                                             body: None,
@@ -1433,7 +1346,7 @@ mod rules {
                             || {
                                 Rule::contextual_keyword2(
                                     SyntaxKind::InstanceDeclaration,
-                                    "default",
+                                    String::from("default"),
                                     || {
                                         Rule::match_terminal(
                                             SyntaxKind::InstanceDeclaration,
@@ -1445,6 +1358,10 @@ mod rules {
                                     |_, info: D::Info, _, instance, _| WithInfo {
                                         info: info.clone(),
                                         item: Statement::DefaultInstanceDeclaration {
+                                            pattern: WithInfo {
+                                                info: info.clone(),
+                                                item: (),
+                                            },
                                             parameters: TypeFunction::default_from_info(info),
                                             instance,
                                             body: None,
@@ -1515,6 +1432,10 @@ mod rules {
                             WithInfo {
                                 info,
                                 item: Statement::InstanceDeclaration {
+                                    pattern: WithInfo {
+                                        info: declaration.info,
+                                        item: (),
+                                    },
                                     parameters,
                                     instance,
                                     body: Some(body),
@@ -1543,6 +1464,10 @@ mod rules {
                                     |_, info, type_function, instance, _| WithInfo {
                                         info,
                                         item: Statement::InstanceDeclaration {
+                                            pattern: WithInfo {
+                                                info: D::Info::clone(&type_function.info),
+                                                item: (),
+                                            },
                                             parameters: type_function,
                                             instance,
                                             body: None,
@@ -1558,6 +1483,10 @@ mod rules {
                                     |_, info: D::Info, instance, _| WithInfo {
                                         info: info.clone(),
                                         item: Statement::InstanceDeclaration {
+                                            pattern: WithInfo {
+                                                info: info.clone(),
+                                                item: (),
+                                            },
                                             parameters: TypeFunction::default_from_info(info),
                                             instance,
                                             body: None,
@@ -1684,23 +1613,43 @@ mod rules {
                     })
                 },
                 || {
-                    name()
-                        .wrapped()
-                        .map(SyntaxKind::DeclaredType, |name| Type::Declared {
-                            name,
-                            parameters: Vec::new(),
-                        })
+                    name().wrapped().map(SyntaxKind::DeclaredType, |name| {
+                        // Special case: `Unit` is equivalent to `()`
+                        if name.item.as_deref() == Some("Unit") {
+                            Type::Unit
+                        } else {
+                            Type::Declared {
+                                name,
+                                parameters: Vec::new(),
+                            }
+                        }
+                    })
                 },
                 || {
                     Rule::list_prefix(
                         SyntaxKind::DeclaredType,
                         || name().wrapped(),
                         r#type,
-                        |_, info, name, types, _| WithInfo {
+                        |parser, info, name, types, stack| WithInfo {
                             info,
-                            item: Type::Declared {
-                                name,
-                                parameters: types,
+                            // Special case: `Unit` is equivalent to `()` and
+                            // does not accept parameters
+                            item: if name.item.as_deref() == Some("Unit") {
+                                for r#type in types {
+                                    parser.add_diagnostic(
+                                        stack.error_expected(
+                                            r#type.replace(SyntaxKind::Nothing),
+                                            None,
+                                        ),
+                                    );
+                                }
+
+                                Type::Unit
+                            } else {
+                                Type::Declared {
+                                    name,
+                                    parameters: types,
+                                }
                             },
                         },
                     )
@@ -1953,7 +1902,7 @@ mod rules {
                 || {
                     Rule::contextual_keyword1(
                         SyntaxKind::TypeParameter,
-                        "infer",
+                        String::from("infer"),
                         || name().wrapped(),
                         |_, info, name, _| WithInfo {
                             info: D::Info::clone(&info),
@@ -1990,7 +1939,7 @@ mod rules {
                                     || {
                                         Rule::contextual_keyword1(
                                             SyntaxKind::TypeParameter,
-                                            "infer",
+                                            String::from("infer"),
                                             || name().wrapped(),
                                             |_, info, name, _| WithInfo {
                                                 info: D::Info::clone(&info),
@@ -2769,6 +2718,7 @@ mod base {
                     &mut Parser<'_, D>,
                     WithInfo<D::Info, &TokenTree<'_, D>>,
                     &Rc<ParseStack<D>>,
+                    Option<Direction>,
                 ) -> Option<Result<WithInfo<D::Info, Output>, usize>>
                 + 'static,
         >,
@@ -2777,6 +2727,7 @@ mod base {
                     &mut Parser<'_, D>,
                     WithInfo<D::Info, &TokenTree<'_, D>>,
                     &Rc<ParseStack<D>>,
+                    Option<Direction>,
                 ) -> Option<WithInfo<D::Info, Output>>
                 + 'static,
         >,
@@ -2788,12 +2739,14 @@ mod base {
                     &mut Parser<'_, D>,
                     WithInfo<D::Info, &TokenTree<'_, D>>,
                     &Rc<ParseStack<D>>,
+                    Option<Direction>,
                 ) -> Option<Result<WithInfo<D::Info, Output>, usize>>
                 + 'static,
             parse: impl Fn(
                     &mut Parser<'_, D>,
                     WithInfo<D::Info, &TokenTree<'_, D>>,
                     &Rc<ParseStack<D>>,
+                    Option<Direction>,
                 ) -> Option<WithInfo<D::Info, Output>>
                 + 'static,
         ) -> Self {
@@ -2808,8 +2761,9 @@ mod base {
             parser: &mut Parser<'_, D>,
             tree: WithInfo<D::Info, &TokenTree<'_, D>>,
             stack: &Rc<ParseStack<D>>,
+            direction: Option<Direction>,
         ) -> Option<Result<WithInfo<D::Info, Output>, usize>> {
-            (self.try_parse)(parser, tree, stack)
+            (self.try_parse)(parser, tree, stack, direction)
         }
 
         pub fn parse(
@@ -2817,8 +2771,9 @@ mod base {
             parser: &mut Parser<'_, D>,
             tree: WithInfo<D::Info, &TokenTree<'_, D>>,
             stack: &Rc<ParseStack<D>>,
+            direction: Option<Direction>,
         ) -> Option<WithInfo<D::Info, Output>> {
-            (self.parse)(parser, tree, stack)
+            (self.parse)(parser, tree, stack, direction)
         }
     }
 
@@ -2865,12 +2820,12 @@ mod base {
 
         pub fn render(self) -> (&'static str, SyntaxKind, RuleToRender) {
             let doc = self.doc.expect("rule must be named");
-            (doc, self.syntax_kind, self.rendered)
+            (doc, self.syntax_kind.clone(), self.rendered)
         }
 
         fn render_nested(&self) -> RuleToRender {
             if self.doc.is_some() {
-                RuleToRender::Terminal(self.syntax_kind)
+                RuleToRender::Terminal(self.syntax_kind.clone())
             } else {
                 self.rendered.clone()
             }
@@ -2883,7 +2838,7 @@ mod base {
                 syntax_kind,
                 rendered: RuleToRender::Token("TODO"),
                 backtracks: Rc::new(|| true),
-                parse: ParseFn::new(|_, _, _| todo!(), |_, _, _| todo!()),
+                parse: ParseFn::new(|_, _, _, _| todo!(), |_, _, _, _| todo!()),
             }
         }
 
@@ -2893,7 +2848,7 @@ mod base {
         {
             Rule {
                 doc: self.doc,
-                syntax_kind: self.syntax_kind,
+                syntax_kind: self.syntax_kind.clone(),
                 rendered: RuleToRender::List(vec![Rc::new({
                     let rendered = self.rendered.clone();
                     move || rendered.clone()
@@ -2903,7 +2858,7 @@ mod base {
                     {
                         let rule = self.clone();
 
-                        move |parser, tree, stack| {
+                        move |parser, tree, stack, direction| {
                             let mut elements = match &tree.item {
                                 TokenTree::List(_, elements) => elements.iter(),
                                 _ => return None,
@@ -2913,6 +2868,7 @@ mod base {
                                 parser,
                                 elements.next().map(WithInfo::as_ref)?,
                                 stack,
+                                direction,
                             )?;
 
                             if elements.next().is_some() {
@@ -2922,14 +2878,14 @@ mod base {
                             Some(output)
                         }
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, _| {
                         let mut elements = match &tree.item {
                             TokenTree::List(_, elements) => elements.iter(),
                             _ => return None,
                         };
 
                         let output =
-                            self.parse(parser, elements.next().map(WithInfo::as_ref)?, stack);
+                            self.parse(parser, elements.next().map(WithInfo::as_ref)?, stack, None);
 
                         for element in elements {
                             parser.add_diagnostic(stack.error_expected(
@@ -2953,14 +2909,14 @@ mod base {
         {
             Rule {
                 doc: self.doc,
-                syntax_kind: self.syntax_kind,
+                syntax_kind: self.syntax_kind.clone(),
                 rendered: self.rendered.clone(),
                 backtracks: self.backtracks.clone(),
                 parse: ParseFn::new(
                     {
                         let rule = self.clone();
 
-                        move |parser, mut tree, stack| {
+                        move |parser, mut tree, stack, direction| {
                             while let TokenTree::List(_, elements) = &tree.item {
                                 if elements.len() != 1 {
                                     break;
@@ -2969,10 +2925,10 @@ mod base {
                                 tree = elements.iter().next().unwrap().as_ref();
                             }
 
-                            rule.try_parse(parser, tree, stack)
+                            rule.try_parse(parser, tree, stack, direction)
                         }
                     },
-                    move |parser, mut tree, stack| {
+                    move |parser, mut tree, stack, direction| {
                         while let TokenTree::List(_, elements) = &tree.item {
                             if elements.len() != 1 {
                                 break;
@@ -2981,7 +2937,7 @@ mod base {
                             tree = elements.iter().next().unwrap().as_ref();
                         }
 
-                        Some(self.parse(parser, tree, stack))
+                        Some(self.parse(parser, tree, stack, direction))
                     },
                 ),
             }
@@ -3005,8 +2961,8 @@ mod base {
                         let rule = self.clone();
                         let f = f.clone();
 
-                        move |parser, tree, stack| {
-                            let output = rule.try_parse(parser, tree, stack)?;
+                        move |parser, tree, stack, direction| {
+                            let output = rule.try_parse(parser, tree, stack, direction)?;
 
                             Some(output.map(|output| WithInfo {
                                 info: output.info.clone(),
@@ -3014,8 +2970,8 @@ mod base {
                             }))
                         }
                     },
-                    move |parser, tree, stack| {
-                        let output = self.parse(parser, tree, stack);
+                    move |parser, tree, stack, direction| {
+                        let output = self.parse(parser, tree, stack, direction);
 
                         Some(WithInfo {
                             info: output.info.clone(),
@@ -3029,18 +2985,20 @@ mod base {
         pub fn wrapped(self) -> Rule<D, Option<Output>> {
             Rule {
                 doc: self.doc,
-                syntax_kind: self.syntax_kind,
+                syntax_kind: self.syntax_kind.clone(),
                 rendered: self.rendered.clone(),
                 backtracks: self.backtracks.clone(),
                 parse: ParseFn::new(
                     {
                         let rule = self.clone();
-                        move |parser, tree, stack| {
-                            let output = rule.try_parse(parser, tree, stack)?;
+                        move |parser, tree, stack, direction| {
+                            let output = rule.try_parse(parser, tree, stack, direction)?;
                             Some(output.map(|output| output.map(Some)))
                         }
                     },
-                    move |parser, tree, stack| Some(self.parse_option(parser, tree, stack)),
+                    move |parser, tree, stack, direction| {
+                        Some(self.parse_option(parser, tree, stack, direction))
+                    },
                 ),
             }
         }
@@ -3062,6 +3020,7 @@ mod base {
             parser: &mut Parser<'_, D>,
             tree: WithInfo<D::Info, &TokenTree<'_, D>>,
             stack: &Rc<ParseStack<D>>,
+            direction: Option<Direction>,
         ) -> WithInfo<D::Info, Output>
         where
             Output: DefaultFromInfo<D::Info>,
@@ -3070,20 +3029,22 @@ mod base {
 
             let stack = stack.push(WithInfo {
                 info: tree.info.clone(),
-                item: self.syntax_kind,
+                item: self.syntax_kind.clone(),
             });
 
-            self.parse.parse(parser, tree, &stack).unwrap_or_else(|| {
-                parser.add_diagnostic(stack.error_expected(
-                    WithInfo {
-                        info: info.clone(),
-                        item: self.syntax_kind,
-                    },
-                    None,
-                ));
+            self.parse
+                .parse(parser, tree, &stack, direction.clone())
+                .unwrap_or_else(|| {
+                    parser.add_diagnostic(stack.error_expected(
+                        WithInfo {
+                            info: info.clone(),
+                            item: self.syntax_kind.clone(),
+                        },
+                        direction,
+                    ));
 
-                Output::default_from_info(info)
-            })
+                    Output::default_from_info(info)
+                })
         }
 
         pub fn parse_option(
@@ -3091,22 +3052,23 @@ mod base {
             parser: &mut Parser<'_, D>,
             tree: WithInfo<D::Info, &TokenTree<'_, D>>,
             stack: &Rc<ParseStack<D>>,
+            direction: Option<Direction>,
         ) -> WithInfo<D::Info, Option<Output>> {
             let info = tree.info.clone();
 
             let stack = stack.push(WithInfo {
                 info: tree.info.clone(),
-                item: self.syntax_kind,
+                item: self.syntax_kind.clone(),
             });
 
-            let result = self.parse.parse(parser, tree, &stack);
+            let result = self.parse.parse(parser, tree, &stack, direction.clone());
             if result.is_none() {
                 parser.add_diagnostic(stack.error_expected(
                     WithInfo {
                         info: info.clone(),
-                        item: self.syntax_kind,
+                        item: self.syntax_kind.clone(),
                     },
-                    None,
+                    direction,
                 ));
             }
 
@@ -3120,16 +3082,17 @@ mod base {
             parser: &mut Parser<'_, D>,
             tree: WithInfo<D::Info, &TokenTree<'_, D>>,
             stack: &Rc<ParseStack<D>>,
+            direction: Option<Direction>,
         ) -> Option<Result<WithInfo<D::Info, Output>, usize>> {
             let stack = stack.push(WithInfo {
                 info: tree.info.clone(),
-                item: self.syntax_kind,
+                item: self.syntax_kind.clone(),
             });
 
             if self.backtracks() {
-                self.parse.try_parse(parser, tree, &stack)
+                self.parse.try_parse(parser, tree, &stack, direction)
             } else {
-                self.parse.parse(parser, tree, &stack).map(Ok)
+                self.parse.parse(parser, tree, &stack, direction).map(Ok)
             }
         }
 
@@ -3157,9 +3120,9 @@ mod base {
                 ParseFn::new(
                     {
                         let f = f.clone();
-                        move |parser, tree, stack| f(parser, tree, stack).map(Ok)
+                        move |parser, tree, stack, _| f(parser, tree, stack).map(Ok)
                     },
-                    move |parser, tree, stack| f(parser, tree, stack),
+                    move |parser, tree, stack, _| f(parser, tree, stack),
                 ),
             )
         }
@@ -3189,7 +3152,7 @@ mod base {
                 ParseFn::new(
                     {
                         let output = output.clone();
-                        move |parser, tree, stack| {
+                        move |parser, tree, stack, direction| {
                             let element = match &tree.item {
                                 TokenTree::Mutate(element) => element,
                                 _ => return None,
@@ -3199,6 +3162,7 @@ mod base {
                                 parser,
                                 element.as_deref(),
                                 stack,
+                                direction,
                             )? {
                                 Ok(element) => element,
                                 Err(progress) => return Some(Err(progress)),
@@ -3207,13 +3171,14 @@ mod base {
                             Some(Ok(output(parser, tree.info, element, stack)))
                         }
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, _| {
                         let element = match &tree.item {
                             TokenTree::Mutate(element) => element,
                             _ => return None,
                         };
 
-                        let element = parse_element().parse(parser, element.as_deref(), stack);
+                        let element =
+                            parse_element().parse(parser, element.as_deref(), stack, None);
 
                         Some(output(parser, tree.info, element, stack))
                     },
@@ -3251,7 +3216,7 @@ mod base {
                 ParseFn::new(
                     {
                         let output = output.clone();
-                        move |parser, tree, stack| {
+                        move |parser, tree, stack, _| {
                             let (found, left, right) = match &tree.item {
                                 TokenTree::Operator(operator, left, right) => {
                                     (operator, left, right)
@@ -3263,22 +3228,30 @@ mod base {
                                 return None;
                             }
 
-                            let left =
-                                match parse_left().try_parse(parser, left.as_deref(), stack)? {
-                                    Ok(left) => left,
-                                    Err(progress) => return Some(Err(progress)),
-                                };
+                            let left = match parse_left().try_parse(
+                                parser,
+                                left.as_deref(),
+                                stack,
+                                Some(Direction::Before(SyntaxKind::Operator(expected))),
+                            )? {
+                                Ok(left) => left,
+                                Err(progress) => return Some(Err(progress)),
+                            };
 
-                            let right =
-                                match parse_right().try_parse(parser, right.as_deref(), stack)? {
-                                    Ok(right) => right,
-                                    Err(progress) => return Some(Err(progress)),
-                                };
+                            let right = match parse_right().try_parse(
+                                parser,
+                                right.as_deref(),
+                                stack,
+                                Some(Direction::After(SyntaxKind::Operator(expected))),
+                            )? {
+                                Ok(right) => right,
+                                Err(progress) => return Some(Err(progress)),
+                            };
 
                             Some(Ok(output(parser, tree.info, left, right, stack)))
                         }
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, _| {
                         let (found, left, right) = match &tree.item {
                             TokenTree::Operator(operator, left, right) => (operator, left, right),
                             _ => return None,
@@ -3288,8 +3261,19 @@ mod base {
                             return None;
                         }
 
-                        let left = parse_left().parse(parser, left.as_deref(), stack);
-                        let right = parse_right().parse(parser, right.as_deref(), stack);
+                        let left = parse_left().parse(
+                            parser,
+                            left.as_deref(),
+                            stack,
+                            Some(Direction::Before(SyntaxKind::Operator(expected))),
+                        );
+
+                        let right = parse_right().parse(
+                            parser,
+                            right.as_deref(),
+                            stack,
+                            Some(Direction::After(SyntaxKind::Operator(expected))),
+                        );
 
                         Some(output(parser, tree.info, left, right, stack))
                     },
@@ -3317,7 +3301,7 @@ mod base {
             R: DefaultFromInfo<D::Info> + 'static,
         {
             Rule::nonterminal(
-                syntax_kind,
+                syntax_kind.clone(),
                 RuleToRender::List(vec![
                     Rc::new(move || parse_left().render_nested()),
                     Rc::new(move || RuleToRender::Keyword(expected.to_string())),
@@ -3327,7 +3311,7 @@ mod base {
                 ParseFn::new(
                     {
                         let output = output.clone();
-                        move |parser, tree, stack| {
+                        move |parser, tree, stack, _| {
                             let (found, left, right) = match &tree.item {
                                 TokenTree::Operator(operator, left, right) => {
                                     (operator, left, right)
@@ -3339,29 +3323,37 @@ mod base {
                                 return Some(Err(stack.len()));
                             }
 
-                            let left =
-                                match parse_left().try_parse(parser, left.as_deref(), stack)? {
-                                    Ok(left) => left,
-                                    Err(progress) => return Some(Err(progress)),
-                                };
+                            let left = match parse_left().try_parse(
+                                parser,
+                                left.as_deref(),
+                                stack,
+                                Some(Direction::Before(SyntaxKind::Operator(expected))),
+                            )? {
+                                Ok(left) => left,
+                                Err(progress) => return Some(Err(progress)),
+                            };
 
-                            let right =
-                                match parse_right().try_parse(parser, right.as_deref(), stack)? {
-                                    Ok(right) => right,
-                                    Err(progress) => return Some(Err(progress)),
-                                };
+                            let right = match parse_right().try_parse(
+                                parser,
+                                right.as_deref(),
+                                stack,
+                                Some(Direction::After(SyntaxKind::Operator(expected))),
+                            )? {
+                                Ok(right) => right,
+                                Err(progress) => return Some(Err(progress)),
+                            };
 
                             Some(Ok(output(parser, tree.info, left, right, stack)))
                         }
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, _| {
                         let (found, left, right) = match &tree.item {
                             TokenTree::Operator(operator, left, right) => (operator, left, right),
                             _ => {
                                 parser.add_diagnostic(stack.error_expected(
                                     WithInfo {
                                         info: tree.info,
-                                        item: syntax_kind,
+                                        item: syntax_kind.clone(),
                                     },
                                     None,
                                 ));
@@ -3374,7 +3366,7 @@ mod base {
                             parser.add_diagnostic(stack.error_expected(
                                 WithInfo {
                                     info: tree.info,
-                                    item: syntax_kind,
+                                    item: syntax_kind.clone(),
                                 },
                                 None,
                             ));
@@ -3382,8 +3374,19 @@ mod base {
                             return None;
                         }
 
-                        let left = parse_left().parse(parser, left.as_deref(), stack);
-                        let right = parse_right().parse(parser, right.as_deref(), stack);
+                        let left = parse_left().parse(
+                            parser,
+                            left.as_deref(),
+                            stack,
+                            Some(Direction::Before(SyntaxKind::Operator(expected))),
+                        );
+
+                        let right = parse_right().parse(
+                            parser,
+                            right.as_deref(),
+                            stack,
+                            Some(Direction::After(SyntaxKind::Operator(expected))),
+                        );
 
                         Some(output(parser, tree.info, left, right, stack))
                     },
@@ -3419,7 +3422,7 @@ mod base {
                     {
                         let output = output.clone();
 
-                        move |parser, tree, stack| {
+                        move |parser, tree, stack, _| {
                             let (found, elements) = match &tree.item {
                                 TokenTree::VariadicOperator(operator, children) => {
                                     (operator, children)
@@ -3433,7 +3436,12 @@ mod base {
 
                             let mut result = Vec::with_capacity(elements.len());
                             for element in elements {
-                                match parse_element().try_parse(parser, element.as_ref(), stack)? {
+                                match parse_element().try_parse(
+                                    parser,
+                                    element.as_ref(),
+                                    stack,
+                                    None,
+                                )? {
                                     Ok(element) => result.push(element),
                                     Err(progress) => return Some(Err(progress)),
                                 }
@@ -3442,7 +3450,7 @@ mod base {
                             Some(Ok(output(parser, tree.info, result, stack)))
                         }
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, _| {
                         let (found, elements) = match &tree.item {
                             TokenTree::VariadicOperator(operator, children) => (operator, children),
                             _ => return None,
@@ -3454,7 +3462,9 @@ mod base {
 
                         let elements = elements
                             .iter()
-                            .map(|element| parse_element().parse(parser, element.as_ref(), stack))
+                            .map(|element| {
+                                parse_element().parse(parser, element.as_ref(), stack, None)
+                            })
                             .collect();
 
                         Some(output(parser, tree.info, elements, stack))
@@ -3494,7 +3504,7 @@ mod base {
                     {
                         let output = output.clone();
 
-                        move |parser, tree, stack| {
+                        move |parser, tree, stack, _| {
                             let (found, left, right) = match &tree.item {
                                 TokenTree::NonAssociativeOperator(operator, left, right) => {
                                     (operator, left, right)
@@ -3506,22 +3516,34 @@ mod base {
                                 return None;
                             }
 
-                            let left =
-                                match parse_left().try_parse(parser, left.as_deref(), stack)? {
-                                    Ok(left) => left,
-                                    Err(progress) => return Some(Err(progress)),
-                                };
+                            let left = match parse_left().try_parse(
+                                parser,
+                                left.as_deref(),
+                                stack,
+                                Some(Direction::Before(SyntaxKind::NonAssociativeOperator(
+                                    expected,
+                                ))),
+                            )? {
+                                Ok(left) => left,
+                                Err(progress) => return Some(Err(progress)),
+                            };
 
-                            let right =
-                                match parse_right().try_parse(parser, right.as_deref(), stack)? {
-                                    Ok(right) => right,
-                                    Err(progress) => return Some(Err(progress)),
-                                };
+                            let right = match parse_right().try_parse(
+                                parser,
+                                right.as_deref(),
+                                stack,
+                                Some(Direction::After(SyntaxKind::NonAssociativeOperator(
+                                    expected,
+                                ))),
+                            )? {
+                                Ok(right) => right,
+                                Err(progress) => return Some(Err(progress)),
+                            };
 
                             Some(Ok(output(parser, tree.info, left, right, stack)))
                         }
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, _| {
                         let (found, left, right) = match &tree.item {
                             TokenTree::NonAssociativeOperator(operator, left, right) => {
                                 (operator, left, right)
@@ -3533,8 +3555,23 @@ mod base {
                             return None;
                         }
 
-                        let left = parse_left().parse(parser, left.as_deref(), stack);
-                        let right = parse_right().parse(parser, right.as_deref(), stack);
+                        let left = parse_left().parse(
+                            parser,
+                            left.as_deref(),
+                            stack,
+                            Some(Direction::Before(SyntaxKind::NonAssociativeOperator(
+                                expected,
+                            ))),
+                        );
+
+                        let right = parse_right().parse(
+                            parser,
+                            right.as_deref(),
+                            stack,
+                            Some(Direction::After(SyntaxKind::NonAssociativeOperator(
+                                expected,
+                            ))),
+                        );
 
                         Some(output(parser, tree.info, left, right, stack))
                     },
@@ -3554,14 +3591,14 @@ mod base {
                     {
                         let output = output.clone();
 
-                        move |_, tree, _| match tree.item {
+                        move |_, tree, _, _| match tree.item {
                             TokenTree::List(_, elements) if elements.is_empty() => {
                                 Some(Ok(output(tree.info)))
                             }
                             _ => None,
                         }
                     },
-                    move |_, tree, _| match tree.item {
+                    move |_, tree, _, _| match tree.item {
                         TokenTree::List(_, elements) if elements.is_empty() => {
                             Some(output(tree.info))
                         }
@@ -3597,7 +3634,7 @@ mod base {
                     {
                         let output = output.clone();
 
-                        move |parser, tree, stack| {
+                        move |parser, tree, stack, _| {
                             let elements = match &tree.item {
                                 TokenTree::List(_, elements) => elements,
                                 _ => return None,
@@ -3605,7 +3642,12 @@ mod base {
 
                             let mut result = Vec::with_capacity(elements.len());
                             for element in elements {
-                                match parse_element().try_parse(parser, element.as_ref(), stack)? {
+                                match parse_element().try_parse(
+                                    parser,
+                                    element.as_ref(),
+                                    stack,
+                                    None,
+                                )? {
                                     Ok(element) => result.push(element),
                                     Err(progress) => return Some(Err(progress)),
                                 }
@@ -3614,7 +3656,7 @@ mod base {
                             Some(Ok(output(parser, tree.info, result, stack)))
                         }
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, _| {
                         let elements = match &tree.item {
                             TokenTree::List(_, elements) => elements,
                             _ => return None,
@@ -3622,7 +3664,9 @@ mod base {
 
                         let elements = elements
                             .iter()
-                            .map(|element| parse_element().parse(parser, element.as_ref(), stack))
+                            .map(|element| {
+                                parse_element().parse(parser, element.as_ref(), stack, None)
+                            })
                             .collect();
 
                         Some(output(parser, tree.info, elements, stack))
@@ -3661,7 +3705,7 @@ mod base {
                     {
                         let output = output.clone();
 
-                        move |parser, tree, stack| {
+                        move |parser, tree, stack, _| {
                             let elements = match &tree.item {
                                 TokenTree::List(_, elements) => elements,
                                 _ => return None,
@@ -3673,6 +3717,7 @@ mod base {
                                 parser,
                                 elements.next()?.as_ref(),
                                 stack,
+                                None,
                             )? {
                                 Ok(prefix) => prefix,
                                 Err(progress) => return Some(Err(progress)),
@@ -3680,7 +3725,12 @@ mod base {
 
                             let mut result = Vec::with_capacity(elements.len());
                             for element in elements {
-                                match parse_element().try_parse(parser, element.as_ref(), stack)? {
+                                match parse_element().try_parse(
+                                    parser,
+                                    element.as_ref(),
+                                    stack,
+                                    None,
+                                )? {
                                     Ok(element) => result.push(element),
                                     Err(progress) => return Some(Err(progress)),
                                 }
@@ -3689,7 +3739,7 @@ mod base {
                             Some(Ok(output(parser, tree.info, prefix, result, stack)))
                         }
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, _| {
                         let elements = match &tree.item {
                             TokenTree::List(_, elements) => elements,
                             _ => return None,
@@ -3698,7 +3748,9 @@ mod base {
                         let mut elements = elements.iter();
 
                         let prefix = match elements.next() {
-                            Some(prefix) => parse_prefix().parse(parser, prefix.as_ref(), stack),
+                            Some(prefix) => {
+                                parse_prefix().parse(parser, prefix.as_ref(), stack, None)
+                            }
                             None => {
                                 parser.add_diagnostic(stack.error_expected(
                                     WithInfo {
@@ -3713,7 +3765,9 @@ mod base {
                         };
 
                         let elements = elements
-                            .map(|element| parse_element().parse(parser, element.as_ref(), stack))
+                            .map(|element| {
+                                parse_element().parse(parser, element.as_ref(), stack, None)
+                            })
                             .collect();
 
                         Some(output(parser, tree.info, prefix, elements, stack))
@@ -3748,7 +3802,7 @@ mod base {
                     {
                         let output = output.clone();
 
-                        move |parser, tree, stack| {
+                        move |parser, tree, stack, _| {
                             let statements = match &tree.item {
                                 TokenTree::Block(statements) => statements,
                                 _ => return None,
@@ -3760,6 +3814,7 @@ mod base {
                                     parser,
                                     statement.as_ref(),
                                     stack,
+                                    None,
                                 )? {
                                     Ok(statement) => result.push(statement),
                                     Err(progress) => return Some(Err(progress)),
@@ -3769,7 +3824,7 @@ mod base {
                             Some(Ok(output(parser, tree.info, result, stack)))
                         }
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, _| {
                         let statements = match &tree.item {
                             TokenTree::Block(statements) => statements,
                             _ => return None,
@@ -3778,7 +3833,7 @@ mod base {
                         let statements = statements
                             .iter()
                             .map(|statement| {
-                                parse_statement().parse(parser, statement.as_ref(), stack)
+                                parse_statement().parse(parser, statement.as_ref(), stack, None)
                             })
                             .collect();
 
@@ -3800,14 +3855,14 @@ mod base {
                     {
                         let output = output.clone();
 
-                        move |_, tree, _| match tree.item {
+                        move |_, tree, _, _| match tree.item {
                             TokenTree::Block(statements) if statements.is_empty() => {
                                 Some(Ok(output(tree.info)))
                             }
                             _ => None,
                         }
                     },
-                    move |_, tree, _| match tree.item {
+                    move |_, tree, _, _| match tree.item {
                         TokenTree::Block(statements) if statements.is_empty() => {
                             Some(output(tree.info))
                         }
@@ -3839,11 +3894,16 @@ mod base {
                 ),
                 || true,
                 ParseFn::new(
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, direction| {
                         for alternative in alternatives {
                             let alternative = alternative();
 
-                            match alternative.try_parse(parser, tree.as_deref(), stack) {
+                            match alternative.try_parse(
+                                parser,
+                                tree.as_deref(),
+                                stack,
+                                direction.clone(),
+                            ) {
                                 Some(Ok(result)) => return Some(Ok(result)),
                                 Some(Err(progress)) if !alternative.backtracks() => {
                                     return Some(Err(progress))
@@ -3854,15 +3914,25 @@ mod base {
 
                         None
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, direction| {
                         for alternative in alternatives {
                             let alternative = alternative();
 
-                            match alternative.try_parse(parser, tree.as_deref(), stack) {
+                            match alternative.try_parse(
+                                parser,
+                                tree.as_deref(),
+                                stack,
+                                direction.clone(),
+                            ) {
                                 Some(Ok(result)) => return Some(result),
                                 Some(Err(_)) if !alternative.backtracks() => {
                                     // Calling `parse` here should produce a diagnostic
-                                    return Some(alternative.parse(parser, tree.as_deref(), stack));
+                                    return Some(alternative.parse(
+                                        parser,
+                                        tree.as_deref(),
+                                        stack,
+                                        None,
+                                    ));
                                 }
                                 _ => continue,
                             }
@@ -3874,7 +3944,12 @@ mod base {
                             .filter_map(|alternative| {
                                 let alternative = alternative();
 
-                                match alternative.try_parse(parser, tree.as_deref(), stack) {
+                                match alternative.try_parse(
+                                    parser,
+                                    tree.as_deref(),
+                                    stack,
+                                    direction.clone(),
+                                ) {
                                     Some(Ok(_)) => panic!("rule was expected to fail"),
                                     Some(Err(progress)) => {
                                         Some((alternative, Some(std::cmp::Reverse(progress))))
@@ -3886,7 +3961,7 @@ mod base {
                             .map(|(alternative, _)| alternative)?;
 
                         // Calling `parse` here should produce a diagnostic
-                        Some(alternative.parse(parser, tree.as_deref(), stack))
+                        Some(alternative.parse(parser, tree.as_deref(), stack, None))
                     },
                 ),
             )
@@ -3894,7 +3969,7 @@ mod base {
     }
 
     macro_rules! impl_keyword_rule {
-        ($pattern:ident($ty:ty), $name:ident($($n:ident),*)) => {
+        ($pattern:ident($ty:ty), $name:ident($($n:ident),*), $kind:ident) => {
             impl<_D: Driver, Output: 'static> Rule<_D, Output> {
                 #[allow(unused, non_snake_case, clippy::redundant_clone, clippy::too_many_arguments)]
                 pub fn $name<$($n),*>(
@@ -3909,15 +3984,19 @@ mod base {
                     Rule::nonterminal(
                         syntax_kind,
                         RuleToRender::List(vec![
-                            Rc::new(move || RuleToRender::Keyword(expected.to_string())),
+                            Rc::new({
+                                let expected = expected.clone();
+                                move || RuleToRender::Keyword(expected.to_string())
+                            }),
                             $(Rc::new(move || $n().render_nested()),)*
                         ]),
                         || true,
                         ParseFn::new(
                             {
+                                let expected = expected.clone();
                                 let output = output.clone();
 
-                                move |parser, tree, stack| {
+                                move |parser, tree, stack, _| {
                                     let mut elements = match &tree.item {
                                         TokenTree::List(_, elements) => elements.iter(),
                                         _ => return None,
@@ -3932,7 +4011,7 @@ mod base {
                                     };
 
                                     $(
-                                        let $n = match $n().try_parse(parser, elements.next()?.as_ref(), stack)? {
+                                        let $n = match $n().try_parse(parser, elements.next()?.as_ref(), stack, None)? {
                                             Ok($n) => $n,
                                             Err(progress) => return Some(Err(progress)),
                                         };
@@ -3945,7 +4024,7 @@ mod base {
                                     Some(Ok(output(parser, tree.info, $($n,)* stack)))
                                 }
                             },
-                            move |parser, tree, stack| {
+                            move |parser, tree, stack, _| {
                                 let mut elements = match &tree.item {
                                     TokenTree::List(_, elements) => elements.iter(),
                                     _ => return None,
@@ -3961,7 +4040,7 @@ mod base {
 
                                 $(
                                     let $n = match elements.next() {
-                                        Some(input) => $n().parse(parser, input.as_ref(), stack),
+                                        Some(input) => $n().parse(parser, input.as_ref(), stack, None),
                                         None => {
                                             parser.add_diagnostic(
                                                 stack.error_expected(
@@ -3985,7 +4064,7 @@ mod base {
                                                 info: _D::Info::clone(&element.info),
                                                 item: SyntaxKind::Nothing,
                                             },
-                                            Direction::After,
+                                            Direction::After(SyntaxKind::$kind(expected.clone())),
                                         )
                                     );
                                 }
@@ -3999,15 +4078,19 @@ mod base {
         };
     }
 
-    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword0());
-    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword1(A));
-    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword2(A, B));
-    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword3(A, B, C));
+    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword0(), Keyword);
+    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword1(A), Keyword);
+    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword2(A, B), Keyword);
+    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword3(A, B, C), Keyword);
 
-    impl_keyword_rule!(Name(&'static str), contextual_keyword0());
-    impl_keyword_rule!(Name(&'static str), contextual_keyword1(A));
-    impl_keyword_rule!(Name(&'static str), contextual_keyword2(A, B));
-    impl_keyword_rule!(Name(&'static str), contextual_keyword3(A, B, C));
+    impl_keyword_rule!(Name(String), contextual_keyword0(), ContextualKeyword);
+    impl_keyword_rule!(Name(String), contextual_keyword1(A), ContextualKeyword);
+    impl_keyword_rule!(Name(String), contextual_keyword2(A, B), ContextualKeyword);
+    impl_keyword_rule!(
+        Name(String),
+        contextual_keyword3(A, B, C),
+        ContextualKeyword
+    );
 
     impl<D: Driver, Output: 'static> Rule<D, Output> {
         pub fn keyword_prefixn<P, E>(
@@ -4042,7 +4125,7 @@ mod base {
                     {
                         let output = output.clone();
 
-                        move |parser, tree, stack| {
+                        move |parser, tree, stack, _| {
                             let mut elements = match &tree.item {
                                 TokenTree::List(_, elements) => elements.iter(),
                                 _ => return None,
@@ -4060,6 +4143,7 @@ mod base {
                                 parser,
                                 elements.next()?.as_ref(),
                                 stack,
+                                None,
                             )? {
                                 Ok(prefix) => prefix,
                                 Err(progress) => return Some(Err(progress)),
@@ -4067,7 +4151,12 @@ mod base {
 
                             let mut result = Vec::with_capacity(elements.len());
                             for element in elements {
-                                match parse_element().try_parse(parser, element.as_ref(), stack)? {
+                                match parse_element().try_parse(
+                                    parser,
+                                    element.as_ref(),
+                                    stack,
+                                    None,
+                                )? {
                                     Ok(element) => result.push(element),
                                     Err(progress) => return Some(Err(progress)),
                                 }
@@ -4076,7 +4165,7 @@ mod base {
                             Some(Ok(output(parser, tree.info, prefix, result, stack)))
                         }
                     },
-                    move |parser, tree, stack| {
+                    move |parser, tree, stack, _| {
                         let mut elements = match &tree.item {
                             TokenTree::List(_, elements) => elements.iter(),
                             _ => return None,
@@ -4091,14 +4180,16 @@ mod base {
                         };
 
                         let prefix = match elements.next() {
-                            Some(prefix) => parse_prefix().parse(parser, prefix.as_ref(), stack),
+                            Some(prefix) => {
+                                parse_prefix().parse(parser, prefix.as_ref(), stack, None)
+                            }
                             None => {
                                 parser.add_diagnostic(stack.error_expected(
                                     WithInfo {
                                         info: info.clone(),
                                         item: parse_prefix().syntax_kind,
                                     },
-                                    Direction::After,
+                                    Direction::After(SyntaxKind::Keyword(expected)),
                                 ));
 
                                 P::default_from_info(info.clone())
@@ -4106,7 +4197,9 @@ mod base {
                         };
 
                         let elements = elements
-                            .map(|element| parse_element().parse(parser, element.as_ref(), stack))
+                            .map(|element| {
+                                parse_element().parse(parser, element.as_ref(), stack, None)
+                            })
                             .collect();
 
                         Some(output(parser, tree.info, prefix, elements, stack))
@@ -4126,7 +4219,7 @@ mod base {
         ) -> Rule<D, Attributed<D, Output>> {
             Rule {
                 doc: None,
-                syntax_kind: self.syntax_kind,
+                syntax_kind: self.syntax_kind.clone(),
                 rendered: self.rendered.clone(),
                 backtracks: self.backtracks.clone(),
                 parse: ParseFn::new(
@@ -4134,18 +4227,22 @@ mod base {
                         let parse_attribute = parse_attribute.clone();
                         let parse_value = self.clone();
 
-                        move |parser, mut tree, stack| {
+                        move |parser, mut tree, stack, _| {
                             let mut attributes = Vec::new();
                             while let TokenTree::Attribute(attribute, contents) = tree.item {
-                                let attribute =
-                                    parse_attribute.parse(parser, attribute.as_deref(), stack);
+                                let attribute = parse_attribute.parse(
+                                    parser,
+                                    attribute.as_deref(),
+                                    stack,
+                                    None,
+                                );
 
                                 attributes.push(attribute);
 
                                 tree = contents.as_deref();
                             }
 
-                            let output = match parse_value.try_parse(parser, tree, stack)? {
+                            let output = match parse_value.try_parse(parser, tree, stack, None)? {
                                 Ok(prefix) => prefix,
                                 Err(progress) => return Some(Err(progress)),
                             };
@@ -4166,18 +4263,18 @@ mod base {
                             }))
                         }
                     },
-                    move |parser, mut tree, stack| {
+                    move |parser, mut tree, stack, _| {
                         let mut attributes = Vec::new();
                         while let TokenTree::Attribute(attribute, contents) = tree.item {
                             let attribute =
-                                parse_attribute.parse(parser, attribute.as_deref(), stack);
+                                parse_attribute.parse(parser, attribute.as_deref(), stack, None);
 
                             attributes.push(attribute);
 
                             tree = contents.as_deref();
                         }
 
-                        let output = self.parse(parser, tree, stack);
+                        let output = self.parse(parser, tree, stack, None);
 
                         let info = attributes.first().map_or_else(
                             || output.info.clone(),

@@ -1,6 +1,5 @@
 //! Execute compiled IR.
 
-#![feature(async_fn_track_caller)]
 #![allow(missing_docs)] // TODO: Documentation
 
 mod convert;
@@ -30,7 +29,7 @@ pub type Executable = wipple_driver::Executable;
 pub type Item = wipple_driver::Item;
 pub type TypeDescriptor = wipple_driver::ir::TypeDescriptor<wipple_driver::Driver>;
 pub type Instruction = wipple_driver::ir::Instruction<wipple_driver::Driver>;
-pub type TypedInstruction = wipple_driver::ir::TypedInstruction<wipple_driver::Driver>;
+pub type Bounds = Vec<Path>;
 
 pub trait Runtime
 where
@@ -67,6 +66,7 @@ pub enum Value<R: Runtime + ?Sized> {
     Function {
         path: Path,
         substitutions: HashMap<Path, TypeDescriptor>,
+        bounds: Bounds,
         captures: Vec<Arc<Mutex<Value<R>>>>,
     },
     NativeFunction(
@@ -160,6 +160,7 @@ pub struct Context<R: Runtime + ?Sized> {
         dyn Fn(
                 Path,
                 std::result::Result<HashMap<Path, TypeDescriptor>, Vec<TypeDescriptor>>,
+                Bounds,
                 TaskLocals<R>,
                 Context<R>,
             ) -> BoxFuture<'static, Result<Value<R>>>
@@ -221,6 +222,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
             Value::Function {
                 path,
                 substitutions,
+                bounds,
                 captures,
             } => {
                 inputs.reverse();
@@ -233,6 +235,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                     inputs,
                     captures.into_iter().enumerate().collect(),
                     substitutions,
+                    bounds,
                     task,
                     context,
                 )
@@ -242,7 +245,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
             _ => panic!("expected function"),
         }),
         item_cache: Default::default(),
-        get_item: Arc::new(|path, substitutions, task, context| {
+        get_item: Arc::new(|path, substitutions, bounds, task, context| {
             async move {
                 let item = context
                     .executable
@@ -263,7 +266,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                     }
                 }
 
-                let substitutions = substitutions.unwrap_or_else(|parameters| {
+                let mut substitutions = substitutions.unwrap_or_else(|parameters| {
                     item.parameters
                         .iter()
                         .enumerate()
@@ -271,10 +274,36 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                         .collect()
                 });
 
+                // Any type parameters not mentioned in the item's type must be
+                // inserted into the substitutions by resolving the bounds
+                let bounds = item
+                    .bounds
+                    .iter()
+                    .map(|bound| {
+                        let parameters = bound
+                            .parameters
+                            .iter()
+                            .cloned()
+                            .map(|mut parameter| {
+                                substitute_type_descriptor(&mut parameter, &substitutions);
+                                parameter
+                            })
+                            .collect::<Vec<_>>();
+
+                        find_instance(
+                            &bound.trait_path,
+                            &parameters,
+                            &bounds,
+                            &context.executable,
+                            &mut substitutions,
+                        )
+                    })
+                    .collect();
+
                 context
                     .debug(|| {
                         format!(
-                            "initializing constant {path:?} with substitutions {substitutions:#?}"
+                            "initializing constant {path:?} with substitutions {substitutions:#?} and bounds {bounds:#?}",
                         )
                     })
                     .await;
@@ -285,6 +314,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                     Vec::new(),
                     HashMap::new(),
                     substitutions,
+                    bounds,
                     task.clone(),
                     context.clone(),
                 )
@@ -314,6 +344,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
             Vec::new(),
             HashMap::new(),
             HashMap::new(),
+            Bounds::new(),
             task.clone(),
             context.clone(),
         )
@@ -335,6 +366,7 @@ async fn evaluate_item<R: Runtime>(
     mut stack: Vec<Value<R>>,
     mut scope: HashMap<usize, Arc<Mutex<Value<R>>>>,
     mut substitutions: HashMap<Path, TypeDescriptor>,
+    mut bounds: Bounds,
     task: TaskLocals<R>,
     context: Context<R>,
 ) -> Result<Value<R>> {
@@ -455,113 +487,125 @@ async fn evaluate_item<R: Runtime>(
 
                     stack.push(Value::Tuple(elements));
                 }
-                Instruction::Typed(type_descriptor, instruction) => match instruction {
-                    wipple_driver::ir::TypedInstruction::Intrinsic(name, inputs) => {
-                        let intrinsic = context
-                            .intrinsics
-                            .get(name.as_str())
-                            .unwrap_or_else(|| panic!("unknown intrinsic {name:?}"));
+                wipple_driver::ir::Instruction::Intrinsic(name, inputs) => {
+                    let intrinsic = context
+                        .intrinsics
+                        .get(name.as_str())
+                        .unwrap_or_else(|| panic!("unknown intrinsic {name:?}"));
 
-                        let mut inputs = (0..*inputs).map(|_| pop!()).collect::<Vec<_>>();
-                        inputs.reverse();
+                    let mut inputs = (0..*inputs).map(|_| pop!()).collect::<Vec<_>>();
+                    inputs.reverse();
 
-                        let result = intrinsic(inputs, context.clone(), task.clone()).await?;
-                        stack.push(result);
+                    let result = intrinsic(inputs, context.clone(), task.clone()).await?;
+                    stack.push(result);
+                }
+                wipple_driver::ir::Instruction::Text(text) => {
+                    stack.push(Value::Text(text.clone()));
+                }
+                wipple_driver::ir::Instruction::Number(number) => {
+                    stack.push(Value::Number(Some(number.parse().unwrap())));
+                }
+                wipple_driver::ir::Instruction::Format(segments, trailing) => {
+                    let mut inputs = segments.iter().map(|_| pop!()).collect::<Vec<_>>();
+
+                    let mut result = String::new();
+                    for segment in segments {
+                        let text = match inputs.pop().unwrap() {
+                            Value::Text(text) => text,
+                            _ => panic!("expected text"),
+                        };
+
+                        result.push_str(segment);
+                        result.push_str(&text);
                     }
-                    wipple_driver::ir::TypedInstruction::Text(text) => {
-                        stack.push(Value::Text(text.clone()));
+
+                    result.push_str(trailing);
+
+                    stack.push(Value::Text(result));
+                }
+                wipple_driver::ir::Instruction::Marker => {
+                    stack.push(Value::Marker);
+                }
+                wipple_driver::ir::Instruction::Structure(fields) => {
+                    let mut elements = fields.iter().map(|_| pop!()).collect::<Vec<_>>();
+
+                    let mut field_values = vec![None; fields.len()];
+                    for index in fields {
+                        field_values[*index as usize] = Some(elements.pop().unwrap());
                     }
-                    wipple_driver::ir::TypedInstruction::Number(number) => {
-                        stack.push(Value::Number(Some(number.parse().unwrap())));
-                    }
-                    wipple_driver::ir::TypedInstruction::Format(segments, trailing) => {
-                        let mut inputs = segments.iter().map(|_| pop!()).collect::<Vec<_>>();
 
-                        let mut result = String::new();
-                        for segment in segments {
-                            let text = match inputs.pop().unwrap() {
-                                Value::Text(text) => text,
-                                _ => panic!("expected text"),
-                            };
+                    stack.push(Value::Structure(
+                        field_values.into_iter().map(Option::unwrap).collect(),
+                    ));
+                }
+                wipple_driver::ir::Instruction::Variant(variant, elements) => {
+                    let mut elements = (0..*elements).map(|_| pop!()).collect::<Vec<_>>();
+                    elements.reverse();
 
-                            result.push_str(segment);
-                            result.push_str(&text);
-                        }
+                    stack.push(Value::Variant {
+                        variant: *variant,
+                        values: elements,
+                    });
+                }
+                wipple_driver::ir::Instruction::Wrapper => {
+                    let value = pop!();
+                    stack.push(Value::Wrapper(Box::new(value)));
+                }
+                wipple_driver::ir::Instruction::Function(capture_list, path) => {
+                    let captures = capture_list
+                        .iter()
+                        .map(|index| scope.get(&(*index as usize)).unwrap().clone())
+                        .collect::<Vec<_>>();
 
-                        result.push_str(trailing);
+                    stack.push(Value::Function {
+                        path: path.clone(),
+                        substitutions: substitutions.clone(),
+                        bounds: bounds.clone(),
+                        captures,
+                    });
+                }
+                wipple_driver::ir::Instruction::Constant(path, parameters) => {
+                    let parameters = parameters
+                        .iter()
+                        .cloned()
+                        .map(|mut parameter| {
+                            substitute_type_descriptor(&mut parameter, &substitutions);
+                            parameter
+                        })
+                        .collect::<Vec<_>>();
 
-                        stack.push(Value::Text(result));
-                    }
-                    wipple_driver::ir::TypedInstruction::Marker => {
-                        stack.push(Value::Marker);
-                    }
-                    wipple_driver::ir::TypedInstruction::Structure(fields) => {
-                        let mut elements = fields.iter().map(|_| pop!()).collect::<Vec<_>>();
+                    let value = context
+                        .get_item(path.clone(), Err(parameters), &bounds, task.clone())
+                        .await?;
 
-                        let mut field_values = vec![None; fields.len()];
-                        for index in fields {
-                            field_values[*index as usize] = Some(elements.pop().unwrap());
-                        }
+                    stack.push(value);
+                }
+                wipple_driver::ir::Instruction::Instance(r#trait, parameters) => {
+                    let parameters = parameters
+                        .iter()
+                        .cloned()
+                        .map(|mut parameter| {
+                            substitute_type_descriptor(&mut parameter, &substitutions);
+                            parameter
+                        })
+                        .collect::<Vec<_>>();
 
-                        stack.push(Value::Structure(
-                            field_values.into_iter().map(Option::unwrap).collect(),
-                        ));
-                    }
-                    wipple_driver::ir::TypedInstruction::Variant(variant, elements) => {
-                        let mut elements = (0..*elements).map(|_| pop!()).collect::<Vec<_>>();
-                        elements.reverse();
+                    let mut substitutions = HashMap::new();
 
-                        stack.push(Value::Variant {
-                            variant: *variant,
-                            values: elements,
-                        });
-                    }
-                    wipple_driver::ir::TypedInstruction::Wrapper => {
-                        let value = pop!();
-                        stack.push(Value::Wrapper(Box::new(value)));
-                    }
-                    wipple_driver::ir::TypedInstruction::Function(capture_list, path) => {
-                        let captures = capture_list
-                            .iter()
-                            .map(|index| scope.get(&(*index as usize)).unwrap().clone())
-                            .collect::<Vec<_>>();
+                    let path = find_instance(
+                        r#trait,
+                        &parameters,
+                        &bounds,
+                        &context.executable,
+                        &mut substitutions,
+                    );
 
-                        stack.push(Value::Function {
-                            path: path.clone(),
-                            substitutions: substitutions.clone(),
-                            captures,
-                        });
-                    }
-                    wipple_driver::ir::TypedInstruction::Constant(path, parameters) => {
-                        let parameters = parameters
-                            .iter()
-                            .cloned()
-                            .map(|mut parameter| {
-                                substitute_type_descriptor(&mut parameter, &substitutions);
-                                parameter
-                            })
-                            .collect::<Vec<_>>();
+                    let value = context
+                        .get_item(path, Ok(substitutions), &bounds, task.clone())
+                        .await?;
 
-                        let value = context
-                            .get_item(path.clone(), Err(parameters), task.clone())
-                            .await?;
-
-                        stack.push(value);
-                    }
-                    wipple_driver::ir::TypedInstruction::Instance(r#trait) => {
-                        let mut type_descriptor = type_descriptor.clone();
-                        substitute_type_descriptor(&mut type_descriptor, &substitutions);
-
-                        let (path, substitutions) =
-                            find_instance(r#trait, &type_descriptor, &context.executable);
-
-                        let value = context
-                            .get_item(path, Ok(substitutions), task.clone())
-                            .await?;
-
-                        stack.push(value);
-                    }
-                },
+                    stack.push(value);
+                }
                 Instruction::Block(instructions) => {
                     blocks.push(instructions.iter().collect::<VecDeque<_>>());
                 }
@@ -592,6 +636,7 @@ async fn evaluate_item<R: Runtime>(
                     if let Value::Function {
                         path: func_path,
                         substitutions: func_substitutions,
+                        bounds: func_bounds,
                         captures: func_captures,
                     } = func
                     {
@@ -611,6 +656,7 @@ async fn evaluate_item<R: Runtime>(
                         scope = func_captures.into_iter().enumerate().collect();
 
                         substitutions = func_substitutions;
+                        bounds = func_bounds;
 
                         continue;
                     } else {
@@ -628,6 +674,7 @@ async fn evaluate_item<R: Runtime>(
                     if let Value::Function {
                         path: block_path,
                         substitutions: block_substitutions,
+                        bounds: block_bounds,
                         captures: block_captures,
                     } = block
                     {
@@ -645,6 +692,7 @@ async fn evaluate_item<R: Runtime>(
                         scope = block_captures.into_iter().enumerate().collect();
 
                         substitutions = block_substitutions;
+                        bounds = block_bounds;
 
                         continue;
                     } else {
@@ -663,30 +711,70 @@ async fn evaluate_item<R: Runtime>(
 
 fn find_instance(
     r#trait: &Path,
-    type_descriptor: &TypeDescriptor,
+    parameters: &[TypeDescriptor],
+    bounds: &Bounds,
     executable: &Executable,
-) -> (Path, HashMap<Path, TypeDescriptor>) {
+    substitutions: &mut HashMap<Path, TypeDescriptor>,
+) -> Path {
+    macro_rules! try_instance {
+        ($instance:expr) => {
+            let mut instance_substitutions = HashMap::new();
+            let mut unified = true;
+            for (type_descriptor, (trait_parameter, instance_type_descriptor)) in
+                parameters.iter().zip(&$instance.trait_parameters)
+            {
+                if unify(
+                    type_descriptor,
+                    instance_type_descriptor,
+                    &mut instance_substitutions,
+                ) {
+                    instance_substitutions.insert(trait_parameter.clone(), type_descriptor.clone());
+                } else {
+                    unified = false;
+                    break;
+                }
+            }
+
+            if unified {
+                // Important: don't override existing parameters -- that would
+                // prevent recursive instances from being resolved properly
+                for (parameter, type_descriptor) in instance_substitutions {
+                    substitutions.entry(parameter).or_insert(type_descriptor);
+                }
+
+                return $instance.path.clone();
+            }
+        };
+    }
+
+    for bound in bounds {
+        if let Some(instance) = executable
+            .instances
+            .get(r#trait)
+            .and_then(|instances| instances.get(bound))
+            .or_else(|| {
+                executable
+                    .default_instances
+                    .get(r#trait)
+                    .and_then(|instances| instances.get(bound))
+            })
+        {
+            try_instance!(instance);
+        }
+    }
+
     for instances in executable
         .instances
         .get(r#trait)
         .into_iter()
         .chain(executable.default_instances.get(r#trait))
     {
-        for path in instances {
-            let instance = executable.items.get(path).unwrap();
-
-            let mut substitutions = HashMap::new();
-            if unify(
-                type_descriptor,
-                &instance.type_descriptor,
-                &mut substitutions,
-            ) {
-                return (path.clone(), substitutions);
-            }
+        for instance in instances.values() {
+            try_instance!(instance);
         }
     }
 
-    panic!("no instance found for trait {trait:?} with type descriptor {type_descriptor:#?}")
+    panic!("no instance found for trait {trait:?} with parameters {parameters:#?}")
 }
 
 fn unify(
@@ -700,6 +788,13 @@ fn unify(
         }
         (left, TypeDescriptor::Equal(a, b)) => {
             unify(left, a, substitutions) && unify(b, a, substitutions)
+        }
+
+        (TypeDescriptor::Parameter(_), _) => {
+            // This occurs when bounds are being resolved that involve type
+            // parameters not mentioned in the item's type descriptor; no
+            // value's type will ever contain a `Parameter`
+            true
         }
 
         (left, TypeDescriptor::Parameter(right)) => {
@@ -771,7 +866,9 @@ fn substitute_type_descriptor(
             if let Some(substitution) = substitutions.get(parameter) {
                 *type_descriptor = substitution.clone();
             } else {
-                panic!("no substitution for type parameter {parameter:?}")
+                // This occurs when bounds are being resolved that involve type
+                // parameters not mentioned in the item's type descriptor; no
+                // value's type will ever contain a `Parameter`
             }
         }
         wipple_driver::ir::TypeDescriptor::Named(_, parameters) => {
@@ -822,8 +919,12 @@ impl<R: Runtime> Context<R> {
         &self,
         path: Path,
         substitutions: std::result::Result<HashMap<Path, TypeDescriptor>, Vec<TypeDescriptor>>,
+        bounds: &Bounds,
         task: TaskLocals<R>,
     ) -> Result<Value<R>> {
-        (self.get_item)(path, substitutions, task, self.clone()).await
+        // TODO: Don't clone `bounds` once async closures are stable
+        let bounds = bounds.clone();
+
+        (self.get_item)(path, substitutions, bounds, task, self.clone()).await
     }
 }

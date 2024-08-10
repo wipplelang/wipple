@@ -50,43 +50,38 @@ async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
         let result = wipple_driver::compile(vec![file], Some(base_interface));
 
         let render = wipple_render::Render::new();
-        render
-            .update(
-                result.interface,
-                vec![base_library.clone(), result.library.clone()],
-                None,
-            )
-            .await;
+        render.update(
+            result.interface,
+            vec![base_library.clone(), result.library.clone()],
+            None,
+        );
 
         let compiled = Mutex::new(true);
         let compiled_with_warnings = Mutex::new(false);
-        let mut rendered_diagnostics =
-            future::join_all(result.diagnostics.into_iter().map(|diagnostic| {
+        let mut rendered_diagnostics = result
+            .diagnostics
+            .into_iter()
+            .map(|diagnostic| {
                 let render = &render;
                 let compiled = &compiled;
                 let compiled_with_warnings = &compiled_with_warnings;
 
-                async move {
-                    let rendered_diagnostic = render
-                        .render_diagnostic(&diagnostic)
-                        .await
-                        .unwrap_or_else(|| panic!("could not render diagnostic: {diagnostic:#?}"));
+                let rendered_diagnostic = render
+                    .render_diagnostic(&diagnostic)
+                    .unwrap_or_else(|| panic!("could not render diagnostic: {diagnostic:#?}"));
 
-                    match rendered_diagnostic.severity {
-                        wipple_render::RenderedDiagnosticSeverity::Error => {
-                            *compiled.lock().unwrap() = false;
-                        }
-                        wipple_render::RenderedDiagnosticSeverity::Warning => {
-                            *compiled_with_warnings.lock().unwrap() = true;
-                        }
+                match rendered_diagnostic.severity {
+                    wipple_render::RenderedDiagnosticSeverity::Error => {
+                        *compiled.lock().unwrap() = false;
                     }
-
-                    render
-                        .render_diagnostic_to_debug_string(&rendered_diagnostic)
-                        .await
+                    wipple_render::RenderedDiagnosticSeverity::Warning => {
+                        *compiled_with_warnings.lock().unwrap() = true;
+                    }
                 }
-            }))
-            .await;
+
+                render.render_diagnostic_to_debug_string(&rendered_diagnostic)
+            })
+            .collect::<Vec<_>>();
 
         rendered_diagnostics.sort();
         rendered_diagnostics.dedup();
@@ -183,12 +178,13 @@ async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
             output: Vec<String>,
         }
 
-        let snapshot = Snapshot {
-            diagnostics: rendered_diagnostics,
-            output,
-        };
+        let snapshot = [rendered_diagnostics.join("\n"), output.join("\n")]
+            .into_iter()
+            .filter(|s| !s.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n\n");
 
-        insta::assert_yaml_snapshot!(file_name, snapshot);
+        insta::assert_snapshot!(file_name, snapshot);
     };
 
     let mut settings = insta::Settings::clone_current();

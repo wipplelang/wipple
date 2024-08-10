@@ -2,6 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics:
-  - "tests/bounds-dont-influence-other-bounds.test.wipple:12:1: error: `(f :: (Number ; _))` requires `(T _)`"
-output: []
+tests/bounds-dont-influence-other-bounds.test.wipple:12:1: error: `(f :: (Number ; _))` requires `T _`

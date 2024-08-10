@@ -7,8 +7,7 @@ edition = "2021"
 workspace = true
 
 [dependencies]
-async-lock = { version = "3", default-features = false }
+annotate-snippets = "0.11"
 line-index = "0.1"
-futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 wipple-driver = { path = "../compiler/driver" }

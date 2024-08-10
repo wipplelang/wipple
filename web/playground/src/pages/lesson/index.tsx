@@ -1,8 +1,8 @@
 import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { createLesson } from "../../models";
-import { lessons } from "../../lessons";
-import CircularProgress from "@mui/material/CircularProgress";
+import { CircularProgress } from "wipple-playground";
+import { getLesson } from "../../helpers";
 
 export const LessonPage = () => {
     const params = useParams();
@@ -13,11 +13,7 @@ export const LessonPage = () => {
 
     useEffect(() => {
         (async () => {
-            const lesson = lessons.find((lesson) => lesson.id === id);
-            if (!lesson) {
-                throw new Error(`Unknown lesson: ${id}`);
-            }
-
+            const lesson = await getLesson(id);
             const playgroundId = await createLesson(lesson);
 
             let path = `/playground/edit/${playgroundId}`;

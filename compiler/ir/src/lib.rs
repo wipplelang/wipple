@@ -39,9 +39,9 @@ pub fn compile<'a, D: Driver>(
     attributes: &'a [WithInfo<D::Info, wipple_typecheck::Attribute<D>>],
     expression: WithInfo<D::Info, &'a wipple_typecheck::TypedExpression<D>>,
     captures: &[D::Path],
-) -> Option<Result<D>> {
-    let items = compile::compile(driver, path, attributes, expression, captures)?;
-    Some(Result { items })
+) -> Result<D> {
+    let items = compile::compile(driver, path, attributes, expression, captures);
+    Result { items }
 }
 
 /// Generate a type descriptor from a type.
@@ -56,6 +56,13 @@ pub fn layout_descriptor<D: crate::Driver>(
     type_declaration: &wipple_typecheck::TypeDeclaration<D>,
 ) -> Option<crate::LayoutDescriptor<D>> {
     compile::layout_descriptor(type_declaration)
+}
+
+/// Generate a bound descriptor from a bound.
+pub fn instance_descriptor<D: crate::Driver>(
+    bound: &wipple_typecheck::Instance<D>,
+) -> Option<crate::InstanceDescriptor<D>> {
+    compile::instance_descriptor(bound)
 }
 
 /// The result of [`compile`].
@@ -136,48 +143,6 @@ pub enum Instruction<D: Driver> {
     /// (Values) A tuple.
     Tuple(u32),
 
-    /// (Values) Produce a new value with a runtime type.
-    Typed(TypeDescriptor<D>, TypedInstruction<D>),
-
-    /// (Control flow) Begin a block.
-    Block(Vec<Instruction<D>>),
-
-    /// (Control flow) Break out of _n_ blocks.
-    Break(u32),
-
-    /// (Control flow) Break out of _n_ blocks if the variant on the top of the
-    /// stack does not match the variant in the condition.
-    BreakIfNot(u32, u32),
-
-    /// (Control flow) Return the top of the stack as the result of this
-    /// function.
-    Return,
-
-    /// (Control flow) Call the function on the top of the stack, replacing the
-    /// current stack.
-    TailCall(u32),
-
-    /// (Control flow) Evaluate the block on the top of the stack, replacing the
-    /// current stack.
-    TailDo,
-
-    /// (Control flow) The program should never reach this instruction; if it
-    /// does, there is a compiler bug.
-    Unreachable,
-}
-
-/// An instruction that produces a value with a runtime type.
-#[derive(Serialize, Deserialize, Derivative)]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Hash(bound = "")
-)]
-#[serde(rename_all = "camelCase", tag = "type", content = "value")]
-#[serde(bound = "")]
-pub enum TypedInstruction<D: Driver> {
     /// (Consuming) An intrinsic provided by the runtime with _n_ inputs.
     Intrinsic(String, u32),
 
@@ -205,11 +170,37 @@ pub enum TypedInstruction<D: Driver> {
     /// A function (or block) expression that can capture variables.
     Function(Vec<u32>, D::Path),
 
-    /// A constant.
+    /// A constant with resolved parameters and bounds.
     Constant(D::Path, Vec<TypeDescriptor<D>>),
 
     /// An instance of a trait.
-    Instance(D::Path),
+    Instance(D::Path, Vec<TypeDescriptor<D>>),
+
+    /// (Control flow) Begin a block.
+    Block(Vec<Instruction<D>>),
+
+    /// (Control flow) Break out of _n_ blocks.
+    Break(u32),
+
+    /// (Control flow) Break out of _n_ blocks if the variant on the top of the
+    /// stack does not match the variant in the condition.
+    BreakIfNot(u32, u32),
+
+    /// (Control flow) Return the top of the stack as the result of this
+    /// function.
+    Return,
+
+    /// (Control flow) Call the function on the top of the stack, replacing the
+    /// current stack.
+    TailCall(u32),
+
+    /// (Control flow) Evaluate the block on the top of the stack, replacing the
+    /// current stack.
+    TailDo,
+
+    /// (Control flow) The program should never reach this instruction; if it
+    /// does, there is a compiler bug.
+    Unreachable,
 }
 
 /// Used when finding a suitable instance for a trait at runtime.
@@ -275,6 +266,25 @@ pub enum LayoutDescriptor<D: Driver> {
     Intrinsic, // TODO: Remove 'intrinsic' and specify layout with attribute
 }
 
+/// Used to store the available traits resolved from bounds at runtime.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[serde(rename_all = "camelCase")]
+#[serde(bound = "")]
+pub struct InstanceDescriptor<D: Driver> {
+    /// The path to the trait.
+    pub trait_path: D::Path,
+
+    /// The type parameters provided to the trait.
+    pub parameters: Vec<TypeDescriptor<D>>,
+}
+
 impl<D: Driver> std::fmt::Display for Instruction<D>
 where
     D::Path: std::fmt::Display,
@@ -304,7 +314,29 @@ where
             Instruction::Do => write!(f, "do"),
             Instruction::Mutate(variable) => write!(f, "mutate {variable}"),
             Instruction::Tuple(elements) => write!(f, "tuple {elements}"),
-            Instruction::Typed(_, instruction) => write!(f, "{instruction}"),
+            Instruction::Intrinsic(name, inputs) => write!(f, "intrinsic {name} {inputs}"),
+            Instruction::Text(text) => write!(f, "text {text:?}"),
+            Instruction::Number(number) => write!(f, "number {number:?}"),
+            Instruction::Format(segments, trailing) => write!(
+                f,
+                "format{} {trailing:?}",
+                segments.iter().fold(String::new(), |mut result, segment| {
+                    use std::fmt::Write;
+                    write!(&mut result, " {segment:?}").unwrap();
+                    result
+                }),
+            ),
+            Instruction::Marker => write!(f, "marker"),
+            Instruction::Structure(fields) => write!(f, "structure {fields:?}"),
+            Instruction::Variant(variant, elements) => {
+                write!(f, "variant {variant:?} {elements}")
+            }
+            Instruction::Wrapper => write!(f, "wrapper"),
+            Instruction::Function(captures, path) => {
+                write!(f, "function {captures:?} ({path})")
+            }
+            Instruction::Constant(path, _) => write!(f, "constant {path}"),
+            Instruction::Instance(path, _) => write!(f, "instance {path}"),
             Instruction::Block(instructions) => {
                 writeln!(f, "block")?;
 
@@ -323,39 +355,6 @@ where
             Instruction::TailCall(inputs) => write!(f, "tail call {inputs}"),
             Instruction::TailDo => write!(f, "tail do"),
             Instruction::Unreachable => write!(f, "unreachable"),
-        }
-    }
-}
-
-impl<D: Driver> std::fmt::Display for TypedInstruction<D>
-where
-    D::Path: std::fmt::Display,
-{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            TypedInstruction::Intrinsic(name, inputs) => write!(f, "intrinsic {name} {inputs}"),
-            TypedInstruction::Text(text) => write!(f, "text {text:?}"),
-            TypedInstruction::Number(number) => write!(f, "number {number:?}"),
-            TypedInstruction::Format(segments, trailing) => write!(
-                f,
-                "format{} {trailing:?}",
-                segments.iter().fold(String::new(), |mut result, segment| {
-                    use std::fmt::Write;
-                    write!(&mut result, " {segment:?}").unwrap();
-                    result
-                }),
-            ),
-            TypedInstruction::Marker => write!(f, "marker"),
-            TypedInstruction::Structure(fields) => write!(f, "structure {fields:?}"),
-            TypedInstruction::Variant(variant, elements) => {
-                write!(f, "variant {variant:?} {elements}")
-            }
-            TypedInstruction::Wrapper => write!(f, "wrapper"),
-            TypedInstruction::Function(captures, path) => {
-                write!(f, "function {captures:?} ({path})")
-            }
-            TypedInstruction::Constant(path, _) => write!(f, "constant {path}"),
-            TypedInstruction::Instance(path) => write!(f, "instance {path}"),
         }
     }
 }

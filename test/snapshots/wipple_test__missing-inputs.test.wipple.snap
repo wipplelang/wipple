@@ -1,0 +1,5 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+tests/missing-inputs.test.wipple:3:1: error: missing a piece of text for `show`

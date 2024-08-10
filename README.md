@@ -46,7 +46,7 @@ ls .wipple
 task test
 
 # Install 'wipple' in your PATH
-task cli:build
+task cli:install
 
 # Serve the website at http://localhost:8080
 # (you will need a '.env' file in 'web'; see '.env.example')

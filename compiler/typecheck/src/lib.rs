@@ -44,12 +44,6 @@ pub trait Driver: Sized + 'static {
         path: &Self::Path,
     ) -> WithInfo<Self::Info, TypeDeclaration<Self>>;
 
-    /// Retrieve the type alias declaration at the given path.
-    fn get_type_alias_declaration(
-        &self,
-        path: &Self::Path,
-    ) -> WithInfo<Self::Info, TypeAliasDeclaration<Self>>;
-
     /// Retrieve the trait declaration at the given path.
     fn get_trait_declaration(
         &self,
@@ -204,17 +198,14 @@ pub enum Diagnostic<D: Driver> {
     /// type required in its place.
     #[serde(rename_all = "camelCase")]
     Mismatch {
-        /// The roles of the actual type.
-        actual_roles: Vec<WithInfo<D::Info, Role>>,
-
         /// The inferred type of the expression.
         actual: WithInfo<D::Info, Type<D>>,
 
-        /// The roles of the expected type.
-        expected_roles: Vec<WithInfo<D::Info, Role>>,
-
         /// The expected type of the expression.
         expected: WithInfo<D::Info, Type<D>>,
+
+        /// The reasons why the types don't match.
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     /// A function is missing an input.
@@ -236,6 +227,9 @@ pub enum Diagnostic<D: Driver> {
         /// Contains the list of instances evaluated before failing to resolve
         /// [`ErrorKind::UnresolvedInstance::trait`].
         stack: Vec<WithInfo<D::Info, Instance<D>>>,
+
+        /// The reasons why the instance couldn't be resolved.
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     /// A trait that doesn't have a value was used in expression position.
@@ -280,6 +274,9 @@ pub enum Diagnostic<D: Driver> {
 
         /// A fix for the error.
         fix: Option<(CustomMessage<D>, CustomMessage<D>)>,
+
+        /// The reasons for the error.
+        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 }
 
@@ -327,16 +324,6 @@ pub enum Type<D: Driver> {
         path: D::Path,
 
         /// The type's parameters.
-        parameters: Vec<WithInfo<D::Info, Type<D>>>,
-    },
-
-    /// An aliased type.
-    #[serde(rename_all = "camelCase")]
-    Alias {
-        /// The path to the type alias.
-        path: D::Path,
-
-        /// The type alias's parameters.
         parameters: Vec<WithInfo<D::Info, Type<D>>>,
     },
 
@@ -474,22 +461,6 @@ pub struct TypeDeclaration<D: Driver> {
 
     /// The type's representation (opaque, structure or enumeration).
     pub representation: WithInfo<D::Info, TypeRepresentation<D>>,
-}
-
-/// A type alias declaration.
-#[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
-pub struct TypeAliasDeclaration<D: Driver> {
-    /// The type's attributes.
-    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
-
-    /// The type's parameters.
-    pub parameters: Vec<D::Path>,
-
-    /// The aliased type.
-    pub r#type: WithInfo<D::Info, Type<D>>,
 }
 
 /// A trait declaration.
@@ -843,8 +814,9 @@ pub struct TypedExpression<D: Driver> {
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
 #[serde(bound = "")]
 pub enum TypedExpressionKind<D: Driver> {
-    /// An expression that could not be resolved.
-    Unknown(Option<D::Path>),
+    /// An expression that could not be resolved, along with the original
+    /// expression if available.
+    Unknown(Option<Box<TypedExpressionKind<D>>>),
 
     /// The value of a variable.
     Variable(String, D::Path),
@@ -857,10 +829,23 @@ pub enum TypedExpressionKind<D: Driver> {
         /// The types of the constant's parameters. This is used in case the
         /// constant's type doesn't reference all type parameters.
         parameters: Vec<Type<D>>,
+
+        /// The resolved bounds.
+        bounds: Vec<WithInfo<D::Info, std::result::Result<D::Path, Instance<D>>>>,
     },
 
     /// A trait.
-    Trait(D::Path),
+    Trait {
+        /// The path to the trait declaration.
+        path: D::Path,
+
+        /// The types of the instance's parameters. This is used in case the
+        /// instance's type doesn't reference all type parameters.
+        parameters: Vec<Type<D>>,
+
+        /// The path to the resolved instance, or a bound.
+        instance: WithInfo<D::Info, std::result::Result<D::Path, Instance<D>>>,
+    },
 
     /// A number literal.
     Number(String),
@@ -1123,27 +1108,23 @@ pub struct FieldPattern<D: Driver> {
     pub pattern: WithInfo<D::Info, Pattern<D>>,
 }
 
-/// The role of a type.
-#[allow(missing_docs)]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum Role {
-    Pattern,
-    Annotation,
-    Trait,
-    Instance,
-    StructureField,
-    VariantElement,
-    WrappedType,
-    FunctionInput,
-    FunctionOutput,
-    Bound,
-    DefaultType,
-    Variable,
-    TypeParameter,
-    EmptyBlock,
-    WhenArm,
-    CollectionElement,
+/// The reason why an error occurred.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(
+    Debug(bound = ""),
+    Clone(bound = ""),
+    PartialEq(bound = ""),
+    Eq(bound = ""),
+    Hash(bound = "")
+)]
+#[serde(rename_all = "camelCase", tag = "type", content = "value")]
+#[serde(bound = "")]
+pub enum ErrorReason<D: Driver> {
+    /// The error involvs another expression.
+    Expression(WithInfo<D::Info, Type<D>>),
+
+    /// A user-defined reason.
+    Custom(CustomMessage<D>),
 }
 
 /// Traverse an expression.
@@ -1224,7 +1205,7 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a TypedExpress
             TypedExpressionKind::Unknown(_)
             | TypedExpressionKind::Variable(_, _)
             | TypedExpressionKind::Constant { .. }
-            | TypedExpressionKind::Trait(_)
+            | TypedExpressionKind::Trait { .. }
             | TypedExpressionKind::Marker(_)
             | TypedExpressionKind::Number(_)
             | TypedExpressionKind::Text(_) => {}
@@ -1269,6 +1250,66 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a Pattern<D>> 
             | Pattern::Number(_)
             | Pattern::Text(_)
             | Pattern::Variable(_, _) => {}
+        }
+    }
+}
+
+impl<D: Driver> Type<D> {
+    /// Check if `self` could potentially unify with `other`. This doesn't
+    /// guarantee the two types unify (because of trait bounds), but it's useful
+    /// for diagnostics.
+    pub fn could_unify_with(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Type::Unknown, _) | (_, Type::Unknown) => true,
+            (Type::Parameter(left), Type::Parameter(right)) => left == right,
+            (
+                Type::Declared {
+                    path: left,
+                    parameters: left_parameters,
+                },
+                Type::Declared {
+                    path: right,
+                    parameters: right_parameters,
+                },
+            ) => {
+                left == right
+                    && left_parameters.len() == right_parameters.len()
+                    && left_parameters
+                        .iter()
+                        .zip(right_parameters)
+                        .all(|(left, right)| left.item.could_unify_with(&right.item))
+            }
+            (
+                Type::Function {
+                    inputs: left_inputs,
+                    output: left_output,
+                },
+                Type::Function {
+                    inputs: right_inputs,
+                    output: right_output,
+                },
+            ) => {
+                left_inputs.len() == right_inputs.len()
+                    && left_inputs
+                        .iter()
+                        .zip(right_inputs)
+                        .all(|(left, right)| left.item.could_unify_with(&right.item))
+                    && left_output.item.could_unify_with(&right_output.item)
+            }
+            (Type::Tuple(left), Type::Tuple(right)) => {
+                left.len() == right.len()
+                    && left
+                        .iter()
+                        .zip(right)
+                        .all(|(left, right)| left.item.could_unify_with(&right.item))
+            }
+            (Type::Block(left), Type::Block(right)) => left.item.could_unify_with(&right.item),
+            (Type::Intrinsic, Type::Intrinsic) => true,
+            (Type::Message { .. }, Type::Message { .. }) => false,
+            (Type::Equal { left, right }, other) | (other, Type::Equal { left, right }) => {
+                left.item.could_unify_with(other) && right.item.could_unify_with(other)
+            }
+            _ => false,
         }
     }
 }

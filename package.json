@@ -1,0 +1,8 @@
+{
+    "name": "wipple-playground",
+    "workspaces": [
+        "playground",
+        "ios/wrapper",
+        "web/playground"
+    ]
+}

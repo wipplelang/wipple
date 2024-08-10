@@ -8,7 +8,7 @@ undefined : intrinsic "undefined-number"
 Add : (Left : Number) (Right : Number) (infer Sum) => trait (Left Right -> Sum)
 instance (Add Number Number Number) : left right -> intrinsic "add-number" left right
 
-Left Right Sum where (Error ("cannot add _ and _" Left Right)) =>
+Left Right Sum where (Because (Left ; Right)) (Error ("cannot add _ and _" Left Right)) =>
     default instance (Add Left Right Sum) : ...
 
 -- Subtract the one value from another, returning the difference.
@@ -16,7 +16,7 @@ Left Right Sum where (Error ("cannot add _ and _" Left Right)) =>
 Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Left Right -> Difference)
 instance (Subtract Number Number Number) : left right -> intrinsic "subtract-number" left right
 
-Left Right Difference where (Error ("cannot subtract _ from _" Right Left)) =>
+Left Right Difference where (Because (Left ; Right)) (Error ("cannot subtract _ from _" Right Left)) =>
     default instance (Subtract Left Right Difference) : ...
 
 -- Multiply two values together, returning the product.
@@ -24,7 +24,7 @@ Left Right Difference where (Error ("cannot subtract _ from _" Right Left)) =>
 Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Left Right -> Product)
 instance (Multiply Number Number Number) : left right -> intrinsic "multiply-number" left right
 
-Left Right Product where (Error ("cannot multiply _ by _" Left Right)) =>
+Left Right Product where (Because (Left ; Right)) (Error ("cannot multiply _ by _" Left Right)) =>
     default instance (Multiply Left Right Product) : ...
 
 -- Divide two numbers, returning the quotient.
@@ -32,7 +32,7 @@ Left Right Product where (Error ("cannot multiply _ by _" Left Right)) =>
 Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Left Right -> Quotient)
 instance (Divide Number Number Number) : left right -> intrinsic "divide-number" left right
 
-Left Right Quotient where (Error ("cannot divide _ by _" Left Right)) =>
+Left Right Quotient where (Because (Left ; Right)) (Error ("cannot divide _ by _" Left Right)) =>
     default instance (Divide Left Right Quotient) : ...
 
 -- Divide two numbers, returning the remainder.
@@ -40,7 +40,7 @@ Left Right Quotient where (Error ("cannot divide _ by _" Left Right)) =>
 Remainder : (Left : Number) (Right : Number) (infer Remainder) => trait (Left Right -> Remainder)
 instance (Remainder Number Number Number) : left right -> intrinsic "remainder-number" left right
 
-Left Right Remainder where (Error ("cannot divide _ by _" Left Right)) =>
+Left Right Remainder where (Because (Left ; Right)) (Error ("cannot divide _ by _" Left Right)) =>
     default instance (Remainder Left Right Remainder) : ...
 
 -- Raise one number to the power of the other number.
@@ -48,7 +48,7 @@ Left Right Remainder where (Error ("cannot divide _ by _" Left Right)) =>
 Power : (Left : Number) (Right : Number) (infer Power) => trait (Left Right -> Power)
 instance (Power Number Number Number) : left right -> intrinsic "power-number" left right
 
-Left Right Power where (Error ("cannot raise _ to the power of _" Left Right)) =>
+Left Right Power where (Because (Left ; Right)) (Error ("cannot raise _ to the power of _" Left Right)) =>
     default instance (Power Left Right Power) : ...
 
 -- Round down a number to the nearest integer.

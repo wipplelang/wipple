@@ -2,16 +2,12 @@
 
 #![allow(missing_docs)] // TODO: Documentation
 
-use futures::{
-    future::{self, BoxFuture},
-    FutureExt,
-};
 use line_index::LineIndex;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashMap,
     ops::ControlFlow,
-    sync::{Arc, Mutex},
+    sync::{Arc, RwLock},
 };
 
 type WithInfo<T> = wipple_driver::util::WithInfo<wipple_driver::Info, T>;
@@ -49,10 +45,18 @@ pub struct RenderedSourceLocation {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RenderedDiagnostic {
+    pub raw: String,
     pub location: RenderedSourceLocation,
     pub severity: RenderedDiagnosticSeverity,
     pub message: String,
+    pub explanations: Vec<WithInfo<RenderedExplanation>>,
     pub fix: Option<RenderedFix>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RenderedExplanation {
+    pub location: RenderedSourceLocation,
+    pub message: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -115,7 +119,7 @@ const KEYWORDS: &[&str] = &[
 const OPERATORS: &[&str] = &["as", "to", "by", "is", "and", "or"];
 
 #[derive(Clone)]
-pub struct Render(Arc<Mutex<RenderInner>>);
+pub struct Render(Arc<RwLock<RenderInner>>);
 
 #[derive(Default)]
 pub struct RenderInner {
@@ -131,17 +135,23 @@ impl Render {
         Render(Default::default())
     }
 
-    pub async fn get_interface(&self) -> Option<wipple_driver::Interface> {
-        self.0.lock().unwrap().interface.clone()
+    pub fn get_interface(&self) -> Option<wipple_driver::Interface> {
+        self.0.read().unwrap().interface.clone()
     }
 
-    pub async fn update(
+    pub fn with_interface<T>(&self, f: impl FnOnce(&wipple_driver::Interface) -> T) -> Option<T> {
+        let inner = self.0.read().unwrap();
+        let interface = inner.interface.as_ref()?;
+        Some(f(interface))
+    }
+
+    pub fn update(
         &self,
         interface: wipple_driver::Interface,
         libraries: Vec<wipple_driver::Library>,
         ide: Option<wipple_driver::Ide>,
     ) {
-        let mut inner = self.0.lock().unwrap();
+        let mut inner = self.0.write().unwrap();
 
         inner.files = interface
             .files
@@ -192,26 +202,33 @@ impl Render {
         inner.ide = ide;
     }
 
-    pub async fn get_declaration_from_path(
+    pub fn get_declaration_from_path(
         &self,
         path: &wipple_driver::lower::Path,
     ) -> Option<WithInfo<AnyDeclaration>> {
+        let mut path = path.clone();
+
+        // Resolve the actual declaration the constructor is for
+        if let Some(wipple_driver::lower::PathComponent::Constructor(_)) = path.last() {
+            path.pop();
+        }
+
         self.0
-            .lock()
+            .read()
             .unwrap()
             .declarations
             .iter()
-            .find(|declaration| declaration.item.path == *path)
+            .find(|declaration| declaration.item.path == path)
             .cloned()
     }
 
-    pub async fn get_declaration_from_info(
+    pub fn get_declaration_from_info(
         &self,
         info: &wipple_driver::Info,
         between: bool,
     ) -> Option<WithInfo<AnyDeclaration>> {
         self.0
-            .lock()
+            .read()
             .unwrap()
             .declarations
             .iter()
@@ -219,17 +236,33 @@ impl Render {
             .cloned()
     }
 
-    pub async fn render_source<T>(&self, value: &WithInfo<T>) -> Option<String> {
-        let inner = self.0.lock().unwrap();
+    pub fn get_instances_for_trait(
+        &self,
+        r#trait: &wipple_driver::lower::Path,
+    ) -> Vec<WithInfo<AnyDeclaration>> {
+        let inner = self.0.read().unwrap();
+
+        inner
+            .declarations
+            .iter()
+            .filter(|declaration| match &declaration.item.kind {
+                AnyDeclarationKind::Instance(instance) => {
+                    instance.instance.item.r#trait == *r#trait && !instance.default
+                }
+                _ => false,
+            })
+            .cloned()
+            .collect()
+    }
+
+    pub fn render_source<T>(&self, value: &WithInfo<T>) -> Option<String> {
+        let inner = self.0.read().unwrap();
         let (file, _) = inner.files.get(value.info.location.path.as_ref())?;
         Some(file.code.clone())
     }
 
-    pub async fn render_source_location<T>(
-        &self,
-        value: &WithInfo<T>,
-    ) -> Option<RenderedSourceLocation> {
-        let inner = self.0.lock().unwrap();
+    pub fn render_source_location<T>(&self, value: &WithInfo<T>) -> Option<RenderedSourceLocation> {
+        let inner = self.0.read().unwrap();
         let (file, line_index) = inner.files.get(value.info.location.path.as_ref())?;
 
         let start_location =
@@ -254,10 +287,10 @@ impl Render {
         })
     }
 
-    pub async fn render_code<T>(&self, value: &WithInfo<T>) -> Option<String> {
-        let rendered_source_location = self.render_source_location(value).await?;
+    pub fn render_code<T>(&self, value: &WithInfo<T>) -> Option<String> {
+        let rendered_source_location = self.render_source_location(value)?;
 
-        let inner = self.0.lock().unwrap();
+        let inner = self.0.read().unwrap();
         let (file, _) = inner.files.get(&rendered_source_location.path)?;
 
         Some(
@@ -267,15 +300,10 @@ impl Render {
         )
     }
 
-    pub async fn render_declaration(
-        &self,
-        declaration: &WithInfo<AnyDeclaration>,
-    ) -> Option<String> {
+    pub fn render_declaration(&self, declaration: &WithInfo<AnyDeclaration>) -> Option<String> {
         match &declaration.item.kind {
             AnyDeclarationKind::Type(type_declaration) => {
-                let type_function = self
-                    .render_type_function(&type_declaration.parameters, &[])
-                    .await;
+                let type_function = self.render_type_function(&type_declaration.parameters, &[]);
 
                 Some(format!(
                     "{} : {}type",
@@ -284,9 +312,7 @@ impl Render {
                 ))
             }
             AnyDeclarationKind::Trait(trait_declaration) => {
-                let type_function = self
-                    .render_type_function(&trait_declaration.parameters, &[])
-                    .await;
+                let type_function = self.render_type_function(&trait_declaration.parameters, &[]);
 
                 Some(format!(
                     "{} : {}trait",
@@ -298,28 +324,22 @@ impl Render {
             AnyDeclarationKind::Constant(constant_declaration) => {
                 let name = declaration.item.name.as_deref().unwrap_or("<unknown>");
 
-                let r#type = self
-                    .render_type(&constant_declaration.r#type, true, false, false)
-                    .await;
+                let r#type = self.render_type(&constant_declaration.r#type, true, false, false);
 
-                let type_function = self
-                    .render_type_function(
-                        &constant_declaration.parameters,
-                        &constant_declaration.bounds,
-                    )
-                    .await;
+                let type_function = self.render_type_function(
+                    &constant_declaration.parameters,
+                    &constant_declaration.bounds,
+                );
 
                 Some(format!("{} :: {}{}", name, type_function, r#type))
             }
             AnyDeclarationKind::Instance(instance_declaration) => {
-                let type_function = self
-                    .render_type_function(
-                        &instance_declaration.parameters,
-                        &instance_declaration.bounds,
-                    )
-                    .await;
+                let type_function = self.render_type_function(
+                    &instance_declaration.parameters,
+                    &instance_declaration.bounds,
+                );
 
-                let instance = self.render_instance(&instance_declaration.instance).await;
+                let instance = self.render_instance(&instance_declaration.instance, false);
 
                 Some(format!("{}instance {}", type_function, instance))
             }
@@ -330,15 +350,12 @@ impl Render {
         &'a self,
         pattern: &'a wipple_driver::typecheck::exhaustiveness::Pattern<wipple_driver::Driver>,
         is_top_level: bool,
-    ) -> BoxFuture<'a, String> {
-        async move {
-            match pattern {
-                wipple_driver::typecheck::exhaustiveness::Pattern::Constructor(
-                    constructor,
-                    values,
-                ) => match constructor {
+    ) -> String {
+        match pattern {
+            wipple_driver::typecheck::exhaustiveness::Pattern::Constructor(constructor, values) => {
+                match constructor {
                     wipple_driver::typecheck::exhaustiveness::Constructor::Variant(path) => {
-                        let declaration = match self.get_declaration_from_path(path).await {
+                        let declaration = match self.get_declaration_from_path(path) {
                             Some(declarataion) => declarataion,
                             None => return String::from("<unknown>"),
                         };
@@ -348,13 +365,11 @@ impl Render {
                         let rendered = if values.is_empty() {
                             name.to_string()
                         } else {
-                            let values = future::join_all(
-                                values
-                                    .iter()
-                                    .map(|pattern| self.render_pattern(pattern, false)),
-                            )
-                            .await
-                            .join(" ");
+                            let values = values
+                                .iter()
+                                .map(|pattern| self.render_pattern(pattern, false))
+                                .collect::<Vec<_>>()
+                                .join(" ");
 
                             format!("{} {}", name, values)
                         };
@@ -369,18 +384,13 @@ impl Render {
                         let rendered = if values.is_empty() {
                             String::from("()")
                         } else if values.len() == 1 {
-                            format!(
-                                "{} ;",
-                                self.render_pattern(values.first().unwrap(), false).await,
-                            )
+                            format!("{} ;", self.render_pattern(values.first().unwrap(), false),)
                         } else {
-                            future::join_all(
-                                values
-                                    .iter()
-                                    .map(|pattern| self.render_pattern(pattern, false)),
-                            )
-                            .await
-                            .join(" ; ")
+                            values
+                                .iter()
+                                .map(|pattern| self.render_pattern(pattern, false))
+                                .collect::<Vec<_>>()
+                                .join(" ; ")
                         };
 
                         if is_top_level || values.is_empty() {
@@ -393,14 +403,14 @@ impl Render {
                         String::from("{...}")
                     }
                     wipple_driver::typecheck::exhaustiveness::Constructor::Wrapper(path) => {
-                        let declaration = match self.get_declaration_from_path(path).await {
+                        let declaration = match self.get_declaration_from_path(path) {
                             Some(declarataion) => declarataion,
                             None => return String::from("<unknown>"),
                         };
 
                         let name = declaration.item.name.as_deref().unwrap_or("<unknown>");
 
-                        let value = self.render_pattern(values.first().unwrap(), false).await;
+                        let value = self.render_pattern(values.first().unwrap(), false);
 
                         if is_top_level {
                             format!("{} {}", name, value)
@@ -411,16 +421,162 @@ impl Render {
                     wipple_driver::typecheck::exhaustiveness::Constructor::Unbounded => {
                         String::from("_")
                     }
-                },
-                wipple_driver::typecheck::exhaustiveness::Pattern::Binding => String::from("_"),
-                wipple_driver::typecheck::exhaustiveness::Pattern::Or(patterns) => {
-                    let rendered = future::join_all(
-                        patterns
-                            .iter()
-                            .map(|pattern| self.render_pattern(pattern, false)),
-                    )
-                    .await
+                }
+            }
+            wipple_driver::typecheck::exhaustiveness::Pattern::Binding => String::from("_"),
+            wipple_driver::typecheck::exhaustiveness::Pattern::Or(patterns) => {
+                let rendered = patterns
+                    .iter()
+                    .map(|pattern| self.render_pattern(pattern, false))
+                    .collect::<Vec<_>>()
                     .join(" or ");
+
+                if is_top_level {
+                    rendered
+                } else {
+                    format!("({})", rendered)
+                }
+            }
+        }
+    }
+
+    pub fn render_type<'a>(
+        &'a self,
+        r#type: &'a WithInfo<wipple_driver::typecheck::Type<wipple_driver::Driver>>,
+        is_top_level: bool,
+        describe: bool,
+        render_as_code: bool,
+    ) -> String {
+        if is_top_level && describe {
+            let message = (|| {
+                let result = wipple_driver::resolve_attribute_like_trait(
+                    "describe-type",
+                    r#type.clone(),
+                    1,
+                    self.get_interface()?,
+                )?;
+
+                match result.into_iter().next()?.item {
+                    wipple_driver::typecheck::Type::Message { segments, trailing } => {
+                        Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
+                    }
+                    _ => None,
+                }
+            })();
+
+            if let Some(message) = message {
+                return self.render_custom_message(&message, false);
+            }
+        }
+
+        fn render_type_inner(
+            render: &Render,
+            r#type: WithInfo<&wipple_driver::typecheck::Type<wipple_driver::Driver>>,
+            is_top_level: bool,
+        ) -> String {
+            match &r#type.item {
+                wipple_driver::typecheck::Type::Unknown => String::from("_"),
+                wipple_driver::typecheck::Type::Parameter(parameter) => render
+                    .name_for_path(parameter)
+                    .unwrap_or_else(|| String::from("<unknown>")),
+                wipple_driver::typecheck::Type::Declared { path, parameters } => {
+                    let name = render
+                        .name_for_path(path)
+                        .unwrap_or_else(|| String::from("<unknown>"));
+
+                    let rendered = if parameters.is_empty() {
+                        name
+                    } else {
+                        format!(
+                            "{} {}",
+                            name,
+                            parameters
+                                .iter()
+                                .map(|parameter| render_type_inner(
+                                    render,
+                                    parameter.as_ref(),
+                                    false,
+                                ))
+                                .collect::<Vec<_>>()
+                                .join(" "),
+                        )
+                    };
+
+                    if is_top_level || parameters.is_empty() {
+                        rendered
+                    } else {
+                        format!("({})", rendered)
+                    }
+                }
+                wipple_driver::typecheck::Type::Function { inputs, output } => {
+                    let inputs = inputs
+                        .iter()
+                        .map(|input| render_type_inner(render, input.as_ref(), false))
+                        .collect::<Vec<_>>()
+                        .join(" ");
+
+                    let output = render_type_inner(render, output.as_deref(), true);
+
+                    let rendered = format!("{} -> {}", inputs, output);
+
+                    if is_top_level {
+                        rendered
+                    } else {
+                        format!("({})", rendered)
+                    }
+                }
+                wipple_driver::typecheck::Type::Tuple(elements) => {
+                    let rendered = if elements.is_empty() {
+                        String::from("Unit")
+                    } else if elements.len() == 1 {
+                        format!(
+                            "{} ;",
+                            render_type_inner(render, elements.first().unwrap().as_ref(), false,),
+                        )
+                    } else {
+                        elements
+                            .iter()
+                            .map(|r#type| render_type_inner(render, r#type.as_ref(), false))
+                            .collect::<Vec<_>>()
+                            .join(" ; ")
+                    };
+
+                    if is_top_level || elements.is_empty() {
+                        rendered
+                    } else {
+                        format!("({})", rendered)
+                    }
+                }
+                wipple_driver::typecheck::Type::Block(value) => {
+                    format!("{{{}}}", render_type_inner(render, value.as_deref(), true,))
+                }
+                wipple_driver::typecheck::Type::Intrinsic => String::from("intrinsic"),
+                wipple_driver::typecheck::Type::Message { segments, trailing } => {
+                    let mut message = String::new();
+                    let mut inputs = String::new();
+
+                    for segment in segments {
+                        message.push_str(&segment.text);
+                        message.push('_');
+
+                        inputs.push(' ');
+                        inputs.push_str(&render_type_inner(render, segment.r#type.as_ref(), false));
+                    }
+
+                    message.push_str(trailing);
+
+                    if is_top_level || inputs.is_empty() {
+                        format!("{:?}{}", message, inputs)
+                    } else {
+                        format!("({:?}{})", message, inputs)
+                    }
+                }
+                wipple_driver::typecheck::Type::Equal { left, right } => {
+                    let rendered = format!(
+                        "{} = {}",
+                        render_type_inner(render, left.as_deref(), false),
+                        render_type_inner(render, right.as_deref(), false),
+                    );
 
                     if is_top_level {
                         rendered
@@ -430,232 +586,87 @@ impl Render {
                 }
             }
         }
-        .boxed()
-    }
 
-    pub fn render_type<'a>(
-        &'a self,
-        r#type: &'a WithInfo<wipple_driver::typecheck::Type<wipple_driver::Driver>>,
-        is_top_level: bool,
-        describe: bool,
-        render_as_code: bool,
-    ) -> BoxFuture<'a, String> {
-        async move {
-            if is_top_level && describe {
-                let message = async {
-                    let result = wipple_driver::resolve_attribute_like_trait(
-                        "describe-type",
-                        r#type.clone(),
-                        1,
-                        self.get_interface().await?,
-                    )?;
+        let rendered = render_type_inner(self, r#type.as_ref(), is_top_level);
 
-                    match result.into_iter().next()?.item {
-                        wipple_driver::typecheck::Type::Message { segments, trailing } => {
-                            Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
-                        }
-                        _ => None,
-                    }
-                }
-                .await;
-
-                if let Some(message) = message {
-                    return self.render_custom_message(&message, false).await;
-                }
-            }
-
-            fn render_type_inner(
-                render: &Render,
-                r#type: WithInfo<&wipple_driver::typecheck::Type<wipple_driver::Driver>>,
-                is_top_level: bool,
-                is_return: bool,
-            ) -> String {
-                match &r#type.item {
-                    wipple_driver::typecheck::Type::Unknown => String::from("_"),
-                    wipple_driver::typecheck::Type::Parameter(parameter) => render
-                        .name_for_path(parameter)
-                        .unwrap_or_else(|| String::from("<unknown>")),
-                    wipple_driver::typecheck::Type::Declared { path, parameters }
-                    | wipple_driver::typecheck::Type::Alias { path, parameters } => {
-                        let name = render
-                            .name_for_path(path)
-                            .unwrap_or_else(|| String::from("<unknown>"));
-
-                        let rendered = if parameters.is_empty() {
-                            name
-                        } else {
-                            format!(
-                                "{} {}",
-                                name,
-                                parameters
-                                    .iter()
-                                    .map(|parameter| render_type_inner(
-                                        render,
-                                        parameter.as_ref(),
-                                        false,
-                                        false
-                                    ))
-                                    .collect::<Vec<_>>()
-                                    .join(" "),
-                            )
-                        };
-
-                        if is_top_level || is_return || parameters.is_empty() {
-                            rendered
-                        } else {
-                            format!("({})", rendered)
-                        }
-                    }
-                    wipple_driver::typecheck::Type::Function { inputs, output } => {
-                        let inputs = inputs
-                            .iter()
-                            .map(|input| render_type_inner(render, input.as_ref(), false, false))
-                            .collect::<Vec<_>>()
-                            .join(" ");
-
-                        let output = render_type_inner(render, output.as_deref(), false, true);
-
-                        let rendered = format!("{} -> {}", inputs, output);
-
-                        if is_top_level || is_return {
-                            rendered
-                        } else {
-                            format!("({})", rendered)
-                        }
-                    }
-                    wipple_driver::typecheck::Type::Tuple(elements) => {
-                        let rendered = if elements.is_empty() {
-                            String::from("Unit")
-                        } else if elements.len() == 1 {
-                            format!(
-                                "{} ;",
-                                render_type_inner(
-                                    render,
-                                    elements.first().unwrap().as_ref(),
-                                    false,
-                                    false,
-                                ),
-                            )
-                        } else {
-                            elements
-                                .iter()
-                                .map(|r#type| {
-                                    render_type_inner(render, r#type.as_ref(), false, false)
-                                })
-                                .collect::<Vec<_>>()
-                                .join(" ; ")
-                        };
-
-                        if is_top_level || is_return || elements.is_empty() {
-                            rendered
-                        } else {
-                            format!("({})", rendered)
-                        }
-                    }
-                    wipple_driver::typecheck::Type::Block(value) => {
-                        format!(
-                            "{{{}}}",
-                            render_type_inner(render, value.as_deref(), true, false)
-                        )
-                    }
-                    wipple_driver::typecheck::Type::Intrinsic => String::from("intrinsic"),
-                    wipple_driver::typecheck::Type::Message { segments, trailing } => {
-                        let mut message = String::new();
-
-                        for segment in segments {
-                            message.push_str(&segment.text);
-
-                            message.push_str(&render_type_inner(
-                                render,
-                                segment.r#type.as_ref(),
-                                true,
-                                true,
-                            ));
-                        }
-
-                        message.push_str(trailing);
-
-                        message
-                    }
-                    wipple_driver::typecheck::Type::Equal { left, right } => {
-                        let rendered = format!(
-                            "{} = {}",
-                            render_type_inner(render, left.as_deref(), false, false),
-                            render_type_inner(render, right.as_deref(), false, false),
-                        );
-
-                        if is_top_level || is_return {
-                            rendered
-                        } else {
-                            format!("({})", rendered)
-                        }
-                    }
-                }
-            }
-
-            let rendered = render_type_inner(self, r#type.as_ref(), is_top_level, true);
-
-            if render_as_code {
-                format!("`{}`", rendered)
-            } else {
-                rendered
-            }
+        if render_as_code {
+            format!("`{}`", rendered)
+        } else {
+            rendered
         }
-        .boxed()
     }
 
-    pub async fn render_type_function(
+    pub fn render_type_function(
         &self,
         parameters: &[wipple_driver::lower::Path],
         bounds: &[WithInfo<wipple_driver::typecheck::Instance<wipple_driver::Driver>>],
     ) -> String {
-        if parameters.is_empty() {
-            return String::new();
-        }
-
         let rendered_parameters = parameters
             .iter()
-            .filter_map(|parameter| self.name_for_path(parameter))
+            .filter_map(|parameter| {
+                let name = self.name_for_path(parameter)?;
+
+                let declaration = match self.get_declaration_from_path(parameter)?.item.kind {
+                    AnyDeclarationKind::TypeParameter(declaration) => declaration,
+                    _ => return Some(name),
+                };
+
+                Some(match (declaration.infer, declaration.default) {
+                    (Some(_), Some(default)) => {
+                        let default = self.render_type(&default, true, false, false);
+                        format!("(infer {name} : {default})")
+                    }
+                    (Some(_), None) => format!("(infer {name})"),
+                    (None, Some(default)) => {
+                        let default = self.render_type(&default, true, false, false);
+                        format!("({name} : {default})")
+                    }
+                    (None, None) => name,
+                })
+            })
             .collect::<Vec<_>>()
             .join(" ");
 
-        let rendered_bounds =
-            future::join_all(bounds.iter().map(|bound| self.render_instance(bound)))
-                .await
-                .join(" ");
+        let rendered_bounds = bounds
+            .iter()
+            .map(|bound| self.render_instance(bound, false))
+            .collect::<Vec<_>>()
+            .join(" ");
 
-        if rendered_bounds.is_empty() {
-            format!("{} => ", rendered_parameters)
-        } else {
-            format!("{} where {} => ", rendered_parameters, rendered_bounds)
+        match (rendered_parameters.is_empty(), rendered_bounds.is_empty()) {
+            (true, true) => String::new(),
+            (true, false) => format!("() where {} => ", rendered_bounds),
+            (false, true) => format!("{} => ", rendered_parameters),
+            (false, false) => format!("{} where {} => ", rendered_parameters, rendered_bounds),
         }
     }
 
-    pub async fn render_instance(
+    pub fn render_instance(
         &self,
         instance: &WithInfo<wipple_driver::typecheck::Instance<wipple_driver::Driver>>,
+        is_top_level: bool,
     ) -> String {
         let r#trait = self
             .name_for_path(&instance.item.r#trait)
             .unwrap_or_else(|| String::from("<unknown>"));
 
-        let parameters = future::join_all(
-            instance
-                .item
-                .parameters
-                .iter()
-                .map(|r#type| self.render_type(r#type, false, false, false)),
-        )
-        .await;
+        let parameters = instance
+            .item
+            .parameters
+            .iter()
+            .map(|r#type| self.render_type(r#type, false, false, false))
+            .collect::<Vec<_>>();
 
         if parameters.is_empty() {
             r#trait
+        } else if is_top_level {
+            format!("{} {}", r#trait, parameters.join(" "))
         } else {
             format!("({} {})", r#trait, parameters.join(" "))
         }
     }
 
-    pub async fn render_custom_message(
+    pub fn render_custom_message(
         &self,
         message: &wipple_driver::typecheck::CustomMessage<wipple_driver::Driver>,
         render_as_code: bool,
@@ -668,7 +679,7 @@ impl Render {
         let mut result = String::new();
         for segment in &message.segments {
             let code = if render_segments_as_code || segment.text.ends_with('`') {
-                self.render_code(&segment.r#type).await
+                self.render_code(&segment.r#type)
             } else {
                 None
             };
@@ -677,7 +688,7 @@ impl Render {
 
             result.push_str(&match code {
                 Some(code) => code,
-                None => self.render_type(&segment.r#type, true, true, true).await,
+                None => self.render_type(&segment.r#type, true, true, true),
             });
         }
 
@@ -690,22 +701,22 @@ impl Render {
         result
     }
 
-    pub async fn render_diagnostic(
+    pub fn render_diagnostic(
         &self,
         diagnostic: &WithInfo<wipple_driver::Diagnostic>,
     ) -> Option<RenderedDiagnostic> {
-        let rendered_source_location = self
-            .render_source_location(diagnostic)
-            .await
-            .unwrap_or_else(|| RenderedSourceLocation {
-                path: diagnostic.info.location.path.to_string(),
-                visible_path: diagnostic.info.location.visible_path.to_string(),
-                start: Default::default(),
-                end: Default::default(),
-            });
+        let rendered_source_location =
+            self.render_source_location(diagnostic)
+                .unwrap_or_else(|| RenderedSourceLocation {
+                    path: diagnostic.info.location.path.to_string(),
+                    visible_path: diagnostic.info.location.visible_path.to_string(),
+                    start: Default::default(),
+                    end: Default::default(),
+                });
 
         let severity;
         let message;
+        let mut explanations = Vec::new();
         let mut fix = None;
         match &diagnostic.item {
             wipple_driver::Diagnostic::Tokenize(tokenize_diagnostic) => match tokenize_diagnostic {
@@ -728,25 +739,19 @@ impl Render {
                         (Some(expected), Some(found)) => {
                             message = format!(
                                 "expected {} here, but found {}",
-                                self.render_token(expected, "a").await,
-                                self.render_token(found, "a").await,
+                                self.render_token(expected, "a"),
+                                self.render_token(found, "a"),
                             );
                         }
                         (Some(expected), None) => {
-                            message = format!(
-                                "expected {} here",
-                                self.render_token(expected, "a").await,
-                            );
+                            message =
+                                format!("expected {} here", self.render_token(expected, "a"),);
                         }
                         (None, Some(found)) => {
-                            message =
-                                format!("unexpected {} here", self.render_token(found, "a").await);
+                            message = format!("unexpected {} here", self.render_token(found, "a"));
 
                             fix = Some(RenderedFix {
-                                message: format!(
-                                    "remove {}",
-                                    self.render_token(found, "this").await
-                                ),
+                                message: format!("remove {}", self.render_token(found, "this")),
                                 before: None,
                                 replacement: Some(String::new()),
                                 after: None,
@@ -757,26 +762,28 @@ impl Render {
                 }
             },
             wipple_driver::Diagnostic::Parse(parse_diagnostic) => {
-                match parse_diagnostic.direction {
-                    Some(wipple_driver::syntax::parse::Direction::Before) => {
+                match &parse_diagnostic.direction {
+                    Some(wipple_driver::syntax::parse::Direction::Before(before)) => {
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!(
-                            "expected {} before this",
-                            self.render_syntax_kind(parse_diagnostic.expected).await,
+                            "expected {} before this {}",
+                            self.render_syntax_kind(&parse_diagnostic.expected),
+                            self.render_syntax_kind(before),
                         );
                     }
-                    Some(wipple_driver::syntax::parse::Direction::After) => {
+                    Some(wipple_driver::syntax::parse::Direction::After(after)) => {
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!(
-                            "expected {} after this",
-                            self.render_syntax_kind(parse_diagnostic.expected).await,
+                            "expected {} after this {}",
+                            self.render_syntax_kind(&parse_diagnostic.expected),
+                            self.render_syntax_kind(after),
                         );
                     }
                     None => {
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!(
                             "expected {} here",
-                            self.render_syntax_kind(parse_diagnostic.expected).await,
+                            self.render_syntax_kind(&parse_diagnostic.expected),
                         );
                     }
                 }
@@ -886,17 +893,15 @@ impl Render {
                     wipple_driver::typecheck::Diagnostic::UnknownType(r#type) => {
                         severity = RenderedDiagnosticSeverity::Error;
 
-                        let rendered_type = self
-                            .render_type(
-                                &WithInfo {
-                                    info: diagnostic.info.clone(),
-                                    item: r#type.clone(),
-                                },
-                                true,
-                                false,
-                                true,
-                            )
-                            .await;
+                        let rendered_type = self.render_type(
+                            &WithInfo {
+                                info: diagnostic.info.clone(),
+                                item: r#type.clone(),
+                            },
+                            true,
+                            false,
+                            true,
+                        );
 
                         if rendered_type == "`_`" {
                             message = String::from(
@@ -917,21 +922,23 @@ impl Render {
                     );
                     }
                     wipple_driver::typecheck::Diagnostic::Mismatch {
-                        actual, expected, ..
+                        actual,
+                        expected,
+                        reasons,
                     } => {
                         severity = RenderedDiagnosticSeverity::Error;
 
-                        let expected_message = self.render_type(expected, true, true, true).await;
+                        let expected_message = self.render_type(expected, true, true, true);
 
-                        let actual_message = self.render_type(actual, true, true, true).await;
+                        let actual_message = self.render_type(actual, true, true, true);
 
                         // If the type descriptions are equal, try rendering the actual type by setting
                         // `describe` to false
                         let (expected_message, actual_message) =
                             if expected_message == actual_message {
                                 (
-                                    self.render_type(expected, true, false, true).await,
-                                    self.render_type(actual, true, false, true).await,
+                                    self.render_type(expected, true, false, true),
+                                    self.render_type(actual, true, false, true),
                                 )
                             } else {
                                 (expected_message, actual_message)
@@ -941,16 +948,20 @@ impl Render {
                             "expected {} here, but found {}",
                             expected_message, actual_message,
                         );
+
+                        for reason in reasons {
+                            if let Some(explanation) = self.render_type_reason(reason) {
+                                explanations.push(reason.replace(explanation));
+                            }
+                        }
                     }
                     wipple_driver::typecheck::Diagnostic::MissingInputs(inputs) => {
-                        let code = self.render_code(diagnostic).await.unwrap_or_default();
+                        let code = self.render_code(diagnostic).unwrap_or_default();
 
-                        let inputs = future::join_all(
-                            inputs
-                                .iter()
-                                .map(|r#type| self.render_type(r#type, true, true, true)),
-                        )
-                        .await;
+                        let inputs = inputs
+                            .iter()
+                            .map(|r#type| self.render_type(r#type, true, true, true))
+                            .collect::<Vec<_>>();
 
                         severity = RenderedDiagnosticSeverity::Error;
 
@@ -966,28 +977,37 @@ impl Render {
                         };
                     }
                     wipple_driver::typecheck::Diagnostic::ExtraInput => {
-                        let code = self.render_code(diagnostic).await.unwrap_or_default();
+                        let code = self.render_code(diagnostic).unwrap_or_default();
 
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!("extra input provided to `{}`", code);
                     }
                     wipple_driver::typecheck::Diagnostic::UnresolvedInstance {
-                        instance, ..
+                        instance,
+                        reasons,
+                        ..
                     } => {
-                        let code = self.render_code(diagnostic).await.unwrap_or_default();
+                        let code = self.render_code(diagnostic).unwrap_or_default();
 
-                        let rendered_instance = self
-                            .render_instance(&WithInfo {
+                        let rendered_instance = self.render_instance(
+                            &WithInfo {
                                 info: diagnostic.info.clone(),
                                 item: instance.clone(),
-                            })
-                            .await;
+                            },
+                            true,
+                        );
 
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!("`{}` requires `{}`", code, rendered_instance);
+
+                        for reason in reasons {
+                            if let Some(explanation) = self.render_type_reason(reason) {
+                                explanations.push(reason.replace(explanation));
+                            }
+                        }
                     }
                     wipple_driver::typecheck::Diagnostic::TraitHasNoValue(_) => {
-                        let code = self.render_code(diagnostic).await.unwrap_or_default();
+                        let code = self.render_code(diagnostic).unwrap_or_default();
 
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!("`{}` can't be used as a value", code);
@@ -1003,7 +1023,7 @@ impl Render {
                         );
                     }
                     wipple_driver::typecheck::Diagnostic::NotAStructure(r#type) => {
-                        let rendered_type = self.render_type(r#type, true, true, true).await;
+                        let rendered_type = self.render_type(r#type, true, true, true);
 
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!("{} is not a structure", rendered_type);
@@ -1041,20 +1061,18 @@ impl Render {
                             } else {
                                 format!(
                                     "this code doesn't handle {}",
-                                    self.render_pattern(last, true).await,
+                                    self.render_pattern(last, true),
                                 )
                             }
                         } else {
                             format!(
                                 "this code doesn't handle {} or {}",
-                                future::join_all(
-                                    patterns[..patterns.len() - 1]
-                                        .iter()
-                                        .map(|pattern| self.render_pattern(pattern, true)),
-                                )
-                                .await
-                                .join(", "),
-                                self.render_pattern(last, true).await,
+                                patterns[..patterns.len() - 1]
+                                    .iter()
+                                    .map(|pattern| self.render_pattern(pattern, true))
+                                    .collect::<Vec<_>>()
+                                    .join(", "),
+                                self.render_pattern(last, true),
                             )
                         };
                     }
@@ -1073,19 +1091,24 @@ impl Render {
                     wipple_driver::typecheck::Diagnostic::Custom {
                         message: custom_message,
                         fix: custom_fix,
+                        reasons: custom_reasons,
                     } => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = self.render_custom_message(custom_message, true).await;
+                        message = self.render_custom_message(custom_message, true);
 
                         if let Some(custom_fix) = custom_fix {
                             fix = Some(RenderedFix {
-                                message: self.render_custom_message(&custom_fix.0, true).await,
+                                message: self.render_custom_message(&custom_fix.0, true),
                                 before: None,
-                                replacement: Some(
-                                    self.render_custom_message(&custom_fix.1, false).await,
-                                ),
+                                replacement: Some(self.render_custom_message(&custom_fix.1, false)),
                                 after: None,
                             });
+                        }
+
+                        for reason in custom_reasons {
+                            if let Some(explanation) = self.render_type_reason(reason) {
+                                explanations.push(reason.replace(explanation));
+                            }
                         }
                     }
                 }
@@ -1094,17 +1117,129 @@ impl Render {
                 severity = RenderedDiagnosticSeverity::Error;
                 message = String::from("failed to produce IR for this code");
             }
+            wipple_driver::Diagnostic::Lint(lint) => match lint {
+                wipple_driver::lint::Lint::NamingConventions(lint) => {
+                    let convention = match lint.convention {
+                        wipple_driver::lint::lints::NamingConvention::Variable => "variable",
+                        wipple_driver::lint::lints::NamingConvention::Type => "type",
+                        wipple_driver::lint::lints::NamingConvention::Trait => "trait",
+                        wipple_driver::lint::lints::NamingConvention::Constant => "constant",
+                        wipple_driver::lint::lints::NamingConvention::TypeParameter => {
+                            "type parameter"
+                        }
+                    };
+
+                    severity = RenderedDiagnosticSeverity::Warning;
+                    message = format!(
+                        "{} should be written as `{}`",
+                        convention, lint.suggested_name
+                    );
+
+                    fix = Some(RenderedFix {
+                        message: String::from("rename"),
+                        before: None,
+                        replacement: Some(lint.suggested_name.clone()),
+                        after: None,
+                    });
+                }
+            },
         }
 
+        let raw = {
+            let level = match severity {
+                RenderedDiagnosticSeverity::Warning => annotate_snippets::Level::Warning,
+                RenderedDiagnosticSeverity::Error => annotate_snippets::Level::Error,
+            };
+
+            let mut annotated = level.title("");
+            let mut annotated_explanations = Vec::new();
+            let mut annotated_footer = None;
+
+            let source = self.render_source(diagnostic);
+            if let Some(source) = source.as_ref() {
+                annotated = annotated.snippet(
+                    annotate_snippets::Snippet::source(source)
+                        .origin(&diagnostic.info.location.visible_path)
+                        .fold(true)
+                        .annotation(
+                            level
+                                .span(
+                                    (diagnostic.info.location.span.start as usize)
+                                        ..(diagnostic.info.location.span.end as usize),
+                                )
+                                .label(&message),
+                        ),
+                );
+            } else {
+                annotated = level.title(&message);
+            }
+
+            if let Some(fix) = fix.as_ref() {
+                if let Some(replacement) = fix
+                    .replacement
+                    .as_ref()
+                    .or(fix.before.as_ref())
+                    .or(fix.after.as_ref())
+                {
+                    annotated_footer = Some(format!("{}: `{}`", fix.message, replacement));
+                } else {
+                    annotated_footer = Some(fix.message.clone());
+                }
+            }
+
+            for explanation in &explanations {
+                if let Some(source) = self.render_source(explanation) {
+                    annotated_explanations.push((source, explanation));
+                }
+            }
+
+            for (source, explanation) in &annotated_explanations {
+                annotated = annotated.snippet(
+                    annotate_snippets::Snippet::source(source)
+                        .origin(&explanation.info.location.visible_path)
+                        .fold(true)
+                        .annotation(
+                            annotate_snippets::Level::Note
+                                .span(
+                                    (explanation.info.location.span.start as usize)
+                                        ..(explanation.info.location.span.end as usize),
+                                )
+                                .label(&explanation.item.message),
+                        ),
+                );
+            }
+
+            if let Some(footer) = annotated_footer.as_ref() {
+                annotated = annotated.footer(annotate_snippets::Level::Help.title(footer));
+            }
+
+            let renderer = annotate_snippets::Renderer::styled();
+            let raw = renderer.render(annotated);
+            raw.to_string()
+        };
+
         Some(RenderedDiagnostic {
+            raw,
             location: rendered_source_location,
             severity,
             message,
+            explanations,
             fix,
         })
     }
 
-    pub async fn render_token(
+    pub fn render_fix(&self, fix: &wipple_driver::fix::Fix) -> String {
+        match fix {
+            wipple_driver::fix::Fix::ReplaceWith(code) => {
+                format!("try replacing this code with `{code}`")
+            }
+            wipple_driver::fix::Fix::JoinWithNextLine => {
+                String::from("try joining this line with the following line")
+            }
+        }
+    }
+
+    pub fn render_token(
         &self,
         token: &wipple_driver::syntax::tokenize::Token<'_>,
         prefix: &str,
@@ -1154,112 +1289,146 @@ impl Render {
         }
     }
 
-    pub async fn render_syntax_kind(
-        &self,
-        kind: wipple_driver::syntax::parse::SyntaxKind,
-    ) -> &'static str {
+    pub fn render_syntax_kind(&self, kind: &wipple_driver::syntax::parse::SyntaxKind) -> String {
         use wipple_driver::syntax::parse::SyntaxKind;
 
         match kind {
-            SyntaxKind::Number => "number",
-            SyntaxKind::Name => "name",
-            SyntaxKind::Text => "text",
-            SyntaxKind::TopLevel => "top level",
-            SyntaxKind::Attribute => "attribute",
-            SyntaxKind::AttributeValue => "attribute value",
-            SyntaxKind::Statement => "statement",
-            SyntaxKind::Keyword => "keyword",
-            SyntaxKind::Operator => "operator",
-            SyntaxKind::Instance => "instance",
-            SyntaxKind::TypeParameter => "type parameter",
-            SyntaxKind::Pattern => "pattern",
-            SyntaxKind::WildcardPattern => "wildcard pattern",
-            SyntaxKind::NumberPattern => "number pattern",
-            SyntaxKind::TextPattern => "text pattern",
-            SyntaxKind::VariantPattern => "variant pattern",
-            SyntaxKind::DestructurePattern => "destructure pattern",
-            SyntaxKind::TuplePattern => "tuple pattern",
-            SyntaxKind::OrPattern => "or pattern",
-            SyntaxKind::MutatePattern => "mutate pattern",
-            SyntaxKind::AnnotatePattern => "annotate pattern",
-            SyntaxKind::Expression => "expression",
-            SyntaxKind::Type => "type",
-            SyntaxKind::PlaceholderType => "placeholder type",
-            SyntaxKind::DeclaredType => "declared type",
-            SyntaxKind::FunctionType => "function type",
-            SyntaxKind::TupleType => "tuple type",
-            SyntaxKind::BlockType => "block type",
-            SyntaxKind::IntrinsicType => "intrinsic type",
-            SyntaxKind::MessageType => "message type",
-            SyntaxKind::EqualType => "equal type",
-            SyntaxKind::TypeMember => "type member",
-            SyntaxKind::FieldDeclaration => "field declaration",
-            SyntaxKind::VariantDeclaration => "variant declaration",
-            SyntaxKind::Arm => "arm",
-            SyntaxKind::TypeFunction => "type function",
-            SyntaxKind::TypeRepresentation => "type representation",
-            SyntaxKind::TypeDeclaration => "type declaration",
-            SyntaxKind::TypeAliasDeclaration => "type alias declaration",
-            SyntaxKind::TraitDeclaration => "trait declaration",
-            SyntaxKind::InstanceDeclaration => "instance declaration",
-            SyntaxKind::ConstantDeclaration => "constant declaration",
-            SyntaxKind::LanguageDeclaration => "language declaration",
-            SyntaxKind::Assignment => "assignment",
-            SyntaxKind::AnnotateExpression => "annotate expression",
-            SyntaxKind::NameExpression => "name expression",
-            SyntaxKind::NumberExpression => "number expression",
-            SyntaxKind::TextExpression => "text expression",
-            SyntaxKind::DoExpression => "do expression",
-            SyntaxKind::CallExpression => "call expression",
-            SyntaxKind::ApplyExpression => "apply expression",
-            SyntaxKind::BinaryOperatorExpression => "binary operator expression",
-            SyntaxKind::AsExpression => "as expression",
-            SyntaxKind::IsExpression => "is expression",
-            SyntaxKind::WhenExpression => "when expression",
-            SyntaxKind::IntrinsicExpression => "intrinsic expression",
-            SyntaxKind::TupleExpression => "tuple expression",
-            SyntaxKind::CollectionExpression => "collection expression",
-            SyntaxKind::StructureExpression => "structure expression",
-            SyntaxKind::StructureField => "structure field",
-            SyntaxKind::WhenBody => "when body",
-            SyntaxKind::WhenArm => "when arm",
-            SyntaxKind::BlockExpression => "block expression",
-            SyntaxKind::FunctionExpression => "function expression",
-            SyntaxKind::FunctionInputs => "function inputs",
-            SyntaxKind::Nothing => "nothing",
+            SyntaxKind::Number => String::from("number"),
+            SyntaxKind::Name => String::from("name"),
+            SyntaxKind::Text => String::from("text"),
+            SyntaxKind::TopLevel => String::from("top level"),
+            SyntaxKind::Attribute => String::from("attribute"),
+            SyntaxKind::AttributeValue => String::from("attribute value"),
+            SyntaxKind::Statement => String::from("statement"),
+            SyntaxKind::Keyword(keyword) => format!("`{keyword}`"),
+            SyntaxKind::ContextualKeyword(keyword) => format!("`{keyword}`"),
+            SyntaxKind::Operator(operator) => format!("`{operator}`"),
+            SyntaxKind::NonAssociativeOperator(operator) => format!("`{operator}`"),
+            SyntaxKind::Instance => String::from("instance"),
+            SyntaxKind::TypeParameter => String::from("type parameter"),
+            SyntaxKind::Pattern => String::from("pattern"),
+            SyntaxKind::WildcardPattern => String::from("wildcard pattern"),
+            SyntaxKind::NumberPattern => String::from("number pattern"),
+            SyntaxKind::TextPattern => String::from("text pattern"),
+            SyntaxKind::VariantPattern => String::from("variant pattern"),
+            SyntaxKind::DestructurePattern => String::from("destructure pattern"),
+            SyntaxKind::TuplePattern => String::from("tuple pattern"),
+            SyntaxKind::OrPattern => String::from("or pattern"),
+            SyntaxKind::MutatePattern => String::from("mutate pattern"),
+            SyntaxKind::AnnotatePattern => String::from("annotate pattern"),
+            SyntaxKind::Expression => String::from("code"),
+            SyntaxKind::Type => String::from("type"),
+            SyntaxKind::PlaceholderType => String::from("placeholder type"),
+            SyntaxKind::DeclaredType => String::from("declared type"),
+            SyntaxKind::FunctionType => String::from("function type"),
+            SyntaxKind::TupleType => String::from("tuple type"),
+            SyntaxKind::BlockType => String::from("block type"),
+            SyntaxKind::IntrinsicType => String::from("intrinsic type"),
+            SyntaxKind::MessageType => String::from("message type"),
+            SyntaxKind::EqualType => String::from("equal type"),
+            SyntaxKind::TypeMember => String::from("type member"),
+            SyntaxKind::FieldDeclaration => String::from("field declaration"),
+            SyntaxKind::VariantDeclaration => String::from("variant declaration"),
+            SyntaxKind::Arm => String::from("arm"),
+            SyntaxKind::TypeFunction => String::from("type function"),
+            SyntaxKind::TypeRepresentation => String::from("type representation"),
+            SyntaxKind::TypeDeclaration => String::from("type declaration"),
+            SyntaxKind::TraitDeclaration => String::from("trait declaration"),
+            SyntaxKind::InstanceDeclaration => String::from("instance declaration"),
+            SyntaxKind::ConstantDeclaration => String::from("constant declaration"),
+            SyntaxKind::LanguageDeclaration => String::from("language declaration"),
+            SyntaxKind::Assignment => String::from("assignment"),
+            SyntaxKind::AnnotateExpression => String::from("annotate expression"),
+            SyntaxKind::NameExpression => String::from("name expression"),
+            SyntaxKind::NumberExpression => String::from("number expression"),
+            SyntaxKind::TextExpression => String::from("text expression"),
+            SyntaxKind::DoExpression => String::from("do expression"),
+            SyntaxKind::CallExpression => String::from("call expression"),
+            SyntaxKind::ApplyExpression => String::from("apply expression"),
+            SyntaxKind::BinaryOperatorExpression => String::from("binary operator expression"),
+            SyntaxKind::AsExpression => String::from("as expression"),
+            SyntaxKind::IsExpression => String::from("is expression"),
+            SyntaxKind::WhenExpression => String::from("when expression"),
+            SyntaxKind::IntrinsicExpression => String::from("intrinsic expression"),
+            SyntaxKind::TupleExpression => String::from("tuple expression"),
+            SyntaxKind::CollectionExpression => String::from("collection expression"),
+            SyntaxKind::StructureExpression => String::from("structure expression"),
+            SyntaxKind::StructureField => String::from("structure field"),
+            SyntaxKind::WhenBody => String::from("when body"),
+            SyntaxKind::WhenArm => String::from("when arm"),
+            SyntaxKind::BlockExpression => String::from("block expression"),
+            SyntaxKind::FunctionExpression => String::from("function expression"),
+            SyntaxKind::FunctionInputs => String::from("function inputs"),
+            SyntaxKind::Nothing => String::from("nothing"),
         }
     }
 
-    pub async fn render_diagnostic_to_debug_string(
+    pub fn render_type_reason(
         &self,
-        diagnostic: &RenderedDiagnostic,
-    ) -> String {
-        let line = diagnostic.location.start.line + 1;
-        let column = diagnostic.location.start.column + 1;
+        reason: &WithInfo<wipple_driver::typecheck::ErrorReason<wipple_driver::Driver>>,
+    ) -> Option<RenderedExplanation> {
+        let location = self.render_source_location(reason)?;
 
+        let message = match &reason.item {
+            wipple_driver::typecheck::ErrorReason::Custom(message) => {
+                self.render_custom_message(message, false)
+            }
+            wipple_driver::typecheck::ErrorReason::Expression(r#type) => {
+                let code = self.render_code(reason)?;
+
+                format!(
+                    "`{}` is {}",
+                    code,
+                    self.render_type(r#type, true, true, true)
+                )
+            }
+        };
+
+        Some(RenderedExplanation { location, message })
+    }
+
+    pub fn render_diagnostic_to_debug_string(&self, diagnostic: &RenderedDiagnostic) -> String {
         let severity = match diagnostic.severity {
             RenderedDiagnosticSeverity::Warning => "warning",
             RenderedDiagnosticSeverity::Error => "error",
         };
 
-        format!(
-            "{}:{}:{}: {}: {}",
-            diagnostic.location.visible_path, line, column, severity, diagnostic.message
-        )
+        let explanations = diagnostic.explanations.iter().map(|explanation| {
+            (
+                &explanation.item.location,
+                "note",
+                &explanation.item.message,
+            )
+        });
+
+        [(&diagnostic.location, severity, &diagnostic.message)]
+            .into_iter()
+            .chain(explanations)
+            .map(|(location, severity, message)| {
+                let line = location.start.line + 1;
+                let column = location.start.column + 1;
+
+                format!(
+                    "{}:{}:{}: {}: {}",
+                    diagnostic.location.visible_path, line, column, severity, message
+                )
+            })
+            .collect::<Vec<_>>()
+            .join("\n")
     }
 
-    pub async fn render_documentation(
+    pub fn render_documentation(
         &self,
         declaration: &WithInfo<AnyDeclaration>,
     ) -> Option<RenderedDocumentation> {
-        let rendered_source_location = self.render_source_location(declaration).await?;
+        let rendered_source_location = self.render_source_location(declaration)?;
 
         let line = rendered_source_location.start.line as usize;
         if line == 0 {
             return None;
         }
 
-        let inner = self.0.lock().unwrap();
+        let inner = self.0.read().unwrap();
         let lines = inner
             .files
             .get(&rendered_source_location.path)?
@@ -1316,8 +1485,8 @@ impl Render {
         Some(RenderedDocumentation { docs, example })
     }
 
-    pub async fn render_highlight<T>(&self, value: &WithInfo<T>) -> Option<RenderedHighlight> {
-        let declaration = self.get_declaration_from_info(&value.info, false).await?;
+    pub fn render_highlight<T>(&self, value: &WithInfo<T>) -> Option<RenderedHighlight> {
+        let declaration = self.get_declaration_from_info(&value.info, false)?;
 
         let attributes = match &declaration.item.kind {
             AnyDeclarationKind::Type(declaration) => Some(&declaration.attributes),
@@ -1350,11 +1519,7 @@ impl Render {
         Some(options)
     }
 
-    pub async fn render_suggestions_at_cursor(
-        &self,
-        path: &str,
-        index: u32,
-    ) -> Vec<RenderedSuggestion> {
+    pub fn render_suggestions_at_cursor(&self, path: &str, index: u32) -> Vec<RenderedSuggestion> {
         let keyword_suggestions = KEYWORDS.iter().map(|keyword| RenderedSuggestion {
             kind: RenderedSuggestionKind::Keyword,
             name: keyword.to_string(),
@@ -1369,52 +1534,45 @@ impl Render {
             docs: None, // TODO: Documentation for operators
         });
 
-        let declarations = self.0.lock().unwrap().declarations.clone();
-        let declaration_suggestions =
-            future::join_all(declarations.into_iter().map(|declaration| async move {
-                let kind = match &declaration.item.kind {
-                    AnyDeclarationKind::Type(_) => RenderedSuggestionKind::Type,
-                    AnyDeclarationKind::Trait(_) => RenderedSuggestionKind::Trait,
-                    AnyDeclarationKind::Constant(_) => RenderedSuggestionKind::Constant,
-                    AnyDeclarationKind::TypeParameter(_) => RenderedSuggestionKind::TypeParameter,
-                    AnyDeclarationKind::Instance(_) => return None,
+        let declarations = self.0.read().unwrap().declarations.clone();
+        let declaration_suggestions = declarations.into_iter().filter_map(|declaration| {
+            let kind = match &declaration.item.kind {
+                AnyDeclarationKind::Type(_) => RenderedSuggestionKind::Type,
+                AnyDeclarationKind::Trait(_) => RenderedSuggestionKind::Trait,
+                AnyDeclarationKind::Constant(_) => RenderedSuggestionKind::Constant,
+                AnyDeclarationKind::TypeParameter(_) => RenderedSuggestionKind::TypeParameter,
+                AnyDeclarationKind::Instance(_) => return None,
+            };
+
+            Some(RenderedSuggestion {
+                kind,
+                name: declaration.item.name.as_ref()?.to_string(),
+                code: self.render_declaration(&declaration),
+                docs: self.render_documentation(&declaration),
+            })
+        });
+
+        let local_suggestions = self
+            .get_locals_at_cursor(path, index)
+            .into_iter()
+            .map(|local| {
+                let (kind, name, r#type) = local.item;
+
+                let code = match r#type {
+                    Some(r#type) => {
+                        let r#type = self.render_type(&r#type, true, false, false);
+                        Some(format!("{} :: {}", name, r#type))
+                    }
+                    None => None,
                 };
 
-                Some(RenderedSuggestion {
+                RenderedSuggestion {
                     kind,
-                    name: declaration.item.name.as_ref()?.to_string(),
-                    code: self.render_declaration(&declaration).await,
-                    docs: self.render_documentation(&declaration).await,
-                })
-            }))
-            .await
-            .into_iter()
-            .flatten();
-
-        let local_suggestions = future::join_all(
-            self.get_locals_at_cursor(path, index)
-                .await
-                .into_iter()
-                .map(|local| async {
-                    let (kind, name, r#type) = local.item;
-
-                    let code = match r#type {
-                        Some(r#type) => {
-                            let r#type = self.render_type(&r#type, true, false, false).await;
-                            Some(format!("{} :: {}", name, r#type))
-                        }
-                        None => None,
-                    };
-
-                    RenderedSuggestion {
-                        kind,
-                        name,
-                        code,
-                        docs: None, // locals cannot have documentation
-                    }
-                }),
-        )
-        .await;
+                    name,
+                    code,
+                    docs: None, // locals cannot have documentation
+                }
+            });
 
         keyword_suggestions
             .chain(operator_suggestions)
@@ -1423,7 +1581,7 @@ impl Render {
             .collect()
     }
 
-    async fn get_locals_at_cursor(
+    fn get_locals_at_cursor(
         &self,
         path: &str,
         index: u32,
@@ -1434,16 +1592,15 @@ impl Render {
             Option<WithInfo<wipple_driver::typecheck::Type<wipple_driver::Driver>>>,
         )>,
     > {
-        let expression_tree = match self.get_expression_tree_at_cursor(path, index).await {
+        let expression_tree = match self.get_expression_tree_at_cursor(path, index) {
             Some(tree) => tree,
             None => return Vec::new(),
         };
 
         let mut locals = Vec::new();
 
-        if let Some(declaration) = self
-            .get_declaration_from_info(&expression_tree.first().unwrap().info, true)
-            .await
+        if let Some(declaration) =
+            self.get_declaration_from_info(&expression_tree.first().unwrap().info, true)
         {
             let parameters = match &declaration.item.kind {
                 AnyDeclarationKind::Constant(declaration) => Some(&declaration.parameters),
@@ -1453,7 +1610,7 @@ impl Render {
 
             if let Some(parameters) = parameters {
                 for parameter in parameters {
-                    if let Some(declaration) = self.get_declaration_from_path(parameter).await {
+                    if let Some(declaration) = self.get_declaration_from_path(parameter) {
                         if let Some(name) = declaration.item.name {
                             locals.push(WithInfo {
                                 info: declaration.info.clone(),
@@ -1469,7 +1626,7 @@ impl Render {
             if let wipple_driver::typecheck::TypedExpressionKind::Variable(name, path) =
                 expression.item.kind
             {
-                if let Some(declaration) = self.get_declaration_from_path(&path).await {
+                if let Some(declaration) = self.get_declaration_from_path(&path) {
                     let r#type = WithInfo {
                         info: expression.info,
                         item: expression.item.r#type,
@@ -1486,13 +1643,13 @@ impl Render {
         locals
     }
 
-    pub async fn get_path_at_cursor(
+    pub fn get_path_at_cursor(
         &self,
         path: &str,
         index: u32,
     ) -> Option<WithInfo<wipple_driver::lower::Path>> {
         self.0
-            .lock()
+            .read()
             .unwrap()
             .ide
             .as_ref()?
@@ -1502,25 +1659,24 @@ impl Render {
             .cloned()
     }
 
-    pub async fn get_expression_at_cursor(
+    pub fn get_expression_at_cursor(
         &self,
         path: &str,
         index: u32,
     ) -> Option<WithInfo<wipple_driver::typecheck::TypedExpression<wipple_driver::Driver>>> {
-        self.get_expression_tree_at_cursor(path, index)
-            .await?
+        self.get_expression_tree_at_cursor(path, index)?
             .into_iter()
             .next()
     }
 
-    async fn get_expression_tree_at_cursor(
+    fn get_expression_tree_at_cursor(
         &self,
         path: &str,
         index: u32,
     ) -> Option<Vec<WithInfo<wipple_driver::typecheck::TypedExpression<wipple_driver::Driver>>>>
     {
         self.0
-            .lock()
+            .read()
             .unwrap()
             .libraries
             .iter()

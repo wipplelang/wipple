@@ -22,9 +22,6 @@ pub struct Interface<D: Driver> {
     /// The type declarations in the module.
     pub type_declarations: HashMap<Path, WithInfo<D::Info, TypeDeclaration<D>>>,
 
-    /// The type alias declarations in the module.
-    pub type_alias_declarations: HashMap<Path, WithInfo<D::Info, TypeAliasDeclaration<D>>>,
-
     /// The trait declarations in the module.
     pub trait_declarations: HashMap<Path, WithInfo<D::Info, TraitDeclaration<D>>>,
 
@@ -237,22 +234,6 @@ pub enum UnresolvedStatement<D: Driver> {
         representation: WithInfo<D::Info, UnresolvedTypeRepresentation<D>>,
     },
 
-    /// A type alias declaration.
-    #[serde(rename_all = "camelCase")]
-    TypeAlias {
-        /// The type alias's attributes.
-        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
-
-        /// The name of the type alias.
-        name: WithInfo<D::Info, String>,
-
-        /// The type alias's parameters.
-        parameters: Vec<WithInfo<D::Info, UnresolvedTypeParameter<D>>>,
-
-        /// The aliased type.
-        r#type: WithInfo<D::Info, UnresolvedType<D>>,
-    },
-
     /// A trait declaration.
     #[serde(rename_all = "camelCase")]
     Trait {
@@ -294,6 +275,9 @@ pub enum UnresolvedStatement<D: Driver> {
     /// An instance declaration.
     #[serde(rename_all = "camelCase")]
     Instance {
+        /// The info belonging to the left-hand side of the assignment.
+        pattern: WithInfo<D::Info, ()>,
+
         /// The instance's parameters.
         parameters: Vec<WithInfo<D::Info, UnresolvedTypeParameter<D>>>,
 
@@ -844,9 +828,6 @@ pub enum PathComponent {
     /// A type declaration.
     Type(String),
 
-    /// A type alias declaration.
-    TypeAlias(String),
-
     /// A trait declaration.
     Trait(String),
 
@@ -896,7 +877,6 @@ impl PathComponent {
         match self {
             PathComponent::File(name)
             | PathComponent::Type(name)
-            | PathComponent::TypeAlias(name)
             | PathComponent::Trait(name)
             | PathComponent::Constant(name)
             | PathComponent::Constructor(name)
@@ -915,7 +895,6 @@ impl std::fmt::Display for PathComponent {
         match self {
             PathComponent::File(name) => write!(f, "file {}", name),
             PathComponent::Type(name) => write!(f, "type {}", name),
-            PathComponent::TypeAlias(name) => write!(f, "type-alias {}", name),
             PathComponent::Trait(name) => write!(f, "trait {}", name),
             PathComponent::Constant(name) => write!(f, "constant {}", name),
             PathComponent::Constructor(name) => write!(f, "constructor {}", name),
@@ -938,7 +917,6 @@ impl std::str::FromStr for PathComponent {
         match prefix {
             "file" => Ok(PathComponent::File(name.to_string())),
             "type" => Ok(PathComponent::Type(name.to_string())),
-            "type-alias" => Ok(PathComponent::TypeAlias(name.to_string())),
             "trait" => Ok(PathComponent::Trait(name.to_string())),
             "constant" => Ok(PathComponent::Constant(name.to_string())),
             "constructor" => Ok(PathComponent::Constructor(name.to_string())),
@@ -1008,22 +986,6 @@ pub struct TypeDeclaration<D: Driver> {
 
     /// The type's representation.
     pub representation: WithInfo<D::Info, TypeRepresentation<D>>,
-}
-
-/// A resolved type alias declaration.
-#[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""), Clone(bound = ""))]
-#[serde(rename_all = "camelCase")]
-#[serde(bound(serialize = "", deserialize = ""))]
-pub struct TypeAliasDeclaration<D: Driver> {
-    /// The type alias's attributes.
-    pub attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
-
-    /// The type alias's parameters.
-    pub parameters: Vec<crate::Path>,
-
-    /// The aliased type.
-    pub r#type: WithInfo<D::Info, crate::Type<D>>,
 }
 
 /// A resolved trait declaration.
@@ -1319,16 +1281,6 @@ pub enum Type<D: Driver> {
         path: WithInfo<D::Info, Path>,
 
         /// The parameters provided to the type.
-        parameters: Vec<WithInfo<D::Info, Type<D>>>,
-    },
-
-    /// An aliased type.
-    #[serde(rename_all = "camelCase")]
-    Alias {
-        /// The path to the type alias.
-        path: WithInfo<D::Info, Path>,
-
-        /// The parameters provided to the type alias.
         parameters: Vec<WithInfo<D::Info, Type<D>>>,
     },
 

@@ -17,6 +17,7 @@
 
 # Advanced guides
 
+-   [How `repeat` works](./guides/how-repeat-works.md)
 -   [Interactive elements in the playground](./guides/interactive-elements.md)
 -   [Custom error messages](./guides/custom-error-messages.md)
 
@@ -28,4 +29,10 @@
 
 # Compiler documentation
 
+-   [Project overview](./compiler/project-overview.md)
+-   [Lexing](./compiler/lexing.md)
+-   [Parsing](./compiler/parsing.md)
+-   [Lowering](./compiler/lowering.md)
 -   [Typechecking](./compiler/typechecking.md)
+-   [IR generation](./compiler/ir-generation.md)
+-   [The driver](./compiler/driver.md)

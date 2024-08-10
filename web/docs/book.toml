@@ -6,11 +6,14 @@ title = "Wipple Documentation"
 
 [preprocessor.template]
 
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
 [output.html]
 site-url = "/docs/"
 no-section-label = true
-curly-quotes = true
-additional-js = ["js/custom.js"]
+smart-punctuation = true
+additional-js = ["js/custom.js", "js/mermaid.min.js", "js/mermaid-init.js"]
 additional-css = ["style/custom.css"]
 
 [output.html.code.hidelines]

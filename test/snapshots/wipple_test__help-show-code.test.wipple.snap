@@ -2,6 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics:
-  - "tests/help-show-code.test.wipple:14:1: error: `foo` is not compatible with `bar`"
-output: []
+tests/help-show-code.test.wipple:14:1: error: `foo` is not compatible with `bar`

@@ -2,6 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics:
-  - "tests/custom-errors.test.wipple:15:1: error: expected a distance in `pixels`"
-output: []
+tests/custom-errors.test.wipple:15:1: error: expected a distance in `pixels`

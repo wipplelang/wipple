@@ -2,6 +2,7 @@
 
 #![allow(clippy::print_stdout, clippy::print_stderr)]
 
+mod doc;
 mod lsp;
 
 use clap::Parser;
@@ -50,6 +51,30 @@ enum Args {
         source_paths: Vec<PathBuf>,
     },
     Lsp,
+    Doc {
+        #[clap(
+            long = "template-url",
+            default_value = "https://wipple.dev/doc-template.html"
+        )]
+        template_url: String,
+
+        #[clap(long = "template-path")]
+        template_path: Option<PathBuf>,
+
+        #[clap(long = "json")]
+        json: bool,
+
+        #[clap(long = "title")]
+        title: String,
+
+        #[clap(long = "filter")]
+        filter: Option<glob::Pattern>,
+
+        #[clap(short = 'o', long = "output")]
+        output_path: PathBuf,
+
+        interface_path: PathBuf,
+    },
 }
 
 const SHEBANG: &str = "#!/usr/bin/env wipple run\n";
@@ -86,8 +111,10 @@ async fn main() -> anyhow::Result<()> {
             let result = wipple_driver::compile(sources, dependencies);
 
             if !result.diagnostics.is_empty() {
-                print_diagnostics(&result.diagnostics, result.interface).await;
-                process::exit(1);
+                let contains_errors = print_diagnostics(&result.diagnostics, &result.interface);
+                if contains_errors {
+                    process::exit(1);
+                }
             }
 
             if let Some(output_interface_path) = output_interface_path {
@@ -194,8 +221,10 @@ async fn main() -> anyhow::Result<()> {
             let result = wipple_driver::compile(sources, dependencies);
 
             if !result.diagnostics.is_empty() {
-                print_diagnostics(&result.diagnostics, result.interface).await;
-                process::exit(1);
+                let contains_error = print_diagnostics(&result.diagnostics, &result.interface);
+                if contains_error {
+                    process::exit(1);
+                }
             }
 
             let output = PlaygroundBundle {
@@ -231,69 +260,69 @@ async fn main() -> anyhow::Result<()> {
             lsp::start().await;
             Ok(())
         }
+        Args::Doc {
+            template_url,
+            template_path,
+            json,
+            title,
+            filter,
+            output_path,
+            interface_path,
+        } => {
+            let interface = serde_json::from_str(&fs::read_to_string(interface_path)?)?;
+
+            let output = if json {
+                eprintln!("Generating documentation...");
+                serde_json::to_string_pretty(&doc::json(&title, interface, filter))?
+            } else {
+                let template = match template_path {
+                    Some(path) => fs::read_to_string(path)?,
+                    None => {
+                        eprintln!("Fetching template...");
+                        reqwest::get(&template_url).await?.text().await?
+                    }
+                };
+
+                eprintln!("Generating documentation...");
+                doc::html(&title, interface, &template, filter)?
+            };
+
+            if let Some(parent) = output_path.parent() {
+                fs::create_dir_all(parent)?;
+            }
+
+            fs::write(&output_path, output)?;
+
+            eprintln!("Documentation written to {}", output_path.display());
+
+            Ok(())
+        }
     }
 }
 
-async fn print_diagnostics(
+#[must_use]
+fn print_diagnostics(
     diagnostics: &[wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>],
-    interface: wipple_driver::Interface,
-) {
+    interface: &wipple_driver::Interface,
+) -> bool {
     let render = wipple_render::Render::new();
-    render.update(interface, Vec::new(), None).await;
+    render.update(interface.clone(), Vec::new(), None);
 
-    let renderer = annotate_snippets::Renderer::styled();
-
+    let mut contains_error = false;
     for diagnostic in diagnostics {
-        if let Some(rendered_diagnostic) = render.render_diagnostic(diagnostic).await {
-            let level = match rendered_diagnostic.severity {
-                wipple_render::RenderedDiagnosticSeverity::Warning => {
-                    annotate_snippets::Level::Warning
-                }
-                wipple_render::RenderedDiagnosticSeverity::Error => annotate_snippets::Level::Error,
-            };
-
-            let mut message = level.title("");
-            let mut footer = None;
-
-            let source = render.render_source(diagnostic).await;
-            if let Some(source) = source.as_ref() {
-                message = message.snippet(
-                    annotate_snippets::Snippet::source(source)
-                        .origin(&diagnostic.info.location.visible_path)
-                        .fold(true)
-                        .annotation(
-                            level
-                                .span(
-                                    (diagnostic.info.location.span.start as usize)
-                                        ..(diagnostic.info.location.span.end as usize),
-                                )
-                                .label(&rendered_diagnostic.message),
-                        ),
-                );
-            } else {
-                message = level.title(&rendered_diagnostic.message);
+        if let Some(rendered_diagnostic) = render.render_diagnostic(diagnostic) {
+            if matches!(
+                rendered_diagnostic.severity,
+                wipple_render::RenderedDiagnosticSeverity::Error
+            ) {
+                contains_error = true;
             }
 
-            if let Some(fix) = rendered_diagnostic.fix.as_ref() {
-                if let Some(replacement) = fix
-                    .replacement
-                    .as_ref()
-                    .or(fix.before.as_ref())
-                    .or(fix.after.as_ref())
-                {
-                    footer = Some(format!("{}: `{}`", fix.message, replacement));
-                } else {
-                    footer = Some(fix.message.clone());
-                }
-            }
-
-            if let Some(footer) = footer.as_ref() {
-                message = message.footer(annotate_snippets::Level::Help.title(footer));
-            }
-
-            anstream::eprintln!("{}", renderer.render(message));
+            eprintln!("{}", rendered_diagnostic.raw);
         }
     }
+
+    contains_error
 }
 
 async fn run_executable(executable: wipple_driver::Executable) {
@@ -337,7 +366,7 @@ async fn run_executable(executable: wipple_driver::Executable) {
         }
     }
 
-    let options = wipple_interpreter::Options::<Runtime>::with_io(wipple_interpreter::Io {
+    let mut options = wipple_interpreter::Options::<Runtime>::with_io(wipple_interpreter::Io {
         display: Arc::new(|message| {
             async move {
                 println!("{}", message);
@@ -349,15 +378,18 @@ async fn run_executable(executable: wipple_driver::Executable) {
         choice: Arc::new(|_, _| todo!()),
         ui: Arc::new(|_, _| todo!()),
         sleep: Arc::new(|_| todo!()),
-    })
-    .with_debug(|s| {
-        async move {
-            if std::env::var("WIPPLE_DEBUG_INTERPRETER").is_ok() {
-                eprintln!("{}\n", s);
-            }
-        }
-        .boxed()
     });
+
+    if std::env::var("WIPPLE_DEBUG_INTERPRETER").is_ok() {
+        options = options.with_debug(|s| {
+            async move {
+                if std::env::var("WIPPLE_DEBUG_INTERPRETER").is_ok() {
+                    eprintln!("{}\n", s);
+                }
+            }
+            .boxed()
+        });
+    }
 
     if let Err(error) = wipple_interpreter::evaluate(executable, options).await {
         eprintln!("error: {}", error.0);

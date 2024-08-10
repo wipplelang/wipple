@@ -7,26 +7,27 @@ import {
     TutorialItem,
     useAlert,
     useNavbar,
-} from "../../components";
+    PlaygroundListItem,
+    TutorialStep,
+    newPlaygroundTutorialItem,
+    startTutorial,
+    Lesson,
+} from "wipple-playground";
 import { MaterialSymbol } from "react-material-symbols";
 import {
     ListPlaygroundsFilter,
-    PlaygroundListItem,
-    TutorialStep,
     createLesson,
     createPlayground,
     deletePlayground,
     duplicatePlayground,
     listCachedPlaygrounds,
     listPlaygrounds,
-    newPlaygroundTutorialItem,
-    startTutorial,
 } from "../../models";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
 import { useStore } from "../../store";
 import { produce } from "immer";
-import { Lesson, lessons } from "../../lessons";
+import { getLessons } from "../../helpers";
 
 export const HomePage = () => {
     const { setPrimaryActions } = useNavbar();
@@ -304,32 +305,43 @@ const PlaygroundCard = (props: {
 const LessonsAlert = (props: {
     onSelectLesson: (lesson: Lesson) => void;
     onCancel: () => void;
-}) => (
-    <div className="flex flex-col gap-4 w-[512px]">
-        <div className="flex flex-col gap-2">
-            <h1 className="text-2xl font-semibold">Lessons</h1>
+}) => {
+    const [lessons, setLessons] = useState<Lesson[]>([]);
 
-            {lessons.map((lesson, index) => (
-                <button
-                    key={index}
-                    className="flex flex-row items-center bg-sky-50 dark:bg-sky-950 hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors p-4 rounded-md"
-                    onClick={() => props.onSelectLesson(lesson)}
-                >
-                    <div className="flex flex-col items-start flex-1 text-left">
-                        <h2 className="text-xl font-semibold text-sky-500">{lesson.name}</h2>
-                        <p className="text-sky-400 dark:text-sky-600">{lesson.description}</p>
-                    </div>
+    useEffect(() => {
+        (async () => {
+            const lessons = await getLessons();
+            setLessons(lessons);
+        })();
+    }, []);
 
-                    <MaterialSymbol
-                        icon="chevron_right"
-                        className="text-2xl text-sky-400 dark:text-sky-600"
-                    />
-                </button>
-            ))}
+    return (
+        <div className="flex flex-col gap-4 w-[512px]">
+            <div className="flex flex-col gap-2">
+                <h1 className="text-2xl font-semibold">Lessons</h1>
+
+                {lessons.map((lesson, index) => (
+                    <button
+                        key={index}
+                        className="flex flex-row items-center bg-sky-50 dark:bg-sky-950 hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors p-4 rounded-md"
+                        onClick={() => props.onSelectLesson(lesson)}
+                    >
+                        <div className="flex flex-col items-start flex-1 text-left">
+                            <h2 className="text-xl font-semibold text-sky-500">{lesson.name}</h2>
+                            <p className="text-sky-400 dark:text-sky-600">{lesson.description}</p>
+                        </div>
+
+                        <MaterialSymbol
+                            icon="chevron_right"
+                            className="text-2xl text-sky-400 dark:text-sky-600"
+                        />
+                    </button>
+                ))}
+            </div>
+
+            <Button role="secondary" fill onClick={props.onCancel}>
+                Cancel
+            </Button>
         </div>
-
-        <Button role="secondary" fill onClick={props.onCancel}>
-            Cancel
-        </Button>
-    </div>
-);
+    );
+};

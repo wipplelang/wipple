@@ -1064,10 +1064,10 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                 index: WithInfo<D::Info, usize>,
                 mut expressions: Vec<WithInfo<<D as Driver>::Info, TokenTree<'src, D>>>,
                 diagnostics: &mut Vec<WithInfo<<D as Driver>::Info, Diagnostic<D>>>,
-            ) -> Option<(
+            ) -> (
                 WithInfo<D::Info, TokenTree<'src, D>>,
                 WithInfo<D::Info, TokenTree<'src, D>>,
-            )> {
+            ) {
                 let info = index.info;
                 let index = index.item;
 
@@ -1087,7 +1087,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                             right.last().unwrap().info.clone(),
                         );
 
-                        Some((
+                        (
                             WithInfo {
                                 info: left_info,
                                 item: parse_operators::<D>(
@@ -1104,7 +1104,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                                     diagnostics,
                                 ),
                             },
-                        ))
+                        )
                     }
                     (true, false) => {
                         expressions.pop().unwrap();
@@ -1115,7 +1115,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                             left.last().unwrap().info.clone(),
                         );
 
-                        Some((
+                        (
                             WithInfo {
                                 info: left_info,
                                 item: parse_operators::<D>(
@@ -1128,7 +1128,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                                 info,
                                 item: TokenTree::Error,
                             },
-                        ))
+                        )
                     }
                     (false, true) => {
                         let right = expressions.split_off(1);
@@ -1138,7 +1138,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                             right.last().unwrap().info.clone(),
                         );
 
-                        Some((
+                        (
                             WithInfo {
                                 info,
                                 item: TokenTree::Error,
@@ -1151,9 +1151,18 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                                     diagnostics,
                                 ),
                             },
-                        ))
+                        )
                     }
-                    (false, false) => None,
+                    (false, false) => (
+                        WithInfo {
+                            info: info.clone(),
+                            item: TokenTree::Error,
+                        },
+                        WithInfo {
+                            info,
+                            item: TokenTree::Error,
+                        },
+                    ),
                 }
             }
 
@@ -1177,17 +1186,16 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         (WithInfo { info, item: *index }, operator)
                     };
 
-                    match tree(index, expressions, diagnostics) {
-                        Some((left, right)) => TokenTree::Operator(
-                            WithInfo {
-                                info,
-                                item: operator,
-                            },
-                            left.boxed(),
-                            right.boxed(),
-                        ),
-                        None => TokenTree::Error,
-                    }
+                    let (left, right) = tree(index, expressions, diagnostics);
+
+                    TokenTree::Operator(
+                        WithInfo {
+                            info,
+                            item: operator,
+                        },
+                        left.boxed(),
+                        right.boxed(),
+                    )
                 }
                 AnyOperator::VariadicOperator(operator) => {
                     let mut indices = operators.iter().map(|&(index, _)| index).peekable();
@@ -1261,17 +1269,16 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         }
                     };
 
-                    match tree(index, expressions, diagnostics) {
-                        Some((left, right)) => TokenTree::NonAssociativeOperator(
-                            WithInfo {
-                                info,
-                                item: operator,
-                            },
-                            left.boxed(),
-                            right.boxed(),
-                        ),
-                        None => TokenTree::Error,
-                    }
+                    let (left, right) = tree(index, expressions, diagnostics);
+
+                    TokenTree::NonAssociativeOperator(
+                        WithInfo {
+                            info,
+                            item: operator,
+                        },
+                        left.boxed(),
+                        right.boxed(),
+                    )
                 }
             }
         }
@@ -1616,32 +1623,52 @@ impl<'src, D: Driver> TokenTree<'src, D> {
             }
         }
 
-        let mut tree = match stack.pop() {
+        // The bottom of the stack is the top level
+        let mut stack = stack.into_iter();
+        let mut tree = match stack.next() {
             Some((begin_info, tree)) => {
-                if let Some((begin_info, tree)) = stack.pop() {
-                    let end_token = match tree {
-                        TokenTree::List(delimiter, _) => delimiter.end(),
-                        TokenTree::Block(_) => Token::RightBrace,
-                        TokenTree::Attribute(_, _) => {
-                            // FIXME: Technically any token is allowed after a `@`
-                            Token::LeftParenthesis
+                // Report errors for items remaining on the stack
+                for (begin_info, tree) in stack {
+                    let (begin_token, end_token, end_info) = match tree {
+                        TokenTree::List(delimiter, mut tokens) => (
+                            delimiter.start(),
+                            delimiter.end(),
+                            tokens
+                                .pop()
+                                .map_or_else(|| begin_info.clone(), |token| token.info),
+                        ),
+                        TokenTree::Block(mut tokens) => (
+                            Token::LeftBrace,
+                            Token::RightBrace,
+                            // Get the last token in the last statement
+                            tokens
+                                .pop()
+                                .and_then(|token| match token.item {
+                                    TokenTree::List(_, mut tokens) => tokens.pop(),
+                                    _ => None,
+                                })
+                                .map_or_else(|| begin_info.clone(), |token| token.info),
+                        ),
+                        TokenTree::Attribute(_, value_tokens) => {
+                            // FIXME: Technically any token is allowed after a `@`, not just a left
+                            // parenthesis
+                            (
+                                Token::Keyword(Keyword::Attribute),
+                                Token::LeftParenthesis,
+                                value_tokens.info,
+                            )
                         }
                         _ => unreachable!(),
                     };
 
-                    let (info, token) = match tokens.next() {
-                        Some(token) => (token.info, Some(token.item.into_owned())),
-                        None => (first_info, None),
-                    };
-
                     diagnostics.push(WithInfo {
-                        info,
+                        info: end_info.clone(),
                         item: Diagnostic::Mismatch {
-                            expected: None,
-                            found: token,
+                            expected: Some(end_token),
+                            found: None,
                             matching: Some(WithInfo {
-                                info: begin_info,
-                                item: end_token,
+                                info: begin_info.clone(),
+                                item: begin_token,
                             }),
                         },
                     });

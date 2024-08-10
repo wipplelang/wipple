@@ -2,9 +2,7 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-diagnostics: []
-output:
-  - "True"
-  - "False"
-  - "False"
-  - "True"
+True
+False
+False
+True

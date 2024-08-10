@@ -1,4 +1,4 @@
-use futures::future;
+use futures::future::OptionFuture;
 use line_index::{LineCol, LineIndex};
 use serde::Deserialize;
 use std::{
@@ -51,7 +51,7 @@ struct Config {
     render: wipple_render::Render,
     dependencies: Option<wipple_driver::Interface>,
     libraries: Vec<wipple_driver::Library>,
-    diagnostics: Vec<wipple_render::RenderedDiagnostic>,
+    diagnostics: Vec<wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>>,
     files: HashMap<PathBuf, File>,
 }
 
@@ -216,9 +216,12 @@ impl LanguageServer for Backend {
             }
         };
 
-        let diagnostics = self.config.lock().unwrap().diagnostics.clone();
-        let diagnostics = diagnostics
-            .into_iter()
+        let config = self.config.lock().unwrap();
+
+        let diagnostics = config
+            .diagnostics
+            .iter()
+            .flat_map(|diagnostic| config.render.render_diagnostic(diagnostic))
             .filter(|diagnostic| path.to_str() == Some(&diagnostic.location.path))
             .enumerate()
             .map(|(index, diagnostic)| {
@@ -261,76 +264,142 @@ impl LanguageServer for Backend {
     }
 
     async fn code_action(&self, params: CodeActionParams) -> Result<Option<CodeActionResponse>> {
+        let sources = OptionFuture::from(params.text_document.uri.to_file_path().ok().and_then(
+            |active_file_path| {
+                let config = self.config.lock().unwrap();
+
+                let active_file = config.files.get(&active_file_path)?;
+                let active_code = active_file.text.clone();
+                let active_line_index = active_file.line_index.clone();
+
+                Some(async move {
+                    (
+                        self.get_sources(&active_file_path, &active_code).await,
+                        active_line_index,
+                    )
+                })
+            },
+        ))
+        .await;
+
         let config = self.config.lock().unwrap();
 
         let actions = params
             .context
             .diagnostics
             .into_iter()
-            .filter_map(|diagnostic| {
-                let index = diagnostic.data.as_ref()?.as_u64()? as usize;
-                let rendered_diagnostic = config.diagnostics.get(index)?;
-                let fix = rendered_diagnostic.fix.as_ref()?.clone();
+            .filter_map(|context_diagnostic| {
+                let index = context_diagnostic.data.as_ref()?.as_u64()? as usize;
+                let diagnostic = config.diagnostics.get(index)?;
+                let rendered_diagnostic = config.render.render_diagnostic(diagnostic)?;
+                Some((context_diagnostic, diagnostic, rendered_diagnostic))
+            })
+            .flat_map(|(context_diagnostic, diagnostic, rendered_diagnostic)| {
+                let mut actions = Vec::new();
 
-                let before_edit = fix.before.map(|text| TextEdit {
-                    range: Range {
-                        start: Position {
-                            line: rendered_diagnostic.location.start.line,
-                            character: rendered_diagnostic.location.start.column,
+                if let Some(fix) = rendered_diagnostic.fix.clone() {
+                    let before_edit = fix.before.map(|text| TextEdit {
+                        range: Range {
+                            start: Position {
+                                line: rendered_diagnostic.location.start.line,
+                                character: rendered_diagnostic.location.start.column,
+                            },
+                            end: Position {
+                                line: rendered_diagnostic.location.start.line,
+                                character: rendered_diagnostic.location.start.column,
+                            },
                         },
-                        end: Position {
-                            line: rendered_diagnostic.location.start.line,
-                            character: rendered_diagnostic.location.start.column,
-                        },
-                    },
-                    new_text: text,
-                });
+                        new_text: text,
+                    });
 
-                let edit = fix.replacement.map(|text| TextEdit {
-                    range: Range {
-                        start: Position {
-                            line: rendered_diagnostic.location.start.line,
-                            character: rendered_diagnostic.location.start.column,
+                    let edit = fix.replacement.map(|text| TextEdit {
+                        range: Range {
+                            start: Position {
+                                line: rendered_diagnostic.location.start.line,
+                                character: rendered_diagnostic.location.start.column,
+                            },
+                            end: Position {
+                                line: rendered_diagnostic.location.end.line,
+                                character: rendered_diagnostic.location.end.column,
+                            },
                         },
-                        end: Position {
-                            line: rendered_diagnostic.location.end.line,
-                            character: rendered_diagnostic.location.end.column,
-                        },
-                    },
-                    new_text: text,
-                });
+                        new_text: text,
+                    });
 
-                let after_edit = fix.after.map(|text| TextEdit {
-                    range: Range {
-                        start: Position {
-                            line: rendered_diagnostic.location.end.line,
-                            character: rendered_diagnostic.location.end.column,
+                    let after_edit = fix.after.map(|text| TextEdit {
+                        range: Range {
+                            start: Position {
+                                line: rendered_diagnostic.location.end.line,
+                                character: rendered_diagnostic.location.end.column,
+                            },
+                            end: Position {
+                                line: rendered_diagnostic.location.end.line,
+                                character: rendered_diagnostic.location.end.column,
+                            },
                         },
-                        end: Position {
-                            line: rendered_diagnostic.location.end.line,
-                            character: rendered_diagnostic.location.end.column,
-                        },
-                    },
-                    new_text: text,
-                });
+                        new_text: text,
+                    });
 
-                Some(CodeActionOrCommand::CodeAction(CodeAction {
-                    title: fix.message,
-                    kind: Some(CodeActionKind::QUICKFIX),
-                    diagnostics: Some(vec![diagnostic]),
-                    edit: Some(WorkspaceEdit {
-                        changes: Some(HashMap::from([(
-                            params.text_document.uri.clone(),
-                            [before_edit, edit, after_edit]
-                                .into_iter()
-                                .flatten()
-                                .collect(),
-                        )])),
-                        document_changes: None,
-                        change_annotations: None,
-                    }),
-                    ..Default::default()
-                }))
+                    actions.push(CodeActionOrCommand::CodeAction(CodeAction {
+                        title: fix.message,
+                        kind: Some(CodeActionKind::QUICKFIX),
+                        diagnostics: Some(vec![context_diagnostic.clone()]),
+                        edit: Some(WorkspaceEdit {
+                            changes: Some(HashMap::from([(
+                                params.text_document.uri.clone(),
+                                [before_edit, edit, after_edit]
+                                    .into_iter()
+                                    .flatten()
+                                    .collect(),
+                            )])),
+                            document_changes: None,
+                            change_annotations: None,
+                        }),
+                        ..Default::default()
+                    }));
+                }
+
+                if let Some((sources, line_index)) = sources.clone() {
+                    let dependencies = config.dependencies.clone();
+
+                    if let Some((fix, new_code)) =
+                        wipple_driver::fix_file(diagnostic.clone(), sources, dependencies)
+                    {
+                        let message = config.render.render_fix(&fix);
+
+                        let start = line_index.line_col(line_index::TextSize::new(0));
+                        let end = line_index.line_col(line_index.len());
+
+                        actions.push(CodeActionOrCommand::CodeAction(CodeAction {
+                            title: message,
+                            kind: Some(CodeActionKind::QUICKFIX),
+                            diagnostics: Some(vec![context_diagnostic]),
+                            edit: Some(WorkspaceEdit {
+                                changes: Some(HashMap::from([(
+                                    params.text_document.uri.clone(),
+                                    vec![TextEdit {
+                                        range: Range {
+                                            start: Position {
+                                                line: start.line,
+                                                character: start.col,
+                                            },
+                                            end: Position {
+                                                line: end.line,
+                                                character: end.col,
+                                            },
+                                        },
+                                        new_text: new_code,
+                                    }],
+                                )])),
+                                document_changes: None,
+                                change_annotations: None,
+                            }),
+                            ..Default::default()
+                        }));
+                    }
+                }
+
+                actions
             })
             .collect::<Vec<_>>();
 
@@ -395,19 +464,43 @@ impl LanguageServer for Backend {
             let render = self.config.lock().unwrap().render.clone();
 
             let path = wipple_driver::util::get_visible_path(&path);
-            if let Some(declaration_path) = render.get_path_at_cursor(&path, position).await {
-                if let Some(declaration) = render
-                    .get_declaration_from_path(&declaration_path.item)
-                    .await
+            if let Some(declaration_path) = render.get_path_at_cursor(&path, position) {
+                if let Some(declaration) = render.get_declaration_from_path(&declaration_path.item)
                 {
                     range = Some(range_from_info(&declaration_path.info, &file));
 
-                    if let Some(code) = render.render_declaration(&declaration).await {
+                    if let Some(code) = render.render_declaration(&declaration) {
                         content.push(format!("```wipple\n{code}\n```"));
                     }
 
-                    if let Some(rendered_documentation) =
-                        render.render_documentation(&declaration).await
+                    // If the expression is a trait, also render the resolved instance
+                    if let Some(instance) = instance_at_cursor(&render, &path, position) {
+                        match instance.item {
+                            Ok(declaration) => {
+                                let declaration = wipple_driver::util::WithInfo {
+                                    info: instance.info,
+                                    item: declaration,
+                                };
+
+                                if let Some(code) = render.render_declaration(&declaration) {
+                                    content.push(format!("```wipple\n{code}\n```"));
+                                }
+                            }
+                            Err(bound) => {
+                                let bound = wipple_driver::util::WithInfo {
+                                    info: instance.info,
+                                    item: bound,
+                                };
+
+                                let code = render.render_instance(&bound, false);
+
+                                content
+                                    .push(format!("```wipple\ninstance {code} -- from bound\n```"));
+                            }
+                        }
+                    }
+
+                    if let Some(rendered_documentation) = render.render_documentation(&declaration)
                     {
                         content.push(rendered_documentation.docs);
 
@@ -416,13 +509,12 @@ impl LanguageServer for Backend {
                         }
                     }
                 }
-            } else if let Some(expression) = render.get_expression_at_cursor(&path, position).await
-            {
+            } else if let Some(expression) = render.get_expression_at_cursor(&path, position) {
                 range = Some(range_from_info(&expression.info, &file));
 
                 let r#type = expression.map(|expression| expression.r#type);
 
-                let code = render.render_type(&r#type, true, false, false).await;
+                let code = render.render_type(&r#type, true, false, false);
                 content.push(format!("```wipple\n{code}\n```"));
             }
         }
@@ -467,7 +559,7 @@ impl LanguageServer for Backend {
         let path = wipple_driver::util::get_visible_path(&path);
 
         let render = self.config.lock().unwrap().render.clone();
-        let suggestions = render.render_suggestions_at_cursor(&path, position).await;
+        let suggestions = render.render_suggestions_at_cursor(&path, position);
 
         let completions = suggestions
             .into_iter()
@@ -539,53 +631,31 @@ impl LanguageServer for Backend {
 
         let render = self.config.lock().unwrap().render.clone();
 
-        let declaration_path = match render.get_path_at_cursor(&path, position).await {
+        let declaration_path = match render.get_path_at_cursor(&path, position) {
             Some(declaration) => declaration,
             None => return Ok(None),
         };
 
-        let declaration = match render
-            .get_declaration_from_path(&declaration_path.item)
-            .await
-        {
+        let declaration = match render.get_declaration_from_path(&declaration_path.item) {
             Some(declaration) => declaration,
             None => return Ok(None),
         };
 
-        let declaration_uri = match Url::from_file_path(declaration.info.location.path.as_ref()) {
-            Ok(uri) => uri,
-            Err(_) => return Ok(None),
+        let location = match location_from_info(&declaration.info) {
+            Some(location) => location,
+            None => return Ok(None),
         };
 
-        let declaration_file =
-            match fs::read_to_string(declaration.info.location.path.as_ref()).ok() {
-                Some(text) => File::new(text),
-                None => return Ok(None),
-            };
+        let mut locations = vec![location];
 
-        let start = declaration_file
-            .line_index
-            .line_col(declaration.info.location.span.start.into());
+        // If the expression is a trait, also show the resolved instance
+        if let Some(instance) = instance_at_cursor(&render, &path, position) {
+            if let Some(location) = location_from_info(&instance.info) {
+                locations.push(location);
+            }
+        }
 
-        let end = declaration_file
-            .line_index
-            .line_col(declaration.info.location.span.end.into());
-
-        let range = Range {
-            start: Position {
-                line: start.line,
-                character: start.col,
-            },
-            end: Position {
-                line: end.line,
-                character: end.col,
-            },
-        };
-
-        Ok(Some(GotoDefinitionResponse::Scalar(Location {
-            uri: declaration_uri,
-            range,
-        })))
+        Ok(Some(GotoDefinitionResponse::Array(locations)))
     }
 
     async fn formatting(&self, params: DocumentFormattingParams) -> Result<Option<Vec<TextEdit>>> {
@@ -624,11 +694,7 @@ impl LanguageServer for Backend {
 }
 
 impl Backend {
-    async fn compile_all(
-        &self,
-        active_file: &Path,
-        active_code: &str,
-    ) -> Vec<wipple_render::RenderedDiagnostic> {
+    async fn get_sources(&self, active_file: &Path, active_code: &str) -> Vec<wipple_driver::File> {
         let active_file = match active_file.canonicalize().ok() {
             Some(path) => path,
             None => return Vec::new(),
@@ -639,35 +705,43 @@ impl Backend {
             None => return Vec::new(),
         };
 
-        let sources = match fs::read_dir(active_dir).ok().map(|entries| {
-            entries
-                .filter_map(|entry| {
-                    let entry = entry.ok()?;
-                    let path = entry.path();
+        fs::read_dir(active_dir)
+            .ok()
+            .map(|entries| {
+                entries
+                    .filter_map(|entry| {
+                        let entry = entry.ok()?;
+                        let path = entry.path();
 
-                    if !path.is_file() || path.extension()?.to_str() != Some("wipple") {
-                        return None;
-                    }
+                        if !path.is_file() || path.extension()?.to_str() != Some("wipple") {
+                            return None;
+                        }
 
-                    let code = if path == active_file {
-                        // Ensure we get the latest changes even if the file
-                        // isn't saved
-                        active_code.to_string()
-                    } else {
-                        fs::read_to_string(&path).ok()?
-                    };
+                        let code = if path == active_file {
+                            // Ensure we get the latest changes even if the file
+                            // isn't saved
+                            active_code.to_string()
+                        } else {
+                            fs::read_to_string(&path).ok()?
+                        };
 
-                    Some(wipple_driver::File {
-                        path: path.to_string_lossy().to_string(),
-                        visible_path: wipple_driver::util::get_visible_path(&path),
-                        code,
+                        Some(wipple_driver::File {
+                            path: path.to_string_lossy().to_string(),
+                            visible_path: wipple_driver::util::get_visible_path(&path),
+                            code,
+                        })
                     })
-                })
-                .collect::<Vec<_>>()
-        }) {
-            Some(paths) => paths,
-            None => return Vec::new(),
-        };
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default()
+    }
+
+    async fn compile_all(
+        &self,
+        active_file: &Path,
+        active_code: &str,
+    ) -> Vec<wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>> {
+        let sources = self.get_sources(active_file, active_code).await;
 
         let (result, render, libraries) = {
             let config = self.config.lock().unwrap();
@@ -681,24 +755,13 @@ impl Backend {
             (result, render, libraries)
         };
 
-        render
-            .update(
-                result.interface,
-                [result.library].into_iter().chain(libraries).collect(),
-                Some(result.ide),
-            )
-            .await;
+        render.update(
+            result.interface,
+            [result.library].into_iter().chain(libraries).collect(),
+            Some(result.ide),
+        );
 
-        future::join_all(
-            result
-                .diagnostics
-                .iter()
-                .map(|diagnostic| render.render_diagnostic(diagnostic)),
-        )
-        .await
-        .into_iter()
-        .flatten()
-        .collect()
+        result.diagnostics
     }
 }
 
@@ -733,4 +796,70 @@ fn range_from_info(info: &wipple_driver::Info, file: &File) -> Range {
             character: end.col,
         },
     }
+}
+
+fn location_from_info(info: &wipple_driver::Info) -> Option<Location> {
+    let uri = Url::from_file_path(info.location.path.as_ref()).ok()?;
+
+    let file = File::new(fs::read_to_string(info.location.path.as_ref()).ok()?);
+    let start = file.line_index.line_col(info.location.span.start.into());
+    let end = file.line_index.line_col(info.location.span.end.into());
+
+    let range = Range {
+        start: Position {
+            line: start.line,
+            character: start.col,
+        },
+        end: Position {
+            line: end.line,
+            character: end.col,
+        },
+    };
+
+    Some(Location { uri, range })
+}
+
+fn instance_at_cursor(
+    render: &wipple_render::Render,
+    path: &str,
+    position: u32,
+) -> Option<
+    wipple_driver::util::WithInfo<
+        wipple_driver::Info,
+        std::result::Result<
+            wipple_render::AnyDeclaration,
+            wipple_driver::typecheck::Instance<wipple_driver::Driver>,
+        >,
+    >,
+> {
+    if let Some(expression) = render.get_expression_at_cursor(path, position) {
+        if let wipple_driver::typecheck::TypedExpressionKind::Constant { path, bounds, .. } =
+            expression.item.kind
+        {
+            if let Some(declaration) = render.get_declaration_from_path(&path) {
+                if let wipple_render::AnyDeclarationKind::Trait(_) = declaration.item.kind {
+                    // The constructor for a trait mentions the trait in its first
+                    // bound (traits themselves may not directly have bounds; if
+                    // that changes, this will need to be updated)
+                    if let Some(instance) = bounds.into_iter().next() {
+                        match instance.item {
+                            Ok(path) => {
+                                if let Some(declaration) = render.get_declaration_from_path(&path) {
+                                    return Some(declaration.map(Ok));
+                                }
+                            }
+                            Err(bound) => {
+                                return Some(wipple_driver::util::WithInfo {
+                                    info: instance.info,
+                                    item: Err(bound),
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    None
 }

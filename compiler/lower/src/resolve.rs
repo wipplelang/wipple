@@ -31,10 +31,6 @@ pub fn resolve<D: Driver>(
             EagerTypeDeclarationInfo::from(&declaration),
             Some(declaration)
         )),
-        type_alias_declarations(|declaration| (
-            EagerTypeAliasDeclarationInfo::from(&declaration),
-            Some(declaration)
-        )),
         trait_declarations(|declaration| (
             EagerTraitDeclarationInfo::from(&declaration),
             Some(declaration)
@@ -145,7 +141,6 @@ pub fn resolve<D: Driver>(
 
     unwrap!(
         type_declarations(|(_, declaration)| declaration.unwrap()),
-        type_alias_declarations(|(_, declaration)| declaration.unwrap()),
         trait_declarations(|(_, declaration)| declaration.unwrap()),
         constant_declarations(Option::unwrap),
         type_parameter_declarations(Option::unwrap),
@@ -182,19 +177,6 @@ impl<D: Driver> From<&crate::TypeDeclaration<D>> for EagerTypeDeclarationInfo {
 }
 
 #[derive(Debug, Clone)]
-struct EagerTypeAliasDeclarationInfo {
-    parameters: u32,
-}
-
-impl<D: Driver> From<&crate::TypeAliasDeclaration<D>> for EagerTypeAliasDeclarationInfo {
-    fn from(declaration: &crate::TypeAliasDeclaration<D>) -> Self {
-        EagerTypeAliasDeclarationInfo {
-            parameters: declaration.parameters.len() as u32,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
 struct EagerTraitDeclarationInfo {
     parameters: u32,
 }
@@ -215,16 +197,6 @@ struct Info<D: Driver> {
     type_declarations: HashMap<
         crate::Path,
         WithInfo<D::Info, (EagerTypeDeclarationInfo, Option<crate::TypeDeclaration<D>>)>,
-    >,
-    type_alias_declarations: HashMap<
-        crate::Path,
-        WithInfo<
-            D::Info,
-            (
-                EagerTypeAliasDeclarationInfo,
-                Option<crate::TypeAliasDeclaration<D>>,
-            ),
-        >,
     >,
     trait_declarations: HashMap<
         crate::Path,
@@ -372,101 +344,86 @@ fn split_executable_statements<D: Driver>(
     Vec<Vec<WithInfo<D::Info, crate::UnresolvedStatement<D>>>>,
     Vec<WithInfo<D::Info, crate::UnresolvedStatement<D>>>,
 ) {
-    let (declaration_statements, executable_statements): (Vec<_>, Vec<_>) =
-        statements
-            .into_iter()
-            .filter_map(|statement| {
-                macro_rules! insert_declaration {
-                    ($declarations:ident, $name:expr, $path:expr, $default:expr,) => {{
-                        use std::collections::hash_map::Entry;
+    let (declaration_statements, executable_statements): (Vec<_>, Vec<_>) = statements
+        .into_iter()
+        .filter_map(|statement| {
+            macro_rules! insert_declaration {
+                ($declarations:ident, $name:expr, $path:expr, $default:expr,) => {{
+                    use std::collections::hash_map::Entry;
 
-                        let path = $path;
+                    let path = $path;
 
-                        match info.$declarations.entry(path.clone()) {
-                            Entry::Occupied(entry) => {
-                                info.errors.push(statement.replace(
-                                    crate::Diagnostic::AlreadyDefined(entry.key().clone()),
-                                ));
+                    match info.$declarations.entry(path.clone()) {
+                        Entry::Occupied(entry) => {
+                            info.errors.push(
+                                $name.replace(crate::Diagnostic::AlreadyDefined(
+                                    entry.key().clone(),
+                                )),
+                            );
 
-                                None
-                            }
-                            Entry::Vacant(entry) => {
-                                entry.insert(statement.replace($default));
-
-                                info.scopes.define($name.clone(), statement.replace(path));
-                                Some(statement)
-                            }
+                            None
                         }
-                    }};
-                }
+                        Entry::Vacant(entry) => {
+                            entry.insert($name.replace($default));
 
-                match &statement.item {
-                    crate::UnresolvedStatement::Type {
-                        name, parameters, ..
-                    } => insert_declaration!(
-                        type_declarations,
-                        &name.item,
-                        info.make_path(crate::PathComponent::Type(name.item.clone())),
-                        (
-                            EagerTypeDeclarationInfo {
-                                parameters: parameters.len() as u32,
-                            },
-                            None,
-                        ),
-                    ),
-                    crate::UnresolvedStatement::TypeAlias {
-                        name, parameters, ..
-                    } => insert_declaration!(
-                        type_alias_declarations,
-                        &name.item,
-                        info.make_path(crate::PathComponent::TypeAlias(name.item.clone())),
-                        (
-                            EagerTypeAliasDeclarationInfo {
-                                parameters: parameters.len() as u32,
-                            },
-                            None,
-                        ),
-                    ),
-                    crate::UnresolvedStatement::Trait {
-                        name, parameters, ..
-                    } => insert_declaration!(
-                        trait_declarations,
-                        &name.item,
-                        info.make_path(crate::PathComponent::Trait(name.item.clone())),
-                        (
-                            EagerTraitDeclarationInfo {
-                                parameters: parameters.len() as u32,
-                            },
-                            None,
-                        ),
-                    ),
-                    crate::UnresolvedStatement::Constant { name, .. } => insert_declaration!(
-                        constant_declarations,
-                        &name.item,
-                        info.make_path(crate::PathComponent::Constant(name.item.clone())),
+                            info.scopes.define($name.item.clone(), $name.replace(path));
+
+                            Some(statement)
+                        }
+                    }
+                }};
+            }
+
+            match &statement.item {
+                crate::UnresolvedStatement::Type {
+                    name, parameters, ..
+                } => insert_declaration!(
+                    type_declarations,
+                    name,
+                    info.make_path(crate::PathComponent::Type(name.item.clone())),
+                    (
+                        EagerTypeDeclarationInfo {
+                            parameters: parameters.len() as u32,
+                        },
                         None,
                     ),
-                    crate::UnresolvedStatement::Instance { .. }
-                    | crate::UnresolvedStatement::Assignment { .. }
-                    | crate::UnresolvedStatement::Expression(_) => Some(statement),
-                }
-            })
-            .partition(|statement| {
-                matches!(
-                    statement.item,
-                    crate::UnresolvedStatement::Type { .. }
-                        | crate::UnresolvedStatement::TypeAlias { .. }
-                        | crate::UnresolvedStatement::Trait { .. }
-                )
-            });
+                ),
+                crate::UnresolvedStatement::Trait {
+                    name, parameters, ..
+                } => insert_declaration!(
+                    trait_declarations,
+                    name,
+                    info.make_path(crate::PathComponent::Trait(name.item.clone())),
+                    (
+                        EagerTraitDeclarationInfo {
+                            parameters: parameters.len() as u32,
+                        },
+                        None,
+                    ),
+                ),
+                crate::UnresolvedStatement::Constant { name, .. } => insert_declaration!(
+                    constant_declarations,
+                    name,
+                    info.make_path(crate::PathComponent::Constant(name.item.clone())),
+                    None,
+                ),
+                crate::UnresolvedStatement::Instance { .. }
+                | crate::UnresolvedStatement::Assignment { .. }
+                | crate::UnresolvedStatement::Expression(_) => Some(statement),
+            }
+        })
+        .partition(|statement| {
+            matches!(
+                statement.item,
+                crate::UnresolvedStatement::Type { .. } | crate::UnresolvedStatement::Trait { .. }
+            )
+        });
 
     let (type_statements, language_statements): (Vec<_>, Vec<_>) =
         declaration_statements.into_iter().partition(|statement| {
             matches!(
                 statement.item,
-                crate::UnresolvedStatement::Type { .. }
-                    | crate::UnresolvedStatement::TypeAlias { .. }
-                    | crate::UnresolvedStatement::Trait { .. }
+                crate::UnresolvedStatement::Type { .. } | crate::UnresolvedStatement::Trait { .. }
             )
         });
 
@@ -609,39 +566,6 @@ fn resolve_statements<D: Driver>(
 
                 None
             }
-            crate::UnresolvedStatement::TypeAlias {
-                attributes,
-                name,
-                parameters,
-                r#type,
-            } => {
-                info.path.push(crate::PathComponent::TypeAlias(name.item));
-
-                info.scopes.push_constant_scope();
-
-                let parameters = parameters
-                    .into_iter()
-                    .filter_map(|type_parameter| resolve_type_parameter(type_parameter, info))
-                    .collect::<Vec<_>>();
-
-                let r#type = resolve_type(r#type, info);
-
-                resolve_attributes(&attributes, info);
-
-                info.scopes.pop_scope();
-
-                let declaration = info.type_alias_declarations.get_mut(&info.path).unwrap();
-
-                declaration.item.1 = Some(crate::TypeAliasDeclaration {
-                    attributes,
-                    parameters,
-                    r#type,
-                });
-
-                info.path.pop().unwrap();
-
-                None
-            }
             crate::UnresolvedStatement::Trait {
                 attributes,
                 name,
@@ -730,6 +654,7 @@ fn resolve_statements<D: Driver>(
                 None
             }
             crate::UnresolvedStatement::Instance {
+                pattern,
                 parameters,
                 bounds,
                 instance,
@@ -774,15 +699,12 @@ fn resolve_statements<D: Driver>(
 
                 info.instance_declarations.insert(
                     info.path.clone(),
-                    WithInfo {
-                        info: statement.info,
-                        item: Some(crate::InstanceDeclaration {
-                            parameters,
-                            bounds,
-                            instance,
-                            default,
-                        }),
-                    },
+                    pattern.replace(Some(crate::InstanceDeclaration {
+                        parameters,
+                        bounds,
+                        instance,
+                        default,
+                    })),
                 );
 
                 info.library.items.insert(
@@ -807,7 +729,7 @@ fn resolve_statements<D: Driver>(
                             Some(name) => name,
                             None => {
                                 return Some(WithInfo {
-                                    info: statement.info,
+                                    info: name.info.clone(),
                                     item: crate::Expression::Assign {
                                         pattern: name.replace(crate::Pattern::Error),
                                         value: value.boxed(),
@@ -828,7 +750,7 @@ fn resolve_statements<D: Driver>(
                                 .collect::<Vec<_>>()
                         }) {
                             Some(path) => Some(WithInfo {
-                                info: statement.info,
+                                info: name.info.clone(),
                                 item: crate::Expression::Mutate {
                                     name,
                                     path,
@@ -836,7 +758,7 @@ fn resolve_statements<D: Driver>(
                                 },
                             }),
                             None => Some(WithInfo {
-                                info: statement.info,
+                                info: name.info.clone(),
                                 item: crate::Expression::Assign {
                                     pattern: name.replace(crate::Pattern::Error),
                                     value: value.boxed(),
@@ -848,7 +770,7 @@ fn resolve_statements<D: Driver>(
                         let pattern = resolve_pattern(pattern, info);
 
                         Some(WithInfo {
-                            info: statement.info,
+                            info: pattern.info.clone(),
                             item: crate::Expression::Assign {
                                 pattern,
                                 value: value.boxed(),
@@ -1847,9 +1769,7 @@ fn resolve_type<D: Driver>(
             let filter = |candidates: &[WithInfo<D::Info, crate::Path>]| {
                 let mut candidates = candidates.to_vec();
                 candidates.sort_by_key(|path| match path.item.last().unwrap() {
-                    crate::PathComponent::Type(_)
-                    | crate::PathComponent::TypeAlias(_)
-                    | crate::PathComponent::TypeParameter(_) => 0,
+                    crate::PathComponent::Type(_) | crate::PathComponent::TypeParameter(_) => 0,
                     crate::PathComponent::Constant(_) => 1,
                     _ => 2,
                 });
@@ -1877,29 +1797,6 @@ fn resolve_type<D: Driver>(
                             );
 
                             crate::Type::Declared {
-                                path,
-                                parameters: parameters
-                                    .into_iter()
-                                    .map(|parameter| resolve_type(parameter, info))
-                                    .collect(),
-                            }
-                        }
-                        crate::PathComponent::TypeAlias(_) => {
-                            let (type_alias_declaration_info, _) = &info
-                                .type_alias_declarations
-                                .get(&path.item)
-                                .unwrap()
-                                .clone()
-                                .item;
-
-                            check_parameter_count(
-                                name_info,
-                                type_alias_declaration_info.parameters,
-                                &parameters,
-                                info,
-                            );
-
-                            crate::Type::Alias {
                                 path,
                                 parameters: parameters
                                     .into_iter()

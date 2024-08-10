@@ -9,7 +9,7 @@ pub fn compile<'a, D: crate::Driver>(
     attributes: &'a [WithInfo<D::Info, wipple_typecheck::Attribute<D>>],
     expression: WithInfo<D::Info, &'a wipple_typecheck::TypedExpression<D>>,
     captures: &[D::Path],
-) -> Option<HashMap<D::Path, crate::Item<D>>> {
+) -> HashMap<D::Path, crate::Item<D>> {
     let mut info = Info {
         driver,
         path: path.clone(),
@@ -24,9 +24,9 @@ pub fn compile<'a, D: crate::Driver>(
         expression,
         &mut info,
         |expression, info| compile_expression(expression, true, info),
-    )?;
+    );
 
-    Some(info.items)
+    info.items
 }
 
 #[derive(Derivative)]
@@ -125,7 +125,6 @@ impl<D: crate::Driver> Info<'_, D> {
     }
 }
 
-#[must_use]
 fn compile_item_with_captures<'a, D: crate::Driver>(
     path: D::Path,
     captures_paths: &[D::Path],
@@ -195,35 +194,31 @@ fn compile_expression<D: crate::Driver>(
             let variable = info.context.variables.iter().position(|p| p == path)? as u32;
             info.push_instruction(crate::Instruction::Variable(variable));
         }
-        wipple_typecheck::TypedExpressionKind::Constant { path, parameters } => {
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Constant(
-                    path.clone(),
-                    parameters
-                        .iter()
-                        .map(|parameter| type_descriptor(parameter))
-                        .collect::<Option<_>>()?,
-                ),
+        wipple_typecheck::TypedExpressionKind::Constant {
+            path, parameters, ..
+        } => {
+            info.push_instruction(crate::Instruction::Constant(
+                path.clone(),
+                parameters
+                    .iter()
+                    .map(type_descriptor)
+                    .collect::<Option<_>>()?,
             ));
         }
-        wipple_typecheck::TypedExpressionKind::Trait(path) => {
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Instance(path.clone()),
-            ))
-        }
+        wipple_typecheck::TypedExpressionKind::Trait {
+            path, parameters, ..
+        } => info.push_instruction(crate::Instruction::Instance(
+            path.clone(),
+            parameters
+                .iter()
+                .map(|parameter| type_descriptor(parameter))
+                .collect::<Option<_>>()?,
+        )),
         wipple_typecheck::TypedExpressionKind::Number(number) => {
-            info.push_instruction(crate::Instruction::Typed(
-                crate::TypeDescriptor::Named(info.driver.number_type()?, Vec::new()),
-                crate::TypedInstruction::Number(number.clone()),
-            ));
+            info.push_instruction(crate::Instruction::Number(number.clone()));
         }
         wipple_typecheck::TypedExpressionKind::Text(text) => {
-            info.push_instruction(crate::Instruction::Typed(
-                crate::TypeDescriptor::Named(info.driver.text_type()?, Vec::new()),
-                crate::TypedInstruction::Text(text.clone()),
-            ));
+            info.push_instruction(crate::Instruction::Text(text.clone()));
         }
         wipple_typecheck::TypedExpressionKind::Block {
             statements,
@@ -258,10 +253,7 @@ fn compile_expression<D: crate::Driver>(
                 },
             )?;
 
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Function(captures, block_path),
-            ));
+            info.push_instruction(crate::Instruction::Function(captures, block_path));
         }
         wipple_typecheck::TypedExpressionKind::Do(block) => {
             compile_expression(block.as_deref(), false, info)?;
@@ -298,10 +290,7 @@ fn compile_expression<D: crate::Driver>(
                 },
             )?;
 
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Function(captures, function_path),
-            ));
+            info.push_instruction(crate::Instruction::Function(captures, function_path));
         }
         wipple_typecheck::TypedExpressionKind::Call { function, inputs } => {
             compile_expression(function.as_deref(), false, info)?;
@@ -325,9 +314,9 @@ fn compile_expression<D: crate::Driver>(
                 compile_expression(input.as_ref(), false, info)?;
             }
 
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Intrinsic(name.clone(), inputs.len() as u32),
+            info.push_instruction(crate::Instruction::Intrinsic(
+                name.clone(),
+                inputs.len() as u32,
             ));
         }
         wipple_typecheck::TypedExpressionKind::Initialize { pattern, value } => {
@@ -348,10 +337,7 @@ fn compile_expression<D: crate::Driver>(
             info.push_instruction(crate::Instruction::Tuple(0));
         }
         wipple_typecheck::TypedExpressionKind::Marker(_) => {
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Marker,
-            ));
+            info.push_instruction(crate::Instruction::Marker);
         }
         wipple_typecheck::TypedExpressionKind::Structure { fields, .. } => {
             let fields = fields
@@ -362,10 +348,7 @@ fn compile_expression<D: crate::Driver>(
                 })
                 .collect::<Option<_>>()?;
 
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Structure(fields),
-            ));
+            info.push_instruction(crate::Instruction::Structure(fields));
         }
         wipple_typecheck::TypedExpressionKind::Variant { variant, values } => {
             for value in values {
@@ -386,18 +369,15 @@ fn compile_expression<D: crate::Driver>(
                 _ => return None,
             };
 
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Variant(variant_index, values.len() as u32),
+            info.push_instruction(crate::Instruction::Variant(
+                variant_index,
+                values.len() as u32,
             ));
         }
         wipple_typecheck::TypedExpressionKind::Wrapper(value) => {
             compile_expression(value.as_deref(), false, info)?;
 
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Wrapper,
-            ));
+            info.push_instruction(crate::Instruction::Wrapper);
         }
         wipple_typecheck::TypedExpressionKind::Tuple(elements) => {
             for element in elements {
@@ -415,10 +395,7 @@ fn compile_expression<D: crate::Driver>(
                 })
                 .collect::<Option<_>>()?;
 
-            info.push_instruction(crate::Instruction::Typed(
-                type_descriptor(&expression.item.r#type)?,
-                crate::TypedInstruction::Format(segments, trailing.clone()),
-            ));
+            info.push_instruction(crate::Instruction::Format(segments, trailing.clone()));
         }
     }
 
@@ -493,17 +470,14 @@ fn compile_pattern<D: crate::Driver>(
         wipple_typecheck::Pattern::Number(number) => {
             info.push_instruction(crate::Instruction::Copy);
 
-            info.push_instruction(crate::Instruction::Typed(
-                crate::TypeDescriptor::Named(info.driver.number_type()?, Vec::new()),
-                crate::TypedInstruction::Number(number.clone()),
-            ));
+            info.push_instruction(crate::Instruction::Number(number.clone()));
 
             let continue_block_id = info.begin_block();
             let drop_block_id = info.begin_block();
 
-            info.push_instruction(crate::Instruction::Typed(
-                crate::TypeDescriptor::Named(info.driver.boolean_type()?, Vec::new()),
-                crate::TypedInstruction::Intrinsic(info.driver.number_equality_intrinsic()?, 2),
+            info.push_instruction(crate::Instruction::Intrinsic(
+                info.driver.number_equality_intrinsic()?,
+                2,
             ));
 
             info.break_out_of_block_if_not(info.true_variant()?, drop_block_id);
@@ -518,17 +492,14 @@ fn compile_pattern<D: crate::Driver>(
         wipple_typecheck::Pattern::Text(text) => {
             info.push_instruction(crate::Instruction::Copy);
 
-            info.push_instruction(crate::Instruction::Typed(
-                crate::TypeDescriptor::Named(info.driver.text_type()?, Vec::new()),
-                crate::TypedInstruction::Text(text.clone()),
-            ));
+            info.push_instruction(crate::Instruction::Text(text.clone()));
 
             let continue_block_id = info.begin_block();
             let drop_block_id = info.begin_block();
 
-            info.push_instruction(crate::Instruction::Typed(
-                crate::TypeDescriptor::Named(info.driver.boolean_type()?, Vec::new()),
-                crate::TypedInstruction::Intrinsic(info.driver.text_equality_intrinsic()?, 2),
+            info.push_instruction(crate::Instruction::Intrinsic(
+                info.driver.text_equality_intrinsic()?,
+                2,
             ));
 
             info.break_out_of_block_if_not(info.true_variant()?, drop_block_id);
@@ -724,12 +695,13 @@ pub fn type_descriptor<D: crate::Driver>(
         wipple_typecheck::Type::Block(r#type) => Some(crate::TypeDescriptor::Block(Box::new(
             type_descriptor(&r#type.item)?,
         ))),
-        wipple_typecheck::Type::Intrinsic => Some(crate::TypeDescriptor::Intrinsic),
+        wipple_typecheck::Type::Intrinsic | wipple_typecheck::Type::Message { .. } => {
+            Some(crate::TypeDescriptor::Intrinsic)
+        }
         wipple_typecheck::Type::Equal { left, right } => Some(crate::TypeDescriptor::Equal(
             Box::new(type_descriptor(&left.item)?),
             Box::new(type_descriptor(&right.item)?),
         )),
-        wipple_typecheck::Type::Alias { .. } | wipple_typecheck::Type::Message { .. } => None,
     }
 }
 
@@ -777,4 +749,17 @@ pub fn layout_descriptor<D: crate::Driver>(
             Some(crate::LayoutDescriptor::Wrapper(Box::new(r#type)))
         }
     }
+}
+
+pub fn instance_descriptor<D: crate::Driver>(
+    instance: &wipple_typecheck::Instance<D>,
+) -> Option<crate::InstanceDescriptor<D>> {
+    Some(crate::InstanceDescriptor {
+        trait_path: instance.r#trait.clone(),
+        parameters: instance
+            .parameters
+            .iter()
+            .map(|r#type| type_descriptor(&r#type.item))
+            .collect::<Option<_>>()?,
+    })
 }

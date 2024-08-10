@@ -1,0 +1,5 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+done

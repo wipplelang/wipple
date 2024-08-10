@@ -1,6 +1,9 @@
 //! Coordinates the compiler passes.
 
 mod convert;
+pub mod fix;
+pub mod lint;
+mod visit;
 
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -58,12 +61,59 @@ pub fn resolve_attribute_like_trait(
     typecheck::resolve_attribute_like_trait(&driver, name, r#type.as_ref(), number_of_parameters)
 }
 
+/// Attempt to fix the file mentioned in the provided diagnostic. See the
+/// documentation for [`fix`](mod@fix) for more information.
+pub fn fix_file(
+    diagnostic: util::WithInfo<Info, Diagnostic>,
+    files: Vec<File>,
+    dependencies: Option<Interface>,
+) -> Option<(fix::Fix, String)> {
+    let path = diagnostic.info.location.path.as_ref();
+
+    let span = (diagnostic.info.location.span.start as usize)
+        ..(diagnostic.info.location.span.end as usize);
+
+    let result = Driver::new().compile(files.clone(), dependencies.clone());
+
+    let fix = fix::fix(
+        diagnostic.as_ref(),
+        &result.interface,
+        &result.library,
+        move |fix| {
+            let mut files = files.clone();
+            let file = files.iter_mut().find(|file| file.path == path)?;
+
+            let new_span = fix.apply_to(&mut file.code, span.clone());
+
+            let new_info = Info {
+                location: syntax::Location {
+                    path: Arc::from(file.path.as_str()),
+                    visible_path: Arc::from(file.visible_path.as_str()),
+                    span: (new_span.start as u32)..(new_span.end as u32),
+                },
+            };
+
+            let code = util::WithInfo {
+                info: new_info,
+                item: file.code.clone(),
+            };
+
+            let result = Driver::new().compile(files, dependencies.clone());
+
+            Some((code, result.interface, result.library))
+        },
+    )?;
+
+    Some(fix.item)
+}
+
 /// The driver.
 #[non_exhaustive]
 #[derive(Debug)]
 pub struct Driver {
     recursion_limit: u32,
     hide_source: bool,
+    lint: bool,
     interface: Interface,
     library: Library,
     ide: Ide,
@@ -74,6 +124,7 @@ impl Driver {
         Driver {
             recursion_limit: DEFAULT_RECURSION_LIMIT,
             hide_source: false,
+            lint: true,
             interface: Default::default(),
             library: Default::default(),
             ide: Default::default(),
@@ -125,10 +176,6 @@ pub struct Interface {
     pub type_declarations:
         HashMap<lower::Path, util::WithInfo<Info, typecheck::TypeDeclaration<Driver>>>,
 
-    /// The type alias declarations in the program.
-    pub type_alias_declarations:
-        HashMap<lower::Path, util::WithInfo<Info, typecheck::TypeAliasDeclaration<Driver>>>,
-
     /// The trait declarations in the program.
     pub trait_declarations:
         HashMap<lower::Path, util::WithInfo<Info, typecheck::TraitDeclaration<Driver>>>,
@@ -161,6 +208,9 @@ pub type Ide = wipple_lower::Ide<Driver>;
 /// An analyzed expression along with its compiled IR.
 pub type Item = wipple_linker::UnlinkedItem<Driver>;
 
+/// An analyzed instance.
+pub type Instance = wipple_linker::UnlinkedInstance<Driver>;
+
 /// The result of [`Driver::compile`].
 #[non_exhaustive]
 #[derive(Debug, Serialize)]
@@ -190,6 +240,7 @@ pub enum Diagnostic {
     Lower(lower::Diagnostic),
     Typecheck(typecheck::Diagnostic<Driver>),
     Ir,
+    Lint(lint::Lint),
 }
 
 impl Driver {
@@ -266,16 +317,6 @@ impl Driver {
                             (path, convert::interface::convert_type_declaration(item))
                         })
                         .collect(),
-                    type_alias_declarations: interface
-                        .type_alias_declarations
-                        .into_iter()
-                        .map(|(path, item)| {
-                            (
-                                path,
-                                convert::interface::convert_type_alias_declaration(item),
-                            )
-                        })
-                        .collect(),
                     trait_declarations: interface
                         .trait_declarations
                         .into_iter()
@@ -326,13 +367,6 @@ impl Driver {
         for (path, item) in lower_result.interface.type_declarations {
             let declaration = convert::typecheck::convert_type_declaration(item);
             self.interface.type_declarations.insert(path, declaration);
-        }
-
-        for (path, item) in lower_result.interface.type_alias_declarations {
-            let declaration = convert::typecheck::convert_type_alias_declaration(item);
-            self.interface
-                .type_alias_declarations
-                .insert(path, declaration);
         }
 
         for (path, item) in lower_result.interface.trait_declarations {
@@ -405,24 +439,31 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            if let Some(ir_result) = ir::compile(
+            let ir_result = ir::compile(
                 &self,
                 path.clone(),
                 &declaration.item.attributes,
                 item.as_ref(),
                 &typecheck_result.captures,
-            ) {
-                for (path, item) in ir_result.items {
-                    self.library.items.insert(
-                        path,
-                        Item {
-                            parameters: declaration.item.parameters.clone(),
-                            expression: item.expression,
-                            ir: item.instructions,
-                            evaluate_once: item.evaluate_once,
-                        },
-                    );
-                }
+            );
+
+            for (path, item) in ir_result.items {
+                self.library.items.insert(
+                    path,
+                    Item {
+                        parameters: declaration.item.parameters.clone(),
+                        bounds: declaration
+                            .item
+                            .bounds
+                            .clone()
+                            .into_iter()
+                            .filter_map(|bound| ir::instance_descriptor(&bound.item))
+                            .collect(),
+                        expression: item.expression,
+                        ir: Some(item.instructions),
+                        evaluate_once: item.evaluate_once,
+                    },
+                );
             }
         }
 
@@ -467,24 +508,31 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            if let Some(ir_result) = ir::compile(
+            let ir_result = ir::compile(
                 &self,
                 path.clone(),
                 &[],
                 item.as_ref(),
                 &typecheck_result.captures,
-            ) {
-                for (path, item) in ir_result.items {
-                    self.library.items.insert(
-                        path,
-                        Item {
-                            parameters: declaration.item.parameters.clone(),
-                            expression: item.expression,
-                            ir: item.instructions,
-                            evaluate_once: item.evaluate_once,
-                        },
-                    );
-                }
+            );
+
+            for (path, item) in ir_result.items {
+                self.library.items.insert(
+                    path,
+                    Item {
+                        parameters: declaration.item.parameters.clone(),
+                        bounds: declaration
+                            .item
+                            .bounds
+                            .clone()
+                            .into_iter()
+                            .filter_map(|bound| ir::instance_descriptor(&bound.item))
+                            .collect(),
+                        expression: item.expression,
+                        ir: Some(item.instructions),
+                        evaluate_once: item.evaluate_once,
+                    },
+                );
             }
         }
 
@@ -511,27 +559,28 @@ impl Driver {
                         .map(|error| error.map(Diagnostic::Typecheck)),
                 );
 
-                if let Some(ir_result) = ir::compile(
+                let ir_result = ir::compile(
                     &self,
                     path.clone(),
                     &[],
                     item.as_ref(),
                     &typecheck_result.captures,
-                ) {
-                    for (path, item) in ir_result.items {
-                        self.library.items.insert(
-                            path,
-                            Item {
-                                parameters: Vec::new(),
-                                expression: item.expression,
-                                ir: item.instructions,
-                                evaluate_once: item.evaluate_once,
-                            },
-                        );
-                    }
+                );
 
-                    self.library.entrypoints.push(path);
+                for (path, item) in ir_result.items {
+                    self.library.items.insert(
+                        path,
+                        Item {
+                            parameters: Vec::new(),
+                            bounds: Vec::new(),
+                            expression: item.expression,
+                            ir: Some(item.instructions),
+                            evaluate_once: item.evaluate_once,
+                        },
+                    );
                 }
+
+                self.library.entrypoints.push(path);
             }
         }
 
@@ -548,6 +597,8 @@ impl Driver {
             .into_group_map_by(|(_, instance)| instance.item.instance.item.r#trait.clone());
 
         for (r#trait, instances) in instances_by_trait {
+            let trait_declaration = self.interface.trait_declarations.get(&r#trait).unwrap();
+
             let mut default_instances = HashSet::new();
             let instances = instances
                 .into_iter()
@@ -556,12 +607,27 @@ impl Driver {
                         default_instances.insert(path.clone());
                     }
 
-                    path.clone()
+                    Instance {
+                        path: path.clone(),
+                        trait_parameters: trait_declaration
+                            .item
+                            .parameters
+                            .clone()
+                            .into_iter()
+                            .zip(declaration.item.instance.item.parameters.clone())
+                            .collect(),
+                    }
                 })
                 .collect::<Vec<_>>();
 
-            let overlap_diagnostics =
-                typecheck::instances_overlap(&self, &r#trait, instances.clone());
+            let overlap_diagnostics = typecheck::instances_overlap(
+                &self,
+                &r#trait,
+                instances
+                    .iter()
+                    .map(|instance| instance.path.clone())
+                    .collect(),
+            );
 
             diagnostics.extend(
                 overlap_diagnostics
@@ -570,7 +636,7 @@ impl Driver {
             );
 
             for instance in instances {
-                let instances = if default_instances.contains(&instance) {
+                let instances = if default_instances.contains(&instance.path) {
                     &mut self.library.default_instances
                 } else {
                     &mut self.library.instances
@@ -578,6 +644,12 @@ impl Driver {
 
                 instances.entry(r#trait.clone()).or_default().push(instance);
             }
+        }
+
+        if self.lint {
+            let lints = lint::lint(&self.interface, &self.library);
+
+            diagnostics.extend(lints.into_iter().map(|lint| lint.map(Diagnostic::Lint)));
         }
 
         Result {
@@ -693,17 +765,6 @@ impl wipple_typecheck::Driver for Driver {
             .type_declarations
             .get(path)
             .unwrap_or_else(|| panic!("missing type declaration {:?}", path))
-            .clone()
-    }
-
-    fn get_type_alias_declaration(
-        &self,
-        path: &Self::Path,
-    ) -> util::WithInfo<Self::Info, wipple_typecheck::TypeAliasDeclaration<Self>> {
-        self.interface
-            .type_alias_declarations
-            .get(path)
-            .unwrap_or_else(|| panic!("missing type alias declaration {:?}", path))
             .clone()
     }
 
