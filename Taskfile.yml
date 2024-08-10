@@ -50,7 +50,7 @@ tasks:
         run: once
         dir: cli
         cmds:
-            - cargo install --bin wipple --path . --force
+            - cargo install --bin wipple --path . --force {{.CLI_ARGS}}
 
     vscode:install:
         run: once

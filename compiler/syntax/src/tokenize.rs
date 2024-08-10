@@ -670,8 +670,10 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
 
                 s.push('{');
 
-                increment!(line_indent);
-                line_break_stack.push(tokens.peek().copied() == Some(&Token::LineBreak));
+                if matches!(tokens.peek(), Some(Token::LineBreak)) {
+                    increment!(line_indent);
+                    line_break_stack.push(true);
+                }
 
                 decrement!(operator_indent);
                 pad = false;
