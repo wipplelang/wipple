@@ -4,10 +4,10 @@
 Color : type Text
 
 instance (Random Unit Color) : () -> do {
-  red : random (0 to 256)
-  green : random (0 to 256)
-  blue : random (0 to 256)
-  Color ("rgb(_, _, _)" red green blue)
+    red : random (0 to 256)
+    green : random (0 to 256)
+    blue : random (0 to 256)
+    Color ("rgb(_, _, _)" red green blue)
 }
 
 -- Create an image from a URL. In the Wipple Playground, you can drag an image

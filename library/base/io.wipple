@@ -3,7 +3,7 @@
 Describe : (Value : Text) => trait (Value -> Text)
 
 Value where (Error ("cannot describe a _ value" Value)) =>
-  default instance (Describe Value) : ...
+    default instance (Describe Value) : ...
 
 -- Produce a piece of `Text` describing the value.
 describe :: (Value : Text) where (Describe Value) => Value -> Text
@@ -28,15 +28,15 @@ instance (Describe Text) : text -> text
 instance (Describe Number) : n -> intrinsic "number-to-text" n
 instance (Describe Boolean) : b -> if b {"True"} {"False"}
 Value where (Describe Value) => instance (Describe (Maybe Value)) : m -> when m {
-  Some value -> "Some _" value
-  None -> "None"
+    Some value -> "Some _" value
+    None -> "None"
 }
 
 -- Convert from a piece of `Text` to a value.
 Read : Value => trait (Text -> Maybe Value)
 
 Value where (Error ("cannot produce a _ value from _" Value Text)) =>
-  default instance (Read Value) : ...
+    default instance (Read Value) : ...
 
 instance (Read Text) : Some
 instance (Read Number) : text -> intrinsic "text-to-number" text
@@ -52,7 +52,7 @@ prompt : prompt -> intrinsic "prompt" prompt Read
 @(highlight-icon : "format-list-bulleted")
 choice :: Element where (Describe Element) => Text (List Element) -> Element
 choice : prompt items -> do {
-  descriptions : items . transform Describe . collect :: List _
-  index : intrinsic "choice" prompt descriptions
-  (items . nth index) or unreachable
+    descriptions : items . transform Describe . collect :: List _
+    index : intrinsic "choice" prompt descriptions
+    (items . nth index) or unreachable
 }

@@ -2,7 +2,7 @@
 Build-Collection : (infer Element) (Collection : List Element) => trait (Element -> Collection -> Collection)
 
 Element Collection where (Error ("cannot create a _ collection out of _ items" Collection Element)) =>
-  default instance (Build-Collection Element Collection) : ...
+    default instance (Build-Collection Element Collection) : ...
 
 @(language : "initial-collection")
 initial-collection :: (infer Element) (Collection : List Element) where (Empty Collection) (Build-Collection Element Collection) => Collection

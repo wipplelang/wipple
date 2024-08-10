@@ -1,7 +1,7 @@
 -- Used by `repeat` to determine whether to continue running or stop with a value.
 Control-Flow : State Result => type {
-  Continue State
-  Stop Result
+    Continue State
+    Stop Result
 }
 
 -- Determines whether to evaluate a `repeat` body again.
@@ -14,10 +14,10 @@ with-control-flow : {current : Continue ()}
 With-Control-Flow : Result => type {current :: Control-Flow Unit Result}
 
 Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow () Result) Result) :
-  {current : current} -> when current {
-  Continue () -> Continue (new -> {current : new})
-  Stop result -> Stop result
-}
+    {current : current} -> when current {
+        Continue () -> Continue (new -> {current : new})
+        Stop result -> Stop result
+    }
 
 Body Result where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
   instance (Mismatch (With-Control-Flow Result) ({Body} -> Result))
@@ -29,7 +29,7 @@ while : condition -> {condition : condition}
 While : type {condition :: {Boolean}}
 
 (Body : ()) => instance (Repeat-Predicate While Body ()) : {condition : condition} ->
-  if (do condition) {Continue (_ -> while condition)} {Stop ()}
+    if (do condition) {Continue (_ -> while condition)} {Stop ()}
 
 (Body : ()) where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
   instance (Mismatch While ({Body} -> Unit))
@@ -41,37 +41,37 @@ forever : Forever
 Forever : type
 
 Body (Result : ()) => instance (Repeat-Predicate Forever Body Result) :
-  _ -> Continue (_ -> Forever)
+    _ -> Continue (_ -> Forever)
 
 Body (Result : ()) where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
   instance (Mismatch Forever ({Body} -> Result))
 
 Times : type {
-  count :: Number
-  current :: Number
+    count :: Number
+    current :: Number
 }
 
 State Body Result where (Error ("expected `times` after number" ; Error-Location State ; Error-Fix "add `times`" ("`_ times`" State))) =>
-  instance (Repeat-Predicate (State = Number) Body Result) : ...
+    instance (Repeat-Predicate (State = Number) Body Result) : ...
 
 (Body : ()) => instance (Repeat-Predicate Times Body ()) : {
-  count : count
-  current : current
+    count : count
+    current : current
 } -> if (current < count) {
-  Continue (_ -> {
-      count : count
-      current : current + 1
+    Continue (_ -> {
+        count : count
+        current : current + 1
     })
 } {
-  Stop ()
+    Stop ()
 }
 
 -- Repeat a certain number of times.
 @(highlight-category : "unit")
 times :: Number -> Times
 times : count -> {
-  count : count
-  current : 0
+    count : count
+    current : 0
 }
 
 Body where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat _`" Source))) =>
@@ -91,6 +91,6 @@ Body where (Error ("missing `repeat` here" ; Error-Fix "add `repeat`" ("`repeat 
 @(highlight-icon : "repeat")
 repeat :: State (infer Body) (infer Result) where (Repeat-Predicate State Body Result) => State {Body} -> Result
 repeat : state body -> when (Repeat-Predicate state) {
-  Continue next -> repeat (next (do body)) body
-  Stop result -> result
+    Continue next -> repeat (next (do body)) body
+    Stop result -> result
 }

@@ -12,7 +12,7 @@ seconds :: Number -> Time
 seconds : Time
 
 () where (Error ("missing unit for time" ; Error-Fix "add `seconds`" ("`(_ seconds)`" Source))) =>
-  instance (Mismatch Number Time)
+    instance (Mismatch Number Time)
 
 -- A distance in meters.
 Distance : type Number
@@ -29,7 +29,7 @@ meters :: Number -> Distance
 meters : Distance
 
 () where (Error ("missing unit for distance" ; Error-Fix "add `meters`" ("`(_ meters)`" Source))) =>
-  instance (Mismatch Number Distance)
+    instance (Mismatch Number Distance)
 
 -- A velocity in meters per second.
 Velocity : type Number
@@ -43,7 +43,7 @@ instance (Describe Velocity) : (Velocity mps) -> "_ m/s" mps
 instance (Divide (Number -> Distance) (Number -> Time) (Number -> Velocity)) : _ _ -> Velocity
 
 () where (Error ("missing unit for velocity" ; Error-Fix "add `(meters / second)`" ("`(_ (meters / second))`" Source))) =>
-  instance (Mismatch Number Velocity)
+    instance (Mismatch Number Velocity)
 
 -- An acceleration in meters per second, per second.
 Acceleration : type Number
@@ -57,7 +57,7 @@ instance (Describe Acceleration) : (Acceleration mpsps) -> "_ m/s/s" mpsps
 instance (Divide (Number -> Velocity) (Number -> Time) (Number -> Acceleration)) : _ _ -> Acceleration
 
 () where (Error ("missing unit for acceleration" ; Error-Fix "add `(meters / second / second)`" ("`(_ (meters / second / second))`" Source))) =>
-  instance (Mismatch Number Acceleration)
+    instance (Mismatch Number Acceleration)
 
 -- A mass in kilograms.
 Mass : type Number
@@ -73,7 +73,7 @@ kilograms :: Number -> Mass
 kilograms : Mass
 
 () where (Error ("missing unit for mass" ; Error-Fix "add `kilograms`" ("`(_ kilograms)`" Source))) =>
-  instance (Mismatch Number Mass)
+    instance (Mismatch Number Mass)
 
 -- A force in kilograms per unit of acceleration.
 Force : type Number
@@ -85,7 +85,7 @@ instance (Order Force) : (Force a) (Force b) -> Order a b
 instance (Describe Force) : (Force kgmpsps) -> "_ kg*m/s/s" kgmpsps
 
 () where (Error ("missing unit for force" ; Error-Fix "add `newtons`" ("`(_ newtons)`" Source))) =>
-  instance (Mismatch Number Force)
+    instance (Mismatch Number Force)
 
 instance (Multiply (Number -> Mass) (Number -> Acceleration) (Number -> Force)) : _ _ -> Force
 
@@ -132,18 +132,18 @@ instance (Multiply Number Force Force) : a (Force b) -> Force (a * b)
 -- addition to the preset directions like `top` and `center`, you can create a
 -- direction from an angle with `(x degrees) as Direction`.
 Direction : type {
-  x :: Number
-  y :: Number
+    x :: Number
+    y :: Number
 }
 
 instance (As (Number ; Number) Direction) : (x ; y) -> {
-  x : x
-  y : y
+    x : x
+    y : y
 }
 
 instance (As Angle Direction) : angle -> {
-  x : cos angle
-  y : sin angle
+    x : cos angle
+    y : sin angle
 }
 
 -- A direction facing toward the top of the screen.
@@ -205,8 +205,8 @@ constant : x -> _ -> x
 @(highlight-icon : "function")
 between :: (Value : Distance) where (Empty Value) => (Range Time) (Time -> Value) -> Time -> Value
 between : {
-  min : min
-  max : max
+    min : min
+    max : max
 } f -> t -> if (t >= min and t <= max) {f t} {Empty}
 
 -- Utility that returns the provided value at the provided time, but `undefined`
@@ -215,14 +215,14 @@ between : {
 @(highlight-icon : "function")
 at :: (Value : Distance) where (Empty Value) => Time Value -> Time -> Value
 at : time x -> do {
-  seen : False
+    seen : False
 
-  t -> if (not seen and t >= time) {
-    seen! : True
-    x
-  } {
-    Empty
-  }
+    t -> if (not seen and t >= time) {
+        seen! : True
+        x
+    } {
+        Empty
+    }
 }
 
 -- Utility that returns the provided value at `0 seconds`, but `undefined`
@@ -240,7 +240,7 @@ instance (Describe-Type Object "an object")
 @once
 initialize-tick :: Unit
 initialize-tick : in-background {
-  repeat (while {runtime-message "tick" ()}) {}
+    repeat (while {runtime-message "tick" ()}) {}
 }
 
 -- Specify how the `x`- and `y`-position of an object changes over time.
@@ -248,14 +248,14 @@ initialize-tick : in-background {
 @(highlight-icon : "animation")
 position :: Object (Time -> Distance) (Time -> Distance) -> Unit
 position : (Object o) x y -> do {
-  initialize-tick
+    initialize-tick
 
-  wrap : f -> t -> do {
-    (Distance d) : f (Time t)
-    d
-  }
+    wrap : f -> t -> do {
+        (Distance d) : f (Time t)
+        d
+    }
 
-  runtime-message "position" (o ; wrap x ; wrap y)
+    runtime-message "position" (o ; wrap x ; wrap y)
 }
 
 -- Specify how the force applied to an object in the `x`- and `y`-directions
@@ -264,42 +264,42 @@ position : (Object o) x y -> do {
 @(highlight-icon : "arrow-forward")
 force :: Object (Time -> Force) (Time -> Force) -> Unit
 force : (Object o) fx fy -> do {
-  initialize-tick
+    initialize-tick
 
-  wrap : f -> t -> do {
-    (Force d) : f (Time t)
-    d
-  }
+    wrap : f -> t -> do {
+        (Force d) : f (Time t)
+        d
+    }
 
-  runtime-message "force" (o ; wrap fx ; wrap fy)
+    runtime-message "force" (o ; wrap fx ; wrap fy)
 }
 
 Value where (Equal Value) (Empty Value) (Add Value Value Value) =>
-  instance (Add (Time -> Value) (Time -> Value) (Time -> Value)) :
-  left right -> t -> do {
-  a : left t
-  b : right t
-  when (a /= Empty ; b /= Empty) {
-    (True ; True) -> a + b
-    (True ; False) -> a
-    (False ; True) -> b
-    (False ; False) -> Empty
-  }
-}
+    instance (Add (Time -> Value) (Time -> Value) (Time -> Value)) :
+        left right -> t -> do {
+            a : left t
+            b : right t
+            when (a /= Empty ; b /= Empty) {
+                (True ; True) -> a + b
+                (True ; False) -> a
+                (False ; True) -> b
+                (False ; False) -> Empty
+            }
+        }
 
 -- Run some code when the simulation reaches the specified time.
 @(highlight-category : "physics-motion")
 @(highlight-icon : "timer")
 observe :: Result => Time {Result} -> Unit
 observe : (Time t) block -> do {
-  initialize-tick
-  runtime-message "observe" (t ; block)
+    initialize-tick
+    runtime-message "observe" (t ; block)
 }
 
 measure :: Object -> (Mass ; (Distance ; Distance) ; (Velocity ; Velocity) ; (Force ; Force))
 measure : (Object o) -> do {
-  (m ; x ; y ; vx ; vy ; fx ; fy) : runtime-message "measure" o
-  (Mass m) ; ((Distance x) ; (Distance y)) ; ((Velocity vx) ; (Velocity vy)) ; ((Force fx) ; (Force fy))
+    (m ; x ; y ; vx ; vy ; fx ; fy) : runtime-message "measure" o
+    (Mass m) ; ((Distance x) ; (Distance y)) ; ((Velocity vx) ; (Velocity vy)) ; ((Force fx) ; (Force fy))
 }
 
 -- Get the current time.
@@ -313,8 +313,8 @@ time : runtime-message "time" ()
 @(highlight-icon : "square-foot")
 mass-of :: Object -> Mass
 mass-of : object -> do {
-  (m ; _ ; _ ; _) : measure object
-  m
+    (m ; _ ; _ ; _) : measure object
+    m
 }
 
 -- Get the x-component of an object's current position.
@@ -322,8 +322,8 @@ mass-of : object -> do {
 @(highlight-icon : "square-foot")
 x-position-of :: Object -> Distance
 x-position-of : object -> do {
-  (_ ; (x ; _) ; _ ; _) : measure object
-  x
+    (_ ; (x ; _) ; _ ; _) : measure object
+    x
 }
 
 -- Get the y-component of an object's current position.
@@ -331,8 +331,8 @@ x-position-of : object -> do {
 @(highlight-icon : "square-foot")
 y-position-of :: Object -> Distance
 y-position-of : object -> do {
-  (_ ; (_ ; y) ; _ ; _) : measure object
-  y
+    (_ ; (_ ; y) ; _ ; _) : measure object
+    y
 }
 
 -- Get the x-component of an object's current velocity.
@@ -340,8 +340,8 @@ y-position-of : object -> do {
 @(highlight-icon : "square-foot")
 x-velocity-of :: Object -> Velocity
 x-velocity-of : object -> do {
-  (_ ; _ ; (vx ; _) ; _) : measure object
-  vx
+    (_ ; _ ; (vx ; _) ; _) : measure object
+    vx
 }
 
 -- Get the y-component of an object's current velocity.
@@ -349,8 +349,8 @@ x-velocity-of : object -> do {
 @(highlight-icon : "square-foot")
 y-velocity-of :: Object -> Velocity
 y-velocity-of : object -> do {
-  (_ ; _ ; (_ ; vy) ; _) : measure object
-  vy
+    (_ ; _ ; (_ ; vy) ; _) : measure object
+    vy
 }
 
 -- Get the x-component of the force an object is currently experiencing.
@@ -358,8 +358,8 @@ y-velocity-of : object -> do {
 @(highlight-icon : "square-foot")
 x-force-of :: Object -> Force
 x-force-of : object -> do {
-  (_ ; _ ; _ ; (fx ; _)) : measure object
-  fx
+    (_ ; _ ; _ ; (fx ; _)) : measure object
+    fx
 }
 
 -- Get the y-component of the force an object is currently experiencing.
@@ -367,6 +367,6 @@ x-force-of : object -> do {
 @(highlight-icon : "square-foot")
 y-force-of :: Object -> Force
 y-force-of : object -> do {
-  (_ ; _ ; _ ; (_ ; fy)) : measure object
-  fy
+    (_ ; _ ; _ ; (_ ; fy)) : measure object
+    fy
 }
