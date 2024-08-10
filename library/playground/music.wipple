@@ -1,6 +1,6 @@
 Music : type {
-    tempo :: {Number}
-    set-tempo :: Number -> Unit
+  tempo :: {Number}
+  set-tempo :: Number -> Unit
 }
 
 @once
@@ -10,15 +10,15 @@ instrument-key : task-local-key
 @once
 music :: Music
 music : do {
-    (set-task-local instrument-key) (load-instrument "acoustic_grand_piano")
+  (set-task-local instrument-key) (load-instrument "acoustic_grand_piano")
 
-    tempo : 120
-    Music {
-        tempo : {tempo}
-        set-tempo : new-tempo -> do {
-            tempo! : new-tempo
-        }
+  tempo : 120
+  Music {
+    tempo : {tempo}
+    set-tempo : new-tempo -> do {
+      tempo! : new-tempo
     }
+  }
 }
 
 -- Set the tempo of the music.
@@ -26,13 +26,13 @@ music : do {
 @(highlight-icon : "speed")
 tempo :: Number -> Unit
 tempo : tempo -> do {
-    { set-tempo : set-tempo } : music
-    set-tempo tempo
+  { set-tempo : set-tempo } : music
+  set-tempo tempo
 }
 
 -- A note length.
 Note-Length : type {
-    ms-from-tempo :: Number -> Number
+  ms-from-tempo :: Number -> Number
 }
 
 instance (Describe-Type Note-Length "a note length in `beats`")
@@ -41,7 +41,7 @@ instance (Describe-Type Note-Length "a note length in `beats`")
 @(highlight-category : "unit")
 beats :: Number -> Note-Length
 beats : beats -> Note-Length {
-    ms-from-tempo : tempo -> 60000 / tempo * beats
+  ms-from-tempo : tempo -> 60000 / tempo * beats
 }
 
 -- A note.
@@ -60,26 +60,26 @@ note : note length -> chord (note ,) length
 @(highlight-icon : "music-note")
 chord :: (List Note) Note-Length -> Unit
 chord : notes { ms-from-tempo : ms-from-tempo } -> do {
-    { tempo : tempo } : music
+  { tempo : tempo } : music
 
-    {
-        name : instrument-name
-        delta : delta
-        set-delta : set-delta
-    } : current-instrument
+  {
+    name : instrument-name
+    delta : delta
+    set-delta : set-delta
+  } : current-instrument
 
-    delta : do delta
-    ms : ms-from-tempo (do tempo) - delta
+  delta : do delta
+  ms : ms-from-tempo (do tempo) - delta
 
-    notes : notes
-        . transform ((Note value) -> value)
-        . collect :: List _
+  notes : notes
+    . transform ((Note value) -> value)
+    . collect :: List _
 
-    delta : with-continuation (continuation ->
-        runtime-message "notes" (instrument-name ; ms ; notes ; delta -> continuation delta))
+  delta : with-continuation (continuation ->
+    runtime-message "notes" (instrument-name ; ms ; notes ; delta -> continuation delta))
 
-    delta >= 0 . assert "music stopped"
-    set-delta delta
+  delta >= 0 . assert "music stopped"
+  set-delta delta
 }
 
 -- Rest for a period of time.
@@ -96,16 +96,16 @@ Instrument : type {
 
 load-instrument :: Text -> Instrument
 load-instrument : name -> do {
-    runtime-message "load-instrument" name
+  runtime-message "load-instrument" name
 
-    delta : 0
-    Instrument {
-        name : name
-        delta : {delta}
-        set-delta : new-delta -> do {
-            delta! : new-delta
-        }
+  delta : 0
+  Instrument {
+    name : name
+    delta : {delta}
+    set-delta : new-delta -> do {
+      delta! : new-delta
     }
+  }
 }
 
 current-instrument :: Instrument
@@ -120,6 +120,6 @@ instance (Describe-Type Instrument-Name "an instrument name")
 @(highlight-icon : "piano")
 instrument :: (Body : ()) => Instrument-Name {Body} -> Unit
 instrument : (Instrument-Name name) body -> in-background {
-    (set-task-local instrument-key) (load-instrument name)
-    _ : do body
+  (set-task-local instrument-key) (load-instrument name)
+  _ : do body
 }

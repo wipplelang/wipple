@@ -31,8 +31,8 @@ render-glyph :: A where (As A Glyph) => A -> Unit
 render-glyph : glyph -> do {
   -- This works because JavaScript is dynamically typed
   when (glyph as Glyph) {
-    Character-Glyph c -> runtime-message "render-glyph" c
-    Numeric-Glyph n -> runtime-message "render-glyph" n
+  Character-Glyph c -> runtime-message "render-glyph" c
+  Numeric-Glyph n -> runtime-message "render-glyph" n
   }
 }
 
@@ -49,8 +49,8 @@ render-line :: A where (As A Glyph-Sequence) => A -> Unit
 render-line : glyphs -> do {
   -- This works because JavaScript is dynamically typed
   when (glyphs as Glyph-Sequence) {
-    Text-Glyph-Sequence c -> runtime-message "render-line" c
-    Numeric-Glyph-Sequence n -> runtime-message "render-line" n
+  Text-Glyph-Sequence c -> runtime-message "render-line" c
+  Numeric-Glyph-Sequence n -> runtime-message "render-line" n
   }
 }
 
@@ -59,8 +59,8 @@ render :: A where (As A Glyph-Sequence) => A -> ()
 render : glyphs -> do {
   -- This works because JavaScript is dynamically typed
   when (glyphs as Glyph-Sequence) {
-    Text-Glyph-Sequence c -> runtime-message "render" c
-    Numeric-Glyph-Sequence n -> runtime-message "render" n
+  Text-Glyph-Sequence c -> runtime-message "render" c
+  Numeric-Glyph-Sequence n -> runtime-message "render" n
   }
 }
 
@@ -69,8 +69,8 @@ render-line-fill :: A where (As A Glyph) => Text A -> Unit
 render-line-fill : text replacement -> do {
   -- This works because JavaScript is dynamically typed
   when (replacement as Glyph) {
-    Character-Glyph c -> runtime-message "render-line-fill" (text ; c)
-    Numeric-Glyph n -> runtime-message "render-line-fill" (text ; n)
+  Character-Glyph c -> runtime-message "render-line-fill" (text ; c)
+  Numeric-Glyph n -> runtime-message "render-line-fill" (text ; n)
   }
 }
 
@@ -79,8 +79,8 @@ render-fill :: A where (As A Glyph) => Text A -> ()
 render-fill : text replacement -> do {
   -- This works because JavaScript is dynamically typed
   when (replacement as Glyph) {
-    Character-Glyph c -> runtime-message "render-fill" (text ; c)
-    Numeric-Glyph n -> runtime-message "render-fill" (text ; n)
+  Character-Glyph c -> runtime-message "render-fill" (text ; c)
+  Numeric-Glyph n -> runtime-message "render-fill" (text ; n)
   }
 }
 
@@ -98,8 +98,8 @@ play : {
 } -> do {
   -- HACK: Can't send booleans to JavaScript
   loop : when loop {
-    True -> 1
-    False -> 0
+  True -> 1
+  False -> 0
   }
 
   runtime-message "play" (song ; loop)

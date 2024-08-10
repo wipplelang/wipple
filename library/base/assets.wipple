@@ -4,13 +4,13 @@
 Color : type Text
 
 () where (Error ("unused color; did you mean to write `color`?" ; Error-Fix "add `color`" ("`color _`" Source))) =>
-    instance (Unused Color)
+  instance (Unused Color)
 
 instance (Random Unit Color) : () -> do {
-    red : random (0 to 256)
-    green : random (0 to 256)
-    blue : random (0 to 256)
-    Color ("rgb(_, _, _)" red green blue)
+  red : random (0 to 256)
+  green : random (0 to 256)
+  blue : random (0 to 256)
+  Color ("rgb(_, _, _)" red green blue)
 }
 
 -- Create an image from a URL. In the Wipple Playground, you can drag an image
