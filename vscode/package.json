@@ -39,6 +39,10 @@
         "configuration": {
             "title": "Wipple",
             "properties": {
+                "wipple.path": {
+                    "type": "string",
+                    "description": "Path to the Wipple CLI"
+                },
                 "wipple.interface": {
                     "type": "string",
                     "description": "Path to .wippleinterface file to read when compiling"
