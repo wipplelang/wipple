@@ -11,7 +11,6 @@ instance (Hash Number) : number -> hasher -> intrinsic "hash-number" hasher numb
 instance (Hash Text) : text -> hasher -> intrinsic "hash-text" hasher text
 instance (Hash ()) : () -> hash 0
 
-
 -- A collection of unique keys associated with values.
 Dictionary : Key Value => type {
   hasher :: Hasher
@@ -24,7 +23,6 @@ Key Value => instance (Empty (Dictionary Key Value)) : Dictionary {
   size : 0
   entries : (None ,)
 }
-
 
 -- Retrieve the value for a key stored in a dictionary.
 entry :: Key Value where (Equal Key) (Hash Key) => Key -> (Dictionary Key Value) -> Maybe Value
@@ -76,7 +74,6 @@ insert-entry : key value -> {
 
   dictionary . set-entry key (Some value)
 }
-
 
 -- Remove an entry from a dictionary by its key, returning a new dictionary.
 remove-entry :: Key Value where (Equal Key) (Hash Key) => Key -> (Dictionary Key Value) -> Dictionary Key Value

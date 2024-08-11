@@ -55,7 +55,6 @@ transform : f -> container -> do {
   }
 }
 
-
 -- Keep only the items in the sequence that satisfy the provided condition.
 filter :: Container (infer Element) where (As-Sequence Container Element) => (Element -> Boolean) -> Container -> Sequence Element
 filter : include? -> container -> do {
@@ -117,7 +116,6 @@ flatten : outer -> do {
   }
 }
 
-
 -- Find the first item in a sequence that can be transformed into a `Some` value.
 find-by :: Collection (infer Element) Result where (As-Sequence Collection Element) => (Element -> Maybe Result) -> Collection -> Maybe Result
 find-by : f -> collection -> do {
@@ -133,7 +131,6 @@ find-by : f -> collection -> do {
     }
   }
 }
-
 
 -- Reduce a sequence down to a single item.
 reduce :: Container (infer Element) Result where (As-Sequence Container Element) => Result (Element -> Result -> Result) -> Container -> Result
@@ -201,7 +198,6 @@ instance (From-Sequence () ()) : sequence -> repeat with-control-flow {
 each :: Container (infer Element) where (As-Sequence Container Element) => (Element -> Unit) -> Container -> Unit
 each : action -> container -> container . transform action . collect
 
-
 -- Split a sequence into groups of consecutive items satisfying a condition.
 split-by :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Sequence (List Element)
 split-by : separator -> collection -> do {
@@ -262,7 +258,6 @@ count : collection -> do {
 join :: A B (infer Element) (C : A) where (As-Sequence A Element) (As-Sequence B Element) (From-Sequence Element C) => A B -> C
 join : a b -> collect (flatten ((,) . append (As-Sequence a) . append (As-Sequence b)))
 
-
 -- Take up to a fixed number of values from a sequence.
 take :: Collection (infer Element) where (As-Sequence Collection Element) => Number -> Collection -> Sequence Element
 take : count -> collection -> do {
@@ -278,7 +273,6 @@ take : count -> collection -> do {
     }
   }
 }
-
 
 -- Find the first item in a sequence that satisfies a condition.
 find :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Maybe Element
@@ -323,7 +317,6 @@ all? : condition? -> collection -> do {
 
   As-Sequence collection . helper condition?
 }
-
 
 -- Returns `True` if the condition is `True` for any item in the sequence, or `False` if the sequence is empty.
 any? :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Boolean

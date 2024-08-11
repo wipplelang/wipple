@@ -26,7 +26,7 @@ music : do {
 @(highlight-icon : "speed")
 tempo :: Number -> Unit
 tempo : tempo -> do {
-  { set-tempo : set-tempo } : music
+  {set-tempo : set-tempo} : music
   set-tempo tempo
 }
 
@@ -59,8 +59,8 @@ note : note length -> chord (note ,) length
 @(highlight-category : "music-play")
 @(highlight-icon : "music-note")
 chord :: (List Note) Note-Length -> Unit
-chord : notes { ms-from-tempo : ms-from-tempo } -> do {
-  { tempo : tempo } : music
+chord : notes {ms-from-tempo : ms-from-tempo} -> do {
+  {tempo : tempo} : music
 
   {
     name : instrument-name
