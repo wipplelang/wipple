@@ -7,7 +7,7 @@ use derivative::Derivative;
 use itertools::Itertools;
 use logos::Logos;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, hash::Hash, mem};
+use std::{borrow::Cow, collections::VecDeque, hash::Hash, mem};
 use wipple_util::WithInfo;
 
 /// A token in the source code.
@@ -590,28 +590,21 @@ where
 }
 
 /// Format the output of [`tokenize`] to a string.
-pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -> String {
+pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
+    #[derive(Debug, Clone, Copy)]
+    enum LineIndent {
+        Group,
+        TrailingOperator,
+    }
+
+    let mut tokens = VecDeque::from(tokens);
     let mut s = String::new();
-    let mut line_indent = 0u32;
-    let mut operator_indent = 0u32;
+    let mut line_indents = Vec::<LineIndent>::new();
+    let mut groups = Vec::<bool>::new();
     let mut pad = true;
     let mut first_in_group = false;
-    let mut line_break_stack = Vec::new();
 
-    macro_rules! increment {
-        ($indent:ident) => {
-            $indent += 1;
-        };
-    }
-
-    macro_rules! decrement {
-        ($indent:ident) => {
-            $indent = $indent.saturating_sub(1);
-        };
-    }
-
-    let mut tokens = tokens.into_iter().peekable();
-    while let Some(token) = tokens.next() {
+    while let Some(token) = tokens.pop_front() {
         match &token {
             Token::LeftParenthesis => {
                 if pad {
@@ -620,23 +613,31 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
 
                 s.push('(');
 
-                increment!(line_indent);
-                line_break_stack.push(tokens.peek().copied() == Some(&Token::LineBreak));
-
-                decrement!(operator_indent);
                 pad = false;
                 first_in_group = true;
+
+                if let Some(Token::LineBreak) = tokens.front() {
+                    line_indents.push(LineIndent::Group);
+                    groups.push(true);
+                } else {
+                    groups.push(false);
+                }
             }
             Token::RightParenthesis => {
                 s.push(')');
 
-                if line_break_stack.pop() == Some(false) {
-                    decrement!(line_indent);
-                }
-
-                decrement!(operator_indent);
                 pad = true;
                 first_in_group = false;
+
+                if matches!(groups.pop(), Some(true)) {
+                    while let Some(LineIndent::TrailingOperator) = line_indents.last() {
+                        line_indents.pop();
+                    }
+
+                    if matches!(line_indents.last(), Some(LineIndent::Group)) {
+                        line_indents.pop();
+                    }
+                }
             }
             Token::LeftBracket => {
                 if pad {
@@ -645,23 +646,31 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
 
                 s.push('[');
 
-                increment!(line_indent);
-                line_break_stack.push(tokens.peek().copied() == Some(&Token::LineBreak));
-
-                decrement!(operator_indent);
                 pad = false;
                 first_in_group = true;
+
+                if let Some(Token::LineBreak) = tokens.front() {
+                    line_indents.push(LineIndent::Group);
+                    groups.push(true);
+                } else {
+                    groups.push(false);
+                }
             }
             Token::RightBracket => {
                 s.push(']');
 
-                if line_break_stack.pop() == Some(false) {
-                    decrement!(line_indent);
-                }
-
-                decrement!(operator_indent);
                 pad = true;
                 first_in_group = false;
+
+                if matches!(groups.pop(), Some(true)) {
+                    while let Some(LineIndent::TrailingOperator) = line_indents.last() {
+                        line_indents.pop();
+                    }
+
+                    if matches!(line_indents.last(), Some(LineIndent::Group)) {
+                        line_indents.pop();
+                    }
+                }
             }
             Token::LeftBrace => {
                 if pad {
@@ -670,62 +679,143 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
 
                 s.push('{');
 
-                if matches!(tokens.peek(), Some(Token::LineBreak)) {
-                    increment!(line_indent);
-                    line_break_stack.push(true);
-                }
-
-                decrement!(operator_indent);
                 pad = false;
                 first_in_group = true;
+
+                if let Some(Token::LineBreak) = tokens.front() {
+                    line_indents.push(LineIndent::Group);
+                    groups.push(true);
+                } else {
+                    groups.push(false);
+                }
             }
             Token::RightBrace => {
                 s.push('}');
 
-                if line_break_stack.pop() == Some(false) {
-                    decrement!(line_indent);
-                }
-
-                decrement!(operator_indent);
                 pad = true;
                 first_in_group = false;
-            }
-            Token::LineBreak => {
-                let multiple = tokens
-                    .next_if(|token| matches!(token, Token::LineBreak))
-                    .is_some();
+                if matches!(groups.pop(), Some(true)) {
+                    while let Some(LineIndent::TrailingOperator) = line_indents.last() {
+                        line_indents.pop();
+                    }
 
-                if multiple {
-                    while let Some(Token::LineBreak) = tokens.peek() {
-                        tokens.next();
+                    if matches!(line_indents.last(), Some(LineIndent::Group)) {
+                        line_indents.pop();
                     }
                 }
+            }
+            Token::LineBreak => {
+                let mut multiple = false;
+                while tokens
+                    .front()
+                    .is_some_and(|token| matches!(token, Token::LineBreak))
+                {
+                    tokens.pop_front();
+                    multiple = true;
+                }
 
-                match tokens.peek() {
-                    Some(Token::Operator(_)) => {
-                        increment!(operator_indent);
-                    }
-                    Some(Token::RightParenthesis | Token::RightBracket | Token::RightBrace) => {
-                        if line_break_stack.last() != Some(&false) {
-                            line_break_stack.pop();
-                            decrement!(line_indent);
+                let mut queue = String::new();
+                let mut leading_indent = false;
+                while let Some(token) = tokens.front().copied() {
+                    let c = match token {
+                        Token::RightParenthesis => ')',
+                        Token::RightBracket => ']',
+                        Token::RightBrace => '}',
+                        Token::Operator(_)
+                        | Token::VariadicOperator(_)
+                        | Token::NonAssociativeOperator(_) => {
+                            // Only set the leading indent if the operator is
+                            // the first token on the line
+                            leading_indent = queue.is_empty();
+                            break;
+                        }
+                        _ => break,
+                    };
+
+                    tokens.pop_front();
+                    queue.push(c);
+
+                    if matches!(groups.pop(), Some(true)) {
+                        while let Some(LineIndent::TrailingOperator) = line_indents.last() {
+                            line_indents.pop();
+                        }
+
+                        if matches!(line_indents.last(), Some(LineIndent::Group)) {
+                            line_indents.pop();
                         }
                     }
-                    _ => {}
                 }
 
                 if multiple {
                     s.push('\n');
                 }
 
+                let mut indent = line_indents.len();
+                if leading_indent {
+                    indent += 1;
+                }
+
                 s.push('\n');
-                for _ in 0..(line_indent + operator_indent) {
+                for _ in 0..indent {
                     s.push_str("  ");
                 }
 
-                pad = false;
+                s.push_str(&queue);
+
+                pad = !queue.is_empty();
                 first_in_group = false;
-                decrement!(operator_indent);
+
+                // Simulate what would happen if the first token on the line
+                // would close a group from a previous line
+                let mut tokens = tokens.iter();
+                let last_would_close_group = {
+                    let mut reset_line_indents = line_indents.clone();
+                    if matches!(
+                        tokens.next(),
+                        Some(Token::RightParenthesis | Token::RightBracket | Token::RightBrace)
+                    ) && matches!(groups.last(), Some(true))
+                    {
+                        while let Some(LineIndent::TrailingOperator) = reset_line_indents.last() {
+                            reset_line_indents.pop();
+                        }
+
+                        if matches!(reset_line_indents.last(), Some(LineIndent::Group)) {
+                            reset_line_indents.pop();
+                        }
+                    }
+
+                    !matches!(
+                        reset_line_indents.last(),
+                        Some(LineIndent::TrailingOperator)
+                    )
+                };
+
+                // Only reset trailing operator indent if the current line would
+                // not start a new indent...
+                let mut reset = true;
+                for token in tokens {
+                    match token {
+                        Token::LineBreak => break,
+                        Token::LeftParenthesis | Token::LeftBracket | Token::LeftBrace => {
+                            reset = last_would_close_group;
+                        }
+                        Token::Operator(_)
+                        | Token::VariadicOperator(_)
+                        | Token::NonAssociativeOperator(_) => {
+                            reset = false;
+                        }
+                        _ => {
+                            reset = true;
+                        }
+                    }
+                }
+
+                if reset {
+                    // ...and we're not already in a group
+                    while let Some(LineIndent::TrailingOperator) = line_indents.last() {
+                        line_indents.pop();
+                    }
+                }
             }
             Token::Comment(comment) => {
                 if pad || first_in_group {
@@ -741,7 +831,6 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 }
 
                 s.push_str(&keyword.to_string());
-                decrement!(operator_indent);
                 pad = !keyword.is_prefix();
                 first_in_group = false;
             }
@@ -751,9 +840,13 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 }
 
                 s.push_str(&operator.to_string());
-                increment!(operator_indent);
+
                 pad = true;
                 first_in_group = false;
+
+                if let Some(Token::LineBreak) = tokens.front() {
+                    line_indents.push(LineIndent::TrailingOperator);
+                }
             }
             Token::VariadicOperator(operator) => {
                 if pad {
@@ -761,9 +854,13 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 }
 
                 s.push_str(&operator.to_string());
-                increment!(operator_indent);
+
                 pad = true;
                 first_in_group = false;
+
+                if let Some(Token::LineBreak) = tokens.front() {
+                    line_indents.push(LineIndent::TrailingOperator);
+                }
             }
             Token::NonAssociativeOperator(operator) => {
                 if pad {
@@ -771,9 +868,13 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 }
 
                 s.push_str(&operator.to_string());
-                increment!(operator_indent);
+
                 pad = true;
                 first_in_group = false;
+
+                if let Some(Token::LineBreak) = tokens.front() {
+                    line_indents.push(LineIndent::TrailingOperator);
+                }
             }
             Token::Name(name) => {
                 if pad {
@@ -781,7 +882,6 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 }
 
                 s.push_str(name);
-                decrement!(operator_indent);
                 pad = true;
                 first_in_group = false;
             }
@@ -793,7 +893,6 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 s.push('"');
                 s.push_str(text);
                 s.push('"');
-                decrement!(operator_indent);
                 pad = true;
                 first_in_group = false;
             }
@@ -803,7 +902,7 @@ pub fn format<'a, 'src: 'a>(tokens: impl IntoIterator<Item = &'a Token<'src>>) -
                 }
 
                 s.push_str(number);
-                decrement!(operator_indent);
+
                 pad = true;
                 first_in_group = false;
             }
