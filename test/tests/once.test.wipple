@@ -3,8 +3,8 @@
 @once
 temp :: Number
 temp : do {
-    show "Hello, world!"
-    42
+  show "Hello, world!"
+  42
 }
 
 show temp

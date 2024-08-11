@@ -42,7 +42,7 @@ pub fn format(code: &str) -> String {
     match syntax::tokenize::tokenize(&syntax_driver, code)
         .collect::<std::result::Result<Vec<_>, _>>()
     {
-        Ok(tokens) => syntax::tokenize::format(tokens.iter().map(|token| &token.item)),
+        Ok(tokens) => syntax::tokenize::format(tokens.iter().map(|token| &token.item).collect()),
         Err(_) => code.to_string(),
     }
 }

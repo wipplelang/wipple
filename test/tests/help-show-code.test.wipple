@@ -3,7 +3,7 @@
 Compatible : Left Right => trait (Left Right -> Unit)
 
 Left Right where (Error ("`_` is not compatible with `_`" Left Right)) =>
-    default instance (Compatible Left Right) : ...
+  default instance (Compatible Left Right) : ...
 
 Foo : type (Foo)
 foo : Foo

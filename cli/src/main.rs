@@ -47,6 +47,9 @@ enum Args {
 
         source_paths: Vec<PathBuf>,
     },
+    Format {
+        source_paths: Vec<PathBuf>,
+    },
     Lsp,
     Doc {
         #[clap(
@@ -234,6 +237,20 @@ async fn main() -> anyhow::Result<()> {
             }
 
             fs::write(&output_path, serde_json::to_string_pretty(&output)?)?;
+
+            Ok(())
+        }
+        Args::Format { source_paths } => {
+            for path in source_paths {
+                if let Err(error) = fs::read_to_string(&path)
+                    .map(|code| wipple_driver::format(&code))
+                    .and_then(|code| fs::write(&path, code))
+                {
+                    eprintln!("could not format {}: {}", path.to_string_lossy(), error);
+                } else {
+                    eprintln!("formatted {}", path.to_string_lossy());
+                }
+            }
 
             Ok(())
         }

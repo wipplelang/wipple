@@ -11,7 +11,7 @@ show name
 get-name :: Person -> Text
 get-name : {name : name} -> name
 
-bob : Person { name : "Bob"}
+bob : Person {name : "Bob"}
 show (get-name bob)
 
 instance (Describe Person) : {name : name} -> name

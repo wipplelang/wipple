@@ -6,18 +6,18 @@ Text : type intrinsic
 
 @(language : "maybe")
 Maybe : Value => type {
-    @(language : "none")
-    None
+  @(language : "none")
+  None
 
-    @(language : "some")
-    Some Value
+  @(language : "some")
+  Some Value
 }
 
 @(language : "as")
 As : Input Output => trait (Input -> Output)
 
 Input Output where (Error ("cannot convert a _ into _" Input Output)) =>
-    default instance (As Input Output) : ...
+  default instance (As Input Output) : ...
 
 Value => instance (As Value Value) : value -> value
 
@@ -37,7 +37,7 @@ unreachable : error "unreachable"
 Empty : Value => trait Value
 
 Value where (Error ("_ has no empty value" Value)) =>
-    default instance (Empty Value) : ...
+  default instance (Empty Value) : ...
 
 instance (Empty Number) : 0
 instance (Empty Text) : ""
