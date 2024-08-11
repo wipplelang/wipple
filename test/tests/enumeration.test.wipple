@@ -1,11 +1,11 @@
 -- [should compile]
 
 Grade : type {
-    A
-    B
-    C
-    D
-    F
+  A
+  B
+  C
+  D
+  F
 }
 
 _ : A

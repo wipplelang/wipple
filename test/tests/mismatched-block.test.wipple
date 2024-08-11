@@ -2,6 +2,6 @@
 
 foo :: Number
 foo : do {
-    show "Hello, world!"
-    "hi" -- only this line should be highlighted instead of the entire 'do' block
+  show "Hello, world!"
+  "hi" -- only this line should be highlighted instead of the entire 'do' block
 }

@@ -11,6 +11,6 @@ validate :: Value where (Valid Value) => Value -> Unit
 validate : ...
 
 Value where (Error ("try putting `valid` before this number" ; Error-Location Value)) =>
-    instance (Valid (Value = Number))
+  instance (Valid (Value = Number))
 
 validate 42
