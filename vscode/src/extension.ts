@@ -12,7 +12,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
     const config = vscode.workspace.getConfiguration("wipple");
 
     const run: Executable = {
-        command: "wipple",
+        command: config.get<string>("path") || "wipple",
         args: ["lsp"],
         options: {
             env: {
