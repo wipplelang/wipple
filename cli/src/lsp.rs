@@ -3,7 +3,7 @@ use line_index::{LineCol, LineIndex};
 use serde::Deserialize;
 use std::{
     collections::HashMap,
-    fs,
+    fs, io,
     path::{Path, PathBuf},
     sync::Mutex,
 };
@@ -86,7 +86,7 @@ impl LanguageServer for Backend {
             .initialization_options
             .as_ref()
             .and_then(|options| options.get("interface"))
-            .and_then(|path| read_to_json(path.as_str()?, &config.root_dir))
+            .and_then(|path| read_binary(path.as_str()?, &config.root_dir))
         {
             config.dependencies = Some(interface);
         };
@@ -99,7 +99,7 @@ impl LanguageServer for Backend {
             .and_then(|paths| {
                 paths
                     .iter()
-                    .map(|path| read_to_json(path.as_str()?, &config.root_dir))
+                    .map(|path| read_binary(path.as_str()?, &config.root_dir))
                     .collect()
             })
         {
@@ -765,11 +765,8 @@ impl Backend {
     }
 }
 
-fn read_to_json<T: for<'de> serde::Deserialize<'de>>(
-    path: impl AsRef<Path>,
-    root: &Path,
-) -> Option<T> {
-    serde_json::from_str(&fs::read_to_string(root.join(path)).ok()?).ok()
+fn read_binary<T: serde::de::DeserializeOwned>(path: impl AsRef<Path>, root: &Path) -> Option<T> {
+    wipple_driver::util::read_binary(io::BufReader::new(fs::File::open(root.join(path)).ok()?)).ok()
 }
 
 fn find_word_boundary(text: &str, position: usize) -> std::ops::Range<usize> {

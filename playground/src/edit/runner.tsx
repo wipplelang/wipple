@@ -14,6 +14,7 @@ import { Help, IntelligentFix, Output } from "../models";
 import { Mutex } from "async-mutex";
 import { Markdown, defaultAnimationDuration } from "../components";
 import { flushSync } from "react-dom";
+import { decompress } from "fzstd";
 
 export interface RunOptions {
     dependenciesPath: string;
@@ -458,10 +459,15 @@ interface FetchDependenciesResult {
     libraries: any[];
 }
 
-const fetchDependencies = async (name: string): Promise<FetchDependenciesResult> =>
-    fetch(new URL(`/playground/library/${name}.wipplebundle`, window.location.origin)).then(
-        (response) => response.json(),
+const fetchDependencies = async (name: string): Promise<FetchDependenciesResult> => {
+    const response = await fetch(
+        new URL(`/playground/library/${name}.wipplebundle`, window.location.origin),
     );
+
+    const buffer = await response.arrayBuffer();
+    const data = decompress(new Uint8Array(buffer));
+    return JSON.parse(new TextDecoder().decode(data));
+};
 
 const fetchBuiltinsHelp = async (): Promise<Record<string, any>> =>
     fetch(new URL("/playground/library/help/builtins.json", window.location.origin)).then(
