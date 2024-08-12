@@ -591,27 +591,74 @@ where
 
 /// Format the output of [`tokenize`] to a string.
 pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
+    // The formatted code is stored here.
+    let mut formatted = String::new();
+
+    // Rather than using an iterator, a VecDeque allows us to perform lookahead
+    // without consuming tokens. This is done when determining whether to reset
+    // the indentation of a line.
+    let mut tokens = VecDeque::from(tokens);
+
+    // We track indentation within groups of parentheses, brackets and braces
+    // using a stack. Whenever we encounted an opening grouping symbol, we push
+    // `true` (indicating the symbol comes immediately before a new line) or
+    // `false` (it doesn't) to the stack. Closing grouping symbols pop from the
+    // stack.
+    let mut groups = Vec::<bool>::new();
+
     #[derive(Debug, Clone, Copy)]
     enum LineIndent {
         Group,
         TrailingOperator,
     }
 
-    let mut tokens = VecDeque::from(tokens);
-    let mut s = String::new();
+    // Similarly, we track what caused a line to be indented. This is used to
+    // reset the line indent only as far as needed. For example...
+    //
+    // ```wipple
+    // {
+    //   f :
+    //     x ->
+    //       42
+    //
+    //  f ()
+    // }
+    // ```
+    //
+    // ...would cause `LineIndent::Group` to be pushed once, and then
+    // `LineIndent::TrailingOperator` to be pushed twice (for the definition of
+    // `f`). Once the definition of `f` is over, we want to remove the
+    // `TrailingOperator` indents, but not the `Group` indent, since we want the
+    // call to `f` to remain indented within the block.
+    //
+    // You'll see this pattern several times below -- we remove
+    // `TrailingOperator` indents until we encounter a `Group` indent, and then
+    // remove a single `Group` indent.
     let mut line_indents = Vec::<LineIndent>::new();
-    let mut groups = Vec::<bool>::new();
+
+    // This tracks whether to insert a space before a token. We add padding
+    // after non-grouping symbols like names and numbers, but skip padding after
+    // parentheses, brackets and braces. Padding is also only respected for non-
+    // grouping symbols; we want code like `( x )` to be formatted as `(x)`, not
+    // `(x )`.
     let mut pad = true;
+
+    // This tracks whether the previous token was an opening grouping symbol for
+    // the purpose of inserting a space before a comment. Even though we don't
+    // insert a space in the case of `(x`, we always insert a space before
+    // comments (ie. `( -- comment`). When we insert a comment, we check if
+    // either `pad` or `first_in_group` are set.
     let mut first_in_group = false;
 
+    // Iterate through the tokens, writing them to `formatted` one at a time.
     while let Some(token) = tokens.pop_front() {
         match &token {
             Token::LeftParenthesis => {
                 if pad {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push('(');
+                formatted.push('(');
 
                 pad = false;
                 first_in_group = true;
@@ -624,7 +671,7 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
                 }
             }
             Token::RightParenthesis => {
-                s.push(')');
+                formatted.push(')');
 
                 pad = true;
                 first_in_group = false;
@@ -641,10 +688,10 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
             }
             Token::LeftBracket => {
                 if pad {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push('[');
+                formatted.push('[');
 
                 pad = false;
                 first_in_group = true;
@@ -657,7 +704,7 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
                 }
             }
             Token::RightBracket => {
-                s.push(']');
+                formatted.push(']');
 
                 pad = true;
                 first_in_group = false;
@@ -674,10 +721,10 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
             }
             Token::LeftBrace => {
                 if pad {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push('{');
+                formatted.push('{');
 
                 pad = false;
                 first_in_group = true;
@@ -690,7 +737,7 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
                 }
             }
             Token::RightBrace => {
-                s.push('}');
+                formatted.push('}');
 
                 pad = true;
                 first_in_group = false;
@@ -705,6 +752,23 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
                 }
             }
             Token::LineBreak => {
+                // Collapse multiple line breaks into at most two line breaks.
+                // For example:
+                //
+                // ```wipple
+                // foo
+                //
+                //
+                // bar
+                // ```
+                //
+                // Is formatted as:
+                //
+                // ```wipple
+                // foo
+                //
+                // bar
+                // ```
                 let mut multiple = false;
                 while tokens
                     .front()
@@ -714,8 +778,32 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
                     multiple = true;
                 }
 
+                // As long as we encounter closing grouping symbols before any
+                // other tokens, we need to remove indentation. That way, code
+                // like this:
+                //
+                // ```wipple
+                // {
+                //   x
+                // }
+                // ```
+                //
+                // Isn't formatted as:
+                //
+                // ```wipple
+                // {
+                //   x
+                //   }
+                // ```
+                //
+                // We store the closing symbols in a queue and write them to
+                // `formatted` after removing indentation.
                 let mut queue = String::new();
+
+                // This is used to insert leading indentation if the first token
+                // is an operator.
                 let mut leading_indent = false;
+
                 while let Some(token) = tokens.front().copied() {
                     let c = match token {
                         Token::RightParenthesis => ')',
@@ -725,16 +813,37 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
                         | Token::VariadicOperator(_)
                         | Token::NonAssociativeOperator(_) => {
                             // Only set the leading indent if the operator is
-                            // the first token on the line
+                            // the first token on the line. Otherwise, code
+                            // like:
+                            //
+                            // ```wipple
+                            // {
+                            // } -> {}
+                            // ```
+                            //
+                            // Would insert a leading indent because of the
+                            // `->` and be formatted as:
+                            //
+                            // ```wipple
+                            // {
+                            //   } -> {}
+                            // ```
                             leading_indent = queue.is_empty();
                             break;
                         }
-                        _ => break,
+                        _ => {
+                            // Stop on any other token and so it can be printed
+                            // as normal.
+                            break;
+                        }
                     };
 
                     tokens.pop_front();
                     queue.push(c);
 
+                    // Make sure to handle the standard resetting of
+                    // grouping/indentation, since here, the most recent token
+                    // was a closing grouping symbol.
                     if matches!(groups.pop(), Some(true)) {
                         while let Some(LineIndent::TrailingOperator) = line_indents.last() {
                             line_indents.pop();
@@ -746,8 +855,10 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
                     }
                 }
 
+                // Add a single extra new line if there are multiple line
+                // breaks.
                 if multiple {
-                    s.push('\n');
+                    formatted.push('\n');
                 }
 
                 let mut indent = line_indents.len();
@@ -755,51 +866,35 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
                     indent += 1;
                 }
 
-                s.push('\n');
+                formatted.push('\n');
                 for _ in 0..indent {
-                    s.push_str("  ");
+                    // Wipple uses 2-space indents.
+                    formatted.push_str("  ");
                 }
 
-                s.push_str(&queue);
+                formatted.push_str(&queue);
 
                 pad = !queue.is_empty();
                 first_in_group = false;
 
-                // Simulate what would happen if the first token on the line
-                // would close a group from a previous line
-                let mut tokens = tokens.iter();
-                let last_would_close_group = {
-                    let mut reset_line_indents = line_indents.clone();
-                    if matches!(
-                        tokens.next(),
-                        Some(Token::RightParenthesis | Token::RightBracket | Token::RightBrace)
-                    ) && matches!(groups.last(), Some(true))
-                    {
-                        while let Some(LineIndent::TrailingOperator) = reset_line_indents.last() {
-                            reset_line_indents.pop();
-                        }
-
-                        if matches!(reset_line_indents.last(), Some(LineIndent::Group)) {
-                            reset_line_indents.pop();
-                        }
-                    }
-
-                    !matches!(
-                        reset_line_indents.last(),
-                        Some(LineIndent::TrailingOperator)
-                    )
-                };
-
-                // Only reset trailing operator indent if the current line would
-                // not start a new indent...
-                let mut reset = true;
-                for token in tokens {
+                // Fially, we determine whether to reset the trailing operator
+                // indent. We do this by looking ahead to the end of the next
+                // line. The rules for resetting indentation are:
+                //
+                //   -  If the last token (on the following line) is an opening
+                //      grouping symbol or operator, don't reset. In fact, we
+                //      indent another level.
+                //
+                //   -  Any other token (eg. a name) causes a reset because
+                //      the operator expression is over.
+                let mut reset = !queue.is_empty();
+                for token in &tokens {
                     match token {
                         Token::LineBreak => break,
-                        Token::LeftParenthesis | Token::LeftBracket | Token::LeftBrace => {
-                            reset = last_would_close_group;
-                        }
-                        Token::Operator(_)
+                        Token::LeftParenthesis
+                        | Token::LeftBracket
+                        | Token::LeftBrace
+                        | Token::Operator(_)
                         | Token::VariadicOperator(_)
                         | Token::NonAssociativeOperator(_) => {
                             reset = false;
@@ -811,7 +906,6 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
                 }
 
                 if reset {
-                    // ...and we're not already in a group
                     while let Some(LineIndent::TrailingOperator) = line_indents.last() {
                         line_indents.pop();
                     }
@@ -819,27 +913,27 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
             }
             Token::Comment(comment) => {
                 if pad || first_in_group {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push_str("--");
-                s.push_str(comment);
+                formatted.push_str("--");
+                formatted.push_str(comment);
             }
             Token::Keyword(keyword) => {
                 if pad && !keyword.is_suffix() {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push_str(&keyword.to_string());
+                formatted.push_str(&keyword.to_string());
                 pad = !keyword.is_prefix();
                 first_in_group = false;
             }
             Token::Operator(operator) => {
                 if pad {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push_str(&operator.to_string());
+                formatted.push_str(&operator.to_string());
 
                 pad = true;
                 first_in_group = false;
@@ -850,10 +944,10 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
             }
             Token::VariadicOperator(operator) => {
                 if pad {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push_str(&operator.to_string());
+                formatted.push_str(&operator.to_string());
 
                 pad = true;
                 first_in_group = false;
@@ -864,10 +958,10 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
             }
             Token::NonAssociativeOperator(operator) => {
                 if pad {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push_str(&operator.to_string());
+                formatted.push_str(&operator.to_string());
 
                 pad = true;
                 first_in_group = false;
@@ -878,30 +972,30 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
             }
             Token::Name(name) => {
                 if pad {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push_str(name);
+                formatted.push_str(name);
                 pad = true;
                 first_in_group = false;
             }
             Token::Text(text) => {
                 if pad {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push('"');
-                s.push_str(text);
-                s.push('"');
+                formatted.push('"');
+                formatted.push_str(text);
+                formatted.push('"');
                 pad = true;
                 first_in_group = false;
             }
             Token::Number(number) => {
                 if pad {
-                    s.push(' ');
+                    formatted.push(' ');
                 }
 
-                s.push_str(number);
+                formatted.push_str(number);
 
                 pad = true;
                 first_in_group = false;
@@ -909,12 +1003,12 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
         }
     }
 
-    let mut s = s.trim().to_string();
+    let mut formatted = formatted.trim().to_string();
 
     // Add a trailing newline
-    s.push('\n');
+    formatted.push('\n');
 
-    s
+    formatted
 }
 
 /// Get the comments associated with an offset in a source file. The offset must
