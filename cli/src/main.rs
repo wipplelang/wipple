@@ -7,8 +7,13 @@ mod lsp;
 
 use clap::Parser;
 use futures::{future, FutureExt};
-use serde::Serialize;
-use std::{fs, os::unix::fs::PermissionsExt, path::PathBuf, process, sync::Arc};
+use serde::{de::DeserializeOwned, Serialize};
+use std::{
+    fs, io,
+    path::{Path, PathBuf},
+    process,
+    sync::Arc,
+};
 use wipple_driver::util::lazy_static::lazy_static;
 
 #[derive(Parser)]
@@ -77,7 +82,13 @@ enum Args {
     },
 }
 
-const SHEBANG: &str = "#!/usr/bin/env wipple run\n";
+fn read_binary<T: DeserializeOwned>(path: impl AsRef<Path>) -> anyhow::Result<T> {
+    wipple_driver::util::read_binary(io::BufReader::new(fs::File::open(path)?))
+}
+
+fn write_binary(path: impl AsRef<Path>, value: &impl Serialize) -> anyhow::Result<()> {
+    wipple_driver::util::write_binary(io::BufWriter::new(fs::File::create(&path)?), value)
+}
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -104,7 +115,7 @@ async fn main() -> anyhow::Result<()> {
                 .collect::<Result<Vec<_>, _>>()?;
 
             let dependencies = match dependency_path {
-                Some(path) => Some(serde_json::from_str(&fs::read_to_string(path)?)?),
+                Some(path) => Some(read_binary(path)?),
                 None => None,
             };
 
@@ -122,10 +133,7 @@ async fn main() -> anyhow::Result<()> {
                     fs::create_dir_all(parent)?;
                 }
 
-                fs::write(
-                    output_interface_path,
-                    serde_json::to_string_pretty(&result.interface)?,
-                )?;
+                write_binary(output_interface_path, &result.interface)?;
             }
 
             if let Some(output_library_path) = output_library_path {
@@ -133,10 +141,7 @@ async fn main() -> anyhow::Result<()> {
                     fs::create_dir_all(parent)?;
                 }
 
-                fs::write(
-                    output_library_path,
-                    serde_json::to_string_pretty(&result.library)?,
-                )?;
+                write_binary(output_library_path, &result.library)?;
             }
 
             Ok(())
@@ -147,12 +152,8 @@ async fn main() -> anyhow::Result<()> {
         } => {
             let libraries = library_paths
                 .into_iter()
-                .map(|library_path| {
-                    let string = fs::read_to_string(library_path)?;
-                    let library = serde_json::from_str::<wipple_driver::Library>(&string)?;
-                    Ok(library)
-                })
-                .collect::<anyhow::Result<Vec<_>>>()?;
+                .map(read_binary)
+                .collect::<anyhow::Result<Vec<wipple_driver::Library>>>()?;
 
             let executable = match wipple_driver::link(libraries) {
                 Some(executable) => executable,
@@ -162,27 +163,16 @@ async fn main() -> anyhow::Result<()> {
                 }
             };
 
-            let output = format!("{}{}", SHEBANG, serde_json::to_string_pretty(&executable)?);
-
             if let Some(parent) = output_executable_path.parent() {
                 fs::create_dir_all(parent)?;
             }
 
-            fs::write(&output_executable_path, output)?;
-
-            let mut permissions = fs::metadata(&output_executable_path)?.permissions();
-            permissions.set_mode(0o755);
-            fs::set_permissions(output_executable_path, permissions)?;
+            write_binary(&output_executable_path, &executable)?;
 
             Ok(())
         }
         Args::Run { executable_path } => {
-            let executable = serde_json::from_str::<wipple_driver::Executable>(
-                fs::read_to_string(executable_path)?
-                    .strip_prefix(SHEBANG)
-                    .expect("missing shebang"),
-            )?;
-
+            let executable = read_binary::<wipple_driver::Executable>(executable_path)?;
             run_executable(executable).await;
 
             Ok(())
@@ -205,18 +195,14 @@ async fn main() -> anyhow::Result<()> {
                 .collect::<Result<Vec<_>, _>>()?;
 
             let dependencies = match dependency_interface_path {
-                Some(path) => Some(serde_json::from_str(&fs::read_to_string(path)?)?),
+                Some(path) => Some(read_binary(path)?),
                 None => None,
             };
 
             let libraries = dependency_libraries_paths
                 .into_iter()
-                .map(|library_path| {
-                    let string = fs::read_to_string(library_path)?;
-                    let library = serde_json::from_str::<wipple_driver::Library>(&string)?;
-                    Ok(library)
-                })
-                .collect::<anyhow::Result<Vec<_>>>()?;
+                .map(read_binary)
+                .collect::<anyhow::Result<Vec<wipple_driver::Library>>>()?;
 
             let result = wipple_driver::compile(sources, dependencies);
 
@@ -236,7 +222,7 @@ async fn main() -> anyhow::Result<()> {
                 fs::create_dir_all(parent)?;
             }
 
-            fs::write(&output_path, serde_json::to_string_pretty(&output)?)?;
+            write_binary(&output_path, &output)?;
 
             Ok(())
         }
@@ -269,7 +255,7 @@ async fn main() -> anyhow::Result<()> {
             output_path,
             interface_path,
         } => {
-            let interface = serde_json::from_str(&fs::read_to_string(interface_path)?)?;
+            let interface = read_binary(interface_path)?;
 
             let output = if json {
                 eprintln!("Generating documentation...");

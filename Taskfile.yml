@@ -5,7 +5,7 @@ tasks:
         run: once
         cmds:
             - task: compile
-            - .wipple/out
+            - cargo run --bin wipple -- run .wipple/out.wipplebinary
 
     test:
         run: once
@@ -44,7 +44,7 @@ tasks:
             - base:compile
         cmds:
             - cargo run --bin wipple -- compile test.wipple --dependency .wipple/base.wippleinterface --interface .wipple/test.wippleinterface --library .wipple/test.wipplelibrary {{.CLI_ARGS}}
-            - cargo run --bin wipple -- link .wipple/*.wipplelibrary --output .wipple/out
+            - cargo run --bin wipple -- link .wipple/*.wipplelibrary --output .wipple/out.wipplebinary
 
     cli:install:
         run: once
@@ -86,17 +86,43 @@ tasks:
             - task base:compile
             - cargo run --bin wipple -- compile ../library/base/*.wipple --interface ../.wipple/base.wippleinterface --library ../.wipple/base.wipplelibrary
             - cargo run --bin wipple -- bundle-for-playground ../library/base/*.wipple --output ./public/library/base.wipplebundle
+            - task --parallel playground:bundle:turtle playground:bundle:music playground:bundle:math playground:bundle:game playground:bundle:physics
+            - cp -r ../library/help ./public/library
+
+    playground:bundle:turtle:
+        run: once
+        dir: playground
+        cmds:
             - cargo run --bin wipple -- compile ../library/playground/turtle.wipple --dependency ../.wipple/base.wippleinterface --interface ../.wipple/turtle.wippleinterface
             - cargo run --bin wipple -- bundle-for-playground ../library/playground/turtle.wipple --dependency ../.wipple/base.wippleinterface --link ../.wipple/base.wipplelibrary --output ./public/library/turtle.wipplebundle
+
+    playground:bundle:music:
+        run: once
+        dir: playground
+        cmds:
             - cargo run --bin wipple -- compile ../library/playground/music.wipple --dependency ../.wipple/base.wippleinterface --interface ../.wipple/music.wippleinterface
             - cargo run --bin wipple -- bundle-for-playground ../library/playground/music.wipple --dependency ../.wipple/base.wippleinterface --link ../.wipple/base.wipplelibrary --output ./public/library/music.wipplebundle
+
+    playground:bundle:math:
+        run: once
+        dir: playground
+        cmds:
             - cargo run --bin wipple -- compile ../library/playground/math.wipple --dependency ../.wipple/base.wippleinterface --interface ../.wipple/math.wippleinterface
             - cargo run --bin wipple -- bundle-for-playground ../library/playground/math.wipple --dependency ../.wipple/base.wippleinterface --link ../.wipple/base.wipplelibrary --output ./public/library/math.wipplebundle
+
+    playground:bundle:game:
+        run: once
+        dir: playground
+        cmds:
             - cargo run --bin wipple -- compile ../library/playground/game.wipple --dependency ../.wipple/base.wippleinterface --interface ../.wipple/game.wippleinterface
             - cargo run --bin wipple -- bundle-for-playground ../library/playground/game.wipple --dependency ../.wipple/base.wippleinterface --link ../.wipple/base.wipplelibrary --output ./public/library/game.wipplebundle
+
+    playground:bundle:physics:
+        run: once
+        dir: playground
+        cmds:
             - cargo run --bin wipple -- compile ../library/playground/physics.wipple --dependency ../.wipple/base.wippleinterface --interface ../.wipple/physics.wippleinterface
             - cargo run --bin wipple -- bundle-for-playground ../library/playground/physics.wipple --dependency ../.wipple/base.wippleinterface --link ../.wipple/base.wipplelibrary --output ./public/library/physics.wipplebundle
-            - cp -r ../library/help ./public/library
 
     playground:build:
         run: once

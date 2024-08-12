@@ -7,12 +7,18 @@ use rstest::rstest;
 #[tokio::test]
 async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
     use futures::{future, FutureExt};
+    use serde::de::DeserializeOwned;
     use serde::Serialize;
     use std::{
-        fs,
+        fs, io,
+        path::Path,
         sync::{Arc, Mutex},
     };
     use wipple_driver::util::lazy_static::lazy_static;
+
+    fn read_binary<T: DeserializeOwned>(path: impl AsRef<Path>) -> T {
+        wipple_driver::util::read_binary(io::BufReader::new(fs::File::open(path).unwrap())).unwrap()
+    }
 
     let test = async move {
         let file_name = file.file_name().unwrap().to_string_lossy().into_owned();
@@ -37,15 +43,10 @@ async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
             code,
         };
 
-        let base_interface = serde_json::from_str::<wipple_driver::Interface>(
-            &fs::read_to_string("../.wipple/base.wippleinterface").expect("base not compiled"),
-        )
-        .expect("failed to load base interface");
+        let base_interface =
+            read_binary::<wipple_driver::Interface>("../.wipple/base.wippleinterface");
 
-        let base_library = serde_json::from_str::<wipple_driver::Library>(
-            &fs::read_to_string("../.wipple/base.wipplelibrary").expect("base not compiled"),
-        )
-        .expect("failed to load base library");
+        let base_library = read_binary::<wipple_driver::Library>("../.wipple/base.wipplelibrary");
 
         let result = wipple_driver::compile(vec![file], Some(base_interface));
 
