@@ -2,4 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/show-variable.test.wipple:6:1: error: cannot describe a `Cannot-Be-Shown` value
+tests/show-variable.test.wipple:6:1: error: cannot describe `Cannot-Be-Shown`

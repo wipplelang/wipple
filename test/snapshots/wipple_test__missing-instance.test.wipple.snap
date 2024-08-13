@@ -2,4 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/missing-instance.test.wipple:4:1: error: cannot describe a `Foo` value
+tests/missing-instance.test.wipple:4:1: error: cannot describe `Foo`
