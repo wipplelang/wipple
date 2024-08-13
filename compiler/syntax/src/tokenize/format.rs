@@ -415,10 +415,5 @@ pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
         }
     }
 
-    let mut formatted = formatted.trim().to_string();
-
-    // Add a trailing newline
-    formatted.push('\n');
-
-    formatted
+    formatted.trim().to_string()
 }

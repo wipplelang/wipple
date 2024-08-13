@@ -253,7 +253,7 @@ async fn main() -> anyhow::Result<()> {
         Args::Format { source_paths } => {
             for path in source_paths {
                 if let Err(error) = fs::read_to_string(&path)
-                    .map(|code| wipple_driver::format(&code))
+                    .map(|code| wipple_driver::format(&code) + "\n")
                     .and_then(|code| fs::write(&path, code))
                 {
                     eprintln!("could not format {}: {}", path.to_string_lossy(), error);
