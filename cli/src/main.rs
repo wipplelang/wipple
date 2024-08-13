@@ -29,11 +29,17 @@ enum Args {
         #[clap(long = "library")]
         output_library_path: Option<PathBuf>,
 
+        #[clap(long = "release")]
+        release: bool,
+
         source_paths: Vec<PathBuf>,
     },
     Link {
         #[clap(short = 'o', long = "output")]
         output_executable_path: PathBuf,
+
+        #[clap(long = "release")]
+        release: bool,
 
         library_paths: Vec<PathBuf>,
     },
@@ -86,8 +92,22 @@ fn read_binary<T: DeserializeOwned>(path: impl AsRef<Path>) -> anyhow::Result<T>
     wipple_driver::util::read_binary(io::BufReader::new(fs::File::open(path)?))
 }
 
-fn write_binary(path: impl AsRef<Path>, value: &impl Serialize) -> anyhow::Result<()> {
-    wipple_driver::util::write_binary(io::BufWriter::new(fs::File::create(&path)?), value)
+fn write_binary(
+    path: impl AsRef<Path>,
+    value: &impl Serialize,
+    release: bool,
+) -> anyhow::Result<()> {
+    let compression_level = if release {
+        wipple_driver::util::CompressionLevel::Max
+    } else {
+        wipple_driver::util::CompressionLevel::Min
+    };
+
+    wipple_driver::util::write_binary(
+        io::BufWriter::new(fs::File::create(&path)?),
+        value,
+        compression_level,
+    )
 }
 
 #[tokio::main]
@@ -101,6 +121,7 @@ async fn main() -> anyhow::Result<()> {
             dependency_path,
             output_interface_path,
             output_library_path,
+            release,
             source_paths,
         } => {
             let sources = source_paths
@@ -133,7 +154,7 @@ async fn main() -> anyhow::Result<()> {
                     fs::create_dir_all(parent)?;
                 }
 
-                write_binary(output_interface_path, &result.interface)?;
+                write_binary(output_interface_path, &result.interface, release)?;
             }
 
             if let Some(output_library_path) = output_library_path {
@@ -141,13 +162,14 @@ async fn main() -> anyhow::Result<()> {
                     fs::create_dir_all(parent)?;
                 }
 
-                write_binary(output_library_path, &result.library)?;
+                write_binary(output_library_path, &result.library, release)?;
             }
 
             Ok(())
         }
         Args::Link {
             output_executable_path,
+            release,
             library_paths,
         } => {
             let libraries = library_paths
@@ -167,7 +189,7 @@ async fn main() -> anyhow::Result<()> {
                 fs::create_dir_all(parent)?;
             }
 
-            write_binary(&output_executable_path, &executable)?;
+            write_binary(&output_executable_path, &executable, release)?;
 
             Ok(())
         }
@@ -183,6 +205,8 @@ async fn main() -> anyhow::Result<()> {
             output_path,
             source_paths,
         } => {
+            let release = true;
+
             let sources = source_paths
                 .into_iter()
                 .map(|source_path| {
@@ -222,7 +246,7 @@ async fn main() -> anyhow::Result<()> {
                 fs::create_dir_all(parent)?;
             }
 
-            write_binary(&output_path, &output)?;
+            write_binary(&output_path, &output, release)?;
 
             Ok(())
         }
