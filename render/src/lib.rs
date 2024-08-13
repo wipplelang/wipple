@@ -460,24 +460,63 @@ impl Render {
         render_as_code: bool,
     ) -> String {
         if is_top_level && !matches!(describe, DescribeOptions::NoDescribe) {
+            #[derive(Default)]
+            struct Modifiers {
+                no_grammar: bool,
+            }
+
             let message = (|| {
+                let interface = self.get_interface()?;
+
                 let result = wipple_driver::resolve_attribute_like_trait(
                     "describe-type",
                     r#type.clone(),
                     1,
-                    self.get_interface()?,
+                    interface.clone(),
                 )?;
 
-                match result.into_iter().next()?.item {
-                    wipple_driver::typecheck::Type::Message { segments, trailing } => {
-                        Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
+                fn extract_message_with_modifiers(
+                    r#type: WithInfo<wipple_driver::typecheck::Type<wipple_driver::Driver>>,
+                    interface: &wipple_driver::Interface,
+                    modifiers: &mut Modifiers,
+                ) -> Option<wipple_driver::typecheck::CustomMessage<wipple_driver::Driver>>
+                {
+                    match r#type.item {
+                        wipple_driver::typecheck::Type::Message { segments, trailing } => {
+                            Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
+                        }
+                        wipple_driver::typecheck::Type::Declared { path, parameters }
+                            if wipple_driver::type_is_language_item(
+                                &path,
+                                "no-grammar",
+                                interface.clone(),
+                            ) =>
+                        {
+                            modifiers.no_grammar = true;
+
+                            extract_message_with_modifiers(
+                                parameters.into_iter().next()?,
+                                interface,
+                                modifiers,
+                            )
+                        }
+                        _ => None,
                     }
-                    _ => None,
                 }
+
+                let mut modifiers = Modifiers::default();
+                let message = extract_message_with_modifiers(
+                    result.into_iter().next()?,
+                    &interface,
+                    &mut modifiers,
+                )?;
+
+                Some((message, modifiers))
             })();
 
-            if let Some(message) = message {
-                let add_article = matches!(describe, DescribeOptions::DescribeWithArticle);
+            if let Some((message, modifiers)) = message {
+                let add_article = !modifiers.no_grammar
+                    && matches!(describe, DescribeOptions::DescribeWithArticle);
 
                 let message = self.render_custom_message(&message, add_article, false);
 

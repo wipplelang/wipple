@@ -2,8 +2,8 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/because.test.wipple:23:16: error: cannot add a distance value and a time value
-tests/because.test.wipple:23:16: note: `x0` is a distance value
+tests/because.test.wipple:23:16: error: cannot add distance and time
+tests/because.test.wipple:23:16: note: `x0` is distance
 tests/because.test.wipple:23:21: note: `v` is a number
-tests/because.test.wipple:23:21: note: this is a time value because multiplying a number by a time value produces a time value
-tests/because.test.wipple:23:25: note: `t` is a time value
+tests/because.test.wipple:23:21: note: this is time because multiplying a number by time produces time
+tests/because.test.wipple:23:25: note: `t` is time

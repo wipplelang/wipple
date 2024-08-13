@@ -115,7 +115,11 @@ Unused : Type => trait
 @(language : "describe-type")
 Describe-Type : Type (infer Description) => trait
 
-instance (Describe-Type Unit "unit")
+-- Prevent Wipple from modifying the provided text to be grammatically correct.
+@(language : "no-grammar")
+No-Grammar : Message => type
+
+instance (Describe-Type Unit (No-Grammar "nothing"))
 instance (Describe-Type Number "number")
 instance (Describe-Type Text "piece of text")
 Input Output => default instance (Describe-Type (Input -> Output) "function")
