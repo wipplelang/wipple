@@ -9,6 +9,8 @@ tasks:
 
     test:
         run: once
+        deps:
+            - base:compile
         cmds:
             - cargo test --package=wipple-test -- {{.CLI_ARGS}}
 
