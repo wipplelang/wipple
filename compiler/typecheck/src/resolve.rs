@@ -112,6 +112,7 @@ impl<D: Driver> crate::IntoItemDeclaration<D> for crate::UntypedTopLevelCode<D> 
                     info: driver.top_level_info(),
                     item: crate::UntypedExpression::Block {
                         statements: self.statements,
+                        top_level: true,
                         captures: Vec::new(),
                     },
                 },
@@ -174,11 +175,7 @@ pub fn resolve<D: Driver>(
     );
 
     let body = infer_context.with_tracked_expression(None, |infer_context, expression_id| {
-        infer_expression(
-            item_declaration.item.body,
-            Some(expression_id),
-            infer_context,
-        )
+        infer_expression(item_declaration.item.body, expression_id, infer_context)
     });
 
     let bounds = vec![item_declaration
@@ -922,7 +919,7 @@ fn try_report_custom_unused_error<D: Driver>(
         let mut temp_errors = Vec::new();
         let mut resolve_context = ResolveContext {
             driver,
-            type_context,
+            type_context: &mut type_context.clone(),
             error_queue: &mut temp_error_queue,
             errors: &mut temp_errors,
             variables: &mut Default::default(),
@@ -2176,10 +2173,10 @@ fn infer_instance<D: Driver>(
 
 fn infer_expression<D: Driver>(
     expression: WithInfo<D::Info, crate::UntypedExpression<D>>,
-    parent_id: Option<TrackedExpressionId<D>>,
+    parent_id: TrackedExpressionId<D>,
     context: &mut InferContext<'_, D>,
 ) -> WithInfo<<D as Driver>::Info, Expression<D>> {
-    context.with_tracked_expression(parent_id, |context, expression_id| {
+    context.with_tracked_expression(Some(parent_id), |context, expression_id| {
         let info = expression.info.clone();
 
         let mut expression = expression.map(|expression| match expression {
@@ -2188,7 +2185,7 @@ fn infer_expression<D: Driver>(
                 kind: ExpressionKind::Unknown(None),
             },
             crate::UntypedExpression::Annotate { value, r#type } => {
-                let mut value = infer_expression(value.unboxed(), Some(expression_id), context);
+                let mut value = infer_expression(value.unboxed(), expression_id, context);
 
                 let r#type = infer_type(
                     context.driver,
@@ -2331,11 +2328,12 @@ fn infer_expression<D: Driver>(
             }
             crate::UntypedExpression::Block {
                 statements,
+                top_level,
                 captures,
             } => {
                 let statements = statements
                     .into_iter()
-                    .map(|expression| infer_expression(expression, Some(expression_id), context))
+                    .map(|expression| infer_expression(expression, expression_id, context))
                     .collect::<Vec<_>>();
 
                 let r#type = statements.last().map_or_else(
@@ -2347,7 +2345,7 @@ fn infer_expression<D: Driver>(
                     r#type: Type::new(TypeKind::Block(Box::new(r#type)), info.clone()),
                     kind: ExpressionKind::Block {
                         statements,
-                        top_level: parent_id.is_none(),
+                        top_level,
                         captures,
                     },
                 }
@@ -2361,7 +2359,7 @@ fn infer_expression<D: Driver>(
                 let block_type =
                     Type::new(TypeKind::Block(Box::new(output_type.clone())), info.clone());
 
-                let mut block = infer_expression(block.unboxed(), Some(expression_id), context);
+                let mut block = infer_expression(block.unboxed(), expression_id, context);
 
                 try_unify_expression(
                     context.driver,
@@ -2396,7 +2394,7 @@ fn infer_expression<D: Driver>(
                     resolve_pattern(pattern.as_mut(), input_type, context);
                 }
 
-                let body = infer_expression(body.unboxed(), Some(expression_id), context);
+                let body = infer_expression(body.unboxed(), expression_id, context);
 
                 Expression {
                     r#type: Type::new(
@@ -2414,11 +2412,11 @@ fn infer_expression<D: Driver>(
                 }
             }
             crate::UntypedExpression::Call { function, inputs } => {
-                let function = infer_expression(function.unboxed(), Some(expression_id), context);
+                let function = infer_expression(function.unboxed(), expression_id, context);
 
                 let inputs = inputs
                     .into_iter()
-                    .map(|input| infer_expression(input, Some(expression_id), context))
+                    .map(|input| infer_expression(input, expression_id, context))
                     .collect::<Vec<_>>();
 
                 let r#type = match &function.item.r#type.kind {
@@ -2438,7 +2436,7 @@ fn infer_expression<D: Driver>(
                 }
             }
             crate::UntypedExpression::When { input, arms } => {
-                let input = infer_expression(input.unboxed(), Some(expression_id), context);
+                let input = infer_expression(input.unboxed(), expression_id, context);
 
                 let r#type = Type::new(
                     TypeKind::Variable(context.type_context.variable()),
@@ -2457,7 +2455,7 @@ fn infer_expression<D: Driver>(
 
                             let mut arm = Arm {
                                 pattern: arm.pattern,
-                                body: infer_expression(arm.body, Some(expression_id), context),
+                                body: infer_expression(arm.body, expression_id, context),
                             };
 
                             try_unify_expression(
@@ -2490,14 +2488,12 @@ fn infer_expression<D: Driver>(
                     name,
                     inputs: inputs
                         .into_iter()
-                        .map(|expression| {
-                            infer_expression(expression, Some(expression_id), context)
-                        })
+                        .map(|expression| infer_expression(expression, expression_id, context))
                         .collect(),
                 },
             },
             crate::UntypedExpression::Initialize { mut pattern, value } => {
-                let value = infer_expression(value.unboxed(), Some(expression_id), context);
+                let value = infer_expression(value.unboxed(), expression_id, context);
 
                 resolve_pattern(
                     pattern.as_mut(),
@@ -2514,7 +2510,7 @@ fn infer_expression<D: Driver>(
                 }
             }
             crate::UntypedExpression::Mutate { name, path, value } => {
-                let mut value = infer_expression(value.unboxed(), Some(expression_id), context);
+                let mut value = infer_expression(value.unboxed(), expression_id, context);
 
                 let r#type = context
                     .variables
@@ -2582,7 +2578,7 @@ fn infer_expression<D: Driver>(
                         .map(|field| {
                             field.map(|field| StructureFieldValue {
                                 name: field.name,
-                                value: infer_expression(field.value, Some(expression_id), context),
+                                value: infer_expression(field.value, expression_id, context),
                             })
                         })
                         .collect(),
@@ -2645,7 +2641,7 @@ fn infer_expression<D: Driver>(
                 let values = values
                     .into_iter()
                     .map(|(value, declared_type)| {
-                        let mut value = infer_expression(value, Some(expression_id), context);
+                        let mut value = infer_expression(value, expression_id, context);
 
                         try_unify_expression(
                             context.driver,
@@ -2705,8 +2701,7 @@ fn infer_expression<D: Driver>(
                         )
                         .instantiate(context.driver, &mut instantiation_context);
 
-                        let mut value =
-                            infer_expression(value.unboxed(), Some(expression_id), context);
+                        let mut value = infer_expression(value.unboxed(), expression_id, context);
 
                         try_unify_expression(
                             context.driver,
@@ -2738,7 +2733,7 @@ fn infer_expression<D: Driver>(
             crate::UntypedExpression::Tuple(elements) => {
                 let elements = elements
                     .into_iter()
-                    .map(|expression| infer_expression(expression, Some(expression_id), context))
+                    .map(|expression| infer_expression(expression, expression_id, context))
                     .collect::<Vec<_>>();
 
                 Expression {
@@ -2772,8 +2767,7 @@ fn infer_expression<D: Driver>(
                 elements
                     .into_iter()
                     .fold(initial_collection, |current, expression| {
-                        let mut expression =
-                            infer_expression(expression, Some(expression_id), context);
+                        let mut expression = infer_expression(expression, expression_id, context);
 
                         try_unify_expression(
                             context.driver,
@@ -2839,7 +2833,7 @@ fn infer_expression<D: Driver>(
                 let segments = segments
                     .into_iter()
                     .map(|segment| {
-                        let value = infer_expression(segment.value, Some(expression_id), context);
+                        let value = infer_expression(segment.value, expression_id, context);
 
                         let describe_trait = instantiated_language_trait(
                             "describe",
@@ -3271,7 +3265,7 @@ fn instantiated_language_trait<D: Driver>(
                     info: info.clone(),
                     item: crate::UntypedExpression::Constant(path),
                 },
-                Some(expression_id),
+                expression_id,
                 context,
             )
         }),
@@ -3305,7 +3299,7 @@ fn instantiated_language_constant<D: Driver>(
                     info: info.clone(),
                     item: crate::UntypedExpression::Constant(path),
                 },
-                Some(expression_id),
+                expression_id,
                 context,
             )
         }),
@@ -4867,9 +4861,8 @@ fn finalize_expression<D: Driver>(
                         let statement = finalize_expression(statement, report_errors, context);
 
                         // Report errors for unused values in statement position...
-                        if top_level
-                            || !is_last_statement
-                                && !matches!(statement.item.r#type, crate::Type::Unknown)
+                        if (top_level || !is_last_statement)
+                            && !matches!(statement.item.r#type, crate::Type::Unknown)
                         {
                             let reported_custom_error = try_report_custom_unused_error(
                                 context.driver,
