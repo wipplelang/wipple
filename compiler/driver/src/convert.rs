@@ -1032,6 +1032,7 @@ pub mod typecheck {
                 captures,
             } => wipple_typecheck::UntypedExpression::Block {
                 statements: statements.into_iter().map(convert_expression).collect(),
+                top_level: false,
                 captures,
             },
             wipple_lower::Expression::Do(block) => {

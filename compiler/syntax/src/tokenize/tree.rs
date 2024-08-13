@@ -250,6 +250,25 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                 Token::LeftBracket => {
                     stack.push((info, TokenTree::List(ListDelimiter::Brackets, Vec::new())));
                 }
+                Token::LeftBrace => {
+                    stack.push((info, TokenTree::Block(Vec::new())));
+                }
+                Token::RightParenthesis | Token::RightBracket | Token::RightBrace
+                    if stack.len() == 1 =>
+                {
+                    // The bottom of the stack is the top level, which cannot be
+                    // closed.
+                    diagnostics.push(WithInfo {
+                        info,
+                        item: Diagnostic::Mismatch {
+                            expected: None,
+                            found: Some(token.item.into_owned()),
+                            matching: None,
+                        },
+                    });
+
+                    continue;
+                }
                 Token::RightParenthesis | Token::RightBracket => {
                     // Now we look for the list created by the opening left
                     // parentheses or bracket above...
@@ -309,10 +328,6 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         info: D::merge_info(begin_info, info),
                         item: parse_operators::<D>(delimiter, expressions, &mut diagnostics),
                     });
-                }
-                // Same idea here with blocks.
-                Token::LeftBrace => {
-                    stack.push((info, TokenTree::Block(Vec::new())));
                 }
                 Token::RightBrace => {
                     let (begin_info, mut statements) = match stack.pop() {

@@ -642,6 +642,9 @@ pub enum UntypedExpression<D: Driver> {
         /// The block's statements.
         statements: Vec<WithInfo<D::Info, UntypedExpression<D>>>,
 
+        /// Whether the block represents a top level.
+        top_level: bool,
+
         /// The list of variables the block captures.
         captures: Vec<D::Path>,
     },
