@@ -277,7 +277,7 @@ initially : x -> at (0 seconds) x
 
 -- Refer to an object on the screen by its name.
 Object : type Text
-instance (Describe-Type Object "an object")
+instance (Describe-Type Object "object")
 
 @once
 initialize-tick :: Unit

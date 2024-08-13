@@ -1,10 +1,10 @@
 -- [should error]
 
 Distance : type
-instance (Describe-Type Distance "distance")
+instance (Describe-Type Distance "distance value")
 
 Time : type
-instance (Describe-Type Time "time")
+instance (Describe-Type Time "time value")
 
 meters :: Number -> Distance
 meters : ...

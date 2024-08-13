@@ -1156,6 +1156,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "in_definite"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b5bd47a3c8188d842aa7ff4dd65a9732f740fcbe04689ecfbfef43c465b381de"
+
+[[package]]
 name = "indexmap"
 version = "2.2.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3164,6 +3170,7 @@ name = "wipple-render"
 version = "0.0.0"
 dependencies = [
  "annotate-snippets",
+ "in_definite",
  "line-index",
  "serde",
  "wipple-driver",

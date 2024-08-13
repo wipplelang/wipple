@@ -35,7 +35,7 @@ Note-Length : type {
   ms-from-tempo :: Number -> Number
 }
 
-instance (Describe-Type Note-Length "a note length in `beats`")
+instance (Describe-Type Note-Length "note length in `beats`")
 
 -- Specify how many beats a note or rest should last.
 @(highlight-category : "unit")
@@ -47,7 +47,7 @@ beats : beats -> Note-Length {
 -- A note.
 Note : type Text
 
-instance (Describe-Type Note "a note")
+instance (Describe-Type Note "note")
 
 -- Play a note on an instrument.
 @(highlight-category : "music-play")
@@ -113,7 +113,7 @@ current-instrument : task-local instrument-key or error "no instrument set"
 
 Instrument-Name : type Text
 
-instance (Describe-Type Instrument-Name "an instrument name")
+instance (Describe-Type Instrument-Name "instrument name")
 
 -- Change the instrument.
 @(highlight-category : "music-instrument")

@@ -1,0 +1,13 @@
+-- [should error]
+
+Apple : type
+instance (Describe-Type Apple "apple")
+
+Banana : type
+instance (Describe-Type Banana "banana")
+
+Orange : type
+instance (Describe-Type Orange "orange")
+
+(Apple :: Banana)
+(Apple :: Orange)
