@@ -514,7 +514,13 @@ impl LanguageServer for Backend {
 
                 let r#type = expression.map(|expression| expression.r#type);
 
-                let code = render.render_type(&r#type, true, false, false);
+                let code = render.render_type(
+                    &r#type,
+                    true,
+                    wipple_render::DescribeOptions::NoDescribe,
+                    false,
+                );
+
                 content.push(format!("```wipple\n{code}\n```"));
             }
         }

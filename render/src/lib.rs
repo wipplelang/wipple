@@ -105,6 +105,13 @@ pub enum RenderedSuggestionKind {
     Operator,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum DescribeOptions {
+    NoDescribe,
+    DescribeWithoutArticle,
+    DescribeWithArticle,
+}
+
 const KEYWORDS: &[&str] = &[
     "do",
     "when",
@@ -324,7 +331,12 @@ impl Render {
             AnyDeclarationKind::Constant(constant_declaration) => {
                 let name = declaration.item.name.as_deref().unwrap_or("<unknown>");
 
-                let r#type = self.render_type(&constant_declaration.r#type, true, false, false);
+                let r#type = self.render_type(
+                    &constant_declaration.r#type,
+                    true,
+                    DescribeOptions::NoDescribe,
+                    false,
+                );
 
                 let type_function = self.render_type_function(
                     &constant_declaration.parameters,
@@ -444,28 +456,75 @@ impl Render {
         &'a self,
         r#type: &'a WithInfo<wipple_driver::typecheck::Type<wipple_driver::Driver>>,
         is_top_level: bool,
-        describe: bool,
+        describe: DescribeOptions,
         render_as_code: bool,
     ) -> String {
-        if is_top_level && describe {
+        if is_top_level && !matches!(describe, DescribeOptions::NoDescribe) {
+            #[derive(Default)]
+            struct Modifiers {
+                no_grammar: bool,
+            }
+
             let message = (|| {
+                let interface = self.get_interface()?;
+
                 let result = wipple_driver::resolve_attribute_like_trait(
                     "describe-type",
                     r#type.clone(),
                     1,
-                    self.get_interface()?,
+                    interface.clone(),
                 )?;
 
-                match result.into_iter().next()?.item {
-                    wipple_driver::typecheck::Type::Message { segments, trailing } => {
-                        Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
+                fn extract_message_with_modifiers(
+                    r#type: WithInfo<wipple_driver::typecheck::Type<wipple_driver::Driver>>,
+                    interface: &wipple_driver::Interface,
+                    modifiers: &mut Modifiers,
+                ) -> Option<wipple_driver::typecheck::CustomMessage<wipple_driver::Driver>>
+                {
+                    match r#type.item {
+                        wipple_driver::typecheck::Type::Message { segments, trailing } => {
+                            Some(wipple_driver::typecheck::CustomMessage { segments, trailing })
+                        }
+                        wipple_driver::typecheck::Type::Declared { path, parameters }
+                            if wipple_driver::type_is_language_item(
+                                &path,
+                                "no-grammar",
+                                interface.clone(),
+                            ) =>
+                        {
+                            modifiers.no_grammar = true;
+
+                            extract_message_with_modifiers(
+                                parameters.into_iter().next()?,
+                                interface,
+                                modifiers,
+                            )
+                        }
+                        _ => None,
                     }
-                    _ => None,
                 }
+
+                let mut modifiers = Modifiers::default();
+                let message = extract_message_with_modifiers(
+                    result.into_iter().next()?,
+                    &interface,
+                    &mut modifiers,
+                )?;
+
+                Some((message, modifiers))
             })();
 
-            if let Some(message) = message {
-                return self.render_custom_message(&message, false);
+            if let Some((message, modifiers)) = message {
+                let add_article = !modifiers.no_grammar
+                    && matches!(describe, DescribeOptions::DescribeWithArticle);
+
+                let message = self.render_custom_message(&message, add_article, false);
+
+                return if add_article {
+                    self.add_article_prefix(&message)
+                } else {
+                    message
+                };
             }
         }
 
@@ -613,12 +672,14 @@ impl Render {
 
                 Some(match (declaration.infer, declaration.default) {
                     (Some(_), Some(default)) => {
-                        let default = self.render_type(&default, true, false, false);
+                        let default =
+                            self.render_type(&default, true, DescribeOptions::NoDescribe, false);
                         format!("(infer {name} : {default})")
                     }
                     (Some(_), None) => format!("(infer {name})"),
                     (None, Some(default)) => {
-                        let default = self.render_type(&default, true, false, false);
+                        let default =
+                            self.render_type(&default, true, DescribeOptions::NoDescribe, false);
                         format!("({name} : {default})")
                     }
                     (None, None) => name,
@@ -654,7 +715,7 @@ impl Render {
             .item
             .parameters
             .iter()
-            .map(|r#type| self.render_type(r#type, false, false, false))
+            .map(|r#type| self.render_type(r#type, false, DescribeOptions::NoDescribe, false))
             .collect::<Vec<_>>();
 
         if parameters.is_empty() {
@@ -669,6 +730,7 @@ impl Render {
     pub fn render_custom_message(
         &self,
         message: &wipple_driver::typecheck::CustomMessage<wipple_driver::Driver>,
+        will_already_add_article: bool,
         render_as_code: bool,
     ) -> String {
         let render_segments_as_code = message.segments.first().map_or_else(
@@ -688,7 +750,16 @@ impl Render {
 
             result.push_str(&match code {
                 Some(code) => code,
-                None => self.render_type(&segment.r#type, true, true, true),
+                None => self.render_type(
+                    &segment.r#type,
+                    true,
+                    if will_already_add_article {
+                        DescribeOptions::DescribeWithoutArticle
+                    } else {
+                        DescribeOptions::DescribeWithArticle
+                    },
+                    true,
+                ),
             });
         }
 
@@ -739,19 +810,18 @@ impl Render {
                         (Some(expected), Some(found)) => {
                             message = format!(
                                 "expected {} here, but found {}",
-                                self.render_token(expected, "a"),
-                                self.render_token(found, "a"),
+                                self.render_token(expected),
+                                self.render_token(found),
                             );
                         }
                         (Some(expected), None) => {
-                            message =
-                                format!("expected {} here", self.render_token(expected, "a"),);
+                            message = format!("expected {} here", self.render_token(expected));
                         }
                         (None, Some(found)) => {
-                            message = format!("unexpected {} here", self.render_token(found, "a"));
+                            message = format!("unexpected {} here", self.render_token(found));
 
                             fix = Some(RenderedFix {
-                                message: format!("remove {}", self.render_token(found, "this")),
+                                message: format!("remove {}", self.render_token(found)),
                                 before: None,
                                 replacement: Some(String::new()),
                                 after: None,
@@ -766,7 +836,7 @@ impl Render {
                     Some(wipple_driver::syntax::parse::Direction::Before(before)) => {
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!(
-                            "expected {} before this {}",
+                            "expected {} before {}",
                             self.render_syntax_kind(&parse_diagnostic.expected),
                             self.render_syntax_kind(before),
                         );
@@ -774,7 +844,7 @@ impl Render {
                     Some(wipple_driver::syntax::parse::Direction::After(after)) => {
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!(
-                            "expected {} after this {}",
+                            "expected {} after {}",
                             self.render_syntax_kind(&parse_diagnostic.expected),
                             self.render_syntax_kind(after),
                         );
@@ -899,7 +969,7 @@ impl Render {
                                 item: r#type.clone(),
                             },
                             true,
-                            false,
+                            DescribeOptions::NoDescribe,
                             true,
                         );
 
@@ -928,21 +998,32 @@ impl Render {
                     } => {
                         severity = RenderedDiagnosticSeverity::Error;
 
-                        let expected_message = self.render_type(expected, true, true, true);
+                        let expected_message = self.render_type(
+                            expected,
+                            true,
+                            DescribeOptions::DescribeWithArticle,
+                            true,
+                        );
 
-                        let actual_message = self.render_type(actual, true, true, true);
+                        let actual_message = self.render_type(
+                            actual,
+                            true,
+                            DescribeOptions::DescribeWithArticle,
+                            true,
+                        );
 
                         // If the type descriptions are equal, try rendering the actual type by setting
                         // `describe` to false
-                        let (expected_message, actual_message) =
-                            if expected_message == actual_message {
-                                (
-                                    self.render_type(expected, true, false, true),
-                                    self.render_type(actual, true, false, true),
-                                )
-                            } else {
-                                (expected_message, actual_message)
-                            };
+                        let (expected_message, actual_message) = if expected_message
+                            == actual_message
+                        {
+                            (
+                                self.render_type(expected, true, DescribeOptions::NoDescribe, true),
+                                self.render_type(actual, true, DescribeOptions::NoDescribe, true),
+                            )
+                        } else {
+                            (expected_message, actual_message)
+                        };
 
                         message = format!(
                             "expected {} here, but found {}",
@@ -960,7 +1041,14 @@ impl Render {
 
                         let inputs = inputs
                             .iter()
-                            .map(|r#type| self.render_type(r#type, true, true, true))
+                            .map(|r#type| {
+                                self.render_type(
+                                    r#type,
+                                    true,
+                                    DescribeOptions::DescribeWithArticle,
+                                    true,
+                                )
+                            })
                             .collect::<Vec<_>>();
 
                         severity = RenderedDiagnosticSeverity::Error;
@@ -1023,7 +1111,12 @@ impl Render {
                         );
                     }
                     wipple_driver::typecheck::Diagnostic::NotAStructure(r#type) => {
-                        let rendered_type = self.render_type(r#type, true, true, true);
+                        let rendered_type = self.render_type(
+                            r#type,
+                            true,
+                            DescribeOptions::DescribeWithArticle,
+                            true,
+                        );
 
                         severity = RenderedDiagnosticSeverity::Error;
                         message = format!("{} is not a structure", rendered_type);
@@ -1094,13 +1187,17 @@ impl Render {
                         reasons: custom_reasons,
                     } => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = self.render_custom_message(custom_message, true);
+                        message = self.render_custom_message(custom_message, false, true);
 
                         if let Some(custom_fix) = custom_fix {
                             fix = Some(RenderedFix {
-                                message: self.render_custom_message(&custom_fix.0, true),
+                                message: self.render_custom_message(&custom_fix.0, false, true),
                                 before: None,
-                                replacement: Some(self.render_custom_message(&custom_fix.1, false)),
+                                replacement: Some(self.render_custom_message(
+                                    &custom_fix.1,
+                                    false,
+                                    false,
+                                )),
                                 after: None,
                             });
                         }
@@ -1239,53 +1336,25 @@ impl Render {
         }
     }
 
-    pub fn render_token(
-        &self,
-        token: &wipple_driver::syntax::tokenize::Token<'_>,
-        prefix: &str,
-    ) -> String {
+    pub fn render_token(&self, token: &wipple_driver::syntax::tokenize::Token<'_>) -> String {
         use wipple_driver::syntax::tokenize::Token;
 
-        let alt_prefix = if prefix == "a" { "the" } else { "this" };
-
         match token {
-            Token::Number(_) => format!("{} number", prefix),
-            Token::LeftParenthesis => {
-                format!("{} opening parenthesis (`(`)", prefix)
-            }
-            Token::RightParenthesis => {
-                format!("{} closing parenthesis (`)`)", prefix)
-            }
-            Token::LeftBracket => {
-                format!("{} opening bracket (`[`)", prefix)
-            }
-            Token::RightBracket => {
-                format!("{} closing bracket (`]`)", prefix)
-            }
-            Token::LeftBrace => {
-                format!("{} opening brace (`{{`)", prefix)
-            }
-            Token::RightBrace => {
-                format!("{} closing brace (`}}`)", prefix)
-            }
-            Token::LineBreak => {
-                format!("{} end of the line", alt_prefix)
-            }
-            Token::Comment(_) => format!("{} comment", prefix),
-            Token::Keyword(value) => {
-                format!("{} word `{}`", alt_prefix, value)
-            }
-            Token::Operator(value) => {
-                format!("{} symbol `{}`", alt_prefix, value)
-            }
-            Token::VariadicOperator(value) => {
-                format!("{} symbol `{}`", alt_prefix, value)
-            }
-            Token::NonAssociativeOperator(value) => {
-                format!("{} symbol `{}`", alt_prefix, value)
-            }
-            Token::Name(_) => format!("{} name", prefix),
-            Token::Text(_) => format!("{} piece of text", prefix),
+            Token::Number(_) => self.add_article_prefix("number"),
+            Token::LeftParenthesis => self.add_article_prefix("opening parenthesis (`(`)"),
+            Token::RightParenthesis => self.add_article_prefix("closing parenthesis (`)`)"),
+            Token::LeftBracket => self.add_article_prefix("opening bracket (`[`)"),
+            Token::RightBracket => self.add_article_prefix("closing bracket (`]`)"),
+            Token::LeftBrace => self.add_article_prefix("opening brace (`{{`)"),
+            Token::RightBrace => self.add_article_prefix("closing brace (`}}`)"),
+            Token::LineBreak => String::from("the end of the line"),
+            Token::Comment(_) => self.add_article_prefix("comment"),
+            Token::Keyword(value) => format!("the word `{}`", value),
+            Token::Operator(value) => format!("the symbol `{}`", value),
+            Token::VariadicOperator(value) => format!("the symbol `{}`", value),
+            Token::NonAssociativeOperator(value) => format!("the symbol `{}`", value),
+            Token::Name(_) => self.add_article_prefix("name"),
+            Token::Text(_) => self.add_article_prefix("piece of text"),
         }
     }
 
@@ -1293,73 +1362,75 @@ impl Render {
         use wipple_driver::syntax::parse::SyntaxKind;
 
         match kind {
-            SyntaxKind::Number => String::from("number"),
-            SyntaxKind::Name => String::from("name"),
-            SyntaxKind::Text => String::from("text"),
-            SyntaxKind::TopLevel => String::from("top level"),
-            SyntaxKind::Attribute => String::from("attribute"),
-            SyntaxKind::AttributeValue => String::from("attribute value"),
-            SyntaxKind::Statement => String::from("statement"),
-            SyntaxKind::Keyword(keyword) => format!("`{keyword}`"),
-            SyntaxKind::ContextualKeyword(keyword) => format!("`{keyword}`"),
-            SyntaxKind::Operator(operator) => format!("`{operator}`"),
-            SyntaxKind::NonAssociativeOperator(operator) => format!("`{operator}`"),
-            SyntaxKind::Instance => String::from("instance"),
-            SyntaxKind::TypeParameter => String::from("type parameter"),
-            SyntaxKind::Pattern => String::from("pattern"),
-            SyntaxKind::WildcardPattern => String::from("wildcard pattern"),
-            SyntaxKind::NumberPattern => String::from("number pattern"),
-            SyntaxKind::TextPattern => String::from("text pattern"),
-            SyntaxKind::VariantPattern => String::from("variant pattern"),
-            SyntaxKind::DestructurePattern => String::from("destructure pattern"),
-            SyntaxKind::TuplePattern => String::from("tuple pattern"),
-            SyntaxKind::OrPattern => String::from("or pattern"),
-            SyntaxKind::MutatePattern => String::from("mutate pattern"),
-            SyntaxKind::AnnotatePattern => String::from("annotate pattern"),
+            SyntaxKind::Number => self.add_article_prefix("number"),
+            SyntaxKind::Name => self.add_article_prefix("name"),
+            SyntaxKind::Text => self.add_article_prefix("piece of text"),
+            SyntaxKind::TopLevel => String::from("the top level"),
+            SyntaxKind::Attribute => self.add_article_prefix("attribute"),
+            SyntaxKind::AttributeValue => self.add_article_prefix("attribute value"),
+            SyntaxKind::Statement => self.add_article_prefix("statement"),
+            SyntaxKind::Keyword(keyword) => format!("the word `{keyword}`"),
+            SyntaxKind::ContextualKeyword(keyword) => format!("the word `{keyword}`"),
+            SyntaxKind::Operator(operator) => format!("the symbol `{operator}`"),
+            SyntaxKind::NonAssociativeOperator(operator) => format!("the symbol `{operator}`"),
+            SyntaxKind::Instance => self.add_article_prefix("instance"),
+            SyntaxKind::TypeParameter => self.add_article_prefix("type parameter"),
+            SyntaxKind::Pattern => self.add_article_prefix("pattern"),
+            SyntaxKind::WildcardPattern => self.add_article_prefix("wildcard pattern"),
+            SyntaxKind::NumberPattern => self.add_article_prefix("number pattern"),
+            SyntaxKind::TextPattern => self.add_article_prefix("text pattern"),
+            SyntaxKind::VariantPattern => self.add_article_prefix("variant pattern"),
+            SyntaxKind::DestructurePattern => self.add_article_prefix("destructure pattern"),
+            SyntaxKind::TuplePattern => self.add_article_prefix("tuple pattern"),
+            SyntaxKind::OrPattern => self.add_article_prefix("or pattern"),
+            SyntaxKind::MutatePattern => self.add_article_prefix("mutate pattern"),
+            SyntaxKind::AnnotatePattern => self.add_article_prefix("annotate pattern"),
             SyntaxKind::Expression => String::from("code"),
-            SyntaxKind::Type => String::from("type"),
-            SyntaxKind::PlaceholderType => String::from("placeholder type"),
-            SyntaxKind::DeclaredType => String::from("declared type"),
-            SyntaxKind::FunctionType => String::from("function type"),
-            SyntaxKind::TupleType => String::from("tuple type"),
-            SyntaxKind::BlockType => String::from("block type"),
-            SyntaxKind::IntrinsicType => String::from("intrinsic type"),
-            SyntaxKind::MessageType => String::from("message type"),
-            SyntaxKind::EqualType => String::from("equal type"),
-            SyntaxKind::TypeMember => String::from("type member"),
-            SyntaxKind::FieldDeclaration => String::from("field declaration"),
-            SyntaxKind::VariantDeclaration => String::from("variant declaration"),
-            SyntaxKind::Arm => String::from("arm"),
-            SyntaxKind::TypeFunction => String::from("type function"),
-            SyntaxKind::TypeRepresentation => String::from("type representation"),
-            SyntaxKind::TypeDeclaration => String::from("type declaration"),
-            SyntaxKind::TraitDeclaration => String::from("trait declaration"),
-            SyntaxKind::InstanceDeclaration => String::from("instance declaration"),
-            SyntaxKind::ConstantDeclaration => String::from("constant declaration"),
-            SyntaxKind::LanguageDeclaration => String::from("language declaration"),
-            SyntaxKind::Assignment => String::from("assignment"),
-            SyntaxKind::AnnotateExpression => String::from("annotate expression"),
-            SyntaxKind::NameExpression => String::from("name expression"),
-            SyntaxKind::NumberExpression => String::from("number expression"),
-            SyntaxKind::TextExpression => String::from("text expression"),
-            SyntaxKind::DoExpression => String::from("do expression"),
-            SyntaxKind::CallExpression => String::from("call expression"),
-            SyntaxKind::ApplyExpression => String::from("apply expression"),
-            SyntaxKind::BinaryOperatorExpression => String::from("binary operator expression"),
-            SyntaxKind::AsExpression => String::from("as expression"),
-            SyntaxKind::IsExpression => String::from("is expression"),
-            SyntaxKind::WhenExpression => String::from("when expression"),
-            SyntaxKind::IntrinsicExpression => String::from("intrinsic expression"),
-            SyntaxKind::TupleExpression => String::from("tuple expression"),
-            SyntaxKind::CollectionExpression => String::from("collection expression"),
-            SyntaxKind::StructureExpression => String::from("structure expression"),
-            SyntaxKind::StructureField => String::from("structure field"),
-            SyntaxKind::WhenBody => String::from("when body"),
-            SyntaxKind::WhenArm => String::from("when arm"),
-            SyntaxKind::BlockExpression => String::from("block expression"),
-            SyntaxKind::FunctionExpression => String::from("function expression"),
-            SyntaxKind::FunctionInputs => String::from("function inputs"),
-            SyntaxKind::Nothing => String::from("nothing"),
+            SyntaxKind::Type => self.add_article_prefix("type"),
+            SyntaxKind::PlaceholderType => self.add_article_prefix("placeholder type"),
+            SyntaxKind::DeclaredType => self.add_article_prefix("declared type"),
+            SyntaxKind::FunctionType => self.add_article_prefix("function type"),
+            SyntaxKind::TupleType => self.add_article_prefix("tuple type"),
+            SyntaxKind::BlockType => self.add_article_prefix("block type"),
+            SyntaxKind::IntrinsicType => self.add_article_prefix("intrinsic type"),
+            SyntaxKind::MessageType => self.add_article_prefix("message type"),
+            SyntaxKind::EqualType => self.add_article_prefix("equal type"),
+            SyntaxKind::TypeMember => self.add_article_prefix("type member"),
+            SyntaxKind::FieldDeclaration => self.add_article_prefix("field declaration"),
+            SyntaxKind::VariantDeclaration => self.add_article_prefix("variant declaration"),
+            SyntaxKind::Arm => self.add_article_prefix("arm"),
+            SyntaxKind::TypeFunction => self.add_article_prefix("type function"),
+            SyntaxKind::TypeRepresentation => self.add_article_prefix("type representation"),
+            SyntaxKind::TypeDeclaration => self.add_article_prefix("type declaration"),
+            SyntaxKind::TraitDeclaration => self.add_article_prefix("trait declaration"),
+            SyntaxKind::InstanceDeclaration => self.add_article_prefix("instance declaration"),
+            SyntaxKind::ConstantDeclaration => self.add_article_prefix("constant declaration"),
+            SyntaxKind::LanguageDeclaration => self.add_article_prefix("language declaration"),
+            SyntaxKind::Assignment => self.add_article_prefix("assignment"),
+            SyntaxKind::AnnotateExpression => self.add_article_prefix("annotate expression"),
+            SyntaxKind::NameExpression => self.add_article_prefix("name expression"),
+            SyntaxKind::NumberExpression => self.add_article_prefix("number expression"),
+            SyntaxKind::TextExpression => self.add_article_prefix("text expression"),
+            SyntaxKind::DoExpression => self.add_article_prefix("do expression"),
+            SyntaxKind::CallExpression => self.add_article_prefix("call expression"),
+            SyntaxKind::ApplyExpression => self.add_article_prefix("apply expression"),
+            SyntaxKind::BinaryOperatorExpression => {
+                self.add_article_prefix("binary operator expression")
+            }
+            SyntaxKind::AsExpression => self.add_article_prefix("as expression"),
+            SyntaxKind::IsExpression => self.add_article_prefix("is expression"),
+            SyntaxKind::WhenExpression => self.add_article_prefix("when expression"),
+            SyntaxKind::IntrinsicExpression => self.add_article_prefix("intrinsic expression"),
+            SyntaxKind::TupleExpression => self.add_article_prefix("tuple expression"),
+            SyntaxKind::CollectionExpression => self.add_article_prefix("collection expression"),
+            SyntaxKind::StructureExpression => self.add_article_prefix("structure expression"),
+            SyntaxKind::StructureField => self.add_article_prefix("structure field"),
+            SyntaxKind::WhenBody => self.add_article_prefix("when body"),
+            SyntaxKind::WhenArm => self.add_article_prefix("when arm"),
+            SyntaxKind::BlockExpression => self.add_article_prefix("block expression"),
+            SyntaxKind::FunctionExpression => self.add_article_prefix("function expression"),
+            SyntaxKind::FunctionInputs => self.add_article_prefix("function inputs"),
+            SyntaxKind::Nothing => self.add_article_prefix("nothing"),
         }
     }
 
@@ -1371,7 +1442,7 @@ impl Render {
 
         let message = match &reason.item {
             wipple_driver::typecheck::ErrorReason::Custom(message) => {
-                self.render_custom_message(message, false)
+                self.render_custom_message(message, false, false)
             }
             wipple_driver::typecheck::ErrorReason::Expression(r#type) => {
                 let code = self.render_code(reason)?;
@@ -1379,7 +1450,7 @@ impl Render {
                 format!(
                     "`{}` is {}",
                     code,
-                    self.render_type(r#type, true, true, true)
+                    self.render_type(r#type, true, DescribeOptions::DescribeWithArticle, true)
                 )
             }
         };
@@ -1560,7 +1631,8 @@ impl Render {
 
                 let code = match r#type {
                     Some(r#type) => {
-                        let r#type = self.render_type(&r#type, true, false, false);
+                        let r#type =
+                            self.render_type(&r#type, true, DescribeOptions::NoDescribe, false);
                         Some(format!("{} :: {}", name, r#type))
                     }
                     None => None,
@@ -1855,5 +1927,9 @@ impl Render {
             .last()
             .and_then(|segment| segment.name())
             .map(ToString::to_string)
+    }
+
+    fn add_article_prefix(&self, s: &str) -> String {
+        format!("{} {}", in_definite::get_a_or_an(s), s)
     }
 }

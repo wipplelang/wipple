@@ -2,4 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/type-states.test.wipple:24:5: error: expected a hovering drone here, but found a idle drone
+tests/type-states.test.wipple:24:5: error: expected a hovering drone here, but found an idle drone

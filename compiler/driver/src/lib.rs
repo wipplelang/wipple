@@ -61,6 +61,22 @@ pub fn resolve_attribute_like_trait(
     typecheck::resolve_attribute_like_trait(&driver, name, r#type.as_ref(), number_of_parameters)
 }
 
+/// Check if the provided declared type path represents a language item.
+pub fn type_is_language_item(
+    path: &wipple_lower::Path,
+    language_item: &str,
+    interface: Interface,
+) -> bool {
+    use wipple_typecheck::Driver as _;
+
+    let mut driver = Driver::new();
+    driver.interface = interface;
+
+    driver
+        .path_for_language_type(language_item)
+        .is_some_and(|item| item == *path)
+}
+
 /// Attempt to fix the file mentioned in the provided diagnostic. See the
 /// documentation for [`fix`](mod@fix) for more information.
 pub fn fix_file(

@@ -115,11 +115,15 @@ Unused : Type => trait
 @(language : "describe-type")
 Describe-Type : Type (infer Description) => trait
 
-instance (Describe-Type Unit "unit")
-instance (Describe-Type Number "a number")
-instance (Describe-Type Text "a piece of text")
-Input Output => default instance (Describe-Type (Input -> Output) "a function")
-Body => default instance (Describe-Type {Body} "a block")
+-- Prevent Wipple from modifying the provided text to be grammatically correct.
+@(language : "no-grammar")
+No-Grammar : Message => type
+
+instance (Describe-Type Unit (No-Grammar "nothing"))
+instance (Describe-Type Number "number")
+instance (Describe-Type Text "piece of text")
+Input Output => default instance (Describe-Type (Input -> Output) "function")
+Body => default instance (Describe-Type {Body} "block")
 
 -- Display a dropdown with the provided options. The dropdown will evaluate to
 -- the selected item at runtime.

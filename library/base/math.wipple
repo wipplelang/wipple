@@ -66,7 +66,7 @@ sqrt : n -> intrinsic "sqrt-number" n
 -- An angle represented in degrees.
 Angle : type Number
 
-instance (Describe-Type Angle "an angle")
+instance (Describe-Type Angle "angle")
 
 -- An angle in degrees.
 @(highlight-category : "unit")

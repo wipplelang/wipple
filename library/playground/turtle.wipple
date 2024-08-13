@@ -1,7 +1,7 @@
 -- The distance (in pixels) the turtle should move.
 Distance : type Number
 
-instance (Describe-Type Distance "a distance")
+instance (Describe-Type Distance "distance")
 
 -- Specify a distance in pixels.
 @(highlight-category : "unit")
@@ -100,7 +100,7 @@ speed : (Speed value) -> runtime-message "speed" value
 
 -- An animal to use instead of the turtle.
 Animal : type Text
-instance (Describe-Type Animal "an animal")
+instance (Describe-Type Animal "animal")
 
 -- Change the animal being displayed.
 @(highlight-category : "turtle-pen")

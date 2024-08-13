@@ -8,7 +8,7 @@ instance (Describe-Type Hovering "hovering")
 
 Drone : State => type
 
-State => instance (Describe-Type (Drone State) ("a _ drone" State))
+State => instance (Describe-Type (Drone State) ("_ drone" State))
 
 my-drone :: Drone Idle
 my-drone : Drone
