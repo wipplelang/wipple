@@ -686,7 +686,7 @@ impl LanguageServer for Backend {
             },
         };
 
-        let code = wipple_driver::format(&file.text);
+        let code = wipple_driver::format(&file.text) + "\n";
 
         Ok(Some(vec![TextEdit {
             range,
