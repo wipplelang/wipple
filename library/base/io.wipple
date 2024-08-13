@@ -2,7 +2,7 @@
 @(language : "describe")
 Describe : (Value : Text) => trait (Value -> Text)
 
-Value where (Error ("cannot describe a _ value" Value)) =>
+Value where (Error ("cannot describe _" Value)) =>
   default instance (Describe Value) : ...
 
 -- Produce a piece of `Text` describing the value.
