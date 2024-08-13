@@ -6,6 +6,9 @@ use logos::Logos;
 use std::borrow::Cow;
 use wipple_util::WithInfo;
 
+// Here, we define the patterns Logos should use to tokenize the source file.
+// This enum will be converted into the public `Token` enum inside
+// `tokenize` below.
 #[derive(Debug, Logos)]
 #[logos(skip r#"[\t ]+"#)]
 enum RawToken<'src> {
@@ -159,6 +162,10 @@ where
     logos::Lexer::new(s).spanned().map(|(result, span)| {
         let span = (span.start as u32)..(span.end as u32);
 
+        // Logos requires that the `RawToken` enum be flat, but `Token` groups
+        // similar tokens (like keywords and operators) together so operations
+        // can be performed on all tokens of a certain kind. Here, we convert
+        // between the two.
         match result {
             Ok(raw_token) => {
                 let kind = match raw_token {
@@ -212,6 +219,8 @@ where
                     RawToken::LineBreak => Token::LineBreak,
                     RawToken::Comment(comment) => Token::Comment(comment),
                     RawToken::Name(name) => {
+                        // FIXME: This is never called because we have raw
+                        // tokens for all keywords?
                         if let Ok(keyword) = name.parse::<Keyword>() {
                             Token::Keyword(keyword)
                         } else {
@@ -222,6 +231,7 @@ where
                     RawToken::Number(number) => Token::Number(number),
                 };
 
+                // Associate the token with the current file.
                 Ok(WithInfo {
                     info: Location {
                         path: driver.file_path(),
@@ -232,15 +242,19 @@ where
                     item: kind,
                 })
             }
-            Err(()) => Err(WithInfo {
-                info: Location {
-                    path: driver.file_path(),
-                    visible_path: driver.visible_path(),
-                    span,
-                }
-                .into(),
-                item: Diagnostic::InvalidToken,
-            }),
+            Err(()) => {
+                // If Logos produces an error, emit a diagnostic associated with
+                // the span.
+                Err(WithInfo {
+                    info: Location {
+                        path: driver.file_path(),
+                        visible_path: driver.visible_path(),
+                        span,
+                    }
+                    .into(),
+                    item: Diagnostic::InvalidToken,
+                })
+            }
         }
     })
 }

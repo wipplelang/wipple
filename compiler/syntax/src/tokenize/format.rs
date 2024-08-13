@@ -1,7 +1,7 @@
 use crate::tokenize::Token;
 use std::collections::VecDeque;
 
-/// Format the output of [`tokenize`] to a string.
+/// Format the output of [`tokenize`](crate::tokenize::tokenize) to a string.
 pub fn format<'a, 'src: 'a>(tokens: Vec<&'a Token<'src>>) -> String {
     // The formatted code is stored here.
     let mut formatted = String::new();

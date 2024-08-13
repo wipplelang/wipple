@@ -1,6 +1,8 @@
 use crate::{tokenize::Token, Driver};
 use wipple_util::WithInfo;
 
+/// Prepare a token stream for parsing by removing comments and redundant line
+/// breaks (including merging lines with leading and trailing operators).
 pub fn to_logical_lines<'a, 'src: 'a, D: Driver>(
     _driver: &'a D,
     tokens: impl IntoIterator<Item = WithInfo<D::Info, Token<'src>>> + 'a,
@@ -10,10 +12,14 @@ pub fn to_logical_lines<'a, 'src: 'a, D: Driver>(
     let mut tokens = tokens.into_iter().peekable();
     while let Some(token) = tokens.next() {
         match &token.item {
-            Token::Comment(_) => {}
+            Token::Comment(_) => {
+                // Skip comments.
+            }
             Token::Operator(_) | Token::VariadicOperator(_) | Token::NonAssociativeOperator(_) => {
                 result.push(token);
 
+                // Remove all line breaks between the operator and the next
+                // token.
                 while let Some(WithInfo {
                     item: Token::LineBreak,
                     ..
@@ -23,6 +29,7 @@ pub fn to_logical_lines<'a, 'src: 'a, D: Driver>(
                 }
             }
             Token::LineBreak => {
+                // Remove all additional line breaks.
                 while let Some(WithInfo {
                     item: Token::LineBreak,
                     ..
@@ -31,6 +38,8 @@ pub fn to_logical_lines<'a, 'src: 'a, D: Driver>(
                     tokens.next();
                 }
 
+                // Merge the next line with this line if it starts with an
+                // operator. (`next_if` consumes the token if it matches.)
                 if let Some(operator) = tokens.next_if(|token| {
                     matches!(
                         token.item,
@@ -44,6 +53,7 @@ pub fn to_logical_lines<'a, 'src: 'a, D: Driver>(
                     result.push(token);
                 }
 
+                // Again, remove all additional line breaks.
                 while let Some(WithInfo {
                     item: Token::LineBreak,
                     ..
@@ -53,12 +63,14 @@ pub fn to_logical_lines<'a, 'src: 'a, D: Driver>(
                 }
             }
             _ => {
+                // Preserve all other tokens.
                 result.push(token);
             }
         }
     }
 
-    // HACK: Allow `TokenTree::from_top_level` to parse the last line
+    // HACK: Insert a final line break so the parser always sees a new line
+    // after every statement.
     if let Some(last) = result.last().cloned() {
         result.push(last.replace(Token::LineBreak));
     }
