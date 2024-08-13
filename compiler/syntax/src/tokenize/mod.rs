@@ -317,7 +317,8 @@ pub enum Diagnostic<D: Driver> {
     },
 }
 
-/// A token tree.
+/// A token tree, ie. a concrete syntax tree that does grouping by parentheses
+/// and operators, but has no further syntactic structure.
 #[allow(missing_docs)]
 #[derive(Derivative)]
 #[derivative(
