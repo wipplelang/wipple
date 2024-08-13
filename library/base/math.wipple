@@ -11,6 +11,9 @@ instance (Add Number Number Number) : left right -> intrinsic "add-number" left 
 Left Right Sum where (Because (Left ; Right)) (Error ("cannot add _ and _" Left Right)) =>
   default instance (Add Left Right Sum) : ...
 
+Right Sum where (Error "missing parentheses around the symbol `+`") =>
+  instance (Add Unit Right Sum) : ...
+
 -- Subtract the one value from another, returning the difference.
 @(language : "subtract")
 Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Left Right -> Difference)
@@ -18,6 +21,9 @@ instance (Subtract Number Number Number) : left right -> intrinsic "subtract-num
 
 Left Right Difference where (Because (Left ; Right)) (Error ("cannot subtract _ from _" Right Left)) =>
   default instance (Subtract Left Right Difference) : ...
+
+Right Difference where (Error "missing parentheses around the symbol `-`") =>
+  instance (Subtract Unit Right Difference) : ...
 
 -- Multiply two values together, returning the product.
 @(language : "multiply")
@@ -27,6 +33,9 @@ instance (Multiply Number Number Number) : left right -> intrinsic "multiply-num
 Left Right Product where (Because (Left ; Right)) (Error ("cannot multiply _ by _" Left Right)) =>
   default instance (Multiply Left Right Product) : ...
 
+Right Product where (Error "missing parentheses around the symbol `*`") =>
+  instance (Multiply Unit Right Product) : ...
+
 -- Divide two numbers, returning the quotient.
 @(language : "divide")
 Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Left Right -> Quotient)
@@ -34,6 +43,9 @@ instance (Divide Number Number Number) : left right -> intrinsic "divide-number"
 
 Left Right Quotient where (Because (Left ; Right)) (Error ("cannot divide _ by _" Left Right)) =>
   default instance (Divide Left Right Quotient) : ...
+
+Right Quotient where (Error "missing parentheses around the symbol `/`") =>
+  instance (Divide Unit Right Quotient) : ...
 
 -- Divide two numbers, returning the remainder.
 @(language : "remainder")
@@ -43,6 +55,9 @@ instance (Remainder Number Number Number) : left right -> intrinsic "remainder-n
 Left Right Remainder where (Because (Left ; Right)) (Error ("cannot divide _ by _" Left Right)) =>
   default instance (Remainder Left Right Remainder) : ...
 
+Right Remainder where (Error "missing parentheses around the symbol `%`") =>
+  instance (Remainder Unit Right Remainder) : ...
+
 -- Raise one number to the power of the other number.
 @(language : "power")
 Power : (Left : Number) (Right : Number) (infer Power) => trait (Left Right -> Power)
@@ -50,6 +65,9 @@ instance (Power Number Number Number) : left right -> intrinsic "power-number" l
 
 Left Right Power where (Because (Left ; Right)) (Error ("cannot raise _ to the power of _" Left Right)) =>
   default instance (Power Left Right Power) : ...
+
+Right Power where (Error "missing parentheses around the symbol `^`") =>
+  instance (Power Unit Right Power) : ...
 
 -- Round down a number to the nearest integer.
 floor :: Number -> Number
