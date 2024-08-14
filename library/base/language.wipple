@@ -115,15 +115,17 @@ Unused : Type => trait
 @(language : "describe-type")
 Describe-Type : Type (infer Description) => trait
 
--- Prevent Wipple from modifying the provided text to be grammatically correct.
+-- Prevent Wipple from modifying the provided text to agree with the grammar of
+-- the surrounding text (eg. by inserting an article like "a" or "an").
 @(language : "no-grammar")
 No-Grammar : Message => type
 
 instance (Describe-Type Unit (No-Grammar "no value"))
 instance (Describe-Type Number "number")
-instance (Describe-Type Text "piece of text")
+instance (Describe-Type Text (No-Grammar "text"))
 Input Output => default instance (Describe-Type (Input -> Output) "function")
 Body => default instance (Describe-Type {Body} "block")
+Value => default instance (Describe-Type (Maybe Value) "maybe")
 
 -- Display a dropdown with the provided options. The dropdown will evaluate to
 -- the selected item at runtime.

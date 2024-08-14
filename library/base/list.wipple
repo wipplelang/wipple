@@ -1,6 +1,8 @@
 @(language : "list")
 List : Element => type intrinsic
 
+Element => instance (Describe-Type (List Element) ("_ list" Element))
+
 Element => instance (Empty (List Element)) : intrinsic "make-empty-list"
 
 -- Retrieve the first item inside a list, or `None` if the list is empty.
