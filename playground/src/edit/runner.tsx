@@ -15,6 +15,7 @@ import { Mutex } from "async-mutex";
 import { Markdown, defaultAnimationDuration } from "../components";
 import { flushSync } from "react-dom";
 import { decompress } from "fzstd";
+import { useUnmountEffect } from "framer-motion";
 
 export interface RunOptions {
     dependenciesPath: string;
@@ -79,6 +80,7 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const cachedHighlightItems = useRef<Record<string, any>>();
     const cachedHelp = useRef<Record<string, Help>>({});
 
+    const isInitialized = useRef(false);
     const isCompiling = useRef(false);
 
     const runMutex = useRef(new Mutex());
@@ -95,24 +97,32 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
         let showRunAgain = false;
         try {
-            if (!cachedBuiltinsHelp.current) {
-                cachedBuiltinsHelp.current = await fetchBuiltinsHelp();
-            }
+            if (!isInitialized.current) {
+                if (!cachedBuiltinsHelp.current) {
+                    cachedBuiltinsHelp.current = await fetchBuiltinsHelp();
+                }
 
-            const dependencies = props.options.dependenciesPath
-                ? await fetchDependencies(props.options.dependenciesPath)
-                : null;
+                const dependencies = props.options.dependenciesPath
+                    ? await fetchDependencies(props.options.dependenciesPath)
+                    : null;
 
-            if (!cachedHighlightItems.current && dependencies) {
-                const highlightsResult = await props.wipple.highlights({
-                    interface: dependencies.interface,
+                await props.wipple.initialize({
+                    id,
+                    interface: dependencies?.interface,
+                    libraries: dependencies?.libraries ?? [],
                 });
 
-                if (highlightsResult) {
-                    const { highlights } = highlightsResult;
+                isInitialized.current = true;
 
-                    cachedHighlightItems.current = highlights;
-                    props.onChangeHighlightItems(highlights);
+                if (!cachedHighlightItems.current && dependencies) {
+                    const highlightsResult = await props.wipple.highlights({ id });
+
+                    if (highlightsResult) {
+                        const { highlights } = highlightsResult;
+
+                        cachedHighlightItems.current = highlights;
+                        props.onChangeHighlightItems(highlights);
+                    }
                 }
             }
 
@@ -120,18 +130,16 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 id,
                 path: "playground",
                 code,
-                interface: dependencies?.interface,
-                libraries: dependencies?.libraries ?? [],
             });
 
             isCompiling.current = false;
 
             if (!compileResult) return;
 
-            const { executable, diagnostics, driverDiagnostics } = compileResult;
+            const { success, diagnostics, driverDiagnostics } = compileResult;
             props.onChangeDiagnostics(diagnostics, driverDiagnostics);
 
-            if (!executable) return;
+            if (!success) return;
 
             await props.wipple.stop({ id });
 
@@ -148,7 +156,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 try {
                     return await props.wipple.run({
                         id,
-                        executable,
                         handlers: {
                             display: async (text: string) => {
                                 appendToOutput({ type: "text", text });
@@ -284,16 +291,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             return resolvedHelp;
         },
         getIntelligentFix: async (diagnostic: any): Promise<IntelligentFix | undefined> => {
-            const dependencies = props.options.dependenciesPath
-                ? await fetchDependencies(props.options.dependenciesPath)
-                : null;
-
             const fixResult = await props.wipple.getIntelligentFix({
                 id,
                 path: "playground",
                 code,
-                interface: dependencies?.interface,
-                libraries: dependencies?.libraries ?? [],
                 diagnostic,
             });
 
@@ -315,6 +316,10 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             return formatted;
         },
     }));
+
+    useUnmountEffect(() => {
+        props.wipple.cleanup({ id });
+    });
 
     return showOutput ? (
         <div className="flex flex-col px-4 pb-4 gap-3">

@@ -137,19 +137,56 @@ pub fn init() {
     wasm_main_executor::initialize().unwrap();
 }
 
+#[derive(Clone, Default)]
+struct Dependencies {
+    interface: Option<Box<wipple_driver::Interface>>,
+    libraries: Vec<wipple_driver::Library>,
+}
+
+lazy_static! {
+    static ref DEPENDENCIES: Mutex<HashMap<String, Dependencies>> = Default::default();
+    static ref EXECUTABLES: Mutex<HashMap<String, wipple_driver::Executable>> = Default::default();
+}
+
 #[derive(Deserialize)]
-pub struct CompileOptions {
+pub struct InitializeOptions {
     pub id: String,
-    pub path: String,
-    pub code: String,
     pub interface: Option<Box<wipple_driver::Interface>>,
     pub libraries: Vec<wipple_driver::Library>,
 }
 
 #[derive(Serialize)]
+pub struct InitializeResult {}
+
+#[wasm_bindgen]
+pub async fn initialize(options: JsValue) -> JsValue {
+    let options =
+        from_value::<InitializeOptions>(options).or_throw("failed to deserialize options");
+
+    DEPENDENCIES.lock().await.insert(
+        options.id,
+        Dependencies {
+            interface: options.interface,
+            libraries: options.libraries,
+        },
+    );
+
+    let result = InitializeResult {};
+
+    to_value(&result).or_throw("failed to serialize result")
+}
+
+#[derive(Deserialize)]
+pub struct CompileOptions {
+    pub id: String,
+    pub path: String,
+    pub code: String,
+}
+
+#[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CompileResult {
-    pub executable: Option<wipple_driver::Executable>,
+    pub success: bool,
     pub driver_diagnostics:
         Vec<wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>>,
     pub diagnostics: Vec<wipple_render::RenderedDiagnostic>,
@@ -166,13 +203,21 @@ pub async fn compile(options: JsValue) -> JsValue {
             code: options.code,
         }];
 
-        let result = wipple_driver::compile(sources, options.interface.map(|interface| *interface));
+        let dependencies = DEPENDENCIES
+            .lock()
+            .await
+            .entry(options.id.clone())
+            .or_default()
+            .clone();
+
+        let result =
+            wipple_driver::compile(sources, dependencies.interface.map(|interface| *interface));
 
         render_for(options.id.clone()).await.update(
             result.interface,
             [&result.library]
                 .into_iter()
-                .chain(&options.libraries)
+                .chain(&dependencies.libraries)
                 .cloned()
                 .collect(),
             Some(result.ide),
@@ -205,15 +250,24 @@ pub async fn compile(options: JsValue) -> JsValue {
             wipple_driver::link(
                 [result.library]
                     .into_iter()
-                    .chain(options.libraries)
+                    .chain(dependencies.libraries)
                     .collect(),
             )
         } else {
             None
         };
 
+        let success = executable.is_some();
+
+        let mut exectutables = EXECUTABLES.lock().await;
+        if let Some(executable) = executable {
+            exectutables.insert(options.id, executable);
+        } else {
+            exectutables.remove(&options.id);
+        }
+
         CompileResult {
-            executable,
+            success,
             driver_diagnostics: result.diagnostics,
             diagnostics: rendered_diagnostics,
         }
@@ -248,7 +302,7 @@ pub async fn format(options: JsValue) -> JsValue {
 
 #[derive(Deserialize)]
 pub struct HighlightsOptions {
-    pub interface: Box<wipple_driver::Interface>,
+    pub id: String,
 }
 
 #[derive(Serialize)]
@@ -261,28 +315,44 @@ pub async fn highlights(options: JsValue) -> JsValue {
     let options =
         from_value::<HighlightsOptions>(options).or_throw("failed to deserialize options");
 
-    let render = wipple_render::Render::new();
-    render.update(*options.interface, Vec::new(), None);
+    let result = run_on_thread(format!("highlights-{}", options.id), move || async move {
+        let interface = DEPENDENCIES
+            .lock()
+            .await
+            .entry(options.id.clone())
+            .or_default()
+            .interface
+            .clone();
 
-    let mut highlights = HashMap::new();
-    for (name, paths) in render.get_interface().unwrap().top_level {
-        if paths.len() > 1 {
-            continue;
-        }
+        let mut highlights = HashMap::new();
+        if let Some(interface) = interface {
+            let render = wipple_render::Render::new();
+            render.update(*interface, Vec::new(), None);
 
-        for path in paths {
-            if let Some(declaration) = render.get_declaration_from_path(&path.item) {
-                if let Some(highlight) = render.render_highlight(&declaration) {
-                    highlights.insert(name, highlight);
-                    break; // needed to move `name` into `highlights` above
+            for (name, paths) in render.get_interface().unwrap().top_level {
+                if paths.len() > 1 {
+                    continue;
+                }
+
+                for path in paths {
+                    if let Some(declaration) = render.get_declaration_from_path(&path.item) {
+                        if let Some(highlight) = render.render_highlight(&declaration) {
+                            highlights.insert(name, highlight);
+                            break; // needed to move `name` into `highlights` above
+                        }
+                    }
                 }
             }
         }
+
+        HighlightsResult { highlights }
+    })
+    .await;
+
+    match result {
+        Ok(result) => to_value(&result).or_throw("failed to serialize result"),
+        Err(Canceled) => JsValue::UNDEFINED,
     }
-
-    let result = HighlightsResult { highlights };
-
-    to_value(&result).or_throw("failed to serialize result")
 }
 
 #[derive(Deserialize)]
@@ -345,8 +415,6 @@ pub struct GetIntelligentFixOptions {
     pub id: String,
     pub path: String,
     pub code: String,
-    pub interface: Option<Box<wipple_driver::Interface>>,
-    pub libraries: Vec<wipple_driver::Library>,
     pub diagnostic: wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>,
 }
 
@@ -371,6 +439,14 @@ pub async fn get_intelligent_fix(options: JsValue) -> JsValue {
     let result = run_on_thread(
         format!("get_intelligent_fix-{}", options.id),
         move || async move {
+            let interface = DEPENDENCIES
+                .lock()
+                .await
+                .entry(options.id.clone())
+                .or_default()
+                .interface
+                .clone();
+
             let sources = vec![wipple_driver::File {
                 path: options.path.clone(),
                 visible_path: options.path,
@@ -380,7 +456,7 @@ pub async fn get_intelligent_fix(options: JsValue) -> JsValue {
             let fix_result = wipple_driver::fix_file(
                 options.diagnostic,
                 sources,
-                options.interface.map(|interface| *interface),
+                interface.map(|interface| *interface),
             );
 
             let (fix, fixed_code) = match fix_result {
@@ -411,7 +487,6 @@ pub async fn get_intelligent_fix(options: JsValue) -> JsValue {
 #[derive(Deserialize)]
 pub struct RunOptions {
     pub id: String,
-    pub executable: Box<wipple_driver::Executable>,
     pub handlers: Arc<SendWrapper<RunHandlers>>,
 }
 
@@ -658,6 +733,15 @@ pub async fn run(options: JsValue) -> JsValue {
     let thread_id = run_thread_id(&options.id);
 
     let result = run_on_thread(thread_id, move || async move {
+        let executable = match EXECUTABLES.lock().await.get(&options.id) {
+            Some(executable) => executable.clone(),
+            None => {
+                return RunResult {
+                    error: Some(String::from("program not compiled")),
+                };
+            }
+        };
+
         let runtime_options =
             wipple_interpreter::Options::<Runtime>::with_io(wipple_interpreter::Io {
                 display: Arc::new({
@@ -837,7 +921,7 @@ pub async fn run(options: JsValue) -> JsValue {
                 }),
             });
 
-        let result = wipple_interpreter::evaluate(*options.executable, runtime_options).await;
+        let result = wipple_interpreter::evaluate(executable, runtime_options).await;
         let error = result.err().map(|error| error.0);
 
         RunResult { error }
@@ -867,6 +951,26 @@ pub async fn stop(options: JsValue) -> JsValue {
     stop_thread(&run_thread_id(&options.id)).await;
 
     let result = StopResult {};
+
+    to_value(&result).or_throw("failed to serialize result")
+}
+
+#[derive(Deserialize)]
+pub struct CleanupOptions {
+    pub id: String,
+}
+
+#[derive(Serialize)]
+pub struct CleanupResult {}
+
+#[wasm_bindgen]
+pub async fn cleanup(options: JsValue) -> JsValue {
+    let options = from_value::<CleanupOptions>(options).or_throw("failed to deserialize options");
+
+    DEPENDENCIES.lock().await.remove(&options.id);
+    EXECUTABLES.lock().await.remove(&options.id);
+
+    let result = CleanupResult {};
 
     to_value(&result).or_throw("failed to serialize result")
 }
