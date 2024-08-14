@@ -2,4 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/mismatched-call.test.wipple:8:14: error: expected a piece of text here, but found a number
+tests/mismatched-call.test.wipple:8:14: error: expected text here, but found a number
