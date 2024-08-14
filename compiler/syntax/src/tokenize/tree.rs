@@ -393,6 +393,9 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         }
                     }
 
+                    // Remove any empty statements.
+                    statements.retain(|tree| !matches!(&tree.item, TokenTree::List(_, elements) if elements.is_empty()));
+
                     push!(WithInfo {
                         info: D::merge_info(begin_info, info),
                         item: TokenTree::Block(statements),
@@ -625,14 +628,11 @@ impl<'src, D: Driver> TokenTree<'src, D> {
             }
         };
 
-        // Allow trailing line breaks at the top level using the same logic as
-        // with blocks delimited by braces.
+        // Remove any empty statements.
         if let TokenTree::Block(statements) = &mut tree.item {
-            if statements.last().is_some_and(
-                |tree| matches!(&tree.item, TokenTree::List(_, elements) if elements.is_empty()),
-            ) {
-                statements.pop().unwrap();
-            }
+            statements.retain(
+                |tree| !matches!(&tree.item, TokenTree::List(_, elements) if elements.is_empty()),
+            );
         }
 
         (tree, diagnostics)
