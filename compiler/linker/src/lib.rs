@@ -71,7 +71,7 @@ pub struct UnlinkedItem<D: Driver> {
 /// A linked executable.
 #[non_exhaustive]
 #[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""), Default(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""), Default(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct Executable<D: Driver> {
@@ -111,7 +111,7 @@ pub struct LinkedInstance<D: Driver> {
 /// An item in an [`Executable`].
 #[non_exhaustive]
 #[derive(Serialize, Deserialize, Derivative)]
-#[derivative(Debug(bound = ""))]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct LinkedItem<D: Driver> {
