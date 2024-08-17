@@ -25,7 +25,7 @@ pub use wipple_util as util;
 pub const DEFAULT_RECURSION_LIMIT: u32 = 64;
 
 /// Entrypoint to the compiler.
-pub fn compile(files: Vec<File>, dependencies: Option<Interface>) -> Result {
+pub fn compile(files: Vec<File>, dependencies: Vec<Interface>) -> Result {
     Driver::new().compile(files, dependencies)
 }
 
@@ -82,7 +82,7 @@ pub fn type_is_language_item(
 pub fn fix_file(
     diagnostic: util::WithInfo<Info, Diagnostic>,
     files: Vec<File>,
-    dependencies: Option<Interface>,
+    dependencies: Vec<Interface>,
 ) -> Option<(fix::Fix, String)> {
     let path = diagnostic.info.location.path.as_ref();
 
@@ -130,6 +130,7 @@ pub struct Driver {
     recursion_limit: u32,
     hide_source: bool,
     lint: bool,
+    dependencies: Vec<Interface>,
     interface: Interface,
     library: Library,
     ide: Ide,
@@ -141,6 +142,7 @@ impl Driver {
             recursion_limit: DEFAULT_RECURSION_LIMIT,
             hide_source: false,
             lint: true,
+            dependencies: Default::default(),
             interface: Default::default(),
             library: Default::default(),
             ide: Default::default(),
@@ -212,6 +214,30 @@ pub struct Interface {
         HashMap<lower::Path, util::WithInfo<Info, typecheck::InstanceDeclaration<Driver>>>,
 }
 
+impl Extend<Self> for Interface {
+    fn extend<T: IntoIterator<Item = Self>>(&mut self, iter: T) {
+        for interface in iter {
+            self.files.extend(interface.files);
+            self.top_level.extend(interface.top_level);
+            self.type_declarations.extend(interface.type_declarations);
+            self.trait_declarations.extend(interface.trait_declarations);
+            self.type_parameter_declarations
+                .extend(interface.type_parameter_declarations);
+            self.constant_declarations
+                .extend(interface.constant_declarations);
+            self.instance_declarations
+                .extend(interface.instance_declarations);
+
+            for (name, paths) in interface.language_declarations {
+                self.language_declarations
+                    .entry(name)
+                    .or_default()
+                    .extend(paths);
+            }
+        }
+    }
+}
+
 /// A linked executable.
 pub type Executable = wipple_linker::Executable<Driver>;
 
@@ -261,11 +287,11 @@ pub enum Diagnostic {
 
 impl Driver {
     /// Compile a set of source files into a [`Library`] and [`Interface`].
-    fn compile(mut self, files: Vec<File>, dependencies: Option<Interface>) -> Result {
+    fn compile(mut self, files: Vec<File>, dependencies: Vec<Interface>) -> Result {
         let mut diagnostics = Vec::new();
 
-        if let Some(dependencies) = &dependencies {
-            self.interface.files.extend(dependencies.files.clone());
+        for dependency in &dependencies {
+            self.interface.files.extend(dependency.files.clone());
         }
 
         if !self.hide_source {
@@ -324,6 +350,8 @@ impl Driver {
             &self,
             files,
             dependencies
+                .iter()
+                .cloned()
                 .map(|interface| lower::Interface {
                     top_level: interface.top_level,
                     type_declarations: interface
@@ -366,7 +394,7 @@ impl Driver {
                         })
                         .collect(),
                 })
-                .unwrap_or_default(),
+                .collect(),
         );
 
         self.ide.merge(lower_result.ide);
@@ -414,6 +442,8 @@ impl Driver {
                 .instance_declarations
                 .insert(path.clone(), declaration);
         }
+
+        self.dependencies = dependencies;
 
         for (path, declaration) in lower_result.interface.constant_declarations {
             let item = match lower_result
@@ -613,7 +643,7 @@ impl Driver {
             .into_group_map_by(|(_, instance)| instance.item.instance.item.r#trait.clone());
 
         for (r#trait, instances) in instances_by_trait {
-            let trait_declaration = self.interface.trait_declarations.get(&r#trait).unwrap();
+            let trait_declaration = typecheck::Driver::get_trait_declaration(&self, &r#trait);
 
             let mut default_instances = HashSet::new();
             let instances = instances
@@ -726,11 +756,11 @@ impl wipple_lower::Driver for Driver {
 
 macro_rules! path_for_language {
     ($kind:ident, $self:expr, $language_item:expr) => {
-        $self
-            .interface
-            .language_declarations
-            .get($language_item)?
+        [&$self.interface]
             .into_iter()
+            .chain(&$self.dependencies)
+            .filter_map(|interface| interface.language_declarations.get($language_item))
+            .flatten()
             .find(|path| matches!(path.last().unwrap(), lower::PathComponent::$kind(_)))
             .cloned()
     };
@@ -777,61 +807,62 @@ impl wipple_typecheck::Driver for Driver {
         &self,
         path: &Self::Path,
     ) -> util::WithInfo<Self::Info, wipple_typecheck::TypeDeclaration<Self>> {
-        self.interface
-            .type_declarations
-            .get(path)
+        [&self.interface]
+            .into_iter()
+            .chain(&self.dependencies)
+            .find_map(|interface| interface.type_declarations.get(path).cloned())
             .unwrap_or_else(|| panic!("missing type declaration {:?}", path))
-            .clone()
     }
 
     fn get_trait_declaration(
         &self,
         path: &Self::Path,
     ) -> util::WithInfo<Self::Info, wipple_typecheck::TraitDeclaration<Self>> {
-        self.interface
-            .trait_declarations
-            .get(path)
-            .expect("missing trait declaration")
-            .clone()
+        [&self.interface]
+            .into_iter()
+            .chain(&self.dependencies)
+            .find_map(|interface| interface.trait_declarations.get(path).cloned())
+            .unwrap_or_else(|| panic!("missing trait declaration {:?}", path))
     }
 
     fn get_type_parameter_declaration(
         &self,
         path: &Self::Path,
     ) -> util::WithInfo<Self::Info, wipple_typecheck::TypeParameterDeclaration<Self>> {
-        self.interface
-            .type_parameter_declarations
-            .get(path)
-            .expect("missing type parameter declaration")
-            .clone()
+        [&self.interface]
+            .into_iter()
+            .chain(&self.dependencies)
+            .find_map(|interface| interface.type_parameter_declarations.get(path).cloned())
+            .unwrap_or_else(|| panic!("missing type parameter declaration {:?}", path))
     }
 
     fn get_constant_declaration(
         &self,
         path: &Self::Path,
     ) -> util::WithInfo<Self::Info, wipple_typecheck::ConstantDeclaration<Self>> {
-        self.interface
-            .constant_declarations
-            .get(path)
-            .unwrap_or_else(|| panic!("missing constant declaration {path:#?}"))
-            .clone()
+        [&self.interface]
+            .into_iter()
+            .chain(&self.dependencies)
+            .find_map(|interface| interface.constant_declarations.get(path).cloned())
+            .unwrap_or_else(|| panic!("missing constant declaration {:?}", path))
     }
 
     fn get_instance_declaration(
         &self,
         path: &Self::Path,
     ) -> util::WithInfo<Self::Info, wipple_typecheck::InstanceDeclaration<Self>> {
-        self.interface
-            .instance_declarations
-            .get(path)
-            .expect("missing instance declaration")
-            .clone()
+        [&self.interface]
+            .into_iter()
+            .chain(&self.dependencies)
+            .find_map(|interface| interface.instance_declarations.get(path).cloned())
+            .unwrap_or_else(|| panic!("missing instance declaration {:?}", path))
     }
 
     fn get_instances_for_trait(&self, r#trait: &Self::Path) -> Vec<Self::Path> {
-        self.interface
-            .instance_declarations
-            .iter()
+        [&self.interface]
+            .into_iter()
+            .chain(&self.dependencies)
+            .flat_map(|interface| &interface.instance_declarations)
             .filter(|(_, instance)| instance.item.instance.item.r#trait == *r#trait)
             .map(|(path, _)| path.clone())
             .collect()
@@ -845,37 +876,41 @@ impl wipple_typecheck::Driver for Driver {
 
 impl wipple_ir::Driver for Driver {
     fn number_type(&self) -> Option<Self::Path> {
-        self.interface
-            .language_declarations
-            .get("number")?
-            .iter()
+        [&self.interface]
+            .into_iter()
+            .chain(&self.dependencies)
+            .filter_map(|interface| interface.language_declarations.get("number"))
+            .flatten()
             .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Type(_)))
             .cloned()
     }
 
     fn text_type(&self) -> Option<Self::Path> {
-        self.interface
-            .language_declarations
-            .get("text")?
-            .iter()
+        [&self.interface]
+            .into_iter()
+            .chain(&self.dependencies)
+            .filter_map(|interface| interface.language_declarations.get("text"))
+            .flatten()
             .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Type(_)))
             .cloned()
     }
 
     fn boolean_type(&self) -> Option<Self::Path> {
-        self.interface
-            .language_declarations
-            .get("boolean")?
-            .iter()
+        [&self.interface]
+            .into_iter()
+            .chain(&self.dependencies)
+            .filter_map(|interface| interface.language_declarations.get("boolean"))
+            .flatten()
             .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Type(_)))
             .cloned()
     }
 
     fn true_variant(&self) -> Option<Self::Path> {
-        self.interface
-            .language_declarations
-            .get("true")?
-            .iter()
+        [&self.interface]
+            .into_iter()
+            .chain(&self.dependencies)
+            .filter_map(|interface| interface.language_declarations.get("true"))
+            .flatten()
             .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Constructor(_)))
             .cloned()
             .map(variant_from_constructor)

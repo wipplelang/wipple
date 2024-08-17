@@ -12,7 +12,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
     const config = vscode.workspace.getConfiguration("wipple");
 
     const run: Executable = {
-        command: config.get<string>("path") || "wipple",
+        command: config.get<string>("path") || "wipplec",
         args: ["lsp"],
         options: {
             env: {
@@ -33,8 +33,7 @@ export const activate = async (context: vscode.ExtensionContext) => {
         documentSelector: [{ scheme: "file", language: "wipple" }],
         traceOutputChannel,
         initializationOptions: {
-            interface: config.get<string>("interface"),
-            libraries: config.get<string[]>("libraries"),
+            interfaces: config.get<string[]>("interfaces"),
         },
     };
 

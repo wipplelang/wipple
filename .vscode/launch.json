@@ -12,7 +12,7 @@
                     "kind": "bin"
                 }
             },
-            "args": ["compile", "test.wipple", "--dependency", ".wipple/base.wippleinterface"],
+            "args": ["compile", "test.wipple", "--dependency", "artifacts/base.wippleinterface"],
             "cwd": "${workspaceFolder}",
             "terminal": "console"
         },

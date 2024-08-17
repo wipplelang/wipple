@@ -18,7 +18,7 @@ import { decompress } from "fzstd";
 import { useUnmountEffect } from "framer-motion";
 
 export interface RunOptions {
-    dependenciesPath: string;
+    bundlePath: string;
 }
 
 export interface RunnerRef {
@@ -102,14 +102,12 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                     cachedBuiltinsHelp.current = await fetchBuiltinsHelp();
                 }
 
-                const dependencies = props.options.dependenciesPath
-                    ? await fetchDependencies(props.options.dependenciesPath)
-                    : null;
+                const dependencies = await fetchBundle(props.options.bundlePath);
 
                 await props.wipple.initialize({
                     id,
-                    interface: dependencies?.interface,
-                    libraries: dependencies?.libraries ?? [],
+                    interfaces: dependencies.interfaces,
+                    libraries: dependencies.libraries,
                 });
 
                 isInitialized.current = true;
@@ -459,12 +457,12 @@ const Prompt = (props: {
     );
 };
 
-interface FetchDependenciesResult {
-    interface: any;
+interface Bundle {
+    interfaces: any[];
     libraries: any[];
 }
 
-const fetchDependencies = async (name: string): Promise<FetchDependenciesResult> => {
+const fetchBundle = async (name: string): Promise<Bundle> => {
     const response = await fetch(
         new URL(`/playground/library/${name}.wipplebundle`, window.location.origin),
     );

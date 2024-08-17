@@ -139,7 +139,7 @@ pub fn init() {
 
 #[derive(Clone, Default)]
 struct Dependencies {
-    interface: Option<Box<wipple_driver::Interface>>,
+    interfaces: Vec<wipple_driver::Interface>,
     libraries: Vec<wipple_driver::Library>,
 }
 
@@ -151,7 +151,7 @@ lazy_static! {
 #[derive(Deserialize)]
 pub struct InitializeOptions {
     pub id: String,
-    pub interface: Option<Box<wipple_driver::Interface>>,
+    pub interfaces: Vec<wipple_driver::Interface>,
     pub libraries: Vec<wipple_driver::Library>,
 }
 
@@ -166,7 +166,7 @@ pub async fn initialize(options: JsValue) -> JsValue {
     DEPENDENCIES.lock().await.insert(
         options.id,
         Dependencies {
-            interface: options.interface,
+            interfaces: options.interfaces,
             libraries: options.libraries,
         },
     );
@@ -210,16 +210,15 @@ pub async fn compile(options: JsValue) -> JsValue {
             .or_default()
             .clone();
 
-        let result =
-            wipple_driver::compile(sources, dependencies.interface.map(|interface| *interface));
+        let result = wipple_driver::compile(sources, dependencies.interfaces.clone());
 
         render_for(options.id.clone()).await.update(
-            result.interface,
-            [&result.library]
+            dependencies
+                .interfaces
                 .into_iter()
-                .chain(&dependencies.libraries)
-                .cloned()
+                .chain([result.interface])
                 .collect(),
+            Some(result.library.clone()),
             Some(result.ide),
         );
 
@@ -316,20 +315,20 @@ pub async fn highlights(options: JsValue) -> JsValue {
         from_value::<HighlightsOptions>(options).or_throw("failed to deserialize options");
 
     let result = run_on_thread(format!("highlights-{}", options.id), move || async move {
-        let interface = DEPENDENCIES
+        let interfaces = DEPENDENCIES
             .lock()
             .await
             .entry(options.id.clone())
             .or_default()
-            .interface
+            .interfaces
             .clone();
 
         let mut highlights = HashMap::new();
-        if let Some(interface) = interface {
+        for interface in interfaces {
             let render = wipple_render::Render::new();
-            render.update(*interface, Vec::new(), None);
+            render.update(vec![interface], None, None);
 
-            for (name, paths) in render.get_interface().unwrap().top_level {
+            for (name, paths) in render.get_interface().top_level {
                 if paths.len() > 1 {
                     continue;
                 }
@@ -439,12 +438,12 @@ pub async fn get_intelligent_fix(options: JsValue) -> JsValue {
     let result = run_on_thread(
         format!("get_intelligent_fix-{}", options.id),
         move || async move {
-            let interface = DEPENDENCIES
+            let interfaces = DEPENDENCIES
                 .lock()
                 .await
                 .entry(options.id.clone())
                 .or_default()
-                .interface
+                .interfaces
                 .clone();
 
             let sources = vec![wipple_driver::File {
@@ -453,11 +452,7 @@ pub async fn get_intelligent_fix(options: JsValue) -> JsValue {
                 code: options.code,
             }];
 
-            let fix_result = wipple_driver::fix_file(
-                options.diagnostic,
-                sources,
-                interface.map(|interface| *interface),
-            );
+            let fix_result = wipple_driver::fix_file(options.diagnostic, sources, interfaces);
 
             let (fix, fixed_code) = match fix_result {
                 Some((fix, code)) => (fix, code),

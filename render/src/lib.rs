@@ -130,8 +130,8 @@ pub struct Render(Arc<RwLock<RenderInner>>);
 
 #[derive(Default)]
 pub struct RenderInner {
-    pub interface: Option<wipple_driver::Interface>,
-    pub libraries: Vec<wipple_driver::Library>,
+    pub interface: wipple_driver::Interface,
+    pub library: Option<wipple_driver::Library>,
     pub ide: Option<wipple_driver::Ide>,
     files: HashMap<String, (wipple_driver::File, LineIndex)>,
     declarations: Vec<WithInfo<AnyDeclaration>>,
@@ -142,23 +142,25 @@ impl Render {
         Render(Default::default())
     }
 
-    pub fn get_interface(&self) -> Option<wipple_driver::Interface> {
+    pub fn get_interface(&self) -> wipple_driver::Interface {
         self.0.read().unwrap().interface.clone()
     }
 
-    pub fn with_interface<T>(&self, f: impl FnOnce(&wipple_driver::Interface) -> T) -> Option<T> {
+    pub fn with_interface<T>(&self, f: impl FnOnce(&wipple_driver::Interface) -> T) -> T {
         let inner = self.0.read().unwrap();
-        let interface = inner.interface.as_ref()?;
-        Some(f(interface))
+        f(&inner.interface)
     }
 
     pub fn update(
         &self,
-        interface: wipple_driver::Interface,
-        libraries: Vec<wipple_driver::Library>,
+        interfaces: Vec<wipple_driver::Interface>,
+        library: Option<wipple_driver::Library>,
         ide: Option<wipple_driver::Ide>,
     ) {
         let mut inner = self.0.write().unwrap();
+
+        let mut interface = wipple_driver::Interface::default();
+        interface.extend(interfaces);
 
         inner.files = interface
             .files
@@ -173,28 +175,28 @@ impl Render {
 
         inner.declarations = Vec::new();
         macro_rules! insert_declaration {
-            ($decl:ident($ty:ident)) => {
-                inner.declarations.extend(
-                    interface
-                        .$decl
-                        .iter()
-                        .map(|(path, declaration)| WithInfo {
-                            info: declaration.info.clone(),
-                            item: AnyDeclaration {
-                                name: self.name_for_path(&path),
-                                path: path.clone(),
-                                kind: AnyDeclarationKind::$ty(declaration.item.clone()),
-                            },
-                        })
-                        .collect::<Vec<_>>(),
-                );
-            };
-            ($($decl:ident($ty:ident)),* $(,)?) => {
-                $(
-                    insert_declaration!($decl($ty));
-                )*
+                ($decl:ident($ty:ident)) => {
+                    inner.declarations.extend(
+                        interface
+                            .$decl
+                            .iter()
+                            .map(|(path, declaration)| WithInfo {
+                                info: declaration.info.clone(),
+                                item: AnyDeclaration {
+                                    name: self.name_for_path(&path),
+                                    path: path.clone(),
+                                    kind: AnyDeclarationKind::$ty(declaration.item.clone()),
+                                },
+                            })
+                            .collect::<Vec<_>>(),
+                    );
+                };
+                ($($decl:ident($ty:ident)),* $(,)?) => {
+                    $(
+                        insert_declaration!($decl($ty));
+                    )*
+                }
             }
-        }
 
         insert_declaration!(
             type_declarations(Type),
@@ -204,8 +206,8 @@ impl Render {
             instance_declarations(Instance),
         );
 
-        inner.interface = Some(interface);
-        inner.libraries = libraries;
+        inner.interface = interface;
+        inner.library = library;
         inner.ide = ide;
     }
 
@@ -466,7 +468,7 @@ impl Render {
             }
 
             let message = (|| {
-                let interface = self.get_interface()?;
+                let interface = self.get_interface();
 
                 let result = wipple_driver::resolve_attribute_like_trait(
                     "describe-type",
@@ -1750,9 +1752,10 @@ impl Render {
         self.0
             .read()
             .unwrap()
-            .libraries
-            .iter()
-            .flat_map(|library| library.items.values())
+            .library
+            .as_ref()?
+            .items
+            .values()
             .find_map(|item| {
                 if !self.compare_cursor_with_info(path, index, &item.expression.info) {
                     return None;

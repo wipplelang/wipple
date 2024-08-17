@@ -41,16 +41,12 @@
             "properties": {
                 "wipple.path": {
                     "type": "string",
-                    "description": "Path to the Wipple CLI"
+                    "description": "Path to `wipplec`"
                 },
-                "wipple.interface": {
-                    "type": "string",
-                    "description": "Path to .wippleinterface file to read when compiling"
-                },
-                "wipple.libraries": {
+                "wipple.interfaces": {
                     "type": "array",
                     "default": [],
-                    "description": "Paths to .wipplelibrary files to read when compiling"
+                    "description": "Paths to `.wippleinterface` files to read when compiling"
                 }
             }
         }

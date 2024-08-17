@@ -21,7 +21,7 @@ use wipple_driver::util::lazy_static::lazy_static;
 enum Args {
     Compile {
         #[clap(long = "dependency")]
-        dependency_path: Option<PathBuf>,
+        dependency_paths: Vec<PathBuf>,
 
         #[clap(long = "interface")]
         output_interface_path: Option<PathBuf>,
@@ -48,7 +48,7 @@ enum Args {
     },
     BundleForPlayground {
         #[clap(long = "dependency")]
-        dependency_interface_path: Option<PathBuf>,
+        dependency_interfaces_paths: Vec<PathBuf>,
 
         #[clap(long = "link")]
         dependency_libraries_paths: Vec<PathBuf>,
@@ -78,8 +78,8 @@ enum Args {
         #[clap(long = "title")]
         title: String,
 
-        #[clap(long = "filter")]
-        filter: Option<glob::Pattern>,
+        #[clap(long = "dependency")]
+        dependency_interfaces_paths: Vec<PathBuf>,
 
         #[clap(short = 'o', long = "output")]
         output_path: PathBuf,
@@ -118,7 +118,7 @@ async fn main() -> anyhow::Result<()> {
 
     match args {
         Args::Compile {
-            dependency_path,
+            dependency_paths,
             output_interface_path,
             output_library_path,
             release,
@@ -135,15 +135,17 @@ async fn main() -> anyhow::Result<()> {
                 })
                 .collect::<Result<Vec<_>, _>>()?;
 
-            let dependencies = match dependency_path {
-                Some(path) => Some(read_binary(path)?),
-                None => None,
-            };
+            let dependencies = dependency_paths
+                .into_iter()
+                .map(read_binary)
+                .collect::<anyhow::Result<Vec<_>>>()?;
 
-            let result = wipple_driver::compile(sources, dependencies);
+            let result = wipple_driver::compile(sources, dependencies.clone());
 
             if !result.diagnostics.is_empty() {
-                let contains_errors = print_diagnostics(&result.diagnostics, &result.interface);
+                let contains_errors =
+                    print_diagnostics(&result.diagnostics, dependencies, result.interface.clone());
+
                 if contains_errors {
                     process::exit(1);
                 }
@@ -200,7 +202,7 @@ async fn main() -> anyhow::Result<()> {
             Ok(())
         }
         Args::BundleForPlayground {
-            dependency_interface_path,
+            dependency_interfaces_paths,
             dependency_libraries_paths,
             output_path,
             source_paths,
@@ -218,27 +220,32 @@ async fn main() -> anyhow::Result<()> {
                 })
                 .collect::<Result<Vec<_>, _>>()?;
 
-            let dependencies = match dependency_interface_path {
-                Some(path) => Some(read_binary(path)?),
-                None => None,
-            };
+            let dependencies = dependency_interfaces_paths
+                .into_iter()
+                .map(read_binary)
+                .collect::<anyhow::Result<Vec<_>>>()?;
 
             let libraries = dependency_libraries_paths
                 .into_iter()
                 .map(read_binary)
                 .collect::<anyhow::Result<Vec<wipple_driver::Library>>>()?;
 
-            let result = wipple_driver::compile(sources, dependencies);
+            let result = wipple_driver::compile(sources, dependencies.clone());
 
             if !result.diagnostics.is_empty() {
-                let contains_error = print_diagnostics(&result.diagnostics, &result.interface);
+                let contains_error = print_diagnostics(
+                    &result.diagnostics,
+                    dependencies.clone(),
+                    result.interface.clone(),
+                );
+
                 if contains_error {
                     process::exit(1);
                 }
             }
 
             let output = PlaygroundBundle {
-                interface: result.interface,
+                interfaces: dependencies.into_iter().chain([result.interface]).collect(),
                 libraries: libraries.into_iter().chain([result.library]).collect(),
             };
 
@@ -275,15 +282,20 @@ async fn main() -> anyhow::Result<()> {
             template_path,
             json,
             title,
-            filter,
+            dependency_interfaces_paths,
             output_path,
             interface_path,
         } => {
             let interface = read_binary(interface_path)?;
 
+            let dependencies = dependency_interfaces_paths
+                .into_iter()
+                .map(read_binary)
+                .collect::<anyhow::Result<Vec<_>>>()?;
+
             let output = if json {
                 eprintln!("Generating documentation...");
-                serde_json::to_string_pretty(&doc::json(&title, interface, filter))?
+                serde_json::to_string_pretty(&doc::json(&title, interface, dependencies))?
             } else {
                 let template = match template_path {
                     Some(path) => fs::read_to_string(path)?,
@@ -294,7 +306,7 @@ async fn main() -> anyhow::Result<()> {
                 };
 
                 eprintln!("Generating documentation...");
-                doc::html(&title, interface, &template, filter)?
+                doc::html(&title, interface, dependencies, &template)?
             };
 
             if let Some(parent) = output_path.parent() {
@@ -313,10 +325,15 @@ async fn main() -> anyhow::Result<()> {
 #[must_use]
 fn print_diagnostics(
     diagnostics: &[wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>],
-    interface: &wipple_driver::Interface,
+    dependencies: Vec<wipple_driver::Interface>,
+    interface: wipple_driver::Interface,
 ) -> bool {
     let render = wipple_render::Render::new();
-    render.update(interface.clone(), Vec::new(), None);
+    render.update(
+        dependencies.into_iter().chain([interface]).collect(),
+        None,
+        None,
+    );
 
     let mut contains_error = false;
     for diagnostic in diagnostics {
@@ -410,6 +427,6 @@ async fn run_executable(executable: wipple_driver::Executable) {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PlaygroundBundle {
-    interface: wipple_driver::Interface,
+    interfaces: Vec<wipple_driver::Interface>,
     libraries: Vec<wipple_driver::Library>,
 }

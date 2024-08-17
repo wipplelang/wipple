@@ -74,7 +74,7 @@ export function CodeEditor<Settings>(props: {
     }, [isFocused]);
 
     const [runOptions, setRunOptions] = useState<RunOptions>({
-        dependenciesPath: props.runtime?.name ?? "base",
+        bundlePath: props.runtime?.name ?? "base",
     });
 
     const [runnerHasFocus, setRunnerHasFocus] = useState(false);
