@@ -86,7 +86,7 @@ tasks:
         run: once
         dir: wasm
         cmds:
-            - if ! command -v wasm-pack; then cargo install --force wasm-pack; fi
+            - if ! command -v wasm-pack; then cargo install --version 0.12.1 --force wasm-pack; fi
 
     wasm:build:
         run: once
