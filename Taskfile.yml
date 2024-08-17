@@ -169,7 +169,6 @@ tasks:
             - web:login:build
             - web:docs:build
             - web:doc-template:build
-            - web:api:build
             - web:playground:build
         dir: web
         cmds:
@@ -178,7 +177,6 @@ tasks:
             - cp -r login/dist/. dist/login
             - cp -r docs/book/. dist/docs
             - cp doc-template/dist/index.html dist/doc-template.html
-            - mkdir -p dist/api && cp -r ../target/doc/* dist/api
             - cp -r playground/dist/. dist/playground
             - task: web:library:docs:build
 
@@ -259,11 +257,6 @@ tasks:
         dir: web/doc-template
         cmds:
             - npm run build
-
-    web:api:build:
-        run: once
-        cmds:
-            - cargo doc
 
     web:playground:serve:
         run: once
