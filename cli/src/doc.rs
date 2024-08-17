@@ -1,11 +1,15 @@
 pub fn json(
     title: &str,
     interface: wipple_driver::Interface,
-    filter: Option<glob::Pattern>,
+    dependencies: Vec<wipple_driver::Interface>,
 ) -> serde_json::Value {
     let render = wipple_render::Render::new();
 
-    render.update(interface, Vec::new(), None);
+    render.update(
+        dependencies.into_iter().chain([interface]).collect(),
+        None,
+        None,
+    );
 
     let constant_declaration = |interface: &wipple_driver::Interface,
                                 name: &str,
@@ -93,35 +97,21 @@ pub fn json(
             }))
         };
 
-    let mut items = render
-        .with_interface(|interface| {
-            interface
-                .top_level
-                .iter()
-                .filter_map(move |(name, paths)| {
-                    let item = paths
-                        .iter()
-                        .filter(|path| {
-                            filter.as_ref().map_or(true, |filter| {
-                                let file = match path.item.first() {
-                                    Some(wipple_driver::lower::PathComponent::File(file)) => file,
-                                    _ => return false,
-                                };
+    let mut items = render.with_interface(|interface| {
+        interface
+            .top_level
+            .iter()
+            .filter_map(move |(name, paths)| {
+                let item = paths.iter().find_map(|path| {
+                    constant_declaration(interface, name, &path.item)
+                        .or_else(|| type_declaration(interface, name, &path.item))
+                        .or_else(|| trait_declaration(interface, name, &path.item))
+                })?;
 
-                                filter.matches(file)
-                            })
-                        })
-                        .find_map(|path| {
-                            constant_declaration(interface, name, &path.item)
-                                .or_else(|| type_declaration(interface, name, &path.item))
-                                .or_else(|| trait_declaration(interface, name, &path.item))
-                        })?;
-
-                    Some((name.clone(), item))
-                })
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
+                Some((name.clone(), item))
+            })
+            .collect::<Vec<_>>()
+    });
 
     items.sort_by_key(|(name, _)| name.clone().to_lowercase());
 
@@ -134,10 +124,10 @@ pub fn json(
 pub fn html(
     title: &str,
     interface: wipple_driver::Interface,
+    dependencies: Vec<wipple_driver::Interface>,
     template: &str,
-    filter: Option<glob::Pattern>,
 ) -> anyhow::Result<String> {
-    let model = json(title, interface, filter);
+    let model = json(title, interface, dependencies);
 
     handlebars::Handlebars::new()
         .render_template(template, &model)

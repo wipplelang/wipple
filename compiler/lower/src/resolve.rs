@@ -9,49 +9,53 @@ use wipple_util::WithInfo;
 /// Resolve a list of files into an interface and a library.
 pub fn resolve<D: Driver>(
     files: impl IntoIterator<Item = WithInfo<D::Info, crate::UnresolvedFile<D>>>,
-    dependencies: crate::Interface<D>,
+    dependencies: Vec<crate::Interface<D>>,
 ) -> crate::Result<D> {
     let mut info = Info::default();
     info.scopes.push_block_scope();
 
-    macro_rules! add {
-        ($declarations:ident($f:expr)) => {
-            for (path, declaration) in dependencies.$declarations {
-                info.$declarations
-                    .insert(path.clone(), declaration.map($f));
+    for dependency in dependencies {
+        macro_rules! add {
+            ($declarations:ident($f:expr)) => {
+                for (path, declaration) in dependency.$declarations {
+                    info.$declarations
+                        .insert(path.clone(), declaration.map($f));
+                }
+            };
+            ($($declarations:ident($f:expr)),* $(,)?) => {
+                $(add!($declarations($f));)*
             }
-        };
-        ($($declarations:ident($f:expr)),* $(,)?) => {
-            $(add!($declarations($f));)*
+        }
+
+        add!(
+            type_declarations(|declaration| (
+                EagerTypeDeclarationInfo::from(&declaration),
+                Some(declaration)
+            )),
+            trait_declarations(|declaration| (
+                EagerTraitDeclarationInfo::from(&declaration),
+                Some(declaration)
+            )),
+            constant_declarations(Some),
+            type_parameter_declarations(Some),
+            instance_declarations(Some),
+        );
+
+        for (name, paths) in dependency.language_declarations {
+            info.language_declarations
+                .entry(name)
+                .or_default()
+                .extend(paths);
+        }
+
+        for (name, paths) in dependency.top_level {
+            for path in paths {
+                info.scopes.define(name.clone(), path);
+            }
         }
     }
 
-    add!(
-        type_declarations(|declaration| (
-            EagerTypeDeclarationInfo::from(&declaration),
-            Some(declaration)
-        )),
-        trait_declarations(|declaration| (
-            EagerTraitDeclarationInfo::from(&declaration),
-            Some(declaration)
-        )),
-        constant_declarations(Some),
-        type_parameter_declarations(Some),
-        instance_declarations(Some),
-    );
-
-    for (name, paths) in dependencies.language_declarations {
-        info.language_declarations
-            .entry(name)
-            .or_default()
-            .extend(paths);
-    }
-
-    for (name, paths) in dependencies.top_level {
-        for path in paths {
-            info.scopes.define(name.clone(), path);
-        }
-    }
+    let dependencies_info = info.clone();
 
     let statements_by_file = files
         .into_iter()
@@ -96,7 +100,6 @@ pub fn resolve<D: Driver>(
         )
         .collect::<Vec<_>>();
 
-    let mut interface = crate::Interface::default();
     for (file_path_component, executable_statements) in executable_statements_by_file {
         info.path.push(file_path_component);
         info.scopes.push_block_scope();
@@ -114,9 +117,19 @@ pub fn resolve<D: Driver>(
             .insert(path, crate::TopLevelCode { statements });
     }
 
+    let mut interface = crate::Interface::default();
+
     for (name, paths) in info.scopes.pop_scope().into_paths() {
         for path in paths {
-            if !path.item.last().unwrap().is_local() {
+            let from_dependency = dependencies_info
+                .scopes
+                .0
+                .last()
+                .unwrap()
+                .paths
+                .contains_key(&name);
+
+            if !from_dependency && !path.item.last().unwrap().is_local() {
                 interface
                     .top_level
                     .entry(name.clone())
@@ -131,7 +144,11 @@ pub fn resolve<D: Driver>(
     macro_rules! unwrap {
         ($declarations:ident($f:expr)) => {
             for (name, declaration) in info.$declarations {
-                interface.$declarations.insert(name, declaration.map($f));
+                let from_dependency = dependencies_info.$declarations.contains_key(&name);
+
+                if !from_dependency {
+                    interface.$declarations.insert(name, declaration.map($f));
+                }
             }
         };
         ($($declarations:ident($f:expr)),* $(,)?) => {
@@ -147,7 +164,11 @@ pub fn resolve<D: Driver>(
         instance_declarations(Option::unwrap),
     );
 
-    for (name, paths) in info.language_declarations {
+    for (name, mut paths) in info.language_declarations {
+        let dependencies_paths = dependencies_info.language_declarations.get(&name);
+
+        paths.retain(|path| dependencies_paths.map_or(true, |paths| !paths.contains(path)));
+
         interface
             .language_declarations
             .entry(name)
@@ -190,7 +211,7 @@ impl<D: Driver> From<&crate::TraitDeclaration<D>> for EagerTraitDeclarationInfo 
 }
 
 #[derive(Debug, Derivative)]
-#[derivative(Default(bound = ""))]
+#[derivative(Clone(bound = ""), Default(bound = ""))]
 struct Info<D: Driver> {
     errors: Vec<WithInfo<D::Info, crate::Diagnostic>>,
     dependencies: crate::Interface<D>,
@@ -309,7 +330,7 @@ impl<D: Driver> Scopes<D> {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 struct Captures {
     declared: HashSet<crate::Path>,
     used: HashSet<crate::Path>,

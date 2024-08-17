@@ -31,7 +31,6 @@ pub async fn start() {
             root_dir: std::env::current_dir().expect("failed to retreive working directory"),
             render: wipple_render::Render::new(),
             dependencies: Default::default(),
-            libraries: Default::default(),
             diagnostics: Default::default(),
             files: Default::default(),
         }),
@@ -49,8 +48,7 @@ struct Backend {
 struct Config {
     root_dir: PathBuf,
     render: wipple_render::Render,
-    dependencies: Option<wipple_driver::Interface>,
-    libraries: Vec<wipple_driver::Library>,
+    dependencies: Vec<wipple_driver::Interface>,
     diagnostics: Vec<wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>>,
     files: HashMap<PathBuf, File>,
 }
@@ -82,19 +80,10 @@ impl LanguageServer for Backend {
             config.root_dir = root_uri;
         }
 
-        if let Some(interface) = params
+        if let Some(interfaces) = params
             .initialization_options
             .as_ref()
-            .and_then(|options| options.get("interface"))
-            .and_then(|path| read_binary(path.as_str()?, &config.root_dir))
-        {
-            config.dependencies = Some(interface);
-        };
-
-        if let Some(libraries) = params
-            .initialization_options
-            .as_ref()
-            .and_then(|options| options.get("libraries"))
+            .and_then(|options| options.get("interfaces"))
             .and_then(|option| option.as_array())
             .and_then(|paths| {
                 paths
@@ -103,7 +92,7 @@ impl LanguageServer for Backend {
                     .collect()
             })
         {
-            config.libraries = libraries;
+            config.dependencies = interfaces;
         }
 
         Ok(InitializeResult {
@@ -749,21 +738,20 @@ impl Backend {
     ) -> Vec<wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>> {
         let sources = self.get_sources(active_file, active_code).await;
 
-        let (result, render, libraries) = {
+        let (dependencies, result, render) = {
             let config = self.config.lock().unwrap();
             let dependencies = config.dependencies.clone();
 
-            let result = wipple_driver::compile(sources, dependencies);
+            let result = wipple_driver::compile(sources, dependencies.clone());
 
             let render = config.render.clone();
-            let libraries = config.libraries.clone();
 
-            (result, render, libraries)
+            (dependencies, result, render)
         };
 
         render.update(
-            result.interface,
-            [result.library].into_iter().chain(libraries).collect(),
+            dependencies.into_iter().chain([result.interface]).collect(),
+            Some(result.library),
             Some(result.ide),
         );
 

@@ -1,5 +1,4 @@
-.wipple/
-test.wipple
+artifacts/
 out/
 coverage/
 

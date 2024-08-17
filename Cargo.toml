@@ -4,6 +4,7 @@ members = [
     "cli",
     "compiler/*",
     "interpreter",
+    "project",
     "render",
     "test",
     "wasm",

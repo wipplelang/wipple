@@ -102,7 +102,7 @@ impl<D: Driver> Ide<D> {
 pub fn resolve<D: Driver>(
     _driver: &D,
     files: impl IntoIterator<Item = WithInfo<D::Info, UnresolvedFile<D>>>,
-    dependencies: Interface<D>,
+    dependencies: Vec<Interface<D>>,
 ) -> Result<D> {
     let mut errors = Vec::new();
 

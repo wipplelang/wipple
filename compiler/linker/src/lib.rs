@@ -68,6 +68,19 @@ pub struct UnlinkedItem<D: Driver> {
     pub evaluate_once: bool,
 }
 
+impl<D: Driver> Extend<Self> for UnlinkedLibrary<D> {
+    fn extend<T: IntoIterator<Item = Self>>(&mut self, iter: T) {
+        for library in iter {
+            self.items.extend(library.items);
+            self.layouts.extend(library.layouts);
+            self.instances.extend(library.instances);
+            self.default_instances.extend(library.default_instances);
+            self.entrypoints.extend(library.entrypoints);
+            self.exports.extend(library.exports);
+        }
+    }
+}
+
 /// A linked executable.
 #[non_exhaustive]
 #[derive(Serialize, Deserialize, Derivative)]

@@ -44,16 +44,16 @@ async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
         };
 
         let base_interface =
-            read_binary::<wipple_driver::Interface>("../.wipple/base.wippleinterface");
+            read_binary::<wipple_driver::Interface>("../artifacts/base.wippleinterface");
 
-        let base_library = read_binary::<wipple_driver::Library>("../.wipple/base.wipplelibrary");
+        let base_library = read_binary::<wipple_driver::Library>("../artifacts/base.wipplelibrary");
 
-        let result = wipple_driver::compile(vec![file], Some(base_interface));
+        let result = wipple_driver::compile(vec![file], vec![base_interface.clone()]);
 
         let render = wipple_render::Render::new();
         render.update(
-            result.interface,
-            vec![base_library.clone(), result.library.clone()],
+            vec![base_interface, result.interface],
+            Some(result.library.clone()),
             None,
         );
 
