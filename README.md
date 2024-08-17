@@ -36,19 +36,23 @@ The Wipple project is split across several folders. The compiler is written in [
 You can use these commands to build and test Wipple locally. Make sure you have [`task`](https://taskfile.dev) installed.
 
 ```shell
-# Compile and run 'test.wipple' relative to the project directory
-task dev
-
-# View the compiled '.wippleinterface' and '.wipplelibrary' files
-ls .wipple
+# Build and install the compiler and VSCode extension from source
+task install
 
 # Run tests
 task test
-
-# Install 'wipple' in your PATH
-task cli:install
 
 # Serve the website at http://localhost:8080
 # (you will need a '.env' file in 'web'; see '.env.example')
 task web:serve
 ```
+
+Once you have `wipple` in your `PATH`, you can run an example program with these commands:
+
+```
+cd example
+echo 'show "Hello, world!"' > src/test.wipple
+wipple run
+```
+
+You should see `Hello, world!` in the console.
