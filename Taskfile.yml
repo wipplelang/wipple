@@ -228,7 +228,7 @@ tasks:
         run: once
         dir: web/docs
         cmds:
-            - (cd ../../compiler && cargo test render_grammar_to_html)
+            - (cd ../../compiler && cargo test --package=wipple-syntax render_grammar_to_html)
 
     web:docs:serve:
         run: once
