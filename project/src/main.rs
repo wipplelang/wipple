@@ -5,8 +5,10 @@ mod util;
 use anyhow::Context;
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
+use serde::Serialize;
 use std::{
     borrow::Cow,
+    io,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -35,6 +37,12 @@ struct Options {
 
 #[derive(Parser)]
 enum Args {
+    /// Compile a Wipple project and retrieve its build configuration
+    Config {
+        #[clap(flatten)]
+        options: Options,
+    },
+
     /// Compile a Wipple project into an executable
     Build {
         #[clap(flatten)]
@@ -64,24 +72,51 @@ fn main() -> anyhow::Result<()> {
     progress.set_message("Initializing");
 
     match args {
-        Args::Build { options, output } => {
+        Args::Config { options } => {
             let build_dir = BuildDir::from_options(&options)?;
-            let binary_path = build(&options, &build_dir, &progress)?;
+            let build_result = build(&options, &build_dir, &progress)?;
             progress.finish_and_clear();
 
-            std::fs::copy(&binary_path, &output)
+            #[derive(Default, Serialize)]
+            #[serde(rename_all = "camelCase")]
+            struct Configuration {
+                project_dependencies: Vec<PathBuf>,
+                project_file: PathBuf,
+                source_dependencies: Vec<PathBuf>,
+                source_files: Vec<PathBuf>,
+            }
+
+            let configuration = Configuration {
+                project_dependencies: vec![
+                    build_dir.join("_base.wippleinterface"),
+                    build_dir.join("_project.wippleinterface"),
+                ],
+                project_file: build_result.project_file,
+                source_dependencies: build_result.main_compile_options.dependencies,
+                source_files: build_result.main_compile_options.sources,
+            };
+
+            serde_json::to_writer_pretty(io::stdout(), &configuration)?;
+            println!();
+        }
+        Args::Build { options, output } => {
+            let build_dir = BuildDir::from_options(&options)?;
+            let build_result = build(&options, &build_dir, &progress)?;
+            progress.finish_and_clear();
+
+            std::fs::copy(&build_result.binary_path, &output)
                 .with_context(|| "copying executable to output path")?;
         }
         Args::Run { options } => {
             let build_dir = BuildDir::from_options(&options)?;
-            let binary_path = build(&options, &build_dir, &progress)?;
+            let build_result = build(&options, &build_dir, &progress)?;
             progress.finish_and_clear();
 
             wipplec(
                 options.compiler_path.as_deref(),
-                WipplecOptions::Run {
-                    executable: binary_path,
-                },
+                WipplecOptions::Run(WipplecRunOptions {
+                    executable: build_result.binary_path,
+                }),
             )
             .and_then(|mut command| command.spawn()?.run())
             .with_context(|| "running compiled executable")?;
@@ -91,7 +126,17 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn build(options: &Options, build_dir: &Path, progress: &ProgressBar) -> anyhow::Result<PathBuf> {
+struct BuildResult {
+    project_file: PathBuf,
+    main_compile_options: WipplecCompileOptions,
+    binary_path: PathBuf,
+}
+
+fn build(
+    options: &Options,
+    build_dir: &Path,
+    progress: &ProgressBar,
+) -> anyhow::Result<BuildResult> {
     let project_path = match options.project_path.as_deref() {
         Some(path) => Cow::Borrowed(path),
         None => Cow::Owned(std::env::current_dir().with_context(|| "resolving current directory")?),
@@ -119,7 +164,7 @@ fn build(options: &Options, build_dir: &Path, progress: &ProgressBar) -> anyhow:
     // Build project
 
     let mut queue = Vec::new();
-    build_project(
+    let main_project_result = build_project(
         "_main",
         &project_path,
         options.compiler_path.as_deref(),
@@ -128,13 +173,18 @@ fn build(options: &Options, build_dir: &Path, progress: &ProgressBar) -> anyhow:
         progress,
     )?;
 
+    let main_compile_options = queue.last().unwrap().1.clone();
+
     progress.set_length(queue.len() as u64);
-    for (project_path, build_options) in queue {
+    for (project_path, compile_options) in queue {
         progress.set_message(format!("Building {}", project_path.display()));
 
-        wipplec(options.compiler_path.as_deref(), build_options)
-            .and_then(|mut command| command.spawn()?.run())
-            .with_context(|| format!("compiling dependency {}", project_path.display()))?;
+        wipplec(
+            options.compiler_path.as_deref(),
+            WipplecOptions::Compile(compile_options),
+        )
+        .and_then(|mut command| command.spawn()?.run())
+        .with_context(|| format!("compiling dependency {}", project_path.display()))?;
 
         progress.inc(1);
     }
@@ -147,15 +197,23 @@ fn build(options: &Options, build_dir: &Path, progress: &ProgressBar) -> anyhow:
 
     wipplec(
         options.compiler_path.as_deref(),
-        WipplecOptions::Link {
+        WipplecOptions::Link(WipplecLinkOptions {
             libraries,
             output_executable: binary_path.clone(),
-        },
+        }),
     )
     .and_then(|mut command| command.spawn()?.run())
     .with_context(|| "linking libraries")?;
 
-    Ok(binary_path)
+    Ok(BuildResult {
+        project_file: main_project_result.project_file,
+        main_compile_options,
+        binary_path,
+    })
+}
+
+struct BuildProjectResult {
+    project_file: PathBuf,
 }
 
 fn build_project(
@@ -163,9 +221,9 @@ fn build_project(
     project_path: &Path,
     compiler_path: Option<&Path>,
     build_dir: &Path,
-    queue: &mut Vec<(PathBuf, WipplecOptions)>,
+    queue: &mut Vec<(PathBuf, WipplecCompileOptions)>,
     progress: &ProgressBar,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<BuildProjectResult> {
     progress.set_message(format!("Scanning project {}", project_path.display()));
 
     let mut project = Project {
@@ -184,7 +242,7 @@ fn build_project(
 
     wipplec(
         compiler_path,
-        WipplecOptions::Compile {
+        WipplecOptions::Compile(WipplecCompileOptions {
             sources: vec![project_file.clone()],
             dependencies: vec![
                 build_dir.join("_base.wippleinterface"),
@@ -192,30 +250,30 @@ fn build_project(
             ],
             output_interface: None,
             output_library: Some(build_dir.join(format!("_projects/{name}.wipplelibrary"))),
-        },
+        }),
     )
     .and_then(|mut command| command.spawn()?.run())
     .with_context(|| format!("compiling {}", project_file.display()))?;
 
     wipplec(
         compiler_path,
-        WipplecOptions::Link {
+        WipplecOptions::Link(WipplecLinkOptions {
             libraries: vec![
                 build_dir.join(format!("_projects/{name}.wipplelibrary")),
                 build_dir.join("_base.wipplelibrary"),
                 build_dir.join("_project.wipplelibrary"),
             ],
             output_executable: build_dir.join(format!("_projects/{name}.wipplebinary")),
-        },
+        }),
     )
     .and_then(|mut command| command.spawn()?.run())
     .with_context(|| format!("linking {}", project_file.display()))?;
 
     let output = wipplec(
         compiler_path,
-        WipplecOptions::Run {
+        WipplecOptions::Run(WipplecRunOptions {
             executable: build_dir.join(format!("_projects/{name}.wipplebinary")),
-        },
+        }),
     )
     .and_then(|mut command| Ok(command.output()?))
     .with_context(|| format!("evaluating {}", project_file.display()))?;
@@ -268,14 +326,16 @@ fn build_project(
             Dependency::Git { .. } => {
                 anyhow::bail!("git dependencies are not yet supported");
             }
-            Dependency::Local { path } => build_project(
-                &dependency_name,
-                path,
-                compiler_path,
-                build_dir,
-                queue,
-                progress,
-            )?,
+            Dependency::Local { path } => {
+                build_project(
+                    &dependency_name,
+                    path,
+                    compiler_path,
+                    build_dir,
+                    queue,
+                    progress,
+                )?;
+            }
         }
     }
 
@@ -291,7 +351,7 @@ fn build_project(
     if queue.iter().all(|(path, _)| path != &project.path) {
         queue.push((
             project.path,
-            WipplecOptions::Compile {
+            WipplecCompileOptions {
                 sources,
                 dependencies,
                 output_interface: Some(build_dir.join(format!("{name}.wippleinterface"))),
@@ -300,7 +360,7 @@ fn build_project(
         ));
     }
 
-    Ok(())
+    Ok(BuildProjectResult { project_file })
 }
 
 #[derive(Debug, Clone)]
@@ -358,19 +418,28 @@ fn parse_project_config(project: &mut Project, line: &str) {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum WipplecOptions {
-    Compile {
-        sources: Vec<PathBuf>,
-        dependencies: Vec<PathBuf>,
-        output_interface: Option<PathBuf>,
-        output_library: Option<PathBuf>,
-    },
-    Link {
-        libraries: Vec<PathBuf>,
-        output_executable: PathBuf,
-    },
-    Run {
-        executable: PathBuf,
-    },
+    Compile(WipplecCompileOptions),
+    Link(WipplecLinkOptions),
+    Run(WipplecRunOptions),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct WipplecCompileOptions {
+    sources: Vec<PathBuf>,
+    dependencies: Vec<PathBuf>,
+    output_interface: Option<PathBuf>,
+    output_library: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct WipplecLinkOptions {
+    libraries: Vec<PathBuf>,
+    output_executable: PathBuf,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+struct WipplecRunOptions {
+    executable: PathBuf,
 }
 
 fn wipplec(path: Option<&Path>, options: WipplecOptions) -> anyhow::Result<Command> {
@@ -382,49 +451,41 @@ fn wipplec(path: Option<&Path>, options: WipplecOptions) -> anyhow::Result<Comma
 
     let mut args = Vec::new();
     match options {
-        WipplecOptions::Compile {
-            sources,
-            dependencies,
-            output_interface,
-            output_library,
-        } => {
+        WipplecOptions::Compile(options) => {
             args.push(String::from("compile"));
 
-            for path in sources {
+            for path in options.sources {
                 args.push(path_str(&path));
             }
 
-            for path in dependencies {
+            for path in options.dependencies {
                 args.push(String::from("--dependency"));
                 args.push(path_str(&path));
             }
 
-            if let Some(path) = output_interface {
+            if let Some(path) = options.output_interface {
                 args.push(String::from("--interface"));
                 args.push(path_str(&path));
             }
 
-            if let Some(path) = output_library {
+            if let Some(path) = options.output_library {
                 args.push(String::from("--library"));
                 args.push(path_str(&path));
             }
         }
-        WipplecOptions::Link {
-            libraries,
-            output_executable,
-        } => {
+        WipplecOptions::Link(options) => {
             args.push(String::from("link"));
 
-            for path in libraries {
+            for path in options.libraries {
                 args.push(path_str(&path));
             }
 
             args.push(String::from("--output"));
-            args.push(path_str(&output_executable));
+            args.push(path_str(&options.output_executable));
         }
-        WipplecOptions::Run { executable } => {
+        WipplecOptions::Run(options) => {
             args.push(String::from("run"));
-            args.push(path_str(&executable));
+            args.push(path_str(&options.executable));
         }
     }
 

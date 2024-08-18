@@ -5152,6 +5152,7 @@ dependencies = [
  "glob",
  "indicatif",
  "serde",
+ "serde_json",
  "tempdir",
  "url",
  "which",
