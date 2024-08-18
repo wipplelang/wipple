@@ -31,6 +31,7 @@ pub async fn start() {
             root_dir: std::env::current_dir().expect("failed to retreive working directory"),
             render: wipple_render::Render::new(),
             dependencies: Default::default(),
+            source_file_paths: Default::default(),
             diagnostics: Default::default(),
             files: Default::default(),
         }),
@@ -49,6 +50,7 @@ struct Config {
     root_dir: PathBuf,
     render: wipple_render::Render,
     dependencies: Vec<wipple_driver::Interface>,
+    source_file_paths: Vec<PathBuf>,
     diagnostics: Vec<wipple_driver::util::WithInfo<wipple_driver::Info, wipple_driver::Diagnostic>>,
     files: HashMap<PathBuf, File>,
 }
@@ -80,19 +82,26 @@ impl LanguageServer for Backend {
             config.root_dir = root_uri;
         }
 
-        if let Some(interfaces) = params
+        #[derive(Default, Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Configuration {
+            source_dependencies: Vec<PathBuf>,
+            source_files: Vec<PathBuf>,
+        }
+
+        if let Some(project) = params
             .initialization_options
             .as_ref()
-            .and_then(|options| options.get("interfaces"))
-            .and_then(|option| option.as_array())
-            .and_then(|paths| {
-                paths
-                    .iter()
-                    .map(|path| read_binary(path.as_str()?, &config.root_dir))
-                    .collect()
-            })
+            .and_then(|options| options.get("project").cloned())
+            .and_then(|option| serde_json::from_value::<Configuration>(option).ok())
         {
-            config.dependencies = interfaces;
+            config.dependencies = project
+                .source_dependencies
+                .into_iter()
+                .filter_map(read_binary)
+                .collect();
+
+            config.source_file_paths = project.source_files;
         }
 
         Ok(InitializeResult {
@@ -695,40 +704,27 @@ impl Backend {
             None => return Vec::new(),
         };
 
-        let active_dir = match active_file.parent() {
-            Some(dir) => dir,
-            None => return Vec::new(),
-        };
+        self.config
+            .lock()
+            .unwrap()
+            .source_file_paths
+            .iter()
+            .filter_map(|path| {
+                let code = if *path == active_file {
+                    // Ensure we get the latest changes even if the file
+                    // isn't saved
+                    active_code.to_string()
+                } else {
+                    fs::read_to_string(path).ok()?
+                };
 
-        fs::read_dir(active_dir)
-            .ok()
-            .map(|entries| {
-                entries
-                    .filter_map(|entry| {
-                        let entry = entry.ok()?;
-                        let path = entry.path();
-
-                        if !path.is_file() || path.extension()?.to_str() != Some("wipple") {
-                            return None;
-                        }
-
-                        let code = if path == active_file {
-                            // Ensure we get the latest changes even if the file
-                            // isn't saved
-                            active_code.to_string()
-                        } else {
-                            fs::read_to_string(&path).ok()?
-                        };
-
-                        Some(wipple_driver::File {
-                            path: path.to_string_lossy().to_string(),
-                            visible_path: wipple_driver::util::get_visible_path(&path),
-                            code,
-                        })
-                    })
-                    .collect::<Vec<_>>()
+                Some(wipple_driver::File {
+                    path: path.to_string_lossy().to_string(),
+                    visible_path: wipple_driver::util::get_visible_path(path),
+                    code,
+                })
             })
-            .unwrap_or_default()
+            .collect()
     }
 
     async fn compile_all(
@@ -759,8 +755,8 @@ impl Backend {
     }
 }
 
-fn read_binary<T: serde::de::DeserializeOwned>(path: impl AsRef<Path>, root: &Path) -> Option<T> {
-    wipple_driver::util::read_binary(io::BufReader::new(fs::File::open(root.join(path)).ok()?)).ok()
+fn read_binary<T: serde::de::DeserializeOwned>(path: impl AsRef<Path>) -> Option<T> {
+    wipple_driver::util::read_binary(io::BufReader::new(fs::File::open(path).ok()?)).ok()
 }
 
 fn find_word_boundary(text: &str, position: usize) -> std::ops::Range<usize> {

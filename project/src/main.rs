@@ -74,7 +74,7 @@ fn main() -> anyhow::Result<()> {
     match args {
         Args::Config { options } => {
             let build_dir = BuildDir::from_options(&options)?;
-            let build_result = build(&options, &build_dir, &progress)?;
+            let build_result = build(&options, &build_dir, false, &progress)?;
             progress.finish_and_clear();
 
             #[derive(Default, Serialize)]
@@ -101,7 +101,7 @@ fn main() -> anyhow::Result<()> {
         }
         Args::Build { options, output } => {
             let build_dir = BuildDir::from_options(&options)?;
-            let build_result = build(&options, &build_dir, &progress)?;
+            let build_result = build(&options, &build_dir, true, &progress)?;
             progress.finish_and_clear();
 
             std::fs::copy(&build_result.binary_path, &output)
@@ -109,7 +109,7 @@ fn main() -> anyhow::Result<()> {
         }
         Args::Run { options } => {
             let build_dir = BuildDir::from_options(&options)?;
-            let build_result = build(&options, &build_dir, &progress)?;
+            let build_result = build(&options, &build_dir, true, &progress)?;
             progress.finish_and_clear();
 
             wipplec(
@@ -135,6 +135,7 @@ struct BuildResult {
 fn build(
     options: &Options,
     build_dir: &Path,
+    build_main: bool,
     progress: &ProgressBar,
 ) -> anyhow::Result<BuildResult> {
     let project_path = match options.project_path.as_deref() {
@@ -173,7 +174,11 @@ fn build(
         progress,
     )?;
 
-    let main_compile_options = queue.last().unwrap().1.clone();
+    let main_compile_options = if build_main {
+        queue.last().unwrap().1.clone()
+    } else {
+        queue.pop().unwrap().1
+    };
 
     progress.set_length(queue.len() as u64);
     for (project_path, compile_options) in queue {
