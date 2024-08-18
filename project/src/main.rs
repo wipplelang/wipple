@@ -237,6 +237,7 @@ fn build_project(
             .with_context(|| format!("resolving project {}", project_path.display()))?,
         include: Vec::new(),
         dependencies: Vec::new(),
+        include_base: true,
     };
 
     let project_file = project
@@ -350,7 +351,11 @@ fn build_project(
         .map(|dependency| {
             build_dir.join(format!("{}.wippleinterface", dependency_name(&dependency)))
         })
-        .chain([build_dir.join("_base.wippleinterface")])
+        .chain(
+            project
+                .include_base
+                .then(|| build_dir.join("_base.wippleinterface")),
+        )
         .collect::<Vec<_>>();
 
     if queue.iter().all(|(path, _)| path != &project.path) {
@@ -373,6 +378,7 @@ struct Project {
     path: PathBuf,
     include: Vec<PathBuf>,
     dependencies: Vec<Dependency>,
+    include_base: bool,
 }
 
 #[derive(Debug, Clone, Hash)]
@@ -418,6 +424,8 @@ fn parse_project_config(project: &mut Project, line: &str) {
                 .dependencies
                 .push(Dependency::Local { path: path.into() });
         }
+    } else if line == "project:no-base" {
+        project.include_base = false;
     }
 }
 

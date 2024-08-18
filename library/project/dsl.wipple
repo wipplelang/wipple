@@ -31,3 +31,7 @@ git-dir : Git-Directory-Dependency
 -- A local dependency pointing to a folder containing a 'project.wipple' file.
 local :: Text -> Dependency
 local : Local-Dependency
+
+-- Disable automatic inclusion of the Wipple standard library.
+no-base :: Unit
+no-base : show "project:no-base"
