@@ -2,4 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/exhaustiveness-checking.test.wipple:12:24: error: this code doesn't handle `F` or `D`
+tests/exhaustiveness-checking.test.wipple:12:24: error: this code doesn't handle `D` or `F`
