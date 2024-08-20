@@ -1,6 +1,8 @@
 //! Algorithm adapted from https://julesjacobs.com/notes/patternmatching/patternmatching.pdf
 //! and https://github.com/yorickpeterse/pattern-matching-in-rust
 
+#![allow(clippy::non_canonical_partial_ord_impl)]
+
 use crate::{Driver, Traverse};
 use derivative::Derivative;
 use itertools::Itertools;
@@ -49,7 +51,7 @@ pub fn check_exhaustiveness<D: Driver>(
             _ => None,
         };
 
-        if let Some((extra_patterns, missing_patterns)) = result {
+        if let Some((extra_patterns, mut missing_patterns)) = result {
             for info in extra_patterns {
                 errors.push(WithInfo {
                     info,
@@ -58,6 +60,8 @@ pub fn check_exhaustiveness<D: Driver>(
             }
 
             if !missing_patterns.is_empty() {
+                missing_patterns.sort();
+
                 errors.push(WithInfo {
                     info: expression.info,
                     item: crate::Diagnostic::MissingPatterns(missing_patterns),
@@ -284,6 +288,10 @@ enum Type<D: Driver> {
     Clone(bound = ""),
     PartialEq(bound = ""),
     Eq(bound = ""),
+    PartialOrd = "feature_allow_slow_enum",
+    PartialOrd(bound = ""),
+    Ord = "feature_allow_slow_enum",
+    Ord(bound = ""),
     Hash(bound = "")
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
@@ -300,12 +308,17 @@ pub enum Pattern<D: Driver> {
 }
 
 /// Represents the concrete type a pattern matches.
+
 #[derive(Derivative, Serialize, Deserialize)]
 #[derivative(
     Debug(bound = ""),
     Clone(bound = ""),
     PartialEq(bound = ""),
     Eq(bound = ""),
+    PartialOrd = "feature_allow_slow_enum",
+    PartialOrd(bound = ""),
+    Ord = "feature_allow_slow_enum",
+    Ord(bound = ""),
     Hash(bound = "")
 )]
 #[serde(rename_all = "camelCase", tag = "type", content = "value")]
