@@ -7,6 +7,7 @@ import {
     ContextMenuItem,
     Markdown,
     Tooltip,
+    TooltipContent,
     Transition,
     TutorialItem,
     defaultAnimationDuration,
@@ -35,14 +36,20 @@ import { defaultPaletteItems, runtimes } from "../runtimes";
 import { SetupIcon } from "./setup-icon";
 import { StateCommand } from "@codemirror/state";
 import actionsIcon from "./assets/actions.svg";
-import lookupIcon from "./assets/lookup.svg";
 import { NotePicker } from "./note-picker";
 import { AnimalPicker } from "./animal-picker";
 import { InstrumentPicker } from "./instrument-picker";
 import { ObjectPicker } from "./object-picker";
 import { ErrorDoc, docForError } from "../docs/errors";
-import { FloatingPortal } from "@floating-ui/react";
-import { produce } from "immer";
+import {
+    FloatingPortal,
+    shift,
+    useClientPoint,
+    useFloating,
+    useInteractions,
+} from "@floating-ui/react";
+import { getTokenAtPos } from "./codemirror";
+import { Rect } from "@codemirror/view";
 
 export function CodeEditor<Settings>(props: {
     children: string;
@@ -82,8 +89,6 @@ export function CodeEditor<Settings>(props: {
     const [diagnostics, setDiagnostics] = useState<any[]>([]);
     const [driverDiagnostics, setDriverDiagnostics] = useState<any[]>([]);
     const [highlightItems, setHighlightItems] = useState<Record<string, any>>({});
-
-    const [lookUpEnabled, setLookUpEnabled] = useState(false);
 
     const codeMirrorRef = useRef<CodeMirrorRef>(null);
     const runnerRef = useRef<RunnerRef>(null);
@@ -207,11 +212,6 @@ export function CodeEditor<Settings>(props: {
         }
     }, [lineDiagnostics]);
 
-    const getHelpForCode = useCallback(
-        (position: number, code: string) => runnerRef.current!.help(position, code),
-        [],
-    );
-
     const format = useCallback(async () => {
         if (!runnerRef.current) {
             return;
@@ -233,10 +233,6 @@ export function CodeEditor<Settings>(props: {
     }, []);
 
     const { displayAlert } = useAlert();
-
-    const onClickLookUp = useCallback((help: Help) => {
-        displayAlert(({ dismiss }) => <HelpAlert help={help} dismiss={dismiss} />);
-    }, []);
 
     const onClickAsset: AssetClickHandler = useCallback(({ start, end, asset }) => {
         switch (asset.type) {
@@ -393,7 +389,7 @@ export function CodeEditor<Settings>(props: {
                 }}
             >
                 <Transition
-                    in={!lookUpEnabled}
+                    in
                     animateOnMount
                     inStyle={{ opacity: 1, x: 0 }}
                     outStyle={{ opacity: 0.5, x: "1rem" }}
@@ -403,6 +399,78 @@ export function CodeEditor<Settings>(props: {
             </div>
         </FloatingPortal>
     );
+
+    const [help, setHelp] = useState<{ rect: Rect; help: Help }>();
+    const [helpVisible, setHelpVisible] = useState(false);
+
+    const {
+        refs: helpFloatingRefs,
+        floatingStyles: helpFloatingStyles,
+        context: helpFloatingContext,
+    } = useFloating({
+        open: help != null,
+        placement: "bottom",
+        middleware: [shift({ padding: 8 })],
+    });
+
+    const { getFloatingProps: getHelpFloatingProps } = useInteractions([
+        useClientPoint(helpFloatingContext, {
+            enabled: help != null,
+            x: ((help?.rect.left ?? 0) + (help?.rect.right ?? 0)) / 2,
+            y: help?.rect.bottom ?? 0,
+        }),
+    ]);
+
+    const handleLongPress = useCallback(async (pos: number, rect: Rect) => {
+        setHelp(undefined);
+
+        if (!codeMirrorRef.current || !runnerRef.current) {
+            return;
+        }
+
+        const code = getTokenAtPos(codeMirrorRef.current.editorView.state, pos);
+
+        const help = await runnerRef.current.help(pos, code);
+        if (!help) {
+            return;
+        }
+
+        setHelp({ rect, help });
+        setHelpVisible(true);
+    }, []);
+
+    const dismissHelp = useCallback(() => {
+        setHelpVisible(false);
+
+        setTimeout(() => {
+            setHelp(undefined);
+        }, defaultAnimationDuration);
+    }, []);
+
+    useEffect(() => {
+        const handleMousedown = (event: MouseEvent) => {
+            if (
+                helpFloatingRefs.floating.current != null &&
+                !helpFloatingRefs.floating.current.contains(event.target as HTMLElement)
+            ) {
+                dismissHelp();
+            }
+        };
+
+        const handleKeydown = (event: KeyboardEvent) => {
+            if (event.key === "Escape") {
+                dismissHelp();
+            }
+        };
+
+        window.addEventListener("mousedown", handleMousedown);
+        window.addEventListener("keydown", handleKeydown);
+
+        return () => {
+            window.removeEventListener("mousedown", handleMousedown);
+            window.removeEventListener("keydown", handleKeydown);
+        };
+    }, [helpFloatingRefs, dismissHelp]);
 
     return (
         <div
@@ -415,90 +483,75 @@ export function CodeEditor<Settings>(props: {
             <div className="flex flex-col border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
                 <div className="flex flex-row items-center justify-between w-full p-1 bg-gray-50 dark:bg-gray-900">
                     <div className="flex flex-row items-center">
-                        {!lookUpEnabled ? (
-                            <>
-                                {!props.locked ? (
-                                    <ContextMenuButton
-                                        items={[
-                                            {
-                                                title: "Move Up",
-                                                icon: "arrow_upward",
-                                                disabled: props.onMoveUp == null,
-                                                onClick: () => props.onMoveUp!(),
-                                            },
-                                            {
-                                                title: "Move Down",
-                                                icon: "arrow_downward",
-                                                disabled: props.onMoveDown == null,
-                                                onClick: () => props.onMoveDown!(),
-                                            },
-                                            {
-                                                title: "Delete",
-                                                icon: "delete",
-                                                role: "destructive",
-                                                onClick: props.onDelete,
-                                            },
-                                        ]}
-                                    >
-                                        <MenuContainer>
-                                            <button className="group transition-colors rounded-md px-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                                <MaterialSymbol
-                                                    icon="more_vert"
-                                                    className="text-lg"
-                                                />
-                                            </button>
-                                        </MenuContainer>
-                                    </ContextMenuButton>
-                                ) : null}
-
-                                <TutorialItem id="commandsButton">
-                                    <PaletteButton
-                                        setup={props.runtime?.name}
-                                        assets={
-                                            props.runtime
-                                                ? runtimes[
-                                                      props.runtime.name as keyof typeof runtimes
-                                                  ].assetItems
-                                                : []
-                                        }
-                                        items={
-                                            props.runtime
-                                                ? runtimes[
-                                                      props.runtime.name as keyof typeof runtimes
-                                                  ].paletteItems
-                                                : defaultPaletteItems
-                                        }
-                                    />
-                                </TutorialItem>
-                            </>
+                        {!props.locked ? (
+                            <ContextMenuButton
+                                items={[
+                                    {
+                                        title: "Move Up",
+                                        icon: "arrow_upward",
+                                        disabled: props.onMoveUp == null,
+                                        onClick: () => props.onMoveUp!(),
+                                    },
+                                    {
+                                        title: "Move Down",
+                                        icon: "arrow_downward",
+                                        disabled: props.onMoveDown == null,
+                                        onClick: () => props.onMoveDown!(),
+                                    },
+                                    {
+                                        title: "Delete",
+                                        icon: "delete",
+                                        role: "destructive",
+                                        onClick: props.onDelete,
+                                    },
+                                ]}
+                            >
+                                <MenuContainer>
+                                    <button className="group transition-colors rounded-md px-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                        <MaterialSymbol icon="more_vert" className="text-lg" />
+                                    </button>
+                                </MenuContainer>
+                            </ContextMenuButton>
                         ) : null}
+
+                        <TutorialItem id="commandsButton">
+                            <PaletteButton
+                                setup={props.runtime?.name}
+                                assets={
+                                    props.runtime
+                                        ? runtimes[props.runtime.name as keyof typeof runtimes]
+                                              .assetItems
+                                        : []
+                                }
+                                items={
+                                    props.runtime
+                                        ? runtimes[props.runtime.name as keyof typeof runtimes]
+                                              .paletteItems
+                                        : defaultPaletteItems
+                                }
+                            />
+                        </TutorialItem>
                     </div>
 
                     <div className="flex-1 flex flex-row items-center justify-end gap-1">
-                        {!lookUpEnabled ? (
-                            <TutorialItem id="editButton">
-                                <ActionsButton
-                                    onSelectAll={() => runCommand(commands.selectAll)}
-                                    onUndo={() => runCommand(commands.undo)}
-                                    onRedo={() => runCommand(commands.redo)}
-                                    onFormat={format}
-                                    onSuggestFixes={
-                                        lineDiagnostics.length > 0
-                                            ? requestIntelligentFixes
-                                            : undefined
-                                    }
-                                    onReset={props.onReset}
-                                />
-                            </TutorialItem>
-                        ) : null}
-
-                        <LookUpToggle enabled={lookUpEnabled} onChange={setLookUpEnabled} />
+                        <TutorialItem id="editButton">
+                            <ActionsButton
+                                onSelectAll={() => runCommand(commands.selectAll)}
+                                onUndo={() => runCommand(commands.undo)}
+                                onRedo={() => runCommand(commands.redo)}
+                                onFormat={format}
+                                onSuggestFixes={
+                                    lineDiagnostics.length > 0 ? requestIntelligentFixes : undefined
+                                }
+                                onReset={props.onReset}
+                            />
+                        </TutorialItem>
                     </div>
                 </div>
 
                 <AddLineButton
                     direction="start"
-                    disabled={lookUpEnabled}
+                    disabled={false}
                     onClick={() => onAddLine("start")}
                 />
 
@@ -514,10 +567,8 @@ export function CodeEditor<Settings>(props: {
                         onDrop={() => {
                             format();
                         }}
-                        readOnly={lookUpEnabled}
-                        lookUpEnabled={lookUpEnabled}
-                        onClickLookUp={onClickLookUp}
-                        help={getHelpForCode}
+                        onLongPress={handleLongPress}
+                        readOnly={false}
                         onClickAsset={onClickAsset}
                         theme={props.theme}
                         diagnostics={diagnostics}
@@ -565,11 +616,7 @@ export function CodeEditor<Settings>(props: {
                           )}
                 </div>
 
-                <AddLineButton
-                    direction="end"
-                    disabled={lookUpEnabled}
-                    onClick={() => onAddLine("end")}
-                />
+                <AddLineButton direction="end" disabled={false} onClick={() => onAddLine("end")} />
 
                 {animationsSettled ? (
                     <Animated direction="vertical" clip>
@@ -601,6 +648,36 @@ export function CodeEditor<Settings>(props: {
                         </Runner>
                     </Animated>
                 ) : null}
+
+                {help ? (
+                    <FloatingPortal>
+                        <div
+                            ref={helpFloatingRefs.setFloating}
+                            style={helpFloatingStyles}
+                            {...getHelpFloatingProps()}
+                            className="z-20"
+                        >
+                            <div style={{ marginTop: 4 }}>
+                                <TooltipContent open={helpVisible}>
+                                    {help.help.summary}
+
+                                    <button
+                                        className="inline-flex items-center justify-center ml-2 w-5 h-5 align-bottom rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-500 text-lg"
+                                        onClick={() => {
+                                            dismissHelp();
+
+                                            displayAlert(({ dismiss }) => (
+                                                <HelpAlert help={help.help} dismiss={dismiss} />
+                                            ));
+                                        }}
+                                    >
+                                        <MaterialSymbol icon="more_horiz" />
+                                    </button>
+                                </TooltipContent>
+                            </div>
+                        </div>
+                    </FloatingPortal>
+                ) : null}
             </div>
         </div>
     );
@@ -625,38 +702,6 @@ const AddLineButton = (props: {
             <div className="mx-4 w-full h-1 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
     </Tooltip>
-);
-
-const LookUpToggle = (props: { enabled: boolean; onChange?: (enabled: boolean) => void }) => (
-    <>
-        {props.enabled ? (
-            <p className="flex-1 px-1.5 text-sm text-gray-500 dark:text-gray-400">
-                Select a piece of code for help.
-            </p>
-        ) : null}
-
-        <TutorialItem id="lookUpButton">
-            <MenuContainer>
-                <button
-                    className={`group flex flex-row items-center justify-center gap-1 transition-colors rounded-md ${
-                        props.enabled
-                            ? "mx-1 px-2 py-1 bg-blue-500 text-white text-sm"
-                            : "px-2 h-7 hover:bg-gray-100 dark:hover:bg-gray-800"
-                    }`}
-                    onClick={() => props.onChange?.(!props.enabled)}
-                >
-                    {props.enabled ? (
-                        <p className="whitespace-nowrap">Done</p>
-                    ) : (
-                        <>
-                            <img src={lookupIcon} className="w-4 h-4" />
-                            <p className="text-xs text-nowrap">Look Up</p>
-                        </>
-                    )}
-                </button>
-            </MenuContainer>
-        </TutorialItem>
-    </>
 );
 
 const ActionsButton = (props: {

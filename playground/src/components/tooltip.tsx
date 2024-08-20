@@ -92,7 +92,7 @@ export const Tooltip = (
     );
 };
 
-const TooltipContent = (props: { open: boolean; children: React.ReactNode }) => (
+export const TooltipContent = (props: { open: boolean; children: React.ReactNode }) => (
     <div className="flex items-center justify-center w-fit">
         <Transition
             in={props.open}

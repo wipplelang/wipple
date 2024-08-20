@@ -1,13 +1,12 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, minimalSetup } from "codemirror";
-import { placeholder, keymap, dropCursor } from "@codemirror/view";
+import { placeholder, keymap, dropCursor, Rect } from "@codemirror/view";
 import { Compartment, EditorSelection, EditorState, Extension } from "@codemirror/state";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { indentOnInput } from "@codemirror/language";
 import { wippleLanguage } from "./language";
 import { ThemeConfig, theme, themeFromConfig } from "./theme";
-import { displayHelp, displayHelpFromEnabled } from "./help";
 import { Help } from "../../models";
 import { diagnostics, diagnosticsFromConfig } from "./diagnostics";
 import { AssetClickHandler, assets, assetsFromConfig } from "./assets";
@@ -19,9 +18,7 @@ export interface CodeMirrorProps {
     onFocus?: () => void;
     onBlur?: () => void;
     onDrop?: () => void;
-    lookUpEnabled: boolean;
-    onClickLookUp: (help: Help) => void;
-    help: (position: number, code: string) => Promise<Help | undefined>;
+    onLongPress?: (position: number, rect: Rect) => void;
     onClickAsset: AssetClickHandler;
     readOnly: boolean;
     diagnostics: any[];
@@ -44,6 +41,8 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
     const containerRef = useRef<HTMLDivElement>(null);
     const editorView = useRef<EditorView | null>(null);
 
+    const longPressHandler = useRef<(() => void) | undefined>();
+
     useEffect(() => {
         type EditorViewConfig = ConstructorParameters<typeof EditorView>[0] & {};
 
@@ -57,21 +56,11 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                     wippleLanguage,
                     theme.of(themeFromConfig(props.theme)),
 
-                    displayHelp.of(
-                        displayHelpFromEnabled(
-                            props.lookUpEnabled,
-                            props.theme,
-                            props.help,
-                            props.highlightItems,
-                            props.onClickLookUp,
-                        ),
-                    ),
-
                     diagnostics.of(diagnosticsFromConfig({ diagnostics: props.diagnostics })),
 
                     assets.of(
                         assetsFromConfig({
-                            disabled: props.lookUpEnabled,
+                            disabled: false,
                             onClick: props.onClickAsset,
                             highlightItems: props.highlightItems,
                             theme: props.theme,
@@ -114,6 +103,38 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                                 props.onBlur?.();
                             }
                         }
+                    }),
+
+                    EditorView.domEventHandlers({
+                        mousedown: (event, view) => {
+                            const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+                            if (pos == null) {
+                                return;
+                            }
+
+                            const rect = view.coordsAtPos(pos);
+                            if (rect == null) {
+                                return;
+                            }
+
+                            const handleLongPress = () => {
+                                props.onLongPress?.(pos, rect);
+                            };
+
+                            longPressHandler.current = handleLongPress;
+
+                            setTimeout(() => {
+                                if (longPressHandler.current === handleLongPress) {
+                                    handleLongPress();
+                                }
+                            }, 500);
+                        },
+                        mousemove: () => {
+                            longPressHandler.current = undefined;
+                        },
+                        mouseup: () => {
+                            longPressHandler.current = undefined;
+                        },
                     }),
                 ],
             }),
@@ -161,20 +182,6 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
     useEffect(() => {
         editorView.current!.dispatch({
-            effects: displayHelp.reconfigure(
-                displayHelpFromEnabled(
-                    props.lookUpEnabled,
-                    props.theme,
-                    props.help,
-                    props.highlightItems,
-                    props.onClickLookUp,
-                ),
-            ),
-        });
-    }, [props.lookUpEnabled, props.theme, props.help, props.highlightItems, props.onClickLookUp]);
-
-    useEffect(() => {
-        editorView.current!.dispatch({
             effects: diagnostics.reconfigure(
                 diagnosticsFromConfig({ diagnostics: props.diagnostics }),
             ),
@@ -185,14 +192,14 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
         editorView.current!.dispatch({
             effects: assets.reconfigure(
                 assetsFromConfig({
-                    disabled: props.lookUpEnabled,
+                    disabled: false,
                     onClick: props.onClickAsset,
                     highlightItems: props.highlightItems,
                     theme: props.theme,
                 }),
             ),
         });
-    }, [props.lookUpEnabled, props.onClickAsset, props.highlightItems, props.theme]);
+    }, [props.onClickAsset, props.highlightItems, props.theme]);
 
     useEffect(() => {
         if (props.autoFocus) {
@@ -296,3 +303,5 @@ const dragAndDrop = (readOnly: boolean) => [
     }),
     dropCursor(),
 ];
+
+export { getTokenAtPos } from "./token";
