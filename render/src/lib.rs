@@ -369,12 +369,10 @@ impl Render {
             wipple_driver::typecheck::exhaustiveness::Pattern::Constructor(constructor, values) => {
                 match constructor {
                     wipple_driver::typecheck::exhaustiveness::Constructor::Variant(path) => {
-                        let declaration = match self.get_declaration_from_path(path) {
-                            Some(declarataion) => declarataion,
-                            None => return String::from("<unknown>"),
+                        let name = match path.last() {
+                            Some(wipple_driver::lower::PathComponent::Variant(name)) => name,
+                            _ => return String::from("<unknown>"),
                         };
-
-                        let name = declaration.item.name.as_deref().unwrap_or("<unknown>");
 
                         let rendered = if values.is_empty() {
                             name.to_string()
@@ -1155,13 +1153,13 @@ impl Render {
                                 String::from("missing variable to handle remaining patterns")
                             } else {
                                 format!(
-                                    "this code doesn't handle {}",
+                                    "this code doesn't handle `{}`",
                                     self.render_pattern(last, true),
                                 )
                             }
                         } else {
                             format!(
-                                "this code doesn't handle {} or {}",
+                                "this code doesn't handle `{}` or `{}`",
                                 patterns[..patterns.len() - 1]
                                     .iter()
                                     .map(|pattern| self.render_pattern(pattern, true))
