@@ -133,14 +133,12 @@ export function CodeEditor<Settings>(props: {
             const lineEndRect = editorView.coordsAtPos(line.to)!;
 
             const width = lineEndRect.right - lineStartRect.left;
-            const height = lineEndRect.bottom - lineStartRect.top;
 
             return [
                 {
                     top: top + window.scrollY,
                     right: windowSize.width - editorRect.right,
                     width: Math.max(editorRect.width - width - 48, 32),
-                    height,
                     diagnostic,
                     driverDiagnostic,
                 },
@@ -171,7 +169,6 @@ export function CodeEditor<Settings>(props: {
             top: number;
             right: number;
             width: number;
-            height: number;
             intelligentFix: IntelligentFix;
         }[]
     >();
@@ -185,16 +182,10 @@ export function CodeEditor<Settings>(props: {
         setLineIntelligentFixes([]);
 
         let hasIntelligentFixes = false;
-        for (const { top, right, width, height, driverDiagnostic } of lineDiagnostics) {
+        for (const { top, right, width, driverDiagnostic } of lineDiagnostics) {
             const intelligentFix = await runnerRef.current.getIntelligentFix(driverDiagnostic);
             if (intelligentFix != null) {
-                const lineIntelligentFix = {
-                    top,
-                    right,
-                    width,
-                    height,
-                    intelligentFix,
-                };
+                const lineIntelligentFix = { top, right, width, intelligentFix };
 
                 setLineIntelligentFixes((intelligentFixes) =>
                     intelligentFixes
@@ -372,20 +363,13 @@ export function CodeEditor<Settings>(props: {
         }
     };
 
-    const renderBubble = (
-        index: number,
-        top: number,
-        right: number,
-        height: number,
-        content: JSX.Element,
-    ) => (
+    const renderBubble = (index: number, top: number, right: number, content: JSX.Element) => (
         <FloatingPortal key={index}>
             <div
                 className="absolute w-fit pr-4"
                 style={{
                     top: top + props.theme.fontSize / 4 - 1,
                     right,
-                    height,
                 }}
             >
                 <Transition
@@ -580,34 +564,29 @@ export function CodeEditor<Settings>(props: {
                     {!animationsSettled
                         ? null
                         : lineIntelligentFixes != null
-                        ? lineIntelligentFixes.map(
-                              ({ top, right, width, height, intelligentFix }, index) =>
-                                  renderBubble(
-                                      index,
-                                      top,
-                                      right,
-                                      height,
-                                      <IntelligentFixBubble
-                                          width={width}
-                                          height={height}
-                                          theme={props.theme}
-                                          message={intelligentFix.message}
-                                          onClick={() => {
-                                              props.onChange(intelligentFix.fixedCode);
-                                              setLineIntelligentFixes(undefined);
-                                          }}
-                                      />,
-                                  ),
-                          )
-                        : lineDiagnostics.map(({ top, right, width, height, diagnostic }, index) =>
+                        ? lineIntelligentFixes.map(({ top, right, width, intelligentFix }, index) =>
                               renderBubble(
                                   index,
                                   top,
                                   right,
-                                  height,
+                                  <IntelligentFixBubble
+                                      width={width}
+                                      theme={props.theme}
+                                      message={intelligentFix.message}
+                                      onClick={() => {
+                                          props.onChange(intelligentFix.fixedCode);
+                                          setLineIntelligentFixes(undefined);
+                                      }}
+                                  />,
+                              ),
+                          )
+                        : lineDiagnostics.map(({ top, right, width, diagnostic }, index) =>
+                              renderBubble(
+                                  index,
+                                  top,
+                                  right,
                                   <DiagnosticBubble
                                       width={width}
-                                      height={height}
                                       theme={props.theme}
                                       diagnostic={diagnostic}
                                       onApplyFix={applyFix}
@@ -851,7 +830,6 @@ const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: Pa
 
 const DiagnosticBubble = (props: {
     width: number;
-    height: number;
     theme: ThemeConfig;
     diagnostic: any;
     onApplyFix: (fix: any, start: number, end: number) => void;
@@ -870,7 +848,7 @@ const DiagnosticBubble = (props: {
 
     return (
         <div style={{ maxWidth: isExpanded ? undefined : props.width }}>
-            <div className="flex flex-row items-start justify-end" style={{ height: props.height }}>
+            <div className="flex flex-row items-start justify-end h-[1lh]">
                 <button
                     className={`flex flex-row items-center gap-1.5 px-2 rounded-lg overflow-x-scroll no-scrollbar whitespace-nowrap transition-colors ${
                         props.diagnostic.severity === "error"
@@ -999,13 +977,12 @@ const DiagnosticBubble = (props: {
 
 const IntelligentFixBubble = (props: {
     width: number;
-    height: number;
     theme: ThemeConfig;
     message: string;
     onClick: () => void;
 }) => (
     <div style={{ maxWidth: props.width }}>
-        <div className="flex flex-row items-start justify-end" style={{ height: props.height }}>
+        <div className="flex flex-row items-start justify-end h-[1lh]">
             <button
                 className={`flex flex-row items-center gap-1.5 px-2 rounded-lg overflow-x-scroll no-scrollbar whitespace-nowrap transition-colors text-sky-600 dark:text-sky-500 h-full hover:text-white bg-sky-50 dark:bg-sky-950 hover:bg-sky-500`}
                 onClick={props.onClick}
