@@ -36,7 +36,7 @@ impl Rule for SplitFunctionCallRule {
             return None;
         }
 
-        // Invalid function calls are wrapped in `Unknown`
+        // Invalid function calls are wrapped in `Unknown`...
         let expression = match expression.item.kind {
             TypedExpressionKind::Unknown(original) => WithInfo {
                 info: expression.info,
@@ -45,11 +45,16 @@ impl Rule for SplitFunctionCallRule {
                     kind: *original?,
                 },
             },
-            _ => return None,
+            // ...but we also handle functions that are not wrapped in a call
+            // expression
+            _ => expression,
         };
 
         let (function, inputs) = match expression.item.kind {
             TypedExpressionKind::Call { function, inputs } => (function.unboxed(), inputs),
+            TypedExpressionKind::Constant { .. }
+            | TypedExpressionKind::Trait { .. }
+            | TypedExpressionKind::Variant { .. } => (expression, Vec::new()),
             _ => return None,
         };
 
