@@ -1,6 +1,6 @@
 {
     // Uncomment this for IDE support in `js`
-    "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
+    // "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
 
     "coverage-gutters.coverageFileNames": ["coverage/lcov.info"],
     "lldb.showDisassembly": "never",
