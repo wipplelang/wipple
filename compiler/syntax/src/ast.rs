@@ -261,6 +261,22 @@ fn statements<D: Driver>(
                         statement_syntax
                             .filter_map(|statement_syntax| match statement_syntax {
                                 parse::Statement::Error => None,
+                                parse::Statement::SyntaxDeclaration {
+                                    attributes: attributes_syntaxes,
+                                    name,
+                                } => {
+                                    let attributes = attributes_syntaxes
+                                        .into_iter()
+                                        .map(attribute)
+                                        .collect();
+
+                                    expected_constant_value!(Some(statement_info.clone()));
+
+                                    Some(crate::Statement::Syntax {
+                                        attributes,
+                                        name,
+                                    })
+                                }
                                 parse::Statement::TypeDeclaration {
                                     attributes: attributes_syntaxes,
                                     name,

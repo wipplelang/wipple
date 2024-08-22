@@ -145,6 +145,7 @@ struct Dependencies {
 
 lazy_static! {
     static ref DEPENDENCIES: Mutex<HashMap<String, Dependencies>> = Default::default();
+    static ref SOURCES: Mutex<HashMap<String, String>> = Default::default();
     static ref EXECUTABLES: Mutex<HashMap<String, wipple_driver::Executable>> = Default::default();
 }
 
@@ -197,6 +198,11 @@ pub async fn compile(options: JsValue) -> JsValue {
     let options = from_value::<CompileOptions>(options).or_throw("failed to deserialize options");
 
     let result = run_on_thread(format!("compile-{}", options.id), move || async move {
+        SOURCES
+            .lock()
+            .await
+            .insert(options.id.clone(), options.code.clone());
+
         let sources = vec![wipple_driver::File {
             path: options.path.clone(),
             visible_path: options.path,
@@ -379,12 +385,27 @@ pub async fn help(options: JsValue) -> JsValue {
     let options = from_value::<HelpOptions>(options).or_throw("failed to deserialize options");
 
     let result = run_on_thread(format!("help-{}", options.id), move || async move {
-        let render = render_for(options.id).await;
+        let render = render_for(options.id.clone()).await;
 
-        let help = (|| {
-            let declaration_path = render.get_path_at_cursor(&options.path, options.position)?;
+        let help = async {
+            let declaration = async {
+                if let Some(declaration) = render
+                    .get_path_at_cursor(&options.path, options.position)
+                    .and_then(|path| render.get_declaration_from_path(&path.item))
+                {
+                    return Some(declaration);
+                }
 
-            let declaration = render.get_declaration_from_path(&declaration_path.item)?;
+                let code = SOURCES.lock().await.get(&options.id).cloned()?;
+
+                let symbol_range =
+                    wipple_driver::util::find_word_boundary(&code, options.position as usize);
+
+                let symbol = &code[symbol_range];
+
+                render.get_declaration_for_syntax(symbol)
+            }
+            .await?;
 
             let documentation = render.render_documentation(&declaration)?;
 
@@ -396,7 +417,8 @@ pub async fn help(options: JsValue) -> JsValue {
                 docs: documentation.docs,
                 example: documentation.example,
             })
-        })();
+        }
+        .await;
 
         HelpResult { help }
     })

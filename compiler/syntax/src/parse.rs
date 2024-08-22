@@ -127,6 +127,11 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TopLevel<D> {
 pub(crate) enum Statement<D: Driver> {
     Error,
     #[serde(rename_all = "camelCase")]
+    SyntaxDeclaration {
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+        name: WithInfo<D::Info, String>,
+    },
+    #[serde(rename_all = "camelCase")]
     TypeDeclaration {
         attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
         name: WithInfo<D::Info, Option<String>>,
@@ -662,6 +667,7 @@ pub enum SyntaxKind {
     Arm,
     TypeFunction,
     TypeRepresentation,
+    SyntaxDeclaration,
     TypeDeclaration,
     TraitDeclaration,
     InstanceDeclaration,
@@ -911,6 +917,7 @@ mod rules {
             attribute_value::<D>().render(),
             top_level::<D>().render(),
             statement::<D>().render(),
+            syntax_declaration::<D>().render(),
             type_declaration::<D>().render(),
             trait_declaration::<D>().render(),
             default_instance_declaration::<D>().render(),
@@ -1033,6 +1040,7 @@ mod rules {
         Rule::switch(
             SyntaxKind::Statement,
             [
+                syntax_declaration,
                 type_declaration,
                 trait_declaration,
                 default_instance_declaration,
@@ -1044,6 +1052,26 @@ mod rules {
         )
         .no_backtrack()
         .named("A statement.")
+    }
+
+    pub fn syntax_declaration<D: Driver>() -> Rule<D, Statement<D>> {
+        Rule::keyword1(
+            SyntaxKind::SyntaxDeclaration,
+            Keyword::Intrinsic,
+            || text().wrapped(),
+            |_, info, syntax, _| WithInfo {
+                info,
+                item: syntax.item,
+            },
+        )
+        .attributed_with(attribute())
+        .map(SyntaxKind::SyntaxDeclaration, |declaration| {
+            Statement::SyntaxDeclaration {
+                attributes: declaration.item.attributes,
+                name: declaration.item.value.map(Option::unwrap),
+            }
+        })
+        .named("A syntax declaration.")
     }
 
     pub fn type_declaration<D: Driver>() -> Rule<D, Statement<D>> {

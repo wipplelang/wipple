@@ -447,6 +447,16 @@ pub enum AttributeValue<D: Driver> {
     Text(WithInfo<D::Info, String>),
 }
 
+/// A syntax declaration.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub struct SyntaxDeclaration<D: Driver> {
+    /// The syntax's attributes.
+    pub attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+}
+
 /// A type declaration.
 #[derive(Serialize, Deserialize, Derivative)]
 #[derivative(Debug(bound = ""), Clone(bound = ""))]

@@ -240,6 +240,16 @@ pub struct TopLevel<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub enum Statement<D: Driver> {
+    /// A syntax declaration.
+    #[serde(rename_all = "camelCase")]
+    Syntax {
+        /// The syntax's attributes.
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
+        /// The name of the syntax.
+        name: WithInfo<D::Info, String>,
+    },
+
     /// A type declaration.
     #[serde(rename_all = "camelCase")]
     Type {
