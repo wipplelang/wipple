@@ -190,6 +190,10 @@ pub struct Interface {
     /// The names of top-level declarations in the program.
     pub top_level: HashMap<String, Vec<util::WithInfo<Info, lower::Path>>>,
 
+    /// The syntax declarations in the program.
+    pub syntax_declarations:
+        HashMap<lower::Path, util::WithInfo<Info, typecheck::SyntaxDeclaration<Driver>>>,
+
     /// The type declarations in the program.
     pub type_declarations:
         HashMap<lower::Path, util::WithInfo<Info, typecheck::TypeDeclaration<Driver>>>,
@@ -219,6 +223,8 @@ impl Extend<Self> for Interface {
         for interface in iter {
             self.files.extend(interface.files);
             self.top_level.extend(interface.top_level);
+            self.syntax_declarations
+                .extend(interface.syntax_declarations);
             self.type_declarations.extend(interface.type_declarations);
             self.trait_declarations.extend(interface.trait_declarations);
             self.type_parameter_declarations
@@ -354,6 +360,13 @@ impl Driver {
                 .cloned()
                 .map(|interface| lower::Interface {
                     top_level: interface.top_level,
+                    syntax_declarations: interface
+                        .syntax_declarations
+                        .into_iter()
+                        .map(|(name, item)| {
+                            (name, convert::interface::convert_syntax_declaration(item))
+                        })
+                        .collect(),
                     type_declarations: interface
                         .type_declarations
                         .into_iter()
@@ -407,6 +420,11 @@ impl Driver {
         );
 
         self.interface.top_level = lower_result.interface.top_level;
+
+        for (path, item) in lower_result.interface.syntax_declarations {
+            let declaration = convert::typecheck::convert_syntax_declaration(item);
+            self.interface.syntax_declarations.insert(path, declaration);
+        }
 
         for (path, item) in lower_result.interface.type_declarations {
             let declaration = convert::typecheck::convert_type_declaration(item);

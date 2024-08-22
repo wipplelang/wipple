@@ -76,7 +76,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
     const [showOutput, setShowOutput] = useState(false);
     const [showRunAgain, setShowRunAgain] = useState(false);
 
-    const cachedBuiltinsHelp = useRef<Record<string, any>>();
     const cachedHighlightItems = useRef<Record<string, any>>();
     const cachedHelp = useRef<Record<string, Help>>({});
 
@@ -98,10 +97,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
         let showRunAgain = false;
         try {
             if (!isInitialized.current) {
-                if (!cachedBuiltinsHelp.current) {
-                    cachedBuiltinsHelp.current = await fetchBuiltinsHelp();
-                }
-
                 const dependencies = await fetchBundle(props.options.bundlePath);
 
                 await props.wipple.initialize({
@@ -233,31 +228,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
     useImperativeHandle(ref, () => ({
         help: async (position: number, code: string): Promise<Help | undefined> => {
-            const helpFromDocumentation = (documentation: {
-                name: string;
-                declaration: string | undefined;
-                docs: string;
-                example: string | null;
-            }): Help => {
-                const docString = documentation.docs.split("\n\n");
-
-                return {
-                    name: documentation.name,
-                    summary: docString[0],
-                    declaration: documentation.declaration,
-                    doc: docString.slice(1).join("\n\n"),
-                    example: documentation.example ?? undefined,
-                };
-            };
-
-            if (cachedBuiltinsHelp.current != null && cachedBuiltinsHelp.current[code] != null) {
-                return helpFromDocumentation({
-                    name: code,
-                    declaration: undefined,
-                    ...cachedBuiltinsHelp.current[code],
-                });
-            }
-
             if (cachedHelp.current[code] != null) {
                 return cachedHelp.current[code];
             }
@@ -277,12 +247,15 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 return undefined;
             }
 
-            const resolvedHelp = helpFromDocumentation({
+            const docString = help.docs.split("\n\n");
+
+            const resolvedHelp = {
                 name: help.name ?? code,
+                summary: docString[0],
                 declaration: help.declaration,
-                docs: help.docs,
-                example: help.example,
-            });
+                doc: docString.slice(1).join("\n\n"),
+                example: help.example ?? undefined,
+            };
 
             cachedHelp.current[code] = resolvedHelp;
 
@@ -471,8 +444,3 @@ const fetchBundle = async (name: string): Promise<Bundle> => {
     const data = decompress(new Uint8Array(buffer));
     return JSON.parse(new TextDecoder().decode(data));
 };
-
-const fetchBuiltinsHelp = async (): Promise<Record<string, any>> =>
-    fetch(new URL("/playground/library/help/builtins.json", window.location.origin)).then(
-        (response) => response.json(),
-    );

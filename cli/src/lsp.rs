@@ -8,18 +8,6 @@ use std::{
     sync::Mutex,
 };
 use tower_lsp::{jsonrpc::Result, lsp_types::*, Client, LanguageServer, LspService, Server};
-use wipple_driver::util::lazy_static::lazy_static;
-
-#[derive(Deserialize)]
-struct BuiltinHelp {
-    docs: String,
-    example: Option<String>,
-}
-
-lazy_static! {
-    static ref BUILTINS_HELP: HashMap<String, BuiltinHelp> =
-        serde_json::from_str(include_str!("../../library/help/builtins.json")).unwrap();
-}
 
 pub async fn start() {
     let stdin = tokio::io::stdin();
@@ -435,92 +423,97 @@ impl LanguageServer for Backend {
         let mut range = None;
         let mut content = Vec::new();
 
-        let symbol_range = find_word_boundary(&file.text, position as usize);
+        let symbol_range = wipple_driver::util::find_word_boundary(&file.text, position as usize);
         let symbol = &file.text[symbol_range.clone()];
-        if let Some(help) = BUILTINS_HELP.get(symbol) {
-            let start = file.line_index.line_col((symbol_range.start as u32).into());
-            let end = file.line_index.line_col((symbol_range.end as u32).into());
 
-            range = Some(Range {
-                start: Position {
-                    line: start.line,
-                    character: start.col,
-                },
-                end: Position {
-                    line: end.line,
-                    character: end.col,
-                },
-            });
+        let render = self.config.lock().unwrap().render.clone();
 
-            content.push(format!("```wipple\n{symbol}\n```"));
-            content.push(help.docs.clone());
+        let path = wipple_driver::util::get_visible_path(&path);
 
-            if let Some(example) = &help.example {
-                content.push(format!("[Example]({example})"));
-            }
-        } else {
-            let render = self.config.lock().unwrap().render.clone();
+        if let Some((declaration, declaration_range)) = render
+            .get_path_at_cursor(&path, position)
+            .and_then(|declaration_path| {
+                Some((
+                    render.get_declaration_from_path(&declaration_path.item)?,
+                    range_from_info(&declaration_path.info, &file),
+                ))
+            })
+            .or_else(|| {
+                render
+                    .get_declaration_for_syntax(symbol)
+                    .map(|declaration| {
+                        let start = file.line_index.line_col((symbol_range.start as u32).into());
+                        let end = file.line_index.line_col((symbol_range.end as u32).into());
 
-            let path = wipple_driver::util::get_visible_path(&path);
-            if let Some(declaration_path) = render.get_path_at_cursor(&path, position) {
-                if let Some(declaration) = render.get_declaration_from_path(&declaration_path.item)
-                {
-                    range = Some(range_from_info(&declaration_path.info, &file));
+                        let range = Range {
+                            start: Position {
+                                line: start.line,
+                                character: start.col,
+                            },
+                            end: Position {
+                                line: end.line,
+                                character: end.col,
+                            },
+                        };
 
-                    if let Some(code) = render.render_declaration(&declaration) {
-                        content.push(format!("```wipple\n{code}\n```"));
-                    }
+                        (declaration, range)
+                    })
+            })
+        {
+            range = Some(declaration_range);
 
-                    // If the expression is a trait, also render the resolved instance
-                    if let Some(instance) = instance_at_cursor(&render, &path, position) {
-                        match instance.item {
-                            Ok(declaration) => {
-                                let declaration = wipple_driver::util::WithInfo {
-                                    info: instance.info,
-                                    item: declaration,
-                                };
-
-                                if let Some(code) = render.render_declaration(&declaration) {
-                                    content.push(format!("```wipple\n{code}\n```"));
-                                }
-                            }
-                            Err(bound) => {
-                                let bound = wipple_driver::util::WithInfo {
-                                    info: instance.info,
-                                    item: bound,
-                                };
-
-                                let code = render.render_instance(&bound, false);
-
-                                content
-                                    .push(format!("```wipple\ninstance {code} -- from bound\n```"));
-                            }
-                        }
-                    }
-
-                    if let Some(rendered_documentation) = render.render_documentation(&declaration)
-                    {
-                        content.push(rendered_documentation.docs);
-
-                        if let Some(example) = rendered_documentation.example {
-                            content.push(format!("[Example]({example})"));
-                        }
-                    }
-                }
-            } else if let Some(expression) = render.get_expression_at_cursor(&path, position) {
-                range = Some(range_from_info(&expression.info, &file));
-
-                let r#type = expression.map(|expression| expression.r#type);
-
-                let code = render.render_type(
-                    &r#type,
-                    true,
-                    wipple_render::DescribeOptions::NoDescribe,
-                    false,
-                );
-
+            if let Some(code) = render.render_declaration(&declaration) {
                 content.push(format!("```wipple\n{code}\n```"));
             }
+
+            // If the expression is a trait, also render the resolved instance
+            if let Some(instance) = instance_at_cursor(&render, &path, position) {
+                match instance.item {
+                    Ok(declaration) => {
+                        let declaration = wipple_driver::util::WithInfo {
+                            info: instance.info,
+                            item: declaration,
+                        };
+
+                        if let Some(code) = render.render_declaration(&declaration) {
+                            content.push(format!("```wipple\n{code}\n```"));
+                        }
+                    }
+                    Err(bound) => {
+                        let bound = wipple_driver::util::WithInfo {
+                            info: instance.info,
+                            item: bound,
+                        };
+
+                        let code = render.render_instance(&bound, false);
+
+                        content.push(format!("```wipple\ninstance {code} -- from bound\n```"));
+                    }
+                }
+            }
+
+            if let Some(rendered_documentation) = render.render_documentation(&declaration) {
+                content.push(rendered_documentation.docs);
+
+                if let Some(example) = rendered_documentation.example {
+                    content.push(format!("[Example]({example})"));
+                }
+            }
+        }
+
+        if let Some(expression) = render.get_expression_at_cursor(&path, position) {
+            range = Some(range_from_info(&expression.info, &file));
+
+            let r#type = expression.map(|expression| expression.r#type);
+
+            let code = render.render_type(
+                &r#type,
+                true,
+                wipple_render::DescribeOptions::NoDescribe,
+                false,
+            );
+
+            content.push(format!("```wipple\n{code}\n```"));
         }
 
         if content.is_empty() {
@@ -582,11 +575,8 @@ impl LanguageServer for Backend {
                     wipple_render::RenderedSuggestionKind::Variable => {
                         Some(CompletionItemKind::VARIABLE)
                     }
-                    wipple_render::RenderedSuggestionKind::Keyword => {
+                    wipple_render::RenderedSuggestionKind::Syntax => {
                         Some(CompletionItemKind::KEYWORD)
-                    }
-                    wipple_render::RenderedSuggestionKind::Operator => {
-                        Some(CompletionItemKind::OPERATOR)
                     }
                 },
                 label: suggestion.name,
@@ -757,16 +747,6 @@ impl Backend {
 
 fn read_binary<T: serde::de::DeserializeOwned>(path: impl AsRef<Path>) -> Option<T> {
     wipple_driver::util::read_binary(io::BufReader::new(fs::File::open(path).ok()?)).ok()
-}
-
-fn find_word_boundary(text: &str, position: usize) -> std::ops::Range<usize> {
-    unicode_segmentation::UnicodeSegmentation::grapheme_indices(text, true)
-        .find(|(index, _)| *index >= position)
-        .map(|(start, str)| {
-            let end = start + str.len();
-            start..end
-        })
-        .unwrap_or(position..position)
 }
 
 fn range_from_info(info: &wipple_driver::Info, file: &File) -> Range {

@@ -127,6 +127,11 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TopLevel<D> {
 pub(crate) enum Statement<D: Driver> {
     Error,
     #[serde(rename_all = "camelCase")]
+    SyntaxDeclaration {
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+        name: WithInfo<D::Info, String>,
+    },
+    #[serde(rename_all = "camelCase")]
     TypeDeclaration {
         attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
         name: WithInfo<D::Info, Option<String>>,
@@ -662,6 +667,7 @@ pub enum SyntaxKind {
     Arm,
     TypeFunction,
     TypeRepresentation,
+    SyntaxDeclaration,
     TypeDeclaration,
     TraitDeclaration,
     InstanceDeclaration,
@@ -911,6 +917,7 @@ mod rules {
             attribute_value::<D>().render(),
             top_level::<D>().render(),
             statement::<D>().render(),
+            syntax_declaration::<D>().render(),
             type_declaration::<D>().render(),
             trait_declaration::<D>().render(),
             default_instance_declaration::<D>().render(),
@@ -1033,6 +1040,7 @@ mod rules {
         Rule::switch(
             SyntaxKind::Statement,
             [
+                syntax_declaration,
                 type_declaration,
                 trait_declaration,
                 default_instance_declaration,
@@ -1044,6 +1052,29 @@ mod rules {
         )
         .no_backtrack()
         .named("A statement.")
+    }
+
+    pub fn syntax_declaration<D: Driver>() -> Rule<D, Statement<D>> {
+        Rule::attributed_keyword1(
+            SyntaxKind::SyntaxDeclaration,
+            Keyword::Intrinsic,
+            attribute,
+            || text().wrapped(),
+            |_, info, attributes, syntax, _| WithInfo {
+                info,
+                item: Attributed {
+                    attributes,
+                    value: syntax,
+                },
+            },
+        )
+        .map(SyntaxKind::SyntaxDeclaration, |declaration| {
+            Statement::SyntaxDeclaration {
+                attributes: declaration.item.attributes,
+                name: declaration.item.value.map(Option::unwrap),
+            }
+        })
+        .named("A syntax declaration.")
     }
 
     pub fn type_declaration<D: Driver>() -> Rule<D, Statement<D>> {
@@ -4078,17 +4109,197 @@ mod base {
         };
     }
 
-    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword0(), Keyword);
-    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword1(A), Keyword);
-    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword2(A, B), Keyword);
-    impl_keyword_rule!(Keyword(tokenize::Keyword), keyword3(A, B, C), Keyword);
+    macro_rules! impl_attributed_keyword_rule {
+        ($pattern:ident($ty:ty), $name:ident($($n:ident),*), $kind:ident) => {
+            impl<_D: Driver, Output: 'static> Rule<_D, Output> {
+                #[allow(unused, non_snake_case, clippy::redundant_clone, clippy::too_many_arguments)]
+                pub fn $name<_A, $($n),*>(
+                    syntax_kind: SyntaxKind,
+                    expected: $ty,
+                    parse_attribute: fn() -> Rule<_D, _A>,
+                    $($n: fn() -> Rule<_D, $n>,)*
+                    output: impl Fn(&mut Parser<'_, _D>, _D::Info, Vec<WithInfo<_D::Info, _A>>, $(WithInfo<_D::Info, $n>, )* &Rc<ParseStack<_D>>) -> WithInfo<_D::Info, Output> + Clone + 'static,
+                ) -> Rule<_D, Output>
+                where
+                    _A: DefaultFromInfo<_D::Info> + 'static,
+                    $($n: DefaultFromInfo<_D::Info> + 'static,)*
+                {
+                    Rule::nonterminal(
+                        syntax_kind,
+                        RuleToRender::List(vec![
+                            Rc::new({
+                                let expected = expected.clone();
+                                move || RuleToRender::Keyword(expected.to_string())
+                            }),
+                            $(Rc::new(move || $n().render_nested()),)*
+                        ]),
+                        || true,
+                        ParseFn::new(
+                            {
+                                let expected = expected.clone();
+                                let output = output.clone();
 
-    impl_keyword_rule!(Name(String), contextual_keyword0(), ContextualKeyword);
-    impl_keyword_rule!(Name(String), contextual_keyword1(A), ContextualKeyword);
-    impl_keyword_rule!(Name(String), contextual_keyword2(A, B), ContextualKeyword);
-    impl_keyword_rule!(
+                                move |parser, tree, stack, _| {
+                                    let mut elements = match &tree.item {
+                                        TokenTree::List(_, elements) => elements.iter(),
+                                        _ => return None,
+                                    };
+
+                                    let mut tree = elements.next()?.as_ref();
+                                    let mut attributes = Vec::new();
+                                    while let TokenTree::Attribute(attribute, contents) = tree.item {
+                                        let attribute = match parse_attribute().try_parse(
+                                            parser,
+                                            attribute.as_deref(),
+                                            stack,
+                                            None,
+                                        )? {
+                                            Ok(attribute) => attribute,
+                                            Err(progress) => return Some(Err(progress)),
+                                        };
+
+                                        attributes.push(attribute);
+
+                                        tree = contents.as_deref();
+                                    }
+
+                                    let info = match tree {
+                                        WithInfo {
+                                            item: TokenTree::$pattern(found),
+                                            ref info,
+                                        } if *found == expected => info.clone(),
+                                        _ => return None,
+                                    };
+
+                                    $(
+                                        let $n = match $n().try_parse(parser, elements.next()?.as_ref(), stack, None)? {
+                                            Ok($n) => $n,
+                                            Err(progress) => return Some(Err(progress)),
+                                        };
+                                    )*
+
+                                    if elements.next().is_some() {
+                                        return None;
+                                    }
+
+                                    Some(Ok(output(parser, tree.info, attributes, $($n,)* stack)))
+                                }
+                            },
+                            move |parser, tree, stack, _| {
+                                let mut elements = match &tree.item {
+                                    TokenTree::List(_, elements) => elements.iter(),
+                                    _ => return None,
+                                };
+
+                                let mut tree = elements.next()?.as_ref();
+                                let mut attributes = Vec::new();
+                                while let TokenTree::Attribute(attribute, contents) = tree.item {
+                                    let attribute = parse_attribute().parse(
+                                        parser,
+                                        attribute.as_deref(),
+                                        stack,
+                                        None,
+                                    );
+
+                                    attributes.push(attribute);
+
+                                    tree = contents.as_deref();
+                                }
+
+                                let info = match elements.next()? {
+                                    WithInfo {
+                                        item: TokenTree::$pattern(found),
+                                        info,
+                                    } if *found == expected => info,
+                                    _ => return None,
+                                };
+
+                                $(
+                                    let $n = match elements.next() {
+                                        Some(input) => $n().parse(parser, input.as_ref(), stack, None),
+                                        None => {
+                                            parser.add_diagnostic(
+                                                stack.error_expected(
+                                                    WithInfo {
+                                                        info: info.clone(),
+                                                        item: $n().syntax_kind,
+                                                    },
+                                                    None,
+                                                ),
+                                            );
+
+                                            $n::default_from_info(info.clone())
+                                        }
+                                    };
+                                )*
+
+                                for element in elements {
+                                    parser.add_diagnostic(
+                                        stack.error_expected(
+                                            WithInfo {
+                                                info: _D::Info::clone(&element.info),
+                                                item: SyntaxKind::Nothing,
+                                            },
+                                            Direction::After(SyntaxKind::$kind(expected.clone())),
+                                        )
+                                    );
+                                }
+
+                                Some(output(parser, tree.info, attributes, $($n,)* stack))
+                            },
+                        ),
+                    )
+                }
+            }
+        };
+    }
+
+    macro_rules! impl_keyword_rules {
+        ($pattern:ident($ty:ty), ($name:ident, $attributed_name:ident)($($n:ident),*), $kind:ident) => {
+            impl_keyword_rule!($pattern($ty), $name($($n),*), $kind);
+            impl_attributed_keyword_rule!($pattern($ty), $attributed_name($($n),*), $kind);
+        };
+    }
+
+    impl_keyword_rules!(
+        Keyword(tokenize::Keyword),
+        (keyword0, attributed_keyword0)(),
+        Keyword
+    );
+    impl_keyword_rules!(
+        Keyword(tokenize::Keyword),
+        (keyword1, attributed_keyword1)(A),
+        Keyword
+    );
+    impl_keyword_rules!(
+        Keyword(tokenize::Keyword),
+        (keyword2, attributed_keyword2)(A, B),
+        Keyword
+    );
+    impl_keyword_rules!(
+        Keyword(tokenize::Keyword),
+        (keyword3, attributed_keyword3)(A, B, C),
+        Keyword
+    );
+
+    impl_keyword_rules!(
         Name(String),
-        contextual_keyword3(A, B, C),
+        (contextual_keyword0, attributed_contextual_keyword0)(),
+        ContextualKeyword
+    );
+    impl_keyword_rules!(
+        Name(String),
+        (contextual_keyword1, attributed_contextual_keyword1)(A),
+        ContextualKeyword
+    );
+    impl_keyword_rules!(
+        Name(String),
+        (contextual_keyword2, attributed_contextual_keyword2)(A, B),
+        ContextualKeyword
+    );
+    impl_keyword_rules!(
+        Name(String),
+        (contextual_keyword3, attributed_contextual_keyword3)(A, B, C),
         ContextualKeyword
     );
 

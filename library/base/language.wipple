@@ -1,3 +1,11 @@
+-- Assign a value to a variable.
+@(example : "https://wipple.org/playground/lesson/wipple-by-example/Tz5bnIlXjPE_8pugoMfI")
+intrinsic ":"
+
+-- Define a function.
+@(example : "https://wipple.org/playground/lesson/wipple-by-example/8YDeRYs7yM2LnLm3wQyW")
+intrinsic "->"
+
 @(language : "number")
 Number : type intrinsic
 

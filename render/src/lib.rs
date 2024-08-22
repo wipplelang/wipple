@@ -21,6 +21,7 @@ pub struct AnyDeclaration {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum AnyDeclarationKind {
+    Syntax(wipple_driver::typecheck::SyntaxDeclaration<wipple_driver::Driver>),
     Type(wipple_driver::typecheck::TypeDeclaration<wipple_driver::Driver>),
     Trait(wipple_driver::typecheck::TraitDeclaration<wipple_driver::Driver>),
     TypeParameter(wipple_driver::typecheck::TypeParameterDeclaration<wipple_driver::Driver>),
@@ -96,13 +97,12 @@ pub struct RenderedSuggestion {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum RenderedSuggestionKind {
+    Syntax,
     Type,
     Trait,
     TypeParameter,
     Constant,
     Variable,
-    Keyword,
-    Operator,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -111,19 +111,6 @@ pub enum DescribeOptions {
     DescribeWithoutArticle,
     DescribeWithArticle,
 }
-
-const KEYWORDS: &[&str] = &[
-    "do",
-    "when",
-    "type",
-    "trait",
-    "instance",
-    "intrinsic",
-    "infer",
-    "default",
-];
-
-const OPERATORS: &[&str] = &["as", "to", "by", "is", "and", "or"];
 
 #[derive(Clone)]
 pub struct Render(Arc<RwLock<RenderInner>>);
@@ -175,30 +162,31 @@ impl Render {
 
         inner.declarations = Vec::new();
         macro_rules! insert_declaration {
-                ($decl:ident($ty:ident)) => {
-                    inner.declarations.extend(
-                        interface
-                            .$decl
-                            .iter()
-                            .map(|(path, declaration)| WithInfo {
-                                info: declaration.info.clone(),
-                                item: AnyDeclaration {
-                                    name: self.name_for_path(&path),
-                                    path: path.clone(),
-                                    kind: AnyDeclarationKind::$ty(declaration.item.clone()),
-                                },
-                            })
-                            .collect::<Vec<_>>(),
-                    );
-                };
-                ($($decl:ident($ty:ident)),* $(,)?) => {
-                    $(
-                        insert_declaration!($decl($ty));
-                    )*
-                }
+            ($decl:ident($ty:ident)) => {
+                inner.declarations.extend(
+                    interface
+                        .$decl
+                        .iter()
+                        .map(|(path, declaration)| WithInfo {
+                            info: declaration.info.clone(),
+                            item: AnyDeclaration {
+                                name: self.name_for_path(&path),
+                                path: path.clone(),
+                                kind: AnyDeclarationKind::$ty(declaration.item.clone()),
+                            },
+                        })
+                        .collect::<Vec<_>>(),
+                );
+            };
+            ($($decl:ident($ty:ident)),* $(,)?) => {
+                $(
+                    insert_declaration!($decl($ty));
+                )*
             }
+        }
 
         insert_declaration!(
+            syntax_declarations(Syntax),
             type_declarations(Type),
             trait_declarations(Trait),
             type_parameter_declarations(TypeParameter),
@@ -242,6 +230,22 @@ impl Render {
             .declarations
             .iter()
             .find(|declaration| self.compare_info(&declaration.info, info, between))
+            .cloned()
+    }
+
+    pub fn get_declaration_for_syntax(&self, syntax: &str) -> Option<WithInfo<AnyDeclaration>> {
+        self.0
+            .read()
+            .unwrap()
+            .declarations
+            .iter()
+            .find(|declaration| {
+                declaration.item.name.as_deref() == Some(syntax)
+                    && matches!(
+                        declaration.item.path.last(),
+                        Some(wipple_driver::lower::PathComponent::Syntax(_))
+                    )
+            })
             .cloned()
     }
 
@@ -311,6 +315,10 @@ impl Render {
 
     pub fn render_declaration(&self, declaration: &WithInfo<AnyDeclaration>) -> Option<String> {
         match &declaration.item.kind {
+            AnyDeclarationKind::Syntax(_) => {
+                let name = declaration.item.name.as_deref().unwrap_or("<unknown>");
+                Some(name.to_string())
+            }
             AnyDeclarationKind::Type(type_declaration) => {
                 let type_function = self.render_type_function(&type_declaration.parameters, &[]);
 
@@ -1401,6 +1409,7 @@ impl Render {
             SyntaxKind::Arm => self.add_article_prefix("arm"),
             SyntaxKind::TypeFunction => self.add_article_prefix("type function"),
             SyntaxKind::TypeRepresentation => self.add_article_prefix("type representation"),
+            SyntaxKind::SyntaxDeclaration => self.add_article_prefix("syntax declaration"),
             SyntaxKind::TypeDeclaration => self.add_article_prefix("type declaration"),
             SyntaxKind::TraitDeclaration => self.add_article_prefix("trait declaration"),
             SyntaxKind::InstanceDeclaration => self.add_article_prefix("instance declaration"),
@@ -1532,6 +1541,7 @@ impl Render {
         let docs = doc_lines.join("\n");
 
         let attributes = match &declaration.item.kind {
+            AnyDeclarationKind::Syntax(declaration) => Some(&declaration.attributes),
             AnyDeclarationKind::Type(declaration) => Some(&declaration.attributes),
             AnyDeclarationKind::Trait(declaration) => Some(&declaration.attributes),
             AnyDeclarationKind::Constant(declaration) => Some(&declaration.attributes),
@@ -1560,6 +1570,7 @@ impl Render {
         let declaration = self.get_declaration_from_info(&value.info, false)?;
 
         let attributes = match &declaration.item.kind {
+            AnyDeclarationKind::Syntax(declaration) => Some(&declaration.attributes),
             AnyDeclarationKind::Type(declaration) => Some(&declaration.attributes),
             AnyDeclarationKind::Trait(declaration) => Some(&declaration.attributes),
             AnyDeclarationKind::Constant(declaration) => Some(&declaration.attributes),
@@ -1591,23 +1602,10 @@ impl Render {
     }
 
     pub fn render_suggestions_at_cursor(&self, path: &str, index: u32) -> Vec<RenderedSuggestion> {
-        let keyword_suggestions = KEYWORDS.iter().map(|keyword| RenderedSuggestion {
-            kind: RenderedSuggestionKind::Keyword,
-            name: keyword.to_string(),
-            code: None,
-            docs: None, // TODO: Documentation for keywords
-        });
-
-        let operator_suggestions = OPERATORS.iter().map(|operator| RenderedSuggestion {
-            kind: RenderedSuggestionKind::Operator,
-            name: operator.to_string(),
-            code: None,
-            docs: None, // TODO: Documentation for operators
-        });
-
         let declarations = self.0.read().unwrap().declarations.clone();
         let declaration_suggestions = declarations.into_iter().filter_map(|declaration| {
             let kind = match &declaration.item.kind {
+                AnyDeclarationKind::Syntax(_) => RenderedSuggestionKind::Syntax,
                 AnyDeclarationKind::Type(_) => RenderedSuggestionKind::Type,
                 AnyDeclarationKind::Trait(_) => RenderedSuggestionKind::Trait,
                 AnyDeclarationKind::Constant(_) => RenderedSuggestionKind::Constant,
@@ -1646,11 +1644,7 @@ impl Render {
                 }
             });
 
-        keyword_suggestions
-            .chain(operator_suggestions)
-            .chain(declaration_suggestions)
-            .chain(local_suggestions)
-            .collect()
+        declaration_suggestions.chain(local_suggestions).collect()
     }
 
     fn get_locals_at_cursor(

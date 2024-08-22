@@ -19,6 +19,9 @@ pub trait Driver: Sized {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub struct Interface<D: Driver> {
+    /// The syntax declarations in the module.
+    pub syntax_declarations: HashMap<Path, WithInfo<D::Info, SyntaxDeclaration<D>>>,
+
     /// The type declarations in the module.
     pub type_declarations: HashMap<Path, WithInfo<D::Info, TypeDeclaration<D>>>,
 
@@ -218,6 +221,16 @@ pub struct UnresolvedFile<D: Driver> {
 #[serde(rename_all = "camelCase")]
 #[serde(bound(serialize = "", deserialize = ""))]
 pub enum UnresolvedStatement<D: Driver> {
+    /// A syntax declaration.
+    #[serde(rename_all = "camelCase")]
+    Syntax {
+        /// The syntax's attributes.
+        attributes: Vec<WithInfo<D::Info, Attribute<D>>>,
+
+        /// The name of the syntax.
+        name: WithInfo<D::Info, String>,
+    },
+
     /// A type declaration.
     #[serde(rename_all = "camelCase")]
     Type {
@@ -778,7 +791,7 @@ impl std::fmt::Display for Path {
                 .iter()
                 .map(ToString::to_string)
                 .collect::<Vec<_>>()
-                .join(" / "),
+                .join("  /  "),
         )
     }
 }
@@ -803,7 +816,7 @@ impl<'de> Deserialize<'de> for Path {
         }
 
         let components = path
-            .split(" / ")
+            .split("  /  ")
             .map(|component| {
                 component.parse().map_err(|_| {
                     serde::de::Error::custom(format!(
@@ -824,6 +837,9 @@ impl<'de> Deserialize<'de> for Path {
 pub enum PathComponent {
     /// A file.
     File(String),
+
+    /// A syntax declaration.
+    Syntax(String),
 
     /// A type declaration.
     Type(String),
@@ -876,6 +892,7 @@ impl PathComponent {
     pub fn name(&self) -> Option<&str> {
         match self {
             PathComponent::File(name)
+            | PathComponent::Syntax(name)
             | PathComponent::Type(name)
             | PathComponent::Trait(name)
             | PathComponent::Constant(name)
@@ -894,6 +911,7 @@ impl std::fmt::Display for PathComponent {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             PathComponent::File(name) => write!(f, "file {}", name),
+            PathComponent::Syntax(name) => write!(f, "syntax {}", name),
             PathComponent::Type(name) => write!(f, "type {}", name),
             PathComponent::Trait(name) => write!(f, "trait {}", name),
             PathComponent::Constant(name) => write!(f, "constant {}", name),
@@ -916,6 +934,7 @@ impl std::str::FromStr for PathComponent {
 
         match prefix {
             "file" => Ok(PathComponent::File(name.to_string())),
+            "syntax" => Ok(PathComponent::Syntax(name.to_string())),
             "type" => Ok(PathComponent::Type(name.to_string())),
             "trait" => Ok(PathComponent::Trait(name.to_string())),
             "constant" => Ok(PathComponent::Constant(name.to_string())),
@@ -970,6 +989,16 @@ pub enum AttributeValue<D: Driver> {
 
     /// A piece of text.
     Text(WithInfo<D::Info, String>),
+}
+
+/// A resolved syntax declaration.
+#[derive(Serialize, Deserialize, Derivative)]
+#[derivative(Debug(bound = ""), Clone(bound = ""))]
+#[serde(rename_all = "camelCase")]
+#[serde(bound(serialize = "", deserialize = ""))]
+pub struct SyntaxDeclaration<D: Driver> {
+    /// The syntax's attributes.
+    pub attributes: Vec<WithInfo<D::Info, crate::Attribute<D>>>,
 }
 
 /// A resolved type declaration.

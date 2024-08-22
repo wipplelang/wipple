@@ -34,6 +34,21 @@ pub mod interface {
         })
     }
 
+    pub fn convert_syntax_declaration(
+        syntax_declaration: wipple_util::WithInfo<
+            crate::Info,
+            wipple_typecheck::SyntaxDeclaration<crate::Driver>,
+        >,
+    ) -> wipple_util::WithInfo<crate::Info, wipple_lower::SyntaxDeclaration<crate::Driver>> {
+        syntax_declaration.map(|syntax_declaration| wipple_lower::SyntaxDeclaration {
+            attributes: syntax_declaration
+                .attributes
+                .into_iter()
+                .map(convert_attribute)
+                .collect(),
+        })
+    }
+
     pub fn convert_type_declaration(
         type_declaration: wipple_util::WithInfo<
             crate::Info,
@@ -308,6 +323,12 @@ pub mod lower {
         >,
     ) -> wipple_util::WithInfo<Info, wipple_lower::UnresolvedStatement<crate::Driver>> {
         statement.map(|statement| match statement {
+            wipple_syntax::Statement::Syntax { attributes, name } => {
+                wipple_lower::UnresolvedStatement::Syntax {
+                    attributes: attributes.into_iter().map(convert_attribute).collect(),
+                    name,
+                }
+            }
             wipple_syntax::Statement::Type {
                 attributes,
                 name,
@@ -745,6 +766,21 @@ pub mod typecheck {
             wipple_lower::AttributeValue::Text(text) => {
                 wipple_typecheck::AttributeValue::Text(text)
             }
+        })
+    }
+
+    pub fn convert_syntax_declaration(
+        syntax_declaration: wipple_util::WithInfo<
+            crate::Info,
+            wipple_lower::SyntaxDeclaration<crate::Driver>,
+        >,
+    ) -> wipple_util::WithInfo<Info, wipple_typecheck::SyntaxDeclaration<crate::Driver>> {
+        syntax_declaration.map(|syntax_declaration| wipple_typecheck::SyntaxDeclaration {
+            attributes: syntax_declaration
+                .attributes
+                .into_iter()
+                .map(convert_attribute)
+                .collect(),
         })
     }
 

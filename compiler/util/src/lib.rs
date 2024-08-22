@@ -12,3 +12,6 @@ pub use info::*;
 
 mod path;
 pub use path::*;
+
+mod word_boundary;
+pub use word_boundary::*;

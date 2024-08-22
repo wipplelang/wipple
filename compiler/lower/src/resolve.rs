@@ -28,6 +28,7 @@ pub fn resolve<D: Driver>(
         }
 
         add!(
+            syntax_declarations(Some),
             type_declarations(|declaration| (
                 EagerTypeDeclarationInfo::from(&declaration),
                 Some(declaration)
@@ -157,6 +158,7 @@ pub fn resolve<D: Driver>(
     }
 
     unwrap!(
+        syntax_declarations(Option::unwrap),
         type_declarations(|(_, declaration)| declaration.unwrap()),
         trait_declarations(|(_, declaration)| declaration.unwrap()),
         constant_declarations(Option::unwrap),
@@ -215,6 +217,8 @@ impl<D: Driver> From<&crate::TraitDeclaration<D>> for EagerTraitDeclarationInfo 
 struct Info<D: Driver> {
     errors: Vec<WithInfo<D::Info, crate::Diagnostic>>,
     dependencies: crate::Interface<D>,
+    syntax_declarations:
+        HashMap<crate::Path, WithInfo<D::Info, Option<crate::SyntaxDeclaration<D>>>>,
     type_declarations: HashMap<
         crate::Path,
         WithInfo<D::Info, (EagerTypeDeclarationInfo, Option<crate::TypeDeclaration<D>>)>,
@@ -396,6 +400,14 @@ fn split_executable_statements<D: Driver>(
             }
 
             match &statement.item {
+                crate::UnresolvedStatement::Syntax { name, .. } => {
+                    insert_declaration!(
+                        syntax_declarations,
+                        name,
+                        info.make_path(crate::PathComponent::Syntax(name.item.clone())),
+                        None,
+                    )
+                }
                 crate::UnresolvedStatement::Type {
                     name, parameters, ..
                 } => insert_declaration!(
@@ -436,7 +448,9 @@ fn split_executable_statements<D: Driver>(
         .partition(|statement| {
             matches!(
                 statement.item,
-                crate::UnresolvedStatement::Type { .. } | crate::UnresolvedStatement::Trait { .. }
+                crate::UnresolvedStatement::Syntax { .. }
+                    | crate::UnresolvedStatement::Type { .. }
+                    | crate::UnresolvedStatement::Trait { .. }
             )
         });
 
@@ -444,7 +458,9 @@ fn split_executable_statements<D: Driver>(
         declaration_statements.into_iter().partition(|statement| {
             matches!(
                 statement.item,
-                crate::UnresolvedStatement::Type { .. } | crate::UnresolvedStatement::Trait { .. }
+                crate::UnresolvedStatement::Syntax { .. }
+                    | crate::UnresolvedStatement::Type { .. }
+                    | crate::UnresolvedStatement::Trait { .. }
             )
         });
 
@@ -463,6 +479,19 @@ fn resolve_statements<D: Driver>(
     let statements = statements
         .into_iter()
         .filter_map(|statement| match statement.item {
+            crate::UnresolvedStatement::Syntax { attributes, name } => {
+                info.path.push(crate::PathComponent::Syntax(name.item));
+
+                resolve_attributes(&attributes, info);
+
+                let declaration = info.syntax_declarations.get_mut(&info.path).unwrap();
+
+                declaration.item = Some(crate::SyntaxDeclaration { attributes });
+
+                info.path.pop().unwrap();
+
+                None
+            }
             crate::UnresolvedStatement::Type {
                 attributes,
                 name,
