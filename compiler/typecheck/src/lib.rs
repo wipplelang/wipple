@@ -5,7 +5,6 @@ mod debug;
 pub mod exhaustiveness;
 mod infer;
 mod items;
-mod resolve;
 mod utils;
 
 use derivative::Derivative;
@@ -99,7 +98,7 @@ pub fn resolve<D: Driver>(
     driver: &D,
     item_declaration: impl IntoItemDeclaration<D>,
 ) -> crate::Result<D> {
-    resolve::resolve(driver, item_declaration)
+    infer::resolve(driver, item_declaration)
 }
 
 /// The result of [`resolve`].
