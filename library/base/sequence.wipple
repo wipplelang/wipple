@@ -2,10 +2,14 @@
 Sequence : Element => type ({Maybe Element})
 
 -- Retrieve the next item in a sequence.
+@(highlight-category : "sequence")
+@(highlight-icon : "arrow-forward")
 next :: Element => (Sequence Element) -> Maybe Element
 next : (Sequence next) -> do next
 
 -- Produce an infinite sequence.
+@(highlight-category : "sequence")
+@(highlight-icon : "list")
 sequence :: Element => {Element} -> Sequence Element
 sequence : next -> Sequence {Some (do next)}
 
@@ -19,15 +23,21 @@ sequence : next -> Sequence {Some (do next)}
 -- show (next my-sequence) -- Hello, world!
 -- show (next my-sequence) -- Hello, world!
 -- ```
+@(highlight-category : "sequence")
+@(highlight-icon : "all-inclusive")
 always :: Element => Element -> Sequence Element
 always : element -> Sequence {Some element}
 
 -- Create a sequence that produces the provided element a certain number of
 -- times. `element . replicate n` is equivalent to `always element . take n`.
+@(highlight-category : "sequence")
+@(highlight-icon : "repeat")
 replicate :: Element => Number -> Element -> Sequence Element
 replicate : n -> element -> always element . take n
 
 -- Build a sequence from an initial item and a transform function.
+@(highlight-category : "sequence")
+@(highlight-icon : "function")
 build-sequence :: Element => (Maybe Element) (Element -> Maybe Element) -> Sequence Element
 build-sequence : initial transform -> do {
   next : initial
@@ -61,6 +71,8 @@ Element => instance (As-Sequence (Maybe Element) Element) : maybe -> Sequence {
 }
 
 -- Transform each item in a sequence, producing a new sequence.
+@(highlight-category : "sequence")
+@(highlight-icon : "category")
 transform :: Container (infer Element) Result where (As-Sequence Container Element) => (Element -> Result) -> Container -> Sequence Result
 transform : f -> container -> do {
   base : As-Sequence container
@@ -74,6 +86,8 @@ transform : f -> container -> do {
 }
 
 -- Keep only the items in the sequence that satisfy the provided condition.
+@(highlight-category : "sequence")
+@(highlight-icon : "filter-alt")
 filter :: Container (infer Element) where (As-Sequence Container Element) => (Element -> Boolean) -> Container -> Sequence Element
 filter : include? -> container -> do {
   base : As-Sequence container
@@ -89,6 +103,8 @@ filter : include? -> container -> do {
 }
 
 -- Transform each item in a sequence, keeping only the items that aren't `None`.
+@(highlight-category : "sequence")
+@(highlight-icon : "filter-alt")
 filter-by :: Container (infer Element) Result where (As-Sequence Container Element) => (Element -> Maybe Result) -> Container -> Sequence Result
 filter-by : transform -> container -> do {
   base : As-Sequence container
@@ -107,6 +123,8 @@ filter-by : transform -> container -> do {
 }
 
 -- Flatten a sequence of sequences.
+@(highlight-category : "sequence")
+@(highlight-icon : "function")
 flatten :: Outer (infer Inner) (infer Element) where (As-Sequence Outer Inner) (As-Sequence Inner Element) => Outer -> Sequence Element
 flatten : outer -> do {
   outer : As-Sequence outer
@@ -135,6 +153,8 @@ flatten : outer -> do {
 }
 
 -- Find the first item in a sequence that can be transformed into a `Some` value.
+@(highlight-category : "sequence")
+@(highlight-icon : "search")
 find-by :: Collection (infer Element) Result where (As-Sequence Collection Element) => (Element -> Maybe Result) -> Collection -> Maybe Result
 find-by : f -> collection -> do {
   base : As-Sequence collection
@@ -151,6 +171,8 @@ find-by : f -> collection -> do {
 }
 
 -- Reduce a sequence down to a single item.
+@(highlight-category : "sequence")
+@(highlight-icon : "function")
 reduce :: Container (infer Element) Result where (As-Sequence Container Element) => Result (Element -> Result -> Result) -> Container -> Result
 reduce : result f -> container -> do {
   helper :: Element Result => Result (Element -> Result -> Result) -> (Sequence Element) -> Result
@@ -163,6 +185,8 @@ reduce : result f -> container -> do {
 }
 
 -- Find the sum of all the numbers in a sequence.
+@(highlight-category : "sequence")
+@(highlight-icon : "calculate")
 sum :: Container (infer N) where (As-Sequence Container N) (Empty N) (Add N N N) => Container -> N
 sum : reduce Empty (next -> result -> result + next)
 
@@ -172,6 +196,8 @@ Element Container where (Error ("cannot create _ from a sequence of _" Container
   default instance (From-Sequence Element Container) : ...
 
 -- Collect a sequence into a single container, like a list.
+@(highlight-category : "sequence")
+@(highlight-icon : "list-alt")
 collect :: Input (infer Element) (Output : List Element) where (As-Sequence Input Element) (From-Sequence Element Output) => Input -> Output
 collect : collection -> From-Sequence (As-Sequence collection)
 
@@ -213,10 +239,14 @@ instance (From-Sequence () ()) : sequence -> repeat with-control-flow {
 }
 
 -- Perform an action for each item in a sequence.
+@(highlight-category : "sequence")
+@(highlight-icon : "checklist")
 each :: Container (infer Element) where (As-Sequence Container Element) => (Element -> Unit) -> Container -> Unit
 each : action -> container -> container . transform action . collect
 
 -- Split a sequence into groups of consecutive items satisfying a condition.
+@(highlight-category : "sequence")
+@(highlight-icon : "arrow-split")
 split-by :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Sequence (List Element)
 split-by : separator -> collection -> do {
   base : As-Sequence collection
@@ -252,10 +282,14 @@ split-by : separator -> collection -> do {
 }
 
 -- Split a sequence into groups of consecutive items equal to a value.
+@(highlight-category : "sequence")
+@(highlight-icon : "arrow-split")
 split :: Collection (infer Element) where (As-Sequence Collection Element) (Equal Element) => Element -> Collection -> Sequence (List Element)
 split : separator -> split-by (item -> item = separator)
 
 -- Count the number of items in a sequence.
+@(highlight-category : "sequence")
+@(highlight-icon : "123")
 count :: Collection (infer Element) where (As-Sequence Collection Element) => Collection -> Number
 count : collection -> do {
   sequence : As-Sequence collection
@@ -273,10 +307,14 @@ count : collection -> do {
 }
 
 -- Collect two sequences into a single value.
+@(highlight-category : "sequence")
+@(highlight-icon : "merge-type")
 join :: A B (infer Element) (C : A) where (As-Sequence A Element) (As-Sequence B Element) (From-Sequence Element C) => A B -> C
 join : a b -> collect (flatten ((,) . append (As-Sequence a) . append (As-Sequence b)))
 
 -- Take up to a fixed number of values from a sequence.
+@(highlight-category : "sequence")
+@(highlight-icon : "low-priority")
 take :: Collection (infer Element) where (As-Sequence Collection Element) => Number -> Collection -> Sequence Element
 take : count -> collection -> do {
   base : As-Sequence collection
@@ -293,6 +331,8 @@ take : count -> collection -> do {
 }
 
 -- Find the first item in a sequence that satisfies a condition.
+@(highlight-category : "sequence")
+@(highlight-icon : "search")
 find :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Maybe Element
 find : found? -> collection -> do {
   sequence : As-Sequence collection
@@ -306,6 +346,8 @@ find : found? -> collection -> do {
 }
 
 -- Find the position of the first item in a sequence that satisfies a condition.
+@(highlight-category : "sequence")
+@(highlight-icon : "search")
 find-position :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Maybe Number
 find-position : found? -> collection -> do {
   sequence : As-Sequence collection
@@ -325,6 +367,8 @@ find-position : found? -> collection -> do {
 }
 
 -- Returns `True` if the condition is `True` for all items in the sequence, or if the sequence is empty.
+@(highlight-category : "sequence")
+@(highlight-icon : "help")
 all? :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Boolean
 all? : condition? -> collection -> do {
   helper :: Element => (Element -> Boolean) -> (Sequence Element) -> Boolean
@@ -337,6 +381,8 @@ all? : condition? -> collection -> do {
 }
 
 -- Returns `True` if the condition is `True` for any item in the sequence, or `False` if the sequence is empty.
+@(highlight-category : "sequence")
+@(highlight-icon : "help")
 any? :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Boolean
 any? : condition? -> collection -> do {
   helper :: Element => (Element -> Boolean) -> (Sequence Element) -> Boolean
@@ -349,6 +395,8 @@ any? : condition? -> collection -> do {
 }
 
 -- Create a sequence that takes values from two sequences at a time until either sequence runs out.
+@(highlight-category : "sequence")
+@(highlight-icon : "sync-alt")
 zip :: Left (infer Left-Element) Right (infer Right-Element) where (As-Sequence Left Left-Element) (As-Sequence Right Right-Element) => Left Right -> Sequence (Left-Element ; Right-Element)
 zip : left right -> do {
   left : As-Sequence left
@@ -365,6 +413,8 @@ zip : left right -> do {
 -- Create a sequence that maintains a counter indicating the number of elements
 -- produced. For example, `enumerate ("a" , "b" , "c")` produces `(0 ; "a")`,
 -- `(1 ; "b")`, and `(2 ; "c")`.
+@(highlight-category : "sequence")
+@(highlight-icon : "123")
 enumerate :: Collection (infer Element) where (As-Sequence Collection Element) => Collection -> Sequence (Number ; Element)
 enumerate : collection -> zip (0 to undefined by 1) collection
 
@@ -372,6 +422,8 @@ Extend : Container (infer Element) => trait ((Sequence Element) -> Container -> 
 Element => instance (Extend (List Element) Element) : sequence -> list -> sequence . reduce list append
 
 -- Append the contents of a sequence to a collection.
+@(highlight-category : "sequence")
+@(highlight-icon : "library-add")
 extend :: From Container (infer Element) where (As-Sequence From Element) (Extend Container Element) => From -> Container -> Container
 extend : collection -> Extend (As-Sequence collection)
 
@@ -391,12 +443,16 @@ Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-El
 }
 
 -- Split a sequence that produces two values at a time into two separate collections.
+@(highlight-category : "sequence")
+@(highlight-icon : "sync-alt")
 unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element ; Right-Element)) (Extend Left Left-Element) (Extend Right Right-Element) (Empty Left) (Empty Right) => Collection -> (Left ; Right)
 unzip : collection -> (Empty ; Empty) . extend (As-Sequence collection)
 
 Container : Collection (infer Element) => trait (Element -> Collection -> Boolean)
 
 -- Returns `True` if the collection contains the element.
+@(highlight-category : "sequence")
+@(highlight-icon : "help")
 contains? :: Collection (infer Element) where (Container Collection Element) => Element -> Collection -> Boolean
 contains? : Container
 

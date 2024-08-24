@@ -52,6 +52,7 @@ export const theme = new Compartment();
 export const highlightCategories: Record<string, string> = {
     "control-flow": "bg-opacity-30 bg-orange-300 text-orange-500",
     io: "bg-opacity-30 bg-yellow-300 text-yellow-500",
+    sequence: "bg-opacity-30 bg-teal-300 text-teal-500",
     unit: "bg-opacity-30 bg-sky-300 text-sky-500",
     "turtle-motion": "bg-opacity-30 bg-green-300 text-green-500",
     "turtle-turn": "bg-opacity-30 bg-blue-300 text-blue-500",
