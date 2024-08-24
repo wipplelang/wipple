@@ -56,6 +56,73 @@ intrinsic ":"
 -- ```
 intrinsic "->"
 
+-- Annotate the type of a value.
+--
+-- Before running your code, Wipple needs to know what kind of data that code
+-- will produce when it runs — for example, a number or a piece of text. That
+-- way, Wipple can tell the computer how much space it needs in its memory to
+-- store the data. A **type** is a description of that data, and begins with a
+-- capital letter — for example, `Number` represents a numeric piece of data,
+-- and `Text` represents a list of characters. All pieces of code must be
+-- assigned a type in Wipple.
+--
+-- Most of the time, Wipple can figure out the type of your code automatically —
+-- if you have `pi : 3.14`, for example, then `pi` will be given the type
+-- `Number` automatically. But in some cases, there isn't enough information for
+-- Wipple to determine the type, and that's what the `::` operator is for.
+--
+-- The `::` operator allows you to explicitly define the type of a variable or
+-- expression:
+--
+-- ```wipple
+-- pi : (3.14 :: Number)
+-- ```
+--
+-- You can also put the `::` on its own line:
+--
+-- ```wipple
+-- pi :: Number
+-- pi : 3.14
+-- ```
+--
+-- When you write `pi :: Number` on its own line, `pi` is represented as a
+-- **constant** instead of a variable. This means you can access `pi` from
+-- anywhere in your program, not just after its definition. As a result, `pi`'s
+-- value is computed every time you refer to `pi`. This isn't usually a problem
+-- because most constants produce numbers, functions, or other values that don't
+-- directly change, but it's important to keep this behavior in mind when
+-- defining constants with side effects (eg. displaying a message on the screen
+-- or returning a random number).
+--
+-- Constants may also be **generic** using type functions — see the
+-- documentation for `=>` to learn more.
+intrinsic "::"
+
+-- Define a type function.
+--
+-- Type functions are conceptually similar to functions defined using `->`, but
+-- instead of operating on values, they accept and produce **types**. You use
+-- `=>` in combination with a `type`, `trait`, `instance`, or constant
+-- definition to make the definition **generic**:
+--
+-- ```wipple
+-- identity :: Value => Value -> Value
+-- identity : x -> x
+--
+-- show (identity 5) -- 5
+-- show (identity "Hello!") -- Hello
+-- show ((identity identity) True) -- True (works with functions, too!)
+-- ```
+--
+-- You can use `where` to add constraints on the input types using traits. See
+-- the documentation for `where` and `trait` for more information.
+--
+-- ```wipple
+-- add :: Left Right Sum where (Add Left Right Sum) => Left Right -> Sum
+-- add : a b -> a + b
+-- ```
+intrinsic "=>"
+
 @(language : "number")
 Number : type intrinsic
 
