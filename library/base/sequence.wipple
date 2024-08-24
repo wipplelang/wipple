@@ -1,9 +1,31 @@
 -- A container for a sequence that produces the next value on demand.
 Sequence : Element => type ({Maybe Element})
 
+-- Retrieve the next item in a sequence.
+next :: Element => (Sequence Element) -> Maybe Element
+next : (Sequence next) -> do next
+
 -- Produce an infinite sequence.
 sequence :: Element => {Element} -> Sequence Element
 sequence : next -> Sequence {Some (do next)}
+
+-- Create a sequence that always produces the provided element.
+--
+-- ## Example
+--
+-- ```wipple
+-- my-sequence : always "Hello, world!"
+-- show (next my-sequence) -- Hello, world!
+-- show (next my-sequence) -- Hello, world!
+-- show (next my-sequence) -- Hello, world!
+-- ```
+always :: Element => Element -> Sequence Element
+always : element -> Sequence {Some element}
+
+-- Create a sequence that produces the provided element a certain number of
+-- times. `element . replicate n` is equivalent to `always element . take n`.
+replicate :: Element => Number -> Element -> Sequence Element
+replicate : n -> element -> always element . take n
 
 -- Build a sequence from an initial item and a transform function.
 build-sequence :: Element => (Maybe Element) (Element -> Maybe Element) -> Sequence Element
@@ -20,10 +42,6 @@ build-sequence : initial transform -> do {
     }
   }
 }
-
--- Retrieve the next item in a sequence.
-next :: Element => (Sequence Element) -> Maybe Element
-next : (Sequence next) -> do next
 
 -- Convert a collection into a sequence.
 As-Sequence : Container (infer Element) => trait (Container -> Sequence Element)
