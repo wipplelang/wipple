@@ -1,8 +1,11 @@
 //! Compiler pass that determines the type of every expression in the program
 //! and resolves constants and traits to concrete items.
 
+mod debug;
 pub mod exhaustiveness;
-mod resolve;
+mod infer;
+mod items;
+mod utils;
 
 use derivative::Derivative;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -77,7 +80,7 @@ pub trait Driver: Sized + 'static {
 
 /// Internal representation of constants, instances, and top-level code for
 /// typechecking.
-pub struct ItemDeclaration<D: Driver>(resolve::ItemDeclarationInner<D>);
+pub struct ItemDeclaration<D: Driver>(items::ItemDeclarationInner<D>);
 
 /// Internal trait for converting constants, instances, and top-level code into
 /// the same representation for typechecking.
@@ -95,7 +98,7 @@ pub fn resolve<D: Driver>(
     driver: &D,
     item_declaration: impl IntoItemDeclaration<D>,
 ) -> crate::Result<D> {
-    resolve::resolve(driver, item_declaration)
+    infer::resolve(driver, item_declaration)
 }
 
 /// The result of [`resolve`].
@@ -120,7 +123,7 @@ pub fn instances_overlap<D: Driver>(
     r#trait: &D::Path,
     instances: Vec<D::Path>,
 ) -> Vec<WithInfo<D::Info, Diagnostic<D>>> {
-    resolve::instances_overlap(driver, r#trait, instances)
+    utils::instances_overlap(driver, r#trait, instances)
 }
 
 /// Check for inexhaustive bindings and `when` expressions.
@@ -149,12 +152,12 @@ pub fn resolve_trait_type_from_instance<D: Driver>(
     driver: &D,
     instance: WithInfo<D::Info, &crate::Instance<D>>,
 ) -> Option<WithInfo<D::Info, crate::Type<D>>> {
-    resolve::resolve_trait_type_from_instance(driver, instance)
+    utils::resolve_trait_type_from_instance(driver, instance)
 }
 
 /// Substitute the default types for type parameters mentioned in `r#type`.
 pub fn substitute_defaults<D: Driver>(driver: &D, r#type: WithInfo<D::Info, &mut crate::Type<D>>) {
-    resolve::substitute_defaults_in_parameters(driver, r#type)
+    utils::substitute_defaults_in_parameters(driver, r#type)
 }
 
 /// Resolve an attribute-like trait, where the first parameter is the provided
@@ -165,7 +168,7 @@ pub fn resolve_attribute_like_trait<D: Driver>(
     r#type: WithInfo<D::Info, &Type<D>>,
     number_of_parameters: u32,
 ) -> Option<Vec<WithInfo<D::Info, Type<D>>>> {
-    resolve::resolve_attribute_like_trait(driver, language_item, r#type, number_of_parameters)
+    utils::resolve_attribute_like_trait(driver, language_item, r#type, number_of_parameters)
 }
 
 /// An error occurring during typechecking.

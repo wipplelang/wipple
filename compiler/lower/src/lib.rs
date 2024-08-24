@@ -1,6 +1,18 @@
 //! Compiler pass that resolves names.
 
+mod attribute;
+mod constructors;
+mod expression;
+mod info;
+mod language;
+mod name;
+mod operator;
+mod pattern;
 mod resolve;
+mod scope;
+mod statements;
+mod r#type;
+mod utils;
 
 use derivative::Derivative;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
