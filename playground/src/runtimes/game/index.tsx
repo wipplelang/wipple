@@ -187,13 +187,6 @@ export const Game: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     );
 });
 
-export const assetItems: PaletteItem[] = [
-    {
-        title: <ColorAsset color="#3b82f6" tooltip={false} />,
-        code: `[Color "#3b82f6"]`,
-    },
-];
-
 export const paletteItems: PaletteItem[] = [
     {
         title: "locate",
@@ -222,5 +215,6 @@ export const paletteItems: PaletteItem[] = [
     {
         title: "frame",
         code: "frame {\n  _\n}",
+        replace: true,
     },
 ];

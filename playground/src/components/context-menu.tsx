@@ -6,7 +6,7 @@ import {
     useFloating,
     useInteractions,
 } from "@floating-ui/react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { MaterialSymbol, MaterialSymbolProps } from "react-material-symbols";
 import { Tooltip, Transition, TutorialItem, defaultAnimationDuration } from ".";
 
@@ -60,6 +60,10 @@ export const ContextMenuButton = (props: {
         }
     }, [props.disabled]);
 
+    const handleDismiss = useCallback(() => {
+        setActive(false);
+    }, []);
+
     return (
         <>
             <Tooltip description={props.description} disabled={props.disabled}>
@@ -82,7 +86,7 @@ export const ContextMenuButton = (props: {
                             inStyle={{ opacity: 1, y: 0 }}
                             outStyle={{ opacity: 0, y: "-0.25rem" }}
                         >
-                            <ContextMenu items={props.items} onDismiss={() => setActive(false)} />
+                            <ContextMenu items={props.items} onDismiss={handleDismiss} />
                         </Transition>
                     </div>
                 </FloatingPortal>

@@ -186,13 +186,6 @@ export const Math: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     );
 });
 
-export const assetItems: PaletteItem[] = [
-    {
-        title: <ColorAsset color="#3b82f6" tooltip={false} />,
-        code: `[Color "#3b82f6"]`,
-    },
-];
-
 export const paletteItems: PaletteItem[] = [
     {
         title: "plot",
