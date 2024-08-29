@@ -358,7 +358,28 @@ pub fn resolve<D: Driver>(
     let mut errors = errors;
     report_queued_errors(driver, &mut queued.type_context, error_queue, &mut errors);
 
+    // Remove `UnresolvedInstance` errors where all the types are unknown in
+    // favor of `UnknownType` errors
+
+    let is_unknown_type_error =
+        |error: &WithInfo<_, _>| matches!(error.item, crate::Diagnostic::UnknownType(_));
+
+    let not_unresolved_instance_all_unknown_error = |error: &WithInfo<_, _>| {
+        !matches!(
+            &error.item,
+            crate::Diagnostic::UnresolvedInstance { instance, ..}
+                if instance.parameters.iter().all(|r#type| matches!(r#type.item, crate::Type::Unknown))
+        )
+    };
+
+    if errors.iter().any(is_unknown_type_error)
+        && errors.iter().any(not_unresolved_instance_all_unknown_error)
+    {
+        errors.retain(not_unresolved_instance_all_unknown_error);
+    }
+
     // Remove `UnknownType` errors in favor of other errors
+
     let not_unknown_type_error =
         |error: &WithInfo<_, _>| !matches!(error.item, crate::Diagnostic::UnknownType(_));
 
