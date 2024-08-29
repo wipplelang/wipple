@@ -5,10 +5,10 @@ use crate::{
         types::{
             context::TypeContext,
             instantiate::InstantiationContext,
-            unify::{unify, unify_instance, unify_instance_with_options, UnifyOptions},
+            unify::{unify_instance, unify_instance_with_options, UnifyOptions},
             Instance, Type, TypeKind,
         },
-        ExpressionKind, FinalizeContext, FormattedText, ResolveContext,
+        FormattedText, ResolveContext,
     },
     Driver,
 };
@@ -372,137 +372,5 @@ pub fn resolve_custom_reason<D: Driver>(
             }
         }
         _ => {}
-    }
-}
-
-pub fn refine_mismatch_error<D: Driver>(
-    info: &mut D::Info,
-    actual: &mut Type<D>,
-    expected: &mut Type<D>,
-    finalize_context: &mut FinalizeContext<'_, D>,
-) {
-    actual.apply_in_context_mut(finalize_context.type_context);
-    expected.apply_in_context_mut(finalize_context.type_context);
-
-    loop {
-        let prev_actual = actual.clone();
-        let prev_expected = expected.clone();
-
-        // Highlight the last statement in a 'do' block instead of the entire block
-        if let Some(actual_expression_id) = actual.expression {
-            let actual_expression = finalize_context
-                .type_context
-                .tracked_expression(actual_expression_id);
-
-            if let ExpressionKind::Do(block_expression) = &actual_expression.item.kind {
-                if let ExpressionKind::Block { statements, .. } = &block_expression.item.kind {
-                    if let Some(last_statement) = statements.last() {
-                        *info = last_statement.info.clone();
-                        *actual = last_statement.item.r#type.clone();
-                    }
-                }
-            }
-        }
-
-        // Highlight the call expression instead of the function if the output
-        // is mismatched
-        if let TypeKind::Function {
-            inputs: actual_inputs,
-            output: actual_output,
-        } = &actual.kind
-        {
-            if let TypeKind::Function {
-                inputs: expected_inputs,
-                output: expected_output,
-            } = &expected.kind
-            {
-                if actual_inputs.len() == expected_inputs.len()
-                    && actual_inputs
-                        .iter()
-                        .zip(expected_inputs)
-                        .all(|(actual, expected)| {
-                            unify(
-                                finalize_context.driver,
-                                actual,
-                                expected,
-                                finalize_context.type_context,
-                            )
-                        })
-                {
-                    if let Some(actual_parent_expression_id) = actual.parent_expression {
-                        let actual_parent_expression = finalize_context
-                            .type_context
-                            .tracked_expression(actual_parent_expression_id);
-
-                        if let ExpressionKind::Call { function, .. } =
-                            &actual_parent_expression.item.kind
-                        {
-                            if function.info == actual.info {
-                                let actual_output = actual_output.as_ref().clone();
-                                let expected_output = expected_output.as_ref().clone();
-
-                                *info = actual_parent_expression.info.clone();
-                                *expected = actual_output;
-                                *actual = expected_output;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Track down the source of a mismatched function output
-        if let TypeKind::Function {
-            inputs: actual_inputs,
-            output: actual_output,
-        } = &actual.kind
-        {
-            if let TypeKind::Function {
-                inputs: expected_inputs,
-                output: expected_output,
-            } = &expected.kind
-            {
-                if actual_inputs.len() == expected_inputs.len()
-                    && actual_inputs
-                        .iter()
-                        .zip(expected_inputs)
-                        .all(|(actual, expected)| {
-                            unify(
-                                finalize_context.driver,
-                                actual,
-                                expected,
-                                finalize_context.type_context,
-                            )
-                        })
-                    && !unify(
-                        finalize_context.driver,
-                        actual_output,
-                        expected_output,
-                        finalize_context.type_context,
-                    )
-                {
-                    if let Some(actual_expression_id) = actual.expression {
-                        let actual_expression = finalize_context
-                            .type_context
-                            .tracked_expression(actual_expression_id);
-
-                        // Don't look inside constants/traits/etc. to refine the
-                        // error message
-                        if !actual_expression.item.kind.is_reference() {
-                            *info = actual_output.info.clone();
-                            *actual = actual_output.as_ref().clone();
-                            *expected = expected_output.as_ref().clone();
-                        }
-                    }
-                }
-            }
-        }
-
-        // TODO: If the error involves `A = B` on both sides, replace it with
-        // "expected `A` but found `B`"
-
-        if prev_actual == *actual && prev_expected == *expected {
-            break;
-        }
     }
 }

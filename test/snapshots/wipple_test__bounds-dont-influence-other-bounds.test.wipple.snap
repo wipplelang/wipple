@@ -2,4 +2,4 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/bounds-dont-influence-other-bounds.test.wipple:12:1: error: `(f :: (Number ; _))` requires `T _`
+tests/bounds-dont-influence-other-bounds.test.wipple:12:1: error: this code produces `Number ; _`, but the `_`s are unknown

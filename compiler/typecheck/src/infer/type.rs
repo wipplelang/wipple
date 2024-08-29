@@ -1,6 +1,6 @@
 use crate::{
     infer::{
-        errors::{ErrorReason, QueuedError},
+        errors::{refine_unknown_type_for_error, ErrorReason, QueuedError},
         types::{context::TypeContext, Instance, Type, TypeKind},
         FinalizeContext, FormatSegment,
     },
@@ -180,14 +180,22 @@ pub fn finalize_type<D: Driver>(
         }
     }
 
+    let refined_info = refine_unknown_type_for_error(&r#type, context);
+
     let mut fully_resolved = true;
     let finalized_type = finalize_type_inner(r#type, context, &mut fully_resolved);
 
     if report_error && !fully_resolved {
         if let Some(errors) = context.errors.as_deref_mut() {
-            errors.push(WithInfo {
-                info: finalized_type.info.clone(),
-                item: crate::Diagnostic::UnknownType(finalized_type.item.clone()),
+            errors.push(match refined_info {
+                Some(info) => WithInfo {
+                    info,
+                    item: crate::Diagnostic::UnknownType(crate::Type::Unknown),
+                },
+                None => WithInfo {
+                    info: finalized_type.info.clone(),
+                    item: crate::Diagnostic::UnknownType(finalized_type.item.clone()),
+                },
             });
         }
     }

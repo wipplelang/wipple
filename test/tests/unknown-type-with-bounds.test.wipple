@@ -1,0 +1,8 @@
+-- [should error]
+
+T : Value => trait Value
+
+x :: Value where (T Value) => Value
+x : T
+
+x -- error: unknown type, NOT error: requires `T _`

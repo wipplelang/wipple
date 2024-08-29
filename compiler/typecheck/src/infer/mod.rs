@@ -6,19 +6,15 @@ pub mod r#trait;
 pub mod r#type;
 pub mod types;
 
-use crate::infer::{
-    errors::QueuedError,
-    types::{Type, TypeVariable},
-};
 use crate::{
     infer::{
-        errors::report_queued_errors,
+        errors::{report_queued_errors, QueuedError},
         expression::{
             finalize_expression, infer_expression, resolve_expression,
             substitute_defaults_in_expression,
         },
         r#type::{infer_instance, infer_type},
-        types::{context::TypeContext, unify::try_unify_expression, Instance},
+        types::{context::TypeContext, unify::try_unify_expression, Instance, Type, TypeVariable},
     },
     Driver,
 };
@@ -358,7 +354,28 @@ pub fn resolve<D: Driver>(
     let mut errors = errors;
     report_queued_errors(driver, &mut queued.type_context, error_queue, &mut errors);
 
+    // Remove `UnresolvedInstance` errors where all the types are unknown in
+    // favor of `UnknownType` errors
+
+    let is_unknown_type_error =
+        |error: &WithInfo<_, _>| matches!(error.item, crate::Diagnostic::UnknownType(_));
+
+    let not_unresolved_instance_all_unknown_error = |error: &WithInfo<_, _>| {
+        !matches!(
+            &error.item,
+            crate::Diagnostic::UnresolvedInstance { instance, ..}
+                if instance.parameters.iter().all(|r#type| matches!(r#type.item, crate::Type::Unknown))
+        )
+    };
+
+    if errors.iter().any(is_unknown_type_error)
+        && errors.iter().any(not_unresolved_instance_all_unknown_error)
+    {
+        errors.retain(not_unresolved_instance_all_unknown_error);
+    }
+
     // Remove `UnknownType` errors in favor of other errors
+
     let not_unknown_type_error =
         |error: &WithInfo<_, _>| !matches!(error.item, crate::Diagnostic::UnknownType(_));
 
