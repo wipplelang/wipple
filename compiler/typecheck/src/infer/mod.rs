@@ -6,19 +6,15 @@ pub mod r#trait;
 pub mod r#type;
 pub mod types;
 
-use crate::infer::{
-    errors::QueuedError,
-    types::{Type, TypeVariable},
-};
 use crate::{
     infer::{
-        errors::report_queued_errors,
+        errors::{report_queued_errors, QueuedError},
         expression::{
             finalize_expression, infer_expression, resolve_expression,
             substitute_defaults_in_expression,
         },
         r#type::{infer_instance, infer_type},
-        types::{context::TypeContext, unify::try_unify_expression, Instance},
+        types::{context::TypeContext, unify::try_unify_expression, Instance, Type, TypeVariable},
     },
     Driver,
 };

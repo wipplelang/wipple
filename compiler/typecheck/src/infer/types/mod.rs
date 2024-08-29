@@ -45,6 +45,13 @@ impl<D: Driver> Type<D> {
         self
     }
 
+    pub fn is_currently_unknown(&self) -> bool {
+        matches!(
+            self.kind,
+            TypeKind::Variable(_) | TypeKind::Opaque(_) | TypeKind::Unknown
+        )
+    }
+
     pub fn contains_variable(&self, variable: &TypeVariable<D>) -> bool {
         match &self.kind {
             TypeKind::Variable(var) => var.counter == variable.counter,
