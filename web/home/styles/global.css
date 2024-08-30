@@ -46,6 +46,10 @@ pre code {
     @apply bg-white text-black;
 }
 
+.btn.btn-gray {
+    @apply bg-gray-50 text-sky-500;
+}
+
 .btn.btn-blue {
     @apply bg-sky-500 text-white;
 }
