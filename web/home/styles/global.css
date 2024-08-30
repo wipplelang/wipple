@@ -42,12 +42,14 @@ pre code {
     text-decoration: none;
 }
 
-.btn.btn-white {
-    @apply bg-white text-black;
-}
-
 .btn.btn-gray {
     @apply bg-gray-50 text-sky-500;
+}
+
+@media (prefers-color-scheme: dark) {
+    .btn.btn-gray {
+        @apply bg-gray-800 text-sky-400;
+    }
 }
 
 .btn.btn-blue {
