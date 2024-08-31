@@ -1,4 +1,5 @@
 export interface PaletteItem {
-    title: string | JSX.Element;
+    title: string;
     code: string;
+    replace?: boolean;
 }

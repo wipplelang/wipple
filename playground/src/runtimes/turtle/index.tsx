@@ -306,17 +306,6 @@ function rescaleCanvas(canvas: any) {
 
 export { turtleImage };
 
-export const assetItems: PaletteItem[] = [
-    {
-        title: <ColorAsset color="#3b82f6" tooltip={false} />,
-        code: `[Color "#3b82f6"]`,
-    },
-    {
-        title: <AnimalAsset animal="frog" tooltip={false} />,
-        code: `[Animal "frog"]`,
-    },
-];
-
 export const paletteItems: PaletteItem[] = [
     {
         title: "forward",
@@ -349,5 +338,6 @@ export const paletteItems: PaletteItem[] = [
     {
         title: "repeat",
         code: `repeat ([Dropdown (1 , 2 , 3 , 4 , 5 , 10 , 20 , 50 , 100) 1] times) {\n  _\n}`,
+        replace: true,
     },
 ];

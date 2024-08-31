@@ -138,21 +138,11 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     );
 });
 
-export const assetItems: PaletteItem[] = [
-    {
-        title: <NoteAsset note="C4" tooltip={false} />,
-        code: `[Note "C4"]`,
-    },
-    {
-        title: <InstrumentAsset instrument="acoustic_grand_piano" tooltip={false} />,
-        code: `[Instrument-Name "acoustic_grand_piano"]`,
-    },
-];
-
 export const paletteItems: PaletteItem[] = [
     {
         title: "instrument",
         code: 'instrument [Instrument-Name "acoustic_grand_piano"] {\n  _\n}',
+        replace: true,
     },
     {
         title: "note",
@@ -169,5 +159,6 @@ export const paletteItems: PaletteItem[] = [
     {
         title: "repeat",
         code: `repeat ([Dropdown (1 , 2 , 3 , 4 , 5 , 10 , 20 , 50 , 100) 1] times) {\n  _\n}`,
+        replace: true,
     },
 ];

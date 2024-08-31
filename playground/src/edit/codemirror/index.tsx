@@ -1,15 +1,19 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { EditorView, minimalSetup } from "codemirror";
-import { placeholder, keymap, dropCursor, Rect } from "@codemirror/view";
-import { Compartment, EditorSelection, EditorState, Extension } from "@codemirror/state";
+import { placeholder, keymap, Rect } from "@codemirror/view";
+import { Compartment, EditorState, Extension } from "@codemirror/state";
 import { defaultKeymap, indentWithTab } from "@codemirror/commands";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { indentOnInput } from "@codemirror/language";
 import { wippleLanguage } from "./language";
 import { ThemeConfig, theme, themeFromConfig } from "./theme";
-import { Help } from "../../models";
 import { diagnostics, diagnosticsFromConfig } from "./diagnostics";
 import { AssetClickHandler, assets, assetsFromConfig } from "./assets";
+
+export interface Snippet {
+    code: string;
+    replace: boolean;
+}
 
 export interface CodeMirrorProps {
     children: string;
@@ -17,7 +21,6 @@ export interface CodeMirrorProps {
     autoFocus: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
-    onDrop?: () => void;
     onLongPress?: (position: number, rect: Rect) => void;
     onClickAsset: AssetClickHandler;
     readOnly: boolean;
@@ -32,9 +35,8 @@ export interface CodeMirrorRef {
 
 const editable = new Compartment();
 
-const editableFromConfig = (config: { readOnly: boolean; onDrop?: () => void }): Extension => [
+const editableFromConfig = (config: { readOnly: boolean }): Extension => [
     EditorView.editable.of(!config.readOnly),
-    config.readOnly ? [] : dragAndDrop(config.readOnly),
 ];
 
 export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref) => {
@@ -79,21 +81,12 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                     editable.of(
                         editableFromConfig({
                             readOnly: props.readOnly,
-                            onDrop: props.onDrop,
                         }),
                     ),
 
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
                             props.onChange(update.state.doc.toString());
-                        }
-
-                        if (
-                            update.transactions.some((transaction) =>
-                                transaction.isUserEvent("wipple.drop"),
-                            )
-                        ) {
-                            props.onDrop?.();
                         }
 
                         if (update.focusChanged) {
@@ -142,6 +135,8 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
         editorView.current = new EditorView(config);
 
+        containerRef.current!.draggable = true;
+
         return () => {
             editorView.current?.destroy();
         };
@@ -149,6 +144,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
     useImperativeHandle(ref, () => ({
         editorView: editorView.current!,
+        highlight: (name: string) => {},
     }));
 
     useEffect(() => {
@@ -168,11 +164,10 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
             effects: editable.reconfigure(
                 editableFromConfig({
                     readOnly: props.readOnly,
-                    onDrop: props.onDrop,
                 }),
             ),
         });
-    }, [props.readOnly, props.onDrop]);
+    }, [props.readOnly]);
 
     useEffect(() => {
         editorView.current!.dispatch({
@@ -212,96 +207,37 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
     return <div ref={containerRef} />;
 });
 
-const dragAndDrop = (readOnly: boolean) => [
-    EditorView.domEventHandlers({
-        dragover: (event) => event.preventDefault(),
-        drop: (event, view) => {
-            if (readOnly) {
-                return;
-            }
-
-            if (!event.dataTransfer) {
-                return;
-            }
-
-            let snippetJson = event.dataTransfer.getData("wipple/snippet");
-            if (!snippetJson) {
-                return;
-            }
-
-            let { code, insertLine } = JSON.parse(snippetJson);
-
-            const position = view.posAtCoords({ x: event.clientX, y: event.clientY }, false);
-
-            if (
-                !view.state.selection.main.empty &&
-                position >= view.state.selection.main.from &&
-                position <= view.state.selection.main.to
-            ) {
-                code = code.replace(
-                    "_",
-                    view.state.sliceDoc(
-                        view.state.selection.main.from,
-                        view.state.selection.main.to,
-                    ),
-                );
-
-                view.dispatch({
-                    changes: {
-                        from: view.state.selection.main.from,
-                        to: view.state.selection.main.to,
-                        insert: code,
-                    },
-                    userEvent: "wipple.drop",
-                    selection: EditorSelection.cursor(view.state.selection.main.to),
-                });
-            } else {
-                const replace = /\b_\b/.test(code);
-                code = code.replace(/\b_\b/, view.state.sliceDoc());
-
-                if (replace) {
-                    view.dispatch({
-                        changes: {
-                            from: 0,
-                            to: view.state.doc.length,
-                            insert: code,
-                        },
-                        userEvent: "wipple.drop",
-                    });
-                } else {
-                    let leftPadding: string;
-                    let rightPadding: string;
-                    let insertPosition: number;
-                    if (insertLine) {
-                        leftPadding = "";
-                        rightPadding = "\n";
-                        let endOfLine = view.state.doc.lineAt(position).to;
-                        if (endOfLine === view.state.doc.length) {
-                            leftPadding = "\n";
-                        } else {
-                            endOfLine += 1;
-                        }
-
-                        insertPosition = endOfLine;
-                    } else {
-                        leftPadding = " ";
-                        rightPadding = " ";
-                        insertPosition = position;
-                    }
-
-                    view.dispatch({
-                        changes: {
-                            from: insertPosition,
-                            to: insertPosition,
-                            insert: leftPadding + code + rightPadding,
-                        },
-                        userEvent: "wipple.drop",
-                    });
-                }
-            }
-        },
-    }),
-    dropCursor(),
-];
-
 export { getTokenAtPos } from "./token";
+
+export const insertSnippet = (view: EditorView, snippet: Snippet, line: number) => {
+    if (snippet.replace) {
+        const code = snippet.code.replace(/\b_\b/, view.state.sliceDoc());
+
+        view.dispatch({
+            changes: {
+                from: 0,
+                to: view.state.doc.length,
+                insert: code,
+            },
+        });
+    } else {
+        let endOfLine = line === -1 ? 0 : view.state.doc.line(line + 1).to;
+
+        const isBeginningOfDocument = endOfLine === 0;
+        const isEndOfDocument = endOfLine === view.state.doc.length;
+        if (!isBeginningOfDocument && !isEndOfDocument) {
+            endOfLine += 1;
+        }
+
+        const leftPadding = isEndOfDocument ? "\n" : "";
+        const rightPadding = !isBeginningOfDocument && isEndOfDocument ? "" : "\n";
+
+        view.dispatch({
+            changes: {
+                from: endOfLine,
+                to: endOfLine,
+                insert: leftPadding + snippet.code + rightPadding,
+            },
+        });
+    }
+};

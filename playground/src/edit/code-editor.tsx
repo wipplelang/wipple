@@ -13,12 +13,12 @@ import {
     defaultAnimationDuration,
     useAlert,
 } from "../components";
-import { CodeMirror, CodeMirrorRef } from "./codemirror";
+import { CodeMirror, CodeMirrorRef, insertSnippet, Snippet } from "./codemirror";
 import * as commands from "@codemirror/commands";
 import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol } from "react-material-symbols";
-import { ThemeConfig } from "./codemirror/theme";
-import { Help, IntelligentFix, PaletteItem } from "../models";
+import { highlightCategories, ThemeConfig } from "./codemirror/theme";
+import { Help, IntelligentFix, type PaletteItem as DraggablePaletteItem } from "../models";
 import { useWindowSize } from "usehooks-ts";
 import { HelpAlert } from "./help-alert";
 import { ColorPicker } from "./color-picker";
@@ -50,6 +50,9 @@ import {
 } from "@floating-ui/react";
 import { getTokenAtPos } from "./codemirror";
 import { Rect } from "@codemirror/view";
+import { nanoid } from "nanoid";
+import { DndContext, DragOverlay, useDraggable, useDroppable } from "@dnd-kit/core";
+import { CSS } from "@dnd-kit/utilities";
 
 export function CodeEditor<Settings>(props: {
     children: string;
@@ -70,6 +73,8 @@ export function CodeEditor<Settings>(props: {
     onDelete: () => void;
     onReset?: () => void;
 }) {
+    const numberOfLines = useMemo(() => props.children.split("\n").length, [props.children]);
+
     const [isFocused, setFocused] = useState(props.autofocus ?? false);
 
     useEffect(() => {
@@ -89,6 +94,21 @@ export function CodeEditor<Settings>(props: {
     const [diagnostics, setDiagnostics] = useState<any[]>([]);
     const [driverDiagnostics, setDriverDiagnostics] = useState<any[]>([]);
     const [highlightItems, setHighlightItems] = useState<Record<string, any>>({});
+
+    const highlight = useCallback(
+        (name: string) => {
+            const highlightItem = highlightItems[name];
+            if (!highlightItem) {
+                return {};
+            }
+
+            return {
+                icon: highlightItem.icon,
+                className: highlightCategories[highlightItem.category],
+            };
+        },
+        [highlightItems],
+    );
 
     const codeMirrorRef = useRef<CodeMirrorRef>(null);
     const runnerRef = useRef<RunnerRef>(null);
@@ -456,6 +476,12 @@ export function CodeEditor<Settings>(props: {
         };
     }, [helpFloatingRefs, dismissHelp]);
 
+    const [draggedSnippet, setDraggedSnippet] = useState<{
+        id: string;
+        preview: JSX.Element;
+        snippet: Snippet;
+    }>();
+
     return (
         <div
             autoFocus={props.autofocus}
@@ -465,198 +491,244 @@ export function CodeEditor<Settings>(props: {
             onBlur={() => setFocused(false)}
         >
             <div className="flex flex-col border-2 border-gray-100 dark:border-gray-800 rounded-md overflow-clip">
-                <div className="flex flex-row items-center justify-between w-full p-1 bg-gray-50 dark:bg-gray-900">
-                    <div className="flex flex-row items-center">
-                        {!props.locked ? (
-                            <ContextMenuButton
-                                items={[
-                                    {
-                                        title: "Move Up",
-                                        icon: "arrow_upward",
-                                        disabled: props.onMoveUp == null,
-                                        onClick: () => props.onMoveUp!(),
-                                    },
-                                    {
-                                        title: "Move Down",
-                                        icon: "arrow_downward",
-                                        disabled: props.onMoveDown == null,
-                                        onClick: () => props.onMoveDown!(),
-                                    },
-                                    {
-                                        title: "Delete",
-                                        icon: "delete",
-                                        role: "destructive",
-                                        onClick: props.onDelete,
-                                    },
-                                ]}
-                            >
-                                <MenuContainer>
-                                    <button className="group transition-colors rounded-md px-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                        <MaterialSymbol icon="more_vert" className="text-lg" />
-                                    </button>
-                                </MenuContainer>
-                            </ContextMenuButton>
-                        ) : null}
+                <DndContext
+                    onDragEnd={({ over }) => {
+                        if (!draggedSnippet || !codeMirrorRef.current) {
+                            return;
+                        }
 
-                        <TutorialItem id="commandsButton">
-                            <PaletteButton
-                                setup={props.runtime?.name}
-                                assets={
-                                    props.runtime
-                                        ? runtimes[props.runtime.name as keyof typeof runtimes]
-                                              .assetItems
-                                        : []
-                                }
-                                items={
-                                    props.runtime
-                                        ? runtimes[props.runtime.name as keyof typeof runtimes]
-                                              .paletteItems
-                                        : defaultPaletteItems
-                                }
-                            />
-                        </TutorialItem>
-                    </div>
+                        setDraggedSnippet(undefined);
 
-                    <div className="flex-1 flex flex-row items-center justify-end gap-1">
-                        <TutorialItem id="editButton">
-                            <ActionsButton
-                                onSelectAll={() => runCommand(commands.selectAll)}
-                                onUndo={() => runCommand(commands.undo)}
-                                onRedo={() => runCommand(commands.redo)}
-                                onFormat={format}
-                                onSuggestFixes={
-                                    lineDiagnostics.length > 0 ? requestIntelligentFixes : undefined
-                                }
-                                onReset={props.onReset}
-                            />
-                        </TutorialItem>
-                    </div>
-                </div>
+                        if (over) {
+                            const line = over.id as number;
 
-                <AddLineButton
-                    direction="start"
-                    disabled={false}
-                    onClick={() => onAddLine("start")}
-                />
+                            insertSnippet(
+                                codeMirrorRef.current.editorView,
+                                draggedSnippet.snippet,
+                                line,
+                            );
 
-                <div className="relative pb-[3px]">
-                    <CodeMirror
-                        ref={codeMirrorRef}
-                        autoFocus
-                        onChange={(value) => {
-                            setDiagnostics([]);
-                            setLineIntelligentFixes(undefined);
-                            props.onChange(value);
-                        }}
-                        onDrop={() => {
                             format();
-                        }}
-                        onLongPress={handleLongPress}
-                        readOnly={false}
-                        onClickAsset={onClickAsset}
-                        theme={props.theme}
-                        diagnostics={diagnostics}
-                        highlightItems={highlightItems}
-                    >
-                        {props.children}
-                    </CodeMirror>
+                        }
+                    }}
+                >
+                    <div className="flex flex-row items-center justify-between w-full p-1 bg-gray-50 dark:bg-gray-900">
+                        <div className="flex flex-row items-center">
+                            {!props.locked ? (
+                                <ContextMenuButton
+                                    items={[
+                                        {
+                                            title: "Move Up",
+                                            icon: "arrow_upward",
+                                            disabled: props.onMoveUp == null,
+                                            onClick: () => props.onMoveUp!(),
+                                        },
+                                        {
+                                            title: "Move Down",
+                                            icon: "arrow_downward",
+                                            disabled: props.onMoveDown == null,
+                                            onClick: () => props.onMoveDown!(),
+                                        },
+                                        {
+                                            title: "Delete",
+                                            icon: "delete",
+                                            role: "destructive",
+                                            onClick: props.onDelete,
+                                        },
+                                    ]}
+                                >
+                                    <MenuContainer>
+                                        <button className="group transition-colors rounded-md px-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                            <MaterialSymbol icon="more_vert" className="text-lg" />
+                                        </button>
+                                    </MenuContainer>
+                                </ContextMenuButton>
+                            ) : null}
 
-                    {!animationsSettled
-                        ? null
-                        : lineIntelligentFixes != null
-                        ? lineIntelligentFixes.map(({ top, right, width, intelligentFix }, index) =>
-                              renderBubble(
-                                  index,
-                                  top,
-                                  right,
-                                  <IntelligentFixBubble
-                                      width={width}
-                                      theme={props.theme}
-                                      message={intelligentFix.message}
-                                      onClick={() => {
-                                          props.onChange(intelligentFix.fixedCode);
-                                          setLineIntelligentFixes(undefined);
-                                      }}
-                                  />,
-                              ),
-                          )
-                        : lineDiagnostics.map(({ top, right, width, diagnostic }, index) =>
-                              renderBubble(
-                                  index,
-                                  top,
-                                  right,
-                                  <DiagnosticBubble
-                                      width={width}
-                                      theme={props.theme}
-                                      diagnostic={diagnostic}
-                                      onApplyFix={applyFix}
-                                  />,
-                              ),
-                          )}
-                </div>
+                            <TutorialItem id="commandsButton">
+                                <PaletteButton
+                                    setup={props.runtime?.name}
+                                    items={
+                                        props.runtime
+                                            ? runtimes[props.runtime.name as keyof typeof runtimes]
+                                                  .paletteItems
+                                            : defaultPaletteItems
+                                    }
+                                    highlight={highlight}
+                                    onChangeDraggedSnippet={(id, preview, snippet) => {
+                                        setDraggedSnippet({ id, preview, snippet });
+                                    }}
+                                />
+                            </TutorialItem>
+                        </div>
 
-                <AddLineButton direction="end" disabled={false} onClick={() => onAddLine("end")} />
+                        <div className="flex-1 flex flex-row items-center justify-end gap-1">
+                            <TutorialItem id="editButton">
+                                <ActionsButton
+                                    onSelectAll={() => runCommand(commands.selectAll)}
+                                    onUndo={() => runCommand(commands.undo)}
+                                    onRedo={() => runCommand(commands.redo)}
+                                    onFormat={format}
+                                    onSuggestFixes={
+                                        lineDiagnostics.length > 0
+                                            ? requestIntelligentFixes
+                                            : undefined
+                                    }
+                                    onReset={props.onReset}
+                                />
+                            </TutorialItem>
+                        </div>
+                    </div>
 
-                {animationsSettled ? (
-                    <Animated direction="vertical" clip>
-                        <Runner
-                            ref={runnerRef}
-                            wipple={props.wipple}
-                            options={runOptions}
-                            runtime={
-                                props.runtime != null && props.runtime.name in runtimes
-                                    ? {
-                                          Component:
-                                              runtimes[props.runtime.name as keyof typeof runtimes]
-                                                  .Component,
-                                          settings: props.runtime.settings,
-                                          onChangeSettings: props.runtime.onChangeSettings,
-                                      }
-                                    : undefined
-                            }
-                            hasFocus={runnerHasFocus}
-                            onFocus={() => setRunnerHasFocus(true)}
-                            onBlur={() => setRunnerHasFocus(false)}
-                            onChangeDiagnostics={(diagnostics, driverDiagnostics) => {
-                                setDiagnostics(diagnostics);
-                                setDriverDiagnostics(driverDiagnostics);
+                    <div className="relative pb-[3px]">
+                        <AddLineButton
+                            direction="start"
+                            disabled={false}
+                            onClick={() => onAddLine("start")}
+                        />
+
+                        <CodeMirror
+                            ref={codeMirrorRef}
+                            autoFocus
+                            onChange={(value) => {
+                                setDiagnostics([]);
+                                setLineIntelligentFixes(undefined);
+                                props.onChange(value);
                             }}
-                            onChangeHighlightItems={setHighlightItems}
+                            onLongPress={handleLongPress}
+                            readOnly={false}
+                            onClickAsset={onClickAsset}
+                            theme={props.theme}
+                            diagnostics={diagnostics}
+                            highlightItems={highlightItems}
                         >
                             {props.children}
-                        </Runner>
-                    </Animated>
-                ) : null}
+                        </CodeMirror>
 
-                {help ? (
-                    <FloatingPortal>
-                        <div
-                            ref={helpFloatingRefs.setFloating}
-                            style={helpFloatingStyles}
-                            {...getHelpFloatingProps()}
-                            className="z-20"
-                        >
-                            <div style={{ marginTop: 4 }}>
-                                <TooltipContent open={helpVisible}>
-                                    {help.help.summary}
-
-                                    <button
-                                        className="inline-flex items-center justify-center ml-2 w-5 h-5 align-bottom rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-500 text-lg"
-                                        onClick={() => {
-                                            dismissHelp();
-
-                                            displayAlert(({ dismiss }) => (
-                                                <HelpAlert help={help.help} dismiss={dismiss} />
-                                            ));
-                                        }}
-                                    >
-                                        <MaterialSymbol icon="more_horiz" />
-                                    </button>
-                                </TooltipContent>
+                        {draggedSnippet ? (
+                            <div className="absolute inset-0 bg-blue-500 bg-opacity-10 mb-2">
+                                {draggedSnippet.snippet.replace ? (
+                                    <DropTargetArea />
+                                ) : (
+                                    <DropTargetLines
+                                        numberOfLines={numberOfLines}
+                                        theme={props.theme}
+                                    />
+                                )}
                             </div>
-                        </div>
-                    </FloatingPortal>
-                ) : null}
+                        ) : null}
+
+                        {!animationsSettled
+                            ? null
+                            : lineIntelligentFixes != null
+                            ? lineIntelligentFixes.map(
+                                  ({ top, right, width, intelligentFix }, index) =>
+                                      renderBubble(
+                                          index,
+                                          top,
+                                          right,
+                                          <IntelligentFixBubble
+                                              width={width}
+                                              theme={props.theme}
+                                              message={intelligentFix.message}
+                                              onClick={() => {
+                                                  props.onChange(intelligentFix.fixedCode);
+                                                  setLineIntelligentFixes(undefined);
+                                              }}
+                                          />,
+                                      ),
+                              )
+                            : lineDiagnostics.map(({ top, right, width, diagnostic }, index) =>
+                                  renderBubble(
+                                      index,
+                                      top,
+                                      right,
+                                      <DiagnosticBubble
+                                          width={width}
+                                          theme={props.theme}
+                                          diagnostic={diagnostic}
+                                          onApplyFix={applyFix}
+                                      />,
+                                  ),
+                              )}
+
+                        <AddLineButton
+                            direction="end"
+                            disabled={false}
+                            onClick={() => onAddLine("end")}
+                        />
+                    </div>
+
+                    {animationsSettled ? (
+                        <Animated direction="vertical" clip>
+                            <Runner
+                                ref={runnerRef}
+                                wipple={props.wipple}
+                                options={runOptions}
+                                runtime={
+                                    props.runtime != null && props.runtime.name in runtimes
+                                        ? {
+                                              Component:
+                                                  runtimes[
+                                                      props.runtime.name as keyof typeof runtimes
+                                                  ].Component,
+                                              settings: props.runtime.settings,
+                                              onChangeSettings: props.runtime.onChangeSettings,
+                                          }
+                                        : undefined
+                                }
+                                hasFocus={runnerHasFocus}
+                                onFocus={() => setRunnerHasFocus(true)}
+                                onBlur={() => setRunnerHasFocus(false)}
+                                onChangeDiagnostics={(diagnostics, driverDiagnostics) => {
+                                    setDiagnostics(diagnostics);
+                                    setDriverDiagnostics(driverDiagnostics);
+                                }}
+                                onChangeHighlightItems={setHighlightItems}
+                            >
+                                {props.children}
+                            </Runner>
+                        </Animated>
+                    ) : null}
+
+                    {help ? (
+                        <FloatingPortal>
+                            <div
+                                ref={helpFloatingRefs.setFloating}
+                                style={helpFloatingStyles}
+                                {...getHelpFloatingProps()}
+                                className="z-20"
+                            >
+                                <div style={{ marginTop: 4 }}>
+                                    <TooltipContent open={helpVisible}>
+                                        {help.help.summary}
+
+                                        <button
+                                            className="inline-flex items-center justify-center ml-2 w-5 h-5 align-bottom rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-500 text-lg"
+                                            onClick={() => {
+                                                dismissHelp();
+
+                                                displayAlert(({ dismiss }) => (
+                                                    <HelpAlert help={help.help} dismiss={dismiss} />
+                                                ));
+                                            }}
+                                        >
+                                            <MaterialSymbol icon="more_horiz" />
+                                        </button>
+                                    </TooltipContent>
+                                </div>
+                            </div>
+                        </FloatingPortal>
+                    ) : null}
+
+                    <DragOverlay>
+                        {draggedSnippet ? (
+                            <div className="bg-white dark:bg-gray-800 w-fit rounded-[4px] shadow-md">
+                                {draggedSnippet.preview}
+                            </div>
+                        ) : null}
+                    </DragOverlay>
+                </DndContext>
             </div>
         </div>
     );
@@ -754,68 +826,37 @@ const ActionsButton = (props: {
     </ContextMenuButton>
 );
 
-const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: PaletteItem[] }) => {
-    const items = props.items.map(
-        (item, index): ContextMenuItem => ({
-            title: ({ onDismiss }) => (
-                <div
-                    key={index}
-                    draggable
-                    className="flex flex-col items-start w-full pointer-events-[bounding-box]"
-                    onDragStart={(event) => {
-                        event.dataTransfer.setData(
-                            "wipple/snippet",
-                            JSON.stringify({
-                                code: item.code,
-                                insertLine: true,
-                            }),
-                        );
-
-                        onDismiss();
-                    }}
-                >
-                    <code className="whitespace-nowrap">{item.title}</code>
-                </div>
-            ),
-        }),
-    );
-
+const PaletteButton = (props: {
+    setup?: string;
+    items: DraggablePaletteItem[];
+    highlight: ((name: string) => { icon?: string; className?: string }) | undefined;
+    onChangeDraggedSnippet: (id: string, preview: JSX.Element, snippet: Snippet) => void;
+}) => {
     return (
         <ContextMenuButton
-            items={
-                props.assets.length > 0
-                    ? [
-                          {
-                              title: ({ onDismiss }) => (
-                                  <div className="flex flex-row items-center gap-1 py-1">
-                                      {props.assets.map((asset, index) => (
-                                          <div
-                                              key={index}
-                                              draggable
-                                              onDragStart={(event) => {
-                                                  event.dataTransfer.setData(
-                                                      "wipple/snippet",
-                                                      JSON.stringify({
-                                                          code: asset.code,
-                                                          insertLine: false,
-                                                      }),
-                                                  );
+            items={props.items.map((item, index) => ({
+                title: ({ onDismiss }) => {
+                    const highlight = props.highlight?.(item.title);
 
-                                                  onDismiss();
-                                              }}
-                                          >
-                                              {asset.title}
-                                          </div>
-                                      ))}
-                                  </div>
-                              ),
-                              divider: true,
-                              highlight: false,
-                          },
-                          ...items,
-                      ]
-                    : items
-            }
+                    return (
+                        <DraggablePaletteItem
+                            key={index}
+                            highlightIcon={highlight?.icon}
+                            highlightClassName={highlight?.className}
+                            onDragStart={(id, preview) => {
+                                props.onChangeDraggedSnippet(id, preview, {
+                                    code: item.code,
+                                    replace: item.replace ?? false,
+                                });
+
+                                onDismiss();
+                            }}
+                        >
+                            {item.title}
+                        </DraggablePaletteItem>
+                    );
+                },
+            }))}
         >
             <MenuContainer>
                 <button className="group flex flex-row items-center justify-center transition-colors rounded-md pl-2 pr-1 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
@@ -827,6 +868,65 @@ const PaletteButton = (props: { setup?: string; assets: PaletteItem[]; items: Pa
         </ContextMenuButton>
     );
 };
+
+const DraggablePaletteItem = (props: {
+    onDragStart?: (id: string, preview: JSX.Element) => void;
+    highlightIcon?: string;
+    highlightClassName?: string;
+    children: string;
+}) => {
+    const content = useMemo(
+        () => (
+            <PaletteItem
+                highlightIcon={props.highlightIcon}
+                highlightClassName={props.highlightClassName}
+            >
+                {props.children}
+            </PaletteItem>
+        ),
+        [props.highlightIcon, props.highlightClassName, props.children],
+    );
+
+    const id = useMemo(() => nanoid(), []);
+
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
+
+    useEffect(() => {
+        if (isDragging) {
+            props.onDragStart?.(id, content);
+        }
+    }, [isDragging, id, content]);
+
+    const style = {
+        transform: CSS.Transform.toString(transform),
+    };
+
+    return (
+        <div ref={setNodeRef} style={style} {...listeners} {...attributes} className="w-full">
+            {content}
+        </div>
+    );
+};
+
+const PaletteItem = (props: {
+    children: string;
+    highlightIcon?: string;
+    highlightClassName?: string;
+}) => (
+    <div className="flex flex-col items-start w-full pointer-events-[bounding-box]">
+        <div
+            className={`flex flex-row items-center justify-center px-1 rounded-[4px] ${
+                props.highlightClassName ?? ""
+            }`}
+        >
+            {props.highlightIcon ? (
+                <MaterialSymbol icon={props.highlightIcon.replace("-", "_") as any} />
+            ) : null}
+
+            <code className="whitespace-nowrap">{props.children}</code>
+        </div>
+    </div>
+);
 
 const DiagnosticBubble = (props: {
     width: number;
@@ -1031,3 +1131,53 @@ const ErrorDocAlert = (props: { doc: ErrorDoc; dismiss: () => void }) => (
         </Button>
     </div>
 );
+
+const DropTargetLines = (props: { numberOfLines: number; theme: ThemeConfig }) => (
+    <div className="absolute top-0 left-0 right-0 flex flex-col">
+        <div className="pt-1.5 pb-1">
+            <DropTargetLine index={-1} theme={props.theme} />
+        </div>
+
+        {new Array(props.numberOfLines).fill(undefined).map((_, index) => (
+            <DropTargetLine key={index} index={index} useLineHeight theme={props.theme} />
+        ))}
+    </div>
+);
+
+const DropTargetLine = (props: { index: number; useLineHeight?: boolean; theme: ThemeConfig }) => {
+    const { setNodeRef, isOver } = useDroppable({ id: props.index });
+
+    return (
+        <div
+            ref={setNodeRef}
+            className={`relative ${!props.useLineHeight ? "h-1" : ""}`}
+            style={{
+                height: props.useLineHeight
+                    ? props.theme.fontSize * props.theme.lineHeight
+                    : undefined,
+            }}
+        >
+            <div className="absolute left-0 right-0 bottom-0">
+                <div
+                    className={`mx-4 w-full h-1 bg-blue-500 rounded-full transition-opacity ${
+                        isOver ? "opacity-100" : "opacity-0"
+                    }`}
+                />
+            </div>
+        </div>
+    );
+};
+
+const DropTargetArea = () => {
+    const { setNodeRef, isOver } = useDroppable({ id: 0 });
+
+    return (
+        <div ref={setNodeRef} className="absolute inset-0 p-2 mb-1">
+            <div
+                className={`w-full h-full border-[3px] rounded-md border-blue-500 transition-opacity ${
+                    isOver ? "border-opacity-100" : "border-opacity-0"
+                }`}
+            />
+        </div>
+    );
+};

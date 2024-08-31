@@ -511,13 +511,6 @@ const round = (n: number) => parseFloat(n.toFixed(4));
 
 export { atomImage };
 
-export const assetItems: PaletteItem[] = [
-    {
-        title: <ObjectAsset object="Block 1" tooltip={false} />,
-        code: `[Object "Block 1"]`,
-    },
-];
-
 export const paletteItems: PaletteItem[] = [
     {
         title: "position",
