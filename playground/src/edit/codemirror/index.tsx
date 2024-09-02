@@ -62,7 +62,7 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                     assets.of(
                         assetsFromConfig({
-                            disabled: false,
+                            disabled: props.readOnly,
                             onClick: props.onClickAsset,
                             highlightItems: props.highlightItems,
                             theme: props.theme,
@@ -144,7 +144,6 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
     useImperativeHandle(ref, () => ({
         editorView: editorView.current!,
-        highlight: (name: string) => {},
     }));
 
     useEffect(() => {
@@ -187,14 +186,14 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
         editorView.current!.dispatch({
             effects: assets.reconfigure(
                 assetsFromConfig({
-                    disabled: false,
+                    disabled: props.readOnly,
                     onClick: props.onClickAsset,
                     highlightItems: props.highlightItems,
                     theme: props.theme,
                 }),
             ),
         });
-    }, [props.onClickAsset, props.highlightItems, props.theme]);
+    }, [props.readOnly, props.onClickAsset, props.highlightItems, props.theme]);
 
     useEffect(() => {
         if (props.autoFocus) {

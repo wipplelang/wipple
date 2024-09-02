@@ -151,6 +151,7 @@ tasks:
         deps:
             - web:home:install-dependencies
             - web:login:install-dependencies
+            - web:dashboard:install-dependencies
             - web:docs:install-dependencies
             - web:doc-template:install-dependencies
 
@@ -166,6 +167,7 @@ tasks:
         deps:
             - web:home:build
             - web:login:build
+            - web:dashboard:build
             - web:docs:build
             - web:doc-template:build
             - web:playground:build
@@ -174,6 +176,7 @@ tasks:
             - rm -rf dist && mkdir dist
             - cp -r home/_site/. dist
             - cp -r login/dist/. dist/login
+            - cp -r dashboard/dist/. dist/dashboard
             - cp -r docs/book/. dist/docs
             - cp doc-template/dist/index.html dist/doc-template.html
             - cp -r playground/dist/. dist/playground
@@ -212,6 +215,24 @@ tasks:
     web:login:build:
         run: once
         dir: web/login
+        cmds:
+            - npm run build
+
+    web:dashboard:install-dependencies:
+        run: once
+        dir: web/dashboard
+        cmds:
+            - npm install
+
+    web:dashboard:serve:
+        run: once
+        dir: web/dashboard
+        cmds:
+            - npm run dev
+
+    web:dashboard:build:
+        run: once
+        dir: web/dashboard
         cmds:
             - npm run build
 
