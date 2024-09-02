@@ -220,18 +220,24 @@ tasks:
 
     web:dashboard:install-dependencies:
         run: once
+        deps:
+            - playground:build
         dir: web/dashboard
         cmds:
             - npm install
 
     web:dashboard:serve:
         run: once
+        deps:
+            - playground:build
         dir: web/dashboard
         cmds:
             - npm run dev
 
     web:dashboard:build:
         run: once
+        deps:
+            - playground:build
         dir: web/dashboard
         cmds:
             - npm run build
