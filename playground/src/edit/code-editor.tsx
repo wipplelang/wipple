@@ -3,6 +3,7 @@ import {
     Animated,
     Ansi,
     Button,
+    CircularProgress,
     ContextMenuButton,
     ContextMenuItem,
     Markdown,
@@ -36,6 +37,9 @@ import { defaultPaletteItems, runtimes } from "../runtimes";
 import { SetupIcon } from "./setup-icon";
 import { StateCommand } from "@codemirror/state";
 import actionsIcon from "./assets/actions.svg";
+import shareIcon from "./assets/share.png";
+import stopSharingIcon from "./assets/stop-sharing.png";
+import askForHelpIcon from "./assets/ask-for-help.png";
 import { NotePicker } from "./note-picker";
 import { AnimalPicker } from "./animal-picker";
 import { InstrumentPicker } from "./instrument-picker";
@@ -53,13 +57,16 @@ import { Rect } from "@codemirror/view";
 import { nanoid } from "nanoid";
 import { DndContext, DragOverlay, useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { ShareHandlers, ShareProps } from "./index";
 
 export function CodeEditor<Settings>(props: {
     children: string;
+    id: { page: string; index: number };
     wipple: typeof import("wipple-wasm");
     onChange: (value: string) => void;
     theme: ThemeConfig;
     locked?: boolean;
+    readOnly?: boolean;
     runtime?: {
         name: string;
         settings: Settings | undefined;
@@ -70,8 +77,10 @@ export function CodeEditor<Settings>(props: {
     onBlur?: () => void;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
-    onDelete: () => void;
+    onDelete?: () => void;
     onReset?: () => void;
+    menu?: JSX.Element;
+    share?: ShareProps;
 }) {
     const numberOfLines = useMemo(() => props.children.split("\n").length, [props.children]);
 
@@ -513,77 +522,94 @@ export function CodeEditor<Settings>(props: {
                     }}
                 >
                     <div className="flex flex-row items-center justify-between w-full p-1 bg-gray-50 dark:bg-gray-900">
-                        <div className="flex flex-row items-center">
-                            {!props.locked ? (
-                                <ContextMenuButton
-                                    items={[
-                                        {
-                                            title: "Move Up",
-                                            icon: "arrow_upward",
-                                            disabled: props.onMoveUp == null,
-                                            onClick: () => props.onMoveUp!(),
-                                        },
-                                        {
-                                            title: "Move Down",
-                                            icon: "arrow_downward",
-                                            disabled: props.onMoveDown == null,
-                                            onClick: () => props.onMoveDown!(),
-                                        },
-                                        {
-                                            title: "Delete",
-                                            icon: "delete",
-                                            role: "destructive",
-                                            onClick: props.onDelete,
-                                        },
-                                    ]}
-                                >
-                                    <MenuContainer>
-                                        <button className="group transition-colors rounded-md px-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
-                                            <MaterialSymbol icon="more_vert" className="text-lg" />
-                                        </button>
-                                    </MenuContainer>
-                                </ContextMenuButton>
-                            ) : null}
+                        {props.menu ?? (
+                            <>
+                                <div className="flex flex-row items-center">
+                                    {!props.locked ? (
+                                        <ContextMenuButton
+                                            items={[
+                                                {
+                                                    title: "Move Up",
+                                                    icon: "arrow_upward",
+                                                    disabled: props.onMoveUp == null,
+                                                    onClick: () => props.onMoveUp!(),
+                                                },
+                                                {
+                                                    title: "Move Down",
+                                                    icon: "arrow_downward",
+                                                    disabled: props.onMoveDown == null,
+                                                    onClick: () => props.onMoveDown!(),
+                                                },
+                                                {
+                                                    title: "Delete",
+                                                    icon: "delete",
+                                                    role: "destructive",
+                                                    onClick: props.onDelete,
+                                                },
+                                            ]}
+                                        >
+                                            <MenuContainer>
+                                                <button className="group transition-colors rounded-md px-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800">
+                                                    <MaterialSymbol
+                                                        icon="more_vert"
+                                                        className="text-lg"
+                                                    />
+                                                </button>
+                                            </MenuContainer>
+                                        </ContextMenuButton>
+                                    ) : null}
 
-                            <TutorialItem id="commandsButton">
-                                <PaletteButton
-                                    setup={props.runtime?.name}
-                                    items={
-                                        props.runtime
-                                            ? runtimes[props.runtime.name as keyof typeof runtimes]
-                                                  .paletteItems
-                                            : defaultPaletteItems
-                                    }
-                                    highlight={highlight}
-                                    onChangeDraggedSnippet={(id, preview, snippet) => {
-                                        setDraggedSnippet({ id, preview, snippet });
-                                    }}
-                                />
-                            </TutorialItem>
-                        </div>
+                                    <TutorialItem id="commandsButton">
+                                        <PaletteButton
+                                            setup={props.runtime?.name}
+                                            items={
+                                                props.runtime
+                                                    ? runtimes[
+                                                          props.runtime
+                                                              .name as keyof typeof runtimes
+                                                      ].paletteItems
+                                                    : defaultPaletteItems
+                                            }
+                                            highlight={highlight}
+                                            onChangeDraggedSnippet={(id, preview, snippet) => {
+                                                setDraggedSnippet({ id, preview, snippet });
+                                            }}
+                                        />
+                                    </TutorialItem>
+                                </div>
 
-                        <div className="flex-1 flex flex-row items-center justify-end gap-1">
-                            <TutorialItem id="editButton">
-                                <ActionsButton
-                                    onSelectAll={() => runCommand(commands.selectAll)}
-                                    onUndo={() => runCommand(commands.undo)}
-                                    onRedo={() => runCommand(commands.redo)}
-                                    onFormat={format}
-                                    onSuggestFixes={
-                                        lineDiagnostics.length > 0
-                                            ? requestIntelligentFixes
-                                            : undefined
-                                    }
-                                    onReset={props.onReset}
-                                />
-                            </TutorialItem>
-                        </div>
+                                <div className="flex-1 flex flex-row items-center justify-end gap-1">
+                                    {props.share ? (
+                                        <ShareButton
+                                            isLoading={props.share.isLoading}
+                                            shareHandlers={props.share.shareHandlers}
+                                            onClick={() => props.share!.onToggle(props.id)}
+                                        />
+                                    ) : null}
+
+                                    <TutorialItem id="editButton">
+                                        <ActionsButton
+                                            onSelectAll={() => runCommand(commands.selectAll)}
+                                            onUndo={() => runCommand(commands.undo)}
+                                            onRedo={() => runCommand(commands.redo)}
+                                            onFormat={format}
+                                            onSuggestFixes={
+                                                lineDiagnostics.length > 0
+                                                    ? requestIntelligentFixes
+                                                    : undefined
+                                            }
+                                            onReset={props.onReset}
+                                        />
+                                    </TutorialItem>
+                                </div>
+                            </>
+                        )}
                     </div>
 
                     <div className="relative pb-[3px]">
                         <AddLineButton
                             direction="start"
-                            disabled={false}
+                            disabled={props.readOnly ?? false}
                             onClick={() => onAddLine("start")}
                         />
 
@@ -596,7 +622,7 @@ export function CodeEditor<Settings>(props: {
                                 props.onChange(value);
                             }}
                             onLongPress={handleLongPress}
-                            readOnly={false}
+                            readOnly={props.readOnly ?? false}
                             onClickAsset={onClickAsset}
                             theme={props.theme}
                             diagnostics={diagnostics}
@@ -654,7 +680,7 @@ export function CodeEditor<Settings>(props: {
 
                         <AddLineButton
                             direction="end"
-                            disabled={false}
+                            disabled={props.readOnly ?? false}
                             onClick={() => onAddLine("end")}
                         />
                     </div>
@@ -825,6 +851,44 @@ const ActionsButton = (props: {
         </MenuContainer>
     </ContextMenuButton>
 );
+
+const ShareButton = (props: {
+    isLoading: boolean;
+    shareHandlers: ShareHandlers | undefined;
+    onClick: () => void;
+}) => {
+    const buttonClassName =
+        "group flex flex-row items-center justify-center transition-colors rounded-md px-2 gap-1 h-7 hover:bg-gray-100 dark:hover:bg-gray-800";
+
+    return props.isLoading ? (
+        <CircularProgress size={20} />
+    ) : (
+        <>
+            {props.shareHandlers ? (
+                <MenuContainer>
+                    <button className={buttonClassName} onClick={props.shareHandlers.askForHelp}>
+                        <img src={askForHelpIcon} className="w-[20px] h-[20px]" />
+
+                        <p className="text-xs">Ask for Help</p>
+                    </button>
+                </MenuContainer>
+            ) : null}
+
+            <MenuContainer>
+                <button className={buttonClassName} onClick={props.onClick}>
+                    <img
+                        src={props.shareHandlers ? stopSharingIcon : shareIcon}
+                        className="w-[20px] h-[20px]"
+                    />
+
+                    <p className="text-xs">
+                        {props.shareHandlers ? "Stop Sharing" : "Share with Teacher"}
+                    </p>
+                </button>
+            </MenuContainer>
+        </>
+    );
+};
 
 const PaletteButton = (props: {
     setup?: string;

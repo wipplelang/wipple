@@ -1,10 +1,4 @@
 import ReactDOM from "react-dom/client";
-import {
-    Route,
-    RouterProvider,
-    createBrowserRouter,
-    createRoutesFromElements,
-} from "react-router-dom";
 import { initializeApp } from "firebase/app";
 import {
     browserLocalPersistence,
@@ -19,11 +13,15 @@ import {
 } from "firebase/firestore";
 import * as Sentry from "@sentry/react";
 import ReactGA from "react-ga4";
-import { HomePage, EditPage, RootPage, LessonPage } from "./pages";
 import { NavbarProvider, AlertProvider } from "wipple-playground";
-import { StoreProvider } from "./store";
+import { App } from "./app";
 import "wipple-playground/dist/style.css";
 import "./index.css";
+import { StoreProvider } from "./store";
+
+if (import.meta.env.DEV) {
+    localStorage.debug = "*";
+}
 
 if (import.meta.env.PROD) {
     Sentry.init({
@@ -56,21 +54,11 @@ initializeFirestore(app, {
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
 
-const router = createBrowserRouter(
-    createRoutesFromElements(
-        <Route path={import.meta.env.BASE_URL} element={<RootPage />}>
-            <Route index element={<HomePage />} />
-            <Route path="edit/:id/:page?" element={<EditPage />} />
-            <Route path="lesson/:id/:page?" element={<LessonPage />} />
-        </Route>,
-    ),
-);
-
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <StoreProvider>
         <AlertProvider>
             <NavbarProvider>
-                <RouterProvider router={router} />
+                <App />
             </NavbarProvider>
         </AlertProvider>
     </StoreProvider>,

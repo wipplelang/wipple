@@ -9,6 +9,7 @@ import { Button, useAlert } from "wipple-playground";
 import { useStore } from "../store";
 import { getUser, signIn, signInAsGuest, useIsOffline } from "../helpers";
 import { Navbar } from "../components";
+import { getUserInfo } from "../models";
 
 export const RootPage = () => {
     const [store, setStore] = useStore();
@@ -20,9 +21,12 @@ export const RootPage = () => {
                 const user = await getUser();
 
                 if (user) {
+                    const userInfo = await getUserInfo();
+
                     setStore(
                         produce((store) => {
                             store.user = user;
+                            store.userInfo = userInfo;
                         }),
                     );
                 } else {

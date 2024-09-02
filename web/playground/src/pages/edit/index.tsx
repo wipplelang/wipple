@@ -1,11 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
-import { Button, Editor, Playground, useAlert } from "wipple-playground";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import {
+    Button,
+    Editor,
+    Playground,
+    ShareHandlers,
+    ShareOptions,
+    ShareProps,
+    useAlert,
+} from "wipple-playground";
 import { getPlayground, updatePlayground } from "../../models";
 import { produce } from "immer";
 import QRCode from "react-qr-code";
 import * as wipple from "wipple-wasm";
 import { useDebounceCallback } from "usehooks-ts";
+import { initializeSocketClient } from "../../helpers";
+import { useStore } from "../../store";
+import debounce from "debounce";
 
 export const EditPage = () => {
     const params = useParams();
@@ -14,6 +25,7 @@ export const EditPage = () => {
 
     const navigate = useNavigate();
 
+    const [store, setStore] = useStore();
     const { displayAlert } = useAlert();
 
     const [playground, setPlayground] = useState<Playground>();
@@ -35,11 +47,92 @@ export const EditPage = () => {
         await updatePlayground(playground);
     }, 1000);
 
+    const [isLoadingShare, setLoadingShare] = useState(false);
+
+    const [sharedItemId, setSharedItemId] = useState<{ page: string; index: number }>();
+    const sharedItemIdRef = useRef(sharedItemId);
+    useEffect(() => {
+        sharedItemIdRef.current = sharedItemId;
+    }, [sharedItemId]);
+
+    const [shareHandlers, setShareHandlers] = useState<ShareHandlers>();
+    const shareHandlersRef = useRef(shareHandlers);
+    useEffect(() => {
+        shareHandlersRef.current = shareHandlers;
+    }, [shareHandlers]);
+
+    const share = useMemo((): ShareProps | undefined => {
+        const { user, userInfo, offline } = store;
+
+        if (!user || !userInfo?.classroomCode || offline) {
+            return undefined;
+        }
+
+        return {
+            isLoading: isLoadingShare,
+            shareHandlers,
+            onToggle: async ({ page, index }) => {
+                const disconnect = () => {
+                    shareHandlersRef.current?.stop();
+                    setSharedItemId(undefined);
+                    setShareHandlers(undefined);
+                };
+
+                disconnect();
+
+                if (
+                    sharedItemIdRef.current &&
+                    sharedItemIdRef.current.page === page &&
+                    sharedItemIdRef.current.index === index
+                ) {
+                    return;
+                }
+
+                setLoadingShare(true);
+                try {
+                    const socketClient = await initializeSocketClient(user, {
+                        onDisconnect: disconnect,
+                    });
+
+                    if (!socketClient) {
+                        alert("Couldn't connect to teacher; please try again.");
+                        return;
+                    }
+
+                    setSharedItemId({ page, index });
+
+                    setShareHandlers({
+                        update: debounce((item) => {
+                            socketClient.update(item);
+                        }, 250),
+                        askForHelp: () => {
+                            socketClient.askForHelp();
+                        },
+                        stop: () => {
+                            socketClient.disconnect();
+                        },
+                    });
+                } finally {
+                    setLoadingShare(false);
+                }
+            },
+        };
+    }, [store.user, store.offline, isLoadingShare, shareHandlers]);
+
     useEffect(() => {
         if (playground) {
             savePlayground(playground);
+
+            if (shareHandlers && sharedItemId) {
+                const page = playground.pages.find((page) => page.id === sharedItemId.page);
+                const item = page?.items[sharedItemId.index];
+
+                if (item) {
+                    shareHandlers.update(item);
+                }
+            }
         }
-    }, [playground]);
+    }, [playground, shareHandlers, sharedItemId]);
 
     useEffect(() => {
         const handler = () => {
@@ -97,6 +190,7 @@ export const EditPage = () => {
                 navigate(`/playground/edit/${playground!.id}/${id}`);
             }}
             onMakePublic={makePublic}
+            share={share}
         />
     );
 };

@@ -1,13 +1,9 @@
 import { User } from "firebase/auth";
 import { createContext, useContext, useState } from "react";
-import { TutorialStep } from "wipple-playground";
-import { UserInfo } from "./models";
 
 export interface Store {
     offline?: boolean;
     user?: User;
-    userInfo?: UserInfo;
-    activeTutorialStep?: TutorialStep;
 }
 
 const defaultStore: Store = {};

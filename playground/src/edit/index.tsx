@@ -25,6 +25,22 @@ import { flushSync } from "react-dom";
 import { SetupIcon } from "./setup-icon";
 import { TextEditor } from "./text-editor";
 
+export interface ShareOptions {
+    stop: () => void;
+}
+
+export interface ShareHandlers {
+    update: (item: PlaygroundPageItem) => void;
+    askForHelp: () => void;
+    stop: () => void;
+}
+
+export interface ShareProps {
+    isLoading: boolean;
+    shareHandlers: ShareHandlers | undefined;
+    onToggle: (id: { page: string; index: number }) => void;
+}
+
 export const Editor = (props: {
     wipple: typeof import("wipple-wasm");
     playground?: Playground;
@@ -32,6 +48,7 @@ export const Editor = (props: {
     selectedPageId?: string;
     onSelectPage: (id: string) => void;
     onMakePublic?: () => void;
+    share?: ShareProps;
 }) => {
     useEffect(() => {
         if (props.playground && !props.selectedPageId) {
@@ -285,6 +302,7 @@ export const Editor = (props: {
                                 }),
                             );
                         }}
+                        share={props.share}
                     />
                 </div>
             </div>
@@ -304,6 +322,7 @@ const PlaygroundPageEditor = (props: {
     onDeleteItem: (index: number) => void;
     canResetItem: (index: number) => boolean;
     onResetItem: (index: number) => void;
+    share?: ShareProps;
 }) => {
     // HACK: Prevent layout bugs by rendering one item at a time
     const [maxRenderIndex, setMaxRenderIndex] = useState(0);
@@ -330,6 +349,7 @@ const PlaygroundPageEditor = (props: {
                                     id={index === 0 ? "playgroundCodeEditor" : undefined}
                                 >
                                     <PlaygroundPageItemEditor
+                                        id={{ page: props.id!, index }}
                                         wipple={props.wipple}
                                         item={item}
                                         onChange={(item) => props.onChangeItem(index, item)}
@@ -348,6 +368,7 @@ const PlaygroundPageEditor = (props: {
                                                 ? () => props.onResetItem(index)
                                                 : undefined
                                         }
+                                        share={props.share}
                                     />
                                 </TutorialItem>
                             ) : null,
@@ -411,15 +432,19 @@ const AddPlaygroundPageItemButton = (props: { onAddItem: (item: PlaygroundPageIt
     );
 };
 
-const PlaygroundPageItemEditor = (props: {
+export const PlaygroundPageItemEditor = (props: {
     wipple: typeof import("wipple-wasm");
+    id: { page: string; index: number };
     item: PlaygroundPageItem;
     onChange: (item: PlaygroundPageItem) => void;
     locked?: boolean;
+    readOnly?: boolean;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
-    onDelete: () => void;
+    onDelete?: () => void;
     onReset?: () => void;
+    menu?: JSX.Element;
+    share?: ShareProps;
 }) => {
     const theme = useMemo(() => defaultThemeConfig(), []);
 
@@ -427,6 +452,7 @@ const PlaygroundPageItemEditor = (props: {
         case "code":
             return (
                 <CodeEditor
+                    id={props.id}
                     wipple={props.wipple}
                     onChange={(code) =>
                         props.onChange(
@@ -440,6 +466,7 @@ const PlaygroundPageItemEditor = (props: {
                         )
                     }
                     locked={props.locked}
+                    readOnly={props.readOnly}
                     onMoveUp={props.onMoveUp}
                     onMoveDown={props.onMoveDown}
                     onDelete={props.onDelete}
@@ -460,6 +487,8 @@ const PlaygroundPageItemEditor = (props: {
                               }
                             : undefined
                     }
+                    menu={props.menu}
+                    share={props.share}
                 >
                     {props.item.code}
                 </CodeEditor>
@@ -496,6 +525,7 @@ const PlaygroundPageItemEditor = (props: {
                     onMoveUp={props.onMoveUp}
                     onMoveDown={props.onMoveDown}
                     onDelete={props.onDelete}
+                    menu={props.menu}
                 >
                     {props.item.text}
                 </TextEditor>

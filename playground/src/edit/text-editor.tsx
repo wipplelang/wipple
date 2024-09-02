@@ -7,13 +7,15 @@ export const TextEditor = (props: {
     children: string;
     onChange: (value: string) => void;
     locked: boolean;
+    readOnly?: boolean;
     onToggleLock?: () => void;
     autofocus?: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
     onMoveUp?: () => void;
     onMoveDown?: () => void;
-    onDelete: () => void;
+    onDelete?: () => void;
+    menu?: JSX.Element;
 }) => {
     const [isFocused, setFocused] = useState(props.autofocus ?? false);
 
@@ -38,7 +40,7 @@ export const TextEditor = (props: {
                     !props.locked ? "border-2 border-gray-100 dark:border-gray-800 rounded-md" : ""
                 }`}
             >
-                {props.onToggleLock ? (
+                {props.menu ?? props.onToggleLock ? (
                     <div className="flex flex-row items-center justify-between w-full p-1">
                         <ContextMenuButton
                             items={[
@@ -58,7 +60,8 @@ export const TextEditor = (props: {
                                     title: "Delete",
                                     icon: "delete",
                                     role: "destructive",
-                                    onClick: props.onDelete,
+                                    disabled: props.onDelete == null,
+                                    onClick: () => props.onDelete!(),
                                 },
                             ]}
                         >
@@ -87,6 +90,7 @@ export const TextEditor = (props: {
                         <TextareaAutosize
                             className="w-full resize-none outline-none bg-inherit dark:text-white min-h-[1lh]"
                             value={props.children}
+                            readOnly={props.readOnly}
                             onChange={(e) => props.onChange(e.target.value)}
                             placeholder="Write your text here!"
                         />

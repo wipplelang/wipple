@@ -1,0 +1,41 @@
+{
+    "name": "wipple-playground-dashboard",
+    "private": true,
+    "version": "0.0.0",
+    "type": "module",
+    "scripts": {
+        "dev": "vite",
+        "build": "tsc && vite build",
+        "preview": "vite preview"
+    },
+    "dependencies": {
+        "@sentry/react": "^8.12.0",
+        "firebase": "^10.8.0",
+        "immer": "^10.0.3",
+        "react": "^18.2.0",
+        "react-dom": "^18.2.0",
+        "react-firebase-hooks": "^5.1.1",
+        "react-ga4": "^2.1.0",
+        "react-loading-skeleton": "^3.4.0",
+        "react-material-symbols": "^4.3.1",
+        "socket.io-client": "^4.7.5",
+        "wipple-playground": "file:../../playground",
+        "wipple-wasm": "file:../../wasm"
+    },
+    "devDependencies": {
+        "@sentry/vite-plugin": "^2.20.1",
+        "@tailwindcss/typography": "^0.5.13",
+        "@types/react": "^18.2.43",
+        "@types/react-dom": "^18.2.17",
+        "@vitejs/plugin-react-swc": "^3.5.0",
+        "autoprefixer": "^10.4.17",
+        "postcss": "^8.4.34",
+        "tailwindcss": "^3.4.4",
+        "tailwindcss-animate": "^1.0.7",
+        "tailwindcss-animated": "^1.1.2",
+        "typescript": "^5.2.2",
+        "vite": "^5.0.8",
+        "vite-plugin-static-copy": "^1.0.5",
+        "vite-plugin-top-level-await": "^1.4.1"
+    }
+}

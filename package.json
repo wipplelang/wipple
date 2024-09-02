@@ -3,6 +3,7 @@
     "workspaces": [
         "playground",
         "ios/wrapper",
+        "web/dashboard",
         "web/playground"
     ]
 }
