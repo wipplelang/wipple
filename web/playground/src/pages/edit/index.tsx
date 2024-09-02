@@ -62,9 +62,9 @@ export const EditPage = () => {
     }, [shareHandlers]);
 
     const share = useMemo((): ShareProps | undefined => {
-        const { user, offline } = store;
+        const { user, userInfo, offline } = store;
 
-        if (!user || offline) {
+        if (!user || !userInfo?.classroomCode || offline) {
             return undefined;
         }
 
