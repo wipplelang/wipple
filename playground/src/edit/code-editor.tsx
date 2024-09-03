@@ -57,11 +57,11 @@ import { Rect } from "@codemirror/view";
 import { nanoid } from "nanoid";
 import { DndContext, DragOverlay, useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { ShareHandlers, ShareProps } from "./index";
+import { ShareHandlers, ShareId, ShareProps, shareIdsEqual } from "./index";
 
 export function CodeEditor<Settings>(props: {
     children: string;
-    id: { page: string; index: number };
+    id: ShareId;
     wipple: typeof import("wipple-wasm");
     onChange: (value: string) => void;
     theme: ThemeConfig;
@@ -579,7 +579,9 @@ export function CodeEditor<Settings>(props: {
                                 </div>
 
                                 <div className="flex-1 flex flex-row items-center justify-end gap-1">
-                                    {props.share ? (
+                                    {props.share &&
+                                    (props.share.id == null ||
+                                        shareIdsEqual(props.id, props.share.id)) ? (
                                         <ShareButton
                                             isLoading={props.share.isLoading}
                                             shareHandlers={props.share.shareHandlers}

@@ -5,7 +5,8 @@ import {
     Editor,
     Playground,
     ShareHandlers,
-    ShareOptions,
+    ShareId,
+    shareIdsEqual,
     ShareProps,
     useAlert,
 } from "wipple-playground";
@@ -49,7 +50,7 @@ export const EditPage = () => {
 
     const [isLoadingShare, setLoadingShare] = useState(false);
 
-    const [sharedItemId, setSharedItemId] = useState<{ page: string; index: number }>();
+    const [sharedItemId, setSharedItemId] = useState<ShareId>();
     const sharedItemIdRef = useRef(sharedItemId);
     useEffect(() => {
         sharedItemIdRef.current = sharedItemId;
@@ -69,9 +70,10 @@ export const EditPage = () => {
         }
 
         return {
+            id: sharedItemId,
             isLoading: isLoadingShare,
             shareHandlers,
-            onToggle: async ({ page, index }) => {
+            onToggle: async (shareId) => {
                 const disconnect = () => {
                     shareHandlersRef.current?.stop();
                     setSharedItemId(undefined);
@@ -80,11 +82,7 @@ export const EditPage = () => {
 
                 disconnect();
 
-                if (
-                    sharedItemIdRef.current &&
-                    sharedItemIdRef.current.page === page &&
-                    sharedItemIdRef.current.index === index
-                ) {
+                if (sharedItemIdRef.current && shareIdsEqual(sharedItemIdRef.current, shareId)) {
                     return;
                 }
 
@@ -99,7 +97,7 @@ export const EditPage = () => {
                         return;
                     }
 
-                    setSharedItemId({ page, index });
+                    setSharedItemId(shareId);
 
                     setShareHandlers({
                         update: debounce((item) => {
@@ -117,7 +115,7 @@ export const EditPage = () => {
                 }
             },
         };
-    }, [store.user, store.offline, isLoadingShare, shareHandlers]);
+    }, [store.user, store.offline, isLoadingShare, sharedItemId, shareHandlers]);
 
     useEffect(() => {
         if (playground) {

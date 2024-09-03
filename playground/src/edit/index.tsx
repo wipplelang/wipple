@@ -35,11 +35,19 @@ export interface ShareHandlers {
     stop: () => void;
 }
 
+export interface ShareId {
+    page: string;
+    index: number;
+}
+
 export interface ShareProps {
+    id: ShareId | undefined;
     isLoading: boolean;
     shareHandlers: ShareHandlers | undefined;
-    onToggle: (id: { page: string; index: number }) => void;
+    onToggle: (id: ShareId) => void;
 }
+
+export const shareIdsEqual = (a: ShareId, b: ShareId) => a.page === b.page && a.index === b.index;
 
 export const Editor = (props: {
     wipple: typeof import("wipple-wasm");
