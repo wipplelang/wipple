@@ -179,6 +179,10 @@ code,
     }
 }
 
+.tok-comment {
+    @apply ui-font;
+}
+
 /* Piano */
 
 .piano-preview .ReactPiano__Keyboard {
