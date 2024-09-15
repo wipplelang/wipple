@@ -470,15 +470,16 @@ const Prompt = (props: {
 };
 
 const OutputPlaceholder = () => (
-    <div className="flex-1 flex flex-col items-center justify-center gap-2 border-2 border-gray-200 dark:border-gray-800 border-dashed rounded-lg mx-4 mb-4  p-4 text-gray-400 dark:text-gray-600">
+    <div className="flex-1 flex flex-col items-center justify-center gap-2 rounded-lg mx-4 mb-4  p-4 text-gray-400 dark:text-gray-600">
         <p>No output</p>
 
         <p className="text-xs">
-            Try using{" "}
+            Try dragging{" "}
             <code className="border-[1pt] border-gray-200 dark:border-gray-700 rounded-md px-1">
+                <MaterialSymbol icon="article" className="mr-px translate-y-0.5" />
                 show
             </code>{" "}
-            to display a message.
+            into the space above and then press <strong>Run</strong>.
         </p>
     </div>
 );
