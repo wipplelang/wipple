@@ -130,7 +130,7 @@ code,
 }
 
 .tok-comment {
-    color: #6a737d;
+    @apply text-gray-500;
 }
 
 .tok-string {
@@ -156,7 +156,7 @@ code,
 @media (prefers-color-scheme: dark) {
     &:not(.no-dark-mode *) {
         .tok-comment {
-            color: #6a737d;
+            @apply text-gray-500;
         }
 
         .tok-string {

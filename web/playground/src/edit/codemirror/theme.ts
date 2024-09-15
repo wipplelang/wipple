@@ -39,6 +39,7 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
         },
         ".cm-placeholder": {
             fontStyle: "italic",
+            color: "#6b7280",
         },
         ".cm-tooltip-hover": {
             border: "none",
