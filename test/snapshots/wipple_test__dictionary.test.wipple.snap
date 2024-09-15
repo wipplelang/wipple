@@ -2,6 +2,8 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-Basketball has 10 letters
-Soccer has 6 letters
-Golf has 4 letters
+diagnostics: []
+output:
+  - Basketball has 10 letters
+  - Soccer has 6 letters
+  - Golf has 4 letters

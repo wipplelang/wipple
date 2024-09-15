@@ -1,7 +1,0 @@
-.ui-font {
-    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif !important;
-}
-
-body {
-    @apply ui-font !important;
-}

@@ -2,5 +2,37 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/mismatched-higher-order-function.test.wipple:10:3: error: expected `Text -> Text` here, but found `Text -> Number`
-tests/mismatched-higher-order-function.test.wipple:12:20: error: expected text here, but found a number
+diagnostics:
+  - location:
+      path: tests/mismatched-higher-order-function.test.wipple
+      start:
+        line: 9
+        column: 2
+        index: 134
+      end:
+        line: 9
+        column: 3
+        index: 135
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: "`Text -> Text`"
+        found: "`Text -> Number`"
+  - location:
+      path: tests/mismatched-higher-order-function.test.wipple
+      start:
+        line: 11
+        column: 19
+        index: 156
+      end:
+        line: 11
+        column: 21
+        index: 158
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: text
+        found: a number
+output: []

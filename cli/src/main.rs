@@ -345,7 +345,7 @@ fn print_diagnostics(
                 contains_error = true;
             }
 
-            eprintln!("{}", rendered_diagnostic.raw);
+            eprintln!("{:#?}", rendered_diagnostic);
         }
     }
 

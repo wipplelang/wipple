@@ -3,7 +3,7 @@
 Distance : type {pixels :: Number}
 
 Distance? : (infer D) => trait ()
-D where (Error "expected a distance in `pixels`") => default instance (Distance? D) : ()
+D where (Error "missing-pixels") => default instance (Distance? D) : ()
 instance (Distance? Distance) : ()
 
 pixels :: Number -> Distance

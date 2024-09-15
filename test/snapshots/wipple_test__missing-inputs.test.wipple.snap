@@ -2,4 +2,21 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/missing-inputs.test.wipple:3:1: error: missing text for `show`
+diagnostics:
+  - location:
+      path: tests/missing-inputs.test.wipple
+      start:
+        line: 2
+        column: 0
+        index: 19
+      end:
+        line: 2
+        column: 4
+        index: 23
+    severity: error
+    template:
+      id: missing-inputs
+      data:
+        function: show
+        inputs: text
+output: []

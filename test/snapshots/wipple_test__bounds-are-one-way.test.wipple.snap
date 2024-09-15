@@ -2,4 +2,21 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/bounds-are-one-way.test.wipple:6:5: error: `T` requires `T Number`
+diagnostics:
+  - location:
+      path: tests/bounds-are-one-way.test.wipple
+      start:
+        line: 5
+        column: 4
+        index: 70
+      end:
+        line: 5
+        column: 5
+        index: 71
+    severity: error
+    template:
+      id: unresolved-instance
+      data:
+        instance: T Number
+        trait: T
+output: []

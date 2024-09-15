@@ -47,8 +47,10 @@ pre code {
 }
 
 @media (prefers-color-scheme: dark) {
-    .btn.btn-gray {
-        @apply bg-gray-800 text-sky-400;
+    &:not(.no-dark-mode *) {
+        .btn.btn-gray {
+            @apply bg-gray-800 text-sky-400;
+        }
     }
 }
 

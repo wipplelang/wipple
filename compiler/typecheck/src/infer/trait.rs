@@ -1,6 +1,6 @@
 use crate::{
     infer::{
-        errors::{ErrorReason, QueuedError},
+        errors::QueuedError,
         r#type::{infer_instance, infer_type},
         types::{
             context::TypeContext,
@@ -29,7 +29,6 @@ pub fn resolve_trait<D: Driver>(
         mut candidates: Vec<Candidate<D>>,
         query: WithInfo<D::Info, &Instance<D>>,
         stack: &[WithInfo<D::Info, &Instance<D>>],
-        type_context: &mut TypeContext<D>,
     ) -> Result<Option<Candidate<D>>, WithInfo<D::Info, QueuedError<D>>> {
         match candidates.len() {
             0 => Ok(None),
@@ -44,7 +43,6 @@ pub fn resolve_trait<D: Driver>(
                     .iter()
                     .map(|instance| instance.as_deref().map(Instance::clone))
                     .collect(),
-                reasons: type_context.reasons.clone(),
             })),
         }
     }
@@ -93,7 +91,7 @@ pub fn resolve_trait<D: Driver>(
             }
 
             if let Some((new_type_context, candidate, _)) =
-                pick_from_candidates(candidates, query.clone(), stack, context.type_context)?
+                pick_from_candidates(candidates, query.clone(), stack)?
             {
                 context.type_context.replace_with(new_type_context);
                 return Ok(candidate.map(|(path, instance)| path.ok_or(instance)));
@@ -185,7 +183,7 @@ pub fn resolve_trait<D: Driver>(
             // If an instance matches, check its bounds
 
             if let Some((new_type_context, mut candidate, bounds)) =
-                pick_from_candidates(candidates, query.clone(), stack, context.type_context)?
+                pick_from_candidates(candidates, query.clone(), stack)?
             {
                 context.type_context.replace_with(new_type_context);
                 candidate.item.1.set_source_info(context, &query.info);
@@ -217,17 +215,6 @@ pub fn resolve_trait<D: Driver>(
                     }
                 }
 
-                // Special case: If the instance has any `Because` bounds, add
-                // the reason to the type context
-                if let Some(because_trait_path) = context.driver.path_for_language_trait("because")
-                {
-                    if candidate.item.1.r#trait == because_trait_path {
-                        if let Some(reason) = candidate.item.1.parameters.first() {
-                            resolve_custom_reason(&query.info, reason, context);
-                        }
-                    }
-                }
-
                 return Ok(candidate.map(|(path, instance)| path.ok_or(instance)));
             }
         }
@@ -243,7 +230,6 @@ pub fn resolve_trait<D: Driver>(
                     .iter()
                     .map(|instance| instance.as_deref().map(Instance::clone))
                     .collect(),
-                reasons: context.type_context.reasons.clone(),
             },
         })
     }
@@ -258,13 +244,12 @@ pub fn resolve_custom_error<D: Driver>(
 ) -> Option<WithInfo<D::Info, QueuedError<D>>> {
     let message_type = message_type.apply_in_context(context.type_context);
 
-    let mut error_message = None;
-    let mut error_fix_message = None;
-    let mut error_fix_code = None;
+    let mut error_id = None;
+    let mut error_data = Vec::new();
     let mut error_location = None;
     match &message_type.kind {
         TypeKind::Message { segments, trailing } => {
-            error_message = Some(FormattedText {
+            error_id = Some(FormattedText {
                 segments: segments.clone(),
                 trailing: trailing.clone(),
             });
@@ -272,9 +257,9 @@ pub fn resolve_custom_error<D: Driver>(
         TypeKind::Tuple(elements) => {
             for element in elements {
                 match &element.kind {
-                    // Error message
+                    // Error ID
                     TypeKind::Message { segments, trailing } => {
-                        error_message = Some(FormattedText {
+                        error_id = Some(FormattedText {
                             segments: segments.clone(),
                             trailing: trailing.clone(),
                         });
@@ -292,26 +277,21 @@ pub fn resolve_custom_error<D: Driver>(
                         }
                     }
 
-                    // Error fix
+                    // Error data
                     TypeKind::Declared { path, parameters }
                         if context
                             .driver
-                            .path_for_language_type("error-fix")
-                            .is_some_and(|error_fix_path| *path == error_fix_path) =>
+                            .path_for_language_type("error-data")
+                            .is_some_and(|error_data_path| *path == error_data_path) =>
                     {
-                        if let Some((message_type, code_type)) = parameters.iter().collect_tuple() {
-                            if let TypeKind::Message { segments, trailing } = &message_type.kind {
-                                error_fix_message = Some(FormattedText {
+                        if let Some((key, value)) = parameters.iter().collect_tuple() {
+                            if let TypeKind::Message { segments, trailing } = &key.kind {
+                                let key = FormattedText {
                                     segments: segments.clone(),
                                     trailing: trailing.clone(),
-                                });
-                            }
+                                };
 
-                            if let TypeKind::Message { segments, trailing } = &code_type.kind {
-                                error_fix_code = Some(FormattedText {
-                                    segments: segments.clone(),
-                                    trailing: trailing.clone(),
-                                });
+                                error_data.push((key, value.clone()));
                             }
                         }
                     }
@@ -322,55 +302,12 @@ pub fn resolve_custom_error<D: Driver>(
         _ => {}
     }
 
-    error_message.map(|error_message| WithInfo {
+    error_id.map(|error_id| WithInfo {
         info: error_info.clone(),
         item: QueuedError::Custom {
-            message: error_message,
-            fix: error_fix_message.zip(error_fix_code),
+            id: error_id,
+            data: error_data,
             location: error_location,
-            reasons: context.type_context.reasons.clone(),
         },
     })
-}
-
-pub fn resolve_custom_reason<D: Driver>(
-    reason_info: &D::Info,
-    message_type: &Type<D>,
-    context: &mut ResolveContext<'_, D>,
-) {
-    let message_type = message_type.apply_in_context(context.type_context);
-
-    match &message_type.kind {
-        TypeKind::Message { segments, trailing } => {
-            context.type_context.add_reason(WithInfo {
-                info: reason_info.clone(),
-                item: ErrorReason::Custom(FormattedText {
-                    segments: segments.clone(),
-                    trailing: trailing.clone(),
-                }),
-            });
-        }
-        TypeKind::Tuple(elements) => {
-            for element in elements {
-                match &element.kind {
-                    TypeKind::Message { segments, trailing } => {
-                        context.type_context.add_reason(WithInfo {
-                            info: reason_info.clone(),
-                            item: ErrorReason::Custom(FormattedText {
-                                segments: segments.clone(),
-                                trailing: trailing.clone(),
-                            }),
-                        });
-                    }
-                    _ => {
-                        context.type_context.add_reason(WithInfo {
-                            info: element.info.clone(),
-                            item: ErrorReason::Expression(element.clone()),
-                        });
-                    }
-                }
-            }
-        }
-        _ => {}
-    }
 }

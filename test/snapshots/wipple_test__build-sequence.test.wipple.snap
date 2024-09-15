@@ -2,8 +2,10 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-0
-1
-2
-3
-4
+diagnostics: []
+output:
+  - "0"
+  - "1"
+  - "2"
+  - "3"
+  - "4"

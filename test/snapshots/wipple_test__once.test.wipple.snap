@@ -2,6 +2,8 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-Hello, world!
-42
-42
+diagnostics: []
+output:
+  - "Hello, world!"
+  - "42"
+  - "42"

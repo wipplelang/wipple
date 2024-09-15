@@ -2,5 +2,37 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/custom-errors-formatting.test.wipple:19:1: error: `Carnivore`s do not eat `Plants`
-tests/custom-errors-formatting.test.wipple:20:1: error: `Herbivore`s do not eat `Meat`
+diagnostics:
+  - location:
+      path: tests/custom-errors-formatting.test.wipple
+      start:
+        line: 19
+        column: 0
+        index: 457
+      end:
+        line: 19
+        column: 4
+        index: 461
+    severity: error
+    template:
+      id: does-not-eat
+      data:
+        animal: "`Carnivore`"
+        food: "`Plants`"
+  - location:
+      path: tests/custom-errors-formatting.test.wipple
+      start:
+        line: 20
+        column: 0
+        index: 479
+      end:
+        line: 20
+        column: 4
+        index: 483
+    severity: error
+    template:
+      id: does-not-eat
+      data:
+        animal: "`Herbivore`"
+        food: "`Meat`"
+output: []

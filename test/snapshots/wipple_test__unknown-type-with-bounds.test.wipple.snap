@@ -2,4 +2,19 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/unknown-type-with-bounds.test.wipple:8:1: error: could not determine what kind of value this code produces
+diagnostics:
+  - location:
+      path: tests/unknown-type-with-bounds.test.wipple
+      start:
+        line: 7
+        column: 0
+        index: 88
+      end:
+        line: 7
+        column: 1
+        index: 89
+    severity: error
+    template:
+      id: unknown-type
+      data: {}
+output: []

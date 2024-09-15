@@ -2,4 +2,19 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/repeat-missing-times.test.wipple:3:8: error: expected `times` after number
+diagnostics:
+  - location:
+      path: tests/repeat-missing-times.test.wipple
+      start:
+        line: 2
+        column: 7
+        index: 26
+      end:
+        line: 2
+        column: 8
+        index: 27
+    severity: error
+    template:
+      id: expected-times-after-number
+      data: {}
+output: []

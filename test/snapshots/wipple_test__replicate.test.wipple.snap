@@ -2,6 +2,8 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-abc
-abc
-abc
+diagnostics: []
+output:
+  - abc
+  - abc
+  - abc

@@ -230,7 +230,7 @@ impl LanguageServer for Backend {
                             character: diagnostic.location.end.column,
                         },
                     },
-                    message: diagnostic.message,
+                    message: format!("{}: {:?}", diagnostic.template.id, diagnostic.template.data),
                     source: Some(String::from("wipple")),
                     data: Some((index as u64).into()),
                     ..Default::default()
@@ -277,73 +277,10 @@ impl LanguageServer for Backend {
             .filter_map(|context_diagnostic| {
                 let index = context_diagnostic.data.as_ref()?.as_u64()? as usize;
                 let diagnostic = config.diagnostics.get(index)?;
-                let rendered_diagnostic = config.render.render_diagnostic(diagnostic)?;
-                Some((context_diagnostic, diagnostic, rendered_diagnostic))
+                Some((context_diagnostic, diagnostic))
             })
-            .flat_map(|(context_diagnostic, diagnostic, rendered_diagnostic)| {
+            .flat_map(|(context_diagnostic, diagnostic)| {
                 let mut actions = Vec::new();
-
-                if let Some(fix) = rendered_diagnostic.fix.clone() {
-                    let before_edit = fix.before.map(|text| TextEdit {
-                        range: Range {
-                            start: Position {
-                                line: rendered_diagnostic.location.start.line,
-                                character: rendered_diagnostic.location.start.column,
-                            },
-                            end: Position {
-                                line: rendered_diagnostic.location.start.line,
-                                character: rendered_diagnostic.location.start.column,
-                            },
-                        },
-                        new_text: text,
-                    });
-
-                    let edit = fix.replacement.map(|text| TextEdit {
-                        range: Range {
-                            start: Position {
-                                line: rendered_diagnostic.location.start.line,
-                                character: rendered_diagnostic.location.start.column,
-                            },
-                            end: Position {
-                                line: rendered_diagnostic.location.end.line,
-                                character: rendered_diagnostic.location.end.column,
-                            },
-                        },
-                        new_text: text,
-                    });
-
-                    let after_edit = fix.after.map(|text| TextEdit {
-                        range: Range {
-                            start: Position {
-                                line: rendered_diagnostic.location.end.line,
-                                character: rendered_diagnostic.location.end.column,
-                            },
-                            end: Position {
-                                line: rendered_diagnostic.location.end.line,
-                                character: rendered_diagnostic.location.end.column,
-                            },
-                        },
-                        new_text: text,
-                    });
-
-                    actions.push(CodeActionOrCommand::CodeAction(CodeAction {
-                        title: fix.message,
-                        kind: Some(CodeActionKind::QUICKFIX),
-                        diagnostics: Some(vec![context_diagnostic.clone()]),
-                        edit: Some(WorkspaceEdit {
-                            changes: Some(HashMap::from([(
-                                params.text_document.uri.clone(),
-                                [before_edit, edit, after_edit]
-                                    .into_iter()
-                                    .flatten()
-                                    .collect(),
-                            )])),
-                            document_changes: None,
-                            change_annotations: None,
-                        }),
-                        ..Default::default()
-                    }));
-                }
 
                 if let Some((sources, line_index)) = sources.clone() {
                     let dependencies = config.dependencies.clone();

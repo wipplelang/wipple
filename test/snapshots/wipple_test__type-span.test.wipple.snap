@@ -2,7 +2,36 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/type-span.test.wipple:3:1: error: cannot add a function and a number
-tests/type-span.test.wipple:3:1: note: `show` is a function
-tests/type-span.test.wipple:3:8: note: `1` is a number
-tests/type-span.test.wipple:4:1: error: can't find `Show`
+diagnostics:
+  - location:
+      path: tests/type-span.test.wipple
+      start:
+        line: 2
+        column: 0
+        index: 19
+      end:
+        line: 2
+        column: 8
+        index: 27
+    severity: error
+    template:
+      id: cannot-add
+      data:
+        left: a function
+        right: a number
+  - location:
+      path: tests/type-span.test.wipple
+      start:
+        line: 3
+        column: 0
+        index: 28
+      end:
+        line: 3
+        column: 4
+        index: 32
+    severity: error
+    template:
+      id: unresolved-name
+      data:
+        name: Show
+output: []

@@ -8,10 +8,10 @@ undefined : intrinsic "undefined-number"
 Add : (Left : Number) (Right : Number) (infer Sum) => trait (Left Right -> Sum)
 instance (Add Number Number Number) : left right -> intrinsic "add-number" left right
 
-Left Right Sum where (Because (Left ; Right)) (Error ("cannot add _ and _" Left Right)) =>
+Left Right Sum where (Error ("cannot-add" ; Error-Data "left" Left ; Error-Data "right" Right)) =>
   default instance (Add Left Right Sum) : ...
 
-Right Sum where (Error "missing parentheses around the symbol `+`") =>
+Right Sum where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "+")) =>
   instance (Add Unit Right Sum) : ...
 
 -- Subtract the one value from another, returning the difference.
@@ -19,10 +19,10 @@ Right Sum where (Error "missing parentheses around the symbol `+`") =>
 Subtract : (Left : Number) (Right : Number) (infer Difference) => trait (Left Right -> Difference)
 instance (Subtract Number Number Number) : left right -> intrinsic "subtract-number" left right
 
-Left Right Difference where (Because (Left ; Right)) (Error ("cannot subtract _ from _" Right Left)) =>
+Left Right Difference where (Error ("cannot-subtract" ; Error-Data "left" Left ; Error-Data "right" Right)) =>
   default instance (Subtract Left Right Difference) : ...
 
-Right Difference where (Error "missing parentheses around the symbol `-`") =>
+Right Difference where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "-")) =>
   instance (Subtract Unit Right Difference) : ...
 
 -- Multiply two values together, returning the product.
@@ -30,10 +30,10 @@ Right Difference where (Error "missing parentheses around the symbol `-`") =>
 Multiply : (Left : Number) (Right : Number) (infer Product) => trait (Left Right -> Product)
 instance (Multiply Number Number Number) : left right -> intrinsic "multiply-number" left right
 
-Left Right Product where (Because (Left ; Right)) (Error ("cannot multiply _ by _" Left Right)) =>
+Left Right Product where (Error ("cannot-multiply" ; Error-Data "left" Left ; Error-Data "right" Right)) =>
   default instance (Multiply Left Right Product) : ...
 
-Right Product where (Error "missing parentheses around the symbol `*`") =>
+Right Product where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "*")) =>
   instance (Multiply Unit Right Product) : ...
 
 -- Divide two numbers, returning the quotient.
@@ -41,10 +41,10 @@ Right Product where (Error "missing parentheses around the symbol `*`") =>
 Divide : (Left : Number) (Right : Number) (infer Quotient) => trait (Left Right -> Quotient)
 instance (Divide Number Number Number) : left right -> intrinsic "divide-number" left right
 
-Left Right Quotient where (Because (Left ; Right)) (Error ("cannot divide _ by _" Left Right)) =>
+Left Right Quotient where (Error ("cannot-divide" ; Error-Data "left" Left ; Error-Data "right" Right)) =>
   default instance (Divide Left Right Quotient) : ...
 
-Right Quotient where (Error "missing parentheses around the symbol `/`") =>
+Right Quotient where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "/")) =>
   instance (Divide Unit Right Quotient) : ...
 
 -- Divide two numbers, returning the remainder.
@@ -52,10 +52,10 @@ Right Quotient where (Error "missing parentheses around the symbol `/`") =>
 Remainder : (Left : Number) (Right : Number) (infer Remainder) => trait (Left Right -> Remainder)
 instance (Remainder Number Number Number) : left right -> intrinsic "remainder-number" left right
 
-Left Right Remainder where (Because (Left ; Right)) (Error ("cannot divide _ by _" Left Right)) =>
+Left Right Remainder where (Error ("cannot-remainder" ; Error-Data "left" Left ; Error-Data "right" Right)) =>
   default instance (Remainder Left Right Remainder) : ...
 
-Right Remainder where (Error "missing parentheses around the symbol `%`") =>
+Right Remainder where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "%")) =>
   instance (Remainder Unit Right Remainder) : ...
 
 -- Raise one number to the power of the other number.
@@ -63,10 +63,10 @@ Right Remainder where (Error "missing parentheses around the symbol `%`") =>
 Power : (Left : Number) (Right : Number) (infer Power) => trait (Left Right -> Power)
 instance (Power Number Number Number) : left right -> intrinsic "power-number" left right
 
-Left Right Power where (Because (Left ; Right)) (Error ("cannot raise _ to the power of _" Left Right)) =>
+Left Right Power where (Error ("cannot-power" ; Error-Data "left" Left ; Error-Data "right" Right)) =>
   default instance (Power Left Right Power) : ...
 
-Right Power where (Error "missing parentheses around the symbol `^`") =>
+Right Power where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "^")) =>
   instance (Power Unit Right Power) : ...
 
 -- Round down a number to the nearest integer.
@@ -91,7 +91,7 @@ instance (Describe-Type Angle "angle")
 degrees :: Number -> Angle
 degrees : Angle
 
-() where (Error ("missing unit for angle" ; Error-Fix "add `degrees`" ("`(_ degrees)`" Source))) =>
+() where (Error "missing-unit-for-angle") =>
   instance (Mismatch Number Angle)
 
 -- Calculate the sine of an angle.

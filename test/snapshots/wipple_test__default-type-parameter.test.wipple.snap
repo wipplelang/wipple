@@ -2,5 +2,7 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-X
-Y
+diagnostics: []
+output:
+  - X
+  - Y

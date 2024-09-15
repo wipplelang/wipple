@@ -327,7 +327,6 @@ pub fn try_unify_expression<D: Driver>(
             item: QueuedError::Mismatch {
                 actual: expression.item.r#type.clone(),
                 expected: expected_type.clone(),
-                reasons: context.reasons.clone(),
             },
         });
     }
@@ -348,7 +347,6 @@ pub fn try_unify<D: Driver>(
             item: QueuedError::Mismatch {
                 actual: r#type.item.clone(),
                 expected: expected_type.clone(),
-                reasons: context.reasons.clone(),
             },
         });
     }

@@ -2,7 +2,69 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/function-arrow.test.wipple:3:2: error: expected a pattern before the symbol `->`
-tests/function-arrow.test.wipple:3:2: error: expected code after the symbol `->`
-tests/function-arrow.test.wipple:4:4: error: expected code after the symbol `->`
-tests/function-arrow.test.wipple:5:2: error: expected a pattern before the symbol `->`
+diagnostics:
+  - location:
+      path: tests/function-arrow.test.wipple
+      start:
+        line: 2
+        column: 1
+        index: 20
+      end:
+        line: 2
+        column: 3
+        index: 22
+    severity: error
+    template:
+      id: unexpected-symbol-after
+      data:
+        location: "the symbol `->`"
+        symbol: code
+  - location:
+      path: tests/function-arrow.test.wipple
+      start:
+        line: 2
+        column: 1
+        index: 20
+      end:
+        line: 2
+        column: 3
+        index: 22
+    severity: error
+    template:
+      id: unexpected-symbol-before
+      data:
+        location: "the symbol `->`"
+        symbol: a pattern
+  - location:
+      path: tests/function-arrow.test.wipple
+      start:
+        line: 3
+        column: 3
+        index: 27
+      end:
+        line: 3
+        column: 5
+        index: 29
+    severity: error
+    template:
+      id: unexpected-symbol-after
+      data:
+        location: "the symbol `->`"
+        symbol: code
+  - location:
+      path: tests/function-arrow.test.wipple
+      start:
+        line: 4
+        column: 1
+        index: 32
+      end:
+        line: 4
+        column: 3
+        index: 34
+    severity: error
+    template:
+      id: unexpected-symbol-before
+      data:
+        location: "the symbol `->`"
+        symbol: a pattern
+output: []

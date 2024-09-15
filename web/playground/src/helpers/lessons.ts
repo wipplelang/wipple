@@ -1,4 +1,4 @@
-import { Lesson } from "wipple-playground";
+import { Lesson } from "../models";
 
 export const getLessons = async (): Promise<Lesson[]> => {
     const index = await fetch("/playground/lessons/index.json").then((response) => response.json());

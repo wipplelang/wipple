@@ -3,7 +3,6 @@ layout: blog
 title: Announcing Wipple 1.0 and wipple.org
 date: 2024-06-21
 image: /blog/2024-06-21/images/banner.jpg
-tags: [posts, featuredPosts]
 blurb: I am proud to announce the release of Wipple 1.0 today! Wipple 1.0 has been four years in the making — since April 2020, I have made over 2,000 changes. Wipple 1.0 brings a new compiler, playground, and website at wipple.org, and I can't wait for you to try it out.
 ---
 

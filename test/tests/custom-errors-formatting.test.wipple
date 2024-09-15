@@ -7,7 +7,8 @@ Meat : type
 Plants : type
 
 Eats? : Animal Food => trait ()
-Animal Food where (Error ("_s do not eat _" Animal Food)) => default instance (Eats? Animal Food) : ()
+Animal Food where (Error ("does-not-eat" ; Error-Data "animal" Animal ; Error-Data "food" Food)) =>
+  default instance (Eats? Animal Food) : ()
 instance (Eats? Carnivore Meat) : ()
 instance (Eats? Herbivore Plants) : ()
 

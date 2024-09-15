@@ -1,7 +1,7 @@
 //! The type context.
 
 use crate::{
-    infer::{errors::ErrorReason, types::Type, Expression, InferContext},
+    infer::{types::Type, Expression, InferContext},
     Driver,
 };
 use derivative::Derivative;
@@ -15,7 +15,6 @@ pub struct TypeContext<D: Driver> {
     pub tracked_expressions: Vec<Option<WithInfo<D::Info, Expression<D>>>>,
     pub substitutions: BTreeMap<u32, Type<D>>,
     pub defaults: BTreeMap<u32, Type<D>>,
-    pub reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
 }
 
 impl<D: Driver> TypeContext<D> {
@@ -23,10 +22,6 @@ impl<D: Driver> TypeContext<D> {
         self.next_variable = other.next_variable;
         self.substitutions = other.substitutions;
         self.defaults = other.defaults;
-
-        self.reasons = other.reasons;
-        self.reasons.sort_by_key(|reason| reason.info.clone());
-        self.reasons.dedup();
     }
 
     pub fn tracked_expression(
@@ -36,10 +31,6 @@ impl<D: Driver> TypeContext<D> {
         self.tracked_expressions[id.counter as usize]
             .as_ref()
             .expect("uninitialized tracked expression")
-    }
-
-    pub fn add_reason(&mut self, reason: WithInfo<D::Info, ErrorReason<D>>) {
-        self.reasons.push(reason);
     }
 }
 

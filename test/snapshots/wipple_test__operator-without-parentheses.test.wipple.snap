@@ -2,8 +2,52 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/operator-without-parentheses.test.wipple:3:1: error: missing parentheses around the symbol `+`
-tests/operator-without-parentheses.test.wipple:4:1: error: `show True or False` requires `Or Unit Boolean _`
-tests/operator-without-parentheses.test.wipple:5:6: error: cannot add a number and text
-tests/operator-without-parentheses.test.wipple:5:7: note: `1` is a number
-tests/operator-without-parentheses.test.wipple:5:11: note: `"hi"` is text
+diagnostics:
+  - location:
+      path: tests/operator-without-parentheses.test.wipple
+      start:
+        line: 2
+        column: 0
+        index: 19
+      end:
+        line: 2
+        column: 10
+        index: 29
+    severity: error
+    template:
+      id: missing-parentheses-around-operator
+      data:
+        operator: "`+`"
+  - location:
+      path: tests/operator-without-parentheses.test.wipple
+      start:
+        line: 3
+        column: 0
+        index: 30
+      end:
+        line: 3
+        column: 18
+        index: 48
+    severity: error
+    template:
+      id: unresolved-instance
+      data:
+        instance: Or Unit Boolean _
+        trait: show True or False
+  - location:
+      path: tests/operator-without-parentheses.test.wipple
+      start:
+        line: 4
+        column: 5
+        index: 54
+      end:
+        line: 4
+        column: 15
+        index: 64
+    severity: error
+    template:
+      id: cannot-add
+      data:
+        left: a number
+        right: text
+output: []

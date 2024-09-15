@@ -5,11 +5,11 @@ export * from "./lesson";
 import { useEffect, useState } from "react";
 import { Outlet, ScrollRestoration } from "react-router-dom";
 import { produce } from "immer";
-import { Button, useAlert } from "wipple-playground";
+import { Button, useAlert, Navbar } from "../components";
 import { useStore } from "../store";
 import { getUser, signIn, signInAsGuest, useIsOffline } from "../helpers";
-import { Navbar } from "../components";
 import { getUserInfo } from "../models";
+import { MaterialSymbol } from "react-material-symbols";
 
 export const RootPage = () => {
     const [store, setStore] = useStore();
@@ -47,13 +47,25 @@ export const RootPage = () => {
         );
     }, [offline]);
 
-    return (
-        <div className="w-screen flex flex-col items-stretch">
-            <Navbar />
-            <Outlet />
+    useEffect(() => {
+        if (store.isPrinting) {
+            document.body.classList.add("no-dark-mode");
+        } else {
+            document.body.classList.remove("no-dark-mode");
+        }
+    }, [store.isPrinting]);
 
-            <ScrollRestoration />
-        </div>
+    return (
+        <>
+            <div className="w-screen flex flex-col items-stretch">
+                <Navbar />
+                <Outlet />
+
+                <ScrollRestoration />
+            </div>
+
+            {store.isPrinting ? <PrintingOverlay /> : null}
+        </>
     );
 };
 
@@ -163,3 +175,10 @@ const WelcomeAnimation = () => {
         </div>
     );
 };
+
+const PrintingOverlay = () => (
+    <div className="sticky inset-0 w-screen h-screen flex flex-col items-center justify-center gap-2 text-2xl bg-gray-600 text-white">
+        <MaterialSymbol icon="print" className="text-5xl" />
+        <p>Printing...</p>
+    </div>
+);

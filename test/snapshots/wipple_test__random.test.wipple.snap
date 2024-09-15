@@ -2,7 +2,9 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-0
-1
-Some 1
-None
+diagnostics: []
+output:
+  - "0"
+  - "1"
+  - Some 1
+  - None

@@ -2,5 +2,35 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/missing-closing-parenthesis.test.wipple:3:11: error: expected a closing parenthesis (`)`) here
-tests/missing-closing-parenthesis.test.wipple:3:1: error: missing text for `show`
+diagnostics:
+  - location:
+      path: tests/missing-closing-parenthesis.test.wipple
+      start:
+        line: 2
+        column: 0
+        index: 19
+      end:
+        line: 2
+        column: 4
+        index: 23
+    severity: error
+    template:
+      id: missing-inputs
+      data:
+        function: show
+        inputs: text
+  - location:
+      path: tests/missing-closing-parenthesis.test.wipple
+      start:
+        line: 2
+        column: 10
+        index: 29
+      end:
+        line: 2
+        column: 11
+        index: 30
+    severity: error
+    template:
+      id: missing-closing-parenthesis
+      data: {}
+output: []

@@ -2,4 +2,20 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/type-arithmetic.test.wipple:13:5: error: this code produces `_ -> S (S (S (S (S Z))))`, but the `_`s are unknown
+diagnostics:
+  - location:
+      path: tests/type-arithmetic.test.wipple
+      start:
+        line: 12
+        column: 4
+        index: 266
+      end:
+        line: 12
+        column: 15
+        index: 277
+    severity: error
+    template:
+      id: partially-unknown-type
+      data:
+        type: "`_ -> S (S (S (S (S Z))))`"
+output: []

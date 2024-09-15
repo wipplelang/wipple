@@ -2,4 +2,21 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/type-states.test.wipple:24:5: error: expected a hovering drone here, but found an idle drone
+diagnostics:
+  - location:
+      path: tests/type-states.test.wipple
+      start:
+        line: 23
+        column: 4
+        index: 432
+      end:
+        line: 23
+        column: 12
+        index: 440
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: a hovering drone
+        found: an idle drone
+output: []

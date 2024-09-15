@@ -80,7 +80,7 @@ async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
                     }
                 }
 
-                render.render_diagnostic_to_debug_string(&rendered_diagnostic)
+                rendered_diagnostic
             })
             .collect::<Vec<_>>();
 
@@ -175,17 +175,16 @@ async fn tests(#[files("tests/**/*.test.wipple")] file: std::path::PathBuf) {
 
         #[derive(Default, Serialize)]
         struct Snapshot {
-            diagnostics: Vec<String>,
+            diagnostics: Vec<wipple_render::RenderedDiagnostic>,
             output: Vec<String>,
         }
 
-        let snapshot = [rendered_diagnostics.join("\n"), output.join("\n")]
-            .into_iter()
-            .filter(|s| !s.is_empty())
-            .collect::<Vec<_>>()
-            .join("\n\n");
+        let snapshot = Snapshot {
+            diagnostics: rendered_diagnostics,
+            output,
+        };
 
-        insta::assert_snapshot!(file_name, snapshot);
+        insta::assert_yaml_snapshot!(file_name, snapshot);
     };
 
     let mut settings = insta::Settings::clone_current();

@@ -55,7 +55,7 @@ build-sequence : initial transform -> do {
 
 -- Convert a collection into a sequence.
 As-Sequence : Container (infer Element) => trait (Container -> Sequence Element)
-Container (infer Element) where (Error ("cannot create a sequence from _" Container)) =>
+Container (infer Element) where (Error ("cannot-make-sequence" ; Error-Data "container" Container)) =>
   default instance (As-Sequence Container Element) : ...
 
 Element => instance (As-Sequence (Sequence Element) Element) : sequence -> sequence
@@ -192,7 +192,7 @@ sum : reduce Empty (next -> result -> result + next)
 
 From-Sequence : Element Container => trait ((Sequence Element) -> Container)
 
-Element Container where (Error ("cannot create _ from a sequence of _" Container Element)) =>
+Element Container where (Error ("cannot-collect" ; Error-Data "container" Container ; Error-Data "element" Element)) =>
   default instance (From-Sequence Element Container) : ...
 
 -- Collect a sequence into a single container, like a list.

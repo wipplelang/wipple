@@ -2,11 +2,13 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-Left:
-1
-2
-3
-Right:
-a
-b
-c
+diagnostics: []
+output:
+  - "Left:"
+  - "1"
+  - "2"
+  - "3"
+  - "Right:"
+  - a
+  - b
+  - c

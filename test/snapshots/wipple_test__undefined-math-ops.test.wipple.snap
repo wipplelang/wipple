@@ -2,8 +2,10 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-undefined
-undefined
-undefined
-undefined
-undefined
+diagnostics: []
+output:
+  - undefined
+  - undefined
+  - undefined
+  - undefined
+  - undefined

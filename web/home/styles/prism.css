@@ -35,35 +35,37 @@ pre[class*="language-"] .token.punctuation {
 }
 
 @media (prefers-color-scheme: dark) {
-    pre[class*="language-"] {
-        color: #e1e4e8;
-    }
+    &:not(.no-dark-mode *) {
+        pre[class*="language-"] {
+            color: #e1e4e8;
+        }
 
-    pre[class*="language-"] .token.string {
-        color: #9ecbff;
-    }
+        pre[class*="language-"] .token.string {
+            color: #9ecbff;
+        }
 
-    pre[class*="language-"] .token.comment {
-        color: #6a737d;
-    }
+        pre[class*="language-"] .token.comment {
+            color: #6a737d;
+        }
 
-    pre[class*="language-"] .token.keyword {
-        color: #ffab70;
-    }
+        pre[class*="language-"] .token.keyword {
+            color: #ffab70;
+        }
 
-    pre[class*="language-"] .token.class-name {
-        color: #a473ff;
-    }
+        pre[class*="language-"] .token.class-name {
+            color: #a473ff;
+        }
 
-    pre[class*="language-"] .token.operator {
-        color: #79b8ff;
-    }
+        pre[class*="language-"] .token.operator {
+            color: #79b8ff;
+        }
 
-    pre[class*="language-"] .token.number {
-        color: #79b8ff;
-    }
+        pre[class*="language-"] .token.number {
+            color: #79b8ff;
+        }
 
-    pre[class*="language-"] .token.punctuation {
-        color: #e1e4e8;
+        pre[class*="language-"] .token.punctuation {
+            color: #e1e4e8;
+        }
     }
 }

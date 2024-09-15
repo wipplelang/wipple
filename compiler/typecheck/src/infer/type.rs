@@ -1,6 +1,6 @@
 use crate::{
     infer::{
-        errors::{refine_unknown_type_for_error, ErrorReason, QueuedError},
+        errors::{refine_unknown_type_for_error, QueuedError},
         types::{context::TypeContext, Instance, Type, TypeKind},
         FinalizeContext, FormatSegment,
     },
@@ -205,35 +205,6 @@ pub fn finalize_type<D: Driver>(
     }
 
     finalized_type
-}
-
-pub fn finalize_type_reason<D: Driver>(
-    reason: ErrorReason<D>,
-    context: &mut FinalizeContext<'_, D>,
-) -> Option<crate::ErrorReason<D>> {
-    Some(match reason {
-        ErrorReason::Expression(mut r#type) => {
-            r#type.apply_in_context_mut(context.type_context);
-            let expression = context.type_context.tracked_expression(r#type.expression?);
-
-            crate::ErrorReason::Expression(finalize_type(
-                expression.item.r#type.clone(),
-                false,
-                context,
-            ))
-        }
-        ErrorReason::Custom(message) => crate::ErrorReason::Custom(crate::CustomMessage {
-            segments: message
-                .segments
-                .into_iter()
-                .map(|segment| crate::MessageTypeFormatSegment {
-                    text: segment.text,
-                    r#type: finalize_type(segment.value, false, context),
-                })
-                .collect(),
-            trailing: message.trailing,
-        }),
-    })
 }
 
 pub fn infer_instance<D: Driver>(

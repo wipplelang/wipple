@@ -2,4 +2,20 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/missing-instance.test.wipple:4:1: error: cannot describe `Foo`
+diagnostics:
+  - location:
+      path: tests/missing-instance.test.wipple
+      start:
+        line: 3
+        column: 0
+        index: 30
+      end:
+        line: 3
+        column: 4
+        index: 34
+    severity: error
+    template:
+      id: cannot-describe
+      data:
+        value: "`Foo`"
+output: []

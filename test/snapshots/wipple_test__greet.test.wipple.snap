@@ -2,5 +2,7 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-Hello, Bob!
-Hello, world!
+diagnostics: []
+output:
+  - "Hello, Bob!"
+  - "Hello, world!"

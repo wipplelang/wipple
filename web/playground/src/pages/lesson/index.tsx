@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { createLesson } from "../../models";
-import { CircularProgress } from "wipple-playground";
+import { CircularProgress } from "../../components";
 import { getLesson } from "../../helpers";
 
 export const LessonPage = () => {

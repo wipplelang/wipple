@@ -2,7 +2,7 @@ import { collection, doc, getDoc, getFirestore, setDoc } from "firebase/firestor
 import { getUser, pureConverter } from "../helpers";
 
 export interface UserInfo {
-    classroomCode?: string;
+    // TODO
 }
 
 const userInfoConverter = pureConverter<UserInfo>();

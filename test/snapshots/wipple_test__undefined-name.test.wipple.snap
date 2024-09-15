@@ -2,4 +2,20 @@
 source: test/src/lib.rs
 expression: snapshot
 ---
-tests/undefined-name.test.wipple:3:1: error: can't find `foo`
+diagnostics:
+  - location:
+      path: tests/undefined-name.test.wipple
+      start:
+        line: 2
+        column: 0
+        index: 19
+      end:
+        line: 2
+        column: 3
+        index: 22
+    severity: error
+    template:
+      id: unresolved-name
+      data:
+        name: foo
+output: []
