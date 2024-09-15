@@ -78,9 +78,8 @@ tasks:
     install-dependencies:
         run: once
         deps:
+            - wasm:install-dependencies
             - web:install-dependencies
-        cmds:
-            - npm install
 
     wasm:install-dependencies:
         run: once
@@ -94,80 +93,70 @@ tasks:
         cmds:
             - ./build.sh
 
-    playground:bundle:
+    web:playground:bundle:
         run: once
-        dir: playground
+        dir: web/playground
         cmds:
             - task base:compile
-            - cargo run --bin wipplec -- bundle-for-playground ../library/base/*.wipple --output ./public/library/base.wipplebundle
-            - task --parallel playground:bundle:turtle playground:bundle:music playground:bundle:math playground:bundle:game playground:bundle:physics
+            - cargo run --bin wipplec -- bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
+            - task --parallel web:playground:bundle:turtle web:playground:bundle:music web:playground:bundle:math web:playground:bundle:game web:playground:bundle:physics
 
-    playground:bundle:turtle:
+    web:playground:bundle:turtle:
         run: once
-        dir: playground
+        dir: web/playground
         cmds:
-            - cargo run --bin wipplec -- compile ../library/turtle/turtle.wipple --dependency ../artifacts/base.wippleinterface --interface ../artifacts/turtle.wippleinterface
-            - cargo run --bin wipplec -- bundle-for-playground ../library/turtle/turtle.wipple --dependency ../artifacts/base.wippleinterface --link ../artifacts/base.wipplelibrary --output ./public/library/turtle.wipplebundle
+            - cargo run --bin wipplec -- compile ../../library/turtle/turtle.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/turtle.wippleinterface
+            - cargo run --bin wipplec -- bundle-for-playground ../../library/turtle/turtle.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/turtle.wipplebundle
 
-    playground:bundle:music:
+    web:playground:bundle:music:
         run: once
-        dir: playground
+        dir: web/playground
         cmds:
-            - cargo run --bin wipplec -- compile ../library/music/music.wipple --dependency ../artifacts/base.wippleinterface --interface ../artifacts/music.wippleinterface
-            - cargo run --bin wipplec -- bundle-for-playground ../library/music/music.wipple --dependency ../artifacts/base.wippleinterface --link ../artifacts/base.wipplelibrary --output ./public/library/music.wipplebundle
+            - cargo run --bin wipplec -- compile ../../library/music/music.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/music.wippleinterface
+            - cargo run --bin wipplec -- bundle-for-playground ../../library/music/music.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/music.wipplebundle
 
-    playground:bundle:math:
+    web:playground:bundle:math:
         run: once
-        dir: playground
+        dir: web/playground
         cmds:
-            - cargo run --bin wipplec -- compile ../library/math/math.wipple --dependency ../artifacts/base.wippleinterface --interface ../artifacts/math.wippleinterface
-            - cargo run --bin wipplec -- bundle-for-playground ../library/math/math.wipple --dependency ../artifacts/base.wippleinterface --link ../artifacts/base.wipplelibrary --output ./public/library/math.wipplebundle
+            - cargo run --bin wipplec -- compile ../../library/math/math.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/math.wippleinterface
+            - cargo run --bin wipplec -- bundle-for-playground ../../library/math/math.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/math.wipplebundle
 
-    playground:bundle:game:
+    web:playground:bundle:game:
         run: once
-        dir: playground
+        dir: web/playground
         cmds:
-            - cargo run --bin wipplec -- compile ../library/game/game.wipple --dependency ../artifacts/base.wippleinterface --interface ../artifacts/game.wippleinterface
-            - cargo run --bin wipplec -- bundle-for-playground ../library/game/game.wipple --dependency ../artifacts/base.wippleinterface --link ../artifacts/base.wipplelibrary --output ./public/library/game.wipplebundle
+            - cargo run --bin wipplec -- compile ../../library/game/game.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/game.wippleinterface
+            - cargo run --bin wipplec -- bundle-for-playground ../../library/game/game.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/game.wipplebundle
 
-    playground:bundle:physics:
+    web:playground:bundle:physics:
         run: once
-        dir: playground
+        dir: web/playground
         cmds:
-            - cargo run --bin wipplec -- compile ../library/physics/physics.wipple --dependency ../artifacts/base.wippleinterface --interface ../artifacts/physics.wippleinterface
-            - cargo run --bin wipplec -- bundle-for-playground ../library/physics/physics.wipple --dependency ../artifacts/base.wippleinterface --link ../artifacts/base.wipplelibrary --output ./public/library/physics.wipplebundle
-
-    playground:build:
-        run: once
-        deps:
-            - playground:bundle
-            - wasm:build
-        dir: playground
-        cmds:
-            - npm run build
+            - cargo run --bin wipplec -- compile ../../library/physics/physics.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/physics.wippleinterface
+            - cargo run --bin wipplec -- bundle-for-playground ../../library/physics/physics.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/physics.wipplebundle
 
     web:install-dependencies:
         run: once
         deps:
             - web:home:install-dependencies
             - web:login:install-dependencies
-            - web:dashboard:install-dependencies
             - web:docs:install-dependencies
             - web:doc-template:install-dependencies
+            - web:playground:install-dependencies
 
     web:serve:
         run: once
         deps:
             - web:build
         cmds:
-            - netlify dev --filter wipple-playground-web
+            - netlify dev --filter wipple-playground
 
     web:build:
         run: once
         deps:
             - web:home:build
             - web:login:build
-            - web:dashboard:build
             - web:docs:build
             - web:doc-template:build
             - web:playground:build
@@ -176,7 +165,6 @@ tasks:
             - rm -rf dist && mkdir dist
             - cp -r home/_site/. dist
             - cp -r login/dist/. dist/login
-            - cp -r dashboard/dist/. dist/dashboard
             - cp -r docs/book/. dist/docs
             - cp doc-template/dist/index.html dist/doc-template.html
             - cp -r playground/dist/. dist/playground
@@ -215,30 +203,6 @@ tasks:
     web:login:build:
         run: once
         dir: web/login
-        cmds:
-            - npm run build
-
-    web:dashboard:install-dependencies:
-        run: once
-        deps:
-            - playground:build
-        dir: web/dashboard
-        cmds:
-            - npm install
-
-    web:dashboard:serve:
-        run: once
-        deps:
-            - playground:build
-        dir: web/dashboard
-        cmds:
-            - npm run dev
-
-    web:dashboard:build:
-        run: once
-        deps:
-            - playground:build
-        dir: web/dashboard
         cmds:
             - npm run build
 
@@ -284,10 +248,14 @@ tasks:
         cmds:
             - npm run build
 
+    web:playground:install-dependencies:
+        run: once
+        dir: web/playground
+        cmds:
+            - npm install
+
     web:playground:serve:
         run: once
-        deps:
-            - playground:build
         dir: web/playground
         cmds:
             - npm run dev
@@ -295,7 +263,8 @@ tasks:
     web:playground:build:
         run: once
         deps:
-            - playground:build
+            - wasm:build
+            - web:playground:bundle
         dir: web/playground
         cmds:
             - npm run build
@@ -304,7 +273,7 @@ tasks:
         run: once
         deps:
             - web:doc-template:build
-            - playground:bundle
+            - web:playground:bundle
         dir: web
         cmds:
             - mkdir -p dist/library/docs
@@ -314,14 +283,6 @@ tasks:
             - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/math.wippleinterface --title 'Math' --output ./dist/library/docs/math.html
             - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/game.wippleinterface --title 'Game' --output ./dist/library/docs/game.html
             - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/physics.wippleinterface --title 'Physics' --output ./dist/library/docs/physics.html
-
-    ios:build:
-        run: once
-        deps:
-            - playground:build
-        dir: ios/wrapper
-        cmds:
-            - npm run build
 
     base:compile:
         run: once

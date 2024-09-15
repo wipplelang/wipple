@@ -23,11 +23,11 @@ body {
 /* Styles */
 
 body {
-    @apply antialiased scroll-smooth;
+    @apply antialiased scroll-smooth bg-white dark:bg-gray-950;
 }
 
-body {
-    @apply bg-white dark:bg-gray-950 text-black dark:text-white font-medium;
+body > * {
+    @apply text-black dark:text-white font-medium;
 }
 
 .markdown {
@@ -154,28 +154,30 @@ code,
 }
 
 @media (prefers-color-scheme: dark) {
-    .tok-comment {
-        color: #6a737d;
-    }
+    &:not(.no-dark-mode *) {
+        .tok-comment {
+            color: #6a737d;
+        }
 
-    .tok-string {
-        color: #9ecbff;
-    }
+        .tok-string {
+            color: #9ecbff;
+        }
 
-    .tok-number {
-        color: #9ecbff;
-    }
+        .tok-number {
+            color: #9ecbff;
+        }
 
-    .tok-keyword {
-        color: #ffab70;
-    }
+        .tok-keyword {
+            color: #ffab70;
+        }
 
-    .tok-operator {
-        color: #79b8ff;
-    }
+        .tok-operator {
+            color: #79b8ff;
+        }
 
-    .tok-typeName {
-        color: #b392f0;
+        .tok-typeName {
+            color: #b392f0;
+        }
     }
 }
 

@@ -1,5 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/too-many-inputs.test.wipple:3:1: error: extra input provided to `show 1 2 3`

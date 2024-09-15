@@ -1,5 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/nested-bounds.test.wipple:12:1: error: `T` requires `W _`

@@ -1,6 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/article-selection.test.wipple:12:2: error: expected a banana here, but found an apple
-tests/article-selection.test.wipple:13:2: error: expected an orange here, but found an apple

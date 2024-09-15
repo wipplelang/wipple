@@ -1,7 +1,7 @@
 use crate::{
     infer::{
         r#trait::resolve_trait,
-        r#type::{finalize_instance, finalize_type, finalize_type_reason},
+        r#type::{finalize_instance, finalize_type},
         types::{context::TypeContext, unify::unify, Instance, Type, TypeKind},
         ExpressionKind, FinalizeContext, FormattedText, ResolveContext,
     },
@@ -20,7 +20,6 @@ pub enum QueuedError<D: Driver> {
     Mismatch {
         actual: Type<D>,
         expected: Type<D>,
-        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     MissingInputs(Vec<Type<D>>),
@@ -31,7 +30,6 @@ pub enum QueuedError<D: Driver> {
         instance: Instance<D>,
         candidates: Vec<D::Info>,
         stack: Vec<WithInfo<D::Info, Instance<D>>>,
-        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     NotAStructure(Type<D>),
@@ -41,23 +39,10 @@ pub enum QueuedError<D: Driver> {
     ExtraField,
 
     Custom {
-        message: FormattedText<Type<D>>,
-        fix: Option<(FormattedText<Type<D>>, FormattedText<Type<D>>)>,
+        id: FormattedText<Type<D>>,
+        data: Vec<(FormattedText<Type<D>>, Type<D>)>,
         location: Option<Type<D>>,
-        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
-}
-
-#[derive(Derivative)]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = "")
-)]
-pub enum ErrorReason<D: Driver> {
-    Expression(Type<D>),
-    Custom(FormattedText<Type<D>>),
 }
 
 pub fn report_queued_errors<D: Driver>(
@@ -91,7 +76,6 @@ pub fn report_queued_errors<D: Driver>(
             QueuedError::Mismatch {
                 mut actual,
                 mut expected,
-                reasons,
             } => (|| {
                 refine_mismatch_error(&mut info, &mut actual, &mut expected, &mut finalize_context);
 
@@ -108,22 +92,9 @@ pub fn report_queued_errors<D: Driver>(
                     return None;
                 }
 
-                let mut reasons = reasons
-                    .into_iter()
-                    .filter_map(|reason| {
-                        reason.filter_map(|reason| {
-                            finalize_type_reason(reason, &mut finalize_context)
-                        })
-                    })
-                    .collect::<Vec<_>>();
-
-                reasons.sort_by_key(|reason| reason.info.clone());
-                reasons.dedup();
-
                 Some(crate::Diagnostic::Mismatch {
                     actual: finalize_type(actual, false, &mut finalize_context),
                     expected: finalize_type(expected, false, &mut finalize_context),
-                    reasons,
                 })
             })(),
             QueuedError::MissingInputs(inputs) => Some(crate::Diagnostic::MissingInputs(
@@ -137,44 +108,22 @@ pub fn report_queued_errors<D: Driver>(
                 instance,
                 candidates,
                 stack,
-                reasons,
-            } => {
-                let mut reasons = reasons
+            } => Some(crate::Diagnostic::UnresolvedInstance {
+                instance: finalize_instance(instance, &mut finalize_context),
+                candidates,
+                stack: stack
                     .into_iter()
-                    .filter_map(|reason| {
-                        reason.filter_map(|reason| {
-                            finalize_type_reason(reason, &mut finalize_context)
-                        })
+                    .map(|instance| {
+                        instance.map(|instance| finalize_instance(instance, &mut finalize_context))
                     })
-                    .collect::<Vec<_>>();
-
-                reasons.sort_by_key(|reason| reason.info.clone());
-                reasons.dedup();
-
-                Some(crate::Diagnostic::UnresolvedInstance {
-                    instance: finalize_instance(instance, &mut finalize_context),
-                    candidates,
-                    stack: stack
-                        .into_iter()
-                        .map(|instance| {
-                            instance
-                                .map(|instance| finalize_instance(instance, &mut finalize_context))
-                        })
-                        .collect(),
-                    reasons,
-                })
-            }
+                    .collect(),
+            }),
             QueuedError::NotAStructure(r#type) => Some(crate::Diagnostic::NotAStructure(
                 finalize_type(r#type, false, &mut finalize_context),
             )),
             QueuedError::MissingFields(fields) => Some(crate::Diagnostic::MissingFields(fields)),
             QueuedError::ExtraField => Some(crate::Diagnostic::ExtraField),
-            QueuedError::Custom {
-                message,
-                fix,
-                location,
-                reasons,
-            } => {
+            QueuedError::Custom { id, data, location } => {
                 pub fn report_message<D: Driver>(
                     text: FormattedText<Type<D>>,
                     finalize_context: &mut FinalizeContext<'_, D>,
@@ -198,27 +147,17 @@ pub fn report_queued_errors<D: Driver>(
                         .info;
                 }
 
-                let mut reasons = reasons
-                    .into_iter()
-                    .filter_map(|reason| {
-                        reason.filter_map(|reason| {
-                            finalize_type_reason(reason, &mut finalize_context)
-                        })
-                    })
-                    .collect::<Vec<_>>();
-
-                reasons.sort_by_key(|reason| reason.info.clone());
-                reasons.dedup();
-
                 Some(crate::Diagnostic::Custom {
-                    message: report_message(message, &mut finalize_context),
-                    fix: fix.map(|(message, code)| {
-                        (
-                            report_message(message, &mut finalize_context),
-                            report_message(code, &mut finalize_context),
-                        )
-                    }),
-                    reasons,
+                    id: report_message(id, &mut finalize_context),
+                    data: data
+                        .into_iter()
+                        .map(|(key, value)| {
+                            (
+                                report_message(key, &mut finalize_context),
+                                finalize_type(value, false, &mut finalize_context),
+                            )
+                        })
+                        .collect(),
                 })
             }
         };

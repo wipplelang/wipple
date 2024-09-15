@@ -1,0 +1,21 @@
+---
+source: test/src/lib.rs
+assertion_line: 187
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/equal-type.test.wipple
+      start:
+        line: 15
+        column: 9
+        index: 306
+      end:
+        line: 15
+        column: 11
+        index: 308
+    severity: error
+    template:
+      id: missing-valid
+      data: {}
+output: []

@@ -1,6 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-1
-2

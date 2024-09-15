@@ -1,0 +1,39 @@
+---
+source: test/src/lib.rs
+assertion_line: 187
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/list-mismatched-elements.test.wipple
+      start:
+        line: 2
+        column: 14
+        index: 33
+      end:
+        line: 2
+        column: 18
+        index: 37
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: a number
+        found: text
+  - location:
+      path: tests/list-mismatched-elements.test.wipple
+      start:
+        line: 2
+        column: 21
+        index: 40
+      end:
+        line: 2
+        column: 23
+        index: 42
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: a number
+        found: no value
+output: []

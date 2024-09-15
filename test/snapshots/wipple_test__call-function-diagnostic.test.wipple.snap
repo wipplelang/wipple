@@ -1,5 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/call-function-diagnostic.test.wipple:6:15: error: expected text here, but found a function

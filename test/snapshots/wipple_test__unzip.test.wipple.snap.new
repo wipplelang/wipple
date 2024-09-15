@@ -1,0 +1,15 @@
+---
+source: test/src/lib.rs
+assertion_line: 187
+expression: snapshot
+---
+diagnostics: []
+output:
+  - "Left:"
+  - "1"
+  - "2"
+  - "3"
+  - "Right:"
+  - a
+  - b
+  - c

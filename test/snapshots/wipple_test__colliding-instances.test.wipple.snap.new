@@ -1,0 +1,49 @@
+---
+source: test/src/lib.rs
+assertion_line: 187
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/colliding-instances.test.wipple
+      start:
+        line: 5
+        column: 0
+        index: 47
+      end:
+        line: 5
+        column: 14
+        index: 61
+    severity: error
+    template:
+      id: instance-already-exists
+      data: {}
+  - location:
+      path: tests/colliding-instances.test.wipple
+      start:
+        line: 6
+        column: 0
+        index: 67
+      end:
+        line: 6
+        column: 14
+        index: 81
+    severity: error
+    template:
+      id: instance-already-exists
+      data: {}
+  - location:
+      path: tests/colliding-instances.test.wipple
+      start:
+        line: 8
+        column: 0
+        index: 88
+      end:
+        line: 8
+        column: 14
+        index: 102
+    severity: error
+    template:
+      id: instance-already-exists
+      data: {}
+output: []

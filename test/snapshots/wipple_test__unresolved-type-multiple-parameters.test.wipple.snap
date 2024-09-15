@@ -1,7 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/unresolved-type-multiple-parameters.test.wipple:17:16: error: could not determine what kind of value this code produces
-tests/unresolved-type-multiple-parameters.test.wipple:18:21: error: could not determine what kind of value this code produces
-tests/unresolved-type-multiple-parameters.test.wipple:9:7: error: could not determine what kind of value this code produces

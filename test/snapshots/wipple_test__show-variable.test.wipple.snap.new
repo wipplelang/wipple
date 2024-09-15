@@ -1,0 +1,22 @@
+---
+source: test/src/lib.rs
+assertion_line: 187
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/show-variable.test.wipple
+      start:
+        line: 5
+        column: 0
+        index: 73
+      end:
+        line: 5
+        column: 4
+        index: 77
+    severity: error
+    template:
+      id: cannot-describe
+      data:
+        value: "`Cannot-Be-Shown`"
+output: []

@@ -1,6 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/mismatched-higher-order-function.test.wipple:10:3: error: expected `Text -> Text` here, but found `Text -> Number`
-tests/mismatched-higher-order-function.test.wipple:12:20: error: expected text here, but found a number

@@ -1,7 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/colliding-instances.test.wipple:6:1: error: this instance already exists elsewhere; try making it more specific
-tests/colliding-instances.test.wipple:7:1: error: this instance already exists elsewhere; try making it more specific
-tests/colliding-instances.test.wipple:9:1: error: this instance already exists elsewhere; try making it more specific

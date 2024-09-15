@@ -127,7 +127,6 @@ pub fn resolve_item<D: Driver>(
                                     item: QueuedError::Mismatch {
                                         actual: use_type.clone(),
                                         expected: instantiated_declared_type.clone(),
-                                        reasons: context.type_context.reasons.clone(),
                                     },
                                 })
                             } else {

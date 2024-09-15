@@ -1,6 +1,6 @@
 import { User } from "firebase/auth";
 import { createContext, useContext, useState } from "react";
-import { TutorialStep } from "wipple-playground";
+import { TutorialStep } from "./models";
 import { UserInfo } from "./models";
 
 export interface Store {
@@ -8,6 +8,7 @@ export interface Store {
     user?: User;
     userInfo?: UserInfo;
     activeTutorialStep?: TutorialStep;
+    isPrinting?: boolean;
 }
 
 const defaultStore: Store = {};

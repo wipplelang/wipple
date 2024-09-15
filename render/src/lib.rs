@@ -5,7 +5,7 @@
 use line_index::LineIndex;
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     ops::ControlFlow,
     sync::{Arc, RwLock},
 };
@@ -29,53 +29,56 @@ pub enum AnyDeclarationKind {
     Instance(wipple_driver::typecheck::InstanceDeclaration<wipple_driver::Driver>),
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct SourceLocation {
     pub line: u32,
     pub column: u32,
     pub index: u32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RenderedSourceLocation {
     pub path: String,
-    pub visible_path: String,
     pub start: SourceLocation,
     pub end: SourceLocation,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub struct RenderedTemplate {
+    pub id: String,
+    pub data: BTreeMap<String, String>,
+}
+
+impl From<String> for RenderedTemplate {
+    fn from(id: String) -> Self {
+        RenderedTemplate {
+            id,
+            data: Default::default(),
+        }
+    }
+}
+
+impl From<&str> for RenderedTemplate {
+    fn from(id: &str) -> Self {
+        RenderedTemplate::from(String::from(id))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RenderedDiagnostic {
-    pub raw: String,
     pub location: RenderedSourceLocation,
     pub severity: RenderedDiagnosticSeverity,
-    pub message: String,
-    pub explanations: Vec<WithInfo<RenderedExplanation>>,
-    pub fix: Option<RenderedFix>,
+    pub template: RenderedTemplate,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RenderedExplanation {
-    pub location: RenderedSourceLocation,
-    pub message: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum RenderedDiagnosticSeverity {
     Warning,
     Error,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RenderedFix {
-    pub message: String,
-    pub before: Option<String>,
-    pub replacement: Option<String>,
-    pub after: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub struct RenderedDocumentation {
     pub docs: String,
     pub example: Option<String>,
@@ -154,7 +157,7 @@ impl Render {
             .iter()
             .map(|file| {
                 (
-                    file.path.clone(),
+                    file.visible_path.clone(),
                     (file.clone(), LineIndex::new(&file.code)),
                 )
             })
@@ -276,7 +279,7 @@ impl Render {
 
     pub fn render_source_location<T>(&self, value: &WithInfo<T>) -> Option<RenderedSourceLocation> {
         let inner = self.0.read().unwrap();
-        let (file, line_index) = inner.files.get(value.info.location.path.as_ref())?;
+        let (file, line_index) = inner.files.get(value.info.location.visible_path.as_ref())?;
 
         let start_location =
             line_index.try_line_col(line_index::TextSize::new(value.info.location.span.start))?;
@@ -285,8 +288,7 @@ impl Render {
             line_index.try_line_col(line_index::TextSize::new(value.info.location.span.end))?;
 
         Some(RenderedSourceLocation {
-            path: file.path.clone(),
-            visible_path: file.visible_path.clone(),
+            path: file.visible_path.clone(),
             start: SourceLocation {
                 line: start_location.line,
                 column: start_location.col,
@@ -632,7 +634,9 @@ impl Render {
 
                     message.push_str(trailing);
 
-                    if is_top_level || inputs.is_empty() {
+                    if is_top_level && inputs.is_empty() {
+                        message
+                    } else if is_top_level || inputs.is_empty() {
                         format!("{:?}{}", message, inputs)
                     } else {
                         format!("({:?}{})", message, inputs)
@@ -787,27 +791,19 @@ impl Render {
         let rendered_source_location =
             self.render_source_location(diagnostic)
                 .unwrap_or_else(|| RenderedSourceLocation {
-                    path: diagnostic.info.location.path.to_string(),
-                    visible_path: diagnostic.info.location.visible_path.to_string(),
+                    path: diagnostic.info.location.visible_path.to_string(),
                     start: Default::default(),
                     end: Default::default(),
                 });
 
         let severity;
-        let message;
-        let mut explanations = Vec::new();
-        let mut fix = None;
+        let id;
+        let mut data = BTreeMap::new();
         match &diagnostic.item {
             wipple_driver::Diagnostic::Tokenize(tokenize_diagnostic) => match tokenize_diagnostic {
                 wipple_driver::syntax::tokenize::Diagnostic::InvalidToken => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = String::from("unrecognized symbol");
-                    fix = Some(RenderedFix {
-                        message: String::from("remove the invalid symbol"),
-                        before: None,
-                        replacement: Some(String::new()),
-                        after: None,
-                    });
+                    id = String::from("unrecognized-symbol");
                 }
                 wipple_driver::syntax::tokenize::Diagnostic::Mismatch {
                     expected, found, ..
@@ -816,25 +812,40 @@ impl Render {
 
                     match (expected, found) {
                         (Some(expected), Some(found)) => {
-                            message = format!(
-                                "expected {} here, but found {}",
-                                self.render_token(expected),
-                                self.render_token(found),
-                            );
+                            id = String::from("mismatched-symbol");
+                            data.insert(String::from("expected"), self.render_token(expected));
+                            data.insert(String::from("found"), self.render_token(found));
                         }
-                        (Some(expected), None) => {
-                            message = format!("expected {} here", self.render_token(expected));
-                        }
-                        (None, Some(found)) => {
-                            message = format!("unexpected {} here", self.render_token(found));
-
-                            fix = Some(RenderedFix {
-                                message: format!("remove {}", self.render_token(found)),
-                                before: None,
-                                replacement: Some(String::new()),
-                                after: None,
-                            });
-                        }
+                        (Some(expected), None) => match expected {
+                            wipple_driver::syntax::tokenize::Token::RightParenthesis => {
+                                id = String::from("missing-closing-parenthesis");
+                            }
+                            wipple_driver::syntax::tokenize::Token::RightBracket => {
+                                id = String::from("missing-closing-bracket");
+                            }
+                            wipple_driver::syntax::tokenize::Token::RightBrace => {
+                                id = String::from("missing-closing-brace");
+                            }
+                            _ => {
+                                id = String::from("missing-symbol");
+                                data.insert(String::from("symbol"), self.render_token(expected));
+                            }
+                        },
+                        (None, Some(found)) => match found {
+                            wipple_driver::syntax::tokenize::Token::RightParenthesis => {
+                                id = String::from("extra-closing-parenthesis");
+                            }
+                            wipple_driver::syntax::tokenize::Token::RightBracket => {
+                                id = String::from("extra-closing-bracket");
+                            }
+                            wipple_driver::syntax::tokenize::Token::RightBrace => {
+                                id = String::from("extra-closing-brace");
+                            }
+                            _ => {
+                                id = String::from("extra-symbol");
+                                data.insert(String::from("symbol"), self.render_token(found));
+                            }
+                        },
                         (None, None) => return None,
                     }
                 }
@@ -843,24 +854,30 @@ impl Render {
                 match &parse_diagnostic.direction {
                     Some(wipple_driver::syntax::parse::Direction::Before(before)) => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = format!(
-                            "expected {} before {}",
+
+                        id = String::from("unexpected-symbol-before");
+                        data.insert(
+                            String::from("symbol"),
                             self.render_syntax_kind(&parse_diagnostic.expected),
-                            self.render_syntax_kind(before),
                         );
+                        data.insert(String::from("location"), self.render_syntax_kind(before));
                     }
                     Some(wipple_driver::syntax::parse::Direction::After(after)) => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = format!(
-                            "expected {} after {}",
+
+                        id = String::from("unexpected-symbol-after");
+                        data.insert(
+                            String::from("symbol"),
                             self.render_syntax_kind(&parse_diagnostic.expected),
-                            self.render_syntax_kind(after),
                         );
+                        data.insert(String::from("location"), self.render_syntax_kind(after));
                     }
                     None => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = format!(
-                            "expected {} here",
+
+                        id = String::from("missing-symbol");
+                        data.insert(
+                            String::from("symbol"),
                             self.render_syntax_kind(&parse_diagnostic.expected),
                         );
                     }
@@ -869,151 +886,149 @@ impl Render {
             wipple_driver::Diagnostic::Syntax(syntax_diagnostic) => match syntax_diagnostic {
                 wipple_driver::syntax::Diagnostic::UnexpectedBound => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = String::from("bounds aren't allowed on type and trait definitions");
+                    id = String::from("extra-bound");
                 }
                 wipple_driver::syntax::Diagnostic::ExpectedConstantValue(value) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = format!("missing a value for `{}` on the next line", value,);
+                    id = String::from("missing-constant-value");
+                    data.insert(String::from("constant"), value.clone());
                 }
                 wipple_driver::syntax::Diagnostic::EmptyTypeRepresentation => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message =
-                        String::from("missing a field or variant between the braces in this type");
+                    id = String::from("missing-type-representation");
                 }
                 wipple_driver::syntax::Diagnostic::ExpectedField => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = String::from("expected a field of the form `name :: Type` here");
+                    id = String::from("missing-field");
                 }
                 wipple_driver::syntax::Diagnostic::ExpectedVariant => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = String::from("expected a variant of the form `Name` here");
+                    id = String::from("missing-variant");
                 }
                 wipple_driver::syntax::Diagnostic::InvalidTextLiteral(error) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = error.error.clone();
+                    id = String::from("invalid-text-literal");
+                    data.insert(String::from("message"), error.error.clone());
                 }
                 wipple_driver::syntax::Diagnostic::InvalidPlaceholderText { expected, found } => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = format!(
-                        "text has {} placeholders, but {} inputs were provided here",
-                        expected, found,
-                    );
+                    id = String::from("invalid-placeholder-text");
+                    data.insert(String::from("expected"), expected.to_string());
+                    data.insert(String::from("found"), found.to_string());
                 }
             },
             wipple_driver::Diagnostic::Lower(lower_diagnostic) => match lower_diagnostic {
                 wipple_driver::lower::Diagnostic::UnresolvedName(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = format!("can't find `{}`", name);
+                    id = String::from("unresolved-name");
+                    data.insert(String::from("name"), name.clone());
                 }
                 wipple_driver::lower::Diagnostic::UnresolvedType(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = format!("can't find type `{}`", name);
+                    id = String::from("unresolved-type");
+                    data.insert(String::from("name"), name.clone());
                 }
                 wipple_driver::lower::Diagnostic::UnresolvedTrait(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = format!("can't find trait `{}`", name);
+                    id = String::from("unresolved-trait");
+                    data.insert(String::from("name"), name.clone());
                 }
                 wipple_driver::lower::Diagnostic::UnresolvedVariant(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = format!("can't find variant `{}`", name);
+                    id = String::from("unresolved-variant");
+                    data.insert(String::from("name"), name.clone());
                 }
                 wipple_driver::lower::Diagnostic::UnresolvedLanguageItem(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = format!("can't find language item `{}`", name);
+                    id = String::from("unresolved-language-item");
+                    data.insert(String::from("name"), name.clone());
                 }
                 wipple_driver::lower::Diagnostic::AmbiguousName { name, .. } => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = format!("`{}` has multiple definitions", name);
+                    id = String::from("multiple-definitions");
+                    data.insert(String::from("name"), name.clone());
                 }
                 wipple_driver::lower::Diagnostic::AlreadyDefined(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = format!("`{}` is already defined", name);
+                    id = String::from("already-defined");
+                    data.insert(String::from("name"), name.to_string());
                 }
                 wipple_driver::lower::Diagnostic::NestedLanguageDeclaration => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = String::from("language items must be declared at the top level");
+                    id = String::from("nested-language-declaration");
                 }
                 wipple_driver::lower::Diagnostic::NotAWrapper => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = String::from(
-                        "this pattern matches a structure or enumeration, not a wrapper type",
-                    );
+                    id = String::from("not-a-wrapper");
                 }
                 wipple_driver::lower::Diagnostic::WrapperExpectsASinglePattern => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = String::from("expected a single pattern after the name of the type");
+                    id = String::from("wrapper-expects-a-single-pattern");
                 }
                 wipple_driver::lower::Diagnostic::InvalidMutatePattern => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = String::from("`!` only works when assigning to a variable using `:`");
+                    id = String::from("invalid-mutate-pattern");
                 }
                 wipple_driver::lower::Diagnostic::MissingTypes(count) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = format!("missing {} types here", count);
+                    id = String::from("missing-types");
+                    data.insert(String::from("count"), count.to_string());
                 }
                 wipple_driver::lower::Diagnostic::ExtraType => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    message = String::from("extra type provided here");
+                    id = String::from("extra-type");
                 }
             },
             wipple_driver::Diagnostic::Typecheck(typecheck_diagnostic) => {
                 match typecheck_diagnostic {
                     wipple_driver::typecheck::Diagnostic::RecursionLimit => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message =
-                            String::from("this code is too complex to check; try simplifying it");
+                        id = String::from("too-complex");
                     }
                     wipple_driver::typecheck::Diagnostic::MissingLanguageItem(name) => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message =
-                            format!("checking this code requires the `{}` language item", name);
+                        id = String::from("missing-language-item");
+                        data.insert(String::from("name"), name.clone());
                     }
                     wipple_driver::typecheck::Diagnostic::UnknownType(r#type) => {
                         severity = RenderedDiagnosticSeverity::Error;
 
-                        let rendered_type = self.render_type(
-                            &WithInfo {
-                                info: diagnostic.info.clone(),
-                                item: r#type.clone(),
-                            },
-                            true,
-                            DescribeOptions::NoDescribe,
-                            true,
-                        );
-
-                        if rendered_type == "`_`" {
-                            message = String::from(
-                                "could not determine what kind of value this code produces",
-                            );
+                        if matches!(r#type, wipple_driver::typecheck::Type::Unknown) {
+                            id = String::from("unknown-type");
                         } else {
-                            message = format!(
-                                "this code produces {}, but the `_`s are unknown",
-                                rendered_type,
+                            id = String::from("partially-unknown-type");
+
+                            let rendered_type = self.render_type(
+                                &WithInfo {
+                                    info: diagnostic.info.clone(),
+                                    item: r#type.clone(),
+                                },
+                                true,
+                                DescribeOptions::NoDescribe,
+                                true,
                             );
+
+                            data.insert(String::from("type"), rendered_type);
                         }
                     }
                     wipple_driver::typecheck::Diagnostic::UndeclaredTypeParameter(name) => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = format!(
-                        "this code references the type parameter `{}`, which isn't available here",
-                        name,
-                    );
+                        id = String::from("undeclared-type-parameter");
+                        data.insert(String::from("name"), name.to_string());
                     }
                     wipple_driver::typecheck::Diagnostic::Mismatch {
-                        actual,
-                        expected,
-                        reasons,
+                        actual, expected, ..
                     } => {
                         severity = RenderedDiagnosticSeverity::Error;
 
-                        let expected_message = self.render_type(
+                        let mut expected_message = self.render_type(
                             expected,
                             true,
                             DescribeOptions::DescribeWithArticle,
                             true,
                         );
 
-                        let actual_message = self.render_type(
+                        let mut actual_message = self.render_type(
                             actual,
                             true,
                             DescribeOptions::DescribeWithArticle,
@@ -1022,27 +1037,16 @@ impl Render {
 
                         // If the type descriptions are equal, try rendering the actual type by setting
                         // `describe` to false
-                        let (expected_message, actual_message) = if expected_message
-                            == actual_message
-                        {
-                            (
-                                self.render_type(expected, true, DescribeOptions::NoDescribe, true),
-                                self.render_type(actual, true, DescribeOptions::NoDescribe, true),
-                            )
-                        } else {
-                            (expected_message, actual_message)
-                        };
-
-                        message = format!(
-                            "expected {} here, but found {}",
-                            expected_message, actual_message,
-                        );
-
-                        for reason in reasons {
-                            if let Some(explanation) = self.render_type_reason(reason) {
-                                explanations.push(reason.replace(explanation));
-                            }
+                        if expected_message == actual_message {
+                            expected_message =
+                                self.render_type(expected, true, DescribeOptions::NoDescribe, true);
+                            actual_message =
+                                self.render_type(actual, true, DescribeOptions::NoDescribe, true);
                         }
+
+                        id = String::from("mismatched-types");
+                        data.insert(String::from("expected"), expected_message);
+                        data.insert(String::from("found"), actual_message);
                     }
                     wipple_driver::typecheck::Diagnostic::MissingInputs(inputs) => {
                         let code = self.render_code(diagnostic).unwrap_or_default();
@@ -1061,27 +1065,29 @@ impl Render {
 
                         severity = RenderedDiagnosticSeverity::Error;
 
-                        message = match inputs.len() {
-                            1 => format!("missing {} for `{}`", inputs[0], code),
-                            2 => format!("missing {} and {} for `{}`", inputs[0], inputs[1], code),
+                        let inputs_message = match inputs.len() {
+                            1 => inputs.into_iter().next().unwrap(),
+                            2 => format!("{} and {}", inputs[0], inputs[1]),
                             _ => format!(
-                                "missing {}, and {} for `{}`",
+                                "{}, and {}",
                                 inputs[..inputs.len() - 1].join(", "),
                                 inputs[inputs.len() - 1],
-                                code,
                             ),
                         };
+
+                        id = String::from("missing-inputs");
+                        data.insert(String::from("inputs"), inputs_message);
+                        data.insert(String::from("function"), code);
                     }
                     wipple_driver::typecheck::Diagnostic::ExtraInput => {
                         let code = self.render_code(diagnostic).unwrap_or_default();
 
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = format!("extra input provided to `{}`", code);
+                        id = String::from("extra-input");
+                        data.insert(String::from("function"), code);
                     }
                     wipple_driver::typecheck::Diagnostic::UnresolvedInstance {
-                        instance,
-                        reasons,
-                        ..
+                        instance, ..
                     } => {
                         let code = self.render_code(diagnostic).unwrap_or_default();
 
@@ -1094,29 +1100,24 @@ impl Render {
                         );
 
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = format!("`{}` requires `{}`", code, rendered_instance);
-
-                        for reason in reasons {
-                            if let Some(explanation) = self.render_type_reason(reason) {
-                                explanations.push(reason.replace(explanation));
-                            }
-                        }
+                        id = String::from("unresolved-instance");
+                        data.insert(String::from("trait"), code);
+                        data.insert(String::from("instance"), rendered_instance);
                     }
                     wipple_driver::typecheck::Diagnostic::TraitHasNoValue(_) => {
                         let code = self.render_code(diagnostic).unwrap_or_default();
 
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = format!("`{}` can't be used as a value", code);
+                        id = String::from("trait-has-no-value");
+                        data.insert(String::from("trait"), code);
                     }
                     wipple_driver::typecheck::Diagnostic::ExpectedInstanceValue => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = String::from("`instance` declaration is missing a value");
+                        id = String::from("missing-instance-value");
                     }
                     wipple_driver::typecheck::Diagnostic::UnexpectedInstanceValue => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = String::from(
-                            "`instance` declaration declares a value, but the trait doesn't",
-                        );
+                        id = String::from("unexpected-instance-value");
                     }
                     wipple_driver::typecheck::Diagnostic::NotAStructure(r#type) => {
                         let rendered_type = self.render_type(
@@ -1127,7 +1128,8 @@ impl Render {
                         );
 
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = format!("{} is not a structure", rendered_type);
+                        id = String::from("not-a-structure");
+                        data.insert(String::from("type"), rendered_type);
                     }
                     wipple_driver::typecheck::Diagnostic::MissingFields(r#type) => {
                         let rendered_fields = r#type
@@ -1137,90 +1139,80 @@ impl Render {
                             .join(", ");
 
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = format!("missing fields {}", rendered_fields);
+                        id = String::from("missing-fields");
+                        data.insert(String::from("fields"), rendered_fields);
                     }
                     wipple_driver::typecheck::Diagnostic::ExtraField => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = String::from("extra field");
+                        id = String::from("extra-field");
                     }
                     wipple_driver::typecheck::Diagnostic::OverlappingInstances { .. } => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = String::from(
-                            "this instance already exists elsewhere; try making it more specific",
-                        );
+                        id = String::from("instance-already-exists");
                     }
                     wipple_driver::typecheck::Diagnostic::MissingPatterns(patterns) => {
                         let last = patterns.last().unwrap();
 
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = if patterns.len() == 1 {
+                        if patterns.len() == 1 {
                             if matches!(
                                 last,
                                 wipple_driver::typecheck::exhaustiveness::Pattern::Binding
                             ) {
-                                String::from("missing variable to handle remaining patterns")
+                                id = String::from("missing-variable");
                             } else {
-                                format!(
-                                    "this code doesn't handle `{}`",
-                                    self.render_pattern(last, true),
-                                )
+                                id = String::from("missing-patterns");
+                                data.insert(
+                                    String::from("patterns"),
+                                    format!("`{}`", self.render_pattern(last, true)),
+                                );
                             }
                         } else {
-                            format!(
-                                "this code doesn't handle `{}` or `{}`",
-                                patterns[..patterns.len() - 1]
-                                    .iter()
-                                    .map(|pattern| self.render_pattern(pattern, true))
-                                    .collect::<Vec<_>>()
-                                    .join(", "),
-                                self.render_pattern(last, true),
-                            )
-                        };
+                            id = String::from("missing-patterns");
+
+                            data.insert(
+                                String::from("patterns"),
+                                format!(
+                                    "`{}` or `{}`",
+                                    patterns[..patterns.len() - 1]
+                                        .iter()
+                                        .map(|pattern| self.render_pattern(pattern, true))
+                                        .collect::<Vec<_>>()
+                                        .join(", "),
+                                    self.render_pattern(last, true),
+                                ),
+                            );
+                        }
                     }
                     wipple_driver::typecheck::Diagnostic::ExtraPattern => {
                         severity = RenderedDiagnosticSeverity::Warning;
-                        message = String::from(
-                            "this pattern is unnecessary because it is already handled above",
-                        );
-                        fix = Some(RenderedFix {
-                            message: String::from("remove this pattern"),
-                            before: None,
-                            replacement: Some(String::new()),
-                            after: None,
-                        });
+                        id = String::from("extra-pattern");
                     }
                     wipple_driver::typecheck::Diagnostic::Custom {
-                        message: custom_message,
-                        fix: custom_fix,
-                        reasons: custom_reasons,
+                        id: custom_id,
+                        data: custom_data,
                     } => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        message = self.render_custom_message(custom_message, false, true);
 
-                        if let Some(custom_fix) = custom_fix {
-                            fix = Some(RenderedFix {
-                                message: self.render_custom_message(&custom_fix.0, false, true),
-                                before: None,
-                                replacement: Some(self.render_custom_message(
-                                    &custom_fix.1,
-                                    false,
-                                    false,
-                                )),
-                                after: None,
-                            });
-                        }
+                        id = self.render_custom_message(custom_id, false, true);
 
-                        for reason in custom_reasons {
-                            if let Some(explanation) = self.render_type_reason(reason) {
-                                explanations.push(reason.replace(explanation));
-                            }
+                        for (key, value) in custom_data {
+                            data.insert(
+                                self.render_custom_message(key, false, true),
+                                self.render_type(
+                                    value,
+                                    true,
+                                    DescribeOptions::DescribeWithArticle,
+                                    true,
+                                ),
+                            );
                         }
                     }
                 }
             }
             wipple_driver::Diagnostic::Ir => {
                 severity = RenderedDiagnosticSeverity::Error;
-                message = String::from("failed to produce IR for this code");
+                id = String::from("ir-error");
             }
             wipple_driver::Diagnostic::Lint(lint) => match lint {
                 wipple_driver::lint::Lint::NamingConventions(lint) => {
@@ -1235,101 +1227,17 @@ impl Render {
                     };
 
                     severity = RenderedDiagnosticSeverity::Warning;
-                    message = format!(
-                        "{} should be written as `{}`",
-                        convention, lint.suggested_name
-                    );
-
-                    fix = Some(RenderedFix {
-                        message: String::from("rename"),
-                        before: None,
-                        replacement: Some(lint.suggested_name.clone()),
-                        after: None,
-                    });
+                    id = String::from("naming-convention");
+                    data.insert(String::from("convention"), convention.to_string());
+                    data.insert(String::from("suggestion"), lint.suggested_name.clone());
                 }
             },
         }
 
-        let raw = {
-            let level = match severity {
-                RenderedDiagnosticSeverity::Warning => annotate_snippets::Level::Warning,
-                RenderedDiagnosticSeverity::Error => annotate_snippets::Level::Error,
-            };
-
-            let mut annotated = level.title("");
-            let mut annotated_explanations = Vec::new();
-            let mut annotated_footer = None;
-
-            let source = self.render_source(diagnostic);
-            if let Some(source) = source.as_ref() {
-                annotated = annotated.snippet(
-                    annotate_snippets::Snippet::source(source)
-                        .origin(&diagnostic.info.location.visible_path)
-                        .fold(true)
-                        .annotation(
-                            level
-                                .span(
-                                    (diagnostic.info.location.span.start as usize)
-                                        ..(diagnostic.info.location.span.end as usize),
-                                )
-                                .label(&message),
-                        ),
-                );
-            } else {
-                annotated = level.title(&message);
-            }
-
-            if let Some(fix) = fix.as_ref() {
-                if let Some(replacement) = fix
-                    .replacement
-                    .as_ref()
-                    .or(fix.before.as_ref())
-                    .or(fix.after.as_ref())
-                {
-                    annotated_footer = Some(format!("{}: `{}`", fix.message, replacement));
-                } else {
-                    annotated_footer = Some(fix.message.clone());
-                }
-            }
-
-            for explanation in &explanations {
-                if let Some(source) = self.render_source(explanation) {
-                    annotated_explanations.push((source, explanation));
-                }
-            }
-
-            for (source, explanation) in &annotated_explanations {
-                annotated = annotated.snippet(
-                    annotate_snippets::Snippet::source(source)
-                        .origin(&explanation.info.location.visible_path)
-                        .fold(true)
-                        .annotation(
-                            annotate_snippets::Level::Note
-                                .span(
-                                    (explanation.info.location.span.start as usize)
-                                        ..(explanation.info.location.span.end as usize),
-                                )
-                                .label(&explanation.item.message),
-                        ),
-                );
-            }
-
-            if let Some(footer) = annotated_footer.as_ref() {
-                annotated = annotated.footer(annotate_snippets::Level::Help.title(footer));
-            }
-
-            let renderer = annotate_snippets::Renderer::styled();
-            let raw = renderer.render(annotated);
-            raw.to_string()
-        };
-
         Some(RenderedDiagnostic {
-            raw,
             location: rendered_source_location,
             severity,
-            message,
-            explanations,
-            fix,
+            template: RenderedTemplate { id, data },
         })
     }
 
@@ -1441,60 +1349,6 @@ impl Render {
             SyntaxKind::FunctionInputs => self.add_article_prefix("function inputs"),
             SyntaxKind::Nothing => self.add_article_prefix("nothing"),
         }
-    }
-
-    pub fn render_type_reason(
-        &self,
-        reason: &WithInfo<wipple_driver::typecheck::ErrorReason<wipple_driver::Driver>>,
-    ) -> Option<RenderedExplanation> {
-        let location = self.render_source_location(reason)?;
-
-        let message = match &reason.item {
-            wipple_driver::typecheck::ErrorReason::Custom(message) => {
-                self.render_custom_message(message, false, false)
-            }
-            wipple_driver::typecheck::ErrorReason::Expression(r#type) => {
-                let code = self.render_code(reason)?;
-
-                format!(
-                    "`{}` is {}",
-                    code,
-                    self.render_type(r#type, true, DescribeOptions::DescribeWithArticle, true)
-                )
-            }
-        };
-
-        Some(RenderedExplanation { location, message })
-    }
-
-    pub fn render_diagnostic_to_debug_string(&self, diagnostic: &RenderedDiagnostic) -> String {
-        let severity = match diagnostic.severity {
-            RenderedDiagnosticSeverity::Warning => "warning",
-            RenderedDiagnosticSeverity::Error => "error",
-        };
-
-        let explanations = diagnostic.explanations.iter().map(|explanation| {
-            (
-                &explanation.item.location,
-                "note",
-                &explanation.item.message,
-            )
-        });
-
-        [(&diagnostic.location, severity, &diagnostic.message)]
-            .into_iter()
-            .chain(explanations)
-            .map(|(location, severity, message)| {
-                let line = location.start.line + 1;
-                let column = location.start.column + 1;
-
-                format!(
-                    "{}:{}:{}: {}: {}",
-                    diagnostic.location.visible_path, line, column, severity, message
-                )
-            })
-            .collect::<Vec<_>>()
-            .join("\n")
     }
 
     pub fn render_documentation(

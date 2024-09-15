@@ -1,7 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-abc
-abc
-abc

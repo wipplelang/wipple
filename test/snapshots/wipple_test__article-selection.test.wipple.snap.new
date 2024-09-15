@@ -1,0 +1,39 @@
+---
+source: test/src/lib.rs
+assertion_line: 187
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/article-selection.test.wipple
+      start:
+        line: 11
+        column: 1
+        index: 185
+      end:
+        line: 11
+        column: 6
+        index: 190
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: a banana
+        found: an apple
+  - location:
+      path: tests/article-selection.test.wipple
+      start:
+        line: 12
+        column: 1
+        index: 203
+      end:
+        line: 12
+        column: 6
+        index: 208
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: an orange
+        found: an apple
+output: []

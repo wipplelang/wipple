@@ -1,5 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/repeat-missing-times.test.wipple:3:8: error: expected `times` after number

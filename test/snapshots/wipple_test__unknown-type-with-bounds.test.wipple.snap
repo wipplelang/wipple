@@ -1,5 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/unknown-type-with-bounds.test.wipple:8:1: error: could not determine what kind of value this code produces

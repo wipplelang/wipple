@@ -8,17 +8,17 @@ instance (Describe-Type Distance "distance")
 pixels :: Number -> Distance
 pixels : Distance
 
-() where (Error ("missing unit for distance" ; Error-Fix "add `pixels`" ("`(_ pixels)`" Source))) =>
+() where (Error "missing-pixels") =>
   instance (Mismatch Number Distance)
 
 -- Move the turtle forward by the specified distance.
-@(highlight-category : "turtle-motion")
+@(highlight-category : "turtle-movement")
 @(highlight-icon : "arrow-upward")
 forward :: Distance -> Unit
 forward : (Distance pixels) -> runtime-message "forward" pixels
 
 -- Move the turtle backward by the specified distance.
-@(highlight-category : "turtle-motion")
+@(highlight-category : "turtle-movement")
 @(highlight-icon : "arrow-downward")
 backward :: Distance -> Unit
 backward : (Distance pixels) -> runtime-message "backward" pixels
@@ -30,7 +30,7 @@ Arc : type {
 }
 
 -- Move the turtle along an arc.
-@(highlight-category : "turtle-motion")
+@(highlight-category : "turtle-movement")
 @(highlight-icon : "progress-activity")
 arc :: Arc -> Unit
 arc : {
@@ -39,25 +39,25 @@ arc : {
 } -> runtime-message "arc" (radius ; angle)
 
 -- Rotate the turtle counterclockwise by the specified angle.
-@(highlight-category : "turtle-turn")
+@(highlight-category : "turtle-movement")
 @(highlight-icon : "rotate-left")
 left :: Angle -> Unit
 left : (Angle degrees) -> runtime-message "left" degrees
 
 -- Rotate the turtle clockwise by the specified angle.
-@(highlight-category : "turtle-turn")
+@(highlight-category : "turtle-movement")
 @(highlight-icon : "rotate-right")
 right :: Angle -> Unit
 right : (Angle degrees) -> runtime-message "right" degrees
 
 -- Set the pen color.
-@(highlight-category : "turtle-pen")
+@(highlight-category : "turtle-appearance")
 @(highlight-icon : "edit")
 color :: Color -> Unit
 color : (Color color) -> runtime-message "color" color
 
 -- Draw a path and fill it with the specified color.
-@(highlight-category : "turtle-pen")
+@(highlight-category : "turtle-appearance")
 @(highlight-icon : "colors")
 fill :: Result => Color {Result} -> Result
 fill : (Color color) body -> do {
@@ -93,7 +93,7 @@ very-fast :: Speed
 very-fast : Speed 1
 
 -- Set the speed of the turtle.
-@(highlight-category : "control-flow")
+@(highlight-category : "turtle-appearance")
 @(highlight-icon : "speed")
 speed :: Speed -> Unit
 speed : (Speed value) -> runtime-message "speed" value
@@ -103,7 +103,7 @@ Animal : type Text
 instance (Describe-Type Animal "animal")
 
 -- Change the animal being displayed.
-@(highlight-category : "turtle-pen")
+@(highlight-category : "turtle-appearance")
 @(highlight-icon : "pets")
 animal :: Animal -> Unit
 animal : (Animal name) -> runtime-message "animal" name

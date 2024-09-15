@@ -206,9 +206,6 @@ pub enum Diagnostic<D: Driver> {
 
         /// The expected type of the expression.
         expected: WithInfo<D::Info, Type<D>>,
-
-        /// The reasons why the types don't match.
-        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     /// A function is missing an input.
@@ -230,9 +227,6 @@ pub enum Diagnostic<D: Driver> {
         /// Contains the list of instances evaluated before failing to resolve
         /// [`ErrorKind::UnresolvedInstance::trait`].
         stack: Vec<WithInfo<D::Info, Instance<D>>>,
-
-        /// The reasons why the instance couldn't be resolved.
-        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
     },
 
     /// A trait that doesn't have a value was used in expression position.
@@ -272,14 +266,11 @@ pub enum Diagnostic<D: Driver> {
 
     /// A custom error message.
     Custom {
-        /// The error message.
-        message: CustomMessage<D>,
+        /// The error's identifier.
+        id: CustomMessage<D>,
 
-        /// A fix for the error.
-        fix: Option<(CustomMessage<D>, CustomMessage<D>)>,
-
-        /// The reasons for the error.
-        reasons: Vec<WithInfo<D::Info, ErrorReason<D>>>,
+        /// Additional data associated with the error.
+        data: Vec<(CustomMessage<D>, WithInfo<D::Info, Type<D>>)>,
     },
 }
 

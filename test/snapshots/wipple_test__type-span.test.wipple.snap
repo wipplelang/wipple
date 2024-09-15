@@ -1,8 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/type-span.test.wipple:3:1: error: cannot add a function and a number
-tests/type-span.test.wipple:3:1: note: `show` is a function
-tests/type-span.test.wipple:3:8: note: `1` is a number
-tests/type-span.test.wipple:4:1: error: can't find `Show`

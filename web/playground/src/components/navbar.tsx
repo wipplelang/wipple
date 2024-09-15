@@ -4,7 +4,7 @@ import { signIn, signOut } from "../helpers";
 import { produce } from "immer";
 import { MaterialSymbol } from "react-material-symbols";
 import { User } from "firebase/auth";
-import { Navbar as NavbarBase, Button, useAlert } from "wipple-playground";
+import { NavbarBase, Button, useAlert } from ".";
 import { useStore } from "../store";
 import { updateUserInfo } from "../models";
 
@@ -74,32 +74,6 @@ const UserSettings = (props: { dismiss: () => void }) => {
 
     const [user, _setUser] = useState(store.user!);
 
-    const joinClass = useCallback(() => {
-        (async () => {
-            const code = prompt("Enter your class code:", store.userInfo?.classroomCode);
-            if (!code) {
-                return;
-            }
-
-            const newUserInfo = {
-                ...(store.userInfo ?? {}),
-                classroomCode: code,
-            };
-
-            try {
-                await updateUserInfo(newUserInfo);
-
-                setStore(
-                    produce((store) => {
-                        store.userInfo = newUserInfo;
-                    }),
-                );
-            } catch (error) {
-                console.error(error);
-            }
-        })();
-    }, [store.userInfo]);
-
     const handleSignOut = useCallback(() => {
         (async () => {
             try {
@@ -128,12 +102,6 @@ const UserSettings = (props: { dismiss: () => void }) => {
                 {user.displayName ? (
                     <p className="text-2xl font-semibold">{user.displayName}</p>
                 ) : null}
-            </div>
-
-            <div className="flex flex-col items-stretch gap2.5">
-                <Button role="primary" onClick={joinClass}>
-                    Join Class
-                </Button>
             </div>
 
             <div className="flex flex-col items-stretch gap-2.5">

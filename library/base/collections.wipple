@@ -1,7 +1,7 @@
 @(language : "build-collection")
 Build-Collection : Element (Collection : List Element) => trait (Element -> Collection -> Collection)
 
-(infer Element) (Collection : List Element) where (Error ("cannot create _ from _" Collection Element)) =>
+(infer Element) (Collection : List Element) where (Error ("cannot-create-collection" ; Error-Data "collection" Collection ; Error-Data "element" Element)) =>
   default instance (Build-Collection Element Collection) : ...
 
 @(language : "initial-collection")

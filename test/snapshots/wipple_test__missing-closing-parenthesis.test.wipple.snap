@@ -1,6 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/missing-closing-parenthesis.test.wipple:3:11: error: expected a closing parenthesis (`)`) here
-tests/missing-closing-parenthesis.test.wipple:3:1: error: missing text for `show`

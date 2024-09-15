@@ -1,8 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-3
-3
-15
-2.50

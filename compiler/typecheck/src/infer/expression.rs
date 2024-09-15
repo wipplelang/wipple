@@ -834,16 +834,7 @@ pub fn resolve_expression<D: Driver>(
         } => ExpressionKind::Block {
             statements: statements
                 .into_iter()
-                .map(|expression| {
-                    // Don't persist error reasons across statements; statements
-                    // can't directly influence each other
-                    let prev_reasons = context.type_context.reasons.clone();
-
-                    let expression = resolve_expression(expression, context);
-                    context.type_context.reasons = prev_reasons;
-
-                    expression
-                })
+                .map(|expression| resolve_expression(expression, context))
                 .collect(),
             top_level,
             captures,

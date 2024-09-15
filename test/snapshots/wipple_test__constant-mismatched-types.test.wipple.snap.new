@@ -1,0 +1,23 @@
+---
+source: test/src/lib.rs
+assertion_line: 187
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/constant-mismatched-types.test.wipple
+      start:
+        line: 3
+        column: 4
+        index: 35
+      end:
+        line: 3
+        column: 8
+        index: 39
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: a number
+        found: text
+output: []

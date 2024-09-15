@@ -1,0 +1,23 @@
+---
+source: test/src/lib.rs
+assertion_line: 187
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/help-show-code.test.wipple
+      start:
+        line: 13
+        column: 0
+        index: 277
+      end:
+        line: 13
+        column: 10
+        index: 287
+    severity: error
+    template:
+      id: incompatible
+      data:
+        left: a function
+        right: a function
+output: []

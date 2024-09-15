@@ -1,6 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/custom-errors-formatting.test.wipple:19:1: error: `Carnivore`s do not eat `Plants`
-tests/custom-errors-formatting.test.wipple:20:1: error: `Herbivore`s do not eat `Meat`

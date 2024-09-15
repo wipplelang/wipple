@@ -13,4 +13,5 @@ export default {
         require("tailwindcss-animate"),
         require("tailwindcss-animated"),
     ],
+    darkMode: ["variant", ["@media (prefers-color-scheme: dark) { &:not(.no-dark-mode *) }"]],
 };

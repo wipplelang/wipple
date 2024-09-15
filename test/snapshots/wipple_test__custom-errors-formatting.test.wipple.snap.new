@@ -1,0 +1,39 @@
+---
+source: test/src/lib.rs
+assertion_line: 187
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/custom-errors-formatting.test.wipple
+      start:
+        line: 19
+        column: 0
+        index: 457
+      end:
+        line: 19
+        column: 4
+        index: 461
+    severity: error
+    template:
+      id: does-not-eat
+      data:
+        animal: "`Carnivore`"
+        food: "`Plants`"
+  - location:
+      path: tests/custom-errors-formatting.test.wipple
+      start:
+        line: 20
+        column: 0
+        index: 479
+      end:
+        line: 20
+        column: 4
+        index: 483
+    severity: error
+    template:
+      id: does-not-eat
+      data:
+        animal: "`Herbivore`"
+        food: "`Meat`"
+output: []

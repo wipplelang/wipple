@@ -20,9 +20,17 @@ import {
 import * as Sentry from "@sentry/react";
 import ReactGA from "react-ga4";
 import { HomePage, EditPage, RootPage, LessonPage } from "./pages";
-import { NavbarProvider, AlertProvider } from "wipple-playground";
+import { NavbarProvider, AlertProvider } from "./components";
 import { StoreProvider } from "./store";
-import "wipple-playground/dist/style.css";
+import "@fontsource-variable/inter";
+import "@fontsource-variable/inter/wght-italic.css";
+import "@fontsource-variable/jetbrains-mono";
+import "@fontsource-variable/jetbrains-mono/wght-italic.css";
+import "react-material-symbols/rounded";
+import "react-loading-skeleton/dist/skeleton.css";
+import "react-piano/dist/styles.css";
+import "react-resizable/css/styles.css";
+import "katex/dist/katex.min.css";
 import "./index.css";
 
 if (import.meta.env.PROD) {

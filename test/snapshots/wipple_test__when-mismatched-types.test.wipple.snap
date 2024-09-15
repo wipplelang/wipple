@@ -1,5 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/when-mismatched-types.test.wipple:5:12: error: expected a number here, but found text

@@ -1,0 +1,63 @@
+---
+source: test/src/lib.rs
+assertion_line: 187
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/repeat-errors.test.wipple
+      start:
+        line: 2
+        column: 0
+        index: 19
+      end:
+        line: 2
+        column: 17
+        index: 36
+    severity: error
+    template:
+      id: missing-repeat
+      data: {}
+  - location:
+      path: tests/repeat-errors.test.wipple
+      start:
+        line: 3
+        column: 0
+        index: 40
+      end:
+        line: 3
+        column: 14
+        index: 54
+    severity: error
+    template:
+      id: missing-repeat
+      data: {}
+  - location:
+      path: tests/repeat-errors.test.wipple
+      start:
+        line: 4
+        column: 0
+        index: 58
+      end:
+        line: 4
+        column: 7
+        index: 65
+    severity: error
+    template:
+      id: missing-repeat
+      data: {}
+  - location:
+      path: tests/repeat-errors.test.wipple
+      start:
+        line: 5
+        column: 0
+        index: 69
+      end:
+        line: 5
+        column: 9
+        index: 78
+    severity: error
+    template:
+      id: missing-repeat
+      data: {}
+output: []

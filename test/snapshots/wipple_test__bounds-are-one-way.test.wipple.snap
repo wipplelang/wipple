@@ -1,5 +1,0 @@
----
-source: test/src/lib.rs
-expression: snapshot
----
-tests/bounds-are-one-way.test.wipple:6:5: error: `T` requires `T Number`
