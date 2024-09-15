@@ -1,0 +1,22 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/mismatched-inferred-params.test.wipple
+      start:
+        line: 2
+        column: 14
+        index: 33
+      end:
+        line: 2
+        column: 23
+        index: 42
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: "`(Number -> Text) -> (List Number) -> Sequence Text`"
+        found: "`(Text -> Text) -> (List Number) -> Sequence Text`"
+output: []

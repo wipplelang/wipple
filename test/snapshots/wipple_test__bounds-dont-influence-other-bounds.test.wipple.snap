@@ -1,0 +1,21 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/bounds-dont-influence-other-bounds.test.wipple
+      start:
+        line: 11
+        column: 0
+        index: 198
+      end:
+        line: 11
+        column: 19
+        index: 217
+    severity: error
+    template:
+      id: partially-unknown-type
+      data:
+        type: "`Number ; _`"
+output: []

@@ -1,0 +1,22 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/call-function-diagnostic.test.wipple
+      start:
+        line: 5
+        column: 14
+        index: 116
+      end:
+        line: 5
+        column: 27
+        index: 129
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: text
+        found: a function
+output: []

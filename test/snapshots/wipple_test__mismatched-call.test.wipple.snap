@@ -1,0 +1,22 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/mismatched-call.test.wipple
+      start:
+        line: 7
+        column: 13
+        index: 196
+      end:
+        line: 7
+        column: 22
+        index: 205
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: text
+        found: a number
+output: []

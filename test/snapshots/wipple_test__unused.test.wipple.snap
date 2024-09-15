@@ -1,0 +1,20 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/unused.test.wipple
+      start:
+        line: 14
+        column: 0
+        index: 253
+      end:
+        line: 14
+        column: 12
+        index: 265
+    severity: error
+    template:
+      id: important-must-be-handled
+      data: {}
+output: []

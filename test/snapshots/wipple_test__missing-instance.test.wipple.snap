@@ -1,0 +1,21 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/missing-instance.test.wipple
+      start:
+        line: 3
+        column: 0
+        index: 30
+      end:
+        line: 3
+        column: 4
+        index: 34
+    severity: error
+    template:
+      id: cannot-describe
+      data:
+        value: "`Foo`"
+output: []

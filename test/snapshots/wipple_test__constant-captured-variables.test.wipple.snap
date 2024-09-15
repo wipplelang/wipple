@@ -1,0 +1,21 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/constant-captured-variables.test.wipple
+      start:
+        line: 6
+        column: 12
+        index: 70
+      end:
+        line: 6
+        column: 13
+        index: 71
+    severity: error
+    template:
+      id: unresolved-name
+      data:
+        name: n
+output: []

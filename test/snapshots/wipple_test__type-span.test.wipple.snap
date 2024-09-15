@@ -1,0 +1,37 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/type-span.test.wipple
+      start:
+        line: 2
+        column: 0
+        index: 19
+      end:
+        line: 2
+        column: 8
+        index: 27
+    severity: error
+    template:
+      id: cannot-add
+      data:
+        left: a function
+        right: a number
+  - location:
+      path: tests/type-span.test.wipple
+      start:
+        line: 3
+        column: 0
+        index: 28
+      end:
+        line: 3
+        column: 4
+        index: 32
+    severity: error
+    template:
+      id: unresolved-name
+      data:
+        name: Show
+output: []

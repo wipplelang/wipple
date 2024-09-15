@@ -1,8 +1,0 @@
----
-source: test/src/lib.rs
-assertion_line: 187
-expression: snapshot
----
-diagnostics: []
-output:
-  - Some Some 42

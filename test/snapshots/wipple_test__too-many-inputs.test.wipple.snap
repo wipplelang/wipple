@@ -1,0 +1,21 @@
+---
+source: test/src/lib.rs
+expression: snapshot
+---
+diagnostics:
+  - location:
+      path: tests/too-many-inputs.test.wipple
+      start:
+        line: 2
+        column: 0
+        index: 19
+      end:
+        line: 2
+        column: 10
+        index: 29
+    severity: error
+    template:
+      id: extra-input
+      data:
+        function: show 1 2 3
+output: []
