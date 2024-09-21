@@ -2,7 +2,7 @@ import { AnimalAsset } from "./animal";
 import { ColorAsset } from "./color";
 import { DropdownAsset } from "./dropdown";
 import { InstrumentAsset } from "./instrument";
-import { NoteAsset } from "./note";
+import { MelodyAsset } from "./melody";
 import { ObjectAsset } from "./object";
 import { SliderAsset } from "./slider";
 
@@ -15,7 +15,7 @@ export type Asset =
     | { type: "color"; color: string }
     | { type: "animal"; animal: string }
     | { type: "dropdown"; selection: string; options: string[] }
-    | { type: "note"; note: string }
+    | { type: "melody"; melody: string }
     | { type: "instrument"; instrument: string }
     | { type: "object"; object: string }
     | { type: "slider"; value: number; min: number; max: number };
@@ -49,9 +49,9 @@ export const getAsset = (code: string): Asset | undefined => {
 
             return { type: "dropdown", selection, options };
         }
-        case "Note": {
+        case "Melody": {
             value = value.slice(1, value.length - 1); // remove quotes
-            return { type: "note", note: value };
+            return { type: "melody", melody: value };
         }
         case "Instrument-Name": {
             value = value.slice(1, value.length - 1); // remove quotes
@@ -86,7 +86,7 @@ export const animalAsset = (animal: string) => `[Animal "${animal}"]`;
 export const dropdownAsset = (selection: string, options: string[]) =>
     `[Dropdown (${options.join(" , ")}) ${selection}]`;
 
-export const noteAsset = (note: string) => `[Note "${note}"]`;
+export const melodyAsset = (melody: string) => `[Melody "${melody}"]`;
 
 export const instrumentAsset = (instrument: string) => `[Instrument-Name "${instrument}"]`;
 
@@ -136,11 +136,11 @@ export const Asset = (props: {
 
             break;
         }
-        case "note": {
+        case "melody": {
             content = (
-                <NoteAsset
+                <MelodyAsset
                     disabled={props.disabled}
-                    note={asset.note}
+                    melody={asset.melody}
                     onClick={() => props.onClick?.(asset)}
                 />
             );

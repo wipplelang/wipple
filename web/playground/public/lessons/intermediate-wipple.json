@@ -51,52 +51,7 @@
             "name": "Functions",
             "id": "7Jb5ygnNVsrd8Sw9FDwB"
         },
-        {
-            "id": "mO-I1D3yXqN2CTrIBhn1",
-            "name": "Making music",
-            "items": [
-                {
-                    "text": "## Making music\n\nLet’s look at how we can use Wipple to make music! If we create a Music program, we get access to `note`:",
-                    "type": "text",
-                    "locked": true
-                },
-                {
-                    "type": "code",
-                    "setup": "music",
-                    "code": "note [Note \"C4\"] (4 beats)"
-                },
-                {
-                    "text": "Press Play and you should hear a note!\n\nTo add another note, press the **Add** button in the top left of the code editor and drag the piano icon into your code. Click on the piano icon to bring up a keyboard, and click on a key to change the note.\n\nTo play music on a particular instrument, use `instrument` and drag in an instrument name from the **Add** menu. You can look at the list of instruments by clicking on the instrument in the box.",
-                    "locked": true,
-                    "type": "text"
-                },
-                {
-                    "code": "instrument [Instrument-Name \"orchestra_hit\"] {\n  note [Note \"C4\"] (4 beats)\n}",
-                    "setup": "music",
-                    "type": "code"
-                },
-                {
-                    "locked": true,
-                    "type": "text",
-                    "text": "You can use `repeat` to make repeating sections of music, and you can use `chord` to play a list of notes at the same time:"
-                },
-                {
-                    "code": "tempo 140\n\ninstrument [Instrument-Name \"marimba\"] {\n  repeat (4 times) {\n    chord ([Note \"C5\"] , [Note \"F4\"]) ((1 / 4) beats)\n    note [Note \"Bb4\"] ((1 / 4) beats)\n    note [Note \"G4\"] ((1 / 2) beats)\n    note [Note \"C5\"] ((1 / 2) beats)\n    chord ([Note \"F4\"] , [Note \"Bb3\"]) ((1 / 2) beats)\n    note [Note \"C5\"] ((1 / 2) beats)\n    note [Note \"Bb4\"] ((1 / 2) beats)\n    note [Note \"C5\"] ((1 / 2) beats)\n    chord ([Note \"F4\"] , [Note \"A3\"]) ((1 / 2) beats)\n    rest ((3 / 2) beats)\n    chord ([Note \"G4\"] , [Note \"Eb4\"]) (1 beats)\n    chord ([Note \"G4\"] , [Note \"C4\"]) ((1 / 2) beats)\n    chord ([Note \"Bb4\"] , [Note \"Eb4\"]) ((1 / 2) beats)\n    chord ([Note \"C5\"] , [Note \"F4\"]) ((1 / 2) beats)\n  }\n}",
-                    "setup": "music",
-                    "type": "code"
-                },
-                {
-                    "locked": true,
-                    "text": "You can have multiple instruments and they will all play simultaneously, so you can make your own orchestra!",
-                    "type": "text"
-                },
-                {
-                    "type": "code",
-                    "code": "tempo 144\n\ninstrument [Instrument-Name \"violin\"] {\n  note [Note \"G4\"] ((1 / 2) beats)\n  note [Note \"G4\"] ((1 / 2) beats)\n  note [Note \"G4\"] ((1 / 2) beats)\n  note [Note \"Eb4\"] (4 beats)\n  rest (2 beats)\n\n  note [Note \"F4\"] ((1 / 2) beats)\n  note [Note \"F4\"] ((1 / 2) beats)\n  note [Note \"F4\"] ((1 / 2) beats)\n  note [Note \"D4\"] (4 beats)\n}\n\ninstrument [Instrument-Name \"viola\"] {\n  note [Note \"G3\"] ((1 / 2) beats)\n  note [Note \"G3\"] ((1 / 2) beats)\n  note [Note \"G3\"] ((1 / 2) beats)\n  note [Note \"Eb3\"] (4 beats)\n  rest (2 beats)\n\n  note [Note \"F3\"] ((1 / 2) beats)\n  note [Note \"F3\"] ((1 / 2) beats)\n  note [Note \"F3\"] ((1 / 2) beats)\n  note [Note \"D3\"] (4 beats)\n}\n\ninstrument [Instrument-Name \"cello\"] {\n  note [Note \"G2\"] ((1 / 2) beats)\n  note [Note \"G2\"] ((1 / 2) beats)\n  note [Note \"G2\"] ((1 / 2) beats)\n  note [Note \"Eb2\"] (4 beats)\n  rest (2 beats)\n\n  note [Note \"F2\"] ((1 / 2) beats)\n  note [Note \"F2\"] ((1 / 2) beats)\n  note [Note \"F2\"] ((1 / 2) beats)\n  note [Note \"D2\"] (4 beats)\n}\n\ninstrument [Instrument-Name \"contrabass\"] {\n  note [Note \"G2\"] ((1 / 2) beats)\n  note [Note \"G2\"] ((1 / 2) beats)\n  note [Note \"G2\"] ((1 / 2) beats)\n  note [Note \"Eb2\"] (4 beats)\n  rest (2 beats)\n\n  note [Note \"F2\"] ((1 / 2) beats)\n  note [Note \"F2\"] ((1 / 2) beats)\n  note [Note \"F2\"] ((1 / 2) beats)\n  note [Note \"D2\"] (4 beats)\n}",
-                    "setup": "music"
-                }
-            ]
-        },
+
         {
             "name": "The type system",
             "id": "neXLAyR8KGxubEvFrEQl",
@@ -132,7 +87,7 @@
                 {
                     "locked": true,
                     "type": "text",
-                    "text": "Click on the red bubble above to fix the error automatically!\n\nThere are many types built in to Wipple — here are a few:\n\n  -  `Number` and `Text` represent numbers and text\n  -  In `turtle`, `Pixels` represents a distance in `pixels`\n  -  In `music`, `Note-Length` represents a note length in `beats`\n  -  `List` represents a list of items\n  -  `Unit` represents \"nothing\"\n\nBy the way, you can hover your mouse over any piece of code and the Wipple Playground will show you its type. There are many other types, particularly `->` for functions, that are covered in the Advanced lessons, so don't worry if you see a type you aren't familiar with yet!\n\nIn the next lesson, we'll learn how to make our own types!"
+                    "text": "Click on the red bubble above to fix the error automatically!\n\nThere are many types built in to Wipple — here are a few:\n\n  -  `Number` and `Text` represent numbers and text\n  -  In `turtle`, `Pixels` represents a distance in `pixels`\n  -  `List` represents a list of items\n  -  `Unit` represents \"nothing\"\n\nBy the way, you can hover your mouse over any piece of code and the Wipple Playground will show you its type. There are many other types, particularly `->` for functions, that are covered in the Advanced lessons, so don't worry if you see a type you aren't familiar with yet!\n\nIn the next lesson, we'll learn how to make our own types!"
                 }
             ]
         },
