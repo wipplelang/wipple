@@ -361,7 +361,7 @@ const PlaygroundPageEditor = (props: {
                 ) : (
                     <div className="p-4 rounded-lg border-2 border-gray-100 dark:border-gray-800">
                         <AddPlaygroundPageItemAlert
-                            gridClassName="grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+                            gridClassName="grid-cols-2 md:grid-cols-3"
                             onAddItem={props.onAddItem}
                         />
                     </div>
@@ -627,23 +627,10 @@ const AddPlaygroundPageItemAlert = (props: {
 
             <div className={`grid auto-rows-max gap-4 ${props.gridClassName}`}>
                 <AddPlaygroundPageItemAlertButton
-                    setup={undefined}
-                    name="Blank"
-                    description="Create a program from scratch."
-                    onSelect={() => {
-                        props.onAddItem({
-                            type: "code",
-                            code: "",
-                        });
-
-                        props.dismiss?.();
-                    }}
-                />
-
-                <AddPlaygroundPageItemAlertButton
                     setup="turtle"
                     name="Turtle"
                     description="Draw graphics on the screen."
+                    backgroundClassName="bg-green-50 dark:bg-green-800  enabled:hover:bg-green-100 enabled:dark:hover:bg-green-700"
                     onSelect={() => {
                         props.onAddItem({
                             type: "code",
@@ -659,6 +646,7 @@ const AddPlaygroundPageItemAlert = (props: {
                     setup="music"
                     name="Music"
                     description="Make a musical composition."
+                    backgroundClassName="bg-orange-50 dark:bg-orange-800  enabled:hover:bg-orange-100 enabled:dark:hover:bg-orange-700"
                     onSelect={() => {
                         props.onAddItem({
                             type: "code",
@@ -674,6 +662,7 @@ const AddPlaygroundPageItemAlert = (props: {
                     setup="math"
                     name="Math"
                     description="Plot functions on a graph."
+                    backgroundClassName="bg-cyan-50 dark:bg-teal-800  enabled:hover:bg-cyan-100 enabled:dark:hover:bg-cyan-700"
                     onSelect={() => {
                         props.onAddItem({
                             type: "code",
@@ -685,10 +674,11 @@ const AddPlaygroundPageItemAlert = (props: {
                     }}
                 />
 
-                <AddPlaygroundPageItemAlertButton
+                {/* <AddPlaygroundPageItemAlertButton
                     setup="game"
                     name="Game"
                     description="Create a video game."
+                    backgroundClassName="bg-purple-50 dark:bg-purple-800  enabled:hover:bg-purple-100 enabled:dark:hover:bg-purple-700"
                     onSelect={() => {
                         props.onAddItem({
                             type: "code",
@@ -698,12 +688,13 @@ const AddPlaygroundPageItemAlert = (props: {
 
                         props.dismiss?.();
                     }}
-                />
+                /> */}
 
                 <AddPlaygroundPageItemAlertButton
                     setup="physics"
                     name="Physics"
                     description="Experiment with physics."
+                    backgroundClassName="bg-yellow-50 dark:bg-yellow-800  enabled:hover:bg-yellow-100 enabled:dark:hover:bg-yellow-700"
                     onSelect={() => {
                         props.onAddItem({
                             type: "code",
@@ -716,9 +707,25 @@ const AddPlaygroundPageItemAlert = (props: {
                 />
 
                 <AddPlaygroundPageItemAlertButton
+                    setup={undefined}
+                    name="Blank"
+                    description="Create a program from scratch."
+                    backgroundClassName="bg-blue-50 dark:bg-blue-800  enabled:hover:bg-blue-100 enabled:dark:hover:bg-blue-700"
+                    onSelect={() => {
+                        props.onAddItem({
+                            type: "code",
+                            code: "",
+                        });
+
+                        props.dismiss?.();
+                    }}
+                />
+
+                <AddPlaygroundPageItemAlertButton
                     setup="text"
                     name="Text"
                     description="Write text alongside your code."
+                    backgroundClassName="bg-gray-50 dark:bg-gray-800  enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700"
                     onSelect={() => {
                         props.onAddItem({
                             type: "text",
@@ -745,11 +752,12 @@ const AddPlaygroundPageItemAlertButton = (props: {
     setup: string | undefined;
     name: string;
     description: string;
+    backgroundClassName: string;
     onSelect: () => void;
 }) => (
     <button
         disabled={props.disabled}
-        className="group bg-gray-50 dark:bg-gray-800 disabled:opacity-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700 rounded-lg p-3 transition-colors"
+        className={`group disabled:opacity-50 rounded-lg p-3 transition-colors ${props.backgroundClassName}`}
         onClick={props.onSelect}
     >
         <div className="flex flex-col items-start gap-1 w-full h-full">

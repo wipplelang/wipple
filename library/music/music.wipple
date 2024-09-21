@@ -1,125 +1,106 @@
-Music : type {
-  tempo :: {Number}
-  set-tempo :: Number -> Unit
-}
+Melody : type Text
 
-@once
-instrument-key :: Task-Local-Key Instrument
-instrument-key : task-local-key
+Instrument : type Text
 
-@once
-music :: Music
-music : do {
-  (set-task-local instrument-key) (load-instrument "acoustic_grand_piano")
+-- Play a melody on an instrument.
+@(highlight-category : "music-play")
+@(highlight-icon : "play-arrow")
+play :: Instrument Melody -> Unit
+play : (Instrument instrument) (Melody melody) -> runtime-message "play" (instrument ; melody)
 
-  tempo : 120
-  Music {
-    tempo : {tempo}
-    set-tempo : new-tempo -> do {
-      tempo! : new-tempo
-    }
-  }
-}
-
--- Set the tempo of the music.
-@(highlight-category : "control-flow")
+-- Set the tempo of your song.
+@(highlight-category : "music-setup")
 @(highlight-icon : "speed")
 tempo :: Number -> Unit
-tempo : tempo -> do {
-  {set-tempo : set-tempo} : music
-  set-tempo tempo
+tempo : tempo -> runtime-message "tempo" tempo
+
+-- Play all the melodies in the block at the same time.
+@(highlight-category : "control-flow")
+@(highlight-icon : "workspaces")
+together :: Body => {Body} -> Unit
+together : body -> do {
+  runtime-message "begin-together" ()
+  do body
+  runtime-message "end-together" ()
 }
 
--- A note length.
-Note-Length : type {
-  ms-from-tempo :: Number -> Number
-}
+piano :: Instrument
+piano : Instrument "piano"
 
-instance (Describe-Type Note-Length "note length in `beats`")
+accordion :: Instrument
+accordion : Instrument "accordion"
 
--- Specify how many beats a note or rest should last.
-@(highlight-category : "unit")
-beats :: Number -> Note-Length
-beats : beats -> Note-Length {
-  ms-from-tempo : tempo -> 60000 / tempo * beats
-}
+saxophone :: Instrument
+saxophone : Instrument "alto_sax"
 
--- A note.
-Note : type Text
+bagpipe :: Instrument
+bagpipe : Instrument "bagpipe"
 
-instance (Describe-Type Note "note")
+banjo :: Instrument
+banjo : Instrument "banjo"
 
--- Play a note on an instrument.
-@(highlight-category : "music-play")
-@(highlight-icon : "music-note")
-note :: Note Note-Length -> Unit
-note : note length -> chord (note ,) length
+brass :: Instrument
+brass : Instrument "brass_section"
 
--- Play multiple notes on an instrument at the same time.
-@(highlight-category : "music-play")
-@(highlight-icon : "music-note")
-chord :: (List Note) Note-Length -> Unit
-chord : notes {ms-from-tempo : ms-from-tempo} -> do {
-  {tempo : tempo} : music
+cello :: Instrument
+cello : Instrument "cello"
 
-  {
-    name : instrument-name
-    delta : delta
-    set-delta : set-delta
-  } : current-instrument
+clarinet :: Instrument
+clarinet : Instrument "clarinet"
 
-  delta : do delta
-  ms : ms-from-tempo (do tempo) - delta
+electric-guitar :: Instrument
+electric-guitar : Instrument "electric_guitar_clean"
 
-  notes : notes
-    . transform ((Note value) -> value)
-    . collect :: List _
+flute :: Instrument
+flute : Instrument "flute"
 
-  delta : with-continuation (continuation ->
-    runtime-message "notes" (instrument-name ; ms ; notes ; delta -> continuation delta))
+harmonica :: Instrument
+harmonica : Instrument "harmonica"
 
-  delta >= 0 . assert "music stopped"
-  set-delta delta
-}
+harp :: Instrument
+harp : Instrument "orchestral_harp"
 
--- Rest for a period of time.
-@(highlight-category : "music-play")
-@(highlight-icon : "music-off")
-rest :: Note-Length -> Unit
-rest : length -> chord (,) length
+marimba :: Instrument
+marimba : Instrument "marimba"
 
-Instrument : type {
-  name :: Text
-  delta :: {Number}
-  set-delta :: Number -> Unit
-}
+music-box :: Instrument
+music-box : Instrument "music_box"
 
-load-instrument :: Text -> Instrument
-load-instrument : name -> do {
-  runtime-message "load-instrument" name
+orchestra-hit :: Instrument
+orchestra-hit : Instrument "orchestra_hit"
 
-  delta : 0
-  Instrument {
-    name : name
-    delta : {delta}
-    set-delta : new-delta -> do {
-      delta! : new-delta
-    }
-  }
-}
+organ :: Instrument
+organ : Instrument "rock_organ"
 
-current-instrument :: Instrument
-current-instrument : task-local instrument-key or error "no instrument set"
+steel-drums :: Instrument
+steel-drums : Instrument "steel_drums"
 
-Instrument-Name : type Text
+strings :: Instrument
+strings : Instrument "string_ensemble_1"
 
-instance (Describe-Type Instrument-Name "instrument name")
+timpani :: Instrument
+timpani : Instrument "timpani"
 
--- Change the instrument.
-@(highlight-category : "music-instrument")
-@(highlight-icon : "piano")
-instrument :: (Body : ()) => Instrument-Name {Body} -> Unit
-instrument : (Instrument-Name name) body -> in-background {
-  (set-task-local instrument-key) (load-instrument name)
-  _ : do body
-}
+trombone :: Instrument
+trombone : Instrument "trombone"
+
+trumpet :: Instrument
+trumpet : Instrument "trumpet"
+
+tuba :: Instrument
+tuba : Instrument "tuba"
+
+vibraphone :: Instrument
+vibraphone : Instrument "vibraphone"
+
+viola :: Instrument
+viola : Instrument "viola"
+
+violin :: Instrument
+violin : Instrument "violin"
+
+woodblock :: Instrument
+woodblock : Instrument "woodblock"
+
+xylophone :: Instrument
+xylophone : Instrument "xylophone"

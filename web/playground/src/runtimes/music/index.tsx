@@ -1,89 +1,150 @@
 import type { RuntimeComponent } from "..";
-import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import { PaletteCategory, PaletteItem } from "../../models";
-import recordImage from "./record.svg";
-import { Tooltip } from "../../components";
+import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
+import { PaletteCategory } from "../../models";
+import { CacheStorage, Soundfont, SplendidGrandPiano } from "smplr";
+import { decodeMelody } from "../../edit/melody-picker";
+import { flushSync } from "react-dom";
 import { MaterialSymbol } from "react-material-symbols";
-import { Player, instrument } from "soundfont-player";
-import { NoteAsset } from "../../edit/assets/note";
-import { InstrumentAsset } from "../../edit/assets/instrument";
+import { Tooltip } from "../../components";
 
 export interface Settings {}
 
-type Status = "pending" | "playing" | "stopped";
+const cache = new CacheStorage();
+
+type Instrument = SplendidGrandPiano | Soundfont;
+
+export const getAudioContext = async () => {
+    const audioContext = new AudioContext();
+    await audioContext.resume();
+    return audioContext;
+};
+
+export const getPiano = (audioContext: AudioContext) =>
+    new SplendidGrandPiano(audioContext, { storage: cache }).load;
+
+export const soundfontInstrumets = {
+    accordion: "accordion",
+    saxophone: "alto_sax",
+    bagpipe: "bagpipe",
+    banjo: "banjo",
+    brass: "brass_section",
+    cello: "cello",
+    clarinet: "clarinet",
+    "electric-guitar": "electric_guitar_clean",
+    flute: "flute",
+    harmonica: "harmonica",
+    harp: "orchestral_harp",
+    marimba: "marimba",
+    "music-box": "music_box",
+    "orchestra-hit": "orchestra_hit",
+    organ: "rock_organ",
+    "steel-drums": "steel_drums",
+    strings: "string_ensemble_1",
+    timpani: "timpani",
+    trombone: "trombone",
+    trumpet: "trumpet",
+    tuba: "tuba",
+    vibraphone: "vibraphone",
+    viola: "viola",
+    violin: "violin",
+    woodblock: "woodblock",
+    xylophone: "xylophone",
+};
+
+export const getSoundfontInstrument = (instrument: string, audioContext: AudioContext) =>
+    new Soundfont(audioContext, { instrument, storage: cache }).load;
+
+export const defaultTempo = 120;
 
 export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
-    const containerRef = useRef<HTMLDivElement>(null);
+    const [isRunning, setRunning] = useState(false);
 
-    const [status, setStatus] = useState<Status>("pending");
-    const [onPlay, setOnPlay] = useState(() => () => {});
-    const audioContext = useRef<AudioContext>();
-    const instruments = useRef<Record<string, Player>>({});
+    const audioContextRef = useRef<AudioContext>();
+    const instrumentsRef = useRef<Record<string, Instrument>>({});
+    const togetherRef = useRef<number>();
+    const tempoRef = useRef(defaultTempo);
 
-    const waitForPlay = async () => {
-        if (status === "pending") {
-            await new Promise<void>((resolve) => {
-                setOnPlay(() => resolve);
-            });
+    const waitForTogether = useCallback(async () => {
+        const duration = togetherRef.current;
+        if (duration == null) {
+            return;
         }
-    };
 
-    const play = async () => {
-        setStatus("playing");
-        audioContext.current = new AudioContext();
-        await audioContext.current.resume();
-        onPlay();
-    };
+        await new Promise((resolve) => setTimeout(resolve, duration * 1000));
 
-    const stop = () => {
-        setStatus("stopped");
-    };
+        togetherRef.current = undefined;
+    }, []);
 
     useImperativeHandle(ref, () => ({
         initialize: async () => {
-            setStatus("pending");
+            const audioContext = await getAudioContext();
+            audioContextRef.current = audioContext;
+
+            await Promise.all([
+                (async () => {
+                    const piano = await getPiano(audioContext);
+                    instrumentsRef.current.piano = piano;
+                })(),
+                ...Object.values(soundfontInstrumets).map(async (instrument) => {
+                    instrumentsRef.current[instrument] = await getSoundfontInstrument(
+                        instrument,
+                        audioContext,
+                    );
+                }),
+            ]);
+
+            togetherRef.current = undefined;
+
+            tempoRef.current = defaultTempo;
+
+            setRunning(true);
         },
         onMessage: async (message, value) => {
+            const audioContext = audioContextRef.current;
+            if (!audioContext) {
+                throw new Error("audio context is not initialized");
+            }
+
             switch (message) {
-                case "load-instrument": {
-                    await waitForPlay();
-
-                    if (!audioContext.current || instruments.current[value]) {
-                        return;
-                    }
-
-                    const player = await instrument(audioContext.current, value);
-                    instruments.current[value] = player;
-
+                case "tempo": {
+                    tempoRef.current = value;
                     break;
                 }
-                case "notes": {
-                    const [instrumentName, msString, notes, callback] = value;
+                case "begin-together": {
+                    togetherRef.current = 0;
+                    break;
+                }
+                case "end-together": {
+                    await waitForTogether();
+                    break;
+                }
+                case "play": {
+                    const [instrumentName, encodedMelody] = value;
 
-                    const ms = parseFloat(msString);
-
-                    const player = instruments.current[instrumentName];
-                    if (!player || !audioContext.current) {
-                        return Promise.resolve(-1);
+                    const instrument = instrumentsRef.current[instrumentName];
+                    if (!instrument) {
+                        throw new Error(`unknown instrument: ${instrumentName}`);
                     }
 
-                    const startDate = new Date().valueOf();
-                    const now = audioContext.current.currentTime;
+                    const melody = decodeMelody(encodedMelody);
 
-                    for (const note of notes) {
-                        player.play(note, now, { duration: ms / 1000 });
-                    }
+                    const noteDuration = 60 / tempoRef.current;
+                    const totalDuration = noteDuration * melody.notes.length;
 
-                    const delta = new Date().valueOf() - startDate;
-
-                    setTimeout(async () => {
-                        if (!audioContext.current) {
-                            await callback([-1]);
-                            return;
+                    let time = audioContext.currentTime;
+                    for (const notes of melody.notes) {
+                        for (const note of notes) {
+                            instrument.start({ note, time, duration: noteDuration });
                         }
 
-                        await callback([audioContext.current.currentTime - now]);
-                    }, ms - delta);
+                        time += noteDuration;
+                    }
+
+                    if (togetherRef.current != null) {
+                        togetherRef.current = Math.max(togetherRef.current, totalDuration);
+                    } else {
+                        await new Promise((resolve) => setTimeout(resolve, totalDuration * 1000));
+                    }
 
                     break;
                 }
@@ -93,72 +154,82 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             }
         },
         cleanup: async () => {
-            stop();
+            await waitForTogether();
+
+            // Let the last note fade out
+            await new Promise((resolve) => setTimeout(resolve, (60 / defaultTempo) * 1000));
+
+            for (const instrument of Object.values(instrumentsRef.current)) {
+                instrument.stop();
+            }
+
+            try {
+                await audioContextRef.current?.close();
+            } catch {
+                // Already closed
+            }
+
+            instrumentsRef.current = {};
+
+            setRunning(false);
         },
     }));
 
     return (
-        <div
-            ref={containerRef}
-            className="flex flex-row items-center justify-center w-fit p-2 gap-2 rounded-lg overflow-hidden border-2 border-gray-100 dark:border-gray-800"
-        >
-            <img
-                src={recordImage}
-                className={`w-20 h-20 ${
-                    status === "playing" ? "animate-spin animate-duration-[3s]" : ""
-                }`}
-            />
-
-            <div className="flex flex-row items-center gap-2">
-                <Tooltip
-                    disabled={status === "stopped"}
-                    description={status === "playing" ? "Stop" : "Play"}
+        <div className="flex">
+            <Tooltip disabled={isRunning} description="Press Run to start playing music">
+                <div
+                    className={`flex flex-row items-center justify-center w-20 h-20 p-2 gap-2 rounded-lg overflow-hidden border-2 border-gray-100 dark:border-gray-800 transition ${
+                        isRunning ? "bg-orange-50 dark:bg-orange-950" : ""
+                    }`}
                 >
-                    <button
-                        disabled={status === "stopped"}
-                        className="flex items-center justify-center aspect-square p-1 disabled:opacity-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-900 transition-colors border-2 border-gray-100 dark:border-gray-800 rounded-lg"
-                        onClick={() => {
-                            if (status === "playing") {
-                                stop();
-                                props.stopRunning();
-                            } else {
-                                play();
-                            }
-                        }}
-                    >
-                        <MaterialSymbol
-                            icon={status === "playing" ? "stop" : "play_arrow"}
-                            fill
-                            size={18}
-                        />
-                    </button>
-                </Tooltip>
-            </div>
+                    <MaterialSymbol
+                        icon="music_note"
+                        className={`text-3xl transition ${
+                            isRunning
+                                ? "text-orange-500 scale-150"
+                                : "text-gray-300 dark:text-gray-600 scale-100"
+                        }`}
+                    />
+                </div>
+            </Tooltip>
         </div>
     );
 });
 
 export const paletteCategories: PaletteCategory[] = [
     {
-        title: "Commands",
+        title: "Music",
         items: [
             {
-                title: "instrument",
-                code: 'instrument [Instrument-Name "acoustic_grand_piano"] {\n  _\n}',
+                title: 'melody : [Melody "color:#38bdf8~;;;"]',
+                code: 'melody : [Melody "color:#38bdf8~;;;"]',
+            },
+            {
+                title: "play",
+                code: `play [Dropdown (piano , ${Object.keys(soundfontInstrumets).join(
+                    " , ",
+                )}) piano] melody`,
+            },
+        ],
+    },
+    {
+        title: "Sequencing",
+        items: [
+            {
+                title: "tempo",
+                code: `tempo [Slider 200 40 600]`,
+            },
+            {
+                title: "together",
+                code: `together {\n  _\n}`,
                 replace: true,
             },
-            {
-                title: "note",
-                code: 'note [Note "C4"] ([Dropdown (1 / 8 , 1 / 4 , 1 / 2 , 1 , 2 , 3 , 4) 1] beats)',
-            },
-            {
-                title: "chord",
-                code: 'chord ([Note "C4"] , [Note "E4"] , [Note "G4"]) ([Dropdown (1 / 8 , 1 / 4 , 1 / 2 , 1 , 2 , 3 , 4) 1] beats)',
-            },
-            {
-                title: "rest",
-                code: "rest ([Dropdown (1 / 8 , 1 / 4 , 1 / 2 , 1 , 2 , 3 , 4) 1] beats)",
-            },
+        ],
+    },
+    {
+        title: "Control",
+        items: [
             {
                 title: "repeat",
                 code: `repeat ([Dropdown (1 , 2 , 3 , 4 , 5 , 10 , 20 , 50 , 100) 2] times) {\n  _\n}`,
