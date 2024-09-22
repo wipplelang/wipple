@@ -1,11 +1,11 @@
 import * as Tonal from "tonal";
-import { SplendidGrandPiano } from "smplr";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { produce } from "immer";
 import { Animated, ContextMenuButton, Tooltip } from "../components";
 import { MaterialSymbol } from "react-material-symbols";
 import randomColor from "randomcolor";
-import { getAudioContext, getPiano } from "../runtimes/music";
+import { getPiano } from "../runtimes/music";
+import { SplendidGrandPiano } from "smplr";
 
 export interface Melody {
     options: {
@@ -89,7 +89,6 @@ const defaultOctave = 3;
 export const MelodyPicker = (props: { selection: string; onDismiss: (melody: string) => void }) => {
     const [melody, setMelody] = useState(decodeMelody(props.selection));
 
-    const audioContextRef = useRef<AudioContext>();
     const pianoRef = useRef<SplendidGrandPiano>();
 
     const [playingId, setPlayingId] = useState<Symbol>();
@@ -101,35 +100,21 @@ export const MelodyPicker = (props: { selection: string; onDismiss: (melody: str
         playingIdRef.current = playingId;
     }, [playingId]);
 
-    useEffect(() => {
-        (async () => {
-            const audioContext = await getAudioContext();
-            audioContextRef.current = audioContext;
-
-            const piano = await getPiano(audioContext);
-            pianoRef.current = piano;
-        })();
-    }, []);
-
     const play = useCallback(async () => {
         try {
             const playingId = Symbol();
             setPlayingId(playingId);
 
-            const audioContext = (audioContextRef.current ??= new AudioContext());
-            await audioContext.resume();
-
-            // FIXME: CACHE GLOBALLY
-            const player = (pianoRef.current ??= new SplendidGrandPiano(audioContext));
-            await player.load;
+            const piano = await getPiano();
+            pianoRef.current = piano;
 
             const totalDuration = 2;
             const noteDuration = totalDuration / melody.notes.length;
 
-            let time = audioContext.currentTime;
+            let time = piano.context.currentTime;
             for (const notes of melody.notes) {
                 for (const note of notes) {
-                    player.start({ note, time });
+                    piano.start({ note, time });
                 }
 
                 time += noteDuration;
@@ -151,13 +136,9 @@ export const MelodyPicker = (props: { selection: string; onDismiss: (melody: str
     }, []);
 
     const sampleNote = useCallback(async (note: string) => {
-        const audioContext = (audioContextRef.current ??= new AudioContext());
-        await audioContext.resume();
-
-        const player = (pianoRef.current ??= new SplendidGrandPiano(audioContext));
-        await player.load;
-
-        player.start({ note });
+        const piano = await getPiano();
+        console.log("piano", piano);
+        piano.start({ note });
     }, []);
 
     return (

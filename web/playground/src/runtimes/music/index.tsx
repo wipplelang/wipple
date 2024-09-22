@@ -3,64 +3,105 @@ import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "
 import { PaletteCategory } from "../../models";
 import { CacheStorage, Soundfont, SplendidGrandPiano } from "smplr";
 import { decodeMelody } from "../../edit/melody-picker";
-import { flushSync } from "react-dom";
 import { MaterialSymbol } from "react-material-symbols";
 import { Tooltip } from "../../components";
+import { Mutex } from "async-mutex";
 
 export interface Settings {}
 
 const cache = new CacheStorage();
 
-type Instrument = SplendidGrandPiano | Soundfont;
+const audioContextMutex = new Mutex();
+const audioContext = new AudioContext();
+export const getAudioContext = () =>
+    audioContextMutex.runExclusive(async () => {
+        if (audioContext.state === "suspended") {
+            console.log("Waiting for user interaction to resume audio context...");
 
-export const getAudioContext = async () => {
-    const audioContext = new AudioContext();
-    await audioContext.resume();
-    return audioContext;
-};
+            await new Promise<void>((resolve) => {
+                const handleClick = async () => {
+                    console.log("Resuming audio context...");
+                    await audioContext.resume();
+                    console.log("Audio context resumed");
 
-export const getPiano = (audioContext: AudioContext) =>
-    new SplendidGrandPiano(audioContext, { storage: cache }).load;
+                    window.removeEventListener("click", handleClick);
 
-export const soundfontInstrumets = {
-    accordion: "accordion",
-    saxophone: "alto_sax",
-    bagpipe: "bagpipe",
-    banjo: "banjo",
-    brass: "brass_section",
-    cello: "cello",
-    clarinet: "clarinet",
+                    resolve();
+                };
+
+                window.addEventListener("click", handleClick);
+            });
+        }
+
+        return audioContext;
+    });
+
+const pianoMutex = new Mutex();
+let piano: SplendidGrandPiano | undefined;
+export const getPiano = () =>
+    pianoMutex.runExclusive(async () => {
+        if (piano) {
+            return piano;
+        }
+
+        const audioContext = await getAudioContext();
+        piano = await new SplendidGrandPiano(audioContext, { storage: cache }).load;
+        return piano;
+    });
+
+export const soundfontInstrumentNames: Record<string, string> = {
     "electric-guitar": "electric_guitar_clean",
     flute: "flute",
     harmonica: "harmonica",
-    harp: "orchestral_harp",
     marimba: "marimba",
-    "music-box": "music_box",
     "orchestra-hit": "orchestra_hit",
-    organ: "rock_organ",
-    "steel-drums": "steel_drums",
     strings: "string_ensemble_1",
-    timpani: "timpani",
-    trombone: "trombone",
     trumpet: "trumpet",
     tuba: "tuba",
-    vibraphone: "vibraphone",
-    viola: "viola",
     violin: "violin",
-    woodblock: "woodblock",
-    xylophone: "xylophone",
 };
 
-export const getSoundfontInstrument = (instrument: string, audioContext: AudioContext) =>
-    new Soundfont(audioContext, { instrument, storage: cache }).load;
+const soundfontInstruments = Object.fromEntries(
+    Object.keys(soundfontInstrumentNames).map((name) => [
+        name,
+        {
+            mutex: new Mutex(),
+            instrument: undefined as Soundfont | undefined,
+        },
+    ]),
+);
+
+export const getSoundfontInstrument = async (name: string): Promise<Soundfont | undefined> =>
+    await soundfontInstruments[name]?.mutex.runExclusive(async () => {
+        if (soundfontInstruments[name].instrument) {
+            return soundfontInstruments[name].instrument;
+        }
+
+        const audioContext = await getAudioContext();
+
+        const instrument = await new Soundfont(audioContext, {
+            instrument: soundfontInstrumentNames[name],
+            storage: cache,
+        }).load;
+
+        soundfontInstruments[name].instrument = instrument;
+
+        return instrument;
+    });
+
+export const stopAllInstruments = () => {
+    piano?.stop();
+
+    for (const instrument of Object.values(soundfontInstruments)) {
+        instrument.instrument?.stop();
+    }
+};
 
 export const defaultTempo = 120;
 
 export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     const [isRunning, setRunning] = useState(false);
 
-    const audioContextRef = useRef<AudioContext>();
-    const instrumentsRef = useRef<Record<string, Instrument>>({});
     const togetherRef = useRef<number>();
     const tempoRef = useRef(defaultTempo);
 
@@ -77,34 +118,19 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
     useImperativeHandle(ref, () => ({
         initialize: async () => {
-            const audioContext = await getAudioContext();
-            audioContextRef.current = audioContext;
-
             await Promise.all([
-                (async () => {
-                    const piano = await getPiano(audioContext);
-                    instrumentsRef.current.piano = piano;
-                })(),
-                ...Object.values(soundfontInstrumets).map(async (instrument) => {
-                    instrumentsRef.current[instrument] = await getSoundfontInstrument(
-                        instrument,
-                        audioContext,
-                    );
-                }),
+                getPiano(),
+                ...Object.values(soundfontInstrumentNames).map(getSoundfontInstrument),
             ]);
 
-            togetherRef.current = undefined;
+            stopAllInstruments();
 
+            togetherRef.current = undefined;
             tempoRef.current = defaultTempo;
 
             setRunning(true);
         },
         onMessage: async (message, value) => {
-            const audioContext = audioContextRef.current;
-            if (!audioContext) {
-                throw new Error("audio context is not initialized");
-            }
-
             switch (message) {
                 case "tempo": {
                     tempoRef.current = value;
@@ -121,7 +147,11 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                 case "play": {
                     const [instrumentName, encodedMelody] = value;
 
-                    const instrument = instrumentsRef.current[instrumentName];
+                    const instrument =
+                        instrumentName === "piano"
+                            ? await getPiano()
+                            : await getSoundfontInstrument(instrumentName);
+
                     if (!instrument) {
                         throw new Error(`unknown instrument: ${instrumentName}`);
                     }
@@ -159,17 +189,7 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             // Let the last note fade out
             await new Promise((resolve) => setTimeout(resolve, (60 / defaultTempo) * 1000));
 
-            for (const instrument of Object.values(instrumentsRef.current)) {
-                instrument.stop();
-            }
-
-            try {
-                await audioContextRef.current?.close();
-            } catch {
-                // Already closed
-            }
-
-            instrumentsRef.current = {};
+            stopAllInstruments();
 
             setRunning(false);
         },
@@ -207,7 +227,7 @@ export const paletteCategories: PaletteCategory[] = [
             },
             {
                 title: "play",
-                code: `play [Dropdown (piano , ${Object.keys(soundfontInstrumets).join(
+                code: `play [Dropdown (piano , ${Object.keys(soundfontInstruments).join(
                     " , ",
                 )}) piano] melody`,
             },

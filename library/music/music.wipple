@@ -27,29 +27,8 @@ together : body -> do {
 piano :: Instrument
 piano : Instrument "piano"
 
-accordion :: Instrument
-accordion : Instrument "accordion"
-
-saxophone :: Instrument
-saxophone : Instrument "alto_sax"
-
-bagpipe :: Instrument
-bagpipe : Instrument "bagpipe"
-
-banjo :: Instrument
-banjo : Instrument "banjo"
-
-brass :: Instrument
-brass : Instrument "brass_section"
-
-cello :: Instrument
-cello : Instrument "cello"
-
-clarinet :: Instrument
-clarinet : Instrument "clarinet"
-
 electric-guitar :: Instrument
-electric-guitar : Instrument "electric_guitar_clean"
+electric-guitar : Instrument "electric-guitar"
 
 flute :: Instrument
 flute : Instrument "flute"
@@ -57,32 +36,14 @@ flute : Instrument "flute"
 harmonica :: Instrument
 harmonica : Instrument "harmonica"
 
-harp :: Instrument
-harp : Instrument "orchestral_harp"
-
 marimba :: Instrument
 marimba : Instrument "marimba"
 
-music-box :: Instrument
-music-box : Instrument "music_box"
-
 orchestra-hit :: Instrument
-orchestra-hit : Instrument "orchestra_hit"
-
-organ :: Instrument
-organ : Instrument "rock_organ"
-
-steel-drums :: Instrument
-steel-drums : Instrument "steel_drums"
+orchestra-hit : Instrument "orchestra-hit"
 
 strings :: Instrument
-strings : Instrument "string_ensemble_1"
-
-timpani :: Instrument
-timpani : Instrument "timpani"
-
-trombone :: Instrument
-trombone : Instrument "trombone"
+strings : Instrument "strings"
 
 trumpet :: Instrument
 trumpet : Instrument "trumpet"
@@ -90,17 +51,5 @@ trumpet : Instrument "trumpet"
 tuba :: Instrument
 tuba : Instrument "tuba"
 
-vibraphone :: Instrument
-vibraphone : Instrument "vibraphone"
-
-viola :: Instrument
-viola : Instrument "viola"
-
 violin :: Instrument
 violin : Instrument "violin"
-
-woodblock :: Instrument
-woodblock : Instrument "woodblock"
-
-xylophone :: Instrument
-xylophone : Instrument "xylophone"
