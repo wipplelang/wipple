@@ -1,12 +1,20 @@
 Melody : type Text
+Rhythm : type Text
+
+Encode-Notes : Notes => trait (Notes -> (Text ; Text))
+instance (Encode-Notes Melody) : (Melody melody) -> ("melody" ; melody)
+instance (Encode-Notes Rhythm) : (Rhythm rhythm) -> ("rhythm" ; rhythm)
 
 Instrument : type Text
 
--- Play a melody on an instrument.
+-- Play a melody or rhythm on an instrument.
 @(highlight-category : "music-play")
 @(highlight-icon : "play-arrow")
-play :: Instrument Melody -> Unit
-play : (Instrument instrument) (Melody melody) -> runtime-message "play" (instrument ; melody)
+play :: Notes where (Encode-Notes Notes) => Instrument Notes -> Unit
+play : (Instrument instrument) notes -> do {
+  (kind ; encoded) : Encode-Notes notes
+  runtime-message "play" (instrument ; kind ; encoded)
+}
 
 -- Set the tempo of your song.
 @(highlight-category : "music-setup")
@@ -26,6 +34,9 @@ together : body -> do {
 
 piano :: Instrument
 piano : Instrument "piano"
+
+drums :: Instrument
+drums : Instrument "drums"
 
 electric-guitar :: Instrument
 electric-guitar : Instrument "electric-guitar"

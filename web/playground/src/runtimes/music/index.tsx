@@ -1,8 +1,8 @@
 import type { RuntimeComponent } from "..";
 import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
 import { PaletteCategory } from "../../models";
-import { CacheStorage, Soundfont, SplendidGrandPiano } from "smplr";
-import { decodeMelody } from "../../edit/melody-picker";
+import { CacheStorage, DrumMachine, Soundfont, SplendidGrandPiano } from "smplr";
+import { decodeMelody, decodeRhythm } from "../../edit/melody-picker";
 import { MaterialSymbol } from "react-material-symbols";
 import { Tooltip } from "../../components";
 import { Mutex } from "async-mutex";
@@ -47,6 +47,24 @@ export const getPiano = () =>
         const audioContext = await getAudioContext();
         piano = await new SplendidGrandPiano(audioContext, { storage: cache }).load;
         return piano;
+    });
+
+const drumMachineMutex = new Mutex();
+let drumMachine: DrumMachine | undefined;
+export const getDrumMachine = () =>
+    drumMachineMutex.runExclusive(async () => {
+        if (drumMachine) {
+            return drumMachine;
+        }
+
+        const audioContext = await getAudioContext();
+
+        drumMachine = await new DrumMachine(audioContext, {
+            instrument: "Casio-RZ1",
+            storage: cache,
+        }).load;
+
+        return drumMachine;
     });
 
 export const soundfontInstrumentNames: Record<string, string> = {
@@ -145,24 +163,53 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                     break;
                 }
                 case "play": {
-                    const [instrumentName, encodedMelody] = value;
+                    const [instrumentName, kind, encoded] = value;
 
-                    const instrument =
-                        instrumentName === "piano"
-                            ? await getPiano()
-                            : await getSoundfontInstrument(instrumentName);
+                    let instrument: SplendidGrandPiano | Soundfont | DrumMachine | undefined;
+                    let sequence: string[][];
+                    switch (kind) {
+                        case "melody": {
+                            switch (instrumentName) {
+                                case "piano":
+                                    instrument = await getPiano();
+                                    break;
+                                case "drums": {
+                                    throw new Error("expected instrument, not drums");
+                                }
+                                default:
+                                    instrument = await getSoundfontInstrument(instrumentName);
+                                    break;
+                            }
 
-                    if (!instrument) {
-                        throw new Error(`unknown instrument: ${instrumentName}`);
+                            if (!instrument) {
+                                throw new Error(`unknown instrument: ${instrumentName}`);
+                            }
+
+                            sequence = decodeMelody(encoded).notes;
+
+                            break;
+                        }
+                        case "rhythm": {
+                            if (instrumentName !== "drums") {
+                                throw new Error("expected drums");
+                            }
+
+                            instrument = await getDrumMachine();
+
+                            sequence = decodeRhythm(encoded).notes;
+
+                            break;
+                        }
+                        default: {
+                            throw new Error(`unsupported kind: ${kind}`);
+                        }
                     }
 
-                    const melody = decodeMelody(encodedMelody);
-
                     const noteDuration = 60 / tempoRef.current;
-                    const totalDuration = noteDuration * melody.notes.length;
+                    const totalDuration = noteDuration * sequence.length;
 
                     let time = audioContext.currentTime;
-                    for (const notes of melody.notes) {
+                    for (const notes of sequence) {
                         for (const note of notes) {
                             instrument.start({ note, time, duration: noteDuration });
                         }
@@ -226,8 +273,12 @@ export const paletteCategories: PaletteCategory[] = [
                 code: 'melody : [Melody "color:#38bdf8~;;;"]',
             },
             {
+                title: 'rhythm : [Rhythm "color:#fb7185~;;;"]',
+                code: 'rhythm : [Rhythm "color:#fb7185~;;;"]',
+            },
+            {
                 title: "play",
-                code: `play [Dropdown (piano , ${Object.keys(soundfontInstruments).join(
+                code: `play [Dropdown (piano , drums , ${Object.keys(soundfontInstruments).join(
                     " , ",
                 )}) piano] melody`,
             },
