@@ -4,8 +4,8 @@ import { produce } from "immer";
 import { Animated, ContextMenuButton, Tooltip } from "../components";
 import { MaterialSymbol } from "react-material-symbols";
 import randomColor from "randomcolor";
-import { getPiano } from "../runtimes/music";
-import { SplendidGrandPiano } from "smplr";
+import { getDrumMachine, getPiano } from "../runtimes/music";
+import { DrumMachine, SplendidGrandPiano } from "smplr";
 
 export interface Melody {
     options: {
@@ -65,7 +65,52 @@ export const decodeMelody = (melody: string): Melody => {
     return { options, notes };
 };
 
-const noteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+export interface Rhythm {
+    options: {
+        color: string | undefined;
+    };
+    notes: string[][];
+}
+
+export const encodeRhythm = (rhythm: Rhythm) => {
+    const encodedOptions: string[] = [];
+
+    if (rhythm.options.color) {
+        encodedOptions.push(`color:${rhythm.options.color}`);
+    }
+
+    return `${encodedOptions.join(";")}~${rhythm.notes.map((notes) => notes.join(",")).join(";")}`;
+};
+
+export const decodeRhythm = (rhythm: string): Rhythm => {
+    const [encodedOptions, encodedNotes] = rhythm.includes("~") ? rhythm.split("~") : ["", rhythm];
+
+    const rawOptions = Object.fromEntries(
+        encodedOptions.split(";").map((option) => option.split(":")) as [string, string][],
+    );
+
+    const options = {
+        color: rawOptions.color ? rawOptions.color : undefined,
+    };
+
+    const notes = encodedNotes.split(";").map((notes) => notes.split(","));
+
+    return { options, notes };
+};
+
+const rhythmNoteNames = [
+    "clap",
+    "clave",
+    "cowbell",
+    "crash",
+    "hihat",
+    "kick",
+    "ride",
+    "snare",
+    "tom",
+];
+
+const melodyNoteNames = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 const keys = [
     { key: Tonal.Key.majorKey("C"), major: "C Major", minor: "A Minor" },
@@ -137,106 +182,229 @@ export const MelodyPicker = (props: { selection: string; onDismiss: (melody: str
 
     const sampleNote = useCallback(async (note: string) => {
         const piano = await getPiano();
-        console.log("piano", piano);
         piano.start({ note });
     }, []);
 
     return (
-        <div className="flex flex-col gap-4 w-[600px]">
-            <div className="flex flex-row items-stretch justify-between">
-                <div className="flex flex-row gap-2">
-                    <ChangeColorButton
-                        color={melody.options.color}
-                        onClick={() => {
-                            setMelody(
-                                produce((melody) => {
-                                    melody.options.color = randomColor();
-                                }),
-                            );
-                        }}
-                    />
-
-                    <PlayButton isPlaying={isPlaying} onClick={isPlaying ? stop : play} />
-
-                    <ClearButton
-                        onClick={() => {
-                            if (confirm("Are you sure?")) {
-                                setMelody(
-                                    produce((melody) => {
-                                        melody.notes = melody.notes.map(() => []);
-                                    }),
-                                );
-                            }
-                        }}
-                    />
-                </div>
-
-                <DoneButton onClick={() => props.onDismiss(encodeMelody(melody))} />
-            </div>
-
-            <div className="flex flex-row items-center gap-2">
-                <Option
-                    options={[
-                        {
-                            title: "All Keys",
-                            isSelected: melody.options.key == null,
-                            onClick: () => {
-                                setMelody(
-                                    produce((melody) => {
-                                        melody.options.key = undefined;
-                                    }),
-                                );
+        <MelodyPickerContainer
+            color={melody.options.color}
+            onChangeColor={(color) => {
+                setMelody(
+                    produce((melody) => {
+                        melody.options.color = color;
+                    }),
+                );
+            }}
+            isPlaying={isPlaying}
+            onPlay={play}
+            onStop={stop}
+            onClear={() => {
+                setMelody(
+                    produce((melody) => {
+                        melody.notes = melody.notes.map(() => []);
+                    }),
+                );
+            }}
+            onDismiss={() => props.onDismiss(encodeMelody(melody))}
+            options={
+                <>
+                    <Option
+                        options={[
+                            {
+                                title: "All Keys",
+                                isSelected: melody.options.key == null,
+                                onClick: () => {
+                                    setMelody(
+                                        produce((melody) => {
+                                            melody.options.key = undefined;
+                                        }),
+                                    );
+                                },
                             },
-                        },
-                        ...keys.map((key) => ({
-                            title: (
-                                <span>
-                                    {key.major} <span className="opacity-50">({key.minor})</span>
-                                </span>
-                            ),
-                            isSelected:
-                                melody.options.key?.type === "major" &&
-                                melody.options.key.tonic === key.key.tonic,
-                            onClick: () => {
-                                setMelody(
-                                    produce((melody) => {
-                                        melody.options.key = {
-                                            type: "major",
-                                            tonic: key.key.tonic,
-                                        };
-                                    }),
-                                );
-                            },
-                        })),
-                    ]}
-                >
-                    {melody.options.key
-                        ? melody.options.key.type === "major"
-                            ? keys.find((key) => key.key.tonic === melody.options.key!.tonic)
-                                  ?.major ?? `${melody.options.key.tonic} Major`
-                            : `(unknown key)`
-                        : "All Keys"}
-                </Option>
+                            ...keys.map((key) => ({
+                                title: (
+                                    <span>
+                                        {key.major}{" "}
+                                        <span className="opacity-50">({key.minor})</span>
+                                    </span>
+                                ),
+                                isSelected:
+                                    melody.options.key?.type === "major" &&
+                                    melody.options.key.tonic === key.key.tonic,
+                                onClick: () => {
+                                    setMelody(
+                                        produce((melody) => {
+                                            melody.options.key = {
+                                                type: "major",
+                                                tonic: key.key.tonic,
+                                            };
+                                        }),
+                                    );
+                                },
+                            })),
+                        ]}
+                    >
+                        {melody.options.key
+                            ? melody.options.key.type === "major"
+                                ? keys.find((key) => key.key.tonic === melody.options.key!.tonic)
+                                      ?.major ?? `${melody.options.key.tonic} Major`
+                                : `(unknown key)`
+                            : "All Keys"}
+                    </Option>
 
-                <OptionDivider />
+                    <OptionDivider />
 
+                    <Option
+                        options={new Array(maxNotes).fill(undefined).map((_, n) => {
+                            const note = n + 1;
+
+                            return {
+                                title: `${note}`,
+                                isSelected: note === melody.notes.length,
+                                onClick: () => {
+                                    setMelody(
+                                        produce((melody) => {
+                                            if (note > melody.notes.length) {
+                                                melody.notes = [
+                                                    ...melody.notes,
+                                                    ...new Array(note - melody.notes.length).fill(
+                                                        [],
+                                                    ),
+                                                ];
+                                            } else {
+                                                melody.notes = melody.notes.slice(0, note);
+                                            }
+                                        }),
+                                    );
+                                },
+                            };
+                        })}
+                    >
+                        {`${melody.notes.length} Notes`}
+                    </Option>
+
+                    <OptionDivider />
+
+                    <Option
+                        options={new Array(maxOctave).fill(undefined).map((_, n) => {
+                            const octave = maxOctave - n;
+
+                            return {
+                                title: `${octave}`,
+                                isSelected: melody.options.octave === octave,
+                                onClick: () => {
+                                    setMelody(
+                                        produce((melody) => {
+                                            melody.options.octave = octave;
+                                        }),
+                                    );
+                                },
+                            };
+                        })}
+                    >
+                        Octave
+                    </Option>
+                </>
+            }
+        >
+            <PianoRollEditor melody={melody} onChange={setMelody} onSampleNote={sampleNote} />
+        </MelodyPickerContainer>
+    );
+};
+
+export const RhythmPicker = (props: { selection: string; onDismiss: (rhythm: string) => void }) => {
+    const [rhythm, setRhythm] = useState(decodeRhythm(props.selection));
+
+    const drumMachineRef = useRef<DrumMachine>();
+
+    const [playingId, setPlayingId] = useState<Symbol>();
+
+    const isPlaying = playingId != null;
+
+    const playingIdRef = useRef<Symbol>();
+    useEffect(() => {
+        playingIdRef.current = playingId;
+    }, [playingId]);
+
+    const play = useCallback(async () => {
+        try {
+            const playingId = Symbol();
+            setPlayingId(playingId);
+
+            const drumMachine = await getDrumMachine();
+            drumMachineRef.current = drumMachine;
+
+            const totalDuration = 2;
+            const noteDuration = totalDuration / rhythm.notes.length;
+
+            let time = drumMachine.output.context.currentTime;
+            for (const notes of rhythm.notes) {
+                for (const note of notes) {
+                    drumMachine.start({ note, time });
+                }
+
+                time += noteDuration;
+            }
+
+            setTimeout(() => {
+                if (playingIdRef.current === playingId) {
+                    setPlayingId(undefined);
+                }
+            }, totalDuration * 1000);
+        } catch {
+            setPlayingId(undefined);
+        }
+    }, [rhythm]);
+
+    const stop = useCallback(() => {
+        drumMachineRef.current?.stop({});
+        setPlayingId(undefined);
+    }, []);
+
+    const sampleNote = useCallback(async (note: string) => {
+        const drumMachine = await getDrumMachine();
+        drumMachine.start({ note });
+    }, []);
+
+    return (
+        <MelodyPickerContainer
+            color={rhythm.options.color}
+            onChangeColor={(color) => {
+                setRhythm(
+                    produce((rhythm) => {
+                        rhythm.options.color = color;
+                    }),
+                );
+            }}
+            isPlaying={isPlaying}
+            onPlay={play}
+            onStop={stop}
+            onClear={() => {
+                setRhythm(
+                    produce((rhythm) => {
+                        rhythm.notes = rhythm.notes.map(() => []);
+                    }),
+                );
+            }}
+            onDismiss={() => props.onDismiss(encodeRhythm(rhythm))}
+            options={
                 <Option
                     options={new Array(maxNotes).fill(undefined).map((_, n) => {
                         const note = n + 1;
 
                         return {
                             title: `${note}`,
-                            isSelected: note === melody.notes.length,
+                            isSelected: note === rhythm.notes.length,
                             onClick: () => {
-                                setMelody(
-                                    produce((melody) => {
-                                        if (note > melody.notes.length) {
-                                            melody.notes = [
-                                                ...melody.notes,
-                                                ...new Array(note - melody.notes.length).fill([]),
+                                setRhythm(
+                                    produce((rhythm) => {
+                                        if (note > rhythm.notes.length) {
+                                            rhythm.notes = [
+                                                ...rhythm.notes,
+                                                ...new Array(note - rhythm.notes.length).fill([]),
                                             ];
                                         } else {
-                                            melody.notes = melody.notes.slice(0, note);
+                                            rhythm.notes = rhythm.notes.slice(0, note);
                                         }
                                     }),
                                 );
@@ -244,35 +412,56 @@ export const MelodyPicker = (props: { selection: string; onDismiss: (melody: str
                         };
                     })}
                 >
-                    {`${melody.notes.length} Notes`}
+                    {`${rhythm.notes.length} Notes`}
                 </Option>
+            }
+        >
+            <PercussionEditor rhythm={rhythm} onChange={setRhythm} onSampleNote={sampleNote} />
+        </MelodyPickerContainer>
+    );
+};
 
-                <OptionDivider />
+const MelodyPickerContainer = (
+    props: React.PropsWithChildren<{
+        color: string | undefined;
+        onChangeColor: (color: string) => void;
+        isPlaying: boolean;
+        onPlay: () => void;
+        onStop: () => void;
+        onClear: () => void;
+        onDismiss: () => void;
+        options: React.ReactNode;
+    }>,
+) => {
+    return (
+        <div className="flex flex-col gap-4 w-[600px]">
+            <div className="flex flex-row items-stretch justify-between">
+                <div className="flex flex-row gap-2">
+                    <ChangeColorButton
+                        color={props.color}
+                        onClick={() => props.onChangeColor(randomColor())}
+                    />
 
-                <Option
-                    options={new Array(maxOctave).fill(undefined).map((_, n) => {
-                        const octave = maxOctave - n;
+                    <PlayButton
+                        isPlaying={props.isPlaying}
+                        onClick={props.isPlaying ? props.onStop : props.onPlay}
+                    />
 
-                        return {
-                            title: `${octave}`,
-                            isSelected: melody.options.octave === octave,
-                            onClick: () => {
-                                setMelody(
-                                    produce((melody) => {
-                                        melody.options.octave = octave;
-                                    }),
-                                );
-                            },
-                        };
-                    })}
-                >
-                    Octave
-                </Option>
+                    <ClearButton
+                        onClick={() => {
+                            if (confirm("Are you sure?")) {
+                                props.onClear();
+                            }
+                        }}
+                    />
+                </div>
+
+                <DoneButton onClick={props.onDismiss} />
             </div>
 
-            <Animated direction="vertical">
-                <PianoRollEditor melody={melody} onChange={setMelody} onSampleNote={sampleNote} />
-            </Animated>
+            <div className="flex flex-row items-center gap-2">{props.options}</div>
+
+            <Animated direction="vertical">{props.children}</Animated>
         </div>
     );
 };
@@ -371,7 +560,7 @@ const PianoRollEditor = (props: {
                               : Tonal.Note.fromMidi(midi);
                       })
                       .map((note) => Tonal.Note.get(note).pc)
-                : noteNames;
+                : melodyNoteNames;
 
         let octave = props.melody.options.octave;
         let prevChroma = Tonal.Note.get(scaleNotes[0]).chroma;
@@ -483,6 +672,87 @@ const PianoRollEditorRow = (props: {
         </div>
     );
 };
+
+const PercussionEditor = (props: {
+    rhythm: Rhythm;
+    onChange: (rhythm: Rhythm) => void;
+    onSampleNote: (note: string) => void;
+}) => {
+    return (
+        <div className="flex flex-col-reverse border-2 border-gray-50 dark:border-gray-800 rounded-lg overflow-clip">
+            {rhythmNoteNames.map((note, index) => (
+                <PercussionEditorRow
+                    key={index}
+                    note={note}
+                    items={props.rhythm.notes.map((notes) => notes.includes(note))}
+                    onChange={(items) => {
+                        props.onChange(
+                            produce(props.rhythm, (melody) => {
+                                items.forEach((selected, index) => {
+                                    if (selected) {
+                                        if (!melody.notes[index].includes(note)) {
+                                            melody.notes[index] = sortNotes([
+                                                ...melody.notes[index],
+                                                note,
+                                            ]);
+                                        }
+                                    } else {
+                                        melody.notes[index] = sortNotes(
+                                            melody.notes[index].filter((n) => n !== note),
+                                        );
+                                    }
+                                });
+                            }),
+                        );
+                    }}
+                    onSampleNote={() => props.onSampleNote(note)}
+                />
+            ))}
+        </div>
+    );
+};
+
+const PercussionEditorRow = (props: {
+    note: string;
+    items: boolean[];
+    onChange: (items: boolean[]) => void;
+    onSampleNote: () => void;
+}) => (
+    <div className="flex flex-row h-5">
+        <button
+            className="flex flex-row items-center justify-end w-20 outline outline-[1px] outline-gray-50 dark:outline-gray-800 px-1 z-10 bg-white hover:bg-gray-200"
+            onClick={props.onSampleNote}
+        >
+            <div className="text-xs text-gray-400">{props.note}</div>
+        </button>
+
+        {props.items.map((selected, index) => (
+            <div key={index} className="flex-1 relative">
+                <button
+                    key={index}
+                    className={`absolute inset-0 border border-gray-50 dark:border-gray-800 ${
+                        selected
+                            ? "bg-blue-500 hover:bg-blue-400 dark:hover:bg-blue-600"
+                            : "hover:bg-blue-50 dark:hover:bg-blue-950"
+                    }`}
+                    onClick={() => {
+                        if (!props.items[index]) {
+                            props.onSampleNote();
+                        }
+
+                        props.onChange(
+                            produce(props.items, (items) => {
+                                items[index] = !items[index];
+                            }),
+                        );
+                    }}
+                />
+
+                <div className="absolute inset-0 z-10 w-0.5 bg-gray-200 dark:bg-gray-700" />
+            </div>
+        ))}
+    </div>
+);
 
 const sortNotes = (notes: string[]) =>
     notes.sort((a, b) => (Tonal.Note.get(a).midi ?? 0) - (Tonal.Note.get(b).midi ?? 0));

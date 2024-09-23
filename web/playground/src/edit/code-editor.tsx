@@ -27,14 +27,13 @@ import {
     animalAsset,
     colorAsset,
     dropdownAsset,
-    instrumentAsset,
     melodyAsset,
     objectAsset,
+    rhythmAsset,
     sliderAsset,
 } from "./assets";
 import { AnimalPicker } from "./animal-picker";
-import { MelodyPicker } from "./melody-picker";
-import { InstrumentPicker } from "./instrument-picker";
+import { MelodyPicker, RhythmPicker } from "./melody-picker";
 import { ObjectPicker } from "./object-picker";
 import { StateCommand } from "@codemirror/state";
 import * as commands from "@codemirror/commands";
@@ -193,17 +192,13 @@ export function CodeEditor<Settings>(props: {
 
                 break;
             }
-            case "instrument": {
+            case "rhythm": {
                 displayAlert(({ dismiss }) => (
-                    <InstrumentPicker
-                        selection={asset.instrument}
-                        onDismiss={(instrument) => {
+                    <RhythmPicker
+                        selection={asset.rhythm}
+                        onDismiss={(rhythm) => {
                             codeMirrorRef.current?.editorView.dispatch({
-                                changes: {
-                                    from: start,
-                                    to: end,
-                                    insert: instrumentAsset(instrument),
-                                },
+                                changes: { from: start, to: end, insert: rhythmAsset(rhythm) },
                             });
 
                             dismiss();

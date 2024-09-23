@@ -1,9 +1,9 @@
 import { AnimalAsset } from "./animal";
 import { ColorAsset } from "./color";
 import { DropdownAsset } from "./dropdown";
-import { InstrumentAsset } from "./instrument";
 import { MelodyAsset } from "./melody";
 import { ObjectAsset } from "./object";
+import { RhythmAsset } from "./rhythm";
 import { SliderAsset } from "./slider";
 
 export const isAsset = (value: string) =>
@@ -16,7 +16,7 @@ export type Asset =
     | { type: "animal"; animal: string }
     | { type: "dropdown"; selection: string; options: string[] }
     | { type: "melody"; melody: string }
-    | { type: "instrument"; instrument: string }
+    | { type: "rhythm"; rhythm: string }
     | { type: "object"; object: string }
     | { type: "slider"; value: number; min: number; max: number };
 
@@ -53,9 +53,9 @@ export const getAsset = (code: string): Asset | undefined => {
             value = value.slice(1, value.length - 1); // remove quotes
             return { type: "melody", melody: value };
         }
-        case "Instrument-Name": {
+        case "Rhythm": {
             value = value.slice(1, value.length - 1); // remove quotes
-            return { type: "instrument", instrument: value };
+            return { type: "rhythm", rhythm: value };
         }
         case "Object": {
             value = value.slice(1, value.length - 1); // remove quotes
@@ -88,7 +88,7 @@ export const dropdownAsset = (selection: string, options: string[]) =>
 
 export const melodyAsset = (melody: string) => `[Melody "${melody}"]`;
 
-export const instrumentAsset = (instrument: string) => `[Instrument-Name "${instrument}"]`;
+export const rhythmAsset = (rhythm: string) => `[Rhythm "${rhythm}"]`;
 
 export const objectAsset = (object: string) => `[Object "${object}"]`;
 
@@ -146,11 +146,11 @@ export const Asset = (props: {
             );
             break;
         }
-        case "instrument": {
+        case "rhythm": {
             content = (
-                <InstrumentAsset
+                <RhythmAsset
                     disabled={props.disabled}
-                    instrument={asset.instrument}
+                    rhythm={asset.rhythm}
                     onClick={() => props.onClick?.(asset)}
                 />
             );
