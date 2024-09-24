@@ -14,10 +14,12 @@ import { Help, PaletteCategory, PaletteItem } from "../models";
 import {
     Animated,
     ContextMenuButton,
+    ContextMenuContent,
     defaultAnimationDuration,
     Markdown,
     Tooltip,
     TooltipContent,
+    Transition,
     useAlert,
 } from "../components";
 import { defaultPaletteCategories, runtimes } from "../runtimes";
@@ -35,7 +37,6 @@ import {
 import { AnimalPicker } from "./animal-picker";
 import { MelodyPicker, RhythmPicker } from "./melody-picker";
 import { ObjectPicker } from "./object-picker";
-import { StateCommand } from "@codemirror/state";
 import * as commands from "@codemirror/commands";
 import {
     FloatingPortal,
@@ -47,7 +48,7 @@ import {
 import { nanoid } from "nanoid";
 import { DndContext, DragOverlay, useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Rect } from "@codemirror/view";
+import { Command, Rect } from "@codemirror/view";
 import { HelpAlert } from "./help-alert";
 import {
     DiagnosticHelp,
@@ -86,6 +87,7 @@ export function CodeEditor<Settings>(props: {
     const [lastCompiledCode, setLastCompiledCode] = useState(props.children);
 
     const numberOfLines = useMemo(() => props.children.split("\n").length, [props.children]);
+    const isEmpty = useMemo(() => props.children.length === 0, [props.children]);
 
     const runtime = useMemo(
         () =>
@@ -128,6 +130,67 @@ export function CodeEditor<Settings>(props: {
     const contentRef = useRef<HTMLDivElement>(null);
     const codeMirrorRef = useRef<CodeMirrorRef>(null);
     const runnerRef = useRef<RunnerRef>(null);
+
+    const [selection, setSelection] = useState({ start: 0, end: 0 });
+
+    const isSelectingRange = useMemo(() => selection.start !== selection.end, [selection]);
+
+    const isOnFirstLine = useMemo(() => {
+        if (isSelectingRange || !codeMirrorRef.current) {
+            return false;
+        }
+
+        return codeMirrorRef.current.editorView.state.doc.lineAt(selection.start).number === 1;
+    }, [isSelectingRange, selection]);
+
+    const isOnLastLine = useMemo(() => {
+        if (isSelectingRange || !codeMirrorRef.current) {
+            return false;
+        }
+
+        return (
+            codeMirrorRef.current.editorView.state.doc.lineAt(selection.start).to ===
+            codeMirrorRef.current.editorView.state.doc.length
+        );
+    }, [isSelectingRange, selection]);
+
+    const selectionRect = useMemo(() => {
+        if (!isSelectingRange || !codeMirrorRef.current) {
+            return undefined;
+        }
+
+        const start = codeMirrorRef.current.editorView.coordsAtPos(selection.start, -1);
+        const end = codeMirrorRef.current.editorView.coordsAtPos(selection.end, 1);
+
+        if (!start || !end) {
+            return undefined;
+        }
+
+        let maxLineLength = 0;
+        let pos = selection.start;
+
+        while (pos < selection.end) {
+            const line = codeMirrorRef.current!.editorView.state.doc.lineAt(pos);
+
+            const start = codeMirrorRef.current!.editorView.coordsAtPos(line.from, -1);
+            const end = codeMirrorRef.current!.editorView.coordsAtPos(line.to, 1);
+
+            pos = line.to + 1;
+
+            if (!start || !end) {
+                continue;
+            }
+
+            maxLineLength = Math.max(maxLineLength, end.right - start.left);
+        }
+
+        return {
+            top: Math.min(start.top, end.top),
+            left: Math.min(start.left, end.left),
+            width: maxLineLength,
+            height: Math.abs(start.top - end.bottom),
+        };
+    }, [selection]);
 
     const { displayAlert } = useAlert();
 
@@ -258,7 +321,7 @@ export function CodeEditor<Settings>(props: {
         });
     };
 
-    const runCommand = (command: StateCommand) => {
+    const runCommand = (command: Command) => {
         if (codeMirrorRef.current) {
             command(codeMirrorRef.current.editorView);
             codeMirrorRef.current.editorView.focus();
@@ -277,7 +340,7 @@ export function CodeEditor<Settings>(props: {
         props.onChange(formatted);
     }, [props.onChange]);
 
-    const [help, setHelp] = useState<{ rect: Rect; help: Help }>();
+    const [help, setHelp] = useState<{ rect: Rect; help: Help | undefined }>();
     const [helpVisible, setHelpVisible] = useState(false);
 
     const {
@@ -308,9 +371,6 @@ export function CodeEditor<Settings>(props: {
         const code = getTokenAtPos(codeMirrorRef.current.editorView.state, pos);
 
         const help = await runnerRef.current.help(pos, code);
-        if (!help) {
-            return;
-        }
 
         setHelp({ rect, help });
         setHelpVisible(true);
@@ -449,7 +509,12 @@ export function CodeEditor<Settings>(props: {
                         replace: draggedCommand.item.replace ?? false,
                     };
 
-                    insertSnippet(codeMirrorRef.current.editorView, snippet, line);
+                    insertSnippet(
+                        codeMirrorRef.current.editorView,
+                        snippet,
+                        line,
+                        isSelectingRange ? selection : undefined,
+                    );
 
                     format();
                 }
@@ -505,6 +570,7 @@ export function CodeEditor<Settings>(props: {
                                 setHasEdited(true);
                                 props.onChange(value);
                             }}
+                            onChangeSelection={setSelection}
                             onLongPress={handleLongPress}
                             readOnly={props.readOnly ?? false}
                             onClickAsset={onClickAsset}
@@ -518,7 +584,7 @@ export function CodeEditor<Settings>(props: {
                         {draggedCommand ? (
                             <div className="absolute inset-0 bg-blue-500 bg-opacity-10 mb-2">
                                 {draggedCommand.item.replace ? (
-                                    <DropTargetArea />
+                                    <DropTargetArea rect={selectionRect} />
                                 ) : (
                                     <DropTargetLines
                                         numberOfLines={numberOfLines}
@@ -561,22 +627,51 @@ export function CodeEditor<Settings>(props: {
                         {...getHelpFloatingProps()}
                         className="z-20"
                     >
-                        <div style={{ marginTop: 4 }}>
-                            <TooltipContent open={helpVisible}>
-                                {help.help.summary}
+                        <div className="flex flex-col items-center gap-2 mt-1">
+                            {help.help ? (
+                                <TooltipContent open={helpVisible}>
+                                    {help.help.summary}
 
-                                <button
-                                    className="inline-flex items-center justify-center ml-2 w-5 h-5 align-bottom rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-500 text-lg"
-                                    onClick={() => {
-                                        dismissHelp();
+                                    <button
+                                        className="inline-flex items-center justify-center ml-2 w-5 h-5 align-bottom rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-500 text-lg"
+                                        onClick={() => {
+                                            dismissHelp();
 
-                                        displayAlert(({ dismiss }) => (
-                                            <HelpAlert help={help.help} dismiss={dismiss} />
-                                        ));
-                                    }}
-                                >
-                                    <MaterialSymbol icon="more_horiz" />
-                                </button>
+                                            displayAlert(({ dismiss }) => (
+                                                <HelpAlert help={help.help!} dismiss={dismiss} />
+                                            ));
+                                        }}
+                                    >
+                                        <MaterialSymbol icon="more_horiz" />
+                                    </button>
+                                </TooltipContent>
+                            ) : null}
+
+                            <TooltipContent open={helpVisible} padding={false}>
+                                <ContextMenuContent
+                                    items={[
+                                        {
+                                            title: "Move Up",
+                                            icon: "arrow_upward",
+                                            disabled: isOnFirstLine,
+                                            onClick: () => runCommand(commands.moveLineUp),
+                                        },
+                                        {
+                                            title: "Move Down",
+                                            icon: "arrow_downward",
+                                            disabled: isOnLastLine,
+                                            onClick: () => runCommand(commands.moveLineDown),
+                                        },
+                                        {
+                                            title: "Delete",
+                                            icon: "delete",
+                                            role: "destructive",
+                                            disabled: isEmpty,
+                                            onClick: () => runCommand(commands.deleteLine),
+                                        },
+                                    ]}
+                                    onDismiss={dismissHelp}
+                                />
                             </TooltipContent>
                         </div>
                     </div>
@@ -1230,6 +1325,7 @@ const CommandPreviewContent = (props: {
             <CodeMirror
                 autoFocus={false}
                 onChange={() => {}}
+                onChangeSelection={() => {}}
                 onLongPress={() => {}}
                 readOnly={true}
                 onClickAsset={() => {}}
@@ -1288,9 +1384,9 @@ const DropTargetLine = (props: { index: number; useLineHeight?: boolean; theme: 
                     : undefined,
             }}
         >
-            <div className="absolute left-0 right-0 bottom-0">
+            <div className="absolute left-4 right-4 bottom-0">
                 <div
-                    className={`mx-4 w-full h-1 bg-blue-500 rounded-full transition-opacity ${
+                    className={`w-full h-1 bg-blue-500 rounded-full transition-opacity ${
                         isOver ? "opacity-100" : "opacity-0"
                     }`}
                 />
@@ -1299,16 +1395,32 @@ const DropTargetLine = (props: { index: number; useLineHeight?: boolean; theme: 
     );
 };
 
-const DropTargetArea = () => {
+const dropTargetAreaPaddingForSelection = 6;
+
+const DropTargetArea = (props: {
+    rect: { top: number; left: number; width: number; height: number } | undefined;
+}) => {
     const { setNodeRef, isOver } = useDroppable({ id: 0 });
 
     return (
-        <div ref={setNodeRef} className="absolute inset-0 p-2">
+        <div ref={setNodeRef} className="absolute inset-0">
             <div
-                className={`w-full h-full border-[3px] rounded-md border-blue-500 transition-opacity ${
-                    isOver ? "border-opacity-100" : "border-opacity-0"
-                }`}
-            />
+                className={props.rect ? "fixed" : "p-2 w-full h-full"}
+                style={
+                    props.rect && {
+                        top: props.rect.top - dropTargetAreaPaddingForSelection,
+                        left: props.rect.left - dropTargetAreaPaddingForSelection,
+                        width: props.rect.width + dropTargetAreaPaddingForSelection * 2,
+                        height: props.rect.height + dropTargetAreaPaddingForSelection * 2,
+                    }
+                }
+            >
+                <div
+                    className={`w-full h-full border-[3px] rounded-md border-blue-500 transition ${
+                        isOver ? "border-opacity-100 scale-100" : "border-opacity-0 scale-[102.5%]"
+                    }`}
+                />
+            </div>
         </div>
     );
 };

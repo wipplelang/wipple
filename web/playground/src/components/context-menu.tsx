@@ -96,7 +96,16 @@ export const ContextMenuButton = (props: {
 };
 
 const ContextMenu = (props: { items: (ContextMenuItem | undefined)[]; onDismiss: () => void }) => (
-    <ul className="flex flex-col items-stretch gap-0.5 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-lg h-full max-h-[400px] overflow-y-scroll">
+    <ul className="bg-white dark:bg-gray-800 rounded-lg shadow-lg">
+        <ContextMenuContent items={props.items} onDismiss={props.onDismiss} />
+    </ul>
+);
+
+export const ContextMenuContent = (props: {
+    items: (ContextMenuItem | undefined)[];
+    onDismiss: () => void;
+}) => (
+    <ul className="flex flex-col items-stretch gap-0.5 p-1 h-full max-h-[400px] overflow-y-scroll">
         {props.items.map((item, index) =>
             item ? (
                 <TutorialItem id={item.tutorialItemId} key={index}>
