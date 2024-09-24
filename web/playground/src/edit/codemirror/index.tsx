@@ -18,6 +18,7 @@ export interface Snippet {
 export interface CodeMirrorProps {
     children: string;
     onChange: (value: string) => void;
+    onChangeSelection: (selection: { start: number; end: number }) => void;
     autoFocus: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
@@ -95,6 +96,11 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
                             props.onChange(update.state.doc.toString());
+                        }
+
+                        if (update.selectionSet) {
+                            const { from, to } = update.state.selection.main;
+                            props.onChangeSelection({ start: from, end: to });
                         }
 
                         if (update.focusChanged) {
@@ -216,14 +222,22 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
 export { getTokenAtPos } from "./token";
 
-export const insertSnippet = (view: EditorView, snippet: Snippet, line: number) => {
+export const insertSnippet = (
+    view: EditorView,
+    snippet: Snippet,
+    line: number,
+    selection: { start: number; end: number } | undefined,
+) => {
     if (snippet.replace) {
-        const code = snippet.code.replace(/\b_\b/, view.state.sliceDoc());
+        const code = snippet.code.replace(
+            /\b_\b/,
+            selection ? view.state.sliceDoc(selection.start, selection.end) : view.state.sliceDoc(),
+        );
 
         view.dispatch({
             changes: {
-                from: 0,
-                to: view.state.doc.length,
+                from: selection?.start ?? 0,
+                to: selection?.end ?? view.state.doc.length,
                 insert: code,
             },
         });

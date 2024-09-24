@@ -92,14 +92,22 @@ export const Tooltip = (
     );
 };
 
-export const TooltipContent = (props: { open: boolean; children: React.ReactNode }) => (
+export const TooltipContent = (props: {
+    open: boolean;
+    children: React.ReactNode;
+    padding?: boolean;
+}) => (
     <div className="flex items-center justify-center w-fit">
         <Transition
             in={props.open}
             inStyle={{ opacity: 1, scale: 1 }}
             outStyle={{ opacity: 0.25, scale: 0.95 }}
         >
-            <div className="border border-gray-50 dark:border-gray-900 bg-white dark:bg-gray-800 px-2.5 py-1 rounded-xl shadow-lg shadow-gray-100 dark:shadow-gray-950 text-gray-600 dark:text-gray-400 text-sm">
+            <div
+                className={`border border-gray-50 dark:border-gray-900 bg-white dark:bg-gray-800 rounded-xl shadow-lg shadow-gray-100 dark:shadow-gray-950 text-gray-600 dark:text-gray-400 text-sm ${
+                    props.padding ?? true ? "px-2.5 py-1" : ""
+                }`}
+            >
                 {typeof props.children === "string" ? (
                     <p className="whitespace-nowrap">{props.children}</p>
                 ) : (
