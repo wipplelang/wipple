@@ -1242,13 +1242,13 @@ const CommandPalette = (props: {
     );
 
     return (
-        <div className="flex flex-col bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 rounded-lg px-3 py-1">
+        <div className="flex flex-col bg-white dark:bg-gray-800 border-2 border-gray-100 dark:border-gray-800 rounded-lg px-3 py-1 z-10">
             <ContextMenuButton
                 items={[...props.categories, allCommandsCategory].map((category) => ({
                     title: category.title,
                     onClick: () => setSelection(category),
                 }))}
-                className="z-50 cursor-pointer"
+                className="cursor-pointer"
             >
                 <div className="-ml-2 pl-2 w-fit flex flex-row items-center gap-0.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
                     <span className="text-sm">{selection.title}</span>
