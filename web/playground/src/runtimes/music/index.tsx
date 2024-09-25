@@ -1,18 +1,32 @@
 import type { RuntimeComponent } from "..";
-import { forwardRef, useCallback, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { PaletteCategory } from "../../models";
 import { CacheStorage, DrumMachine, Soundfont, SplendidGrandPiano } from "smplr";
 import { decodeMelody, decodeRhythm } from "../../edit/melody-picker";
 import { MaterialSymbol } from "react-material-symbols";
 import { Tooltip } from "../../components";
 import { Mutex } from "async-mutex";
+import {
+    MediaRecorder as ExtendableMediaRecorder,
+    register as registerEncoder,
+} from "extendable-media-recorder";
+import { connect as connectWavEncoder } from "extendable-media-recorder-wav-encoder";
+import { format } from "date-fns";
 
 export interface Settings {}
 
 const cache = new CacheStorage();
 
 const audioContextMutex = new Mutex();
+
 const audioContext = new AudioContext();
+
+const mediaStreamDestination = audioContext.createMediaStreamDestination();
+
+const passthroughNode = audioContext.createGain();
+passthroughNode.connect(audioContext.destination);
+passthroughNode.connect(mediaStreamDestination);
+
 export const getAudioContext = () =>
     audioContextMutex.runExclusive(async () => {
         if (audioContext.state === "suspended") {
@@ -31,6 +45,12 @@ export const getAudioContext = () =>
 
                 window.addEventListener("click", handleClick);
             });
+
+            try {
+                await registerEncoder(await connectWavEncoder());
+            } catch (error) {
+                console.warn(error);
+            }
         }
 
         return audioContext;
@@ -45,7 +65,12 @@ export const getPiano = () =>
         }
 
         const audioContext = await getAudioContext();
-        piano = await new SplendidGrandPiano(audioContext, { storage: cache }).load;
+
+        piano = await new SplendidGrandPiano(audioContext, {
+            storage: cache,
+            destination: passthroughNode,
+        }).load;
+
         return piano;
     });
 
@@ -62,6 +87,7 @@ export const getDrumMachine = () =>
         drumMachine = await new DrumMachine(audioContext, {
             instrument: "Casio-RZ1",
             storage: cache,
+            destination: passthroughNode,
         }).load;
 
         return drumMachine;
@@ -100,6 +126,7 @@ export const getSoundfontInstrument = async (name: string): Promise<Soundfont | 
         const instrument = await new Soundfont(audioContext, {
             instrument: soundfontInstrumentNames[name],
             storage: cache,
+            destination: passthroughNode,
         }).load;
 
         soundfontInstruments[name].instrument = instrument;
@@ -119,7 +146,11 @@ export const defaultTempo = 120;
 
 export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     const [isRunning, setRunning] = useState(false);
+    const [audioBlob, setAudioBlob] = useState<Blob>();
 
+    const playedNoteRef = useRef(false);
+    const mediaRecorderRef = useRef<InstanceType<typeof ExtendableMediaRecorder>>();
+    const mediaChunksRef = useRef<Blob[]>();
     const togetherRef = useRef<number>();
     const tempoRef = useRef(defaultTempo);
 
@@ -134,6 +165,20 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
         togetherRef.current = undefined;
     }, []);
 
+    const downloadAudio = useMemo(() => {
+        if (!audioBlob) {
+            return undefined;
+        }
+
+        return () => {
+            const dataUrl = URL.createObjectURL(audioBlob);
+            const a = document.createElement("a");
+            a.href = dataUrl;
+            a.download = `music-${format(new Date(), "yyyyMMddHHmmss")}.wav`;
+            a.click();
+        };
+    }, [audioBlob]);
+
     useImperativeHandle(ref, () => ({
         initialize: async () => {
             await Promise.all([
@@ -143,10 +188,26 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
 
             stopAllInstruments();
 
+            playedNoteRef.current = false;
+            mediaChunksRef.current = [];
             togetherRef.current = undefined;
             tempoRef.current = defaultTempo;
 
+            const mediaRecorder = new ExtendableMediaRecorder(mediaStreamDestination.stream, {
+                mimeType: "audio/wav",
+            });
+
+            mediaRecorder.ondataavailable = (event) => {
+                console.log("data available", event.data);
+                mediaChunksRef.current?.push(event.data);
+            };
+
+            mediaRecorder.start();
+
+            mediaRecorderRef.current = mediaRecorder;
+
             setRunning(true);
+            setAudioBlob(undefined);
         },
         onMessage: async (message, value) => {
             switch (message) {
@@ -223,6 +284,8 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                         await new Promise((resolve) => setTimeout(resolve, totalDuration * 1000));
                     }
 
+                    playedNoteRef.current = true;
+
                     break;
                 }
                 default: {
@@ -239,19 +302,40 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
             stopAllInstruments();
 
             setRunning(false);
+
+            mediaRecorderRef.current?.stop();
+
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            if (playedNoteRef.current && mediaChunksRef.current) {
+                console.log(mediaChunksRef.current);
+
+                const audioBlob = new Blob(mediaChunksRef.current, { type: "audio/wav" });
+
+                setAudioBlob(audioBlob);
+                mediaChunksRef.current = undefined;
+            }
+
+            mediaRecorderRef.current = undefined;
         },
     }));
 
     return (
         <div className="flex">
-            <Tooltip disabled={isRunning} description="Press Run to start playing music">
+            <Tooltip
+                disabled={isRunning}
+                onClick={downloadAudio}
+                description={
+                    downloadAudio ? "Click to save your song" : "Press Run to start playing music"
+                }
+            >
                 <div
                     className={`flex flex-row items-center justify-center w-20 h-20 p-2 gap-2 rounded-lg overflow-hidden border-2 border-gray-100 dark:border-gray-800 transition ${
                         isRunning ? "bg-orange-50 dark:bg-orange-950" : ""
                     }`}
                 >
                     <MaterialSymbol
-                        icon="music_note"
+                        icon={downloadAudio ? "download" : "music_note"}
                         className={`text-3xl transition ${
                             isRunning
                                 ? "text-orange-500 scale-150"
