@@ -6,6 +6,7 @@ import { MaterialSymbol } from "react-material-symbols";
 import randomColor from "randomcolor";
 import { getDrumMachine, getPiano } from "../runtimes/music";
 import { DrumMachine, SplendidGrandPiano } from "smplr";
+import rhythmIcon from "./assets/rhythm.png";
 
 export interface Melody {
     options: {
@@ -187,6 +188,7 @@ export const MelodyPicker = (props: { selection: string; onDismiss: (melody: str
 
     return (
         <MelodyPickerContainer
+            icon={<MaterialSymbol icon="music_note" className="text-white text-2xl" />}
             color={melody.options.color}
             onChangeColor={(color) => {
                 setMelody(
@@ -368,6 +370,7 @@ export const RhythmPicker = (props: { selection: string; onDismiss: (rhythm: str
 
     return (
         <MelodyPickerContainer
+            icon={<img src={rhythmIcon} className="w-[28px] h-[28px]" />}
             color={rhythm.options.color}
             onChangeColor={(color) => {
                 setRhythm(
@@ -423,6 +426,7 @@ export const RhythmPicker = (props: { selection: string; onDismiss: (rhythm: str
 
 const MelodyPickerContainer = (
     props: React.PropsWithChildren<{
+        icon: JSX.Element;
         color: string | undefined;
         onChangeColor: (color: string) => void;
         isPlaying: boolean;
@@ -438,6 +442,7 @@ const MelodyPickerContainer = (
             <div className="flex flex-row items-stretch justify-between">
                 <div className="flex flex-row gap-2">
                     <ChangeColorButton
+                        icon={props.icon}
                         color={props.color}
                         onClick={() => props.onChangeColor(randomColor())}
                     />
@@ -466,14 +471,18 @@ const MelodyPickerContainer = (
     );
 };
 
-const ChangeColorButton = (props: { color: string | undefined; onClick: () => void }) => (
+const ChangeColorButton = (props: {
+    icon: JSX.Element;
+    color: string | undefined;
+    onClick: () => void;
+}) => (
     <Tooltip description="Change Color" onClick={props.onClick}>
         <div className="rounded-lg border-2 border-gray-100 dark:border-gray-800 overflow-clip hover:scale-110 transition-transform">
             <div
                 className="flex items-center justify-center w-9 h-9"
                 style={{ backgroundColor: props.color ?? "gray" }}
             >
-                <MaterialSymbol icon="music_note" className="text-white text-2xl" />
+                {props.icon}
             </div>
         </div>
     </Tooltip>
