@@ -1,29 +1,21 @@
 import type { RuntimeComponent } from "..";
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from "react";
 import turtleImage from "./assets/turtle.png";
 import { MaterialSymbol } from "react-material-symbols";
-import { ResizeHandle, Tooltip } from "../../components";
+import { defaultAnimationDuration, Tooltip } from "../../components";
 import { format } from "date-fns";
-import { PaletteCategory, PaletteItem } from "../../models";
-import { flushSync } from "react-dom";
-import { Resizable } from "re-resizable";
-import { AnimalAsset, animalImageUrl } from "../../edit/assets/animal";
-import { ColorAsset } from "../../edit/assets/color";
+import { PaletteCategory } from "../../models";
+import { animalImageUrl } from "../../pages/edit/assets/animal";
 
 // @ts-ignore
 import RealTurtle from "real-turtle";
-
-export interface Settings {
-    canvasWidth: number;
-    canvasHeight: number;
-}
-
-const defaultSettings: Settings = {
-    canvasWidth: 200,
-    canvasHeight: 200,
-};
+import { debounce } from "@mui/material";
+import { flushSync } from "react-dom";
+import { useStore } from "../../store";
 
 const initializeTurtle = async (canvas: HTMLCanvasElement) => {
+    const size = canvas.height;
+
     const turtle = new RealTurtle(canvas, {
         async: true,
         image: turtleImage,
@@ -34,96 +26,87 @@ const initializeTurtle = async (canvas: HTMLCanvasElement) => {
 
     await turtle.setLineWidth(2);
 
-    const [ratio] = getPixelRatio(canvas);
-    await turtle.setPosition(canvas.width / 2 / ratio, canvas.height / 2 / ratio);
+    const ratio = getPixelRatio(canvas);
+    await turtle.setPosition(size / 2 / ratio, size / 2 / ratio);
 
     return turtle;
 };
 
-export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
+export const Turtle: RuntimeComponent = forwardRef((props, ref) => {
+    const [store, _setStore] = useStore();
+
+    const [printingImage, setPrintingImage] = useState<string>();
+
+    const isPrintingRef = useRef(store.isPrinting ?? false);
+    useEffect(() => {
+        if (store.isPrinting) {
+            isPrintingRef.current = true;
+
+            const image = canvasRef.current!.toDataURL("image/png");
+            setPrintingImage(image);
+        } else {
+            setTimeout(() => {
+                isPrintingRef.current = false;
+                setPrintingImage(undefined);
+            }, defaultAnimationDuration);
+        }
+    }, [store.isPrinting]);
+
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    useEffect(() => {
-        const settings = props.settings ?? defaultSettings;
-
-        containerRef.current!.style.width = `${settings.canvasWidth}px`;
-        containerRef.current!.style.height = `${settings.canvasHeight}px`;
-        canvasRef.current!.width = settings.canvasWidth;
-        canvasRef.current!.height = settings.canvasHeight;
-
+    const reset = useCallback(async () => {
+        canvasRef.current!.style.opacity = "0";
         rescaleCanvas(canvasRef.current!);
+        turtleRef.current = await initializeTurtle(canvasRef.current!);
+        canvasRef.current!.style.opacity = "1";
     }, []);
 
-    const reset = async () => {
-        const ctx = canvasRef.current!.getContext("2d")!;
-        ctx.fillStyle = "white";
-        ctx.fillRect(0, 0, canvasRef.current!.width, canvasRef.current!.height);
-        turtleRef.current = await initializeTurtle(canvasRef.current!);
-    };
+    const [size, setSize] = useState(0);
 
-    const [resizable, setResizable] = useState(false);
+    useEffect(() => {
+        const debouncedReset = debounce(async () => {
+            if (!containerRef.current) {
+                return;
+            }
 
-    const [containerWidth, setContainerWidth] = useState(
-        (props.settings ?? defaultSettings).canvasWidth,
-    );
-
-    const [containerHeight, setContainerHeight] = useState(
-        (props.settings ?? defaultSettings).canvasHeight,
-    );
-
-    const [resizingImage, setResizingImage] = useState<{
-        src: string;
-        width: number;
-        height: number;
-    }>();
-
-    const beginResize = ({ width, height }: { width: number; height: number }) => {
-        const src = canvasRef.current!.toDataURL();
-        setResizingImage({ src, width, height });
-    };
-
-    const endResize = async ({
-        width,
-        height,
-        updateSettings,
-    }: {
-        width: number;
-        height: number;
-        updateSettings?: boolean;
-    }) => {
-        if (
-            (updateSettings == null || updateSettings) &&
-            (width !== props.settings?.canvasWidth || height !== props.settings?.canvasHeight)
-        ) {
-            props.onChangeSettings({
-                canvasWidth: width,
-                canvasHeight: height,
+            flushSync(() => {
+                setSize(0);
             });
-        }
 
-        canvasRef.current!.width = width;
-        canvasRef.current!.height = height;
-        rescaleCanvas(canvasRef.current!);
+            await new Promise((resolve) => requestAnimationFrame(resolve));
 
-        await reset();
+            flushSync(() => {
+                setSize(containerRef.current!.getBoundingClientRect().height);
+            });
 
-        setResizingImage(undefined);
-    };
+            reset();
+        }, defaultAnimationDuration * 2);
+
+        const resizeObserver = new ResizeObserver(() => {
+            if (isPrintingRef.current) {
+                return;
+            }
+
+            if (canvasRef.current) {
+                canvasRef.current.style.opacity = "0";
+            }
+
+            debouncedReset();
+        });
+
+        resizeObserver.observe(containerRef.current!);
+
+        return () => {
+            resizeObserver.disconnect();
+        };
+    }, []);
 
     const turtleRef = useRef<RealTurtle>();
 
     useImperativeHandle(ref, () => ({
         initialize: async () => {
-            flushSync(() => {
-                setResizable(false);
-            });
-
-            await endResize({
-                updateSettings: false,
-                width: containerRef.current!.clientWidth,
-                height: containerRef.current!.clientHeight,
-            });
+            await reset();
         },
         onMessage: async (message, value) => {
             const turtle = turtleRef.current;
@@ -180,7 +163,6 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
         },
         cleanup: async () => {
             turtleRef.current = undefined;
-            setResizable(true);
         },
     }));
 
@@ -196,78 +178,55 @@ export const Turtle: RuntimeComponent<Settings> = forwardRef((props, ref) => {
         a.click();
     };
 
+    const printingSize = props.isFullscreen ? "7.5in" : "5in";
+
     return (
-        <Resizable
-            size={{ width: containerWidth, height: containerHeight }}
-            minWidth={200}
-            minHeight={200}
-            maxWidth={500}
-            maxHeight={500}
-            lockAspectRatio
-            onResizeStart={
-                resizable
-                    ? (_event, _direction, element) => {
-                          beginResize({
-                              width: element.clientWidth,
-                              height: element.clientHeight,
-                          });
-                      }
-                    : undefined
-            }
-            onResize={(_event, _direction, element) => {
-                setContainerWidth(element.clientWidth);
-                setContainerHeight(element.clientHeight);
+        <div
+            ref={containerRef}
+            className={`relative flex rounded-md w-full aspect-square ${
+                printingImage && props.isFullscreen
+                    ? ""
+                    : "border border-gray-100 dark:border-gray-800"
+            }`}
+            style={{
+                width: printingImage ? printingSize : undefined,
+                height: printingImage ? printingSize : undefined,
             }}
-            onResizeStop={(_event, _direction, element) => {
-                endResize({
-                    width: element.clientWidth,
-                    height: element.clientHeight,
-                });
-            }}
-            handleComponent={{ bottomRight: <ResizeHandle /> }}
         >
-            <div
-                ref={containerRef}
-                className={`relative rounded-md overflow-hidden border-2 border-gray-100 dark:border-gray-800`}
-                style={{ width: containerWidth, height: containerHeight }}
-            >
-                <canvas ref={canvasRef} className="w-full h-full" />
+            {printingImage ? (
+                <img src={printingImage} className="absolute inset-0 object-cover" />
+            ) : (
+                <>
+                    <canvas key={size} ref={canvasRef} style={{ flex: size ? undefined : 1 }} />
 
-                {resizingImage ? (
-                    <>
-                        <div className="absolute inset-0 bg-white" />
-
-                        <img
-                            src={resizingImage.src}
-                            width={resizingImage.width}
-                            height={resizingImage.height}
-                            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 object-cover"
-                            style={{ width: resizingImage.width, height: resizingImage.height }}
-                        />
-                    </>
-                ) : turtleRef.current?.[1] == null ? (
-                    <div className="absolute top-0 right-0 transition-opacity">
-                        <div className="flex flex-row items-center gap-2 p-2">
-                            <Tooltip description="Save Photo">
-                                <button
-                                    className="flex items-center justify-center aspect-square p-1 bg-white hover:bg-gray-100 transition-colors border-2 border-gray-100 rounded-lg"
-                                    onClick={savePhoto}
-                                >
-                                    <MaterialSymbol icon="photo_camera" size={18} color="black" />
-                                </button>
-                            </Tooltip>
+                    {turtleRef.current?.[1] == null && !store.isPrinting ? (
+                        <div className="absolute top-0 right-0 transition-opacity">
+                            <div className="flex flex-row items-center gap-2 p-2">
+                                <Tooltip description="Save Photo">
+                                    <button
+                                        className="flex items-center justify-center aspect-square p-1 bg-white hover:bg-gray-100 transition-colors border border-gray-100 rounded-lg"
+                                        onClick={savePhoto}
+                                    >
+                                        <MaterialSymbol
+                                            icon="photo_camera"
+                                            size={18}
+                                            color="black"
+                                        />
+                                    </button>
+                                </Tooltip>
+                            </div>
                         </div>
-                    </div>
-                ) : null}
-            </div>
-        </Resizable>
+                    ) : null}
+                </>
+            )}
+        </div>
     );
 });
 
-function getPixelRatio(ctx: any): [number, number] {
-    let devicePixelRatio = window.devicePixelRatio || 1;
+const getPixelRatio = (ctx: any) => {
+    const devicePixelRatio = window.devicePixelRatio || 1;
 
-    let backingStoreRatio =
+    const backingStoreRatio =
         ctx.webkitBackingStorePixelRatio ||
         ctx.mozBackingStorePixelRatio ||
         ctx.msBackingStorePixelRatio ||
@@ -275,34 +234,22 @@ function getPixelRatio(ctx: any): [number, number] {
         ctx.backingStorePixelRatio ||
         1;
 
-    return [devicePixelRatio / backingStoreRatio, backingStoreRatio];
-}
+    return devicePixelRatio / backingStoreRatio;
+};
 
-// https://www.keanw.com/2017/02/scaling-html-canvases-for-hidpi-screens.html
-function rescaleCanvas(canvas: any) {
-    // finally query the various pixel ratios
+// Adapted from https://www.keanw.com/2017/02/scaling-html-canvases-for-hidpi-screens.html
+const rescaleCanvas = (canvas: HTMLCanvasElement) => {
+    const { height: size } = canvas.getBoundingClientRect();
 
-    let ctx = canvas.getContext("2d");
-    let [ratio, backingStoreRatio] = getPixelRatio(ctx);
+    const ctx = canvas.getContext("2d")!;
+    const ratio = getPixelRatio(ctx);
 
-    // upscale the canvas if the two ratios don't match
-    if (devicePixelRatio !== backingStoreRatio) {
-        let oldWidth = canvas.width;
-        let oldHeight = canvas.height;
-
-        canvas.width = oldWidth * ratio;
-        canvas.height = oldHeight * ratio;
-
-        canvas.style.width = oldWidth + "px";
-        canvas.style.height = oldHeight + "px";
-
-        // now scale the context to counter
-        // the fact that we've manually scaled
-        // our canvas element
-
-        ctx.scale(ratio, ratio);
-    }
-}
+    canvas.width = size * ratio;
+    canvas.height = size * ratio;
+    canvas.style.width = `${size}px`;
+    canvas.style.height = `${size}px`;
+    ctx.scale(ratio, ratio);
+};
 
 export { turtleImage };
 

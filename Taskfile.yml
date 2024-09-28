@@ -99,7 +99,7 @@ tasks:
         cmds:
             - task base:compile
             - cargo run --bin wipplec -- bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
-            - task --parallel web:playground:bundle:turtle web:playground:bundle:music web:playground:bundle:math web:playground:bundle:game web:playground:bundle:physics
+            - task --parallel web:playground:bundle:turtle web:playground:bundle:music web:playground:bundle:math
 
     web:playground:bundle:turtle:
         run: once
@@ -121,20 +121,6 @@ tasks:
         cmds:
             - cargo run --bin wipplec -- compile ../../library/math/math.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/math.wippleinterface
             - cargo run --bin wipplec -- bundle-for-playground ../../library/math/math.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/math.wipplebundle
-
-    web:playground:bundle:game:
-        run: once
-        dir: web/playground
-        cmds:
-            - cargo run --bin wipplec -- compile ../../library/game/game.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/game.wippleinterface
-            - cargo run --bin wipplec -- bundle-for-playground ../../library/game/game.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/game.wipplebundle
-
-    web:playground:bundle:physics:
-        run: once
-        dir: web/playground
-        cmds:
-            - cargo run --bin wipplec -- compile ../../library/physics/physics.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/physics.wippleinterface
-            - cargo run --bin wipplec -- bundle-for-playground ../../library/physics/physics.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/physics.wipplebundle
 
     web:install-dependencies:
         run: once
@@ -281,8 +267,6 @@ tasks:
             - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/turtle.wippleinterface --title 'Turtle' --output ./dist/library/docs/turtle.html
             - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/music.wippleinterface --title 'Music' --output ./dist/library/docs/music.html
             - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/math.wippleinterface --title 'Math' --output ./dist/library/docs/math.html
-            - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/game.wippleinterface --title 'Game' --output ./dist/library/docs/game.html
-            - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/physics.wippleinterface --title 'Physics' --output ./dist/library/docs/physics.html
 
     base:compile:
         run: once

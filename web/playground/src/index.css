@@ -42,10 +42,6 @@ code,
     font-variant-ligatures: none;
 }
 
-.help .markdown {
-    @apply leading-relaxed;
-}
-
 :not(.help) .markdown :not(pre) code {
     @apply inline-block align-baseline mb-0.5 text-gray-700 dark:text-gray-300 [font-size:75%] bg-gray-50 dark:bg-gray-800 px-1.5 py-0 rounded-md;
 }
