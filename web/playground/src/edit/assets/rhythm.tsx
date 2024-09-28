@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { MaterialSymbol } from "react-material-symbols";
 import { decodeRhythm } from "../melody-picker";
+import rhythmIcon from "./rhythm.png";
 
 export const RhythmAsset = (props: {
     rhythm: string;
@@ -16,7 +16,7 @@ export const RhythmAsset = (props: {
                 style={{ backgroundColor: color }}
                 onClick={props.onClick}
             >
-                <MaterialSymbol icon="music_note" className="text-white" />
+                <img src={rhythmIcon} className="w-[14px] h-[14px]" />
             </div>
         </div>
     );
