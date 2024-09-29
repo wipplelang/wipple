@@ -5,10 +5,11 @@ import {
     useDismiss,
     useFloating,
     useInteractions,
+    autoPlacement,
 } from "@floating-ui/react";
 import { useCallback, useEffect, useState } from "react";
 import { MaterialSymbol, MaterialSymbolProps } from "react-material-symbols";
-import { Tooltip, Transition, TutorialItem, defaultAnimationDuration } from ".";
+import { Tooltip, Transition, defaultAnimationDuration } from ".";
 
 export interface ContextMenuItem {
     title: string | ((props: { onDismiss: () => void }) => React.ReactNode);
@@ -18,7 +19,6 @@ export interface ContextMenuItem {
     highlight?: boolean;
     role?: "destructive";
     disabled?: boolean;
-    tutorialItemId?: string;
     onClick?: () => void;
 }
 
@@ -46,7 +46,11 @@ export const ContextMenuButton = (props: {
         open: isActive,
         onOpenChange: setActive,
         whileElementsMounted: autoUpdate,
-        placement: "bottom-start",
+        middleware: [
+            autoPlacement({
+                allowedPlacements: ["top-start", "top-end", "bottom-start", "bottom-end"],
+            }),
+        ],
     });
 
     const click = useClick(context);
@@ -67,7 +71,15 @@ export const ContextMenuButton = (props: {
     return (
         <>
             <Tooltip description={props.description} disabled={props.disabled}>
-                <span ref={refs.setReference} {...getReferenceProps()} className={props.className}>
+                <span
+                    ref={refs.setReference}
+                    {...getReferenceProps({
+                        onClick: (e) => {
+                            e.stopPropagation();
+                        },
+                    })}
+                    className={props.className}
+                >
                     {props.children}
                 </span>
             </Tooltip>
@@ -108,62 +120,59 @@ export const ContextMenuContent = (props: {
     <ul className="flex flex-col items-stretch gap-0.5 p-1 h-full max-h-[400px] overflow-y-scroll">
         {props.items.map((item, index) =>
             item ? (
-                <TutorialItem id={item.tutorialItemId} key={index}>
-                    <div
-                        className={
-                            item.divider
-                                ? "border-b-2 border-b-gray-100 dark:border-b-gray-900"
-                                : ""
-                        }
+                <div
+                    key={index}
+                    className={
+                        item.divider
+                            ? "mb-0.5 pb-0.5 border-b-2 border-b-gray-100 dark:border-b-gray-900"
+                            : ""
+                    }
+                >
+                    <button
+                        disabled={item.disabled}
+                        onClick={(e) => {
+                            e.preventDefault();
+
+                            if (item.onClick) {
+                                item.onClick();
+                                props.onDismiss();
+                            } else {
+                                alert("Click and hold to drag out of the menu.");
+                            }
+                        }}
+                        className={`flex flex-row items-center gap-1.5 text-sm disabled:opacity-50 rounded-md px-2 py-0.5 transition-colors w-full ${
+                            item.role === "destructive"
+                                ? `text-red-500 ${
+                                      item.highlight ?? true
+                                          ? "enabled:hover:bg-red-50 enabled:dark:hover:bg-red-950 enabled:dark:hover:bg-opacity-50"
+                                          : ""
+                                  }`
+                                : `text-gray-900 ${
+                                      item.highlight ?? true
+                                          ? "dark:text-gray-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700"
+                                          : ""
+                                  }`
+                        }`}
                     >
-                        <button
-                            disabled={item.disabled}
-                            onClick={(e) => {
-                                e.preventDefault();
+                        {item.icon ? <MaterialSymbol icon={item.icon} className="text-lg" /> : null}
 
-                                if (item.onClick) {
-                                    item.onClick();
-                                    props.onDismiss();
-                                } else {
-                                    alert("Click and hold to drag out of the menu.");
-                                }
-                            }}
-                            className={`flex flex-row items-center gap-1.5 text-sm disabled:opacity-50 rounded-md px-2 py-0.5 transition-colors w-full ${
-                                item.role === "destructive"
-                                    ? `text-red-500 ${
-                                          item.highlight ?? true
-                                              ? "enabled:hover:bg-red-50 enabled:dark:hover:bg-red-950 enabled:dark:hover:bg-opacity-50"
-                                              : ""
-                                      }`
-                                    : `text-gray-900 ${
-                                          item.highlight ?? true
-                                              ? "dark:text-gray-50 enabled:hover:bg-gray-100 enabled:dark:hover:bg-gray-700"
-                                              : ""
-                                      }`
-                            }`}
-                        >
-                            {item.icon ? (
-                                <MaterialSymbol icon={item.icon} className="text-lg" />
-                            ) : null}
+                        {typeof item.title === "string" ? (
+                            <p>{item.title}</p>
+                        ) : (
+                            <item.title onDismiss={props.onDismiss} />
+                        )}
 
-                            {typeof item.title === "string" ? (
-                                <p>{item.title}</p>
-                            ) : (
-                                <item.title onDismiss={props.onDismiss} />
-                            )}
+                        <div className="flex-1" />
 
-                            <div className="flex-1" />
-
-                            {item.shortcut ? (
-                                <p className="text-sm opacity-50">
-                                    {/mac/.test(navigator.userAgent.toLowerCase())
-                                        ? item.shortcut.mac
-                                        : item.shortcut.win}
-                                </p>
-                            ) : null}
-                        </button>
-                    </div>
-                </TutorialItem>
+                        {item.shortcut ? (
+                            <p className="text-sm opacity-50">
+                                {/mac/.test(navigator.userAgent.toLowerCase())
+                                    ? item.shortcut.mac
+                                    : item.shortcut.win}
+                            </p>
+                        ) : null}
+                    </button>
+                </div>
             ) : null,
         )}
     </ul>

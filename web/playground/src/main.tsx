@@ -19,8 +19,8 @@ import {
 } from "firebase/firestore";
 import * as Sentry from "@sentry/react";
 import ReactGA from "react-ga4";
-import { HomePage, EditPage, RootPage, LessonPage } from "./pages";
-import { NavbarProvider, AlertProvider } from "./components";
+import { HomePage, EditPage, RootPage } from "./pages";
+import { AlertProvider } from "./components";
 import { StoreProvider } from "./store";
 import "@fontsource-variable/inter";
 import "@fontsource-variable/inter/wght-italic.css";
@@ -42,9 +42,9 @@ if (import.meta.env.PROD) {
         replaysSessionSampleRate: 0.1,
         replaysOnErrorSampleRate: 1.0,
     });
-}
 
-ReactGA.initialize(import.meta.env.VITE_GA_MEASUREMENT_ID);
+    ReactGA.initialize(import.meta.env.VITE_GA_MEASUREMENT_ID);
+}
 
 const app = initializeApp({
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -68,8 +68,7 @@ const router = createBrowserRouter(
     createRoutesFromElements(
         <Route path={import.meta.env.BASE_URL} element={<RootPage />}>
             <Route index element={<HomePage />} />
-            <Route path="edit/:id/:page?" element={<EditPage />} />
-            <Route path="lesson/:id/:page?" element={<LessonPage />} />
+            <Route path="edit/:id" element={<EditPage />} />
         </Route>,
     ),
 );
@@ -77,9 +76,7 @@ const router = createBrowserRouter(
 ReactDOM.createRoot(document.getElementById("root")!).render(
     <StoreProvider>
         <AlertProvider>
-            <NavbarProvider>
-                <RouterProvider router={router} />
-            </NavbarProvider>
+            <RouterProvider router={router} />
         </AlertProvider>
     </StoreProvider>,
 );

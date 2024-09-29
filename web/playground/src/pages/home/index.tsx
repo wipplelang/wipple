@@ -1,227 +1,252 @@
 import { useCallback, useEffect, useState } from "react";
-import {
-    Button,
-    ContextMenuButton,
-    Footer,
-    Skeleton,
-    TutorialItem,
-    useAlert,
-    useNavbar,
-} from "../../components";
-import {
-    PlaygroundListItem,
-    TutorialStep,
-    newPlaygroundTutorialItem,
-    startTutorial,
-    Lesson,
-} from "../../models";
+import { Button, ContextMenuButton, Skeleton } from "../../components";
+import { Playground, PlaygroundSetup } from "../../models";
 import { MaterialSymbol } from "react-material-symbols";
 import {
-    ListPlaygroundsFilter,
-    createLesson,
     createPlayground,
     deletePlayground,
     duplicatePlayground,
-    listCachedPlaygrounds,
     listPlaygrounds,
 } from "../../models";
-import { Link, useNavigate } from "react-router-dom";
-import { format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 import { useStore } from "../../store";
+import { UserButton } from "../../components/user";
+import turtleIcon from "../../runtimes/turtle/assets/turtle.png";
+import { SetupIcon } from "../edit/setup-icon";
+import { signIn, signInAsGuest } from "../../helpers";
 import { produce } from "immer";
-import { getLessons } from "../../helpers";
 
 export const HomePage = () => {
-    const { setPrimaryActions } = useNavbar();
+    const [store, setStore] = useStore();
+    const navigate = useNavigate();
 
-    useEffect(() => {
-        setPrimaryActions(<p className="text-lg font-semibold">Wipple</p>);
-
-        return () => {
-            setPrimaryActions(null);
-        };
+    const handleSignIn = useCallback(async () => {
+        await signIn();
     }, []);
 
-    const [store, setStore] = useStore();
+    const handleContinueAsGuest = useCallback(async () => {
+        const user = await signInAsGuest();
 
-    const [filter, setFilter] = useState<ListPlaygroundsFilter>("all");
+        setStore(
+            produce((store) => {
+                store.user = user;
+            }),
+        );
+    }, []);
 
-    const [playgrounds, setPlaygrounds] = useState<PlaygroundListItem[]>();
+    const [playgrounds, setPlaygrounds] = useState<Playground[]>();
 
     const loadPlaygrounds = useCallback(async () => {
-        const cachedPlaygrounds = await listCachedPlaygrounds({ filter });
-        setPlaygrounds(cachedPlaygrounds);
+        if (!store.user) {
+            return;
+        }
 
         try {
-            const playgrounds = await listPlaygrounds({ filter });
+            const playgrounds = await listPlaygrounds();
             setPlaygrounds(playgrounds);
         } catch (error) {
             console.error(error);
         }
-    }, [store.user?.uid, filter]);
+    }, [store.user?.uid]);
 
     useEffect(() => {
         loadPlaygrounds();
     }, [loadPlaygrounds]);
 
-    const navigate = useNavigate();
-    const { displayAlert } = useAlert();
+    const [isCreatingNewPlayground, setCreatingNewPlayground] = useState(false);
 
-    const handleNewPlayground = async () => {
-        const id = await createPlayground();
-        navigate(`edit/${id}`);
-    };
+    const handleNewPlayground = useCallback(
+        async (setup: PlaygroundSetup) => {
+            if (isCreatingNewPlayground) {
+                return;
+            }
 
-    const handleStartTutorial = async () => {
-        const id = await createPlayground({
-            name: "Tutorial",
-            pageName: "Tutorial",
-            initialItems: [newPlaygroundTutorialItem],
-        });
+            setCreatingNewPlayground(true);
 
-        navigate(`edit/${id}`);
+            try {
+                const name = prompt("What do you want to call your playground?");
 
-        const handleChangeStep = (step: TutorialStep | undefined) => {
-            setStore(
-                produce((store) => {
-                    store.activeTutorialStep = step;
-                }),
-            );
-        };
+                if (!name) {
+                    return;
+                }
 
-        setStore(
-            produce((store) => {
-                store.activeTutorialStep = startTutorial(handleChangeStep);
-            }),
-        );
-    };
+                const id = await createPlayground(name, setup);
 
-    const handleDuplicate = async (playground: PlaygroundListItem) => {
+                navigate(`edit/${id}`);
+            } finally {
+                setCreatingNewPlayground(false);
+            }
+        },
+        [isCreatingNewPlayground],
+    );
+
+    const handleSelectPlayground = useCallback(
+        (playground: Playground) => {
+            navigate(`edit/${playground.id}`);
+        },
+        [navigate],
+    );
+
+    const handleDuplicatePlayground = useCallback(async (playground: Playground) => {
         await duplicatePlayground(playground.id);
         await loadPlaygrounds();
-    };
+    }, []);
 
-    const handleDelete = async (playground: PlaygroundListItem) => {
+    const handleDeletePlayground = useCallback(async (playground: Playground) => {
         await deletePlayground(playground.id);
         await loadPlaygrounds();
-    };
+    }, []);
 
     return (
-        <div className="flex flex-col gap-2.5">
-            <div className="bg-gray-50 dark:bg-gray-900 flex flex-col items-center">
-                <div className="w-full max-w-screen-lg">
-                    <div className="flex flex-row gap-4 p-4">
-                        <TutorialItem id="newPlayground" className="flex-1">
-                            <PrimaryCard
-                                title="New Playground"
-                                disabled={store.offline}
-                                onClick={handleNewPlayground}
-                            >
-                                <MaterialSymbol
-                                    icon="add"
-                                    className="text-blue-500 font-semibold text-6xl"
-                                />
-                            </PrimaryCard>
-                        </TutorialItem>
+        <div className="flex flex-col items-center">
+            <div
+                className={`relative flex flex-col w-full overflow-clip bg-gray-50 dark:bg-gray-900 ${
+                    store.user ? "" : "h-screen justify-center pb-36"
+                }`}
+            >
+                <img
+                    src="/playground/images/background.svg"
+                    className="absolute inset-0 w-full h-full object-cover object-center opacity-30"
+                />
 
-                        <PrimaryCard
-                            title="Lessons"
-                            disabled={store.offline}
-                            onClick={() =>
-                                displayAlert(({ dismiss }) => (
-                                    <LessonsAlert
-                                        onSelectLesson={async (lesson) => {
-                                            const id = await createLesson(lesson);
-                                            dismiss();
-                                            navigate(`edit/${id}`);
-                                        }}
-                                        onCancel={dismiss}
-                                    />
-                                ))
-                            }
-                        >
-                            <img src="/playground/images/lesson-bg.png" />
-                        </PrimaryCard>
+                <div className="flex flex-row items-center justify-end px-4 h-20">
+                    <UserButton />
+                </div>
 
-                        <PrimaryCard
-                            title="Tutorial"
-                            disabled={store.offline}
-                            onClick={handleStartTutorial}
+                <div className="flex flex-col items-center justify-center gap-4 pb-14 z-10">
+                    <img
+                        src="/playground/images/logo.svg"
+                        alt="Wipple"
+                        className="w-16 h-16 mb-2"
+                    />
+
+                    <h1 className="text-3xl font-semibold">
+                        {store.user?.displayName
+                            ? `Welcome back, ${store.user.displayName}`
+                            : "Welcome to Wipple"}
+                    </h1>
+
+                    {/* TODO: Practice Points */}
+                    {/* <div className="flex flex-row items-center gap-0.5 font-semibold text-blue-500">
+                        <MaterialSymbol icon="star" fill className="text-xl -translate-y-px" />
+                        <p>10 Practice Points</p>
+                    </div> */}
+                </div>
+
+                {!store.user ? (
+                    <div className="flex flex-col items-center w-full bg-gray-50 dark:bg-gray-900 z-10">
+                        <div className="flex flex-col items-stretch justify-center gap-2">
+                            <Button role="primary" onClick={handleSignIn}>
+                                Sign In
+                            </Button>
+
+                            <Button role="secondary" onClick={handleContinueAsGuest}>
+                                Continue as Guest
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
+            </div>
+
+            {store.user ? (
+                <div className="flex flex-col gap-12 w-full max-w-screen-lg mt-8">
+                    <Section title="Get Started">
+                        <NewPlaygroundCard
+                            title="Blank"
+                            backgroundClassName="bg-gradient-to-b from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-950"
+                            onClick={() => handleNewPlayground(null)}
                         >
                             <MaterialSymbol
-                                icon="school"
-                                className="text-blue-500 font-semibold text-6xl"
+                                icon="article"
+                                className="text-6xl font-semibold text-blue-500"
                             />
-                        </PrimaryCard>
-                    </div>
+                        </NewPlaygroundCard>
+
+                        <NewPlaygroundCard
+                            title="Turtle"
+                            backgroundClassName="bg-gradient-to-b from-green-50 to-green-100 dark:from-green-900 dark:to-green-950"
+                            onClick={() => handleNewPlayground("turtle")}
+                        >
+                            <img src={turtleIcon} className="w-12 h-12" />
+                        </NewPlaygroundCard>
+
+                        <NewPlaygroundCard
+                            title="Music"
+                            backgroundClassName="bg-gradient-to-b from-orange-50 to-orange-100 dark:from-orange-900 dark:to-orange-950"
+                            onClick={() => handleNewPlayground("music")}
+                        >
+                            <MaterialSymbol
+                                icon="music_note"
+                                className="text-6xl font-semibold text-orange-500"
+                            />
+                        </NewPlaygroundCard>
+                    </Section>
+
+                    {playgrounds ? (
+                        playgrounds.length > 0 ? (
+                            <Section title="Recents">
+                                {playgrounds.map((playground) => (
+                                    <PlaygroundCard
+                                        key={playground.id}
+                                        playground={playground}
+                                        onClick={() => handleSelectPlayground(playground)}
+                                        onDuplicate={() => handleDuplicatePlayground(playground)}
+                                        onDelete={
+                                            playground.owner === store.user?.uid
+                                                ? () => handleDeletePlayground(playground)
+                                                : undefined
+                                        }
+                                    />
+                                ))}
+                            </Section>
+                        ) : null
+                    ) : (
+                        <Section>
+                            <SkeletonCard />
+                            <SkeletonCard />
+                            <SkeletonCard />
+                        </Section>
+                    )}
+
+                    <Footer />
                 </div>
-            </div>
-
-            <div className="flex flex-col items-center">
-                <div className="w-full max-w-screen-lg">
-                    <div className="flex flex-col gap-4 p-4">
-                        <FilterControl filter={filter} onChange={setFilter} />
-
-                        {playgrounds ? (
-                            playgrounds.length > 0 ? (
-                                <div className="flex flex-col">
-                                    {playgrounds.map((playground) => (
-                                        <PlaygroundCard
-                                            key={playground.id}
-                                            playground={playground}
-                                            onDuplicate={() => handleDuplicate(playground)}
-                                            onDelete={
-                                                playground.owner === store.user?.uid
-                                                    ? () => handleDelete(playground)
-                                                    : undefined
-                                            }
-                                        />
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="flex flex-col items-center justify-center gap-4 p-4 my-8 text-center text-gray-400 dark:text-gray-600">
-                                    <MaterialSymbol icon="code_blocks" className="text-8xl" />
-                                    <p className="text-3xl">No Playgrounds</p>
-                                    <p className="text-xl">
-                                        You can create a new playground or start a lesson.
-                                    </p>
-                                </div>
-                            )
-                        ) : (
-                            <div className="flex flex-col gap-1">
-                                <Skeleton height={60} />
-                                <Skeleton height={60} />
-                                <Skeleton height={60} />
-                                <Skeleton height={60} />
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            <Footer />
+            ) : null}
         </div>
     );
 };
 
-const PrimaryCard = (
+const Footer = () => (
+    <p className="my-8 text-center text-gray-400 dark:text-gray-600">
+        Made by{" "}
+        <a
+            href="https://gramer.dev"
+            className="font-semibold text-gray-500 hover:text-gray-600 dark:text-gray-400"
+        >
+            Wilson Gramer
+        </a>
+    </p>
+);
+
+const Section = (props: React.PropsWithChildren<{ title?: string }>) => (
+    <div className="flex flex-col gap-4">
+        {props.title != null ? <h2 className="text-2xl font-semibold">{props.title}</h2> : null}
+
+        <div className="grid grid-cols-3 gap-5">{props.children}</div>
+    </div>
+);
+
+const cardHeightClassName = "h-[100px] md:h-[200px]";
+
+const Card = (
     props: React.PropsWithChildren<{
         title: string;
-        disabled?: boolean;
         onClick: () => void;
     }>,
 ) => (
-    <div
-        className={`flex flex-col items-center gap-2.5 flex-1 ${
-            props.disabled ? "opacity-50" : ""
-        }`}
-    >
+    <div className="flex flex-col items-center gap-2.5">
         <button
             onClick={props.onClick}
-            disabled={props.disabled}
-            className={`w-full h-[100px] md:h-[200px] bg-white dark:bg-gray-800 rounded-lg border-[1px] border-gray-100 dark:border-gray-900 shadow-sm p-1 transition-scale ease-in-out duration-100 ${
-                props.disabled ? "" : "hover:scale-105"
-            }`}
+            className={`w-full ${cardHeightClassName} bg-white dark:bg-gray-800 rounded-lg border-[1px] border-gray-100 dark:border-gray-900 shadow-sm hover:scale-105 transition-scale duration-150`}
         >
             <div className="flex items-center justify-center w-full h-full rounded-[4px] overflow-clip">
                 {props.children}
@@ -232,52 +257,38 @@ const PrimaryCard = (
     </div>
 );
 
-const FilterControl = (props: {
-    filter: ListPlaygroundsFilter;
-    onChange: (filter: ListPlaygroundsFilter) => void;
-}) => (
-    <div className="flex flex-row gap-4">
-        <Button
-            role={props.filter === "all" ? "primary" : "secondary"}
-            fill={props.filter === "all"}
-            onClick={() => props.onChange("all")}
-        >
-            All
-        </Button>
+const SkeletonCard = () => <Skeleton className={`${cardHeightClassName} opacity-25`} />;
 
-        <Button
-            role={props.filter === "owned" ? "primary" : "secondary"}
-            fill={props.filter === "owned"}
-            onClick={() => props.onChange("owned")}
+const NewPlaygroundCard = (
+    props: React.PropsWithChildren<{
+        title: string;
+        backgroundClassName: string;
+        onClick: () => void;
+    }>,
+) => (
+    <Card title={props.title} onClick={props.onClick}>
+        <div
+            className={`flex-1 w-full h-full flex items-center justify-center ${props.backgroundClassName}`}
         >
-            Created by me
-        </Button>
-
-        <Button
-            role={props.filter === "shared" ? "primary" : "secondary"}
-            fill={props.filter === "shared"}
-            onClick={() => props.onChange("shared")}
-        >
-            Shared with me
-        </Button>
-    </div>
+            {props.children}
+        </div>
+    </Card>
 );
 
 const PlaygroundCard = (props: {
-    playground: PlaygroundListItem;
+    playground: Playground;
+    onClick: () => void;
     onDuplicate: () => void;
     onDelete?: () => void;
 }) => (
-    <Link
-        to={`/playground/edit/${props.playground.id}`}
-        className="flex flex-row items-center justify-between p-4 hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors hover:rounded-md border-b hover:border-b-transparent"
-    >
-        <p>{props.playground.name}</p>
-
-        <div className="flex flex-row items-center gap-2.5 text-gray-500 dark:text-gray-400">
-            <p>{format(props.playground.lastModified, "MMM d, h:mm a")}</p>
+    <Card title={props.playground.name} onClick={props.onClick}>
+        <div className="relative flex-1 w-full h-full">
+            <div className="flex items-center justify-center">
+                <SetupIcon setup={props.playground?.setup ?? null} size="lg" />
+            </div>
 
             <ContextMenuButton
+                className="absolute top-2 right-1 z-10"
                 items={[
                     {
                         title: "Duplicate",
@@ -301,49 +312,5 @@ const PlaygroundCard = (props: {
                 </div>
             </ContextMenuButton>
         </div>
-    </Link>
+    </Card>
 );
-
-const LessonsAlert = (props: {
-    onSelectLesson: (lesson: Lesson) => void;
-    onCancel: () => void;
-}) => {
-    const [lessons, setLessons] = useState<Lesson[]>([]);
-
-    useEffect(() => {
-        (async () => {
-            const lessons = await getLessons();
-            setLessons(lessons);
-        })();
-    }, []);
-
-    return (
-        <div className="flex flex-col gap-4 w-[512px]">
-            <div className="flex flex-col gap-2">
-                <h1 className="text-2xl font-semibold">Lessons</h1>
-
-                {lessons.map((lesson, index) => (
-                    <button
-                        key={index}
-                        className="flex flex-row items-center bg-sky-50 dark:bg-sky-950 hover:bg-sky-100 dark:hover:bg-sky-900 transition-colors p-4 rounded-md"
-                        onClick={() => props.onSelectLesson(lesson)}
-                    >
-                        <div className="flex flex-col items-start flex-1 text-left">
-                            <h2 className="text-xl font-semibold text-sky-500">{lesson.name}</h2>
-                            <p className="text-sky-400 dark:text-sky-600">{lesson.description}</p>
-                        </div>
-
-                        <MaterialSymbol
-                            icon="chevron_right"
-                            className="text-2xl text-sky-400 dark:text-sky-600"
-                        />
-                    </button>
-                ))}
-            </div>
-
-            <Button role="secondary" fill onClick={props.onCancel}>
-                Cancel
-            </Button>
-        </div>
-    );
-};

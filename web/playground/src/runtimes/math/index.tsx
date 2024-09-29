@@ -1,21 +1,8 @@
 import type { RuntimeComponent } from "..";
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, XAxis, YAxis } from "recharts";
-import { PaletteCategory, PaletteItem } from "../../models";
-import { Resizable } from "re-resizable";
+import { PaletteCategory } from "../../models";
 import { produce } from "immer";
-import { ColorAsset } from "../../edit/assets/color";
-import { ResizeHandle } from "../../components";
-
-export interface Settings {
-    canvasWidth: number;
-    canvasHeight: number;
-}
-
-const defaultSettings: Settings = {
-    canvasWidth: 400,
-    canvasHeight: 300,
-};
 
 const defaultMinX = -10;
 const defaultMaxX = 10;
@@ -23,7 +10,7 @@ const defaultMinY = -10;
 const defaultMaxY = 10;
 const defaultResolution = 0.25;
 
-export const Math: RuntimeComponent<Settings> = forwardRef((props, ref) => {
+export const Math: RuntimeComponent = forwardRef((props, ref) => {
     const [minX, setMinX] = useState(defaultMinX);
     const [maxX, setMaxX] = useState(defaultMaxX);
     const [minY, setMinY] = useState(defaultMinY);
@@ -32,14 +19,6 @@ export const Math: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     const [func, setFunc] = useState<(x: number) => Promise<number>>();
     const [colors, setColors] = useState<string[]>([]);
     const [resolve, setResolve] = useState(() => () => {});
-
-    const [containerWidth, setContainerWidth] = useState(
-        (props.settings ?? defaultSettings).canvasWidth,
-    );
-
-    const [containerHeight, setContainerHeight] = useState(
-        (props.settings ?? defaultSettings).canvasHeight,
-    );
 
     const [data, setData] = useState<[number, number[]][]>([]);
 
@@ -126,63 +105,30 @@ export const Math: RuntimeComponent<Settings> = forwardRef((props, ref) => {
     }));
 
     return (
-        <Resizable
-            size={{ width: containerWidth, height: containerHeight }}
-            minWidth={200}
-            minHeight={150}
-            maxWidth={500}
-            maxHeight={375}
-            lockAspectRatio
-            onResize={(_event, _direction, element) => {
-                setContainerWidth(element.clientWidth);
-                setContainerHeight(element.clientHeight);
-            }}
-            onResizeStop={(_event, _direction, element) => {
-                if (
-                    element.clientWidth !== props.settings?.canvasWidth ||
-                    element.clientHeight !== props.settings?.canvasHeight
-                ) {
-                    props.onChangeSettings({
-                        canvasWidth: element.clientWidth,
-                        canvasHeight: element.clientHeight,
-                    });
-                }
-            }}
-            handleComponent={{ bottomRight: <ResizeHandle /> }}
-        >
-            <div
-                className={`relative rounded-md overflow-hidden border-2 border-gray-100 dark:border-gray-800`}
-                style={{ width: containerWidth, height: containerHeight, aspectRatio: 4 / 3 }}
-            >
-                <div style={{ backgroundColor: "white" }}>
-                    <ResponsiveContainer width="100%" aspect={4 / 3}>
-                        <LineChart data={data}>
-                            <XAxis
-                                type="number"
-                                domain={[minX, maxX]}
-                                dataKey={0}
-                                allowDataOverflow
+        <div className="relative rounded-md overflow-hidden border border-gray-100 dark:border-gray-800 w-full h-full">
+            <div style={{ backgroundColor: "white" }}>
+                <ResponsiveContainer width="100%" aspect={4 / 3}>
+                    <LineChart data={data}>
+                        <XAxis type="number" domain={[minX, maxX]} dataKey={0} allowDataOverflow />
+
+                        <YAxis type="number" domain={[minY, maxY]} allowDataOverflow />
+
+                        <CartesianGrid />
+
+                        {data.map((_, index) => (
+                            <Line
+                                key={index}
+                                dataKey={(data) => data[1][index]}
+                                stroke={colors[index] ?? colors[colors.length - 1] ?? "black"}
+                                strokeWidth={2}
+                                dot={false}
+                                isAnimationActive={false}
                             />
-
-                            <YAxis type="number" domain={[minY, maxY]} allowDataOverflow />
-
-                            <CartesianGrid />
-
-                            {data.map((_, index) => (
-                                <Line
-                                    key={index}
-                                    dataKey={(data) => data[1][index]}
-                                    stroke={colors[index] ?? colors[colors.length - 1] ?? "black"}
-                                    strokeWidth={2}
-                                    dot={false}
-                                    isAnimationActive={false}
-                                />
-                            ))}
-                        </LineChart>
-                    </ResponsiveContainer>
-                </div>
+                        ))}
+                    </LineChart>
+                </ResponsiveContainer>
             </div>
-        </Resizable>
+        </div>
     );
 });
 

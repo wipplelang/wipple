@@ -2,7 +2,7 @@ import type { RuntimeComponent } from "..";
 import { forwardRef, useCallback, useImperativeHandle, useMemo, useRef, useState } from "react";
 import { PaletteCategory } from "../../models";
 import { CacheStorage, DrumMachine, Soundfont, SplendidGrandPiano } from "smplr";
-import { decodeMelody, decodeRhythm } from "../../edit/melody-picker";
+import { decodeMelody, decodeRhythm } from "../../pages/edit/assets/melody-picker";
 import { MaterialSymbol } from "react-material-symbols";
 import { Tooltip } from "../../components";
 import { Mutex } from "async-mutex";
@@ -12,8 +12,6 @@ import {
 } from "extendable-media-recorder";
 import { connect as connectWavEncoder } from "extendable-media-recorder-wav-encoder";
 import { format } from "date-fns";
-
-export interface Settings {}
 
 const cache = new CacheStorage();
 
@@ -144,7 +142,7 @@ export const stopAllInstruments = () => {
 
 export const defaultTempo = 120;
 
-export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
+export const Music: RuntimeComponent = forwardRef((props, ref) => {
     const [isRunning, setRunning] = useState(false);
     const [audioBlob, setAudioBlob] = useState<Blob>();
 
@@ -330,7 +328,7 @@ export const Music: RuntimeComponent<Settings> = forwardRef((props, ref) => {
                 }
             >
                 <div
-                    className={`flex flex-row items-center justify-center w-20 h-20 p-2 gap-2 rounded-lg overflow-hidden border-2 border-gray-100 dark:border-gray-800 transition ${
+                    className={`flex flex-row items-center justify-center w-20 h-20 p-2 gap-2 rounded-lg overflow-hidden border border-gray-100 dark:border-gray-800 transition ${
                         isRunning ? "bg-orange-50 dark:bg-orange-950" : ""
                     }`}
                 >

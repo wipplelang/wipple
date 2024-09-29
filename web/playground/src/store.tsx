@@ -1,17 +1,15 @@
 import { User } from "firebase/auth";
 import { createContext, useContext, useState } from "react";
-import { TutorialStep } from "./models";
-import { UserInfo } from "./models";
 
 export interface Store {
-    offline?: boolean;
+    isLoading: boolean;
     user?: User;
-    userInfo?: UserInfo;
-    activeTutorialStep?: TutorialStep;
     isPrinting?: boolean;
 }
 
-const defaultStore: Store = {};
+const defaultStore: Store = {
+    isLoading: true,
+};
 
 const StoreContext = createContext<[Store, React.Dispatch<React.SetStateAction<Store>>]>([
     defaultStore,

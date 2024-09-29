@@ -16,11 +16,11 @@ export const Button = (props: React.PropsWithChildren<ButtonProps>) => {
     switch (props.role) {
         case "primary":
             backgroundColor = fill
-                ? "bg-sky-500 hover:bg-sky-600"
+                ? "bg-blue-500 hover:bg-blue-600"
                 : "hover:bg-gray-100 dark:hover:bg-gray-900";
             textColor = fill
                 ? "text-white"
-                : "text-sky-500 hover:text-sky-600 dark:hover:text-sky-400";
+                : "text-blue-500 hover:text-blue-600 dark:hover:text-blue-400";
             fontWeight = "font-semibold";
             break;
         case "secondary":

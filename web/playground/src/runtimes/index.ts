@@ -1,29 +1,7 @@
 import { PaletteCategory } from "../models";
-import {
-    Turtle,
-    paletteCategories as turtlePaletteCategories,
-    type Settings as TurtleSettings,
-} from "./turtle";
-import {
-    Music,
-    paletteCategories as musicPaletteCategories,
-    type Settings as MusicSettings,
-} from "./music";
-import {
-    Math,
-    paletteCategories as mathPaletteCategories,
-    type Settings as MathSettings,
-} from "./math";
-import {
-    Game,
-    paletteCategories as gamePaletteCategories,
-    type Settings as GameSettings,
-} from "./game";
-import {
-    Physics,
-    paletteCategories as physicsPaletteCategories,
-    type Settings as PhysicsSettings,
-} from "./physics";
+import { Turtle, paletteCategories as turtlePaletteCategories } from "./turtle";
+import { Music, paletteCategories as musicPaletteCategories } from "./music";
+import { Math, paletteCategories as mathPaletteCategories } from "./math";
 
 export interface Runtime {
     initialize: () => Promise<void>;
@@ -31,11 +9,10 @@ export interface Runtime {
     cleanup: () => Promise<void>;
 }
 
-export type RuntimeComponent<Settings> = React.ForwardRefExoticComponent<
+export type RuntimeComponent = React.ForwardRefExoticComponent<
     {
         id: string;
-        settings: Settings | undefined;
-        onChangeSettings: (settings: Settings) => void;
+        isFullscreen: boolean;
         stopRunning: () => void;
     } & React.RefAttributes<Runtime>
 >;
@@ -53,14 +30,6 @@ export const runtimes = {
         Component: Math,
         paletteCategories: mathPaletteCategories,
     },
-    game: {
-        Component: Game,
-        paletteCategories: gamePaletteCategories,
-    },
-    physics: {
-        Component: Physics,
-        paletteCategories: physicsPaletteCategories,
-    },
 };
 
 export const defaultPaletteCategories: PaletteCategory[] = [
@@ -72,5 +41,3 @@ export const defaultPaletteCategories: PaletteCategory[] = [
         ],
     },
 ];
-
-export type { TurtleSettings, MusicSettings, MathSettings, GameSettings, PhysicsSettings };
