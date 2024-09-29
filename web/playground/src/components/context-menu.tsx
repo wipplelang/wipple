@@ -75,6 +75,7 @@ export const ContextMenuButton = (props: {
                     ref={refs.setReference}
                     {...getReferenceProps({
                         onClick: (e) => {
+                            e.preventDefault();
                             e.stopPropagation();
                         },
                     })}
@@ -132,6 +133,7 @@ export const ContextMenuContent = (props: {
                         disabled={item.disabled}
                         onClick={(e) => {
                             e.preventDefault();
+                            e.stopPropagation();
 
                             if (item.onClick) {
                                 item.onClick();

@@ -87,15 +87,21 @@ export const HomePage = () => {
         [navigate],
     );
 
-    const handleDuplicatePlayground = useCallback(async (playground: Playground) => {
-        await duplicatePlayground(playground.id);
-        await loadPlaygrounds();
-    }, []);
+    const handleDuplicatePlayground = useCallback(
+        async (playground: Playground) => {
+            await duplicatePlayground(playground.id);
+            await loadPlaygrounds();
+        },
+        [loadPlaygrounds],
+    );
 
-    const handleDeletePlayground = useCallback(async (playground: Playground) => {
-        await deletePlayground(playground.id);
-        await loadPlaygrounds();
-    }, []);
+    const handleDeletePlayground = useCallback(
+        async (playground: Playground) => {
+            await deletePlayground(playground.id);
+            await loadPlaygrounds();
+        },
+        [loadPlaygrounds],
+    );
 
     return (
         <div className="flex flex-col items-center">
@@ -191,11 +197,7 @@ export const HomePage = () => {
                                         playground={playground}
                                         onClick={() => handleSelectPlayground(playground)}
                                         onDuplicate={() => handleDuplicatePlayground(playground)}
-                                        onDelete={
-                                            playground.owner === store.user?.uid
-                                                ? () => handleDeletePlayground(playground)
-                                                : undefined
-                                        }
+                                        onDelete={() => handleDeletePlayground(playground)}
                                     />
                                 ))}
                             </Section>
@@ -283,8 +285,10 @@ const PlaygroundCard = (props: {
 }) => (
     <Card title={props.playground.name} onClick={props.onClick}>
         <div className="relative flex-1 w-full h-full">
-            <div className="flex items-center justify-center">
-                <SetupIcon setup={props.playground?.setup ?? null} size="lg" />
+            <div className="flex items-center justify-center w-full h-full">
+                <div className="scale-150">
+                    <SetupIcon setup={props.playground?.setup ?? null} size="lg" />
+                </div>
             </div>
 
             <ContextMenuButton
@@ -304,10 +308,7 @@ const PlaygroundCard = (props: {
                     },
                 ]}
             >
-                <div
-                    className="flex items-center justify-center text-2xl leading-3 w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors"
-                    onClick={(e) => e.preventDefault()}
-                >
+                <div className="flex items-center justify-center text-2xl leading-3 w-8 h-8 rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
                     <MaterialSymbol icon="more_vert" />
                 </div>
             </ContextMenuButton>
