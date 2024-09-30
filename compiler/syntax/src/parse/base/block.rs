@@ -77,33 +77,4 @@ impl<D: Driver, Output: 'static> Rule<D, Output> {
             ),
         )
     }
-
-    pub fn empty_block(
-        syntax_kind: SyntaxKind,
-        output: impl Fn(D::Info) -> WithInfo<D::Info, Output> + Clone + 'static,
-    ) -> Self {
-        Rule::nonterminal(
-            syntax_kind,
-            RuleToRender::Block(Vec::new()),
-            || true,
-            ParseFn::new(
-                {
-                    let output = output.clone();
-
-                    move |_, tree, _, _| match tree.item {
-                        TokenTree::Block(statements) if statements.is_empty() => {
-                            Some(Ok(output(tree.info)))
-                        }
-                        _ => None,
-                    }
-                },
-                move |_, tree, _, _| match tree.item {
-                    TokenTree::Block(statements) if statements.is_empty() => {
-                        Some(output(tree.info))
-                    }
-                    _ => None,
-                },
-            ),
-        )
-    }
 }

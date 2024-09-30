@@ -1,9 +1,9 @@
 -- Include a file or folder in this project.
-include :: Text -> Unit
+include :: Text -> None
 include : path -> show ("project:include:_" path)
 
 -- Add a dependency to this project.
-dependency :: Dependency -> Unit
+dependency :: Dependency -> None
 dependency : dependency -> show ("project:dependency:_" dependency)
 
 -- A project dependency.
@@ -33,5 +33,5 @@ local :: Text -> Dependency
 local : Local-Dependency
 
 -- Disable automatic inclusion of the Wipple standard library.
-no-base :: Unit
+no-base :: None
 no-base : show "project:no-base"

@@ -12,24 +12,24 @@ describe : Describe
 -- Display a value on the screen.
 @(highlight-category : "io")
 @(highlight-icon : "article")
-show :: (Value : Text) where (Describe Value) => Value -> Unit
+show :: (Value : Text) where (Describe Value) => Value -> None
 show : value -> intrinsic "display" (describe value)
 
-print :: (Value : Text) where (Error "use-show-instead") => Value -> Unit
+print :: (Value : Text) where (Error "use-show-instead") => Value -> None
 print : ...
 
-println :: (Value : Text) where (Error "use-show-instead") => Value -> Unit
+println :: (Value : Text) where (Error "use-show-instead") => Value -> None
 println : ...
 
-display :: (Value : Text) where (Error "use-show-instead") => Value -> Unit
+display :: (Value : Text) where (Error "use-show-instead") => Value -> None
 display : ...
 
 instance (Describe Text) : text -> text
 instance (Describe Number) : n -> intrinsic "number-to-text" n
 instance (Describe Boolean) : b -> if b {"True"} {"False"}
 Value where (Describe Value) => instance (Describe (Maybe Value)) : m -> when m {
-  Some value -> "Some _" value
-  None -> "None"
+  Has value -> "Has _" value
+  Empty -> "Empty"
 }
 
 -- Convert from a piece of `Text` to a value.
@@ -38,7 +38,7 @@ Read : Value => trait (Text -> Maybe Value)
 Value where (Error ("cannot-read" ; Error-Data "value" Value)) =>
   default instance (Read Value) : ...
 
-instance (Read Text) : Some
+instance (Read Text) : Has
 instance (Read Number) : text -> intrinsic "text-to-number" text
 
 -- Ask the user to enter a value.

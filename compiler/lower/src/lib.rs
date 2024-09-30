@@ -1427,6 +1427,9 @@ pub enum Pattern<D: Driver> {
         value_patterns: Vec<WithInfo<D::Info, Pattern<D>>>,
     },
 
+    /// A marker pattern.
+    Marker(Path),
+
     /// A wrapper pattern.
     Wrapper {
         /// The wrapper type this pattern matches.

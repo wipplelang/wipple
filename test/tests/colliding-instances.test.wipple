@@ -1,12 +1,12 @@
 -- [should error]
 
-T : A => trait ()
+T : A => trait None
 
 X : type
-instance (T X) : ()
-instance (T X) : ()
+instance (T X) : None
+instance (T X) : None
 
-instance (T _) : ()
+instance (T _) : None
 
-U : A => trait ()
-A where (U A) => instance (T A) : ()
+U : A => trait None
+A where (U A) => instance (T A) : None

@@ -189,7 +189,10 @@ pub fn infer_expression<D: Driver>(
                     .collect::<Vec<_>>();
 
                 let r#type = statements.last().map_or_else(
-                    || Type::new(TypeKind::Tuple(Vec::new()), info.clone()),
+                    || {
+                        // We have an empty top level, whose type is `Unknown`
+                        Type::new(TypeKind::Unknown, info.clone())
+                    },
                     |expression| expression.item.r#type.clone(),
                 );
 
@@ -353,8 +356,23 @@ pub fn infer_expression<D: Driver>(
                     context,
                 );
 
+                let r#type = instantiated_language_type(
+                    "none",
+                    info.clone(),
+                    context.driver,
+                    context.type_context,
+                    context.error_queue,
+                    context.errors,
+                )
+                .unwrap_or_else(|| {
+                    Type::new(
+                        TypeKind::Variable(context.type_context.variable()),
+                        info.clone(),
+                    )
+                });
+
                 Expression {
-                    r#type: Type::new(TypeKind::Tuple(Vec::new()), info.clone()),
+                    r#type,
                     kind: ExpressionKind::Initialize {
                         pattern,
                         value: value.boxed(),
@@ -378,8 +396,23 @@ pub fn infer_expression<D: Driver>(
                     context.error_queue,
                 );
 
+                let r#type = instantiated_language_type(
+                    "none",
+                    info.clone(),
+                    context.driver,
+                    context.type_context,
+                    context.error_queue,
+                    context.errors,
+                )
+                .unwrap_or_else(|| {
+                    Type::new(
+                        TypeKind::Variable(context.type_context.variable()),
+                        info.clone(),
+                    )
+                });
+
                 Expression {
-                    r#type: Type::new(TypeKind::Tuple(Vec::new()), info.clone()),
+                    r#type,
                     kind: ExpressionKind::Mutate {
                         name,
                         path,

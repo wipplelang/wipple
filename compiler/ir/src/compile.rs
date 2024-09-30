@@ -235,17 +235,13 @@ fn compile_expression<D: crate::Driver>(
                 expression.clone(),
                 info,
                 |_, info| {
-                    if statements.is_empty() {
-                        info.push_instruction(crate::Instruction::Tuple(0));
-                    } else {
-                        for (index, statement) in statements.iter().enumerate() {
-                            let last_statement = index + 1 == statements.len();
+                    for (index, statement) in statements.iter().enumerate() {
+                        let last_statement = index + 1 == statements.len();
 
-                            compile_expression(statement.as_ref(), tail && last_statement, info)?;
+                        compile_expression(statement.as_ref(), tail && last_statement, info)?;
 
-                            if !last_statement {
-                                info.push_instruction(crate::Instruction::Drop);
-                            }
+                        if !last_statement {
+                            info.push_instruction(crate::Instruction::Drop);
                         }
                     }
 
@@ -322,7 +318,7 @@ fn compile_expression<D: crate::Driver>(
         wipple_typecheck::TypedExpressionKind::Initialize { pattern, value } => {
             compile_expression(value.as_deref(), false, info)?;
             compile_exhaustive_pattern(pattern.as_ref(), info)?;
-            info.push_instruction(crate::Instruction::Tuple(0));
+            info.push_instruction(crate::Instruction::Marker);
         }
         wipple_typecheck::TypedExpressionKind::Mutate { path, value, .. } => {
             let variable = info
@@ -334,7 +330,7 @@ fn compile_expression<D: crate::Driver>(
             compile_expression(value.as_deref(), false, info)?;
 
             info.push_instruction(crate::Instruction::Mutate(variable));
-            info.push_instruction(crate::Instruction::Tuple(0));
+            info.push_instruction(crate::Instruction::Marker);
         }
         wipple_typecheck::TypedExpressionKind::Marker(_) => {
             info.push_instruction(crate::Instruction::Marker);
@@ -466,7 +462,7 @@ fn compile_pattern<D: crate::Driver>(
 ) -> Option<()> {
     match &pattern.item {
         wipple_typecheck::Pattern::Unknown => return None,
-        wipple_typecheck::Pattern::Wildcard => {}
+        wipple_typecheck::Pattern::Wildcard | wipple_typecheck::Pattern::Marker(_) => {}
         wipple_typecheck::Pattern::Number(number) => {
             info.push_instruction(crate::Instruction::Copy);
 

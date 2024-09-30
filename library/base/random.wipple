@@ -15,4 +15,4 @@ instance (Random (Range Number) Number) : {
 Element => instance (Random (List Element) (Maybe Element)) :
   list -> list . nth (random (0 to count list))
 
-instance (Random Unit Boolean) : () -> random (0 to 2) = 1
+instance (Random None Boolean) : None -> random (0 to 2) = 1

@@ -8,11 +8,11 @@ diagnostics:
       start:
         line: 19
         column: 0
-        index: 457
+        index: 465
       end:
         line: 19
         column: 4
-        index: 461
+        index: 469
     severity: error
     template:
       id: does-not-eat
@@ -24,11 +24,11 @@ diagnostics:
       start:
         line: 20
         column: 0
-        index: 479
+        index: 487
       end:
         line: 20
         column: 4
-        index: 483
+        index: 491
     severity: error
     template:
       id: does-not-eat

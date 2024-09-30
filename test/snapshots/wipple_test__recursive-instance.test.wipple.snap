@@ -4,4 +4,4 @@ expression: snapshot
 ---
 diagnostics: []
 output:
-  - Some Some 42
+  - Has Has 42

@@ -41,9 +41,9 @@ instance (As-Sequence (Stride Number) Number) : {
       if (current < max) {
         n : current
         current! : current + step
-        Some n
+        Has n
       } {
-        None
+        Empty
       }
     }
   }
@@ -52,8 +52,8 @@ instance (As-Sequence (Stride Number) Number) : {
     Sequence {
       n : current
       current! : current + step
-      Some n
+      Has n
     }
   }
-  _ -> Sequence {None}
+  _ -> Sequence {Empty}
 }

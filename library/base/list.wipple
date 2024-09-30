@@ -1,23 +1,22 @@
-@(language : "list")
 List : Element => type intrinsic
 
 Element => instance (Describe-Type (List Element) ("_ list" Element))
 
-Element => instance (Empty (List Element)) : intrinsic "make-empty-list"
+Element => instance (Initial (List Element)) : intrinsic "make-empty-list"
 
--- Retrieve the first item inside a list, or `None` if the list is empty.
+-- Retrieve the first item inside a list, or `Empty` if the list is empty.
 first :: Element => (List Element) -> Maybe Element
 first : list -> intrinsic "list-first" list
 
--- Retrieve the last item inside a list, or `None` if the list is empty.
+-- Retrieve the last item inside a list, or `Empty` if the list is empty.
 last :: Element => (List Element) -> Maybe Element
 last : list -> intrinsic "list-last" list
 
--- Retrieve all but the last item inside a list, or `None` if the list is empty.
+-- Retrieve all but the last item inside a list, or `Empty` if the list is empty.
 initial :: Element => (List Element) -> Maybe (List Element)
 initial : list -> intrinsic "list-initial" list
 
--- Retrieve all but the first item inside a list, or `None` if the list is empty.
+-- Retrieve all but the first item inside a list, or `Empty` if the list is empty.
 tail :: Element => (List Element) -> Maybe (List Element)
 tail : list -> intrinsic "list-tail" list
 

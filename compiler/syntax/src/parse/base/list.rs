@@ -98,33 +98,6 @@ impl<D: Driver, Output: 'static> Rule<D, Output> {
 }
 
 impl<D: Driver, Output: 'static> Rule<D, Output> {
-    pub fn empty_list(
-        syntax_kind: SyntaxKind,
-        output: impl Fn(D::Info) -> WithInfo<D::Info, Output> + Clone + 'static,
-    ) -> Self {
-        Rule::nonterminal(
-            syntax_kind,
-            RuleToRender::List(Vec::new()),
-            || true,
-            ParseFn::new(
-                {
-                    let output = output.clone();
-
-                    move |_, tree, _, _| match tree.item {
-                        TokenTree::List(_, elements) if elements.is_empty() => {
-                            Some(Ok(output(tree.info)))
-                        }
-                        _ => None,
-                    }
-                },
-                move |_, tree, _, _| match tree.item {
-                    TokenTree::List(_, elements) if elements.is_empty() => Some(output(tree.info)),
-                    _ => None,
-                },
-            ),
-        )
-    }
-
     pub fn list<E>(
         syntax_kind: SyntaxKind,
         parse_element: fn() -> Rule<D, E>,

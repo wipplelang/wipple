@@ -2,14 +2,14 @@
 
 Distance : type {pixels :: Number}
 
-Distance? : (infer D) => trait ()
-D where (Error "missing-pixels") => default instance (Distance? D) : ()
-instance (Distance? Distance) : ()
+Distance? : (infer D) => trait None
+D where (Error "missing-pixels") => default instance (Distance? D) : None
+instance (Distance? Distance) : None
 
 pixels :: Number -> Distance
 pixels : pixels -> {pixels : pixels}
 
-forward :: D where (Distance? D) => D -> Unit
+forward :: D where (Distance? D) => D -> None
 forward : ...
 
 forward 42

@@ -595,7 +595,8 @@ pub async fn run(options: JsValue) -> JsValue {
                             context.clone(),
                             move |inputs, task, context| {
                                 let value = value.clone();
-                                async move { context.call(value, inputs, task).await }.boxed()
+                                async move { Ok(context.call(value, inputs, task).await?.unwrap()) }
+                                    .boxed()
                             },
                         ));
 
@@ -685,7 +686,7 @@ pub async fn run(options: JsValue) -> JsValue {
         ) -> impl Future<Output = wipple_interpreter::Value<Self>> + Send {
             wasm_main_executor::spawn(async move {
                 if value.0.is_null() || value.0.is_undefined() {
-                    wipple_interpreter::Value::unit()
+                    wipple_interpreter::Value::Marker
                 } else if let Some(number) = value.0.as_f64() {
                     wipple_interpreter::Value::from_number(Decimal::from_f64(number))
                 } else if let Some(text) = value.0.as_string() {

@@ -186,7 +186,9 @@ fn convert_type<D: Driver>(
 fn convert_pattern<D: Driver>(driver: &D, pattern: &crate::Pattern<D>) -> Option<Pattern<D>> {
     match pattern {
         crate::Pattern::Unknown => None,
-        crate::Pattern::Wildcard | crate::Pattern::Variable(_, _) => Some(Pattern::Binding),
+        crate::Pattern::Wildcard | crate::Pattern::Variable(_, _) | crate::Pattern::Marker(_) => {
+            Some(Pattern::Binding)
+        }
         crate::Pattern::Text(_) => {
             let path = driver.path_for_language_type("text")?;
 

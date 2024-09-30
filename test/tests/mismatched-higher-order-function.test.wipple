@@ -3,7 +3,7 @@
 x :: Text -> Number
 x : ...
 
-y :: (Text -> Text) -> Unit
+y :: (Text -> Text) -> None
 y : ...
 
 -- The error message should appear on `x` here

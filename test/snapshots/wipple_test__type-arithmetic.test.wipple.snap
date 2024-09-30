@@ -8,11 +8,11 @@ diagnostics:
       start:
         line: 12
         column: 4
-        index: 266
+        index: 272
       end:
         line: 12
         column: 15
-        index: 277
+        index: 283
     severity: error
     template:
       id: partially-unknown-type

@@ -25,7 +25,6 @@ pub fn expression<D: Driver>(
         parse::Expression::Name(name) => crate::Expression::Name(name),
         parse::Expression::Number(number) => crate::Expression::Number(number),
         parse::Expression::Text(text) => crate::Expression::Text(text),
-        parse::Expression::Unit => crate::Expression::Tuple(Vec::new()),
         parse::Expression::Block(statement_syntaxes) => {
             crate::Expression::Block(statements(statement_syntaxes, info))
         }
@@ -139,23 +138,16 @@ pub fn expression<D: Driver>(
                 .map(|element_syntax| expression(element_syntax, info))
                 .collect(),
         ),
-        parse::Expression::Structure(fields) => {
-            // HACK: Actually parse an empty block as an expression
-            if fields.is_empty() {
-                crate::Expression::Block(Vec::new())
-            } else {
-                crate::Expression::Structure(
-                    fields
-                        .into_iter()
-                        .map(|field| {
-                            field.map(|field| crate::FieldValue {
-                                name: field.name,
-                                value: expression(field.value, info),
-                            })
-                        })
-                        .collect(),
-                )
-            }
-        }
+        parse::Expression::Structure(fields) => crate::Expression::Structure(
+            fields
+                .into_iter()
+                .map(|field| {
+                    field.map(|field| crate::FieldValue {
+                        name: field.name,
+                        value: expression(field.value, info),
+                    })
+                })
+                .collect(),
+        ),
     })
 }

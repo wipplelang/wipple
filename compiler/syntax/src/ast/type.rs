@@ -9,7 +9,6 @@ pub fn r#type<D: Driver>(
     type_syntax.map(|type_syntax| match type_syntax {
         parse::Type::Error => crate::Type::Error,
         parse::Type::Placeholder => crate::Type::Placeholder,
-        parse::Type::Unit => crate::Type::Tuple(Vec::new()),
         parse::Type::Declared {
             name,
             parameters: parameter_syntaxes,

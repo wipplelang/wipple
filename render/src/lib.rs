@@ -596,7 +596,7 @@ impl Render {
                 }
                 wipple_driver::typecheck::Type::Tuple(elements) => {
                     let rendered = if elements.is_empty() {
-                        String::from("Unit")
+                        String::new()
                     } else if elements.len() == 1 {
                         format!(
                             "{} ;",
@@ -610,7 +610,7 @@ impl Render {
                             .join(" ; ")
                     };
 
-                    if is_top_level || elements.is_empty() {
+                    if is_top_level {
                         rendered
                     } else {
                         format!("({})", rendered)
@@ -708,7 +708,7 @@ impl Render {
 
         match (rendered_parameters.is_empty(), rendered_bounds.is_empty()) {
             (true, true) => String::new(),
-            (true, false) => format!("() where {} => ", rendered_bounds),
+            (true, false) => format!("_ where {} => ", rendered_bounds),
             (false, true) => format!("{} => ", rendered_parameters),
             (false, false) => format!("{} where {} => ", rendered_parameters, rendered_bounds),
         }
@@ -804,6 +804,14 @@ impl Render {
                 wipple_driver::syntax::tokenize::Diagnostic::InvalidToken => {
                     severity = RenderedDiagnosticSeverity::Error;
                     id = String::from("unrecognized-symbol");
+                }
+                wipple_driver::syntax::tokenize::Diagnostic::EmptyParentheses => {
+                    severity = RenderedDiagnosticSeverity::Error;
+                    id = String::from("empty-parentheses");
+                }
+                wipple_driver::syntax::tokenize::Diagnostic::EmptyBraces => {
+                    severity = RenderedDiagnosticSeverity::Error;
+                    id = String::from("empty-braces");
                 }
                 wipple_driver::syntax::tokenize::Diagnostic::Mismatch {
                     expected, found, ..
@@ -1285,6 +1293,8 @@ impl Render {
             SyntaxKind::Attribute => self.add_article_prefix("attribute"),
             SyntaxKind::AttributeValue => self.add_article_prefix("attribute value"),
             SyntaxKind::Statement => self.add_article_prefix("statement"),
+            SyntaxKind::LeftParenthesis => self.add_article_prefix("opening parenthesis (`(`)"),
+            SyntaxKind::LeftBrace => self.add_article_prefix("opening brace (`{{`)"),
             SyntaxKind::Keyword(keyword) => format!("the word `{keyword}`"),
             SyntaxKind::ContextualKeyword(keyword) => format!("the word `{keyword}`"),
             SyntaxKind::Operator(operator) => format!("the symbol `{operator}`"),

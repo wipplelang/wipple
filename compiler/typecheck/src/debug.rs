@@ -54,7 +54,7 @@ pub fn debug_type<D: Driver>(r#type: &Type<D>, context: &mut TypeContext<D>) -> 
             "({})",
             elements.iter().fold(String::new(), |mut result, element| {
                 use std::fmt::Write;
-                write!(&mut result, " {} ,", debug_type(element, context)).unwrap();
+                write!(&mut result, " {} ;", debug_type(element, context)).unwrap();
                 result
             })
         ),

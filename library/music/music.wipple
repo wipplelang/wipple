@@ -10,7 +10,7 @@ Instrument : type Text
 -- Play a melody or rhythm on an instrument.
 @(highlight-category : "music-play")
 @(highlight-icon : "play-arrow")
-play :: Notes where (Encode-Notes Notes) => Instrument Notes -> Unit
+play :: Notes where (Encode-Notes Notes) => Instrument Notes -> None
 play : (Instrument instrument) notes -> do {
   (kind ; encoded) : Encode-Notes notes
   runtime-message "play" (instrument ; kind ; encoded)
@@ -19,17 +19,17 @@ play : (Instrument instrument) notes -> do {
 -- Set the tempo of your song.
 @(highlight-category : "music-setup")
 @(highlight-icon : "speed")
-tempo :: Number -> Unit
+tempo :: Number -> None
 tempo : tempo -> runtime-message "tempo" tempo
 
 -- Play all the melodies in the block at the same time.
 @(highlight-category : "control-flow")
 @(highlight-icon : "workspaces")
-together :: Body => {Body} -> Unit
+together :: Body => {Body} -> None
 together : body -> do {
-  runtime-message "begin-together" ()
+  runtime-message "begin-together" None
   do body
-  runtime-message "end-together" ()
+  runtime-message "end-together" None
 }
 
 piano :: Instrument

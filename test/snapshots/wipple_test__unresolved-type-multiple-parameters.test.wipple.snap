@@ -8,11 +8,11 @@ diagnostics:
       start:
         line: 8
         column: 6
-        index: 93
+        index: 95
       end:
         line: 8
         column: 7
-        index: 94
+        index: 96
     severity: error
     template:
       id: unknown-type
@@ -22,11 +22,11 @@ diagnostics:
       start:
         line: 16
         column: 15
-        index: 237
+        index: 243
       end:
         line: 16
         column: 16
-        index: 238
+        index: 244
     severity: error
     template:
       id: unknown-type
@@ -36,11 +36,11 @@ diagnostics:
       start:
         line: 17
         column: 20
-        index: 259
+        index: 265
       end:
         line: 17
         column: 21
-        index: 260
+        index: 266
     severity: error
     template:
       id: unknown-type

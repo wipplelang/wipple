@@ -55,40 +55,59 @@ fn resolve_pattern_inner<D: Driver>(
                 None => return crate::Pattern::Error,
             };
 
-            match try_resolve_name(
-                WithInfo {
-                    info: pattern_info.clone(),
-                    item: name.clone(),
-                },
-                info,
-                |candidates| {
-                    candidates
-                        .iter()
-                        .filter_map(|path| match path.item.last().unwrap() {
-                            crate::PathComponent::Variant(_) => {
-                                Some((path.item.clone(), path.clone()))
-                            }
-                            _ => None,
-                        })
-                        .collect::<Vec<_>>()
-                },
-            ) {
-                Some(variant) => crate::Pattern::Variant {
-                    variant,
-                    value_patterns: Vec::new(),
-                },
-                None => {
-                    resolve_pattern_inner(
+            macro_rules! get {
+                ($kind:ident) => {
+                    try_resolve_name(
                         WithInfo {
                             info: pattern_info.clone(),
-                            item: crate::UnresolvedPattern::Name(name),
+                            item: name.clone(),
                         },
-                        defines,
                         info,
+                        |candidates| {
+                            candidates
+                                .iter()
+                                .filter_map(|path| match path.item.last().unwrap() {
+                                    crate::PathComponent::$kind(_) => {
+                                        Some((path.item.clone(), path.clone()))
+                                    }
+                                    _ => None,
+                                })
+                                .collect::<Vec<_>>()
+                        },
                     )
-                    .item
+                };
+            }
+
+            if let Some(variant) = get!(Variant) {
+                return crate::Pattern::Variant {
+                    variant,
+                    value_patterns: Vec::new(),
+                };
+            } else if let Some(r#type) = get!(Type) {
+                let type_declaration = info
+                    .type_declarations
+                    .get(&r#type.item)
+                    .unwrap()
+                    .as_ref()
+                    .map(|(_, declaration)| declaration.as_ref().unwrap());
+
+                if matches!(
+                    type_declaration.item.representation.item,
+                    crate::TypeRepresentation::Marker
+                ) {
+                    return crate::Pattern::Marker(r#type.item);
                 }
             }
+
+            resolve_pattern_inner(
+                WithInfo {
+                    info: pattern_info.clone(),
+                    item: crate::UnresolvedPattern::Name(name),
+                },
+                defines,
+                info,
+            )
+            .item
         }
         crate::UnresolvedPattern::Destructure(fields) => crate::Pattern::Destructure(
             fields

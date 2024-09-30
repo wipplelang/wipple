@@ -6,13 +6,13 @@ Herbivore : type
 Meat : type
 Plants : type
 
-Eats? : Animal Food => trait ()
+Eats? : Animal Food => trait None
 Animal Food where (Error ("does-not-eat" ; Error-Data "animal" Animal ; Error-Data "food" Food)) =>
-  default instance (Eats? Animal Food) : ()
-instance (Eats? Carnivore Meat) : ()
-instance (Eats? Herbivore Plants) : ()
+  default instance (Eats? Animal Food) : None
+instance (Eats? Carnivore Meat) : None
+instance (Eats? Herbivore Plants) : None
 
-test :: Animal Food where (Eats? Animal Food) => Animal Food -> Unit
+test :: Animal Food where (Eats? Animal Food) => Animal Food -> None
 test : ...
 
 test Carnivore Meat

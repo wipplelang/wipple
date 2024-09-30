@@ -38,7 +38,7 @@ Let's look at some of the types that can be used in a type annotation:
 -   `Number` is the type of numbers.
 -   `Text` is the type of text.
 -   `Boolean` is the type of `True` and `False`.
--   `Unit` is the "unit type", and is returned by functions like `show` that do something but produce no meaningful value.
+-   `None` is the "unit type", and is returned by functions like `show` that do something but produce no meaningful value.
 -   `{A}` is the type of a block evaluating to a value of type `A`. For example, `{1 + 1}` has type `{Number}`.
 -   `A -> B` is the type of a function accepting a single input of type `A` and producing a value of type `B`. Likewise, `A B C -> D` is the type of a function accepting three inputs.
 

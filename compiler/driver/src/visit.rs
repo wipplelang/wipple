@@ -314,7 +314,7 @@ fn traverse_pattern_inner<D: Driver>(
             traverse_pattern_inner(pattern.as_deref(), Some(pattern.as_deref()), visitor)?;
             traverse_type_inner(r#type.as_ref(), None, visitor)?;
         }
-        Unknown | Wildcard | Number(_) | Text(_) | Variable(_, _) => {}
+        Unknown | Wildcard | Number(_) | Text(_) | Variable(_, _) | Marker(_) => {}
     }
 
     ControlFlow::Continue(())

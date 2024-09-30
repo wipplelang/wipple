@@ -4,8 +4,8 @@ expression: snapshot
 ---
 diagnostics: []
 output:
-  - Some 1
-  - Some 3
-  - Some 2
-  - Some 2
-  - Some 2
+  - Has 1
+  - Has 3
+  - Has 2
+  - Has 2
+  - Has 2

@@ -11,7 +11,7 @@ next : (Sequence next) -> do next
 @(highlight-category : "sequence")
 @(highlight-icon : "list")
 sequence :: Element => {Element} -> Sequence Element
-sequence : next -> Sequence {Some (do next)}
+sequence : next -> Sequence {Has (do next)}
 
 -- Create a sequence that always produces the provided element.
 --
@@ -26,7 +26,7 @@ sequence : next -> Sequence {Some (do next)}
 @(highlight-category : "sequence")
 @(highlight-icon : "all-inclusive")
 always :: Element => Element -> Sequence Element
-always : element -> Sequence {Some element}
+always : element -> Sequence {Has element}
 
 -- Create a sequence that produces the provided element a certain number of
 -- times. `element . replicate n` is equivalent to `always element . take n`.
@@ -44,11 +44,11 @@ build-sequence : initial transform -> do {
 
   Sequence {
     when next {
-      Some current -> do {
+      Has current -> do {
         next! : transform current
-        Some current
+        Has current
       }
-      None -> None
+      Empty -> Empty
     }
   }
 }
@@ -62,11 +62,11 @@ Element => instance (As-Sequence (Sequence Element) Element) : sequence -> seque
 
 Element => instance (As-Sequence (Maybe Element) Element) : maybe -> Sequence {
   when maybe {
-    Some value -> do {
-      maybe! : None
-      Some value
+    Has value -> do {
+      maybe! : Empty
+      Has value
     }
-    None -> None
+    Empty -> Empty
   }
 }
 
@@ -79,8 +79,8 @@ transform : f -> container -> do {
 
   Sequence {
     when (next base) {
-      Some value -> Some (f value)
-      None -> None
+      Has value -> Has (f value)
+      Empty -> Empty
     }
   }
 }
@@ -95,14 +95,14 @@ filter : include? -> container -> do {
   Sequence {
     repeat with-control-flow {
       when (next base) {
-        Some value -> if (include? value) {Stop (Some value)} {Continue ()}
-        None -> Stop None
+        Has value -> if (include? value) {Stop (Has value)} {Continue None}
+        Empty -> Stop Empty
       }
     }
   }
 }
 
--- Transform each item in a sequence, keeping only the items that aren't `None`.
+-- Transform each item in a sequence, keeping only the items that aren't `Empty`.
 @(highlight-category : "sequence")
 @(highlight-icon : "filter-alt")
 filter-by :: Container (infer Element) Result where (As-Sequence Container Element) => (Element -> Maybe Result) -> Container -> Sequence Result
@@ -112,11 +112,11 @@ filter-by : transform -> container -> do {
   Sequence {
     repeat with-control-flow {
       when (next base) {
-        Some value -> when (transform value) {
-          Some value -> Stop (Some value)
-          None -> Continue ()
+        Has value -> when (transform value) {
+          Has value -> Stop (Has value)
+          Empty -> Continue None
         }
-        None -> Stop None
+        Empty -> Stop Empty
       }
     }
   }
@@ -130,29 +130,29 @@ flatten : outer -> do {
   outer : As-Sequence outer
 
   when (next outer) {
-    Some inner -> do {
+    Has inner -> do {
       inner : As-Sequence inner
 
       Sequence {
         repeat with-control-flow {
           when (next inner) {
-            Some value -> Stop (Some value)
-            None -> when (next outer) {
-              Some next-inner -> do {
+            Has value -> Stop (Has value)
+            Empty -> when (next outer) {
+              Has next-inner -> do {
                 inner! : As-Sequence next-inner
-                Continue ()
+                Continue None
               }
-              None -> Stop None
+              Empty -> Stop Empty
             }
           }
         }
       }
     }
-    None -> Sequence {None}
+    Empty -> Sequence {Empty}
   }
 }
 
--- Find the first item in a sequence that can be transformed into a `Some` value.
+-- Find the first item in a sequence that can be transformed into a `Has` value.
 @(highlight-category : "sequence")
 @(highlight-icon : "search")
 find-by :: Collection (infer Element) Result where (As-Sequence Collection Element) => (Element -> Maybe Result) -> Collection -> Maybe Result
@@ -161,11 +161,11 @@ find-by : f -> collection -> do {
 
   repeat with-control-flow {
     when (next base) {
-      Some element -> when (f element) {
-        Some result -> Stop (Some result)
-        None -> Continue ()
+      Has element -> when (f element) {
+        Has result -> Stop (Has result)
+        Empty -> Continue None
       }
-      None -> Stop None
+      Empty -> Stop Empty
     }
   }
 }
@@ -177,8 +177,8 @@ reduce :: Container (infer Element) Result where (As-Sequence Container Element)
 reduce : result f -> container -> do {
   helper :: Element Result => Result (Element -> Result -> Result) -> (Sequence Element) -> Result
   helper : result f -> sequence -> when (next sequence) {
-    Some next -> (helper (result . f next) f) sequence
-    None -> result
+    Has next -> (helper (result . f next) f) sequence
+    Empty -> result
   }
 
   As-Sequence container . helper result f
@@ -187,8 +187,8 @@ reduce : result f -> container -> do {
 -- Find the sum of all the numbers in a sequence.
 @(highlight-category : "sequence")
 @(highlight-icon : "calculate")
-sum :: Container (infer N) where (As-Sequence Container N) (Empty N) (Add N N N) => Container -> N
-sum : reduce Empty (next -> result -> result + next)
+sum :: Container (infer N) where (As-Sequence Container N) (Initial N) (Add N N N) => Container -> N
+sum : reduce Initial (next -> result -> result + next)
 
 From-Sequence : Element Container => trait ((Sequence Element) -> Container)
 
@@ -206,11 +206,11 @@ Element => instance (From-Sequence Element (List Element)) : sequence -> do {
 
   repeat with-control-flow {
     when (next sequence) {
-      Some value -> do {
+      Has value -> do {
         list! : list . append value
-        Continue ()
+        Continue None
       }
-      None -> Stop ()
+      Empty -> Stop None
     }
   }
 
@@ -222,26 +222,26 @@ Element => instance (As-Sequence (List Element) Element) : list -> do {
 
   Sequence {
     when (list . nth index) {
-      Some element -> do {
+      Has element -> do {
         index! : index + 1
-        Some element
+        Has element
       }
-      None -> None
+      Empty -> Empty
     }
   }
 }
 
-instance (From-Sequence () ()) : sequence -> repeat with-control-flow {
+instance (From-Sequence None None) : sequence -> repeat with-control-flow {
   when (next sequence) {
-    Some () -> Continue ()
-    None -> Stop ()
+    Has None -> Continue None
+    Empty -> Stop None
   }
 }
 
 -- Perform an action for each item in a sequence.
 @(highlight-category : "sequence")
 @(highlight-icon : "checklist")
-each :: Container (infer Element) where (As-Sequence Container Element) => (Element -> Unit) -> Container -> Unit
+each :: Container (infer Element) where (As-Sequence Container Element) => (Element -> None) -> Container -> None
 each : action -> container -> container . transform action . collect
 
 -- Split a sequence into groups of consecutive items satisfying a condition.
@@ -250,30 +250,30 @@ each : action -> container -> container . transform action . collect
 split-by :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Sequence (List Element)
 split-by : separator -> collection -> do {
   base : As-Sequence collection
-  group : Some (,)
+  group : Has (,)
 
   Sequence {
     repeat with-control-flow {
       when (next base) {
-        Some x -> do {
+        Has x -> do {
           if (separator x) {
             result : group
-            group! : None
+            group! : Empty
             Stop result
           } {
             inner : when group {
-              Some inner -> inner
-              None -> (,)
+              Has inner -> inner
+              Empty -> (,)
             }
 
-            group! : Some (inner . append x)
+            group! : Has (inner . append x)
 
-            Continue ()
+            Continue None
           }
         }
-        None -> do {
+        Empty -> do {
           result : group
-          group! : None
+          group! : Empty
           Stop result
         }
       }
@@ -297,11 +297,11 @@ count : collection -> do {
   count : 0
   repeat with-control-flow {
     when (next sequence) {
-      Some _ -> do {
+      Has _ -> do {
         count! : count + 1
-        Continue ()
+        Continue None
       }
-      None -> Stop count
+      Empty -> Stop count
     }
   }
 }
@@ -322,7 +322,7 @@ take : count -> collection -> do {
   counter : 0
   Sequence {
     if (counter >= count) {
-      None
+      Empty
     } {
       counter! : counter + 1
       next base
@@ -339,8 +339,8 @@ find : found? -> collection -> do {
 
   repeat with-control-flow {
     when (next sequence) {
-      Some element -> if (found? element) {Stop (Some element)} {Continue ()}
-      None -> Stop None
+      Has element -> if (found? element) {Stop (Has element)} {Continue None}
+      Empty -> Stop Empty
     }
   }
 }
@@ -355,13 +355,13 @@ find-position : found? -> collection -> do {
 
   repeat with-control-flow {
     when (next sequence) {
-      Some element -> if (found? element) {
-        Stop (Some counter)
+      Has element -> if (found? element) {
+        Stop (Has counter)
       } {
         counter! : counter + 1
-        Continue ()
+        Continue None
       }
-      None -> Stop None
+      Empty -> Stop Empty
     }
   }
 }
@@ -373,8 +373,8 @@ all? :: Collection (infer Element) where (As-Sequence Collection Element) => (El
 all? : condition? -> collection -> do {
   helper :: Element => (Element -> Boolean) -> (Sequence Element) -> Boolean
   helper : condition? -> sequence -> when (next sequence) {
-    Some element -> condition? element and (helper condition?) sequence
-    None -> True
+    Has element -> condition? element and (helper condition?) sequence
+    Empty -> True
   }
 
   As-Sequence collection . helper condition?
@@ -387,8 +387,8 @@ any? :: Collection (infer Element) where (As-Sequence Collection Element) => (El
 any? : condition? -> collection -> do {
   helper :: Element => (Element -> Boolean) -> (Sequence Element) -> Boolean
   helper : condition? -> sequence -> when (next sequence) {
-    Some element -> condition? element or (helper condition?) sequence
-    None -> False
+    Has element -> condition? element or (helper condition?) sequence
+    Empty -> False
   }
 
   As-Sequence collection . helper condition?
@@ -404,8 +404,8 @@ zip : left right -> do {
 
   Sequence {
     when (next left ; next right) {
-      (Some a ; Some b) -> Some (a ; b)
-      _ -> None
+      (Has a ; Has b) -> Has (a ; b)
+      _ -> Empty
     }
   }
 }
@@ -430,12 +430,12 @@ extend : collection -> Extend (As-Sequence collection)
 Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-Element) (Extend Right Right-Element) => instance (Extend (Left ; Right) (Left-Element ; Right-Element)) : sequence -> (left ; right) -> do {
   repeat with-control-flow {
     when (next sequence) {
-      Some (a ; b) -> do {
-        left! : left . extend (Some a)
-        right! : right . extend (Some b)
-        Continue ()
+      Has (a ; b) -> do {
+        left! : left . extend (Has a)
+        right! : right . extend (Has b)
+        Continue None
       }
-      None -> Stop ()
+      Empty -> Stop None
     }
   }
 
@@ -445,8 +445,8 @@ Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-El
 -- Split a sequence that produces two values at a time into two separate collections.
 @(highlight-category : "sequence")
 @(highlight-icon : "sync-alt")
-unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element ; Right-Element)) (Extend Left Left-Element) (Extend Right Right-Element) (Empty Left) (Empty Right) => Collection -> (Left ; Right)
-unzip : collection -> (Empty ; Empty) . extend (As-Sequence collection)
+unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element ; Right-Element)) (Extend Left Left-Element) (Extend Right Right-Element) (Initial Left) (Initial Right) => Collection -> (Left ; Right)
+unzip : collection -> (Initial ; Initial) . extend (As-Sequence collection)
 
 Container : Collection (infer Element) => trait (Element -> Collection -> Boolean)
 
@@ -461,8 +461,8 @@ Element where (Equal Element) => instance (Container (List Element) Element) : t
 
   repeat with-control-flow {
     when (next sequence) {
-      Some element -> if (element = target) {Stop True} {Continue ()}
-      None -> Stop False
+      Has element -> if (element = target) {Stop True} {Continue None}
+      Empty -> Stop False
     }
   }
 }

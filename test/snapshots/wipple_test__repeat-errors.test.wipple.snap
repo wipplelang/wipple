@@ -22,11 +22,11 @@ diagnostics:
       start:
         line: 3
         column: 0
-        index: 40
+        index: 44
       end:
         line: 3
         column: 14
-        index: 54
+        index: 58
     severity: error
     template:
       id: missing-repeat
@@ -36,11 +36,11 @@ diagnostics:
       start:
         line: 4
         column: 0
-        index: 58
+        index: 66
       end:
         line: 4
         column: 7
-        index: 65
+        index: 73
     severity: error
     template:
       id: missing-repeat
@@ -50,11 +50,11 @@ diagnostics:
       start:
         line: 5
         column: 0
-        index: 69
+        index: 81
       end:
         line: 5
         column: 9
-        index: 78
+        index: 90
     severity: error
     template:
       id: missing-repeat

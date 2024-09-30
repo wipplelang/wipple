@@ -1,13 +1,12 @@
-@(language : "task-group")
 Task-Group : type intrinsic
 
 -- Wait for the provided function to be called before continuing.
-with-continuation :: Result => ((Result -> Unit) -> Unit) -> Result
+with-continuation :: Result => ((Result -> None) -> None) -> Result
 with-continuation : callback -> intrinsic "with-continuation" callback
 
 -- Create a group of tasks to be executed at the same time. This function
 -- returns once all of the tasks have finished.
-with-task-group :: (Task-Group -> Unit) -> Unit
+with-task-group :: (Task-Group -> None) -> None
 with-task-group : body -> intrinsic "with-task-group" body
 
 -- Like `with-task-group`, but returns immediately with the task group. You must
@@ -16,15 +15,15 @@ begin-task-group :: Task-Group
 begin-task-group : intrinsic "begin-task-group"
 
 -- Wait for the tasks to finish in a task group created by `begin-task-group`.
-end-task-group :: Task-Group -> Unit
+end-task-group :: Task-Group -> None
 end-task-group : task-group -> intrinsic "end-task-group" task-group
 
 -- Run a task in a task group.
-task :: {Unit} -> Task-Group -> Unit
+task :: {None} -> Task-Group -> None
 task : body -> group -> intrinsic "task" group body
 
 -- Execute code in the background without waiting for it to finish.
-in-background :: {Unit} -> Unit
+in-background :: {None} -> None
 in-background : body -> intrinsic "in-background" body
 
 Task-Local-Key : Value => type intrinsic
@@ -34,7 +33,7 @@ task-local-key :: Value => Task-Local-Key Value
 task-local-key : intrinsic "task-local-key"
 
 -- Set a value for the current task.
-set-task-local :: Value => (Task-Local-Key Value) -> Value -> Unit
+set-task-local :: Value => (Task-Local-Key Value) -> Value -> None
 set-task-local : key -> value -> intrinsic "set-task-local" key value
 
 -- Retrieve a value for the current task.
