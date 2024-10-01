@@ -8,11 +8,11 @@ diagnostics:
       start:
         line: 11
         column: 0
-        index: 204
+        index: 218
       end:
         line: 11
         column: 1
-        index: 205
+        index: 219
     severity: error
     template:
       id: unresolved-instance

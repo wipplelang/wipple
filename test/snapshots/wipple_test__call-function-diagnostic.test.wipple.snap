@@ -8,11 +8,11 @@ diagnostics:
       start:
         line: 5
         column: 14
-        index: 116
+        index: 118
       end:
         line: 5
         column: 27
-        index: 129
+        index: 131
     severity: error
     template:
       id: mismatched-types

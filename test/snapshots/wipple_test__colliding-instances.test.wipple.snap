@@ -8,11 +8,11 @@ diagnostics:
       start:
         line: 5
         column: 0
-        index: 47
+        index: 49
       end:
         line: 5
         column: 14
-        index: 61
+        index: 63
     severity: error
     template:
       id: instance-already-exists
@@ -22,11 +22,11 @@ diagnostics:
       start:
         line: 6
         column: 0
-        index: 67
+        index: 71
       end:
         line: 6
         column: 14
-        index: 81
+        index: 85
     severity: error
     template:
       id: instance-already-exists
@@ -36,11 +36,11 @@ diagnostics:
       start:
         line: 8
         column: 0
-        index: 88
+        index: 94
       end:
         line: 8
         column: 14
-        index: 102
+        index: 108
     severity: error
     template:
       id: instance-already-exists

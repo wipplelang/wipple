@@ -1,9 +1,9 @@
 -- [should warn]
 
-x : when (Some 42) {
-  Some _ -> "a"
-  Some _ -> "b"
-  None -> "c"
+x : when (Has 42) {
+  Has _ -> "a"
+  Has _ -> "b"
+  Empty -> "c"
   _ -> "d"
 }
 

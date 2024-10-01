@@ -3,9 +3,9 @@
 -- directly.
 Color : type Text
 
-() where (Error "unused-color") => instance (Unused Color)
+_ where (Error "unused-color") => instance (Unused Color)
 
-instance (Random Unit Color) : () -> do {
+instance (Random None Color) : None -> do {
   red : random (0 to 256)
   green : random (0 to 256)
   blue : random (0 to 256)

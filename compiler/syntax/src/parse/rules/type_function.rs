@@ -1,6 +1,6 @@
 use crate::{
-    parse::{base::Rule, name, r#type, SyntaxKind, Type},
-    tokenize::NonAssociativeOperator,
+    parse::{base::Rule, name, r#type, render::RuleToRender, SyntaxKind, Type},
+    tokenize::{Keyword, NonAssociativeOperator, TokenTree},
     Driver,
 };
 use derivative::Derivative;
@@ -114,9 +114,15 @@ pub fn type_function<D: Driver>() -> Rule<D, TypeFunction<D>> {
                             SyntaxKind::TypeParameter,
                             [
                                 || {
-                                    Rule::empty_list(
+                                    Rule::match_terminal(
                                         SyntaxKind::TypeParameter,
-                                        Vec::default_from_info,
+                                        RuleToRender::UNDERSCORE,
+                                        |_, tree, _| match tree.item {
+                                            TokenTree::Keyword(Keyword::Underscore) => {
+                                                Some(tree.replace(Vec::new()))
+                                            }
+                                            _ => None,
+                                        },
                                     )
                                     .in_list()
                                 },

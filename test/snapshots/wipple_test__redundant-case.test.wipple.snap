@@ -8,11 +8,11 @@ diagnostics:
       start:
         line: 4
         column: 2
-        index: 57
+        index: 55
       end:
         line: 4
-        column: 8
-        index: 63
+        column: 7
+        index: 60
     severity: warning
     template:
       id: extra-pattern
@@ -22,11 +22,11 @@ diagnostics:
       start:
         line: 6
         column: 2
-        index: 87
+        index: 85
       end:
         line: 6
         column: 3
-        index: 88
+        index: 86
     severity: warning
     template:
       id: extra-pattern

@@ -8,11 +8,11 @@ diagnostics:
       start:
         line: 14
         column: 0
-        index: 325
+        index: 331
       end:
         line: 14
         column: 7
-        index: 332
+        index: 338
     severity: error
     template:
       id: missing-pixels

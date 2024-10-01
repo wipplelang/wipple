@@ -121,7 +121,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                             span: 0..driver.file_size(),
                         }
                         .into(),
-                        item: TokenTree::Block(Vec::new()),
+                        item: TokenTree::EmptyFile,
                     },
                     Vec::new(),
                 )
@@ -322,10 +322,17 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         }
                     };
 
+                    let info = D::merge_info(begin_info, info.clone());
+
+                    let delimiter = WithInfo {
+                        info: info.clone(),
+                        item: delimiter,
+                    };
+
                     // Call `parse_operators` on the list contents before
                     // merging it back onto the stack.
                     push!(WithInfo {
-                        info: D::merge_info(begin_info, info),
+                        info,
                         item: parse_operators::<D>(delimiter, expressions, &mut diagnostics),
                     });
                 }
@@ -370,15 +377,19 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                     // operators, so if there is no line break, we need to do
                     // that here.
                     if let Some(tree) = statements.last_mut() {
-                        if matches!(&tree.item, TokenTree::List(_, elements) if elements.is_empty())
+                        if matches!(&tree.item, TokenTree::List(_, expressions) if expressions.is_empty())
                         {
-                            statements.pop().unwrap();
+                            statements.pop();
                         } else {
                             let (delimiter, expressions) = match &mut tree.item {
-                                TokenTree::List(delimiter, expressions) => {
-                                    (*delimiter, mem::take(expressions))
-                                }
-                                _ => unreachable!(),
+                                TokenTree::List(delimiter, expressions) => (
+                                    WithInfo {
+                                        info: tree.info.clone(),
+                                        item: *delimiter,
+                                    },
+                                    mem::take(expressions),
+                                ),
+                                _ => panic!("{:#?}", tree),
                             };
 
                             // Make the statement's info span from its first
@@ -393,13 +404,20 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         }
                     }
 
-                    // Remove any empty statements.
-                    statements.retain(|tree| !matches!(&tree.item, TokenTree::List(_, elements) if elements.is_empty()));
+                    let info = D::merge_info(begin_info.clone(), info.clone());
 
-                    push!(WithInfo {
-                        info: D::merge_info(begin_info, info),
-                        item: TokenTree::Block(statements),
-                    });
+                    let item = if statements.is_empty() {
+                        diagnostics.push(WithInfo {
+                            info: info.clone(),
+                            item: Diagnostic::EmptyBraces,
+                        });
+
+                        TokenTree::Error
+                    } else {
+                        TokenTree::Block(statements)
+                    };
+
+                    push!(WithInfo { info, item });
                 }
                 Token::LineBreak => {
                     // Line breaks are only significant in blocks because they
@@ -415,22 +433,34 @@ impl<'src, D: Driver> TokenTree<'src, D> {
                         Some((begin_info, TokenTree::Block(statements))) => {
                             if let Some(tree) = statements.last_mut() {
                                 let (delimiter, expressions) = match &mut tree.item {
-                                    TokenTree::List(delimiter, expressions) => {
-                                        (*delimiter, mem::take(expressions))
-                                    }
+                                    TokenTree::List(delimiter, expressions) => (
+                                        WithInfo {
+                                            info: tree.info.clone(),
+                                            item: *delimiter,
+                                        },
+                                        mem::take(expressions),
+                                    ),
                                     _ => unreachable!(),
                                 };
 
-                                // Make the statement's info span from its first
-                                // expression to its last.
-                                if let Some(first) = expressions.first() {
-                                    let last = expressions.last().unwrap();
-                                    tree.info =
-                                        D::merge_info(first.info.clone(), last.info.clone());
-                                }
+                                if expressions.is_empty() {
+                                    // Ignore empty statements.
+                                    statements.pop();
+                                } else {
+                                    // Make the statement's info span from its first
+                                    // expression to its last.
+                                    if let Some(first) = expressions.first() {
+                                        let last = expressions.last().unwrap();
+                                        tree.info =
+                                            D::merge_info(first.info.clone(), last.info.clone());
+                                    }
 
-                                tree.item =
-                                    parse_operators::<D>(delimiter, expressions, &mut diagnostics);
+                                    tree.item = parse_operators::<D>(
+                                        delimiter,
+                                        expressions,
+                                        &mut diagnostics,
+                                    );
+                                }
                             }
 
                             statements.push(WithInfo {
@@ -628,11 +658,19 @@ impl<'src, D: Driver> TokenTree<'src, D> {
             }
         };
 
-        // Remove any empty statements.
         if let TokenTree::Block(statements) = &mut tree.item {
-            statements.retain(
-                |tree| !matches!(&tree.item, TokenTree::List(_, elements) if elements.is_empty()),
-            );
+            // If there's a trailing line break, remove the inserted empty statement.
+            if let Some(statement) = statements.last() {
+                if matches!(&statement.item, TokenTree::List(_, expressions) if expressions.is_empty())
+                {
+                    statements.pop();
+                }
+            }
+
+            // If there are no statements at all, produce an empty file.
+            if statements.is_empty() {
+                tree.item = TokenTree::EmptyFile;
+            }
         }
 
         (tree, diagnostics)
@@ -664,7 +702,7 @@ impl<'src, D: Driver> TokenTree<'src, D> {
 // Once we have all the expressions in a list or statement, recursively parse
 // any operators contained within.
 fn parse_operators<'src, D: Driver>(
-    delimiter: ListDelimiter,
+    delimiter: WithInfo<D::Info, ListDelimiter>,
     expressions: Vec<WithInfo<D::Info, TokenTree<'src, D>>>,
     diagnostics: &mut Vec<WithInfo<D::Info, Diagnostic<D>>>,
 ) -> TokenTree<'src, D> {
@@ -714,9 +752,17 @@ fn parse_operators<'src, D: Driver>(
         (left, right) => left.cmp(&right),
     });
 
-    // If there are no operators, return the list as-is.
+    // If there are no operators...
     if operators.is_empty() {
-        return TokenTree::List(delimiter, expressions);
+        if expressions.is_empty() {
+            // ...and there are no expressions, produce an error.
+            diagnostics.push(delimiter.replace(Diagnostic::EmptyParentheses));
+
+            return TokenTree::Error;
+        } else {
+            // ...otherwise, return the list as-is.
+            return TokenTree::List(delimiter.item, expressions);
+        }
     }
 
     // All the operators in `operators` have the same precedence, and all
@@ -810,9 +856,14 @@ fn parse_operators<'src, D: Driver>(
                         group.last().unwrap().info.clone(),
                     );
 
+                    let delimiter = WithInfo {
+                        info: info.clone(),
+                        item: ListDelimiter::Parentheses,
+                    };
+
                     WithInfo {
                         info,
-                        item: parse_operators::<D>(ListDelimiter::Parentheses, group, diagnostics),
+                        item: parse_operators::<D>(delimiter, group, diagnostics),
                     }
                 })
                 .collect::<Vec<_>>();
@@ -886,14 +937,24 @@ fn split_at_operator<'src, D: Driver>(
                 right.last().unwrap().info.clone(),
             );
 
+            let left_delimiter = WithInfo {
+                info: left_info.clone(),
+                item: ListDelimiter::Parentheses,
+            };
+
+            let right_delimiter = WithInfo {
+                info: right_info.clone(),
+                item: ListDelimiter::Parentheses,
+            };
+
             (
                 WithInfo {
                     info: left_info,
-                    item: parse_operators::<D>(ListDelimiter::Parentheses, left, diagnostics),
+                    item: parse_operators::<D>(left_delimiter, left, diagnostics),
                 },
                 WithInfo {
                     info: right_info,
-                    item: parse_operators::<D>(ListDelimiter::Parentheses, right, diagnostics),
+                    item: parse_operators::<D>(right_delimiter, right, diagnostics),
                 },
             )
         }
@@ -907,10 +968,15 @@ fn split_at_operator<'src, D: Driver>(
                 left.last().unwrap().info.clone(),
             );
 
+            let left_delimiter = WithInfo {
+                info: left_info.clone(),
+                item: ListDelimiter::Parentheses,
+            };
+
             (
                 WithInfo {
                     info: left_info,
-                    item: parse_operators::<D>(ListDelimiter::Parentheses, left, diagnostics),
+                    item: parse_operators::<D>(left_delimiter, left, diagnostics),
                 },
                 WithInfo {
                     info,
@@ -927,6 +993,11 @@ fn split_at_operator<'src, D: Driver>(
                 right.last().unwrap().info.clone(),
             );
 
+            let right_delimiter = WithInfo {
+                info: right_info.clone(),
+                item: ListDelimiter::Parentheses,
+            };
+
             (
                 WithInfo {
                     info,
@@ -934,7 +1005,7 @@ fn split_at_operator<'src, D: Driver>(
                 },
                 WithInfo {
                     info: right_info,
-                    item: parse_operators::<D>(ListDelimiter::Parentheses, right, diagnostics),
+                    item: parse_operators::<D>(right_delimiter, right, diagnostics),
                 },
             )
         }

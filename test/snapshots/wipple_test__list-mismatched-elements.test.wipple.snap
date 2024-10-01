@@ -27,12 +27,28 @@ diagnostics:
         index: 40
       end:
         line: 2
-        column: 23
-        index: 42
+        column: 25
+        index: 44
     severity: error
     template:
       id: mismatched-types
       data:
         expected: a number
         found: no value
+  - location:
+      path: tests/list-mismatched-elements.test.wipple
+      start:
+        line: 2
+        column: 21
+        index: 40
+      end:
+        line: 2
+        column: 25
+        index: 44
+    severity: error
+    template:
+      id: mismatched-types
+      data:
+        expected: no value
+        found: a number
 output: []

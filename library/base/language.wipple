@@ -123,19 +123,18 @@ intrinsic "::"
 -- ```
 intrinsic "=>"
 
+@(language : "none")
+None : type
+
 @(language : "number")
 Number : type intrinsic
 
 @(language : "text")
 Text : type intrinsic
 
-@(language : "maybe")
 Maybe : Value => type {
-  @(language : "none")
-  None
-
-  @(language : "some")
-  Some Value
+  Empty
+  Has Value
 }
 
 @(language : "as")
@@ -146,31 +145,31 @@ Input Output where (Error ("cannot-convert" ; Error-Data "input" Input ; Error-D
 
 Value => instance (As Value Value) : value -> value
 
-error :: (Value : Unit) => Text -> Value
+error :: (Value : None) => Text -> Value
 error : message -> intrinsic "crash" message
 
 ... :: Value => Value
 ... : error "not implemented"
 
-assert :: Text -> Boolean -> Unit
-assert : message -> condition -> if condition {} {error message}
+assert :: Text -> Boolean -> None
+assert : message -> condition -> if condition {None} {error message}
 
 unreachable :: Value => Value
 unreachable : error "unreachable"
 
 -- Represents the default or initial value of a type.
-Empty : Value => trait Value
+Initial : Value => trait Value
 
-Value where (Error ("no-empty-value" ; Error-Data "value" Value)) =>
-  default instance (Empty Value) : ...
+Value where (Error ("no-initial-value" ; Error-Data "value" Value)) =>
+  default instance (Initial Value) : ...
 
-instance (Empty Number) : 0
-instance (Empty Text) : ""
-instance (Empty Boolean) : False
-Value => instance (Empty (Maybe Value)) : None
+instance (Initial Number) : 0
+instance (Initial Text) : ""
+instance (Initial Boolean) : False
+Value => instance (Initial (Maybe Value)) : Empty
 
 -- Send a message to the runtime.
-runtime-message :: Input (Output : Unit) => Text Input -> Output
+runtime-message :: Input (Output : None) => Text Input -> Output
 runtime-message : message data -> intrinsic "runtime-message" message data
 
 -- Generate a compile-time error with the provided information. You may provide
@@ -217,7 +216,7 @@ Source : type intrinsic
 -- ## Example
 --
 -- ```wipple
--- () where (Error "expected-unit") =>
+-- _ where (Error "expected-unit") =>
 --   instance (Mismatch Distance Number) : ...
 -- ```
 @(language : "mismatch")
@@ -239,7 +238,7 @@ Describe-Type : Type (infer Description) => trait
 @(language : "no-grammar")
 No-Grammar : Message => type
 
-instance (Describe-Type Unit (No-Grammar "no value"))
+instance (Describe-Type None (No-Grammar "no value"))
 instance (Describe-Type Number "number")
 instance (Describe-Type Text (No-Grammar "text"))
 Input Output => default instance (Describe-Type (Input -> Output) "function")

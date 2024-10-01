@@ -7,7 +7,7 @@ Valid-Number : type Number
 valid :: Number -> Valid-Number
 valid : Valid-Number
 
-validate :: Value where (Valid Value) => Value -> Unit
+validate :: Value where (Valid Value) => Value -> None
 validate : ...
 
 Value where (Error ("missing-valid" ; Error-Location Value)) =>

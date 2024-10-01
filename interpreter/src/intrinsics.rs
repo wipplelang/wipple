@@ -35,7 +35,7 @@ pub fn intrinsics<R: Runtime>() -> HashMap<&'static str, Intrinsic<R>> {
         let message = inputs.into_iter().next().unwrap().to_text();
         (context.io.display)(message).await?;
 
-        Ok(Value::unit())
+        Ok(Value::Marker)
     });
 
     intrinsic!("prompt", async |inputs, context, task| {
@@ -61,7 +61,7 @@ pub fn intrinsics<R: Runtime>() -> HashMap<&'static str, Intrinsic<R>> {
                 async move {
                     let value = context
                         .call(validate, vec![Value::from_text(input)], task)
-                        .await?
+                        .await?.unwrap()
                         .to_maybe();
 
                     if let Some(value) = value {
@@ -133,7 +133,7 @@ pub fn intrinsics<R: Runtime>() -> HashMap<&'static str, Intrinsic<R>> {
                         // Ignore multiple calls to the continuation
                     }
 
-                    Ok(Value::unit())
+                    Ok(Value::Marker)
                 }
                 .boxed()
             });
@@ -167,7 +167,7 @@ pub fn intrinsics<R: Runtime>() -> HashMap<&'static str, Intrinsic<R>> {
 
         task_group.await?;
 
-        Ok(Value::unit())
+        Ok(Value::Marker)
     });
 
     intrinsic!("begin-task-group", async |_, _, _| {
@@ -178,7 +178,7 @@ pub fn intrinsics<R: Runtime>() -> HashMap<&'static str, Intrinsic<R>> {
         let task_group = inputs.into_iter().next().unwrap().to_task_group();
         task_group.await?;
 
-        Ok(Value::unit())
+        Ok(Value::Marker)
     });
 
     intrinsic!("task", async |inputs, context, _| {
@@ -194,7 +194,7 @@ pub fn intrinsics<R: Runtime>() -> HashMap<&'static str, Intrinsic<R>> {
             }))
             .await;
 
-        Ok(Value::unit())
+        Ok(Value::Marker)
     });
 
     intrinsic!("task-local-key", async |_, _, _| {
@@ -208,7 +208,7 @@ pub fn intrinsics<R: Runtime>() -> HashMap<&'static str, Intrinsic<R>> {
 
         task.lock_arc().await.insert(key, value);
 
-        Ok(Value::unit())
+        Ok(Value::Marker)
     });
 
     intrinsic!("task-local", async |inputs, _, task| {
@@ -233,7 +233,7 @@ pub fn intrinsics<R: Runtime>() -> HashMap<&'static str, Intrinsic<R>> {
 
         context.background_tasks.add(task).await;
 
-        Ok(Value::unit())
+        Ok(Value::Marker)
     });
 
     intrinsic!("delay", async |inputs, context, _| {
@@ -252,7 +252,7 @@ pub fn intrinsics<R: Runtime>() -> HashMap<&'static str, Intrinsic<R>> {
 
         (context.io.sleep)(ms).await?;
 
-        Ok(Value::unit())
+        Ok(Value::Marker)
     });
 
     intrinsic!("number-to-text", async |inputs, _, _| {

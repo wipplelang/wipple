@@ -151,7 +151,7 @@ pub struct Context<R: Runtime + ?Sized> {
                 Vec<Value<R>>,
                 TaskLocals<R>,
                 Context<R>,
-            ) -> BoxFuture<'static, Result<Value<R>>>
+            ) -> BoxFuture<'static, Result<Option<Value<R>>>>
             + Send
             + Sync,
     >,
@@ -163,7 +163,7 @@ pub struct Context<R: Runtime + ?Sized> {
                 Bounds,
                 TaskLocals<R>,
                 Context<R>,
-            ) -> BoxFuture<'static, Result<Value<R>>>
+            ) -> BoxFuture<'static, Result<Option<Value<R>>>>
             + Send
             + Sync,
     >,
@@ -241,7 +241,9 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                 )
                 .boxed()
             }
-            Value::NativeFunction(func) => func(inputs, task, context),
+            Value::NativeFunction(func) => {
+                async move { Ok(Some(func(inputs, task, context).await.unwrap())) }.boxed()
+            }
             _ => panic!("expected function"),
         }),
         item_cache: Default::default(),
@@ -258,7 +260,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                     let mut item_cache = context.item_cache.lock_arc().await;
 
                     if let Some(mutex) = item_cache.get(&path) {
-                        return Ok(mutex.lock_arc().await.clone().unwrap());
+                        return Ok(Some(mutex.lock_arc().await.clone().unwrap()));
                     } else {
                         let item_mutex = Arc::new(Mutex::new(None));
                         cached = Some(item_mutex.lock_arc().await);
@@ -321,7 +323,7 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
                 .await?;
 
                 if let Some(mut cached) = cached {
-                    *cached = Some(result.clone());
+                    *cached = Some(result.clone().unwrap());
                 }
 
                 Ok(result)
@@ -348,7 +350,8 @@ pub async fn evaluate<R: Runtime>(executable: Executable, options: Options<R>) -
             task.clone(),
             context.clone(),
         )
-        .await?;
+        .await?
+        .unwrap();
 
         context.debug(|| "executing entrypoint block").await;
 
@@ -369,7 +372,7 @@ async fn evaluate_item<R: Runtime>(
     mut bounds: Bounds,
     task: TaskLocals<R>,
     context: Context<R>,
-) -> Result<Value<R>> {
+) -> Result<Option<Value<R>>> {
     use wipple_driver::ir::Instruction;
 
     let mut blocks = vec![instructions.iter().collect::<VecDeque<_>>()];
@@ -377,6 +380,12 @@ async fn evaluate_item<R: Runtime>(
     macro_rules! peek {
         () => {
             stack.last().expect("stack is empty").clone()
+        };
+    }
+
+    macro_rules! try_pop {
+        () => {
+            stack.pop()
         };
     }
 
@@ -469,12 +478,18 @@ async fn evaluate_item<R: Runtime>(
 
                     let func = pop!();
 
-                    let result = context.call(func, inputs, task.clone()).await?;
+                    let result = context.call(func, inputs, task.clone()).await?.unwrap();
+
                     stack.push(result);
                 }
                 Instruction::Do => {
                     let block = pop!();
-                    let result = context.call(block, Vec::new(), task.clone()).await?;
+
+                    let result = context
+                        .call(block, Vec::new(), task.clone())
+                        .await?
+                        .unwrap();
+
                     stack.push(result);
                 }
                 Instruction::Mutate(variable) => {
@@ -622,7 +637,7 @@ async fn evaluate_item<R: Runtime>(
                     }
                 }
                 Instruction::Return => {
-                    return Ok(pop!());
+                    return Ok(try_pop!());
                 }
                 Instruction::TailCall(inputs) => {
                     let mut inputs = (0..*inputs).map(|_| pop!()).collect::<Vec<_>>();
@@ -704,7 +719,10 @@ async fn evaluate_item<R: Runtime>(
         }
 
         if blocks.pop().is_none() {
-            panic!("ran out of instructions")
+            panic!(
+                "ran out of instructions: {path:?}, {:#?}",
+                context.executable.items.get(&path).unwrap()
+            );
         }
     }
 }
@@ -911,7 +929,7 @@ impl<R: Runtime> Context<R> {
         func: Value<R>,
         inputs: Vec<Value<R>>,
         task: TaskLocals<R>,
-    ) -> Result<Value<R>> {
+    ) -> Result<Option<Value<R>>> {
         (self.call)(func, inputs, task, self.clone()).await
     }
 
@@ -925,6 +943,10 @@ impl<R: Runtime> Context<R> {
         // TODO: Don't clone `bounds` once async closures are stable
         let bounds = bounds.clone();
 
-        (self.get_item)(path, substitutions, bounds, task, self.clone()).await
+        Ok(
+            (self.get_item)(path, substitutions, bounds, task, self.clone())
+                .await?
+                .unwrap(),
+        )
     }
 }

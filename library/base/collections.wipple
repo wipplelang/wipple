@@ -5,8 +5,8 @@ Build-Collection : Element (Collection : List Element) => trait (Element -> Coll
   default instance (Build-Collection Element Collection) : ...
 
 @(language : "initial-collection")
-initial-collection :: (infer Element) (Collection : List Element) where (Empty Collection) (Build-Collection Element Collection) => Collection
-initial-collection : Empty
+initial-collection :: (infer Element) (Collection : List Element) where (Initial Collection) (Build-Collection Element Collection) => Collection
+initial-collection : Initial
 
 Element => instance (Build-Collection Element (List Element)) : append
 Key Value where (Equal Key) (Hash Key) => instance (Build-Collection (Key ; Value) (Dictionary Key Value)) : (key ; value) -> insert-entry key value

@@ -12,7 +12,7 @@ Left Right Sum where (Error ("cannot-add" ; Error-Data "left" Left ; Error-Data 
   default instance (Add Left Right Sum) : ...
 
 Right Sum where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "+")) =>
-  instance (Add Unit Right Sum) : ...
+  instance (Add None Right Sum) : ...
 
 -- Subtract the one value from another, returning the difference.
 @(language : "subtract")
@@ -23,7 +23,7 @@ Left Right Difference where (Error ("cannot-subtract" ; Error-Data "left" Left ;
   default instance (Subtract Left Right Difference) : ...
 
 Right Difference where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "-")) =>
-  instance (Subtract Unit Right Difference) : ...
+  instance (Subtract None Right Difference) : ...
 
 -- Multiply two values together, returning the product.
 @(language : "multiply")
@@ -34,7 +34,7 @@ Left Right Product where (Error ("cannot-multiply" ; Error-Data "left" Left ; Er
   default instance (Multiply Left Right Product) : ...
 
 Right Product where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "*")) =>
-  instance (Multiply Unit Right Product) : ...
+  instance (Multiply None Right Product) : ...
 
 -- Divide two numbers, returning the quotient.
 @(language : "divide")
@@ -45,7 +45,7 @@ Left Right Quotient where (Error ("cannot-divide" ; Error-Data "left" Left ; Err
   default instance (Divide Left Right Quotient) : ...
 
 Right Quotient where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "/")) =>
-  instance (Divide Unit Right Quotient) : ...
+  instance (Divide None Right Quotient) : ...
 
 -- Divide two numbers, returning the remainder.
 @(language : "remainder")
@@ -56,7 +56,7 @@ Left Right Remainder where (Error ("cannot-remainder" ; Error-Data "left" Left ;
   default instance (Remainder Left Right Remainder) : ...
 
 Right Remainder where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "%")) =>
-  instance (Remainder Unit Right Remainder) : ...
+  instance (Remainder None Right Remainder) : ...
 
 -- Raise one number to the power of the other number.
 @(language : "power")
@@ -67,7 +67,7 @@ Left Right Power where (Error ("cannot-power" ; Error-Data "left" Left ; Error-D
   default instance (Power Left Right Power) : ...
 
 Right Power where (Error ("missing-parentheses-around-operator" ; Error-Data "operator" "^")) =>
-  instance (Power Unit Right Power) : ...
+  instance (Power None Right Power) : ...
 
 -- Round down a number to the nearest integer.
 floor :: Number -> Number
@@ -91,7 +91,7 @@ instance (Describe-Type Angle "angle")
 degrees :: Number -> Angle
 degrees : Angle
 
-() where (Error "missing-unit-for-angle") =>
+_ where (Error "missing-unit-for-angle") =>
   instance (Mismatch Number Angle)
 
 -- Calculate the sine of an angle.

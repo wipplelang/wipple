@@ -21,7 +21,6 @@ use wipple_util::{DefaultFromInfo, WithInfo};
 pub enum Type<D: Driver> {
     Error,
     Placeholder,
-    Unit,
     #[serde(rename_all = "camelCase")]
     Declared {
         name: WithInfo<D::Info, Option<String>>,
@@ -90,46 +89,23 @@ pub fn declared_type<D: Driver>() -> Rule<D, Type<D>> {
         SyntaxKind::DeclaredType,
         [
             || {
-                Rule::empty_list(SyntaxKind::DeclaredType, |info| WithInfo {
-                    info,
-                    item: Type::Unit,
-                })
-            },
-            || {
-                name().wrapped().map(SyntaxKind::DeclaredType, |name| {
-                    // Special case: `Unit` is equivalent to `()`
-                    if name.item.as_deref() == Some("Unit") {
-                        Type::Unit
-                    } else {
-                        Type::Declared {
-                            name,
-                            parameters: Vec::new(),
-                        }
-                    }
-                })
+                name()
+                    .wrapped()
+                    .map(SyntaxKind::DeclaredType, |name| Type::Declared {
+                        name,
+                        parameters: Vec::new(),
+                    })
             },
             || {
                 Rule::list_prefix(
                     SyntaxKind::DeclaredType,
                     || name().wrapped(),
                     r#type,
-                    |parser, info, name, types, stack| WithInfo {
+                    |_, info, name, types, _| WithInfo {
                         info,
-                        // Special case: `Unit` is equivalent to `()` and
-                        // does not accept parameters
-                        item: if name.item.as_deref() == Some("Unit") {
-                            for r#type in types {
-                                parser.add_diagnostic(
-                                    stack.error_expected(r#type.replace(SyntaxKind::Nothing), None),
-                                );
-                            }
-
-                            Type::Unit
-                        } else {
-                            Type::Declared {
-                                name,
-                                parameters: types,
-                            }
+                        item: Type::Declared {
+                            name,
+                            parameters: types,
                         },
                     },
                 )
@@ -184,58 +160,44 @@ pub fn tuple_type<D: Driver>() -> Rule<D, Type<D>> {
 pub fn block_type<D: Driver>() -> Rule<D, Type<D>> {
     Rule::switch(
         SyntaxKind::BlockType,
-        [
-            || {
-                Rule::empty_block(SyntaxKind::BlockType, |info| WithInfo {
-                    info: D::Info::clone(&info),
-                    item: Type::Block(
-                        WithInfo {
-                            info,
-                            item: Type::Unit,
-                        }
-                        .boxed(),
-                    ),
-                })
-            },
-            || {
-                Rule::block(
-                    SyntaxKind::BlockType,
-                    r#type,
-                    |parser, info, types, stack| {
-                        let mut types = types.into_iter();
+        [|| {
+            Rule::block(
+                SyntaxKind::BlockType,
+                r#type,
+                |parser, info, types, stack| {
+                    let mut types = types.into_iter();
 
-                        let r#type = match types.next() {
-                            Some(r#type) => r#type,
-                            None => {
-                                parser.add_diagnostic(stack.error_expected(
-                                    WithInfo {
-                                        info: D::Info::clone(&info),
-                                        item: SyntaxKind::Type,
-                                    },
-                                    None,
-                                ));
-
+                    let r#type = match types.next() {
+                        Some(r#type) => r#type,
+                        None => {
+                            parser.add_diagnostic(stack.error_expected(
                                 WithInfo {
-                                    info: info.clone(),
-                                    item: Type::Error,
-                                }
+                                    info: D::Info::clone(&info),
+                                    item: SyntaxKind::Type,
+                                },
+                                None,
+                            ));
+
+                            WithInfo {
+                                info: info.clone(),
+                                item: Type::Error,
                             }
-                        };
-
-                        for r#type in types {
-                            parser.add_diagnostic(
-                                stack.error_expected(r#type.replace(SyntaxKind::Nothing), None),
-                            );
                         }
+                    };
 
-                        WithInfo {
-                            info,
-                            item: Type::Block(r#type.boxed()),
-                        }
-                    },
-                )
-            },
-        ],
+                    for r#type in types {
+                        parser.add_diagnostic(
+                            stack.error_expected(r#type.replace(SyntaxKind::Nothing), None),
+                        );
+                    }
+
+                    WithInfo {
+                        info,
+                        item: Type::Block(r#type.boxed()),
+                    }
+                },
+            )
+        }],
     )
     .named("A type whose value is computed from a block expression.")
 }

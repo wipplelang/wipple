@@ -11,7 +11,6 @@ pub fn pattern<D: Driver>(
     pattern_syntax.map(|pattern_syntax| match pattern_syntax {
         parse::Pattern::Error => crate::Pattern::Error,
         parse::Pattern::Wildcard => crate::Pattern::Wildcard,
-        parse::Pattern::Unit => crate::Pattern::Tuple(Vec::new()),
         parse::Pattern::Number(num) => crate::Pattern::Number(num),
         parse::Pattern::Text(text) => crate::Pattern::Text(text),
         parse::Pattern::Name(name) => crate::Pattern::Name(name),

@@ -1,9 +1,9 @@
 -- [should error]
 
-T : A => trait (A -> Unit)
+T : A => trait (A -> None)
 
-instance (T Number) : _ -> ()
-instance (T Text) : _ -> ()
+instance (T Number) : _ -> None
+instance (T Text) : _ -> None
 
 f :: A B where (T A) (T B) => (A ; B)
 f : ...

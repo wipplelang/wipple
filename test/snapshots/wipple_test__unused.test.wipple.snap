@@ -8,11 +8,11 @@ diagnostics:
       start:
         line: 14
         column: 0
-        index: 253
+        index: 252
       end:
         line: 14
         column: 12
-        index: 265
+        index: 264
     severity: error
     template:
       id: important-must-be-handled

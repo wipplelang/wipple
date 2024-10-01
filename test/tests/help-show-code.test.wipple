@@ -1,6 +1,6 @@
 -- [should error]
 
-Compatible : Left Right => trait (Left Right -> Unit)
+Compatible : Left Right => trait (Left Right -> None)
 
 Left Right where (Error ("incompatible" ; Error-Data "left" Left ; Error-Data "right" Right)) =>
   default instance (Compatible Left Right) : ...

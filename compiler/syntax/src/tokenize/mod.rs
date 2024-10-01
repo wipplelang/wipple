@@ -304,6 +304,12 @@ pub enum Diagnostic<D: Driver> {
     /// The tokenizer encountered an invalid token.
     InvalidToken,
 
+    /// The tokenizer encountered an empty pair of parentheses.
+    EmptyParentheses,
+
+    /// The tokenizer encountered an empty pair of braces.
+    EmptyBraces,
+
     /// The tokenizer expected one token, but a different one was found.
     Mismatch {
         /// The expected token, or `None` if the end of the file was expected.
@@ -332,6 +338,7 @@ pub enum Diagnostic<D: Driver> {
 #[serde(rename_all = "camelCase")]
 pub enum TokenTree<'src, D: Driver> {
     Error,
+    EmptyFile,
     List(ListDelimiter, Vec<WithInfo<D::Info, TokenTree<'src, D>>>),
     Block(Vec<WithInfo<D::Info, TokenTree<'src, D>>>),
     Operator(

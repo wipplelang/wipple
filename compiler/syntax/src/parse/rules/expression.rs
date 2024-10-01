@@ -1,7 +1,7 @@
 use crate::{
     parse::{
-        base::Rule, name, number, pattern, r#type, statement, text, FieldValue, Pattern, Statement,
-        SyntaxKind, Type,
+        base::Rule, name, number, pattern, r#type, statement, text, Direction, FieldValue, Pattern,
+        Statement, SyntaxKind, Type,
     },
     tokenize::{Keyword, NonAssociativeOperator, Operator, VariadicOperator},
     BinaryOperator, Driver,
@@ -30,7 +30,6 @@ pub enum Expression<D: Driver> {
     Name(String),
     Number(String),
     Text(String),
-    Unit,
     Block(Vec<WithInfo<D::Info, Statement<D>>>),
     Do(WithInfo<D::Info, Box<Expression<D>>>),
     #[serde(rename_all = "camelCase")]
@@ -188,11 +187,21 @@ pub fn call_expression<D: Driver>() -> Rule<D, Expression<D>> {
     Rule::list(
         SyntaxKind::CallExpression,
         expression,
-        |_, info, expressions, _| match expressions.len() {
-            0 => WithInfo {
-                info,
-                item: Expression::Unit,
-            },
+        |_, info, expressions, stack| match expressions.len() {
+            0 => {
+                stack.error_expected(
+                    WithInfo {
+                        info: D::Info::clone(&info),
+                        item: SyntaxKind::Expression,
+                    },
+                    Direction::After(SyntaxKind::LeftParenthesis),
+                );
+
+                WithInfo {
+                    info,
+                    item: Expression::Error,
+                }
+            }
             1 => expressions.into_iter().next().unwrap(),
             _ => {
                 let mut expressions = expressions.into_iter();

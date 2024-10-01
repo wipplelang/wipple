@@ -12,7 +12,7 @@ repeat :: State Body Result where (Repeat-Predicate State Body Result) => State 
 
 ## Start with the types
 
-Before we write any executable code, let's think about how having a user-specified method for controlling the loop — a **predicate** — influences what types we need. For simplicity, our initial version of `repeat` will always return `Unit` rather than a generic `Result`. Let's start by thinking about the relationship the predicate establishes between its inputs and outputs.
+Before we write any executable code, let's think about how having a user-specified method for controlling the loop — a **predicate** — influences what types we need. For simplicity, our initial version of `repeat` will always return `None` rather than a generic `Result`. Let's start by thinking about the relationship the predicate establishes between its inputs and outputs.
 
 We have two components in our relationship:
 
@@ -68,7 +68,7 @@ OK, let's update our trait to use our new version of `Control-Flow`!
 -- `Continue` with the next state or `Stop`.
 Repeat-Predicate : State => trait (State -> Control-Flow State)
 
-repeat :: State where (Repeat-Predicate State) => State {Unit} -> Unit
+repeat :: State where (Repeat-Predicate State) => State {None} -> None
 ```
 
 ## Writing the implementation
@@ -78,10 +78,10 @@ Now that we have types representing the possible interactions in our code, we ca
 Here is the type of `repeat` from above, ignoring the bounds:
 
 ```wipple
-repeat :: State {Unit} -> Unit
+repeat :: State {None} -> None
 ```
 
-So we need a function that takes a `State` and a `{Unit}`:
+So we need a function that takes a `State` and a `{None}`:
 
 ```wipple
 repeat : state body -> ...
@@ -116,7 +116,7 @@ On the `Continue` arm, we execute `body`, and then call `repeat` again with our 
 Here's the full code:
 
 ```wipple
-repeat :: State where (Repeat-Predicate State) => State {Unit} -> Unit
+repeat :: State where (Repeat-Predicate State) => State {None} -> None
 repeat : state body -> when (Repeat-Predicate state) {
     Continue next -> do {
         do body
@@ -173,7 +173,7 @@ Hello, world!
 >
 > My-Repeat-Predicate : State => trait (State -> My-Control-Flow State)
 >
-> my-repeat :: State where (My-Repeat-Predicate State) => State {Unit} -> Unit
+> my-repeat :: State where (My-Repeat-Predicate State) => State {None} -> None
 > my-repeat : state body -> when (My-Repeat-Predicate state) {
 >     My-Continue next -> do {
 >         do body
@@ -203,7 +203,7 @@ Hello, world!
 Let's try to implement the `with-control-flow` predicate, which allows the user to provide a `Control-Flow` themselves in the body, and is more complicated in two ways:
 
 -   Whether the loop continues or not depends on the result of the loop's body.
--   When the loop exits, it can return something other than `Unit`.
+-   When the loop exits, it can return something other than `None`.
 
 We'll need to change our definitions of `Control-Flow` and `Repeat-Predicate` to accommodate these requirements.
 
@@ -249,15 +249,15 @@ Now we can implement `with-control-flow`, which starts in the `Continue` state a
 ```wipple
 -- Store the previous `Control-Flow` returned by the body
 With-Control-Flow : Result => type {
-    current :: Control-Flow Unit Result
+    current :: Control-Flow None Result
 }
 
 -- Start in the `Continue` state so the loop runs at least once
 with-control-flow :: Result => With-Control-Flow Result
 with-control-flow : {current : Continue ()}
 
--- The loop body must return a `Control-Flow Unit Result`
-Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow Unit Result) Result) :
+-- The loop body must return a `Control-Flow None Result`
+Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow None Result) Result) :
     {current : current} -> when current {
         -- If we stored a `Continue`, the new state is the result of the body,
         -- which will influence whether the loop is run again the next time
@@ -293,10 +293,10 @@ done
 > <details>
 > <summary><strong>Show answer</strong></summary>
 >
-> `Body` and `Result` are both `Unit`, just like before. Wrap `(n - 1) times` in a function:
+> `Body` and `Result` are both `None`, just like before. Wrap `(n - 1) times` in a function:
 >
 > ```wipple
-> instance (Repeat-Predicate Times Unit Unit) : (Times n) ->
+> instance (Repeat-Predicate Times None None) : (Times n) ->
 >     if (n > 0) {Continue (() -> (n - 1) times)} {Stop ()}
 > ```
 >

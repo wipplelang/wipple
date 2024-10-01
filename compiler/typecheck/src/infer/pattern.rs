@@ -164,6 +164,34 @@ pub fn infer_pattern<D: Driver>(
                 infer_pattern(field.item.pattern.as_mut(), r#type, context);
             }
         }
+        crate::Pattern::Marker(path) => {
+            let type_declaration = context.driver.get_type_declaration(path);
+
+            let instantiation_context = InstantiationContext::from_parameters(
+                context.driver,
+                type_declaration.item.parameters,
+                context.type_context,
+                pattern.info.clone(),
+                context.error_queue,
+                context.errors,
+            );
+
+            let marker_type = Type::new(
+                TypeKind::Declared {
+                    path: path.clone(),
+                    parameters: instantiation_context.into_types_for_parameters(),
+                },
+                pattern.info,
+            );
+
+            try_unify(
+                context.driver,
+                r#type.as_ref(),
+                &marker_type,
+                context.type_context,
+                context.error_queue,
+            );
+        }
         crate::Pattern::Variant {
             variant,
             value_patterns,

@@ -1065,6 +1065,9 @@ pub enum Pattern<D: Driver> {
         value_patterns: Vec<WithInfo<D::Info, Pattern<D>>>,
     },
 
+    /// A marker pattern.
+    Marker(D::Path),
+
     /// A wrapper pattern.
     Wrapper {
         /// The wrapper type this pattern matches.
@@ -1256,7 +1259,8 @@ impl<'a, D: Driver> Traverse<'a, D::Info> for WithInfo<D::Info, &'a Pattern<D>> 
             | Pattern::Wildcard
             | Pattern::Number(_)
             | Pattern::Text(_)
-            | Pattern::Variable(_, _) => {}
+            | Pattern::Variable(_, _)
+            | Pattern::Marker(_) => {}
         }
     }
 }

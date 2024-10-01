@@ -32,7 +32,7 @@ diagnostics:
     template:
       id: unresolved-instance
       data:
-        instance: Or Unit Boolean _
+        instance: Or None Boolean _
         trait: show True or False
   - location:
       path: tests/operator-without-parentheses.test.wipple

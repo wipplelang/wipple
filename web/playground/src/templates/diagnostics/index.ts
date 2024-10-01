@@ -12,6 +12,8 @@ import { cannotPowerTemplate } from "./cannot-power";
 import { cannotReadTemplate } from "./cannot-read";
 import { cannotRemainderTemplate } from "./cannot-remainder";
 import { cannotSubtractTemplate } from "./cannot-subtract";
+import { emptyBracesTemplate } from "./empty-braces";
+import { emptyParenthesesTemplate } from "./empty-parentheses";
 import { expectedTimesAfterNumberTemplate } from "./expected-times-after-number";
 import { extraBoundTemplate } from "./extra-bound";
 import { extraClosingBraceTemplate } from "./extra-closing-brace";
@@ -59,7 +61,7 @@ import { missingVariantTemplate } from "./missing-variant";
 import { multipleDefinitionsTemplate } from "./multiple-definitions";
 import { namingConventionTemplate } from "./naming-convention";
 import { nestedLanguageDeclarationTemplate } from "./nested-language-declaration";
-import { noEmptyValueTemplate } from "./no-empty-value";
+import { noInitialValueTemplate } from "./no-initial-value";
 import { notAStructureTemplate } from "./not-a-structure";
 import { notAWrapperTemplate } from "./not-a-wrapper";
 import { partiallyUnknownTypeTemplate } from "./partially-unknown-type";
@@ -149,6 +151,8 @@ const diagnosticTemplates = {
     "cannot-read": cannotReadTemplate,
     "cannot-remainder": cannotRemainderTemplate,
     "cannot-subtract": cannotSubtractTemplate,
+    "empty-braces": emptyBracesTemplate,
+    "empty-parentheses": emptyParenthesesTemplate,
     "expected-times-after-number": expectedTimesAfterNumberTemplate,
     "extra-bound": extraBoundTemplate,
     "extra-closing-brace": extraClosingBraceTemplate,
@@ -196,7 +200,7 @@ const diagnosticTemplates = {
     "multiple-definitions": multipleDefinitionsTemplate,
     "naming-convention": namingConventionTemplate,
     "nested-language-declaration": nestedLanguageDeclarationTemplate,
-    "no-empty-value": noEmptyValueTemplate,
+    "no-initial-value": noInitialValueTemplate,
     "not-a-structure": notAStructureTemplate,
     "not-a-wrapper": notAWrapperTemplate,
     "partially-unknown-type": partiallyUnknownTypeTemplate,

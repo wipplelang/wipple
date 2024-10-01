@@ -58,6 +58,8 @@ pub enum SyntaxKind {
     Number,
     Text,
     Statement,
+    LeftParenthesis,
+    LeftBrace,
     Keyword(Keyword),
     ContextualKeyword(String),
     Operator(Operator),
@@ -137,15 +139,4 @@ where
     D::Info: From<Location>,
 {
     parse_rule(driver, tree, rules::top_level())
-}
-
-/// Parse a token tree into a type.
-pub fn parse_type<D: Driver>(
-    driver: &D,
-    tree: WithInfo<D::Info, &TokenTree<'_, D>>,
-) -> Result<D, Type<D>>
-where
-    D::Info: From<Location>,
-{
-    parse_rule(driver, tree, rules::r#type())
 }

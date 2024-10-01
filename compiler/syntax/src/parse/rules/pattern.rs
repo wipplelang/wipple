@@ -22,7 +22,6 @@ use wipple_util::{DefaultFromInfo, WithInfo};
 pub enum Pattern<D: Driver> {
     Error,
     Wildcard,
-    Unit,
     Number(String),
     Text(String),
     Name(String),
@@ -160,12 +159,6 @@ pub fn variant_pattern<D: Driver>() -> Rule<D, Pattern<D>> {
     Rule::switch(
         SyntaxKind::VariantPattern,
         [
-            || {
-                Rule::empty_list(SyntaxKind::VariantPattern, |info| WithInfo {
-                    info,
-                    item: Pattern::Unit,
-                })
-            },
             || {
                 name()
                     .wrapped()

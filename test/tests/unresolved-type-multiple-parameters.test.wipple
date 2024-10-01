@@ -3,16 +3,16 @@
 T : A => type
 U : A B => type
 
-f :: A => (T A) -> Unit
-f : _ -> ()
+f :: A => (T A) -> None
+f : _ -> None
 
 _ : f T
 
-same-types :: A => (U A A) -> Unit
-same-types : _ -> ()
+same-types :: A => (U A A) -> None
+same-types : _ -> None
 
-different-types :: A B => (U A B) -> Unit
-different-types : _ -> ()
+different-types :: A B => (U A B) -> None
+different-types : _ -> None
 
 _ : same-types U
 _ : different-types U

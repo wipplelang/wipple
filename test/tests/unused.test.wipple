@@ -4,7 +4,7 @@ Important : type
 
 instance (Describe Important) : _ -> "important"
 
-() where (Error "important-must-be-handled") =>
+_ where (Error "important-must-be-handled") =>
   instance (Unused Important)
 
 do-something :: Important

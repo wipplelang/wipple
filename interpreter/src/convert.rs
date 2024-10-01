@@ -5,10 +5,6 @@ use futures::future;
 use std::marker::PhantomData;
 
 impl<R: Runtime + ?Sized> Value<R> {
-    pub fn unit() -> Self {
-        Value::Tuple(Vec::new())
-    }
-
     pub fn from_text(text: impl ToString) -> Self {
         Value::Text(text.to_string())
     }

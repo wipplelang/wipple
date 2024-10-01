@@ -1,5 +1,6 @@
 use crate::{
-    parse::{base::Rule, statement, Statement, SyntaxKind},
+    parse::{base::Rule, render::RuleToRender, statement, Statement, SyntaxKind},
+    tokenize::TokenTree,
     Driver,
 };
 use derivative::Derivative;
@@ -33,11 +34,28 @@ impl<D: Driver> DefaultFromInfo<D::Info> for TopLevel<D> {
 }
 
 pub fn top_level<D: Driver>() -> Rule<D, TopLevel<D>> {
-    Rule::block(SyntaxKind::TopLevel, statement, |_, info, statements, _| {
-        WithInfo {
-            info,
-            item: TopLevel { statements },
-        }
-    })
+    Rule::switch(
+        SyntaxKind::TopLevel,
+        [
+            || {
+                Rule::match_terminal(
+                    SyntaxKind::TopLevel,
+                    RuleToRender::Block(Vec::new()),
+                    |_, tree, _| match tree.item {
+                        TokenTree::EmptyFile => Some(TopLevel::default_from_info(tree.info)),
+                        _ => None,
+                    },
+                )
+            },
+            || {
+                Rule::block(SyntaxKind::TopLevel, statement, |_, info, statements, _| {
+                    WithInfo {
+                        info,
+                        item: TopLevel { statements },
+                    }
+                })
+            },
+        ],
+    )
     .named("A file or code box.")
 }
