@@ -582,6 +582,7 @@ pub async fn run(options: JsValue) -> JsValue {
 
             wasm_main_executor::spawn(async move {
                 Value(SendWrapper::new(match value {
+                    wipple_interpreter::Value::Marker => JsValue::NULL,
                     wipple_interpreter::Value::Number(number) => {
                         JsValue::from_f64(number.and_then(|n| n.to_f64()).unwrap_or(f64::NAN))
                     }
@@ -669,7 +670,6 @@ pub async fn run(options: JsValue) -> JsValue {
                         .into()
                     }
                     wipple_interpreter::Value::Variant { .. }
-                    | wipple_interpreter::Value::Marker
                     | wipple_interpreter::Value::Wrapper(_)
                     | wipple_interpreter::Value::Structure(_)
                     | wipple_interpreter::Value::TaskGroup(_)
