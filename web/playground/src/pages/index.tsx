@@ -34,7 +34,6 @@ export const RootPage = () => {
                         }),
                     );
                 } else if (location.pathname !== import.meta.env.BASE_URL) {
-                    alert("You must be logged in to view this page.");
                     navigate(import.meta.env.BASE_URL);
                 }
             } catch (error) {
