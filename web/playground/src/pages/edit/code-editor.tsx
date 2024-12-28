@@ -1114,57 +1114,33 @@ const CommandPalette = (props: {
     highlightItems: Record<string, any>;
     draggedCommand: { id: string; item: PaletteItem } | undefined;
     onBeginDraggingCommand: (id: string, item: PaletteItem) => void;
-}) => {
-    const [selection, setSelection] = useState(props.categories[0]);
+}) => (
+    <div className="flex-[1.5] flex flex-col bg-white dark:bg-gray-900 border-[1px] border-gray-100 dark:border-gray-800 shadow-sm rounded-lg p-4 gap-2 z-10 overflow-y-scroll">
+        {props.categories.map((category) => (
+            <div key={category.title} className="flex flex-col">
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">{category.title}</p>
 
-    const allCommandsCategory: PaletteCategory = useMemo(
-        () => ({
-            title: "All Commands",
-            items: props.categories.flatMap((category) => category.items),
-        }),
-        [props.categories],
-    );
-
-    return (
-        <div className="flex-[1.5] flex flex-col bg-white dark:bg-gray-900 border-[1px] border-gray-100 dark:border-gray-800 shadow-sm rounded-lg px-4 pt-2.5 pb-4 z-10">
-            <ContextMenuButton
-                items={[...props.categories, allCommandsCategory].map((category) => ({
-                    title: category.title,
-                    onClick: () => setSelection(category),
-                }))}
-                className="cursor-pointer"
-            >
-                <div className="-ml-2 pl-2 w-fit flex flex-row items-center gap-0.5 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
-                    <span>{selection.title}</span>
-
-                    <MaterialSymbol
-                        icon="keyboard_arrow_down"
-                        fill
-                        className="text-2xl text-blue-500"
-                    />
-                </div>
-            </ContextMenuButton>
-
-            {selection.items.map((item) => (
-                <div key={item.title}>
-                    {props.draggedCommand == null || props.draggedCommand.item !== item ? (
-                        <CommandPreview
-                            key={item.title}
-                            item={item}
-                            theme={props.theme}
-                            highlightItems={props.highlightItems}
-                            onDragStart={(id) => {
-                                props.onBeginDraggingCommand(id, item);
-                            }}
-                        />
-                    ) : (
-                        <div className="h-[1lh] mb-1 " />
-                    )}
-                </div>
-            ))}
-        </div>
-    );
-};
+                {category.items.map((item) => (
+                    <div key={item.title}>
+                        {props.draggedCommand == null || props.draggedCommand.item !== item ? (
+                            <CommandPreview
+                                key={item.title}
+                                item={item}
+                                theme={props.theme}
+                                highlightItems={props.highlightItems}
+                                onDragStart={(id) => {
+                                    props.onBeginDraggingCommand(id, item);
+                                }}
+                            />
+                        ) : (
+                            <div className="h-[1lh] mb-1 " />
+                        )}
+                    </div>
+                ))}
+            </div>
+        ))}
+    </div>
+);
 
 const HelpWindow = (props: {
     theme: ThemeConfig;
@@ -1290,37 +1266,56 @@ const AddLineButton = (props: {
 );
 
 const DropTargetLines = (props: { numberOfLines: number; theme: ThemeConfig }) => (
-    <div className="absolute top-0 left-0 right-0 flex flex-col">
+    <div className="absolute inset-0 flex flex-col">
         <div className="pt-1.5 pb-1">
             <DropTargetLine index={-1} theme={props.theme} />
         </div>
 
         {new Array(props.numberOfLines).fill(undefined).map((_, index) => (
-            <DropTargetLine key={index} index={index} useLineHeight theme={props.theme} />
+            <DropTargetLine
+                key={index}
+                index={index}
+                useLineHeight
+                expand={index === props.numberOfLines - 1}
+                theme={props.theme}
+            />
         ))}
     </div>
 );
 
-const DropTargetLine = (props: { index: number; useLineHeight?: boolean; theme: ThemeConfig }) => {
+const DropTargetLine = (props: {
+    index: number;
+    useLineHeight?: boolean;
+    expand?: boolean;
+    theme: ThemeConfig;
+}) => {
     const { setNodeRef, isOver } = useDroppable({ id: props.index });
 
     return (
         <div
             ref={setNodeRef}
-            className={`relative ${!props.useLineHeight ? "h-1" : ""}`}
-            style={{
-                height: props.useLineHeight
-                    ? props.theme.fontSize * props.theme.lineHeight
-                    : undefined,
-            }}
+            className={`flex flex-col ${!props.useLineHeight ? "h-1" : ""} ${
+                props.expand ? "flex-1" : ""
+            }`}
         >
-            <div className="absolute left-4 right-4 bottom-0">
-                <div
-                    className={`w-full h-1 bg-blue-500 rounded-full transition-opacity ${
-                        isOver ? "opacity-100" : "opacity-0"
-                    }`}
-                />
+            <div
+                className="relative"
+                style={{
+                    height: props.useLineHeight
+                        ? props.theme.fontSize * props.theme.lineHeight
+                        : undefined,
+                }}
+            >
+                <div className="absolute left-4 right-4 bottom-0">
+                    <div
+                        className={`w-full h-1 bg-blue-500 rounded-full transition-opacity ${
+                            isOver ? "opacity-100" : "opacity-0"
+                        }`}
+                    />
+                </div>
             </div>
+
+            {props.expand ? <div className="flex-1"></div> : null}
         </div>
     );
 };
