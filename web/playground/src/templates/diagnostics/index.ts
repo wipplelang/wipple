@@ -83,11 +83,16 @@ import { unusedColorTemplate } from "./unused-color";
 import { useShowInsteadTemplate } from "./use-show-instead";
 import { wrapperExpectsASinglePatternTemplate } from "./wrapper-expects-a-single-pattern";
 
-export interface DiagnosticTemplate {
-    variants: DiagnosticVariant[];
+type Template<Data, Output> = (data: Data) => Output;
+
+export interface DiagnosticTemplateData {
+    code: string;
+    [key: string]: string;
 }
 
-export interface DiagnosticVariant {
+export type DiagnosticTemplate = Template<DiagnosticTemplateData, Diagnostic>;
+
+export interface Diagnostic {
     title: string;
     description: string;
     help: DiagnosticHelp;
@@ -108,21 +113,21 @@ export interface DiagnosticHelpChoice {
     type: "choice";
     question: string;
     choices: {
-        name: string;
-        then: DiagnosticHelp;
+        choice: string;
+        response: DiagnosticHelp;
     }[];
 }
 
 export interface DiagnosticHelpPrompt {
     type: "prompt";
-    question: string;
-    then: DiagnosticHelp;
+    prompt: string;
+    response: Template<{ answer: string }, DiagnosticHelp>;
 }
 
 export const resolveDiagnosticTemplate = (
     diagnostic: any,
     code: string,
-): { template: DiagnosticTemplate; data: Record<string, string> } | undefined => {
+): { template: DiagnosticTemplate; data: DiagnosticTemplateData } | undefined => {
     const template =
         diagnosticTemplates[diagnostic.template.id as keyof typeof diagnosticTemplates];
 

@@ -36,11 +36,9 @@ import "./index.css";
 if (import.meta.env.PROD) {
     Sentry.init({
         dsn: import.meta.env.VITE_SENTRY_DSN,
-        integrations: [Sentry.browserTracingIntegration(), Sentry.replayIntegration()],
+        integrations: [Sentry.browserTracingIntegration()],
         tracesSampleRate: 1.0,
         tracePropagationTargets: ["localhost"],
-        replaysSessionSampleRate: 0.1,
-        replaysOnErrorSampleRate: 1.0,
     });
 
     ReactGA.initialize(import.meta.env.VITE_GA_MEASUREMENT_ID);

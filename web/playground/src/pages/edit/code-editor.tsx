@@ -48,9 +48,9 @@ import { Command, Rect } from "@codemirror/view";
 import {
     DiagnosticHelp,
     DiagnosticTemplate,
+    DiagnosticTemplateData,
     resolveDiagnosticTemplate,
 } from "../../templates/diagnostics";
-import Mustache from "mustache";
 import html2pdf from "html-to-pdf-js";
 import { format as formatDate } from "date-fns";
 import { useStore } from "../../store";
@@ -831,7 +831,7 @@ const ErrorBrowser = (props: {
 
     const [resolved, setResolved] = useState<{
         template: DiagnosticTemplate;
-        data: Record<string, string>;
+        data: DiagnosticTemplateData;
     }>();
 
     useEffect(() => {
@@ -883,7 +883,7 @@ const ErrorBrowser = (props: {
 
                 <div className="text-sm pt-1 px-2 pb-2">
                     {resolved ? (
-                        <ErrorTemplateView template={resolved.template} data={resolved.data} />
+                        <ErrorMarkdown template={resolved.template} data={resolved.data} />
                     ) : (
                         <Markdown>{`Unknown error: \`${activeDiagnostic.template.id}\``}</Markdown>
                     )}
@@ -893,34 +893,19 @@ const ErrorBrowser = (props: {
     );
 };
 
-const ErrorTemplateView = (props: {
-    template: DiagnosticTemplate;
-    data: Record<string, string>;
-}) => {
-    // TODO: Select a variant at random for experiments
-    const variant = useMemo(() => props.template.variants[0], [props.template]);
+const ErrorMarkdown = (props: { template: DiagnosticTemplate; data: DiagnosticTemplateData }) => {
+    const diagnostic = useMemo(() => props.template(props.data), [props.template]);
 
-    const [history, setHistory] = useState<
-        {
-            help: DiagnosticHelp;
-            data: Record<string, string>;
-        }[]
-    >([]);
+    const [history, setHistory] = useState<DiagnosticHelp[]>([]);
 
     useEffect(() => {
         setHistory([]);
-    }, [variant]);
+    }, [props.template]);
 
     const handleNext = useCallback(
-        (help: DiagnosticHelp, data: Record<string, string>) => {
+        (help: DiagnosticHelp) => {
             if (help) {
-                setHistory((history) => [
-                    ...history,
-                    {
-                        help,
-                        data: { ...props.data, ...data },
-                    },
-                ]);
+                setHistory((history) => [...history, help]);
             } else {
                 setHistory([]);
             }
@@ -931,29 +916,21 @@ const ErrorTemplateView = (props: {
     return (
         <div className="flex flex-col items-start gap-2">
             <div className="flex flex-col">
-                <TemplateView className="font-semibold" data={props.data}>
-                    {variant.title}
-                </TemplateView>
-
-                <TemplateView className="opacity-75" data={props.data}>
-                    {variant.description}
-                </TemplateView>
+                <Markdown className="font-semibold">{diagnostic.title}</Markdown>
+                <Markdown className="opacity-75">{diagnostic.description}</Markdown>
             </div>
 
-            {history.length === 0 && variant.help != null ? (
+            {history.length === 0 && diagnostic.help != null ? (
                 <div className="flex flex-row gap-2">
-                    <ErrorTemplateButton
-                        onClick={() => setHistory([{ help: variant.help, data: props.data }])}
-                    >
+                    <ErrorTemplateButton onClick={() => setHistory([diagnostic.help])}>
                         Help
                     </ErrorTemplateButton>
                 </div>
             ) : (
-                history.map((item, index) => (
+                history.map((help, index) => (
                     <ErrorHelpView
                         key={index}
-                        help={item.help}
-                        data={item.data}
+                        help={help}
                         onNext={index === history.length - 1 ? handleNext : undefined}
                     />
                 ))
@@ -982,8 +959,7 @@ const ErrorTemplateButton = (props: {
 
 const ErrorHelpView = (props: {
     help: DiagnosticHelp;
-    data: Record<string, string>;
-    onNext?: (next: DiagnosticHelp, data: Record<string, string>) => void;
+    onNext?: (next: DiagnosticHelp) => void;
 }) => {
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -1001,10 +977,10 @@ const ErrorHelpView = (props: {
         case "message":
             return makeContainer(
                 <>
-                    <TemplateView data={props.data}>{props.help.message}</TemplateView>
+                    <Markdown>{props.help.message}</Markdown>
 
                     {props.onNext ? (
-                        <ErrorTemplateButton onClick={() => props.onNext!(undefined, {})}>
+                        <ErrorTemplateButton onClick={() => props.onNext!(undefined)}>
                             Reset
                         </ErrorTemplateButton>
                     ) : null}
@@ -1013,17 +989,15 @@ const ErrorHelpView = (props: {
         case "choice":
             return makeContainer(
                 <>
-                    <TemplateView data={props.data}>{props.help.question}</TemplateView>
+                    <Markdown>{props.help.question}</Markdown>
 
                     <div className="flex flex-row gap-1">
-                        {props.help.choices.map((choice, index) => (
+                        {props.help.choices.map(({ choice, response }, index) => (
                             <ErrorTemplateButton
                                 key={index}
-                                onClick={
-                                    props.onNext ? () => props.onNext!(choice.then, {}) : undefined
-                                }
+                                onClick={props.onNext ? () => props.onNext!(response) : undefined}
                             >
-                                {choice.name}
+                                {choice}
                             </ErrorTemplateButton>
                         ))}
                     </div>
@@ -1034,14 +1008,12 @@ const ErrorHelpView = (props: {
 
             return makeContainer(
                 <>
-                    <TemplateView data={props.data}>{props.help.question}</TemplateView>
+                    <Markdown>{props.help.prompt}</Markdown>
 
                     <ErrorPrompt
                         onSubmit={
                             props.onNext
-                                ? (answer) => {
-                                      props.onNext!(help.then, { ...props.data, answer });
-                                  }
+                                ? (answer) => props.onNext!(help.response({ answer }))
                                 : undefined
                         }
                     />
@@ -1079,19 +1051,6 @@ const ErrorPrompt = (props: { onSubmit?: (answer: string) => void }) => {
             </button>
         </form>
     );
-};
-
-const TemplateView = (props: {
-    className?: string;
-    data: Record<string, string>;
-    children: string;
-}) => {
-    const rendered = useMemo(
-        () => Mustache.render(props.children, props.data),
-        [props.data, props.children],
-    );
-
-    return <Markdown className={props.className}>{rendered}</Markdown>;
 };
 
 const NoErrors = (props: { active: boolean }) => (
