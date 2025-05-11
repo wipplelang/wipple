@@ -183,7 +183,7 @@ export const Turtle: RuntimeComponent = forwardRef((props, ref) => {
     return (
         <div
             ref={containerRef}
-            className={`relative flex rounded-md w-full aspect-square ${
+            className={`relative flex rounded-md w-full aspect-square bg-white ${
                 printingImage && props.isFullscreen
                     ? ""
                     : "border border-gray-100 dark:border-gray-800"

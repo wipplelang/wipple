@@ -74,6 +74,18 @@ export const EditPage = () => {
         })();
     }, [playground]);
 
+    const handleChange = useCallback(
+        (code: string) =>
+            setPlayground(
+                produce((playground) => {
+                    if (playground) {
+                        playground.code = code;
+                    }
+                }),
+            ),
+        [],
+    );
+
     return (
         <div className="flex flex-col h-screen">
             <Navbar
@@ -108,15 +120,7 @@ export const EditPage = () => {
                     {playground ? (
                         <CodeEditor
                             wipple={wipple}
-                            onChange={(code) =>
-                                setPlayground(
-                                    produce((playground) => {
-                                        if (playground) {
-                                            playground.code = code;
-                                        }
-                                    }),
-                                )
-                            }
+                            onChange={handleChange}
                             runtime={playground.setup ?? undefined}
                         >
                             {playground.code}

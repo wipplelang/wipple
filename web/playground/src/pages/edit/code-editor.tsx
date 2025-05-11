@@ -1,19 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import {
-    CodeMirror,
-    CodeMirrorRef,
-    getTokenAtPos,
-    HighlightedCode,
-    insertSnippet,
-    Snippet,
-} from "./codemirror";
+import { CodeMirror, CodeMirrorRef, HighlightedCode, insertSnippet, Snippet } from "./codemirror";
 import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol, MaterialSymbolProps } from "react-material-symbols";
 import { defaultThemeConfig, ThemeConfig } from "./codemirror/theme";
-import { Help, PaletteCategory, PaletteItem } from "../../models";
+import { PaletteCategory, PaletteItem } from "../../models";
 import {
     Animated,
-    ContextMenuButton,
     ContextMenuContent,
     Markdown,
     Tooltip,
@@ -55,7 +47,6 @@ import html2pdf from "html-to-pdf-js";
 import { format as formatDate } from "date-fns";
 import { useStore } from "../../store";
 import { produce } from "immer";
-import { useDebounceCallback } from "usehooks-ts";
 
 export const CodeEditor = (props: {
     children: string;
@@ -443,33 +434,17 @@ export const CodeEditor = (props: {
         setFullscreen((isFullscreen) => !isFullscreen);
     }, []);
 
-    const [help, setHelp] = useState<Help | undefined>();
+    const handleFocus = useCallback(() => setEditorHasFocus(true), []);
 
-    const updateHelp = useCallback(
-        async (selection: { start: number; end: number } | undefined) => {
-            if (
-                !runnerRef.current ||
-                !codeMirrorRef.current?.editorView ||
-                !selection ||
-                selection.start !== selection.end
-            ) {
-                setHelp(undefined);
-                return;
-            }
+    const handleBlur = useCallback(() => setEditorHasFocus(false), []);
 
-            const pos = selection.start;
-            const code = getTokenAtPos(codeMirrorRef.current.editorView.state, pos);
-            const help = await runnerRef.current.help(pos, code);
-            setHelp(help);
+    const handleChange = useCallback(
+        (value: string) => {
+            setHasEdited(true);
+            props.onChange(value);
         },
-        [],
+        [props.onChange],
     );
-
-    const debouncedUpdateHelp = useDebounceCallback(updateHelp, 400);
-
-    useEffect(() => {
-        debouncedUpdateHelp(editorHasFocus ? selection : undefined);
-    }, [editorHasFocus, selection, debouncedUpdateHelp]);
 
     return (
         <DndContext
@@ -525,8 +500,6 @@ export const CodeEditor = (props: {
                                     setDraggedCommand({ id, item })
                                 }
                             />
-
-                            <HelpWindow theme={theme} highlightItems={highlightItems} help={help} />
                         </div>
                     </div>
                 ) : null}
@@ -558,12 +531,9 @@ export const CodeEditor = (props: {
                                 <CodeMirror
                                     ref={codeMirrorRef}
                                     autoFocus
-                                    onFocus={() => setEditorHasFocus(true)}
-                                    onBlur={() => setEditorHasFocus(false)}
-                                    onChange={(value) => {
-                                        setHasEdited(true);
-                                        props.onChange(value);
-                                    }}
+                                    onFocus={handleFocus}
+                                    onBlur={handleBlur}
+                                    onChange={handleChange}
                                     onChangeSelection={setSelection}
                                     onContextMenu={setContextMenuRect}
                                     readOnly={props.readOnly ?? false}
@@ -1101,52 +1071,6 @@ const CommandPalette = (props: {
     </div>
 );
 
-const HelpWindow = (props: {
-    theme: ThemeConfig;
-    highlightItems: Record<string, any>;
-    help: Help | null | undefined;
-}) => (
-    <div className="flex-1 bg-white dark:bg-gray-900 border-[1px] border-gray-100 dark:border-gray-800 shadow-sm rounded-lg px-4 p-4 overflow-y-scroll">
-        {props.help ? (
-            <div className="flex flex-col gap-2.5 w-full h-full">
-                <p className="font-semibold">Help</p>
-
-                <CommandPreviewContent
-                    code={props.help.name}
-                    theme={props.theme}
-                    highlightItems={props.highlightItems}
-                />
-
-                <HelpPreview help={props.help} />
-            </div>
-        ) : (
-            <div className="flex items-center justify-center w-full h-full">
-                <p className="text-gray-400 dark:text-gray-600 text-center">
-                    Click on a command for help.
-                </p>
-            </div>
-        )}
-    </div>
-);
-
-const HelpPreview = (props: { help: Help }) => (
-    <div className="help">
-        <div className="flex flex-col w-full">
-            <div className="flex flex-col">
-                <h2 className="text-gray-500">
-                    <Markdown>{props.help.summary}</Markdown>
-                </h2>
-            </div>
-
-            {props.help.doc ? (
-                <div className="prose dark:prose-invert prose-blue prose-sm prose-code:text-sm prose-code:text-gray-900 dark:prose-code:text-gray-100">
-                    <Markdown>{props.help.doc || "No additional documentation."}</Markdown>
-                </div>
-            ) : null}
-        </div>
-    </div>
-);
-
 const CommandPreview = (props: {
     item: PaletteItem;
     theme: ThemeConfig;
@@ -1189,11 +1113,7 @@ const CommandPreviewContent = (props: {
         <div className="w-fit pointer-events-none">
             <CodeMirror
                 autoFocus={false}
-                onChange={() => {}}
-                onChangeSelection={() => {}}
-                onContextMenu={() => {}}
                 readOnly={true}
-                onClickAsset={() => {}}
                 theme={props.theme}
                 highlightItems={props.highlightItems}
             >

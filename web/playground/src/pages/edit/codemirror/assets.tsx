@@ -6,6 +6,7 @@ import {
     ViewUpdate,
     DecorationSet,
     WidgetType,
+    Rect,
 } from "@codemirror/view";
 import { Compartment, Range, RangeSet } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
@@ -19,7 +20,7 @@ export type AssetClickHandler = (config: { start: number; end: number; asset: As
 
 export const assetsFromConfig = (config: {
     disabled: boolean;
-    onClick: AssetClickHandler;
+    onClick?: AssetClickHandler;
     highlightItems: Record<string, any>;
     theme: ThemeConfig;
 }) =>
@@ -62,7 +63,7 @@ const getDecorations = (
     view: EditorView,
     config: {
         disabled: boolean;
-        onClick: AssetClickHandler;
+        onClick?: AssetClickHandler;
         highlightItems: Record<string, any>;
         theme: ThemeConfig;
     },
@@ -90,16 +91,15 @@ const getDecorations = (
                         );
 
                         if (highlight.icon) {
+                            const widget = new HighlightIconWidget(
+                                from,
+                                highlight.icon,
+                                className,
+                                config.theme.fontSize,
+                            );
+
                             nonatomicDecorations.push(
-                                Decoration.widget({
-                                    widget: new HighlightIconWidget(
-                                        from,
-                                        highlight.icon,
-                                        className,
-                                        config.theme.fontSize,
-                                    ),
-                                    side: -1,
-                                }).range(from),
+                                Decoration.widget({ widget, side: -1 }).range(from),
                             );
                         }
                     }
@@ -115,11 +115,12 @@ const getDecorations = (
 
                     const asset = getAsset(code);
                     if (asset) {
-                        atomicDecorations.push(
-                            Decoration.replace({
-                                widget: new AssetWidget(from, to, asset, config),
-                            }).range(from, to),
-                        );
+                        const widget = new AssetWidget(asset, {
+                            ...config,
+                            onClick: (asset) => config.onClick?.({ start: from, end: to, asset }),
+                        });
+
+                        atomicDecorations.push(Decoration.replace({ widget }).range(from, to));
                     }
 
                     break;
@@ -145,15 +146,6 @@ class HighlightIconWidget extends WidgetType {
         super();
     }
 
-    eq(other: this) {
-        return (
-            this.index === other.index &&
-            this.icon === other.icon &&
-            this.className === other.className &&
-            this.fontSize === other.fontSize
-        );
-    }
-
     toDOM() {
         const container = document.createElement("span");
 
@@ -169,10 +161,8 @@ class HighlightIconWidget extends WidgetType {
         return container;
     }
 
-    destroy() {
-        requestAnimationFrame(() => {
-            this.root?.unmount();
-        });
+    ignoreEvent(event: Event): boolean {
+        return !(event instanceof MouseEvent);
     }
 }
 
@@ -195,21 +185,10 @@ class AssetWidget extends WidgetType {
     private root?: ReactDOM.Root;
 
     constructor(
-        public from: number,
-        public to: number,
         public asset: Asset,
-        public config: { disabled: boolean; onClick: AssetClickHandler },
+        public config: { disabled: boolean; onClick?: (asset: Asset) => void },
     ) {
         super();
-    }
-
-    eq(other: this) {
-        return (
-            this.from === other.from &&
-            this.to === other.to &&
-            this.asset === other.asset &&
-            this.config === other.config
-        );
     }
 
     toDOM() {
@@ -220,30 +199,18 @@ class AssetWidget extends WidgetType {
             <AssetWidgetComponent
                 asset={this.asset}
                 disabled={this.config.disabled}
-                onClick={(asset) =>
-                    this.config.onClick({
-                        start: this.from,
-                        end: this.to,
-                        asset,
-                    })
-                }
+                onClick={this.config.onClick}
             />,
         );
 
         return container;
-    }
-
-    destroy() {
-        requestAnimationFrame(() => {
-            this.root?.unmount();
-        });
     }
 }
 
 const AssetWidgetComponent = (props: {
     asset: Asset;
     disabled: boolean;
-    onClick: (asset: Asset) => void;
+    onClick?: (asset: Asset) => void;
 }) => (
     <Asset disabled={props.disabled} onClick={props.onClick}>
         {props.asset}
