@@ -6,8 +6,9 @@ import {
     ViewUpdate,
     DecorationSet,
     WidgetType,
+    Rect,
 } from "@codemirror/view";
-import { Compartment, Range, RangeSet, StateField } from "@codemirror/state";
+import { Compartment, Range, RangeSet } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Asset, getAsset } from "../assets";
 import { ThemeConfig, highlightCategories } from "./theme";
@@ -158,6 +159,10 @@ class HighlightIconWidget extends WidgetType {
         );
 
         return container;
+    }
+
+    ignoreEvent(event: Event): boolean {
+        return !(event instanceof MouseEvent);
     }
 }
 
