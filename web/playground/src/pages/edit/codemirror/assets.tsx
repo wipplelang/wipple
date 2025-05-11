@@ -58,6 +58,8 @@ export const assetsFromConfig = (config: {
         },
     );
 
+const decorationCache = new Map<string, WidgetType>();
+
 const getDecorations = (
     view: EditorView,
     config: {
@@ -67,6 +69,8 @@ const getDecorations = (
         theme: ThemeConfig;
     },
 ): [DecorationSet, DecorationSet] => {
+    const resolvedDecorations = new Set<string>();
+
     const nonatomicDecorations: Range<Decoration>[] = [];
     const atomicDecorations: Range<Decoration>[] = [];
     syntaxTree(view.state).iterate({
@@ -79,6 +83,8 @@ const getDecorations = (
                     const highlight = config.highlightItems[code];
 
                     if (highlight?.category && highlightCategories[highlight.category]) {
+                        resolvedDecorations.add(code);
+
                         const className = highlightCategories[highlight.category];
 
                         nonatomicDecorations.push(
@@ -90,16 +96,20 @@ const getDecorations = (
                         );
 
                         if (highlight.icon) {
+                            let widget = decorationCache.get(code);
+                            if (!widget) {
+                                widget = new HighlightIconWidget(
+                                    from,
+                                    highlight.icon,
+                                    className,
+                                    config.theme.fontSize,
+                                );
+
+                                decorationCache.set(code, widget);
+                            }
+
                             nonatomicDecorations.push(
-                                Decoration.widget({
-                                    widget: new HighlightIconWidget(
-                                        from,
-                                        highlight.icon,
-                                        className,
-                                        config.theme.fontSize,
-                                    ),
-                                    side: -1,
-                                }).range(from),
+                                Decoration.widget({ widget, side: -1 }).range(from),
                             );
                         }
                     }
@@ -115,11 +125,15 @@ const getDecorations = (
 
                     const asset = getAsset(code);
                     if (asset) {
-                        atomicDecorations.push(
-                            Decoration.replace({
-                                widget: new AssetWidget(from, to, asset, config),
-                            }).range(from, to),
-                        );
+                        resolvedDecorations.add(code);
+
+                        let widget = decorationCache.get(code);
+                        if (!widget) {
+                            widget = new AssetWidget(from, to, asset, config);
+                            decorationCache.set(code, widget);
+                        }
+
+                        atomicDecorations.push(Decoration.replace({ widget }).range(from, to));
                     }
 
                     break;
@@ -129,6 +143,12 @@ const getDecorations = (
             }
         },
     });
+
+    for (const key of [...decorationCache.keys()]) {
+        if (!decorationCache.has(key)) {
+            decorationCache.delete(key);
+        }
+    }
 
     return [Decoration.set(nonatomicDecorations, true), Decoration.set(atomicDecorations, true)];
 };
@@ -143,15 +163,6 @@ class HighlightIconWidget extends WidgetType {
         public fontSize: number,
     ) {
         super();
-    }
-
-    eq(other: this) {
-        return (
-            this.index === other.index &&
-            this.icon === other.icon &&
-            this.className === other.className &&
-            this.fontSize === other.fontSize
-        );
     }
 
     toDOM() {
@@ -170,9 +181,7 @@ class HighlightIconWidget extends WidgetType {
     }
 
     destroy() {
-        requestAnimationFrame(() => {
-            this.root?.unmount();
-        });
+        this.root?.unmount();
     }
 }
 
@@ -203,15 +212,6 @@ class AssetWidget extends WidgetType {
         super();
     }
 
-    eq(other: this) {
-        return (
-            this.from === other.from &&
-            this.to === other.to &&
-            this.asset === other.asset &&
-            this.config === other.config
-        );
-    }
-
     toDOM() {
         const container = document.createElement("span");
 
@@ -234,9 +234,7 @@ class AssetWidget extends WidgetType {
     }
 
     destroy() {
-        requestAnimationFrame(() => {
-            this.root?.unmount();
-        });
+        this.root?.unmount();
     }
 }
 
