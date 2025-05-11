@@ -471,6 +471,18 @@ export const CodeEditor = (props: {
         debouncedUpdateHelp(editorHasFocus ? selection : undefined);
     }, [editorHasFocus, selection, debouncedUpdateHelp]);
 
+    const handleFocus = useCallback(() => setEditorHasFocus(true), []);
+
+    const handleBlur = useCallback(() => setEditorHasFocus(false), []);
+
+    const handleChange = useCallback(
+        (value: string) => {
+            setHasEdited(true);
+            props.onChange(value);
+        },
+        [props.onChange],
+    );
+
     return (
         <DndContext
             onDragEnd={({ over }) => {
@@ -558,12 +570,9 @@ export const CodeEditor = (props: {
                                 <CodeMirror
                                     ref={codeMirrorRef}
                                     autoFocus
-                                    onFocus={() => setEditorHasFocus(true)}
-                                    onBlur={() => setEditorHasFocus(false)}
-                                    onChange={(value) => {
-                                        setHasEdited(true);
-                                        props.onChange(value);
-                                    }}
+                                    onFocus={handleFocus}
+                                    onBlur={handleBlur}
+                                    onChange={handleChange}
                                     onChangeSelection={setSelection}
                                     onContextMenu={setContextMenuRect}
                                     readOnly={props.readOnly ?? false}
@@ -1189,11 +1198,7 @@ const CommandPreviewContent = (props: {
         <div className="w-fit pointer-events-none">
             <CodeMirror
                 autoFocus={false}
-                onChange={() => {}}
-                onChangeSelection={() => {}}
-                onContextMenu={() => {}}
                 readOnly={true}
-                onClickAsset={() => {}}
                 theme={props.theme}
                 highlightItems={props.highlightItems}
             >

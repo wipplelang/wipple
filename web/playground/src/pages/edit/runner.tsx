@@ -79,6 +79,18 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             return;
         }
 
+        const highlightItemsCacheKey = "playground:highlightItems";
+
+        const cachedHighlightItemsString = localStorage.getItem(highlightItemsCacheKey);
+        if (cachedHighlightItemsString) {
+            try {
+                cachedHighlightItems.current = JSON.parse(cachedHighlightItemsString);
+                props.onChangeHighlightItems(cachedHighlightItems.current!);
+            } catch {
+                // ignore
+            }
+        }
+
         const dependencies = await fetchBundle(props.options.bundlePath);
 
         await props.wipple.initialize({
@@ -97,6 +109,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
 
                 cachedHighlightItems.current = highlights;
                 props.onChangeHighlightItems(highlights);
+
+                localStorage.setItem(highlightItemsCacheKey, JSON.stringify(highlights));
             }
         }
 

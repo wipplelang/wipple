@@ -1,4 +1,4 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from "react";
 import { EditorView, minimalSetup } from "codemirror";
 import { placeholder, keymap, Rect } from "@codemirror/view";
 import { Compartment, EditorState, Extension } from "@codemirror/state";
@@ -18,13 +18,13 @@ export interface Snippet {
 
 export interface CodeMirrorProps {
     children: string;
-    onChange: (value: string) => void;
-    onChangeSelection: (selection: { start: number; end: number }) => void;
+    onChange?: (value: string) => void;
+    onChangeSelection?: (selection: { start: number; end: number }) => void;
     autoFocus: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
     onContextMenu?: (rect: Rect | undefined) => void;
-    onClickAsset: AssetClickHandler;
+    onClickAsset?: AssetClickHandler;
     readOnly: boolean;
     highlightedCode?: HighlightedCode;
     highlightItems: Record<string, any>;
@@ -94,12 +94,12 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
 
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
-                            props.onChange(update.state.doc.toString());
+                            props.onChange?.(update.state.doc.toString());
                         }
 
                         if (update.selectionSet) {
                             const { from, to } = update.state.selection.main;
-                            props.onChangeSelection({ start: from, end: to });
+                            props.onChangeSelection?.({ start: from, end: to });
                         }
 
                         if (update.focusChanged) {

@@ -7,7 +7,7 @@ import {
     DecorationSet,
     WidgetType,
 } from "@codemirror/view";
-import { Compartment, Range, RangeSet } from "@codemirror/state";
+import { Compartment, Range, RangeSet, StateField } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import { Asset, getAsset } from "../assets";
 import { ThemeConfig, highlightCategories } from "./theme";
@@ -19,7 +19,7 @@ export type AssetClickHandler = (config: { start: number; end: number; asset: As
 
 export const assetsFromConfig = (config: {
     disabled: boolean;
-    onClick: AssetClickHandler;
+    onClick?: AssetClickHandler;
     highlightItems: Record<string, any>;
     theme: ThemeConfig;
 }) =>
@@ -58,19 +58,15 @@ export const assetsFromConfig = (config: {
         },
     );
 
-const decorationCache = new Map<string, WidgetType>();
-
 const getDecorations = (
     view: EditorView,
     config: {
         disabled: boolean;
-        onClick: AssetClickHandler;
+        onClick?: AssetClickHandler;
         highlightItems: Record<string, any>;
         theme: ThemeConfig;
     },
 ): [DecorationSet, DecorationSet] => {
-    const resolvedDecorations = new Set<string>();
-
     const nonatomicDecorations: Range<Decoration>[] = [];
     const atomicDecorations: Range<Decoration>[] = [];
     syntaxTree(view.state).iterate({
@@ -83,8 +79,6 @@ const getDecorations = (
                     const highlight = config.highlightItems[code];
 
                     if (highlight?.category && highlightCategories[highlight.category]) {
-                        resolvedDecorations.add(code);
-
                         const className = highlightCategories[highlight.category];
 
                         nonatomicDecorations.push(
@@ -96,17 +90,12 @@ const getDecorations = (
                         );
 
                         if (highlight.icon) {
-                            let widget = decorationCache.get(code);
-                            if (!widget) {
-                                widget = new HighlightIconWidget(
-                                    from,
-                                    highlight.icon,
-                                    className,
-                                    config.theme.fontSize,
-                                );
-
-                                decorationCache.set(code, widget);
-                            }
+                            const widget = new HighlightIconWidget(
+                                from,
+                                highlight.icon,
+                                className,
+                                config.theme.fontSize,
+                            );
 
                             nonatomicDecorations.push(
                                 Decoration.widget({ widget, side: -1 }).range(from),
@@ -125,13 +114,10 @@ const getDecorations = (
 
                     const asset = getAsset(code);
                     if (asset) {
-                        resolvedDecorations.add(code);
-
-                        let widget = decorationCache.get(code);
-                        if (!widget) {
-                            widget = new AssetWidget(from, to, asset, config);
-                            decorationCache.set(code, widget);
-                        }
+                        const widget = new AssetWidget(asset, {
+                            ...config,
+                            onClick: (asset) => config.onClick?.({ start: from, end: to, asset }),
+                        });
 
                         atomicDecorations.push(Decoration.replace({ widget }).range(from, to));
                     }
@@ -143,12 +129,6 @@ const getDecorations = (
             }
         },
     });
-
-    for (const key of [...decorationCache.keys()]) {
-        if (!decorationCache.has(key)) {
-            decorationCache.delete(key);
-        }
-    }
 
     return [Decoration.set(nonatomicDecorations, true), Decoration.set(atomicDecorations, true)];
 };
@@ -179,10 +159,6 @@ class HighlightIconWidget extends WidgetType {
 
         return container;
     }
-
-    destroy() {
-        this.root?.unmount();
-    }
 }
 
 const HighlightIconWidgetComponent = (props: {
@@ -204,10 +180,8 @@ class AssetWidget extends WidgetType {
     private root?: ReactDOM.Root;
 
     constructor(
-        public from: number,
-        public to: number,
         public asset: Asset,
-        public config: { disabled: boolean; onClick: AssetClickHandler },
+        public config: { disabled: boolean; onClick?: (asset: Asset) => void },
     ) {
         super();
     }
@@ -220,28 +194,18 @@ class AssetWidget extends WidgetType {
             <AssetWidgetComponent
                 asset={this.asset}
                 disabled={this.config.disabled}
-                onClick={(asset) =>
-                    this.config.onClick({
-                        start: this.from,
-                        end: this.to,
-                        asset,
-                    })
-                }
+                onClick={this.config.onClick}
             />,
         );
 
         return container;
-    }
-
-    destroy() {
-        this.root?.unmount();
     }
 }
 
 const AssetWidgetComponent = (props: {
     asset: Asset;
     disabled: boolean;
-    onClick: (asset: Asset) => void;
+    onClick?: (asset: Asset) => void;
 }) => (
     <Asset disabled={props.disabled} onClick={props.onClick}>
         {props.asset}
