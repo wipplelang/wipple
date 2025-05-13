@@ -20,7 +20,8 @@ export interface Playground {
     code: string;
 }
 
-export type PlaygroundSetup = null | "turtle" | "music" | "math" | "physics";
+export const playgroundSetups = ["turtle", "music", "math"] as const;
+export type PlaygroundSetup = null | (typeof playgroundSetups)[number];
 
 const playgroundConverter = pureConverter<Playground>();
 
@@ -61,7 +62,7 @@ export const updatePlayground = async (playground: Playground) => {
     await setDoc(doc(collection(firestore, "playgrounds"), playground.id), playground);
 };
 
-export const createPlayground = async (name: string, setup: PlaygroundSetup) => {
+export const createPlayground = async (setup: PlaygroundSetup) => {
     const user = await getUser();
     if (!user) {
         throw new Error("must be logged in to create a playground");
@@ -71,7 +72,7 @@ export const createPlayground = async (name: string, setup: PlaygroundSetup) => 
 
     const playground: Omit<Playground, "id"> = {
         owner: user.uid,
-        name,
+        name: "",
         lastModified: new Date().toISOString(),
         setup,
         code: "",

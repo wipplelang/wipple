@@ -4,14 +4,7 @@ import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol, MaterialSymbolProps } from "react-material-symbols";
 import { defaultThemeConfig, ThemeConfig } from "./codemirror/theme";
 import { PaletteCategory, PaletteItem } from "../../models";
-import {
-    Animated,
-    ContextMenuContent,
-    Markdown,
-    Tooltip,
-    TooltipContent,
-    useAlert,
-} from "../../components";
+import { Animated, Logo, Markdown, Tooltip, useAlert } from "../../components";
 import { defaultPaletteCategories, runtimes } from "../../runtimes";
 import { ColorPicker } from "./assets/color-picker";
 import { AssetClickHandler } from "./codemirror/assets";
@@ -26,17 +19,10 @@ import {
 import { AnimalPicker } from "./assets/animal-picker";
 import { MelodyPicker, RhythmPicker } from "./assets/melody-picker";
 import * as commands from "@codemirror/commands";
-import {
-    FloatingPortal,
-    shift,
-    useClientPoint,
-    useFloating,
-    useInteractions,
-} from "@floating-ui/react";
 import { nanoid } from "nanoid";
 import { DndContext, DragOverlay, useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Command, Rect } from "@codemirror/view";
+import { Command } from "@codemirror/view";
 import {
     DiagnosticHelp,
     DiagnosticTemplate,
@@ -47,10 +33,13 @@ import html2pdf from "html-to-pdf-js";
 import { format as formatDate } from "date-fns";
 import { useStore } from "../../store";
 import { produce } from "immer";
+import { Box } from "../../components/box";
+import { ToolbarButton } from "../../components/toolbar-button";
 
 export const CodeEditor = (props: {
     children: string;
     wipple: typeof import("wipple-wasm");
+    onNewPlayground: () => void;
     onChange: (value: string) => void;
     readOnly?: boolean;
     runtime?: string;
@@ -62,7 +51,6 @@ export const CodeEditor = (props: {
     const [lastCompiledCode, setLastCompiledCode] = useState(props.children);
 
     const numberOfLines = useMemo(() => props.children.split("\n").length, [props.children]);
-    const isEmpty = useMemo(() => props.children.length === 0, [props.children]);
 
     const runtime = useMemo(
         () =>
@@ -105,25 +93,6 @@ export const CodeEditor = (props: {
     const [selection, setSelection] = useState({ start: 0, end: 0 });
 
     const isSelectingRange = useMemo(() => selection.start !== selection.end, [selection]);
-
-    const isOnFirstLine = useMemo(() => {
-        if (isSelectingRange || !codeMirrorRef.current) {
-            return false;
-        }
-
-        return codeMirrorRef.current.editorView.state.doc.lineAt(selection.start).number === 1;
-    }, [isSelectingRange, selection]);
-
-    const isOnLastLine = useMemo(() => {
-        if (isSelectingRange || !codeMirrorRef.current) {
-            return false;
-        }
-
-        return (
-            codeMirrorRef.current.editorView.state.doc.lineAt(selection.start).to ===
-            codeMirrorRef.current.editorView.state.doc.length
-        );
-    }, [isSelectingRange, selection]);
 
     const selectionRect = useMemo(() => {
         if (!isSelectingRange || !codeMirrorRef.current) {
@@ -259,23 +228,6 @@ export const CodeEditor = (props: {
         }
     }, []);
 
-    const onAddLine = (position: "start" | "end") => {
-        if (!codeMirrorRef.current) {
-            return;
-        }
-
-        const editorView = codeMirrorRef.current.editorView;
-
-        props.onChange(position === "start" ? "\n" + props.children : props.children + "\n");
-
-        editorView.focus();
-        editorView.dispatch({
-            selection: {
-                anchor: position === "start" ? 0 : editorView.state.doc.length,
-            },
-        });
-    };
-
     const runCommand = (command: Command) => {
         if (codeMirrorRef.current) {
             command(codeMirrorRef.current.editorView);
@@ -294,51 +246,6 @@ export const CodeEditor = (props: {
 
         props.onChange(formatted);
     }, [props.onChange]);
-
-    const [contextMenuRect, setContextMenuRect] = useState<Rect>();
-
-    const {
-        refs: helpFloatingRefs,
-        floatingStyles: helpFloatingStyles,
-        context: helpFloatingContext,
-    } = useFloating({
-        open: contextMenuRect != null,
-        placement: "bottom",
-        middleware: [shift({ padding: 8 })],
-    });
-
-    const { getFloatingProps: getHelpFloatingProps } = useInteractions([
-        useClientPoint(helpFloatingContext, {
-            enabled: contextMenuRect != null,
-            x: ((contextMenuRect?.left ?? 0) + (contextMenuRect?.right ?? 0)) / 2,
-            y: contextMenuRect?.bottom ?? 0,
-        }),
-    ]);
-
-    useEffect(() => {
-        const handleMousedown = (event: MouseEvent) => {
-            if (
-                helpFloatingRefs.floating.current != null &&
-                !helpFloatingRefs.floating.current.contains(event.target as HTMLElement)
-            ) {
-                setContextMenuRect(undefined);
-            }
-        };
-
-        const handleKeydown = (event: KeyboardEvent) => {
-            if (event.key === "Escape") {
-                setContextMenuRect(undefined);
-            }
-        };
-
-        window.addEventListener("mousedown", handleMousedown);
-        window.addEventListener("keydown", handleKeydown);
-
-        return () => {
-            window.removeEventListener("mousedown", handleMousedown);
-            window.removeEventListener("keydown", handleKeydown);
-        };
-    }, [helpFloatingRefs]);
 
     const [draggedCommand, setDraggedCommand] = useState<{
         id: string;
@@ -406,9 +313,13 @@ export const CodeEditor = (props: {
                 const pdf = await html2pdf()
                     .set({
                         filename,
-                        margin: 8,
                         enableLinks: false,
                         html2canvas: { scale: 4 },
+                        jsPDF: {
+                            unit: "in",
+                            format: "letter",
+                            orientation: "landscape",
+                        },
                     })
                     .from(contentRef.current)
                     .toPdf()
@@ -426,12 +337,6 @@ export const CodeEditor = (props: {
                 );
             }
         }
-    }, []);
-
-    const [isFullscreen, setFullscreen] = useState(false);
-
-    const toggleFullscreen = useCallback(() => {
-        setFullscreen((isFullscreen) => !isFullscreen);
     }, []);
 
     const handleFocus = useCallback(() => setEditorHasFocus(true), []);
@@ -476,58 +381,93 @@ export const CodeEditor = (props: {
         >
             <div
                 ref={contentRef}
-                className={`flex-1 flex justify-stretch w-full h-full max-md:overflow-scroll ${
-                    store.isPrinting
-                        ? "flex-col w-[8.5in] h-[11in]"
-                        : "flex-col md:flex-row px-4 pb-4"
+                data-printing={store.isPrinting || undefined}
+                className={`flex flex-col w-full h-full gap-2.5 ${
+                    store.isPrinting ? "p-[0.5in] overflow-hidden" : ""
                 }`}
             >
-                {!store.isPrinting ? (
-                    <div
-                        className={`max-md:flex-1 md:h-full ${
-                            isFullscreen
-                                ? "w-0 max-md:h-0 opacity-0"
-                                : "max-md:w-full md:w-[240px] max-md:mb-2.5 md:mr-2.5 opacity-1"
-                        }`}
-                    >
-                        <div className="flex flex-row md:flex-col md:w-[240px] max-md:min-h-60 h-full gap-2.5">
-                            <CommandPalette
-                                theme={theme}
-                                categories={runtime?.paletteCategories ?? defaultPaletteCategories}
-                                highlightItems={highlightItems}
-                                draggedCommand={draggedCommand}
-                                onBeginDraggingCommand={(id, item) =>
-                                    setDraggedCommand({ id, item })
-                                }
-                            />
-                        </div>
-                    </div>
-                ) : null}
+                {store.isPrinting ? <PrintHeader /> : null}
 
-                {!isFullscreen || !store.isPrinting ? (
-                    <div
-                        className={`md:h-full ${
-                            isFullscreen
-                                ? "w-0 max-md:h-0 opacity-0"
-                                : "max-md:w-full md:flex-1 max-md:mb-2.5 md:mr-2.5 opacity-1"
-                        }`}
-                    >
-                        <div
-                            className={`relative flex flex-col h-full overflow-y-scroll bg-white dark:bg-gray-900 rounded-lg  max-md:min-h-80 ${
-                                store.isPrinting
-                                    ? ""
-                                    : "border-[1px] border-gray-100 dark:border-gray-800 shadow-sm"
-                            }`}
-                        >
-                            {store.isPrinting && !isFullscreen ? <PrintHeader /> : null}
-
-                            <div className="px-4">
-                                <AddLineButton
-                                    direction="start"
-                                    disabled={draggedCommand != null || (props.readOnly ?? false)}
-                                    onClick={() => onAddLine("start")}
+                <div
+                    className={`flex-1 flex flex-row justify-stretch p-2.5 gap-2.5 ${
+                        store.isPrinting ? "overflow-hidden" : ""
+                    }`}
+                >
+                    {!store.isPrinting ? (
+                        <div className="h-full w-[240px] opacity-1">
+                            <div className="flex flex-col w-[240px] gap-2.5">
+                                <CommandPalette
+                                    theme={theme}
+                                    categories={
+                                        runtime?.paletteCategories ?? defaultPaletteCategories
+                                    }
+                                    highlightItems={highlightItems}
+                                    draggedCommand={draggedCommand}
+                                    onBeginDraggingCommand={(id, item) =>
+                                        setDraggedCommand({ id, item })
+                                    }
                                 />
+                            </div>
+                        </div>
+                    ) : null}
 
+                    <div className="h-full flex flex-col gap-2.5 flex-1 opacity-1">
+                        {!store.isPrinting ? (
+                            <div className="flex flex-row justify-between shrink-0 h-8">
+                                <ToolbarButton icon="add" onClick={props.onNewPlayground}>
+                                    New
+                                </ToolbarButton>
+
+                                <div className="flex flex-row h-full gap-2.5">
+                                    <Tooltip description="Move Up">
+                                        <ToolbarButton
+                                            square
+                                            icon="arrow_upward"
+                                            onClick={() => runCommand(commands.moveLineUp)}
+                                        />
+                                    </Tooltip>
+
+                                    <Tooltip description="Move Down">
+                                        <ToolbarButton
+                                            square
+                                            icon="arrow_downward"
+                                            onClick={() => runCommand(commands.moveLineDown)}
+                                        />
+                                    </Tooltip>
+
+                                    <Tooltip description="Remove">
+                                        <ToolbarButton
+                                            square
+                                            icon="remove"
+                                            onClick={() => runCommand(commands.deleteLine)}
+                                        />
+                                    </Tooltip>
+
+                                    <Tooltip description="Undo">
+                                        <ToolbarButton
+                                            square
+                                            icon="undo"
+                                            onClick={() => runCommand(commands.undo)}
+                                        />
+                                    </Tooltip>
+
+                                    <Tooltip description="Redo">
+                                        <ToolbarButton
+                                            square
+                                            icon="redo"
+                                            onClick={() => runCommand(commands.redo)}
+                                        />
+                                    </Tooltip>
+                                </div>
+                            </div>
+                        ) : null}
+
+                        <Box fill>
+                            <div
+                                className={`flex flex-col inset-0 w-full h-full gap-2.5 ${
+                                    store.isPrinting ? "py-2.5" : ""
+                                }`}
+                            >
                                 <CodeMirror
                                     ref={codeMirrorRef}
                                     autoFocus
@@ -535,7 +475,6 @@ export const CodeEditor = (props: {
                                     onBlur={handleBlur}
                                     onChange={handleChange}
                                     onChangeSelection={setSelection}
-                                    onContextMenu={setContextMenuRect}
                                     readOnly={props.readOnly ?? false}
                                     onClickAsset={onClickAsset}
                                     theme={theme}
@@ -557,185 +496,80 @@ export const CodeEditor = (props: {
                                         )}
                                     </div>
                                 ) : null}
+                            </div>
+                        </Box>
+                    </div>
 
-                                <AddLineButton
-                                    direction="end"
-                                    disabled={draggedCommand != null || (props.readOnly ?? false)}
-                                    onClick={() => onAddLine("end")}
+                    <div className={store.isPrinting ? "h-full" : "w-[380px] h-full"}>
+                        <div className="flex flex-col h-full">
+                            {!store.isPrinting ? (
+                                <>
+                                    <div className="flex flex-row justify-center gap-2.5 h-8 mb-2.5">
+                                        <RunButton
+                                            isRunning={isCompilingOrRunning}
+                                            onClick={handleRun}
+                                        />
+
+                                        <OptionsButton
+                                            icon="print"
+                                            description="Print"
+                                            onClick={print}
+                                        />
+                                    </div>
+
+                                    <Animated direction="vertical" open={showStatus}>
+                                        {diagnostics.length > 0 ? (
+                                            <ErrorBrowser
+                                                diagnostics={diagnostics}
+                                                active={!hasEdited}
+                                                onSelectDiagnostic={setSelectedDiagnostic}
+                                                codeForDiagnostic={codeForDiagnostic}
+                                            />
+                                        ) : null}
+                                    </Animated>
+                                </>
+                            ) : null}
+
+                            <Runner
+                                ref={runnerRef}
+                                wipple={props.wipple}
+                                options={runOptions}
+                                runtime={runtime}
+                                hasFocus={runnerHasFocus}
+                                onFocus={() => setRunnerHasFocus(true)}
+                                onBlur={() => setRunnerHasFocus(false)}
+                                onChangeDiagnostics={setDiagnostics}
+                                onChangeHighlightItems={setHighlightItems}
+                                onChangeCompiling={handleChangeCompiling}
+                                onChangeRunning={handleChangeRunning}
+                            >
+                                {props.children}
+                            </Runner>
+                        </div>
+                    </div>
+                </div>
+
+                <DragOverlay className="w-full">
+                    {draggedCommand ? (
+                        <div className="w-screen h-screen">
+                            <div
+                                className="flex flex-row items-center bg-white dark:bg-gray-800 w-fit h-fit -mx-1 px-1 rounded-md shadow-lg"
+                                style={{
+                                    fontFamily: theme.fontFamily,
+                                    fontSize: theme.fontSize,
+                                    lineHeight: theme.lineHeight,
+                                }}
+                            >
+                                <CommandPreviewContent
+                                    code={draggedCommand.item.code}
+                                    theme={theme}
+                                    highlightItems={highlightItems}
                                 />
                             </div>
-
-                            <div
-                                className="flex-1 cursor-text"
-                                onClick={() => runCommand(commands.cursorDocEnd)}
-                            />
                         </div>
-                    </div>
-                ) : null}
-
-                <div
-                    className={
-                        isFullscreen || store.isPrinting
-                            ? "w-full h-full"
-                            : "md:w-[380px] max-md:w-full md:h-full"
-                    }
-                >
-                    <div
-                        className={`flex flex-col h-full overflow-y-scroll p-4 bg-white dark:bg-gray-900 rounded-lg ${
-                            store.isPrinting
-                                ? ""
-                                : "border-[1px] border-gray-100 dark:border-gray-800 shadow-sm"
-                        }`}
-                    >
-                        {!store.isPrinting ? (
-                            <>
-                                <div className="flex flex-row gap-2.5 pb-3">
-                                    <RunButton
-                                        isRunning={isCompilingOrRunning}
-                                        onClick={handleRun}
-                                    />
-
-                                    <OptionsButton
-                                        icon="print"
-                                        description="Print"
-                                        onClick={print}
-                                    />
-
-                                    <OptionsButton
-                                        icon={isFullscreen ? "collapse_content" : "expand_content"}
-                                        description={
-                                            isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"
-                                        }
-                                        onClick={toggleFullscreen}
-                                    />
-                                </div>
-
-                                <Animated direction="vertical" open={showStatus}>
-                                    {diagnostics.length > 0 ? (
-                                        <ErrorBrowser
-                                            diagnostics={diagnostics}
-                                            active={!hasEdited}
-                                            onSelectDiagnostic={setSelectedDiagnostic}
-                                            codeForDiagnostic={codeForDiagnostic}
-                                        />
-                                    ) : (
-                                        <NoErrors active={!hasEdited} />
-                                    )}
-                                </Animated>
-                            </>
-                        ) : isFullscreen ? (
-                            <PrintHeader />
-                        ) : null}
-
-                        <Runner
-                            ref={runnerRef}
-                            wipple={props.wipple}
-                            isFullscreen={isFullscreen}
-                            options={runOptions}
-                            runtime={runtime}
-                            hasFocus={runnerHasFocus}
-                            onFocus={() => setRunnerHasFocus(true)}
-                            onBlur={() => setRunnerHasFocus(false)}
-                            onChangeDiagnostics={setDiagnostics}
-                            onChangeHighlightItems={setHighlightItems}
-                            onChangeCompiling={handleChangeCompiling}
-                            onChangeRunning={handleChangeRunning}
-                        >
-                            {props.children}
-                        </Runner>
-                    </div>
-                </div>
+                    ) : null}
+                </DragOverlay>
             </div>
-            <FloatingPortal>
-                <div
-                    ref={helpFloatingRefs.setFloating}
-                    style={helpFloatingStyles}
-                    {...getHelpFloatingProps()}
-                    className="z-20"
-                >
-                    <div className="flex flex-col items-center gap-2 mt-1">
-                        <TooltipContent open={contextMenuRect != null} padding={false}>
-                            <ContextMenuContent
-                                items={[
-                                    {
-                                        title: "Move Up",
-                                        icon: "arrow_upward",
-                                        disabled: isOnFirstLine,
-                                        onClick: () => runCommand(commands.moveLineUp),
-                                    },
-                                    {
-                                        title: "Move Down",
-                                        icon: "arrow_downward",
-                                        disabled: isOnLastLine,
-                                        onClick: () => runCommand(commands.moveLineDown),
-                                    },
-                                    {
-                                        title: "Delete",
-                                        icon: "delete",
-                                        role: "destructive",
-                                        disabled: isEmpty,
-                                        onClick: () => runCommand(commands.deleteLine),
-                                        divider: true,
-                                    },
-                                    {
-                                        title: "Format",
-                                        icon: "format_align_left",
-                                        onClick: format,
-                                    },
-                                    {
-                                        title: "Select All",
-                                        shortcut: {
-                                            mac: "⌘ A",
-                                            win: "Ctrl A",
-                                        },
-                                        icon: "select_all",
-                                        onClick: () => runCommand(commands.selectAll),
-                                    },
-                                    {
-                                        title: "Undo",
-                                        shortcut: {
-                                            mac: "⌘ Z",
-                                            win: "Ctrl Z",
-                                        },
-                                        icon: "undo",
-                                        onClick: () => runCommand(commands.undo),
-                                    },
-                                    {
-                                        title: "Redo",
-                                        shortcut: {
-                                            mac: "⇧ ⌘ Z",
-                                            win: "Ctrl Y",
-                                        },
-                                        icon: "redo",
-                                        onClick: () => runCommand(commands.redo),
-                                    },
-                                ]}
-                                onDismiss={() => setContextMenuRect(undefined)}
-                            />
-                        </TooltipContent>
-                    </div>
-                </div>
-            </FloatingPortal>
-            <DragOverlay className="w-full">
-                {draggedCommand ? (
-                    <div className="w-screen h-screen">
-                        <div
-                            className="flex flex-row items-center bg-white dark:bg-gray-800 w-fit h-fit -mx-1 px-1 rounded-md shadow-lg"
-                            style={{
-                                fontFamily: theme.fontFamily,
-                                fontSize: theme.fontSize,
-                                lineHeight: theme.lineHeight,
-                            }}
-                        >
-                            <CommandPreviewContent
-                                code={draggedCommand.item.code}
-                                theme={theme}
-                                highlightItems={highlightItems}
-                            />
-                        </div>
-                    </div>
-                ) : null}
-            </DragOverlay>
         </DndContext>
     );
 };
@@ -744,7 +578,7 @@ const RunButton = (props: { isRunning: boolean; onClick: (() => void) | undefine
     <button
         onClick={props.onClick}
         disabled={props.onClick == null}
-        className={`flex-1 flex flex-row items-center justify-center gap-0.5 disabled:bg-gray-200 dark:disabled:bg-gray-700 transition-colors text-white disabled:text-gray-400 dark:disabled:text-gray-600 rounded-lg ${
+        className={`flex-1 flex flex-row items-center justify-center gap-0.5 disabled:bg-gray-200 dark:disabled:bg-gray-700 transition-colors text-white disabled:text-gray-400 dark:disabled:text-gray-600 rounded-lg max-w-[200px] ${
             props.isRunning
                 ? "enabled:hover:bg-red-600 bg-red-500 dark:enabled:hover:bg-red-400"
                 : "enabled:hover:bg-blue-600 bg-blue-500 dark:enabled:hover:bg-blue-400"
@@ -1038,36 +872,43 @@ const NoErrors = (props: { active: boolean }) => (
 );
 
 const CommandPalette = (props: {
+    header?: JSX.Element;
     categories: PaletteCategory[];
     theme: ThemeConfig;
     highlightItems: Record<string, any>;
     draggedCommand: { id: string; item: PaletteItem } | undefined;
     onBeginDraggingCommand: (id: string, item: PaletteItem) => void;
 }) => (
-    <div className="flex-[1.5] flex flex-col bg-white dark:bg-gray-900 border-[1px] border-gray-100 dark:border-gray-800 shadow-sm rounded-lg p-4 gap-2 z-10 overflow-y-scroll">
-        {props.categories.map((category) => (
-            <div key={category.title} className="flex flex-col">
-                <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">{category.title}</p>
+    <div className="flex-[1.5] flex flex-col h-full bg-white dark:bg-gray-900 gap-2.5 z-10">
+        <Logo />
 
-                {category.items.map((item) => (
-                    <div key={item.title}>
-                        {props.draggedCommand == null || props.draggedCommand.item !== item ? (
-                            <CommandPreview
-                                key={item.title}
-                                item={item}
-                                theme={props.theme}
-                                highlightItems={props.highlightItems}
-                                onDragStart={(id) => {
-                                    props.onBeginDraggingCommand(id, item);
-                                }}
-                            />
-                        ) : (
-                            <div className="h-[1lh] mb-1 " />
-                        )}
-                    </div>
-                ))}
-            </div>
-        ))}
+        <Box>
+            {props.categories.map((category) => (
+                <div key={category.title} className="flex flex-col mb-2.5">
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-1">
+                        {category.title}
+                    </p>
+
+                    {category.items.map((item) => (
+                        <div key={item.title}>
+                            {props.draggedCommand == null || props.draggedCommand.item !== item ? (
+                                <CommandPreview
+                                    key={item.title}
+                                    item={item}
+                                    theme={props.theme}
+                                    highlightItems={props.highlightItems}
+                                    onDragStart={(id) => {
+                                        props.onBeginDraggingCommand(id, item);
+                                    }}
+                                />
+                            ) : (
+                                <div className="h-[1lh] mb-1 " />
+                            )}
+                        </div>
+                    ))}
+                </div>
+            ))}
+        </Box>
     </div>
 );
 
@@ -1109,7 +950,7 @@ const CommandPreviewContent = (props: {
     theme: ThemeConfig;
     highlightItems: Record<string, any>;
 }) => (
-    <div className="w-fit hover:drop-shadow-sm transition">
+    <div className="hover:bg-gray-100 dark:bg-gray-800 transition -mx-1 px-1 rounded-lg">
         <div className="w-fit pointer-events-none">
             <CodeMirror
                 autoFocus={false}
@@ -1121,27 +962,6 @@ const CommandPreviewContent = (props: {
             </CodeMirror>
         </div>
     </div>
-);
-
-const AddLineButton = (props: {
-    direction: "start" | "end";
-    disabled: boolean;
-    onClick: () => void;
-}) => (
-    <Tooltip
-        description="Add Line"
-        onClick={props.onClick}
-        disabled={props.disabled}
-        className={props.disabled ? "pointer-events-none" : ""}
-    >
-        <div
-            className={`group flex w-full cursor-vertical-text ${
-                props.direction === "start" ? "pt-1.5 pb-1" : "pt-1 pb-2.5"
-            }`}
-        >
-            <div className="w-full h-1 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-        </div>
-    </Tooltip>
 );
 
 const DropTargetLines = (props: { numberOfLines: number; theme: ThemeConfig }) => (
@@ -1233,18 +1053,16 @@ const PrintHeader = () => {
     const [store, _setStore] = useStore();
 
     return (
-        <div className="flex flex-col p-4 bg-gray-50 rounded-lg">
-            <img src="/playground/images/logo.svg" className="w-16 h-16 mb-4" />
+        <div>
+            <img src="/playground/images/logo.svg" className="w-12 h-12 mb-2.5" />
 
-            <p className="text-xl font-semibold">
+            <p className="text-lg font-semibold">
                 {store.user?.displayName
                     ? `Created by ${store.user.displayName} with Wipple`
                     : "Created with Wipple"}
             </p>
 
-            <p className="text-lg text-gray-500 font-semibold">
-                Create your own at <span className="text-blue-500">wipple.org</span>
-            </p>
+            <p className="text-blue-500 font-semibold">wipple.org</p>
         </div>
     );
 };

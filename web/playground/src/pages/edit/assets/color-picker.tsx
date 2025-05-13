@@ -20,7 +20,7 @@ export const ColorPicker = (props: { selection: string; onDismiss: (color: strin
                                 <div className="grid grid-cols-6 gap-1 overflow-x-visible">
                                     {Object.values(shades).map((color) => (
                                         <button
-                                            className="flex items-center justify-center w-full aspect-square rounded-md border-2 border-gray-100 dark:border-gray-800 hover:scale-110 transition-transform"
+                                            className="flex items-center justify-center w-full aspect-square rounded-md border-[1.5px] border-gray-100 dark:border-gray-800 hover:scale-110 transition-transform"
                                             style={{ backgroundColor: color }}
                                             onClick={() => setSelection(color)}
                                         >

@@ -11,7 +11,7 @@ export const SliderAsset = (props: {
     const [value, setValue] = useState(props.value);
 
     return (
-        <div className="flex flex-row items-center justify-center rounded-lg w-20 h-[calc(1lh-2pt)] border-2 gap-0.5 px-2.5 border-gray-100 dark:border-gray-800 overflow-clip">
+        <div className="flex flex-row items-center justify-center rounded-lg w-20 h-[calc(1lh-2pt)] border-[1.5px] gap-0.5 px-2.5 border-gray-100 dark:border-gray-800 overflow-clip">
             <Slider
                 size="small"
                 value={value}

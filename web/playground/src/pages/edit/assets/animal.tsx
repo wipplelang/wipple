@@ -116,7 +116,7 @@ export const AnimalAsset = (props: {
 
     return (
         <div
-            className={`inline-block items-center justify-center align-text-bottom rounded-md border-2 border-gray-100 dark:border-gray-800 overflow-clip ${
+            className={`inline-block items-center justify-center align-text-bottom rounded-md border-[1.5px] border-gray-100 dark:border-gray-800 overflow-clip ${
                 props.tooltip ?? true ? "hover:scale-110 transition-transform" : ""
             }`}
         >

@@ -12,7 +12,6 @@ export interface Runtime {
 export type RuntimeComponent = React.ForwardRefExoticComponent<
     {
         id: string;
-        isFullscreen: boolean;
         stopRunning: () => void;
     } & React.RefAttributes<Runtime>
 >;

@@ -12,6 +12,7 @@ import RealTurtle from "real-turtle";
 import { debounce } from "@mui/material";
 import { flushSync } from "react-dom";
 import { useStore } from "../../store";
+import { Box } from "../../components/box";
 
 const initializeTurtle = async (canvas: HTMLCanvasElement) => {
     const size = canvas.height;
@@ -178,47 +179,51 @@ export const Turtle: RuntimeComponent = forwardRef((props, ref) => {
         a.click();
     };
 
-    const printingSize = props.isFullscreen ? "7.5in" : "5in";
+    const printingSize = "5in";
 
     return (
         <div
             ref={containerRef}
-            className={`relative flex rounded-md w-full aspect-square bg-white ${
-                printingImage && props.isFullscreen
-                    ? ""
-                    : "border border-gray-100 dark:border-gray-800"
-            }`}
+            className="aspect-square"
             style={{
                 width: printingImage ? printingSize : undefined,
                 height: printingImage ? printingSize : undefined,
             }}
         >
-            {printingImage ? (
-                <img src={printingImage} className="absolute inset-0 object-cover" />
-            ) : (
-                <>
-                    <canvas key={size} ref={canvasRef} style={{ flex: size ? undefined : 1 }} />
-
-                    {turtleRef.current?.[1] == null && !store.isPrinting ? (
-                        <div className="absolute top-0 right-0 transition-opacity">
-                            <div className="flex flex-row items-center gap-2 p-2">
-                                <Tooltip description="Save Photo">
-                                    <button
-                                        className="flex items-center justify-center aspect-square p-1 bg-white hover:bg-gray-100 transition-colors border border-gray-100 rounded-lg"
-                                        onClick={savePhoto}
-                                    >
-                                        <MaterialSymbol
-                                            icon="photo_camera"
-                                            size={18}
-                                            color="black"
-                                        />
-                                    </button>
-                                </Tooltip>
-                            </div>
+            <Box shadow={printingImage == null} showBorderWhenPrinting>
+                {printingImage ? (
+                    <img src={printingImage} className="absolute inset-0 object-cover" />
+                ) : (
+                    <>
+                        <div className="absolute inset-0 flex">
+                            <canvas
+                                key={size}
+                                ref={canvasRef}
+                                style={{ flex: size ? undefined : 1 }}
+                            />
                         </div>
-                    ) : null}
-                </>
-            )}
+
+                        {turtleRef.current?.[1] == null && !store.isPrinting ? (
+                            <div className="absolute top-0 right-0 transition-opacity">
+                                <div className="flex flex-row items-center gap-2 p-2">
+                                    <Tooltip description="Save Photo">
+                                        <button
+                                            className="flex items-center justify-center aspect-square p-1 bg-white hover:bg-gray-100 transition-colors border border-gray-100 rounded-lg"
+                                            onClick={savePhoto}
+                                        >
+                                            <MaterialSymbol
+                                                icon="photo_camera"
+                                                size={18}
+                                                color="black"
+                                            />
+                                        </button>
+                                    </Tooltip>
+                                </div>
+                            </div>
+                        ) : null}
+                    </>
+                )}
+            </Box>
         </div>
     );
 });
