@@ -64,7 +64,10 @@ export const RootPage = () => {
         </div>
     ) : (
         <>
-            <div className="w-screen flex flex-col items-stretch">
+            <div
+                data-printing={store.isPrinting || undefined}
+                className="w-screen flex flex-col items-stretch"
+            >
                 <Outlet />
                 <ScrollRestoration />
             </div>

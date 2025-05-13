@@ -15,6 +15,7 @@ import { Animated, Markdown, defaultAnimationDuration } from "../../components";
 import { flushSync } from "react-dom";
 import { decompress } from "fzstd";
 import { useUnmountEffect } from "framer-motion";
+import { Box } from "../../components/box";
 
 export interface RunOptions {
     bundlePath: string;
@@ -31,7 +32,6 @@ export interface RunnerProps {
     children: string;
     wipple: typeof import("wipple-wasm");
     runtime?: { Component: RuntimeComponent };
-    isFullscreen: boolean;
     hasFocus: boolean;
     onFocus: () => void;
     onBlur: () => void;
@@ -341,7 +341,6 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                 {props.runtime ? (
                     <props.runtime.Component
                         id={id}
-                        isFullscreen={props.isFullscreen}
                         stopRunning={async () => {
                             await props.wipple.stop({ id });
                         }}
@@ -354,9 +353,9 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
                     switch (item.type) {
                         case "text":
                             content = (
-                                <div className="bg-gray-50 dark:bg-gray-900 p-3 rounded-lg">
+                                <Box>
                                     <Markdown>{item.text}</Markdown>
-                                </div>
+                                </Box>
                             );
                             break;
                         case "prompt":

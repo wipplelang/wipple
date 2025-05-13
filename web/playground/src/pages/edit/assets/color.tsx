@@ -63,7 +63,7 @@ export const ColorAsset = (props: {
 
     return (
         <div
-            className={`inline-block align-text-bottom rounded-md border-2 border-gray-100 dark:border-gray-800 overflow-clip ${
+            className={`inline-block align-text-bottom rounded-md border-[1.5px] border-gray-100 dark:border-gray-800 overflow-clip ${
                 props.tooltip ?? true ? "hover:scale-110 transition-transform" : ""
             }`}
         >

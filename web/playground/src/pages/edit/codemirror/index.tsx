@@ -9,7 +9,6 @@ import { wippleLanguage } from "./language";
 import { ThemeConfig, theme, themeFromConfig } from "./theme";
 import { diagnostics, highlightedCodeFromConfig } from "./diagnostics";
 import { AssetClickHandler, assets, assetsFromConfig } from "./assets";
-import { defaultAnimationDuration } from "../../../components";
 
 export interface Snippet {
     code: string;
@@ -23,7 +22,6 @@ export interface CodeMirrorProps {
     autoFocus: boolean;
     onFocus?: () => void;
     onBlur?: () => void;
-    onContextMenu?: (rect: Rect | undefined) => void;
     onClickAsset?: AssetClickHandler;
     readOnly: boolean;
     highlightedCode?: HighlightedCode;
@@ -109,35 +107,6 @@ export const CodeMirror = forwardRef<CodeMirrorRef, CodeMirrorProps>((props, ref
                                 props.onBlur?.();
                             }
                         }
-                    }),
-
-                    EditorView.domEventHandlers({
-                        contextmenu: (event, view) => {
-                            event.preventDefault();
-
-                            (async () => {
-                                props.onContextMenu?.(undefined);
-                                await new Promise((resolve) =>
-                                    setTimeout(resolve, defaultAnimationDuration),
-                                );
-
-                                const pos = view.posAtCoords({
-                                    x: event.clientX,
-                                    y: event.clientY,
-                                });
-
-                                if (pos == null) {
-                                    return;
-                                }
-
-                                const rect = view.coordsAtPos(pos);
-                                if (rect == null) {
-                                    return;
-                                }
-
-                                props.onContextMenu?.(rect);
-                            })();
-                        },
                     }),
                 ],
             }),

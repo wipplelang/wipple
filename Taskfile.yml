@@ -126,7 +126,6 @@ tasks:
         run: once
         deps:
             - web:home:install-dependencies
-            - web:login:install-dependencies
             - web:docs:install-dependencies
             - web:doc-template:install-dependencies
             - web:playground:install-dependencies
@@ -142,7 +141,6 @@ tasks:
         run: once
         deps:
             - web:home:build
-            - web:login:build
             - web:docs:build
             - web:doc-template:build
             - web:playground:build
@@ -150,7 +148,6 @@ tasks:
         cmds:
             - rm -rf dist && mkdir dist
             - cp -r home/_site/. dist
-            - cp -r login/dist/. dist/login
             - cp -r docs/book/. dist/docs
             - cp doc-template/dist/index.html dist/doc-template.html
             - cp -r playground/dist/. dist/playground
@@ -171,24 +168,6 @@ tasks:
     web:home:build:
         run: once
         dir: web/home
-        cmds:
-            - npm run build
-
-    web:login:install-dependencies:
-        run: once
-        dir: web/login
-        cmds:
-            - npm install
-
-    web:login:serve:
-        run: once
-        dir: web/login
-        cmds:
-            - npm run dev
-
-    web:login:build:
-        run: once
-        dir: web/login
         cmds:
             - npm run build
 

@@ -3,7 +3,7 @@ export * from "./animated";
 export * from "./button";
 export * from "./context-menu";
 export * from "./markdown";
-export * from "./navbar";
+export * from "./logo";
 export * from "./resize-handle";
 export * from "./skeleton";
 export * from "./tooltip";
