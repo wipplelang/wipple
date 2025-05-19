@@ -9,14 +9,13 @@ import { animalImageUrl } from "../../pages/edit/assets/animal";
 
 // @ts-ignore
 import RealTurtle from "real-turtle";
-import { debounce } from "@mui/material";
-import { flushSync } from "react-dom";
 import { useStore } from "../../store";
 import { Box } from "../../components/box";
 
-const initializeTurtle = async (canvas: HTMLCanvasElement) => {
-    const size = canvas.height;
+const canvasSize = 500;
+const canvasPixelRatio = 2.5;
 
+const initializeTurtle = async (canvas: HTMLCanvasElement) => {
     const turtle = new RealTurtle(canvas, {
         async: true,
         image: turtleImage,
@@ -27,8 +26,7 @@ const initializeTurtle = async (canvas: HTMLCanvasElement) => {
 
     await turtle.setLineWidth(2);
 
-    const ratio = getPixelRatio(canvas);
-    await turtle.setPosition(size / 2 / ratio, size / 2 / ratio);
+    await turtle.setPosition(canvasSize / 2, canvasSize / 2);
 
     return turtle;
 };
@@ -57,50 +55,11 @@ export const Turtle: RuntimeComponent = forwardRef((props, ref) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     const reset = useCallback(async () => {
-        canvasRef.current!.style.opacity = "0";
-        rescaleCanvas(canvasRef.current!);
-        turtleRef.current = await initializeTurtle(canvasRef.current!);
-        canvasRef.current!.style.opacity = "1";
-    }, []);
-
-    const [size, setSize] = useState(0);
-
-    useEffect(() => {
-        const debouncedReset = debounce(async () => {
-            if (!containerRef.current) {
-                return;
-            }
-
-            flushSync(() => {
-                setSize(0);
-            });
-
-            await new Promise((resolve) => requestAnimationFrame(resolve));
-
-            flushSync(() => {
-                setSize(containerRef.current!.getBoundingClientRect().height);
-            });
-
-            reset();
-        }, defaultAnimationDuration * 2);
-
-        const resizeObserver = new ResizeObserver(() => {
-            if (isPrintingRef.current) {
-                return;
-            }
-
-            if (canvasRef.current) {
-                canvasRef.current.style.opacity = "0";
-            }
-
-            debouncedReset();
-        });
-
-        resizeObserver.observe(containerRef.current!);
-
-        return () => {
-            resizeObserver.disconnect();
-        };
+        const canvas = canvasRef.current!;
+        canvas.style.opacity = "0";
+        rescaleCanvas(canvas);
+        turtleRef.current = await initializeTurtle(canvas);
+        canvas.style.opacity = "1";
     }, []);
 
     const turtleRef = useRef<RealTurtle>();
@@ -184,24 +143,23 @@ export const Turtle: RuntimeComponent = forwardRef((props, ref) => {
     return (
         <div
             ref={containerRef}
-            className="aspect-square"
+            className="aspect-square bg-white"
             style={{
                 width: printingImage ? printingSize : undefined,
                 height: printingImage ? printingSize : undefined,
             }}
         >
-            <Box shadow={printingImage == null} showBorderWhenPrinting>
+            <Box showBorderWhenPrinting>
                 {printingImage ? (
                     <img src={printingImage} className="absolute inset-0 object-cover" />
                 ) : (
                     <>
-                        <div className="absolute inset-0 flex">
-                            <canvas
-                                key={size}
-                                ref={canvasRef}
-                                style={{ flex: size ? undefined : 1 }}
-                            />
-                        </div>
+                        <canvas
+                            ref={canvasRef}
+                            width={canvasSize}
+                            height={canvasSize}
+                            className="absolute inset-0 size-full"
+                        />
 
                         {turtleRef.current?.[1] == null && !store.isPrinting ? (
                             <div className="absolute top-0 right-0 transition-opacity">
@@ -228,32 +186,12 @@ export const Turtle: RuntimeComponent = forwardRef((props, ref) => {
     );
 });
 
-const getPixelRatio = (ctx: any) => {
-    const devicePixelRatio = window.devicePixelRatio || 1;
-
-    const backingStoreRatio =
-        ctx.webkitBackingStorePixelRatio ||
-        ctx.mozBackingStorePixelRatio ||
-        ctx.msBackingStorePixelRatio ||
-        ctx.oBackingStorePixelRatio ||
-        ctx.backingStorePixelRatio ||
-        1;
-
-    return devicePixelRatio / backingStoreRatio;
-};
-
 // Adapted from https://www.keanw.com/2017/02/scaling-html-canvases-for-hidpi-screens.html
 const rescaleCanvas = (canvas: HTMLCanvasElement) => {
-    const { height: size } = canvas.getBoundingClientRect();
-
     const ctx = canvas.getContext("2d")!;
-    const ratio = getPixelRatio(ctx);
-
-    canvas.width = size * ratio;
-    canvas.height = size * ratio;
-    canvas.style.width = `${size}px`;
-    canvas.style.height = `${size}px`;
-    ctx.scale(ratio, ratio);
+    canvas.width = canvasSize * canvasPixelRatio;
+    canvas.height = canvasSize * canvasPixelRatio;
+    ctx.scale(canvasPixelRatio, canvasPixelRatio);
 };
 
 export { turtleImage };

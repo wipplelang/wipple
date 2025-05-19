@@ -40,52 +40,68 @@ export const HomePage = () => {
 
     return (
         <div className="flex flex-col items-center w-screen h-screen">
-            <div className="mx-auto flex h-full w-full max-w-[450px] flex-1 flex-col [justify-content:safe_center] gap-2.5 py-8">
-                <div className="flex justify-center mb-4">
-                    <Logo title="Welcome to Wipple" />
-                </div>
+            <div className="self-start flex justify-center mb-4 p-2.5">
+                <Logo />
+            </div>
 
+            <div className="mx-auto flex flex-1 w-full max-w-[600px] flex-col gap-2.5 pt-[80px] px-4 overflow-y-scroll">
                 <h1 className="mb-3.5 text-center text-2xl font-semibold flex flex-col items-center gap-2.5">
                     What do you want to create?
                 </h1>
 
-                {playgroundSetups.map((setup) => {
-                    const { name, description } = setupDescriptions[setup];
+                <div className="flex flex-row gap-2.5">
+                    {Object.entries(setupDescriptions).map(([key, { name, className }]) => {
+                        const setup = key === "blank" ? null : (key as PlaygroundSetup);
 
-                    return (
-                        <button key={setup} onClick={() => handleNewPlayground(setup)}>
-                            <Box shadow={false}>
-                                <div className="flex flex-1 flex-col justify-start items-stretch text-left hover:bg-gray-50 dark:hover:bg-gray-800 -m-3 p-2.5">
-                                    <h2 className="flex flex-col gap-1 font-semibold">
-                                        <SetupIcon setup={setup} size="lg" />
+                        return (
+                            <button
+                                key={key}
+                                className="flex-1 flex"
+                                onClick={() => handleNewPlayground(setup)}
+                            >
+                                <Box fill>
+                                    <div
+                                        className={`flex-1 relative hover:bg-gray-50 dark:hover:bg-gray-800 -m-3 p-2.5`}
+                                    >
+                                        <div
+                                            className={`absolute inset-0 bg-gradient-to-b ${className} z-0 opacity-50 hover:opacity-100 transition-opacity`}
+                                        />
 
-                                        <span className="text-[large]">{name}</span>
-                                    </h2>
-                                    <p>{description}</p>
-                                </div>
-                            </Box>
-                        </button>
-                    );
-                })}
+                                        <h2 className="flex flex-col justify-between gap-1 h-full font-semibold text-left *:z-[1] pointer-events-none">
+                                            <SetupIcon setup={setup} size="lg" />
+                                            <span className="text-[large]">{name}</span>
+                                        </h2>
+                                    </div>
+                                </Box>
+                            </button>
+                        );
+                    })}
+                </div>
             </div>
         </div>
     );
 };
 
-const setupDescriptions: Record<
-    NonNullable<PlaygroundSetup>,
-    { name: string; description: string }
-> = {
+const setupDescriptions: {
+    [K in NonNullable<PlaygroundSetup> | "blank"]: {
+        name: string;
+        className: string;
+    };
+} = {
     turtle: {
         name: "Turtle",
-        description: "Create drawings",
+        className: "from-green-100/50 to-green-100",
     },
     music: {
         name: "Music",
-        description: "Make a composition",
+        className: "from-orange-100/50 to-orange-100",
     },
     math: {
         name: "Math",
-        description: "Explore graphs",
+        className: "from-blue-100/50 to-blue-100",
+    },
+    blank: {
+        name: "Blank",
+        className: "from-slate-100/50 to-slate-100",
     },
 };
