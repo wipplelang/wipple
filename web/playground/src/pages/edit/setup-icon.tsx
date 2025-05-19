@@ -9,10 +9,10 @@ export const SetupIcon = (props: { setup: PlaygroundSetup; size: "sm" | "lg" }) 
     const padding = props.size === "lg" ? "pb-0.5" : "pb-[1px]";
 
     switch (props.setup) {
-        case undefined:
+        case null:
             return (
                 <MaterialSymbol
-                    icon="article"
+                    icon="select"
                     size={size}
                     fill
                     className={`text-blue-500 ${padding}`}

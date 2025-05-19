@@ -411,9 +411,9 @@ export const CodeEditor = (props: {
                         </div>
                     ) : null}
 
-                    <div className="h-full flex flex-col gap-2.5 flex-1 opacity-1">
+                    <div className="h-full flex flex-col gap-2.5 flex-1 opacity-1 min-w-[350px] flex-shrink-0">
                         {!store.isPrinting ? (
-                            <div className="flex flex-row justify-between shrink-0 h-8">
+                            <div className="flex flex-row justify-between shrink-0 h-8 gap-2.5">
                                 <ToolbarButton icon="add" onClick={props.onNewPlayground}>
                                     New
                                 </ToolbarButton>
@@ -500,7 +500,7 @@ export const CodeEditor = (props: {
                         </Box>
                     </div>
 
-                    <div className={store.isPrinting ? "h-full" : "w-[380px] h-full"}>
+                    <div className={store.isPrinting ? "h-full" : "basis-[550px] h-full"}>
                         <div className="flex flex-col h-full">
                             {!store.isPrinting ? (
                                 <>
