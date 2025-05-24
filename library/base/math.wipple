@@ -91,7 +91,7 @@ instance (Describe-Type Angle "angle")
 degrees :: Number -> Angle
 degrees : Angle
 
-_ where (Error ("Missing `degrees` after _" Source ; Error-Description ("Try rewriting this code as `(_ degrees)`, or double-check your parentheses." Source))) =>
+_ where (Error ("Missing `degrees` after `_`" Source ; Error-Description ("Try rewriting this code as `(_ degrees)`, or double-check your parentheses." Source))) =>
   instance (Mismatch Number Angle)
 
 -- Calculate the sine of an angle.

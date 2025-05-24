@@ -15,13 +15,13 @@ describe : Describe
 show :: (Value : Text) where (Describe Value) => Value -> None
 show : value -> intrinsic "display" (describe value)
 
-print :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not _" Source ; Error-Description ("Output is written using `show` in Wipple, not _" Source))) => Value -> None
+print :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not `_`" Source ; Error-Description ("Output is written using `show` in Wipple, not `_`" Source))) => Value -> None
 print : ...
 
-println :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not _" Source ; Error-Description ("Output is written using `show` in Wipple, not _" Source))) => Value -> None
+println :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not `_`" Source ; Error-Description ("Output is written using `show` in Wipple, not `_`" Source))) => Value -> None
 println : ...
 
-display :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not _" Source ; Error-Description ("Output is written using `show` in Wipple, not _" Source))) => Value -> None
+display :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not `_`" Source ; Error-Description ("Output is written using `show` in Wipple, not `_`" Source))) => Value -> None
 display : ...
 
 instance (Describe Text) : text -> text
