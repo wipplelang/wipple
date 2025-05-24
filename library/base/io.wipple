@@ -2,7 +2,7 @@
 @(language : "describe")
 Describe : (Value : Text) => trait (Value -> Text)
 
-Value where (Error ("cannot-describe" ; Error-Data "value" Value)) =>
+Value where (Error ("Can't describe _" Value ; Error-Description ("You can't display _ on the screen or use it in placeholders because it can't be converted into text." Value))) =>
   default instance (Describe Value) : ...
 
 -- Produce a piece of `Text` describing the value.
@@ -15,13 +15,13 @@ describe : Describe
 show :: (Value : Text) where (Describe Value) => Value -> None
 show : value -> intrinsic "display" (describe value)
 
-print :: (Value : Text) where (Error "use-show-instead") => Value -> None
+print :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not _" Source ; Error-Description ("Output is written using `show` in Wipple, not _" Source))) => Value -> None
 print : ...
 
-println :: (Value : Text) where (Error "use-show-instead") => Value -> None
+println :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not _" Source ; Error-Description ("Output is written using `show` in Wipple, not _" Source))) => Value -> None
 println : ...
 
-display :: (Value : Text) where (Error "use-show-instead") => Value -> None
+display :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not _" Source ; Error-Description ("Output is written using `show` in Wipple, not _" Source))) => Value -> None
 display : ...
 
 instance (Describe Text) : text -> text
@@ -35,7 +35,7 @@ Value where (Describe Value) => instance (Describe (Maybe Value)) : m -> when m 
 -- Convert from a piece of `Text` to a value.
 Read : Value => trait (Text -> Maybe Value)
 
-Value where (Error ("cannot-read" ; Error-Data "value" Value)) =>
+Value where (Error ("Can't read _ from input" Value ; Error-Description ("You can't use `prompt` with _ because there's no way to convert the contents of a text field into _." Value Value))) =>
   default instance (Read Value) : ...
 
 instance (Read Text) : Has

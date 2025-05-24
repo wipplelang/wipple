@@ -2,7 +2,6 @@
 
 mod convert;
 pub mod fix;
-pub mod lint;
 mod visit;
 
 use itertools::Itertools;
@@ -30,7 +29,6 @@ pub fn compile(files: Vec<File>, dependencies: Vec<Interface>) -> Result {
 }
 
 /// Entrypoint to the linker.
-
 pub fn link(libraries: Vec<Library>) -> Option<Executable> {
     linker::link(libraries).ok()
 }
@@ -129,7 +127,6 @@ pub fn fix_file(
 pub struct Driver {
     recursion_limit: u32,
     hide_source: bool,
-    lint: bool,
     dependencies: Vec<Interface>,
     interface: Interface,
     library: Library,
@@ -141,7 +138,6 @@ impl Driver {
         Driver {
             recursion_limit: DEFAULT_RECURSION_LIMIT,
             hide_source: false,
-            lint: true,
             dependencies: Default::default(),
             interface: Default::default(),
             library: Default::default(),
@@ -288,7 +284,6 @@ pub enum Diagnostic {
     Lower(lower::Diagnostic),
     Typecheck(typecheck::Diagnostic<Driver>),
     Ir,
-    Lint(lint::Lint),
 }
 
 impl Driver {
@@ -708,12 +703,6 @@ impl Driver {
 
                 instances.entry(r#trait.clone()).or_default().push(instance);
             }
-        }
-
-        if self.lint {
-            let lints = lint::lint(&self.interface, &self.library);
-
-            diagnostics.extend(lints.into_iter().map(|lint| lint.map(Diagnostic::Lint)));
         }
 
         Result {

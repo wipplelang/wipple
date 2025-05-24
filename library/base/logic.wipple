@@ -47,7 +47,7 @@ Ordering : type {
 
 -- Implement this trait to enable comparisons between two values of your type.
 Order : Value => trait (Value Value -> Ordering)
-Value where (Error ("cannot-order" ; Error-Data "value" Value)) => default instance (Order Number) : ...
+Value where (Error ("Can't put items that are _ into order" Value ; Error-Description ("You can't use `>` or `<` with _ because it doesn't support ordering." Value))) => default instance (Order Value) : ...
 instance (Order Number) : a b -> intrinsic "number-ordering" a b
 
 -- Returns `True` if the left side is less than the right side.

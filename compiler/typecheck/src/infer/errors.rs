@@ -39,8 +39,8 @@ pub enum QueuedError<D: Driver> {
     ExtraField,
 
     Custom {
-        id: FormattedText<Type<D>>,
-        data: Vec<(FormattedText<Type<D>>, Type<D>)>,
+        message: FormattedText<Type<D>>,
+        description: Option<FormattedText<Type<D>>>,
         location: Option<Type<D>>,
     },
 }
@@ -123,7 +123,11 @@ pub fn report_queued_errors<D: Driver>(
             )),
             QueuedError::MissingFields(fields) => Some(crate::Diagnostic::MissingFields(fields)),
             QueuedError::ExtraField => Some(crate::Diagnostic::ExtraField),
-            QueuedError::Custom { id, data, location } => {
+            QueuedError::Custom {
+                message,
+                description,
+                location,
+            } => {
                 pub fn report_message<D: Driver>(
                     text: FormattedText<Type<D>>,
                     finalize_context: &mut FinalizeContext<'_, D>,
@@ -148,16 +152,9 @@ pub fn report_queued_errors<D: Driver>(
                 }
 
                 Some(crate::Diagnostic::Custom {
-                    id: report_message(id, &mut finalize_context),
-                    data: data
-                        .into_iter()
-                        .map(|(key, value)| {
-                            (
-                                report_message(key, &mut finalize_context),
-                                finalize_type(value, false, &mut finalize_context),
-                            )
-                        })
-                        .collect(),
+                    message: report_message(message, &mut finalize_context),
+                    description: description
+                        .map(|description| report_message(description, &mut finalize_context)),
                 })
             }
         };

@@ -110,13 +110,13 @@ impl<D: Driver> ExpressionKind<D> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormattedText<T> {
     pub segments: Vec<FormatSegment<T>>,
     pub trailing: String,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FormatSegment<T> {
     pub text: String,
     pub value: T,

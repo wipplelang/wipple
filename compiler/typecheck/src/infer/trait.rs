@@ -12,7 +12,6 @@ use crate::{
     },
     Driver,
 };
-use itertools::Itertools;
 use wipple_util::WithInfo;
 
 pub fn resolve_trait<D: Driver>(
@@ -29,6 +28,7 @@ pub fn resolve_trait<D: Driver>(
         mut candidates: Vec<Candidate<D>>,
         query: WithInfo<D::Info, &Instance<D>>,
         stack: &[WithInfo<D::Info, &Instance<D>>],
+        _type_context: &mut TypeContext<D>,
     ) -> Result<Option<Candidate<D>>, WithInfo<D::Info, QueuedError<D>>> {
         match candidates.len() {
             0 => Ok(None),
@@ -91,7 +91,7 @@ pub fn resolve_trait<D: Driver>(
             }
 
             if let Some((new_type_context, candidate, _)) =
-                pick_from_candidates(candidates, query.clone(), stack)?
+                pick_from_candidates(candidates, query.clone(), stack, context.type_context)?
             {
                 context.type_context.replace_with(new_type_context);
                 return Ok(candidate.map(|(path, instance)| path.ok_or(instance)));
@@ -183,7 +183,7 @@ pub fn resolve_trait<D: Driver>(
             // If an instance matches, check its bounds
 
             if let Some((new_type_context, mut candidate, bounds)) =
-                pick_from_candidates(candidates, query.clone(), stack)?
+                pick_from_candidates(candidates, query.clone(), stack, context.type_context)?
             {
                 context.type_context.replace_with(new_type_context);
                 candidate.item.1.set_source_info(context, &query.info);
@@ -244,12 +244,12 @@ pub fn resolve_custom_error<D: Driver>(
 ) -> Option<WithInfo<D::Info, QueuedError<D>>> {
     let message_type = message_type.apply_in_context(context.type_context);
 
-    let mut error_id = None;
-    let mut error_data = Vec::new();
+    let mut error_message = None;
+    let mut error_description = None;
     let mut error_location = None;
     match &message_type.kind {
         TypeKind::Message { segments, trailing } => {
-            error_id = Some(FormattedText {
+            error_message = Some(FormattedText {
                 segments: segments.clone(),
                 trailing: trailing.clone(),
             });
@@ -257,12 +257,32 @@ pub fn resolve_custom_error<D: Driver>(
         TypeKind::Tuple(elements) => {
             for element in elements {
                 match &element.kind {
-                    // Error ID
+                    // Error message
                     TypeKind::Message { segments, trailing } => {
-                        error_id = Some(FormattedText {
+                        error_message = Some(FormattedText {
                             segments: segments.clone(),
                             trailing: trailing.clone(),
                         });
+                    }
+
+                    // Error description
+                    TypeKind::Declared { path, parameters }
+                        if context
+                            .driver
+                            .path_for_language_type("error-description")
+                            .is_some_and(|error_description_path| {
+                                *path == error_description_path
+                            }) =>
+                    {
+                        if let Some(description_type) = parameters.first() {
+                            if let TypeKind::Message { segments, trailing } = &description_type.kind
+                            {
+                                error_description = Some(FormattedText {
+                                    segments: segments.clone(),
+                                    trailing: trailing.clone(),
+                                });
+                            }
+                        }
                     }
 
                     // Error location
@@ -277,24 +297,6 @@ pub fn resolve_custom_error<D: Driver>(
                         }
                     }
 
-                    // Error data
-                    TypeKind::Declared { path, parameters }
-                        if context
-                            .driver
-                            .path_for_language_type("error-data")
-                            .is_some_and(|error_data_path| *path == error_data_path) =>
-                    {
-                        if let Some((key, value)) = parameters.iter().collect_tuple() {
-                            if let TypeKind::Message { segments, trailing } = &key.kind {
-                                let key = FormattedText {
-                                    segments: segments.clone(),
-                                    trailing: trailing.clone(),
-                                };
-
-                                error_data.push((key, value.clone()));
-                            }
-                        }
-                    }
                     _ => {}
                 }
             }
@@ -302,11 +304,11 @@ pub fn resolve_custom_error<D: Driver>(
         _ => {}
     }
 
-    error_id.map(|error_id| WithInfo {
+    error_message.map(|error_message| WithInfo {
         info: error_info.clone(),
         item: QueuedError::Custom {
-            id: error_id,
-            data: error_data,
+            message: error_message,
+            description: error_description,
             location: error_location,
         },
     })

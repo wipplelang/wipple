@@ -266,11 +266,11 @@ pub enum Diagnostic<D: Driver> {
 
     /// A custom error message.
     Custom {
-        /// The error's identifier.
-        id: CustomMessage<D>,
+        /// The error message.
+        message: CustomMessage<D>,
 
-        /// Additional data associated with the error.
-        data: Vec<(CustomMessage<D>, WithInfo<D::Info, Type<D>>)>,
+        /// A description of the error.
+        description: Option<CustomMessage<D>>,
     },
 }
 
@@ -1116,25 +1116,6 @@ pub struct FieldPattern<D: Driver> {
 
     /// The pattern matching the field's value.
     pub pattern: WithInfo<D::Info, Pattern<D>>,
-}
-
-/// The reason why an error occurred.
-#[derive(Serialize, Deserialize, Derivative)]
-#[derivative(
-    Debug(bound = ""),
-    Clone(bound = ""),
-    PartialEq(bound = ""),
-    Eq(bound = ""),
-    Hash(bound = "")
-)]
-#[serde(rename_all = "camelCase", tag = "type", content = "value")]
-#[serde(bound = "")]
-pub enum ErrorReason<D: Driver> {
-    /// The error involvs another expression.
-    Expression(WithInfo<D::Info, Type<D>>),
-
-    /// A user-defined reason.
-    Custom(CustomMessage<D>),
 }
 
 /// Traverse an expression.
