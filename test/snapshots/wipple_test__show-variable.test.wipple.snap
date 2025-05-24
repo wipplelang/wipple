@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,8 +15,6 @@ diagnostics:
         column: 4
         index: 77
     severity: error
-    template:
-      id: cannot-describe
-      data:
-        value: "`Cannot-Be-Shown`"
+    message: "Can't describe `Cannot-Be-Shown`"
+    description: "You can't display `Cannot-Be-Shown` on the screen or use it in placeholders because it can't be converted into text."
 output: []

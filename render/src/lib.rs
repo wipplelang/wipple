@@ -68,7 +68,8 @@ impl From<&str> for RenderedTemplate {
 pub struct RenderedDiagnostic {
     pub location: RenderedSourceLocation,
     pub severity: RenderedDiagnosticSeverity,
-    pub template: RenderedTemplate,
+    pub message: String,
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -752,7 +753,10 @@ impl Render {
 
         let mut result = String::new();
         for segment in &message.segments {
-            let code = if render_segments_as_code || segment.text.ends_with('`') {
+            // Render as code if there's an opening '`'
+            let code = if render_segments_as_code
+                || segment.text.chars().filter(|&c| c == '`').count() % 2 == 1
+            {
                 self.render_code(&segment.r#type)
             } else {
                 None
@@ -797,21 +801,30 @@ impl Render {
                 });
 
         let severity;
-        let id;
-        let mut data = BTreeMap::new();
+        let message;
+        let description;
         match &diagnostic.item {
             wipple_driver::Diagnostic::Tokenize(tokenize_diagnostic) => match tokenize_diagnostic {
                 wipple_driver::syntax::tokenize::Diagnostic::InvalidToken => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("unrecognized-symbol");
+                    message = String::from("Unrecognized symbol");
+                    description = Some(String::from(
+                        "This symbol isn't valid in Wipple code. Try removing it.",
+                    ));
                 }
                 wipple_driver::syntax::tokenize::Diagnostic::EmptyParentheses => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("empty-parentheses");
+                    message = String::from("Missing code between the parentheses");
+                    description = Some(String::from(
+                        "Try putting something between the opening `(` and the closing `)`, or remove the parentheses.",
+                    ));
                 }
                 wipple_driver::syntax::tokenize::Diagnostic::EmptyBraces => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("empty-braces");
+                    message = String::from("Missing code between the braces");
+                    description = Some(String::from(
+                        "Try putting `None` between the opening `{` and the closing `}` to indicate that this block does nothing.",
+                    ));
                 }
                 wipple_driver::syntax::tokenize::Diagnostic::Mismatch {
                     expected, found, ..
@@ -820,38 +833,64 @@ impl Render {
 
                     match (expected, found) {
                         (Some(expected), Some(found)) => {
-                            id = String::from("mismatched-symbol");
-                            data.insert(String::from("expected"), self.render_token(expected));
-                            data.insert(String::from("found"), self.render_token(found));
+                            message = String::from("Expected a different symbol here");
+                            description = Some(format!(
+                                "You provided a `{}`, but you need to put a `{}` here instead.",
+                                self.render_token(found),
+                                self.render_token(expected)
+                            ));
                         }
                         (Some(expected), None) => match expected {
                             wipple_driver::syntax::tokenize::Token::RightParenthesis => {
-                                id = String::from("missing-closing-parenthesis");
+                                message = String::from("Missing closing `)`");
+                                description = Some(String::from(
+                                    "Every opening parenthesis needs a closing parenthesis. Try adding one at the end.",
+                                ));
                             }
                             wipple_driver::syntax::tokenize::Token::RightBracket => {
-                                id = String::from("missing-closing-bracket");
+                                message = String::from("Missing closing `]`");
+                                description = Some(String::from(
+                                    "Every opening bracket needs a closing bracket. Try adding one at the end.",
+                                ));
                             }
                             wipple_driver::syntax::tokenize::Token::RightBrace => {
-                                id = String::from("missing-closing-brace");
+                                message = String::from("Missing closing `}`");
+                                description = Some(String::from(
+                                    "Every opening brace needs a closing brace. Try adding one at the end.",
+                                ));
                             }
                             _ => {
-                                id = String::from("missing-symbol");
-                                data.insert(String::from("symbol"), self.render_token(expected));
+                                message = format!("Missing `{}` here", self.render_token(expected));
+                                description = Some(String::from(
+                                    "Try adding this symbol, or double-check your parentheses.",
+                                ));
                             }
                         },
                         (None, Some(found)) => match found {
                             wipple_driver::syntax::tokenize::Token::RightParenthesis => {
-                                id = String::from("extra-closing-parenthesis");
+                                message = String::from("Extra closing `)`");
+                                description = Some(String::from(
+                                    "Make sure you have an opening `(` in the right place, or remove this one.",
+                                ));
                             }
                             wipple_driver::syntax::tokenize::Token::RightBracket => {
-                                id = String::from("extra-closing-bracket");
+                                message = String::from("Extra closing `]`");
+                                description = Some(String::from(
+                                    "Make sure you have an opening `[` in the right place, or remove this one.",
+                                ));
                             }
                             wipple_driver::syntax::tokenize::Token::RightBrace => {
-                                id = String::from("extra-closing-brace");
+                                message = String::from("Extra closing `}`");
+                                description = Some(String::from(
+                                    "Make sure you have an opening `{` in the right place, or remove this one.",
+                                ));
                             }
                             _ => {
-                                id = String::from("extra-symbol");
-                                data.insert(String::from("symbol"), self.render_token(found));
+                                message = format!("Extra `{}`", self.render_token(found));
+                                description = Some(format!(
+                                    "Make sure this `{}` is in the right place, or remove it.",
+                                    self.render_token(found)
+                                ));
                             }
                         },
                         (None, None) => return None,
@@ -862,150 +901,227 @@ impl Render {
                 match &parse_diagnostic.direction {
                     Some(wipple_driver::syntax::parse::Direction::Before(before)) => {
                         severity = RenderedDiagnosticSeverity::Error;
-
-                        id = String::from("unexpected-symbol-before");
-                        data.insert(
-                            String::from("symbol"),
+                        message = format!(
+                            "Unexpected {} before {}",
                             self.render_syntax_kind(&parse_diagnostic.expected),
+                            self.render_syntax_kind(before)
                         );
-                        data.insert(String::from("location"), self.render_syntax_kind(before));
+                        description = Some(format!(
+                            "Double-check your parentheses, or remove the {}.",
+                            self.render_syntax_kind(&parse_diagnostic.expected)
+                        ));
                     }
                     Some(wipple_driver::syntax::parse::Direction::After(after)) => {
                         severity = RenderedDiagnosticSeverity::Error;
-
-                        id = String::from("unexpected-symbol-after");
-                        data.insert(
-                            String::from("symbol"),
+                        message = format!(
+                            "Unexpected {} after {}",
                             self.render_syntax_kind(&parse_diagnostic.expected),
+                            self.render_syntax_kind(after)
                         );
-                        data.insert(String::from("location"), self.render_syntax_kind(after));
+                        description = Some(format!(
+                            "Double-check your parentheses, or remove the {}.",
+                            self.render_syntax_kind(&parse_diagnostic.expected)
+                        ));
                     }
                     None => {
                         severity = RenderedDiagnosticSeverity::Error;
-
-                        id = String::from("missing-symbol");
-                        data.insert(
-                            String::from("symbol"),
-                            self.render_syntax_kind(&parse_diagnostic.expected),
+                        message = format!(
+                            "Missing `{}` here",
+                            self.render_syntax_kind(&parse_diagnostic.expected)
                         );
+                        description = Some(String::from(
+                            "Try adding this symbol, or double-check your parentheses.",
+                        ));
                     }
                 }
             }
             wipple_driver::Diagnostic::Syntax(syntax_diagnostic) => match syntax_diagnostic {
                 wipple_driver::syntax::Diagnostic::UnexpectedBound => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("extra-bound");
+                    message = String::from("Unexpected bound here");
+                    description = Some(String::from(
+                        "Bounds aren't allowed on type and trait definitions.",
+                    ));
                 }
                 wipple_driver::syntax::Diagnostic::ExpectedConstantValue(value) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("missing-constant-value");
-                    data.insert(String::from("constant"), value.clone());
+                    message = format!("Missing value for `{}`", value);
+                    description = Some(String::from(
+                        "You created a constant using `::`, but it's missing a value. Try adding a value on the next line using the `:`, or double-check that you intended to use `::` here.",
+                    ));
                 }
                 wipple_driver::syntax::Diagnostic::EmptyTypeRepresentation => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("missing-type-representation");
+                    message =
+                        String::from("Missing fields or variants between the `{ }` for this type");
+                    description = Some(String::from(
+                        "If you're trying to create a type without any fields, remove the braces.",
+                    ));
                 }
                 wipple_driver::syntax::Diagnostic::ExpectedField => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("missing-field");
+                    message = String::from("Expected a field here");
+                    description = Some(String::from(
+                        "You're creating a structure type, which needs to be made entirely of fields using `::`.",
+                    ));
                 }
                 wipple_driver::syntax::Diagnostic::ExpectedVariant => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("missing-variant");
+                    message = String::from("Expected a variant here");
+                    description = Some(String::from(
+                        "You're creating an enumeration type, which needs to be made entirely of variants. You can't mix in fields with `::`.",
+                    ));
                 }
                 wipple_driver::syntax::Diagnostic::InvalidTextLiteral(error) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("invalid-text-literal");
-                    data.insert(String::from("message"), error.error.clone());
+                    message = format!("Invalid text: {}", error.error);
+                    description = Some(String::from(
+                        "Some characters aren't allowed inside text, or you might be using an invalid escape sequence.",
+                    ));
                 }
                 wipple_driver::syntax::Diagnostic::InvalidPlaceholderText { expected, found } => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("invalid-placeholder-text");
-                    data.insert(String::from("expected"), expected.to_string());
-                    data.insert(String::from("found"), found.to_string());
+                    message = format!(
+                        "This text needs {} inputs, but you provided {}",
+                        expected, found
+                    );
+                    description = Some(String::from(
+                        "You need to provide the same number of items as there are `_` placeholders inside the text. Make sure you're putting your parentheses in the right places.",
+                    ));
                 }
             },
             wipple_driver::Diagnostic::Lower(lower_diagnostic) => match lower_diagnostic {
                 wipple_driver::lower::Diagnostic::UnresolvedName(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("unresolved-name");
-                    data.insert(String::from("name"), name.clone());
+                    message = format!("Couldn't find `{}`", name);
+                    description = Some(String::from(
+                        "Double-check your code for spelling mistakes.",
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::UnresolvedType(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("unresolved-type");
-                    data.insert(String::from("name"), name.clone());
+                    message = format!("Couldn't find a type named `{}`", name);
+                    description = Some(String::from(
+                        "Double-check your code for spelling mistakes.",
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::UnresolvedTrait(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("unresolved-trait");
-                    data.insert(String::from("name"), name.clone());
+                    message = format!("Couldn't find a trait named `{}`", name);
+                    description = Some(String::from(
+                        "Double-check your code for spelling mistakes.",
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::UnresolvedVariant(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("unresolved-variant");
-                    data.insert(String::from("name"), name.clone());
+                    message = format!("Couldn't find a variant named `{}`", name);
+                    description = Some(String::from(
+                        "Double-check your code for spelling mistakes.",
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::UnresolvedLanguageItem(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("unresolved-language-item");
-                    data.insert(String::from("name"), name.clone());
+                    message = String::from("Couldn't process this code");
+                    description = Some(format!(
+                        "You've found a bug in Wipple — your code is correct, but it uses the `{}` language item, which hasn't been defined. Please report feedback so this can be fixed!",
+                        name
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::AmbiguousName { name, .. } => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("multiple-definitions");
-                    data.insert(String::from("name"), name.clone());
+                    message = format!("`{}` has multiple definitions", name);
+                    description = Some(format!(
+                        "You can't use `{}` here because it could refer to two or more different values.",
+                        name
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::AlreadyDefined(name) => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("already-defined");
-                    data.insert(String::from("name"), name.to_string());
+                    message = format!("`{}` is already defined", name);
+                    description = Some(String::from(
+                        "This name is already chosen. You'll have to choose a different one.",
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::NestedLanguageDeclaration => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("nested-language-declaration");
+                    message = String::from("Language items must be declared at the top level");
+                    description = Some(String::from(
+                        "Wipple already defines all the language items you need, so you don't need to define any yourself. Double-check your code and make sure it's doing what you expect.",
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::NotAWrapper => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("not-a-wrapper");
+                    message = String::from(
+                        "This pattern is supposed to match a wrapper type, but it actually matches a structure or enumeration type",
+                    );
+                    description = Some(String::from(
+                        "Double-check your parentheses and the type of the input you're matching.",
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::WrapperExpectsASinglePattern => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("wrapper-expects-a-single-pattern");
+                    message =
+                        String::from("Expected a single pattern here, but found more than one");
+                    description = Some(String::from(
+                        "Double-check your parentheses and make sure you're using the right pattern here.",
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::InvalidMutatePattern => {
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("invalid-mutate-pattern");
+                    message = String::from("Can't use `!` here");
+                    description = Some(String::from(
+                        "You can only use `!` to mutate an existing variable on the left-hand side of the `:`. Putting `!` inside complex patterns isn't supported yet.",
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::MissingTypes(count) => {
+                    let code = self.render_code(diagnostic).unwrap_or_default();
+
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("missing-types");
-                    data.insert(String::from("count"), count.to_string());
+                    message = format!("Missing {} type parameters here", count);
+                    description = Some(format!(
+                        "You might be missing parentheses to group `{}` with any types after it.",
+                        code
+                    ));
                 }
                 wipple_driver::lower::Diagnostic::ExtraType => {
+                    let code = self.render_code(diagnostic).unwrap_or_default();
+
                     severity = RenderedDiagnosticSeverity::Error;
-                    id = String::from("extra-type");
+                    message = String::from("Extra type parameter here");
+                    description = Some(format!(
+                        "This type doesn't need that many inputs. Try removing `{}` or moving it to a new line.",
+                        code
+                    ));
                 }
             },
             wipple_driver::Diagnostic::Typecheck(typecheck_diagnostic) => {
                 match typecheck_diagnostic {
                     wipple_driver::typecheck::Diagnostic::RecursionLimit => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("too-complex");
+                        message = String::from("This code is too complex to check");
+                        description = Some(String::from(
+                            "Wipple ran out of time while checking this code. Try breaking it into smaller pieces or adding more type annotations using `::`.",
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::MissingLanguageItem(name) => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("missing-language-item");
-                        data.insert(String::from("name"), name.clone());
+                        message = String::from("Couldn't process this code");
+                        description = Some(format!(
+                            "You've found a bug in Wipple — your code is correct, but Wipple couldn't find the `{}` language item for it. Please report feedback so this can be fixed!",
+                            name
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::UnknownType(r#type) => {
                         severity = RenderedDiagnosticSeverity::Error;
 
                         if matches!(r#type, wipple_driver::typecheck::Type::Unknown) {
-                            id = String::from("unknown-type");
+                            let code = self.render_code(diagnostic).unwrap_or_default();
+                            message = String::from("Could not determine the meaning of this code");
+                            description = Some(format!(
+                                "Wipple needs more information before it can run this code. Try assigning `{}` to a variable using `:`, and then use it somewhere else in the program, to help Wipple determine its meaning.",
+                                code
+                            ));
                         } else {
-                            id = String::from("partially-unknown-type");
-
                             let rendered_type = self.render_type(
                                 &WithInfo {
                                     info: diagnostic.info.clone(),
@@ -1016,13 +1132,22 @@ impl Render {
                                 true,
                             );
 
-                            data.insert(String::from("type"), rendered_type);
+                            message = String::from("Could not determine the meaning of this code");
+                            description = Some(format!(
+                                "Wipple needs more information before it can run this code. Its type is {}, but the `_` placeholders are unknown.",
+                                rendered_type
+                            ));
                         }
                     }
                     wipple_driver::typecheck::Diagnostic::UndeclaredTypeParameter(name) => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("undeclared-type-parameter");
-                        data.insert(String::from("name"), name.to_string());
+                        message = format!(
+                            "Can't use `{}` here because it's from an outer function",
+                            name
+                        );
+                        description = Some(String::from(
+                            "You can't use a type parameter that isn't declared directly within this function's type annotation. Try adding another type parameter to this function and add a type annotation where it's used if needed.",
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::Mismatch {
                         actual, expected, ..
@@ -1052,9 +1177,14 @@ impl Render {
                                 self.render_type(actual, true, DescribeOptions::NoDescribe, true);
                         }
 
-                        id = String::from("mismatched-types");
-                        data.insert(String::from("expected"), expected_message);
-                        data.insert(String::from("found"), actual_message);
+                        message = format!(
+                            "This code is supposed to be {}, but it's actually {}",
+                            actual_message, expected_message
+                        );
+                        description = Some(format!(
+                            "You provided {}, but you need to put {} here instead.",
+                            actual_message, expected_message
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::MissingInputs(inputs) => {
                         let code = self.render_code(diagnostic).unwrap_or_default();
@@ -1083,16 +1213,20 @@ impl Render {
                             ),
                         };
 
-                        id = String::from("missing-inputs");
-                        data.insert(String::from("inputs"), inputs_message);
-                        data.insert(String::from("function"), code);
+                        message = format!("`{}` is missing {}", code, inputs_message);
+                        description = Some(String::from(
+                            "Try adding these inputs. If you've already provided them, make sure they're all on one line.",
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::ExtraInput => {
                         let code = self.render_code(diagnostic).unwrap_or_default();
 
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("extra-input");
-                        data.insert(String::from("function"), code);
+                        message = format!("Extra input to `{}`", code);
+                        description = Some(format!(
+                            "The `{}` function doesn't need that many inputs. Try removing this input or moving it to a new line.",
+                            code
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::UnresolvedInstance {
                         instance, ..
@@ -1108,24 +1242,39 @@ impl Render {
                         );
 
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("unresolved-instance");
-                        data.insert(String::from("trait"), code);
-                        data.insert(String::from("instance"), rendered_instance);
+                        message = format!(
+                            "Using `{}` requires that `instance ({})` exists",
+                            code, rendered_instance
+                        );
+                        description = Some(format!(
+                            "`{}` needs this instance to exist so it can use its input correctly. Make sure you're providing the right type of input here, or you can define your own `instance`.",
+                            code
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::TraitHasNoValue(_) => {
                         let code = self.render_code(diagnostic).unwrap_or_default();
 
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("trait-has-no-value");
-                        data.insert(String::from("trait"), code);
+                        message = format!("Can't use `{}` as a value", code);
+                        description = Some(format!(
+                            "`{}` can only be used in `where` bounds, not as a value.",
+                            code
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::ExpectedInstanceValue => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("missing-instance-value");
+                        message = String::from("Missing a value for this instance");
+                        description = Some(String::from("Try adding a value using `:`."));
                     }
                     wipple_driver::typecheck::Diagnostic::UnexpectedInstanceValue => {
+                        let code = self.render_code(diagnostic).unwrap_or_default();
+
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("unexpected-instance-value");
+                        message = String::from("This instance doesn't need a value");
+                        description = Some(format!(
+                            "You provided a value here using `:`, but the corresponding trait doesn't need a value. Try removing the value and the `:`, leaving just `{}`.",
+                            code
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::NotAStructure(r#type) => {
                         let rendered_type = self.render_type(
@@ -1135,9 +1284,22 @@ impl Render {
                             true,
                         );
 
+                        let expected_message = self.render_type(
+                            r#type,
+                            true,
+                            DescribeOptions::DescribeWithArticle,
+                            true,
+                        );
+
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("not-a-structure");
-                        data.insert(String::from("type"), rendered_type);
+                        message = format!(
+                            "This code is supposed to be {}, but it's actually a structure",
+                            rendered_type
+                        );
+                        description = Some(format!(
+                            "You provided a structure, but you need to put {} here instead.",
+                            expected_message
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::MissingFields(r#type) => {
                         let rendered_fields = r#type
@@ -1147,16 +1309,26 @@ impl Render {
                             .join(", ");
 
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("missing-fields");
-                        data.insert(String::from("fields"), rendered_fields);
+                        message = format!("Missing values for {}", rendered_fields);
+                        description = Some(String::from(
+                            "Try adding values for these fields using `:`.",
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::ExtraField => {
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("extra-field");
+                        message = String::from("Extra field ");
+                        description = Some(String::from(
+                            "Make sure you spelled this field correctly, or remove it.",
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::OverlappingInstances { .. } => {
+                        let code = self.render_code(diagnostic).unwrap_or_default();
+
                         severity = RenderedDiagnosticSeverity::Error;
-                        id = String::from("instance-already-exists");
+                        message = format!("`{}` already exists", code);
+                        description = Some(String::from(
+                            "You can't define two instances that match the same types.",
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::MissingPatterns(patterns) => {
                         let last = patterns.last().unwrap();
@@ -1167,85 +1339,75 @@ impl Render {
                                 last,
                                 wipple_driver::typecheck::exhaustiveness::Pattern::Binding
                             ) {
-                                id = String::from("missing-variable");
+                                let code = self.render_code(diagnostic).unwrap_or_default();
+                                message =
+                                    String::from("Missing a `_` pattern to match remaining inputs");
+                                description = Some(format!(
+                                    "Try adding one more pattern for `_` to match anything not already matched in `{}`.",
+                                    code
+                                ));
                             } else {
-                                id = String::from("missing-patterns");
-                                data.insert(
-                                    String::from("patterns"),
-                                    format!("`{}`", self.render_pattern(last, true)),
+                                message = format!(
+                                    "`when` won't match if it receives `{}`",
+                                    self.render_pattern(last, true)
                                 );
+                                description = Some(format!(
+                                    "If the input matches `{}`, `when` won't be able to handle it.",
+                                    self.render_pattern(last, true)
+                                ));
                             }
                         } else {
-                            id = String::from("missing-patterns");
-
-                            data.insert(
-                                String::from("patterns"),
-                                format!(
-                                    "`{}` or `{}`",
-                                    patterns[..patterns.len() - 1]
-                                        .iter()
-                                        .map(|pattern| self.render_pattern(pattern, true))
-                                        .collect::<Vec<_>>()
-                                        .join(", "),
-                                    self.render_pattern(last, true),
-                                ),
+                            let patterns_message = format!(
+                                "`{}` or `{}`",
+                                patterns[..patterns.len() - 1]
+                                    .iter()
+                                    .map(|pattern| self.render_pattern(pattern, true))
+                                    .collect::<Vec<_>>()
+                                    .join(", "),
+                                self.render_pattern(last, true),
                             );
+
+                            message =
+                                format!("`when` won't match if it receives {}", patterns_message);
+                            description = Some(format!(
+                                "If the input matches {}, `when` won't be able to handle it.",
+                                patterns_message
+                            ));
                         }
                     }
                     wipple_driver::typecheck::Diagnostic::ExtraPattern => {
                         severity = RenderedDiagnosticSeverity::Warning;
-                        id = String::from("extra-pattern");
+                        message = String::from("Extra pattern");
+                        description = Some(String::from(
+                            "This pattern will never be matched because another pattern above it matches the input already.",
+                        ));
                     }
                     wipple_driver::typecheck::Diagnostic::Custom {
-                        id: custom_id,
-                        data: custom_data,
+                        message: custom_message,
+                        description: custom_description,
                     } => {
                         severity = RenderedDiagnosticSeverity::Error;
-
-                        id = self.render_custom_message(custom_id, false, true);
-
-                        for (key, value) in custom_data {
-                            data.insert(
-                                self.render_custom_message(key, false, true),
-                                self.render_type(
-                                    value,
-                                    true,
-                                    DescribeOptions::DescribeWithArticle,
-                                    true,
-                                ),
-                            );
-                        }
+                        message = self.render_custom_message(custom_message, false, true);
+                        description = custom_description.as_ref().map(|description| {
+                            self.render_custom_message(description, false, true)
+                        });
                     }
                 }
             }
             wipple_driver::Diagnostic::Ir => {
                 severity = RenderedDiagnosticSeverity::Error;
-                id = String::from("ir-error");
+                message = String::from("Couldn't process this code");
+                description = Some(String::from(
+                    "You've found a bug in Wipple — your code is correct, but Wipple couldn't produce IR for it. Please report feedback so this can be fixed!",
+                ));
             }
-            wipple_driver::Diagnostic::Lint(lint) => match lint {
-                wipple_driver::lint::Lint::NamingConventions(lint) => {
-                    let convention = match lint.convention {
-                        wipple_driver::lint::lints::NamingConvention::Variable => "variable",
-                        wipple_driver::lint::lints::NamingConvention::Type => "type",
-                        wipple_driver::lint::lints::NamingConvention::Trait => "trait",
-                        wipple_driver::lint::lints::NamingConvention::Constant => "constant",
-                        wipple_driver::lint::lints::NamingConvention::TypeParameter => {
-                            "type parameter"
-                        }
-                    };
-
-                    severity = RenderedDiagnosticSeverity::Warning;
-                    id = String::from("naming-convention");
-                    data.insert(String::from("convention"), convention.to_string());
-                    data.insert(String::from("suggestion"), lint.suggested_name.clone());
-                }
-            },
         }
 
         Some(RenderedDiagnostic {
             location: rendered_source_location,
             severity,
-            template: RenderedTemplate { id, data },
+            message,
+            description,
         })
     }
 

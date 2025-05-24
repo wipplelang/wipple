@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,8 +15,6 @@ diagnostics:
         column: 1
         index: 190
     severity: error
-    template:
-      id: missing-patterns
-      data:
-        patterns: "`D` or `F`"
+    message: "`when` won't match if it receives `D` or `F`"
+    description: "If the input matches `D` or `F`, `when` won't be able to handle it."
 output: []

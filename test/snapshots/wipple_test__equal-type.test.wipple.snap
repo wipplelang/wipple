@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,7 +15,6 @@ diagnostics:
         column: 11
         index: 308
     severity: error
-    template:
-      id: missing-valid
-      data: {}
+    message: missing-valid
+    description: ~
 output: []

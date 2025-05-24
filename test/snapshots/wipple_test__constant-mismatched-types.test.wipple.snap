@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,9 +15,6 @@ diagnostics:
         column: 8
         index: 39
     severity: error
-    template:
-      id: mismatched-types
-      data:
-        expected: a number
-        found: text
+    message: "This code is supposed to be text, but it's actually a number"
+    description: "You provided text, but you need to put a number here instead."
 output: []

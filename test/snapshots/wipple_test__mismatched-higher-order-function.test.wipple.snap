@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,11 +15,8 @@ diagnostics:
         column: 3
         index: 135
     severity: error
-    template:
-      id: mismatched-types
-      data:
-        expected: "`Text -> Text`"
-        found: "`Text -> Number`"
+    message: "This code is supposed to be `Text -> Number`, but it's actually `Text -> Text`"
+    description: "You provided `Text -> Number`, but you need to put `Text -> Text` here instead."
   - location:
       path: tests/mismatched-higher-order-function.test.wipple
       start:
@@ -30,9 +28,6 @@ diagnostics:
         column: 21
         index: 158
     severity: error
-    template:
-      id: mismatched-types
-      data:
-        expected: text
-        found: a number
+    message: "This code is supposed to be a number, but it's actually text"
+    description: "You provided a number, but you need to put text here instead."
 output: []

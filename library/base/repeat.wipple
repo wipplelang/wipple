@@ -19,7 +19,7 @@ Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow No
     Stop result -> Stop result
   }
 
-Body Result where (Error "missing-repeat") =>
+Body Result where (Error ("Missing `repeat` before `_`" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
   instance (Mismatch (With-Control-Flow Result) ({Body} -> Result))
 
 -- Repeat so long as the provided condition is `True`.
@@ -31,7 +31,7 @@ While : type {condition :: {Boolean}}
 (Body : None) => instance (Repeat-Predicate While Body None) : {condition : condition} ->
   if (do condition) {Continue (_ -> while condition)} {Stop None}
 
-(Body : None) where (Error "missing-repeat") =>
+(Body : None) where (Error ("Missing `repeat` before `_" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
   instance (Mismatch While ({Body} -> None))
 
 -- Repeat forever.
@@ -43,12 +43,12 @@ Forever : type
 Body (Result : None) => instance (Repeat-Predicate Forever Body Result) :
   _ -> Continue (_ -> Forever)
 
-Body (Result : None) where (Error "missing-repeat") =>
+Body (Result : None) where (Error ("Missing `repeat` before `_`" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
   instance (Mismatch Forever ({Body} -> Result))
 
 Times : type Number
 
-State Body Result where (Error ("expected-times-after-number" ; Error-Location State)) =>
+State Body Result where (Error ("Missing `times` after `_`" Source ; Error-Description ("Try rewriting this code as `(_ times)`, or double-check your parentheses." State))) =>
   instance (Repeat-Predicate (State = Number) Body Result) : ...
 
 (Body : None) => instance (Repeat-Predicate Times Body None) : (Times n) ->
@@ -59,7 +59,7 @@ State Body Result where (Error ("expected-times-after-number" ; Error-Location S
 times :: Number -> Times
 times : Times
 
-Body where (Error "missing-repeat") =>
+Body where (Error ("Missing `repeat` before `_`" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
   instance (Mismatch Times ({Body} -> None))
 
 -- Execute a block of code repeatedly.

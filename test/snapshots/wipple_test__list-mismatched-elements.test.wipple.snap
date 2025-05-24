@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,11 +15,8 @@ diagnostics:
         column: 18
         index: 37
     severity: error
-    template:
-      id: mismatched-types
-      data:
-        expected: a number
-        found: text
+    message: "This code is supposed to be text, but it's actually a number"
+    description: "You provided text, but you need to put a number here instead."
   - location:
       path: tests/list-mismatched-elements.test.wipple
       start:
@@ -30,11 +28,8 @@ diagnostics:
         column: 25
         index: 44
     severity: error
-    template:
-      id: mismatched-types
-      data:
-        expected: a number
-        found: no value
+    message: "This code is supposed to be a number, but it's actually no value"
+    description: "You provided a number, but you need to put no value here instead."
   - location:
       path: tests/list-mismatched-elements.test.wipple
       start:
@@ -46,9 +41,6 @@ diagnostics:
         column: 25
         index: 44
     severity: error
-    template:
-      id: mismatched-types
-      data:
-        expected: no value
-        found: a number
+    message: "This code is supposed to be no value, but it's actually a number"
+    description: "You provided no value, but you need to put a number here instead."
 output: []

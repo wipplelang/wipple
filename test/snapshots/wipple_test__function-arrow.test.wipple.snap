@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,11 +15,8 @@ diagnostics:
         column: 3
         index: 22
     severity: error
-    template:
-      id: unexpected-symbol-after
-      data:
-        location: "the symbol `->`"
-        symbol: code
+    message: "Unexpected a pattern before the symbol `->`"
+    description: "Double-check your parentheses, or remove the a pattern."
   - location:
       path: tests/function-arrow.test.wipple
       start:
@@ -30,11 +28,8 @@ diagnostics:
         column: 3
         index: 22
     severity: error
-    template:
-      id: unexpected-symbol-before
-      data:
-        location: "the symbol `->`"
-        symbol: a pattern
+    message: "Unexpected code after the symbol `->`"
+    description: "Double-check your parentheses, or remove the code."
   - location:
       path: tests/function-arrow.test.wipple
       start:
@@ -46,11 +41,8 @@ diagnostics:
         column: 5
         index: 29
     severity: error
-    template:
-      id: unexpected-symbol-after
-      data:
-        location: "the symbol `->`"
-        symbol: code
+    message: "Unexpected code after the symbol `->`"
+    description: "Double-check your parentheses, or remove the code."
   - location:
       path: tests/function-arrow.test.wipple
       start:
@@ -62,9 +54,6 @@ diagnostics:
         column: 3
         index: 34
     severity: error
-    template:
-      id: unexpected-symbol-before
-      data:
-        location: "the symbol `->`"
-        symbol: a pattern
+    message: "Unexpected a pattern before the symbol `->`"
+    description: "Double-check your parentheses, or remove the a pattern."
 output: []

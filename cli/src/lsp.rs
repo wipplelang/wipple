@@ -230,7 +230,10 @@ impl LanguageServer for Backend {
                             character: diagnostic.location.end.column,
                         },
                     },
-                    message: format!("{}: {:?}", diagnostic.template.id, diagnostic.template.data),
+                    message: match diagnostic.description.as_ref() {
+                        Some(description) => format!("{}: {}", diagnostic.message, description),
+                        None => diagnostic.message,
+                    },
                     source: Some(String::from("wipple")),
                     data: Some((index as u64).into()),
                     ..Default::default()

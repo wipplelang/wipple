@@ -8,7 +8,7 @@ instance (Describe-Type Distance "distance")
 pixels :: Number -> Distance
 pixels : Distance
 
-_ where (Error "missing-pixels") =>
+_ where (Error ("Missing `pixels` after `_`" Source ; Error-Description ("Try rewriting this code as `(_ pixels)`, or double-check your parentheses." Source))) =>
   instance (Mismatch Number Distance)
 
 -- Move the turtle forward by the specified distance.

@@ -3,8 +3,6 @@
 -- directly.
 Color : type Text
 
-_ where (Error "unused-color") => instance (Unused Color)
-
 instance (Random None Color) : None -> do {
   red : random (0 to 256)
   green : random (0 to 256)

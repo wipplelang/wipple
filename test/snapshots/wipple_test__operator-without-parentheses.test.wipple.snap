@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,10 +15,8 @@ diagnostics:
         column: 10
         index: 29
     severity: error
-    template:
-      id: missing-parentheses-around-operator
-      data:
-        operator: "`+`"
+    message: "Missing parentheses around the inputs to `+`"
+    description: "Spaces group before operators do, so you need to put parentheses around just the inputs to `+`."
   - location:
       path: tests/operator-without-parentheses.test.wipple
       start:
@@ -29,11 +28,8 @@ diagnostics:
         column: 18
         index: 48
     severity: error
-    template:
-      id: unresolved-instance
-      data:
-        instance: Or None Boolean _
-        trait: show True or False
+    message: "Using `show True or False` requires that `instance (Or None Boolean _)` exists"
+    description: "`show True or False` needs this instance to exist so it can use its input correctly. Make sure you're providing the right type of input here, or you can define your own `instance`."
   - location:
       path: tests/operator-without-parentheses.test.wipple
       start:
@@ -45,9 +41,6 @@ diagnostics:
         column: 15
         index: 64
     severity: error
-    template:
-      id: cannot-add
-      data:
-        left: a number
-        right: text
+    message: "Can't add a number and text"
+    description: "Adding these two items together isn't supported."
 output: []

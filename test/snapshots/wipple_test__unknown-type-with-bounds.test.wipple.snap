@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,7 +15,6 @@ diagnostics:
         column: 1
         index: 89
     severity: error
-    template:
-      id: unknown-type
-      data: {}
+    message: Could not determine the meaning of this code
+    description: "Wipple needs more information before it can run this code. Try assigning `x` to a variable using `:`, and then use it somewhere else in the program, to help Wipple determine its meaning."
 output: []

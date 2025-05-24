@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,9 +15,8 @@ diagnostics:
         column: 7
         index: 60
     severity: warning
-    template:
-      id: extra-pattern
-      data: {}
+    message: Extra pattern
+    description: This pattern will never be matched because another pattern above it matches the input already.
   - location:
       path: tests/redundant-case.test.wipple
       start:
@@ -28,8 +28,7 @@ diagnostics:
         column: 3
         index: 86
     severity: warning
-    template:
-      id: extra-pattern
-      data: {}
+    message: Extra pattern
+    description: This pattern will never be matched because another pattern above it matches the input already.
 output:
   - a

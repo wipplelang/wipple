@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,9 +15,8 @@ diagnostics:
         column: 7
         index: 96
     severity: error
-    template:
-      id: unknown-type
-      data: {}
+    message: Could not determine the meaning of this code
+    description: "Wipple needs more information before it can run this code. Try assigning `T` to a variable using `:`, and then use it somewhere else in the program, to help Wipple determine its meaning."
   - location:
       path: tests/unresolved-type-multiple-parameters.test.wipple
       start:
@@ -28,9 +28,8 @@ diagnostics:
         column: 16
         index: 244
     severity: error
-    template:
-      id: unknown-type
-      data: {}
+    message: Could not determine the meaning of this code
+    description: "Wipple needs more information before it can run this code. Try assigning `U` to a variable using `:`, and then use it somewhere else in the program, to help Wipple determine its meaning."
   - location:
       path: tests/unresolved-type-multiple-parameters.test.wipple
       start:
@@ -42,7 +41,6 @@ diagnostics:
         column: 21
         index: 266
     severity: error
-    template:
-      id: unknown-type
-      data: {}
+    message: Could not determine the meaning of this code
+    description: "Wipple needs more information before it can run this code. Try assigning `U` to a variable using `:`, and then use it somewhere else in the program, to help Wipple determine its meaning."
 output: []

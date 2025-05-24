@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,8 +15,6 @@ diagnostics:
         column: 10
         index: 29
     severity: error
-    template:
-      id: extra-input
-      data:
-        function: show 1 2 3
+    message: "Extra input to `show 1 2 3`"
+    description: "The `show 1 2 3` function doesn't need that many inputs. Try removing this input or moving it to a new line."
 output: []

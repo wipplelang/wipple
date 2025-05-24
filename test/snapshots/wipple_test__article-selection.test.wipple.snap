@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,11 +15,8 @@ diagnostics:
         column: 6
         index: 190
     severity: error
-    template:
-      id: mismatched-types
-      data:
-        expected: a banana
-        found: an apple
+    message: "This code is supposed to be an apple, but it's actually a banana"
+    description: "You provided an apple, but you need to put a banana here instead."
   - location:
       path: tests/article-selection.test.wipple
       start:
@@ -30,9 +28,6 @@ diagnostics:
         column: 6
         index: 208
     severity: error
-    template:
-      id: mismatched-types
-      data:
-        expected: an orange
-        found: an apple
+    message: "This code is supposed to be an apple, but it's actually an orange"
+    description: "You provided an apple, but you need to put an orange here instead."
 output: []

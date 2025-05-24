@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,7 +15,6 @@ diagnostics:
         column: 12
         index: 264
     severity: error
-    template:
-      id: important-must-be-handled
-      data: {}
+    message: important-must-be-handled
+    description: ~
 output: []
