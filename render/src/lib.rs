@@ -753,7 +753,10 @@ impl Render {
 
         let mut result = String::new();
         for segment in &message.segments {
-            let code = if render_segments_as_code || segment.text.ends_with('`') {
+            // Render as code if there's an opening '`'
+            let code = if render_segments_as_code
+                || segment.text.chars().filter(|&c| c == '`').count() % 2 == 1
+            {
                 self.render_code(&segment.r#type)
             } else {
                 None

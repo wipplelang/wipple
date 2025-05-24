@@ -1,8 +1,35 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
+  - location:
+      path: tests/custom-errors-formatting.test.wipple
+      start:
+        line: 9
+        column: 43
+        index: 158
+      end:
+        line: 9
+        column: 53
+        index: 168
+    severity: error
+    message: "Couldn't find `Error-Data`"
+    description: Double-check your code for spelling mistakes.
+  - location:
+      path: tests/custom-errors-formatting.test.wipple
+      start:
+        line: 9
+        column: 72
+        index: 187
+      end:
+        line: 9
+        column: 82
+        index: 197
+    severity: error
+    message: "Couldn't find `Error-Data`"
+    description: Double-check your code for spelling mistakes.
   - location:
       path: tests/custom-errors-formatting.test.wipple
       start:
@@ -14,11 +41,8 @@ diagnostics:
         column: 4
         index: 469
     severity: error
-    template:
-      id: does-not-eat
-      data:
-        animal: "`Carnivore`"
-        food: "`Plants`"
+    message: does-not-eat
+    description: ~
   - location:
       path: tests/custom-errors-formatting.test.wipple
       start:
@@ -30,9 +54,6 @@ diagnostics:
         column: 4
         index: 491
     severity: error
-    template:
-      id: does-not-eat
-      data:
-        animal: "`Herbivore`"
-        food: "`Meat`"
+    message: does-not-eat
+    description: ~
 output: []

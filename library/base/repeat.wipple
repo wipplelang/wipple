@@ -48,7 +48,7 @@ Body (Result : None) where (Error ("Missing `repeat` before `_`" Source ; Error-
 
 Times : type Number
 
-State Body Result where (Error ("Missing `times` after `_`" Source ; Error-Description ("Try rewriting this code as `(_ times)`, or double-check your parentheses." Source))) =>
+State Body Result where (Error ("Missing `times` after `_`" Source ; Error-Description ("Try rewriting this code as `(_ times)`, or double-check your parentheses." State))) =>
   instance (Repeat-Predicate (State = Number) Body Result) : ...
 
 (Body : None) => instance (Repeat-Predicate Times Body None) : (Times n) ->

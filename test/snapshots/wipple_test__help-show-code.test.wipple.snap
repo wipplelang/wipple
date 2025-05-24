@@ -1,8 +1,35 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
+  - location:
+      path: tests/help-show-code.test.wipple
+      start:
+        line: 4
+        column: 42
+        index: 116
+      end:
+        line: 4
+        column: 52
+        index: 126
+    severity: error
+    message: "Couldn't find `Error-Data`"
+    description: Double-check your code for spelling mistakes.
+  - location:
+      path: tests/help-show-code.test.wipple
+      start:
+        line: 4
+        column: 67
+        index: 141
+      end:
+        line: 4
+        column: 77
+        index: 151
+    severity: error
+    message: "Couldn't find `Error-Data`"
+    description: Double-check your code for spelling mistakes.
   - location:
       path: tests/help-show-code.test.wipple
       start:
@@ -14,9 +41,6 @@ diagnostics:
         column: 10
         index: 287
     severity: error
-    template:
-      id: incompatible
-      data:
-        left: a function
-        right: a function
+    message: incompatible
+    description: ~
 output: []

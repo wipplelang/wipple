@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,9 +15,6 @@ diagnostics:
         column: 27
         index: 131
     severity: error
-    template:
-      id: mismatched-types
-      data:
-        expected: text
-        found: a function
+    message: "This code is supposed to be a function, but it's actually text"
+    description: "You provided a function, but you need to put text here instead."
 output: []

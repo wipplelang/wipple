@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,9 +15,8 @@ diagnostics:
         column: 14
         index: 63
     severity: error
-    template:
-      id: instance-already-exists
-      data: {}
+    message: "`instance (T X)` already exists"
+    description: "You can't define two instances that match the same types."
   - location:
       path: tests/colliding-instances.test.wipple
       start:
@@ -28,9 +28,8 @@ diagnostics:
         column: 14
         index: 85
     severity: error
-    template:
-      id: instance-already-exists
-      data: {}
+    message: "`instance (T X)` already exists"
+    description: "You can't define two instances that match the same types."
   - location:
       path: tests/colliding-instances.test.wipple
       start:
@@ -42,7 +41,6 @@ diagnostics:
         column: 14
         index: 108
     severity: error
-    template:
-      id: instance-already-exists
-      data: {}
+    message: "`instance (T _)` already exists"
+    description: "You can't define two instances that match the same types."
 output: []

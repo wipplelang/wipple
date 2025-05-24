@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,9 +15,6 @@ diagnostics:
         column: 12
         index: 440
     severity: error
-    template:
-      id: mismatched-types
-      data:
-        expected: a hovering drone
-        found: an idle drone
+    message: "This code is supposed to be an idle drone, but it's actually a hovering drone"
+    description: "You provided an idle drone, but you need to put a hovering drone here instead."
 output: []

@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,9 +15,8 @@ diagnostics:
         column: 5
         index: 24
     severity: error
-    template:
-      id: use-show-instead
-      data: {}
+    message: "Output is written using `show` in Wipple, not `print`"
+    description: "Output is written using `show` in Wipple, not `print`"
   - location:
       path: tests/did-you-mean.test.wipple
       start:
@@ -28,10 +28,8 @@ diagnostics:
         column: 10
         index: 43
     severity: error
-    template:
-      id: unresolved-name
-      data:
-        name: hello
+    message: "Couldn't find `hello`"
+    description: Double-check your code for spelling mistakes.
   - location:
       path: tests/did-you-mean.test.wipple
       start:
@@ -43,11 +41,8 @@ diagnostics:
         column: 13
         index: 57
     severity: error
-    template:
-      id: unexpected-symbol-after
-      data:
-        location: "the symbol `/`"
-        symbol: code
+    message: "Unexpected code after the symbol `/`"
+    description: "Double-check your parentheses, or remove the code."
   - location:
       path: tests/did-you-mean.test.wipple
       start:
@@ -59,8 +54,6 @@ diagnostics:
         column: 23
         index: 67
     severity: error
-    template:
-      id: unresolved-name
-      data:
-        name: comment
+    message: "Couldn't find `comment`"
+    description: Double-check your code for spelling mistakes.
 output: []

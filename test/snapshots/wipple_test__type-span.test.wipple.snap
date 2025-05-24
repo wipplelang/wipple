@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,11 +15,8 @@ diagnostics:
         column: 8
         index: 27
     severity: error
-    template:
-      id: cannot-add
-      data:
-        left: a function
-        right: a number
+    message: "Can't add a function and a number"
+    description: "Adding these two items together isn't supported."
   - location:
       path: tests/type-span.test.wipple
       start:
@@ -30,8 +28,6 @@ diagnostics:
         column: 4
         index: 32
     severity: error
-    template:
-      id: unresolved-name
-      data:
-        name: Show
+    message: "Couldn't find `Show`"
+    description: Double-check your code for spelling mistakes.
 output: []

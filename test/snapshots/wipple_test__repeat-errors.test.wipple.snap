@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,9 +15,8 @@ diagnostics:
         column: 17
         index: 36
     severity: error
-    template:
-      id: missing-repeat
-      data: {}
+    message: "Missing `repeat` before `with-control-flow`"
+    description: "Try rewriting this code as `repeat with-control-flow`, or double-check your parentheses."
   - location:
       path: tests/repeat-errors.test.wipple
       start:
@@ -28,9 +28,8 @@ diagnostics:
         column: 14
         index: 58
     severity: error
-    template:
-      id: missing-repeat
-      data: {}
+    message: "Missing `repeat` before `(while {True})"
+    description: "Try rewriting this code as `repeat (while {True})`, or double-check your parentheses."
   - location:
       path: tests/repeat-errors.test.wipple
       start:
@@ -42,9 +41,8 @@ diagnostics:
         column: 7
         index: 73
     severity: error
-    template:
-      id: missing-repeat
-      data: {}
+    message: "Missing `repeat` before `forever`"
+    description: "Try rewriting this code as `repeat forever`, or double-check your parentheses."
   - location:
       path: tests/repeat-errors.test.wipple
       start:
@@ -56,7 +54,6 @@ diagnostics:
         column: 9
         index: 90
     severity: error
-    template:
-      id: missing-repeat
-      data: {}
+    message: "Missing `repeat` before `(4 times)`"
+    description: "Try rewriting this code as `repeat (4 times)`, or double-check your parentheses."
 output: []

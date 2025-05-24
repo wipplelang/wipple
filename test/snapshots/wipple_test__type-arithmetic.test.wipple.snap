@@ -1,5 +1,6 @@
 ---
 source: test/src/lib.rs
+assertion_line: 187
 expression: snapshot
 ---
 diagnostics:
@@ -14,8 +15,6 @@ diagnostics:
         column: 15
         index: 283
     severity: error
-    template:
-      id: partially-unknown-type
-      data:
-        type: "`_ -> S (S (S (S (S Z))))`"
+    message: Could not determine the meaning of this code
+    description: "Wipple needs more information before it can run this code. Its type is `_ -> S (S (S (S (S Z))))`, but the `_` placeholders are unknown."
 output: []
