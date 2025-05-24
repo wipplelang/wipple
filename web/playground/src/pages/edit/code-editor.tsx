@@ -23,12 +23,6 @@ import { nanoid } from "nanoid";
 import { DndContext, DragOverlay, useDraggable, useDroppable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Command } from "@codemirror/view";
-import {
-    DiagnosticHelp,
-    DiagnosticTemplate,
-    DiagnosticTemplateData,
-    resolveDiagnosticTemplate,
-} from "../../templates/diagnostics";
 import html2pdf from "html-to-pdf-js";
 import { format as formatDate } from "date-fns";
 import { useStore } from "../../store";
@@ -633,25 +627,6 @@ const ErrorBrowser = (props: {
         props.onSelectDiagnostic(activeDiagnostic);
     }, [activeDiagnostic]);
 
-    const [resolved, setResolved] = useState<{
-        template: DiagnosticTemplate;
-        data: DiagnosticTemplateData;
-    }>();
-
-    useEffect(() => {
-        // Reset the history
-        setResolved(undefined);
-
-        requestAnimationFrame(() => {
-            const resolved = resolveDiagnosticTemplate(
-                activeDiagnostic,
-                props.codeForDiagnostic(activeDiagnostic),
-            );
-
-            setResolved(resolved);
-        });
-    }, [activeDiagnostic, props.codeForDiagnostic]);
-
     return (
         <div className="pb-3">
             <div
@@ -686,188 +661,17 @@ const ErrorBrowser = (props: {
                 </div>
 
                 <div className="text-sm pt-1 px-2 pb-2">
-                    {resolved ? (
-                        <ErrorMarkdown template={resolved.template} data={resolved.data} />
-                    ) : (
-                        <Markdown>{`Unknown error: \`${activeDiagnostic.template.id}\``}</Markdown>
-                    )}
+                    <ErrorMarkdown diagnostic={activeDiagnostic} />
                 </div>
             </div>
         </div>
     );
 };
 
-const ErrorMarkdown = (props: { template: DiagnosticTemplate; data: DiagnosticTemplateData }) => {
-    const diagnostic = useMemo(() => props.template(props.data), [props.template]);
-
-    const [history, setHistory] = useState<DiagnosticHelp[]>([]);
-
-    useEffect(() => {
-        setHistory([]);
-    }, [props.template]);
-
-    const handleNext = useCallback(
-        (help: DiagnosticHelp) => {
-            if (help) {
-                setHistory((history) => [...history, help]);
-            } else {
-                setHistory([]);
-            }
-        },
-        [props.data],
-    );
-
-    return (
-        <div className="flex flex-col items-start gap-2">
-            <div className="flex flex-col">
-                <Markdown className="font-semibold">{diagnostic.title}</Markdown>
-                <Markdown className="opacity-75">{diagnostic.description}</Markdown>
-            </div>
-
-            {history.length === 0 && diagnostic.help != null ? (
-                <div className="flex flex-row gap-2">
-                    <ErrorTemplateButton onClick={() => setHistory([diagnostic.help])}>
-                        Help
-                    </ErrorTemplateButton>
-                </div>
-            ) : (
-                history.map((help, index) => (
-                    <ErrorHelpView
-                        key={index}
-                        help={help}
-                        onNext={index === history.length - 1 ? handleNext : undefined}
-                    />
-                ))
-            )}
-        </div>
-    );
-};
-
-const ErrorTemplateButton = (props: {
-    onClick?: () => void;
-    destructive?: boolean;
-    children: string;
-}) => (
-    <button
-        disabled={props.onClick == null}
-        className={`flex-1 flex flex-row items-center justify-center px-1.5 py-1 gap-0.5 text-white rounded-lg disabled:bg-gray-400 disabled:dark:bg-gray-600 ${
-            props.destructive
-                ? "enabled:hover:bg-red-600 enabled:bg-red-500 enabled:dark:hover:bg-red-400"
-                : "enabled:hover:bg-blue-600 enabled:bg-blue-500 enabled:dark:hover:bg-blue-400"
-        }`}
-        onClick={props.onClick}
-    >
-        {props.children}
-    </button>
-);
-
-const ErrorHelpView = (props: {
-    help: DiagnosticHelp;
-    onNext?: (next: DiagnosticHelp) => void;
-}) => {
-    const containerRef = useRef<HTMLDivElement>(null);
-
-    if (!props.help) {
-        return null;
-    }
-
-    const makeContainer = (body: JSX.Element) => (
-        <div ref={containerRef} className="flex flex-col items-start gap-2">
-            {body}
-        </div>
-    );
-
-    switch (props.help.type) {
-        case "message":
-            return makeContainer(
-                <>
-                    <Markdown>{props.help.message}</Markdown>
-
-                    {props.onNext ? (
-                        <ErrorTemplateButton onClick={() => props.onNext!(undefined)}>
-                            Reset
-                        </ErrorTemplateButton>
-                    ) : null}
-                </>,
-            );
-        case "choice":
-            return makeContainer(
-                <>
-                    <Markdown>{props.help.question}</Markdown>
-
-                    <div className="flex flex-row gap-1">
-                        {props.help.choices.map(({ choice, response }, index) => (
-                            <ErrorTemplateButton
-                                key={index}
-                                onClick={props.onNext ? () => props.onNext!(response) : undefined}
-                            >
-                                {choice}
-                            </ErrorTemplateButton>
-                        ))}
-                    </div>
-                </>,
-            );
-        case "prompt":
-            const help = props.help;
-
-            return makeContainer(
-                <>
-                    <Markdown>{props.help.prompt}</Markdown>
-
-                    <ErrorPrompt
-                        onSubmit={
-                            props.onNext
-                                ? (answer) => props.onNext!(help.response({ answer }))
-                                : undefined
-                        }
-                    />
-                </>,
-            );
-    }
-};
-
-const ErrorPrompt = (props: { onSubmit?: (answer: string) => void }) => {
-    const [value, setValue] = useState("");
-
-    return (
-        <form
-            onSubmit={(e) => {
-                e.preventDefault();
-                props.onSubmit?.(value);
-            }}
-            className="relative mt-1"
-        >
-            <input
-                disabled={props.onSubmit == null}
-                placeholder="Type here..."
-                onChange={(e) => setValue(e.target.value)}
-                className={`w-full rounded-md px-2 py-1.5 outline outline-gray-300 dark:outline-gray-700 focus:outline-blue-500 ${
-                    value ? "bg-white dark:bg-gray-950" : "bg-gray-50 dark:bg-gray-900"
-                }`}
-            />
-
-            <button
-                type="submit"
-                disabled={props.onSubmit == null || !value}
-                className="absolute top-0 bottom-0 right-1.5 my-auto flex items-center justify-center w-6 h-6 bg-blue-500 disabled:bg-gray-300 disabled:dark:bg-gray-800 rounded-md"
-            >
-                <MaterialSymbol icon="arrow_forward" className="text-white text-xl" />
-            </button>
-        </form>
-    );
-};
-
-const NoErrors = (props: { active: boolean }) => (
-    <div className="pb-3">
-        <div
-            className={`flex flex-row items-center justify-center gap-1.5 p-1.5 rounded-lg text-sm font-semibold border-[1px] transition-colors ${
-                props.active
-                    ? "bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700 text-green-600 dark:text-green-400"
-                    : "bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400"
-            }`}
-        >
-            No errors
-        </div>
+const ErrorMarkdown = (props: { diagnostic: any }) => (
+    <div className="flex flex-col items-start">
+        <Markdown className="font-semibold">{props.diagnostic.message}</Markdown>
+        <Markdown className="opacity-75">{props.diagnostic.description}</Markdown>
     </div>
 );
 
