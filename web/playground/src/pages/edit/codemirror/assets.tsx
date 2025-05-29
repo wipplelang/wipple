@@ -111,7 +111,8 @@ const markRegex = (
                 const string = view.state.sliceDoc(from, to);
                 created.add(string);
 
-                let decoration = cache[string];
+                // Don't cache atomic decorations (assets) for now
+                let decoration = options.atomic ? getDecoration() : cache[string];
                 if (!decoration) {
                     decoration = getDecoration();
                     cache[string] = decoration;
