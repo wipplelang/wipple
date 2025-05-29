@@ -5,15 +5,17 @@ import { classHighlighter } from "@lezer/highlight";
 
 export interface ThemeConfig {
     fontSize: number;
-    fontFamily: string;
     lineHeight: number;
+    lineSpacing: number;
+    fontFamily: string;
     highlight: boolean;
 }
 
 export const defaultThemeConfig = (): ThemeConfig => ({
     fontSize: 16,
+    lineHeight: 20,
+    lineSpacing: 8,
     fontFamily: "JetBrains Mono Variable",
-    lineHeight: 1.75,
     highlight: true,
 });
 
@@ -28,14 +30,18 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
             fontFeatureSettings: "normal",
             fontVariationSettings: "normal",
             fontVariantLigatures: "none",
-            lineHeight: config.lineHeight,
-            overflow: "visible",
         },
         ".cm-content": {
             padding: 0,
         },
         ".cm-line": {
             padding: 0,
+            margin: 0,
+            "&:not(:last-child)": {
+                height: `${config.lineHeight + config.lineSpacing}px`,
+                maxHeight: `${config.lineHeight + config.lineSpacing}px`,
+                paddingBottom: `${config.lineSpacing}px`,
+            },
         },
         ".cm-placeholder": {
             fontStyle: "italic",

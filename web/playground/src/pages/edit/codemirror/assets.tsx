@@ -6,213 +6,175 @@ import {
     ViewUpdate,
     DecorationSet,
     WidgetType,
-    Rect,
+    MatchDecorator,
 } from "@codemirror/view";
-import { Compartment, Range, RangeSet } from "@codemirror/state";
-import { syntaxTree } from "@codemirror/language";
+import { Compartment, StateEffect, StateField } from "@codemirror/state";
 import { Asset, getAsset } from "../assets";
 import { ThemeConfig, highlightCategories } from "./theme";
-import { MaterialSymbol } from "react-material-symbols";
 
 export const assets = new Compartment();
 
 export type AssetClickHandler = (config: { start: number; end: number; asset: Asset }) => void;
+
+const nameRegex = /\w+(?:\-\w+)*/g;
+const assetRegex = /\[([^\]]*)\]/g;
 
 export const assetsFromConfig = (config: {
     disabled: boolean;
     onClick?: AssetClickHandler;
     highlightItems: Record<string, any>;
     theme: ThemeConfig;
-}) =>
-    ViewPlugin.fromClass(
-        class {
-            nonatomicDecorations: DecorationSet;
-            atomicDecorations: DecorationSet;
+}) => [
+    markRegex(nameRegex, (_from, _to, [code]) => {
+        const highlight = config.highlightItems[code];
+        if (!highlight?.category || !highlightCategories[highlight.category]) {
+            return [];
+        }
 
-            constructor(view: EditorView) {
-                const [nonatomicDecorations, atomicDecorations] = getDecorations(view, config);
-                this.nonatomicDecorations = nonatomicDecorations;
-                this.atomicDecorations = atomicDecorations;
+        return [
+            {
+                decoration: () =>
+                    markDecoration(
+                        `${highlightCategories[highlight.category]} tok-highlight`,
+                        highlight.icon
+                            ? `--highlight-icon: '${highlight.icon.replaceAll("-", "_")}';`
+                            : "",
+                    ),
+            },
+        ];
+    }),
+    markRegex(
+        assetRegex,
+        (from, to, [_code, assetString]) => {
+            const asset = getAsset(assetString);
+            if (!asset) {
+                return [];
             }
 
-            update(update: ViewUpdate) {
-                if (
-                    update.docChanged ||
-                    syntaxTree(update.startState) !== syntaxTree(update.state)
-                ) {
-                    const [nonatomicDecorations, atomicDecorations] = getDecorations(
-                        update.view,
-                        config,
-                    );
+            return [
+                {
+                    decoration: () =>
+                        componentDecoration(() => (
+                            <Asset
+                                disabled={config.disabled}
+                                onClick={(asset) =>
+                                    config.onClick?.({ start: from, end: to, asset })
+                                }
+                            >
+                                {asset}
+                            </Asset>
+                        )),
+                },
+            ];
+        },
+        { atomic: true },
+    ),
+];
 
-                    this.nonatomicDecorations = nonatomicDecorations;
-                    this.atomicDecorations = atomicDecorations;
+const markRegex = (
+    regex: RegExp,
+    decorate: (
+        from: number,
+        to: number,
+        match: RegExpMatchArray,
+        view: EditorView,
+    ) => { decoration: () => Decoration }[],
+    options: { atomic?: boolean } = {},
+) => {
+    type Cache = Record<string, Decoration>;
+
+    const updateCacheEffect = StateEffect.define<Cache>();
+
+    const cacheField = StateField.define<Cache>({
+        create: () => ({}),
+        update: (value, transaction) => {
+            for (const effect of transaction.effects) {
+                if (effect.is(updateCacheEffect)) {
+                    value = effect.value;
                 }
             }
+
+            return value;
         },
-        {
-            decorations: (v) => RangeSet.join([v.nonatomicDecorations, v.atomicDecorations]),
-            provide: (v) =>
-                EditorView.atomicRanges.of(
-                    (view) => view.plugin(v)?.atomicDecorations ?? Decoration.none,
-                ),
-        },
-    );
+    });
 
-const getDecorations = (
-    view: EditorView,
-    config: {
-        disabled: boolean;
-        onClick?: AssetClickHandler;
-        highlightItems: Record<string, any>;
-        theme: ThemeConfig;
-    },
-): [DecorationSet, DecorationSet] => {
-    const nonatomicDecorations: Range<Decoration>[] = [];
-    const atomicDecorations: Range<Decoration>[] = [];
-    syntaxTree(view.state).iterate({
-        enter: (node) => {
-            const { from, to } = node;
-            let code = view.state.sliceDoc(from, to);
+    const created = new Set<string>();
 
-            switch (node.type.name) {
-                case "Name": {
-                    const highlight = config.highlightItems[code];
+    const decorator = new MatchDecorator({
+        regexp: regex,
+        decorate: (add, from, to, match, view) => {
+            const cache = view.state.field(cacheField);
 
-                    if (highlight?.category && highlightCategories[highlight.category]) {
-                        const className = highlightCategories[highlight.category];
+            const decorations = decorate(from, to, match, view);
 
-                        nonatomicDecorations.push(
-                            Decoration.mark({
-                                class: `${className} ${
-                                    highlight.icon ? "pr-1 rounded-r-[4px]" : "px-1 rounded-[4px]"
-                                }`,
-                            }).range(from, to),
-                        );
+            for (const { decoration: getDecoration } of decorations) {
+                const string = view.state.sliceDoc(from, to);
+                created.add(string);
 
-                        if (highlight.icon) {
-                            const widget = new HighlightIconWidget(
-                                from,
-                                highlight.icon,
-                                className,
-                                config.theme.fontSize,
-                            );
-
-                            nonatomicDecorations.push(
-                                Decoration.widget({ widget, side: -1 }).range(from),
-                            );
-                        }
-                    }
-
-                    break;
+                let decoration = cache[string];
+                if (!decoration) {
+                    decoration = getDecoration();
+                    cache[string] = decoration;
                 }
-                case "Asset": {
-                    if (code.includes("\n")) {
-                        break;
-                    }
 
-                    code = code.slice(1, code.length - 1); // remove brackets
-
-                    const asset = getAsset(code);
-                    if (asset) {
-                        const widget = new AssetWidget(asset, {
-                            ...config,
-                            onClick: (asset) => config.onClick?.({ start: from, end: to, asset }),
-                        });
-
-                        atomicDecorations.push(Decoration.replace({ widget }).range(from, to));
-                    }
-
-                    break;
-                }
-                default:
-                    break;
+                add(from, to, decoration);
             }
         },
     });
 
-    return [Decoration.set(nonatomicDecorations, true), Decoration.set(atomicDecorations, true)];
+    return [
+        cacheField,
+        ViewPlugin.fromClass(
+            class {
+                public decorations: DecorationSet;
+
+                constructor(view: EditorView) {
+                    this.decorations = decorator.createDeco(view);
+                }
+
+                update(update: ViewUpdate) {
+                    this.decorations = decorator.updateDeco(update, this.decorations);
+
+                    // Remove old decorations
+                    const cache = update.state.field(cacheField);
+                    for (const key in cache) {
+                        if (!created.has(key)) {
+                            delete cache[key];
+                        }
+                    }
+
+                    created.clear();
+                }
+            },
+            {
+                decorations: (instance) => instance.decorations,
+                provide: (plugin) =>
+                    EditorView.atomicRanges.of(
+                        (view) =>
+                            (options.atomic && view.plugin(plugin)?.decorations) || Decoration.none,
+                    ),
+            },
+        ),
+    ];
 };
 
-class HighlightIconWidget extends WidgetType {
-    private root?: ReactDOM.Root;
+const markDecoration = (className: string, style?: string) =>
+    Decoration.mark({
+        class: className,
+        attributes: style ? { style } : undefined,
+        inclusive: true,
+    });
 
-    constructor(
-        public index: number,
-        public icon: string,
-        public className: string,
-        public fontSize: number,
-    ) {
-        super();
-    }
+const componentDecoration = (component: () => JSX.Element) =>
+    Decoration.replace({
+        widget: new (class extends WidgetType {
+            toDOM() {
+                const container = document.createElement("span");
 
-    toDOM() {
-        const container = document.createElement("span");
+                const root = ReactDOM.createRoot(container);
+                root.render(component());
 
-        this.root = ReactDOM.createRoot(container);
-        this.root.render(
-            <HighlightIconWidgetComponent
-                icon={this.icon}
-                className={this.className}
-                fontSize={this.fontSize}
-            />,
-        );
-
-        return container;
-    }
-
-    ignoreEvent(event: Event): boolean {
-        return !(event instanceof MouseEvent);
-    }
-}
-
-const HighlightIconWidgetComponent = (props: {
-    icon: string;
-    fontSize: number;
-    className: string;
-}) => (
-    <span
-        className={`inline-block relative w-[calc(1rem+4px)] align-text-bottom rounded-l-[4px] ${props.className}`}
-        style={{ height: `${props.fontSize}pt` }}
-    >
-        <div className="flex items-center justify-center absolute inset-0 left-[2px]">
-            <MaterialSymbol icon={props.icon.replace("-", "_") as any} />
-        </div>
-    </span>
-);
-
-class AssetWidget extends WidgetType {
-    private root?: ReactDOM.Root;
-
-    constructor(
-        public asset: Asset,
-        public config: { disabled: boolean; onClick?: (asset: Asset) => void },
-    ) {
-        super();
-    }
-
-    toDOM() {
-        const container = document.createElement("span");
-
-        this.root = ReactDOM.createRoot(container);
-        this.root.render(
-            <AssetWidgetComponent
-                asset={this.asset}
-                disabled={this.config.disabled}
-                onClick={this.config.onClick}
-            />,
-        );
-
-        return container;
-    }
-}
-
-const AssetWidgetComponent = (props: {
-    asset: Asset;
-    disabled: boolean;
-    onClick?: (asset: Asset) => void;
-}) => (
-    <Asset disabled={props.disabled} onClick={props.onClick}>
-        {props.asset}
-    </Asset>
-);
+                return container;
+            }
+        })(),
+    });

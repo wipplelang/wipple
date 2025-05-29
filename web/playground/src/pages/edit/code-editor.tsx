@@ -383,7 +383,7 @@ export const CodeEditor = (props: {
                 {store.isPrinting ? <PrintHeader /> : null}
 
                 <div
-                    className={`flex-1 flex flex-row justify-stretch p-2.5 gap-2.5 ${
+                    className={`flex-1 flex flex-row justify-stretch p-2.5 gap-2.5 h-full ${
                         store.isPrinting ? "overflow-hidden" : ""
                     }`}
                 >
@@ -494,7 +494,7 @@ export const CodeEditor = (props: {
                         </Box>
                     </div>
 
-                    <div className={store.isPrinting ? "h-full" : "basis-[550px] h-full"}>
+                    <div className={store.isPrinting ? "h-full" : "basis-[450px] h-full"}>
                         <div className="flex flex-col h-full">
                             {!store.isPrinting ? (
                                 <>
@@ -551,7 +551,6 @@ export const CodeEditor = (props: {
                                 style={{
                                     fontFamily: theme.fontFamily,
                                     fontSize: theme.fontSize,
-                                    lineHeight: theme.lineHeight,
                                 }}
                             >
                                 <CommandPreviewContent
@@ -683,7 +682,7 @@ const CommandPalette = (props: {
     draggedCommand: { id: string; item: PaletteItem } | undefined;
     onBeginDraggingCommand: (id: string, item: PaletteItem) => void;
 }) => (
-    <div className="flex-[1.5] flex flex-col h-full bg-white dark:bg-gray-900 gap-2.5 z-10">
+    <div className="flex-[1.5] flex flex-col h-full gap-2.5 z-10">
         <Logo />
 
         <Box>
@@ -754,7 +753,7 @@ const CommandPreviewContent = (props: {
     theme: ThemeConfig;
     highlightItems: Record<string, any>;
 }) => (
-    <div className="hover:bg-gray-100 dark:bg-gray-800 transition -mx-1 px-1 rounded-lg">
+    <div className="hover:bg-gray-100 dark:hover:bg-gray-800 transition -mx-1 p-1 rounded-lg">
         <div className="w-fit pointer-events-none">
             <CodeMirror
                 autoFocus={false}
@@ -805,11 +804,11 @@ const DropTargetLine = (props: {
                 className="relative"
                 style={{
                     height: props.useLineHeight
-                        ? props.theme.fontSize * props.theme.lineHeight
+                        ? props.theme.lineHeight + props.theme.lineSpacing
                         : undefined,
                 }}
             >
-                <div className="absolute left-4 right-4 bottom-0">
+                <div className="absolute left-4 right-4 bottom-0.5">
                     <div
                         className={`w-full h-1 bg-blue-500 rounded-full transition-opacity ${
                             isOver ? "opacity-100" : "opacity-0"

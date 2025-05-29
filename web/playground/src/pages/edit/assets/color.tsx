@@ -59,7 +59,7 @@ export const ColorAsset = (props: {
 }) => {
     const description = useMemo(() => colorName(props.color), [props.color]);
 
-    const color = <div className="w-4 h-4" style={{ backgroundColor: props.color }} />;
+    const color = <div className="size-[18px]" style={{ backgroundColor: props.color }} />;
 
     return (
         <div

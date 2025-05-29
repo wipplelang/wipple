@@ -135,6 +135,8 @@ export const Runner = forwardRef<RunnerRef, RunnerProps>((props, ref) => {
             return;
         }
 
+        runtimeRef.current?.resume?.();
+
         setCompiling(true);
 
         props.onBlur();

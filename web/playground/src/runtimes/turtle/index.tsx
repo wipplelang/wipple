@@ -12,7 +12,7 @@ import RealTurtle from "real-turtle";
 import { useStore } from "../../store";
 import { Box } from "../../components/box";
 
-const canvasSize = 500;
+const canvasSize = 400;
 const canvasPixelRatio = 2.5;
 
 const initializeTurtle = async (canvas: HTMLCanvasElement) => {
@@ -143,7 +143,7 @@ export const Turtle: RuntimeComponent = forwardRef((props, ref) => {
     return (
         <div
             ref={containerRef}
-            className="aspect-square bg-white"
+            className="aspect-square"
             style={{
                 width: printingImage ? printingSize : undefined,
                 height: printingImage ? printingSize : undefined,

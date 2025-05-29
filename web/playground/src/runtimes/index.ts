@@ -4,6 +4,7 @@ import { Music, paletteCategories as musicPaletteCategories } from "./music";
 import { Math, paletteCategories as mathPaletteCategories } from "./math";
 
 export interface Runtime {
+    resume?: () => void; // called directly in the click event handler
     initialize: () => Promise<void>;
     onMessage: (message: string, value: any) => Promise<any>;
     cleanup: () => Promise<void>;

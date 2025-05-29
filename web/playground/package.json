@@ -70,6 +70,7 @@
         "smplr": "^0.15.1",
         "soundfont-player": "^0.12.0",
         "tonal": "^6.2.0",
+        "tone": "^15.0.4",
         "usehooks-ts": "^2.14.0",
         "vite-plugin-svgr": "^4.2.0",
         "wipple-wasm": "file:../../wasm"

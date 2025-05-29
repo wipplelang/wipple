@@ -4,9 +4,9 @@ import { produce } from "immer";
 import { Animated, ContextMenuButton, Tooltip } from "../../../components";
 import { MaterialSymbol } from "react-material-symbols";
 import randomColor from "randomcolor";
-import { getDrumMachine, getPiano } from "../../../runtimes/music";
-import { DrumMachine, SplendidGrandPiano } from "smplr";
+import { getDrumMachine, Instrument, getDefaultSoundfontInstrument } from "../../../runtimes/music";
 import rhythmIcon from "./rhythm.png";
+import * as Tone from "tone";
 
 export interface Melody {
     options: {
@@ -135,7 +135,7 @@ const defaultOctave = 3;
 export const MelodyPicker = (props: { selection: string; onDismiss: (melody: string) => void }) => {
     const [melody, setMelody] = useState(decodeMelody(props.selection));
 
-    const pianoRef = useRef<SplendidGrandPiano>();
+    const instrumentRef = useRef<Instrument>();
 
     const [playingId, setPlayingId] = useState<Symbol>();
 
@@ -151,16 +151,16 @@ export const MelodyPicker = (props: { selection: string; onDismiss: (melody: str
             const playingId = Symbol();
             setPlayingId(playingId);
 
-            const piano = await getPiano();
-            pianoRef.current = piano;
+            const instrument = await getDefaultSoundfontInstrument();
+            instrumentRef.current = instrument;
 
             const totalDuration = 2;
             const noteDuration = totalDuration / melody.notes.length;
 
-            let time = piano.context.currentTime;
+            let time = Tone.getContext().currentTime;
             for (const notes of melody.notes) {
                 for (const note of notes) {
-                    piano.start({ note, time });
+                    instrument.play({ note, time, duration: noteDuration });
                 }
 
                 time += noteDuration;
@@ -177,13 +177,13 @@ export const MelodyPicker = (props: { selection: string; onDismiss: (melody: str
     }, [melody]);
 
     const stop = useCallback(() => {
-        pianoRef.current?.stop();
+        instrumentRef.current?.stopAll();
         setPlayingId(undefined);
     }, []);
 
     const sampleNote = useCallback(async (note: string) => {
-        const piano = await getPiano();
-        piano.start({ note });
+        const instrument = await getDefaultSoundfontInstrument();
+        instrument.play({ note });
     }, []);
 
     return (
@@ -317,7 +317,7 @@ export const MelodyPicker = (props: { selection: string; onDismiss: (melody: str
 export const RhythmPicker = (props: { selection: string; onDismiss: (rhythm: string) => void }) => {
     const [rhythm, setRhythm] = useState(decodeRhythm(props.selection));
 
-    const drumMachineRef = useRef<DrumMachine>();
+    const drumMachineRef = useRef<Instrument>();
 
     const [playingId, setPlayingId] = useState<Symbol>();
 
@@ -339,10 +339,10 @@ export const RhythmPicker = (props: { selection: string; onDismiss: (rhythm: str
             const totalDuration = 2;
             const noteDuration = totalDuration / rhythm.notes.length;
 
-            let time = drumMachine.output.context.currentTime;
+            let time = Tone.getContext().currentTime;
             for (const notes of rhythm.notes) {
                 for (const note of notes) {
-                    drumMachine.start({ note, time });
+                    drumMachine.play({ note, time, duration: noteDuration });
                 }
 
                 time += noteDuration;
@@ -359,13 +359,18 @@ export const RhythmPicker = (props: { selection: string; onDismiss: (rhythm: str
     }, [rhythm]);
 
     const stop = useCallback(() => {
-        drumMachineRef.current?.stop({});
+        drumMachineRef.current?.stopAll();
         setPlayingId(undefined);
     }, []);
 
     const sampleNote = useCallback(async (note: string) => {
         const drumMachine = await getDrumMachine();
-        drumMachine.start({ note });
+
+        drumMachine.play({
+            note,
+            time: Tone.getContext().currentTime,
+            duration: 1,
+        });
     }, []);
 
     return (
