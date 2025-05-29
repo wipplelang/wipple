@@ -803,10 +803,12 @@ const DropTargetLine = (props: {
             <div
                 className="relative"
                 style={{
-                    height: props.useLineHeight ? "calc(1lh + 3px)" : undefined,
+                    height: props.useLineHeight
+                        ? props.theme.lineHeight + props.theme.lineSpacing
+                        : undefined,
                 }}
             >
-                <div className="absolute left-4 right-4 bottom-0">
+                <div className="absolute left-4 right-4 bottom-0.5">
                     <div
                         className={`w-full h-1 bg-blue-500 rounded-full transition-opacity ${
                             isOver ? "opacity-100" : "opacity-0"
