@@ -4,6 +4,7 @@ import {
     RouterProvider,
     createBrowserRouter,
     createRoutesFromElements,
+    useRouteError,
 } from "react-router-dom";
 import { initializeApp } from "firebase/app";
 import {
@@ -32,6 +33,8 @@ import "react-piano/dist/styles.css";
 import "react-resizable/css/styles.css";
 import "katex/dist/katex.min.css";
 import "./index.css";
+import { ErrorScreen } from "./components/error-screen";
+import { useEffect } from "react";
 
 if (import.meta.env.PROD) {
     Sentry.init({
@@ -62,9 +65,23 @@ initializeFirestore(app, {
     localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
 
+const ErrorBoundary = () => {
+    const error = useRouteError() as Error;
+
+    useEffect(() => {
+        Sentry.captureException(error);
+    }, [error]);
+
+    return <ErrorScreen error={error} />;
+};
+
 const router = createBrowserRouter(
     createRoutesFromElements(
-        <Route path={import.meta.env.BASE_URL} element={<RootPage />}>
+        <Route
+            path={import.meta.env.BASE_URL}
+            element={<RootPage />}
+            errorElement={<ErrorBoundary />}
+        >
             <Route index element={<HomePage />} />
             <Route path="edit/:id" element={<EditPage />} />
         </Route>,
