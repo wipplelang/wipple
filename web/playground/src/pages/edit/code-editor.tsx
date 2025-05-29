@@ -383,7 +383,7 @@ export const CodeEditor = (props: {
                 {store.isPrinting ? <PrintHeader /> : null}
 
                 <div
-                    className={`flex-1 flex flex-row justify-stretch p-2.5 gap-2.5 ${
+                    className={`flex-1 flex flex-row justify-stretch p-2.5 gap-2.5 h-full ${
                         store.isPrinting ? "overflow-hidden" : ""
                     }`}
                 >
@@ -683,7 +683,7 @@ const CommandPalette = (props: {
     draggedCommand: { id: string; item: PaletteItem } | undefined;
     onBeginDraggingCommand: (id: string, item: PaletteItem) => void;
 }) => (
-    <div className="flex-[1.5] flex flex-col h-full bg-white dark:bg-gray-900 gap-2.5 z-10">
+    <div className="flex-[1.5] flex flex-col h-full gap-2.5 z-10">
         <Logo />
 
         <Box>
@@ -754,7 +754,7 @@ const CommandPreviewContent = (props: {
     theme: ThemeConfig;
     highlightItems: Record<string, any>;
 }) => (
-    <div className="hover:bg-gray-100 dark:bg-gray-800 transition -mx-1 px-1 rounded-lg">
+    <div className="hover:bg-gray-100 dark:hover:bg-gray-800 transition -mx-1 px-1 rounded-lg">
         <div className="w-fit pointer-events-none">
             <CodeMirror
                 autoFocus={false}

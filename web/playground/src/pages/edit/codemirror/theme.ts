@@ -29,7 +29,6 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
             fontVariationSettings: "normal",
             fontVariantLigatures: "none",
             lineHeight: config.lineHeight,
-            overflow: "visible",
         },
         ".cm-content": {
             padding: 0,
