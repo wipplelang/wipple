@@ -494,7 +494,7 @@ export const CodeEditor = (props: {
                         </Box>
                     </div>
 
-                    <div className={store.isPrinting ? "h-full" : "basis-[550px] h-full"}>
+                    <div className={store.isPrinting ? "h-full" : "basis-[450px] h-full"}>
                         <div className="flex flex-col h-full">
                             {!store.isPrinting ? (
                                 <>
@@ -551,7 +551,6 @@ export const CodeEditor = (props: {
                                 style={{
                                     fontFamily: theme.fontFamily,
                                     fontSize: theme.fontSize,
-                                    lineHeight: theme.lineHeight,
                                 }}
                             >
                                 <CommandPreviewContent
@@ -754,7 +753,7 @@ const CommandPreviewContent = (props: {
     theme: ThemeConfig;
     highlightItems: Record<string, any>;
 }) => (
-    <div className="hover:bg-gray-100 dark:hover:bg-gray-800 transition -mx-1 px-1 rounded-lg">
+    <div className="hover:bg-gray-100 dark:hover:bg-gray-800 transition -mx-1 p-1 rounded-lg">
         <div className="w-fit pointer-events-none">
             <CodeMirror
                 autoFocus={false}
@@ -804,9 +803,7 @@ const DropTargetLine = (props: {
             <div
                 className="relative"
                 style={{
-                    height: props.useLineHeight
-                        ? props.theme.fontSize * props.theme.lineHeight
-                        : undefined,
+                    height: props.useLineHeight ? "calc(1lh + 3px)" : undefined,
                 }}
             >
                 <div className="absolute left-4 right-4 bottom-0">

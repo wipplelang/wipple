@@ -6,14 +6,12 @@ import { classHighlighter } from "@lezer/highlight";
 export interface ThemeConfig {
     fontSize: number;
     fontFamily: string;
-    lineHeight: number;
     highlight: boolean;
 }
 
 export const defaultThemeConfig = (): ThemeConfig => ({
     fontSize: 16,
     fontFamily: "JetBrains Mono Variable",
-    lineHeight: 1.75,
     highlight: true,
 });
 
@@ -28,10 +26,12 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
             fontFeatureSettings: "normal",
             fontVariationSettings: "normal",
             fontVariantLigatures: "none",
-            lineHeight: config.lineHeight,
         },
         ".cm-content": {
             padding: 0,
+            display: "flex",
+            flexDirection: "column",
+            gap: "6px",
         },
         ".cm-line": {
             padding: 0,

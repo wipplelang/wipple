@@ -50,7 +50,7 @@ export const DropdownAsset = (props: {
             },
         ]}
     >
-        <div className="flex flex-row items-center justify-center rounded-lg h-[calc(1lh-2pt)] border-[1.5px] gap-0.5 pl-1.5 pr-0.5 border-gray-100 dark:border-gray-800 overflow-clip hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
+        <div className="flex flex-row items-center justify-center rounded-lg h-[calc(1lh+2pt)] border-[1.5px] gap-0.5 pl-1.5 pr-0.5 border-gray-100 dark:border-gray-800 overflow-clip hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors">
             <p>{props.value ?? props.options[0]}</p>
 
             <MaterialSymbol icon="expand_more" size={20} className="text-blue-500" />

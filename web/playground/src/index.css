@@ -188,6 +188,15 @@ code,
     @apply ui-font;
 }
 
+.tok-highlight {
+    @apply inline-flex items-center gap-[2px] rounded-[4px] px-[4px] align-bottom;
+
+    &::before {
+        content: var(--highlight-icon);
+        font-family: "Material Symbols Rounded";
+    }
+}
+
 /* Piano */
 
 .piano-preview .ReactPiano__Keyboard {
