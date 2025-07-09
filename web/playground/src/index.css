@@ -9,6 +9,41 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Code editor */
+
+:root {
+    /* Must be literal px values because they are parsed in JavaScript */
+    --code-editor-font-size: 16px;
+    --code-editor-line-height: 24px; /* line height of 1.5 */
+    --code-editor-line-spacing: 6px;
+}
+
+.cm-editor {
+    font-size: var(--code-editor-font-size);
+}
+
+.cm-editor .cm-content {
+    @apply p-px; /* keep cursor visible at beginning of line */
+}
+
+.cm-editor .cm-line {
+    @apply p-0;
+}
+
+.cm-editor .cm-line > *,
+.cm-editor .cm-line > *[contenteditable="false"] > * {
+    @apply h-full align-bottom;
+}
+
+.cm-editor .cm-line {
+    /* Instead of line-height, which increases the background size of highlighted tokens */
+    height: var(--code-editor-line-height);
+
+    &:not(:last-child) {
+        margin-bottom: var(--code-editor-line-spacing);
+    }
+}
+
 /* Inter */
 
 .ui-font {

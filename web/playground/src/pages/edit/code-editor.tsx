@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { CodeMirror, CodeMirrorRef, HighlightedCode, insertSnippet, Snippet } from "./codemirror";
+import { MouseEventHandler, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CodeMirror, CodeMirrorRef, HighlightedCode } from "./codemirror";
 import { RunOptions, Runner, RunnerRef } from "./runner";
 import { MaterialSymbol, MaterialSymbolProps } from "react-material-symbols";
 import { defaultThemeConfig, ThemeConfig } from "./codemirror/theme";
@@ -20,15 +20,21 @@ import { AnimalPicker } from "./assets/animal-picker";
 import { MelodyPicker, RhythmPicker } from "./assets/melody-picker";
 import * as commands from "@codemirror/commands";
 import { nanoid } from "nanoid";
-import { DndContext, DragOverlay, useDraggable, useDroppable } from "@dnd-kit/core";
-import { CSS } from "@dnd-kit/utilities";
-import { Command } from "@codemirror/view";
+import { Command, EditorView } from "@codemirror/view";
 import html2pdf from "html-to-pdf-js";
 import { format as formatDate } from "date-fns";
 import { useStore } from "../../store";
 import { produce } from "immer";
 import { Box } from "../../components/box";
 import { ToolbarButton } from "../../components/toolbar-button";
+import { FloatingPortal } from "@floating-ui/react";
+
+interface DragInfo {
+    id: string;
+    paletteItem: PaletteItem;
+    x: number;
+    y: number;
+}
 
 export const CodeEditor = (props: {
     children: string;
@@ -43,8 +49,6 @@ export const CodeEditor = (props: {
     const theme = useMemo(() => defaultThemeConfig(), []);
 
     const [lastCompiledCode, setLastCompiledCode] = useState(props.children);
-
-    const numberOfLines = useMemo(() => props.children.split("\n").length, [props.children]);
 
     const runtime = useMemo(
         () =>
@@ -87,44 +91,6 @@ export const CodeEditor = (props: {
     const [selection, setSelection] = useState({ start: 0, end: 0 });
 
     const isSelectingRange = useMemo(() => selection.start !== selection.end, [selection]);
-
-    const selectionRect = useMemo(() => {
-        if (!isSelectingRange || !codeMirrorRef.current) {
-            return undefined;
-        }
-
-        const start = codeMirrorRef.current.editorView.coordsAtPos(selection.start, -1);
-        const end = codeMirrorRef.current.editorView.coordsAtPos(selection.end, 1);
-
-        if (!start || !end) {
-            return undefined;
-        }
-
-        let maxLineLength = 0;
-        let pos = selection.start;
-
-        while (pos < selection.end) {
-            const line = codeMirrorRef.current!.editorView.state.doc.lineAt(pos);
-
-            const start = codeMirrorRef.current!.editorView.coordsAtPos(line.from, -1);
-            const end = codeMirrorRef.current!.editorView.coordsAtPos(line.to, 1);
-
-            pos = line.to + 1;
-
-            if (!start || !end) {
-                continue;
-            }
-
-            maxLineLength = Math.max(maxLineLength, end.right - start.left);
-        }
-
-        return {
-            top: Math.min(start.top, end.top),
-            left: Math.min(start.left, end.left),
-            width: maxLineLength,
-            height: Math.abs(start.top - end.bottom),
-        };
-    }, [selection]);
 
     const { displayAlert } = useAlert();
 
@@ -241,10 +207,32 @@ export const CodeEditor = (props: {
         props.onChange(formatted);
     }, [props.onChange]);
 
-    const [draggedCommand, setDraggedCommand] = useState<{
-        id: string;
-        item: PaletteItem;
-    }>();
+    const [dragInfo, setDragInfo] = useState<DragInfo>();
+
+    const dropParams = useMemo(() => {
+        if (!codeMirrorRef.current || !dragInfo) {
+            return undefined;
+        }
+
+        const dropParams = getDropParams(codeMirrorRef.current.editorView, dragInfo.paletteItem, {
+            x: dragInfo.x,
+            y: dragInfo.y,
+        });
+
+        return dropParams;
+    }, [dragInfo]);
+
+    const dropParamsRef = useRef(dropParams);
+    useEffect(() => {
+        dropParamsRef.current = dropParams;
+    }, [dropParams]);
+
+    const onDrop = useCallback(() => {
+        if (codeMirrorRef.current && dropParamsRef.current) {
+            drop(codeMirrorRef.current.editorView, dropParamsRef.current);
+            format();
+        }
+    }, []);
 
     const [showStatus, setShowStatus] = useState(false);
     const [hasEdited, setHasEdited] = useState(false);
@@ -346,224 +334,180 @@ export const CodeEditor = (props: {
     );
 
     return (
-        <DndContext
-            onDragEnd={({ over }) => {
-                if (!draggedCommand || !codeMirrorRef.current) {
-                    return;
-                }
-
-                setDraggedCommand(undefined);
-
-                if (over) {
-                    const line = over.id as number;
-
-                    const snippet: Snippet = {
-                        code: draggedCommand.item.code,
-                        replace: draggedCommand.item.replace ?? false,
-                    };
-
-                    insertSnippet(
-                        codeMirrorRef.current.editorView,
-                        snippet,
-                        line,
-                        isSelectingRange ? selection : undefined,
-                    );
-
-                    format();
-                }
+        <div
+            ref={contentRef}
+            data-printing={store.isPrinting || undefined}
+            className={`flex flex-col w-full h-full gap-2.5 ${
+                store.isPrinting ? "p-[0.5in] overflow-hidden" : ""
+            }`}
+            style={{
+                userSelect: dragInfo ? "none" : "auto",
+                pointerEvents: dragInfo ? "none" : "auto",
             }}
         >
+            {store.isPrinting ? <PrintHeader /> : null}
+
             <div
-                ref={contentRef}
-                data-printing={store.isPrinting || undefined}
-                className={`flex flex-col w-full h-full gap-2.5 ${
-                    store.isPrinting ? "p-[0.5in] overflow-hidden" : ""
+                className={`flex-1 flex flex-row justify-stretch p-2.5 gap-2.5 h-full ${
+                    store.isPrinting ? "overflow-hidden" : ""
                 }`}
             >
-                {store.isPrinting ? <PrintHeader /> : null}
+                {!store.isPrinting ? (
+                    <div className="h-full w-[240px] opacity-1">
+                        <div className="flex flex-col w-[240px] gap-2.5">
+                            <CommandPalette
+                                theme={theme}
+                                categories={runtime?.paletteCategories ?? defaultPaletteCategories}
+                                highlightItems={highlightItems}
+                                dragInfo={dragInfo}
+                                onChangeDragInfo={setDragInfo}
+                                onDrop={onDrop}
+                            />
+                        </div>
+                    </div>
+                ) : null}
 
-                <div
-                    className={`flex-1 flex flex-row justify-stretch p-2.5 gap-2.5 h-full ${
-                        store.isPrinting ? "overflow-hidden" : ""
-                    }`}
-                >
+                <div className="h-full flex flex-col gap-2.5 flex-1 opacity-1 min-w-[350px] flex-shrink-0">
                     {!store.isPrinting ? (
-                        <div className="h-full w-[240px] opacity-1">
-                            <div className="flex flex-col w-[240px] gap-2.5">
-                                <CommandPalette
-                                    theme={theme}
-                                    categories={
-                                        runtime?.paletteCategories ?? defaultPaletteCategories
-                                    }
-                                    highlightItems={highlightItems}
-                                    draggedCommand={draggedCommand}
-                                    onBeginDraggingCommand={(id, item) =>
-                                        setDraggedCommand({ id, item })
-                                    }
-                                />
+                        <div className="flex flex-row justify-between shrink-0 h-8 gap-2.5">
+                            <ToolbarButton icon="add" onClick={props.onNewPlayground}>
+                                New
+                            </ToolbarButton>
+
+                            <div className="flex flex-row h-full gap-2.5">
+                                <Tooltip description="Move Up">
+                                    <ToolbarButton
+                                        square
+                                        icon="arrow_upward"
+                                        onClick={() => runCommand(commands.moveLineUp)}
+                                    />
+                                </Tooltip>
+
+                                <Tooltip description="Move Down">
+                                    <ToolbarButton
+                                        square
+                                        icon="arrow_downward"
+                                        onClick={() => runCommand(commands.moveLineDown)}
+                                    />
+                                </Tooltip>
+
+                                <Tooltip description="Remove">
+                                    <ToolbarButton
+                                        square
+                                        icon="remove"
+                                        onClick={() => runCommand(commands.deleteLine)}
+                                    />
+                                </Tooltip>
+
+                                <Tooltip description="Undo">
+                                    <ToolbarButton
+                                        square
+                                        icon="undo"
+                                        onClick={() => runCommand(commands.undo)}
+                                    />
+                                </Tooltip>
+
+                                <Tooltip description="Redo">
+                                    <ToolbarButton
+                                        square
+                                        icon="redo"
+                                        onClick={() => runCommand(commands.redo)}
+                                    />
+                                </Tooltip>
                             </div>
                         </div>
                     ) : null}
 
-                    <div className="h-full flex flex-col gap-2.5 flex-1 opacity-1 min-w-[350px] flex-shrink-0">
-                        {!store.isPrinting ? (
-                            <div className="flex flex-row justify-between shrink-0 h-8 gap-2.5">
-                                <ToolbarButton icon="add" onClick={props.onNewPlayground}>
-                                    New
-                                </ToolbarButton>
-
-                                <div className="flex flex-row h-full gap-2.5">
-                                    <Tooltip description="Move Up">
-                                        <ToolbarButton
-                                            square
-                                            icon="arrow_upward"
-                                            onClick={() => runCommand(commands.moveLineUp)}
-                                        />
-                                    </Tooltip>
-
-                                    <Tooltip description="Move Down">
-                                        <ToolbarButton
-                                            square
-                                            icon="arrow_downward"
-                                            onClick={() => runCommand(commands.moveLineDown)}
-                                        />
-                                    </Tooltip>
-
-                                    <Tooltip description="Remove">
-                                        <ToolbarButton
-                                            square
-                                            icon="remove"
-                                            onClick={() => runCommand(commands.deleteLine)}
-                                        />
-                                    </Tooltip>
-
-                                    <Tooltip description="Undo">
-                                        <ToolbarButton
-                                            square
-                                            icon="undo"
-                                            onClick={() => runCommand(commands.undo)}
-                                        />
-                                    </Tooltip>
-
-                                    <Tooltip description="Redo">
-                                        <ToolbarButton
-                                            square
-                                            icon="redo"
-                                            onClick={() => runCommand(commands.redo)}
-                                        />
-                                    </Tooltip>
-                                </div>
-                            </div>
-                        ) : null}
-
-                        <Box fill>
-                            <div
-                                className={`flex flex-col inset-0 w-full h-full gap-2.5 ${
-                                    store.isPrinting ? "py-2.5" : ""
-                                }`}
-                            >
-                                <CodeMirror
-                                    ref={codeMirrorRef}
-                                    autoFocus
-                                    onFocus={handleFocus}
-                                    onBlur={handleBlur}
-                                    onChange={handleChange}
-                                    onChangeSelection={setSelection}
-                                    readOnly={props.readOnly ?? false}
-                                    onClickAsset={onClickAsset}
-                                    theme={theme}
-                                    highlightedCode={highlightedCode}
-                                    highlightItems={highlightItems}
-                                >
-                                    {props.children}
-                                </CodeMirror>
-
-                                {draggedCommand ? (
-                                    <div className="absolute inset-0 bg-blue-500 bg-opacity-10">
-                                        {draggedCommand.item.replace ? (
-                                            <DropTargetArea rect={selectionRect} />
-                                        ) : (
-                                            <DropTargetLines
-                                                numberOfLines={numberOfLines}
-                                                theme={theme}
-                                            />
-                                        )}
-                                    </div>
-                                ) : null}
-                            </div>
-                        </Box>
-                    </div>
-
-                    <div className={store.isPrinting ? "h-full" : "basis-[450px] h-full"}>
-                        <div className="flex flex-col h-full">
-                            {!store.isPrinting ? (
-                                <>
-                                    <div className="flex flex-row justify-center gap-2.5 h-8 mb-2.5">
-                                        <RunButton
-                                            isRunning={isCompilingOrRunning}
-                                            onClick={handleRun}
-                                        />
-
-                                        <OptionsButton
-                                            icon="print"
-                                            description="Print"
-                                            onClick={print}
-                                        />
-                                    </div>
-
-                                    <Animated direction="vertical" open={showStatus}>
-                                        {diagnostics.length > 0 ? (
-                                            <ErrorBrowser
-                                                diagnostics={diagnostics}
-                                                active={!hasEdited}
-                                                onSelectDiagnostic={setSelectedDiagnostic}
-                                                codeForDiagnostic={codeForDiagnostic}
-                                            />
-                                        ) : null}
-                                    </Animated>
-                                </>
-                            ) : null}
-
-                            <Runner
-                                ref={runnerRef}
-                                wipple={props.wipple}
-                                options={runOptions}
-                                runtime={runtime}
-                                hasFocus={runnerHasFocus}
-                                onFocus={() => setRunnerHasFocus(true)}
-                                onBlur={() => setRunnerHasFocus(false)}
-                                onChangeDiagnostics={setDiagnostics}
-                                onChangeHighlightItems={setHighlightItems}
-                                onChangeCompiling={handleChangeCompiling}
-                                onChangeRunning={handleChangeRunning}
+                    <Box fill padding={false}>
+                        <div
+                            className={`flex flex-col *:h-full inset-0 w-full h-full gap-2.5 p-4 ${
+                                dragInfo ? "bg-blue-500/10" : ""
+                            }`}
+                        >
+                            <CodeMirror
+                                ref={codeMirrorRef}
+                                autoFocus
+                                onFocus={handleFocus}
+                                onBlur={handleBlur}
+                                onChange={handleChange}
+                                onChangeSelection={setSelection}
+                                readOnly={props.readOnly ?? false}
+                                onClickAsset={onClickAsset}
+                                theme={theme}
+                                highlightedCode={highlightedCode}
+                                highlightItems={highlightItems}
                             >
                                 {props.children}
-                            </Runner>
+                            </CodeMirror>
+
+                            {dropParams ? (
+                                <div
+                                    className={`border-blue-500 fixed border-collapse rounded-[6px] ${
+                                        dropParams.startLineNumber === dropParams.endLineNumber
+                                            ? "border-[1px]"
+                                            : "border-[2px]"
+                                    }`}
+                                    style={{
+                                        top: dropParams.top,
+                                        left: dropParams.left,
+                                        width: dropParams.width,
+                                        height: dropParams.height,
+                                    }}
+                                ></div>
+                            ) : null}
                         </div>
-                    </div>
+                    </Box>
                 </div>
 
-                <DragOverlay className="w-full">
-                    {draggedCommand ? (
-                        <div className="w-screen h-screen">
-                            <div
-                                className="flex flex-row items-center bg-white dark:bg-gray-800 w-fit h-fit -mx-1 px-1 rounded-md shadow-lg"
-                                style={{
-                                    fontFamily: theme.fontFamily,
-                                    fontSize: theme.fontSize,
-                                }}
-                            >
-                                <CommandPreviewContent
-                                    code={draggedCommand.item.code}
-                                    theme={theme}
-                                    highlightItems={highlightItems}
-                                />
-                            </div>
-                        </div>
-                    ) : null}
-                </DragOverlay>
+                <div className={store.isPrinting ? "h-full" : "basis-[450px] h-full"}>
+                    <div className="flex flex-col h-full">
+                        {!store.isPrinting ? (
+                            <>
+                                <div className="flex flex-row justify-center gap-2.5 h-8 mb-2.5">
+                                    <RunButton
+                                        isRunning={isCompilingOrRunning}
+                                        onClick={handleRun}
+                                    />
+
+                                    <OptionsButton
+                                        icon="print"
+                                        description="Print"
+                                        onClick={print}
+                                    />
+                                </div>
+
+                                <Animated direction="vertical" open={showStatus}>
+                                    {diagnostics.length > 0 ? (
+                                        <ErrorBrowser
+                                            diagnostics={diagnostics}
+                                            active={!hasEdited}
+                                            onSelectDiagnostic={setSelectedDiagnostic}
+                                            codeForDiagnostic={codeForDiagnostic}
+                                        />
+                                    ) : null}
+                                </Animated>
+                            </>
+                        ) : null}
+
+                        <Runner
+                            ref={runnerRef}
+                            wipple={props.wipple}
+                            options={runOptions}
+                            runtime={runtime}
+                            hasFocus={runnerHasFocus}
+                            onFocus={() => setRunnerHasFocus(true)}
+                            onBlur={() => setRunnerHasFocus(false)}
+                            onChangeDiagnostics={setDiagnostics}
+                            onChangeHighlightItems={setHighlightItems}
+                            onChangeCompiling={handleChangeCompiling}
+                            onChangeRunning={handleChangeRunning}
+                        >
+                            {props.children}
+                        </Runner>
+                    </div>
+                </div>
             </div>
-        </DndContext>
+        </div>
     );
 };
 
@@ -679,8 +623,9 @@ const CommandPalette = (props: {
     categories: PaletteCategory[];
     theme: ThemeConfig;
     highlightItems: Record<string, any>;
-    draggedCommand: { id: string; item: PaletteItem } | undefined;
-    onBeginDraggingCommand: (id: string, item: PaletteItem) => void;
+    dragInfo?: DragInfo;
+    onChangeDragInfo: (dragInfo: DragInfo | undefined) => void;
+    onDrop: () => void;
 }) => (
     <div className="flex-[1.5] flex flex-col h-full gap-2.5 z-10">
         <Logo />
@@ -694,19 +639,15 @@ const CommandPalette = (props: {
 
                     {category.items.map((item) => (
                         <div key={item.title}>
-                            {props.draggedCommand == null || props.draggedCommand.item !== item ? (
-                                <CommandPreview
-                                    key={item.title}
-                                    item={item}
-                                    theme={props.theme}
-                                    highlightItems={props.highlightItems}
-                                    onDragStart={(id) => {
-                                        props.onBeginDraggingCommand(id, item);
-                                    }}
-                                />
-                            ) : (
-                                <div className="h-[1lh] mb-1 " />
-                            )}
+                            <CommandPreview
+                                key={item.title}
+                                item={item}
+                                theme={props.theme}
+                                highlightItems={props.highlightItems}
+                                dragInfo={props.dragInfo}
+                                onChangeDragInfo={props.onChangeDragInfo}
+                                onDrop={props.onDrop}
+                            />
                         </div>
                     ))}
                 </div>
@@ -719,31 +660,97 @@ const CommandPreview = (props: {
     item: PaletteItem;
     theme: ThemeConfig;
     highlightItems: Record<string, any>;
-    onDragStart: (id: string) => void;
+    dragInfo?: DragInfo;
+    onChangeDragInfo: (dragInfo: DragInfo | undefined) => void;
+    onDrop: () => void;
 }) => {
+    const stickyThresholdTime = 400; // ms
+    const stickyThresholdDistance = 10; // px
+
     const id = useMemo(() => nanoid(), []);
 
-    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
+    const isDragging = useMemo(() => props.dragInfo?.id === id, [props.dragInfo, id]);
 
-    useEffect(() => {
-        if (isDragging) {
-            props.onDragStart(id);
-        }
-    }, [isDragging, id]);
+    const onMouseDown: MouseEventHandler = (e) => {
+        const startTimestamp = e.timeStamp;
+        const startX = e.clientX;
 
-    const style = {
-        transform: CSS.Transform.toString(
-            transform && { x: transform.x, y: transform.y, scaleX: 1, scaleY: 1 },
-        ),
+        const update = (e: MouseEvent) => {
+            props.onChangeDragInfo({ id, x: e.clientX, y: e.clientY, paletteItem: props.item });
+        };
+
+        const onmousemove = (e: MouseEvent) => {
+            update(e);
+        };
+
+        const end = (drop: boolean) => {
+            if (drop) {
+                props.onDrop();
+            }
+
+            window.removeEventListener("mousemove", onmousemove);
+            window.removeEventListener("mouseup", onmouseup);
+            window.removeEventListener("keydown", onkeydown);
+            props.onChangeDragInfo(undefined);
+        };
+
+        const onmouseup = (e: MouseEvent) => {
+            if (
+                e.timeStamp - startTimestamp > stickyThresholdTime ||
+                Math.abs(e.clientX - startX) > stickyThresholdDistance
+            ) {
+                end(true);
+            } else {
+                // If the mouse is clicked instead of dragged, treat it as "sticky"
+                setTimeout(() => {
+                    window.addEventListener("click", () => end(true), { once: true });
+                }, stickyThresholdTime);
+            }
+        };
+
+        const onkeydown = (e: KeyboardEvent) => {
+            if (e.key === "Escape") {
+                end(false);
+            }
+        };
+
+        window.addEventListener("mousemove", onmousemove);
+        window.addEventListener("mouseup", onmouseup, { once: true });
+        window.addEventListener("keydown", onkeydown);
+
+        requestAnimationFrame(() => {
+            update(e.nativeEvent);
+        });
     };
 
     return (
-        <div ref={setNodeRef} style={style} {...listeners} {...attributes}>
-            <CommandPreviewContent
-                code={props.item.title}
-                theme={props.theme}
-                highlightItems={props.highlightItems}
-            />
+        <div
+            className="hover-highlight -mx-[4px] cursor-pointer rounded-[8px] px-[2px]"
+            style={{ visibility: isDragging ? "hidden" : "visible" }}
+            onMouseDown={onMouseDown}
+        >
+            {isDragging ? (
+                <FloatingPortal root={document.body}>
+                    <div
+                        className="border-[1.5px] border-gray-100 dark:border-gray-900 bg-white dark:bg-gray-950 shadow-lg shadow-black/2.5 pointer-events-none fixed size-max rounded-[8px] px-1 z-50"
+                        style={{ top: props.dragInfo!.y + "px", left: props.dragInfo!.x + "px" }}
+                    >
+                        <CommandPreviewContent
+                            code={props.item.code}
+                            theme={props.theme}
+                            highlightItems={props.highlightItems}
+                        />
+                    </div>
+                </FloatingPortal>
+            ) : null}
+
+            <div className="pointer-events-none size-full">
+                <CommandPreviewContent
+                    code={props.item.title}
+                    theme={props.theme}
+                    highlightItems={props.highlightItems}
+                />
+            </div>
         </div>
     );
 };
@@ -767,91 +774,6 @@ const CommandPreviewContent = (props: {
     </div>
 );
 
-const DropTargetLines = (props: { numberOfLines: number; theme: ThemeConfig }) => (
-    <div className="absolute inset-0 flex flex-col">
-        <div className="pt-1.5 pb-1">
-            <DropTargetLine index={-1} theme={props.theme} />
-        </div>
-
-        {new Array(props.numberOfLines).fill(undefined).map((_, index) => (
-            <DropTargetLine
-                key={index}
-                index={index}
-                useLineHeight
-                expand={index === props.numberOfLines - 1}
-                theme={props.theme}
-            />
-        ))}
-    </div>
-);
-
-const DropTargetLine = (props: {
-    index: number;
-    useLineHeight?: boolean;
-    expand?: boolean;
-    theme: ThemeConfig;
-}) => {
-    const { setNodeRef, isOver } = useDroppable({ id: props.index });
-
-    return (
-        <div
-            ref={setNodeRef}
-            className={`flex flex-col ${!props.useLineHeight ? "h-1" : ""} ${
-                props.expand ? "flex-1" : ""
-            }`}
-        >
-            <div
-                className="relative"
-                style={{
-                    height: props.useLineHeight
-                        ? props.theme.lineHeight + props.theme.lineSpacing
-                        : undefined,
-                }}
-            >
-                <div className="absolute left-4 right-4 bottom-0.5">
-                    <div
-                        className={`w-full h-1 bg-blue-500 rounded-full transition-opacity ${
-                            isOver ? "opacity-100" : "opacity-0"
-                        }`}
-                    />
-                </div>
-            </div>
-
-            {props.expand ? <div className="flex-1"></div> : null}
-        </div>
-    );
-};
-
-const dropTargetAreaPaddingForSelection = 6;
-
-const DropTargetArea = (props: {
-    rect: { top: number; left: number; width: number; height: number } | undefined;
-}) => {
-    const { setNodeRef, isOver } = useDroppable({ id: 0 });
-
-    return (
-        <div ref={setNodeRef} className="absolute inset-0">
-            <div
-                className={props.rect ? "fixed" : "p-2 w-full h-full"}
-                style={
-                    props.rect && {
-                        top: props.rect.top - dropTargetAreaPaddingForSelection,
-                        left: props.rect.left - dropTargetAreaPaddingForSelection,
-                        width: props.rect.width + dropTargetAreaPaddingForSelection * 2,
-                        height: props.rect.height + dropTargetAreaPaddingForSelection * 2,
-                    }
-                }
-            >
-                <div
-                    className={`w-full h-full border-[3px] rounded-md border-blue-500 transition ${
-                        isOver ? "border-opacity-100 scale-100" : "border-opacity-0 scale-[102.5%]"
-                    }`}
-                />
-            </div>
-        </div>
-    );
-};
-
 const PrintHeader = () => {
     const [store, _setStore] = useStore();
 
@@ -868,4 +790,133 @@ const PrintHeader = () => {
             <p className="text-blue-500 font-semibold">wipple.org</p>
         </div>
     );
+};
+
+export const getDropParams = (
+    editorView: EditorView,
+    item: PaletteItem,
+    { x, y }: { x: number; y: number },
+) => {
+    const { top, bottom, left, right } = editorView.contentDOM.getBoundingClientRect();
+    const width = editorView.contentDOM.clientWidth;
+
+    if (x < left || x > right || y < top || y > bottom) {
+        // Out of bounds
+        return undefined;
+    }
+
+    // Insert at beginning if document is empty
+    if (editorView.state.doc.length === 0) {
+        return {
+            item,
+            startLineNumber: 1,
+            endLineNumber: 1,
+            top: top + "px",
+            left: left + "px",
+            width: width + "px",
+            height: "0",
+        };
+    }
+
+    const lineHeight = parseFloat(
+        window
+            .getComputedStyle(editorView.contentDOM)
+            .getPropertyValue("--code-editor-line-height")
+            .replace(/px$/, ""),
+    );
+
+    const lineSpacing = parseFloat(
+        window
+            .getComputedStyle(editorView.contentDOM)
+            .getPropertyValue("--code-editor-line-spacing")
+            .replace(/px$/, ""),
+    );
+
+    // Choose the closest line, and allow going one past the end
+    const startLineNumber =
+        Math.min(Math.floor((y - top) / (lineHeight + lineSpacing)), editorView.state.doc.lines) +
+        1;
+
+    let endLineNumber = startLineNumber;
+    if (item.replace && endLineNumber <= editorView.state.doc.lines) {
+        // Select until the next closing brace (or the end of the document)
+
+        const iter = editorView.state.doc.iterRange(
+            editorView.state.doc.line(startLineNumber).from,
+        );
+
+        let openingBraceCount = 0;
+        for (const line of iter) {
+            if (iter.lineBreak) {
+                endLineNumber++;
+                continue;
+            }
+
+            openingBraceCount += line.match("{")?.length ?? 0;
+            openingBraceCount -= line.match("}")?.length ?? 0;
+
+            if (openingBraceCount < 0) {
+                break;
+            }
+        }
+
+        endLineNumber += openingBraceCount + 1;
+
+        endLineNumber = Math.min(endLineNumber, editorView.state.doc.lines + 1);
+    }
+
+    const offset = (lineNumber: number) =>
+        `${top + (lineHeight + lineSpacing) * (lineNumber - 1)}px`;
+
+    return {
+        item,
+        startLineNumber,
+        endLineNumber,
+        top: offset(startLineNumber),
+        left: left + "px",
+        width: width + "px",
+        height: `calc(${offset(endLineNumber)} - ${offset(startLineNumber)})`,
+    };
+};
+
+export const drop = (
+    editorView: EditorView,
+    params: NonNullable<ReturnType<typeof getDropParams>>,
+) => {
+    const { item: command, startLineNumber, endLineNumber } = params;
+
+    if (command.replace) {
+        const from =
+            startLineNumber <= editorView.state.doc.lines
+                ? editorView.state.doc.line(startLineNumber).from
+                : editorView.state.doc.length;
+
+        const to =
+            endLineNumber <= editorView.state.doc.lines
+                ? editorView.state.doc.line(endLineNumber).to
+                : editorView.state.doc.length;
+
+        const inner = editorView.state.sliceDoc(from, to);
+
+        const before = startLineNumber <= editorView.state.doc.lines ? "" : "\n";
+
+        const code = command.code.replace(/\b_\b/, inner);
+
+        editorView.dispatch({
+            changes: { from, to, insert: before + code },
+        });
+    } else if (startLineNumber <= 1) {
+        editorView.dispatch({
+            changes: { from: 0, to: 0, insert: command.code + "\n" },
+        });
+    } else {
+        const pos =
+            startLineNumber <= editorView.state.doc.lines
+                ? editorView.state.doc.line(startLineNumber - 1).to
+                : editorView.state.doc.length;
+
+        editorView.dispatch({
+            changes: { from: pos, to: pos, insert: "\n" + command.code },
+        });
+    }
 };
