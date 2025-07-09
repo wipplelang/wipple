@@ -5,22 +5,22 @@ import { classHighlighter } from "@lezer/highlight";
 
 export interface ThemeConfig {
     fontSize: number;
-    lineHeight: number;
-    lineSpacing: number;
     fontFamily: string;
     highlight: boolean;
 }
 
 export const defaultThemeConfig = (): ThemeConfig => ({
     fontSize: 16,
-    lineHeight: 20,
-    lineSpacing: 8,
     fontFamily: "JetBrains Mono Variable",
     highlight: true,
 });
 
 export const themeFromConfig = (config: ThemeConfig): Extension => [
     EditorView.baseTheme({
+        "&.cm-editor": {
+            width: "100%",
+            height: "100%",
+        },
         "&.cm-editor.cm-focused": {
             outline: "none",
         },
@@ -30,18 +30,6 @@ export const themeFromConfig = (config: ThemeConfig): Extension => [
             fontFeatureSettings: "normal",
             fontVariationSettings: "normal",
             fontVariantLigatures: "none",
-        },
-        ".cm-content": {
-            padding: 0,
-        },
-        ".cm-line": {
-            padding: 0,
-            margin: 0,
-            "&:not(:last-child)": {
-                height: `${config.lineHeight + config.lineSpacing}px`,
-                maxHeight: `${config.lineHeight + config.lineSpacing}px`,
-                paddingBottom: `${config.lineSpacing}px`,
-            },
         },
         ".cm-placeholder": {
             fontStyle: "italic",
