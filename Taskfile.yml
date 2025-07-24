@@ -1,260 +1,62 @@
 version: "3"
 
 tasks:
-    install:
-        run: once
-        deps:
-            - base:compile
-            - project:compile
-            - cli:install
-            - project:install
-            - vscode:install
+  install:
+    deps:
+      - install:interpreter
+      - install:playground
+      - install:site
+  install:interpreter:
+    dir: interpreter
+    cmds:
+      - npm install
+  install:playground:
+    dir: playground
+    cmds:
+      - npm install
+  install:site:
+    dir: site
+    cmds:
+      - npm install
 
-    dev:
-        run: once
-        deps:
-            - project:compile
-        cmds:
-            - cargo build --package=wipple-cli
-            - cargo run --bin wipple -- run example --compiler target/debug/wipplec --build-dir example/build
+  dev:
+    deps:
+      - dev:playground
+      - dev:server
+  dev:playground:
+    dir: playground
+    cmds:
+      - npm run dev -- --open
+  dev:server:
+    dir: server
+    cmds:
+      - RUST_LOG=debug PORT=3000 cargo run {{.CLI_ARGS}}
 
-    test:
-        run: once
-        deps:
-            - base:compile
-        cmds:
-            - cargo test --package=wipple-test -- {{.CLI_ARGS}}
-
-    test-with-coverage:
-        run: once
-        cmds:
-            - RUSTFLAGS="-Cinstrument-coverage -Clink-dead-code" LLVM_PROFILE_FILE="./target/debug/coverage-%p-%m.profraw" cargo test --package=wipple-test -- --test-threads=1 {{.CLI_ARGS}}
-            - task: coverage
-
-    coverage:
-        run: once
-        cmds:
-            - |
-                if ! [[ -z "$CI" ]]; then
-                    rustup component add llvm-tools-preview
-                fi
-
-                if ! command -v grcov; then
-                    cargo install grcov --force
-                fi
-            - rm -rf coverage && mkdir -p coverage
-            - grcov . --binary-path target/debug/ -s . -t cobertura,html --branch --ignore-not-existing --keep-only 'compiler/**/*' --keep-only 'interpreter/**/*' --keep-only 'render/**/*' -o coverage
-
-    # doctest:
-    #     run: once
-    #     cmds:
-    #         - rm -rf artifacts/doctest && mkdir -p artifacts/doctest
-    #         - for f in web/docs/src/tour/*.md; do echo -e "testing $(basename $f)" && cargo run --bin wipplec -- doctest $f --dependency artifacts/base.wippleinterface --link artifacts/base.wipplelibrary > artifacts/doctest/$(basename $f).xml; done
-
-    cli:install:
-        run: once
-        dir: cli
-        cmds:
-            - cargo install --bin wipplec --path . --force {{.CLI_ARGS}}
-
-    project:install:
-        run: once
-        deps:
-            - base:compile
-            - project:compile
-        dir: project
-        cmds:
-            - cargo install --bin wipple --path . --force {{.CLI_ARGS}}
-
-    vscode:install:
-        run: once
-        dir: vscode
-        cmds:
-            - if ! command -v code; then echo "skipping VSCode extension because VSCode is not installed"; exit 0; fi
-            - npx @vscode/vsce package --no-dependencies --skip-license --allow-missing-repository
-            - code --install-extension wipple-vscode-0.0.0.vsix
-            - rm wipple-vscode-0.0.0.vsix
-
-    install-dependencies:
-        run: once
-        deps:
-            - wasm:install-dependencies
-            - web:install-dependencies
-
-    wasm:install-dependencies:
-        run: once
-        dir: wasm
-        cmds:
-            - if ! command -v wasm-pack; then cargo install --version 0.12.1 --force wasm-pack; fi
-
-    wasm:build:
-        run: once
-        dir: wasm
-        cmds:
-            - ./build.sh
-
-    web:playground:bundle:
-        run: once
-        dir: web/playground
-        cmds:
-            - task base:compile
-            - cargo run --bin wipplec -- bundle-for-playground ../../library/base/*.wipple --output ./public/library/base.wipplebundle
-            - task --parallel web:playground:bundle:turtle web:playground:bundle:music web:playground:bundle:math
-
-    web:playground:bundle:turtle:
-        run: once
-        dir: web/playground
-        cmds:
-            - cargo run --bin wipplec -- compile ../../library/turtle/turtle.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/turtle.wippleinterface
-            - cargo run --bin wipplec -- bundle-for-playground ../../library/turtle/turtle.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/turtle.wipplebundle
-
-    web:playground:bundle:music:
-        run: once
-        dir: web/playground
-        cmds:
-            - cargo run --bin wipplec -- compile ../../library/music/music.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/music.wippleinterface
-            - cargo run --bin wipplec -- bundle-for-playground ../../library/music/music.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/music.wipplebundle
-
-    web:playground:bundle:math:
-        run: once
-        dir: web/playground
-        cmds:
-            - cargo run --bin wipplec -- compile ../../library/math/math.wipple --dependency ../../artifacts/base.wippleinterface --interface ../../artifacts/math.wippleinterface
-            - cargo run --bin wipplec -- bundle-for-playground ../../library/math/math.wipple --dependency ../../artifacts/base.wippleinterface --link ../../artifacts/base.wipplelibrary --output ./public/library/math.wipplebundle
-
-    web:install-dependencies:
-        run: once
-        deps:
-            - web:home:install-dependencies
-            - web:docs:install-dependencies
-            - web:doc-template:install-dependencies
-            - web:playground:install-dependencies
-
-    web:serve:
-        run: once
-        deps:
-            - web:build
-        cmds:
-            - netlify dev --filter wipple-playground
-
-    web:build:
-        run: once
-        deps:
-            - web:home:build
-            - web:docs:build
-            - web:doc-template:build
-            - web:playground:build
-        dir: web
-        cmds:
-            - rm -rf dist && mkdir dist
-            - cp -r home/_site/. dist
-            - cp -r docs/book/. dist/docs
-            - cp doc-template/dist/index.html dist/doc-template.html
-            - cp -r playground/dist/. dist/playground
-            - task: web:library:docs:build
-
-    web:home:install-dependencies:
-        run: once
-        dir: web/home
-        cmds:
-            - npm install
-
-    web:home:serve:
-        run: once
-        dir: web/home
-        cmds:
-            - npm run dev
-
-    web:home:build:
-        run: once
-        dir: web/home
-        cmds:
-            - npm run build
-
-    web:docs:install-dependencies:
-        run: once
-        dir: web/docs
-        cmds:
-            - if ! command -v mdbook; then cargo install --force mdbook; fi
-            - if ! command -v mdbook-template; then cargo install --force mdbook-template; fi
-            - if ! command -v mdbook-mermaid; then cargo install --force mdbook-mermaid; fi
-
-    web:docs:prepare:
-        run: once
-        dir: web/docs
-        cmds:
-            - (cd ../../compiler && cargo test --package=wipple-syntax render_grammar_to_html)
-
-    web:docs:serve:
-        run: once
-        deps:
-            - web:docs:prepare
-        dir: web/docs
-        cmds:
-            - mdbook serve
-
-    web:docs:build:
-        run: once
-        deps:
-            - web:docs:prepare
-        dir: web/docs
-        cmds:
-            - mdbook build
-
-    web:doc-template:install-dependencies:
-        run: once
-        dir: web/doc-template
-        cmds:
-            - npm install
-
-    web:doc-template:build:
-        run: once
-        dir: web/doc-template
-        cmds:
-            - npm run build
-
-    web:playground:install-dependencies:
-        run: once
-        dir: web/playground
-        cmds:
-            - npm install
-
-    web:playground:serve:
-        run: once
-        dir: web/playground
-        cmds:
-            - npm run dev
-
-    web:playground:build:
-        run: once
-        deps:
-            - wasm:build
-            - web:playground:bundle
-        dir: web/playground
-        cmds:
-            - npm run build
-
-    web:library:docs:build:
-        run: once
-        deps:
-            - web:doc-template:build
-            - web:playground:bundle
-        dir: web
-        cmds:
-            - mkdir -p dist/library/docs
-            - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/base.wippleinterface --title 'Wipple Standard Library' --output ./dist/library/docs/base.html
-            - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/turtle.wippleinterface --title 'Turtle' --output ./dist/library/docs/turtle.html
-            - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/music.wippleinterface --title 'Music' --output ./dist/library/docs/music.html
-            - cargo run --bin wipplec -- doc --template-path ./doc-template/dist/index.html ../artifacts/math.wippleinterface --title 'Math' --output ./dist/library/docs/math.html
-
-    base:compile:
-        run: once
-        cmds:
-            - cargo run --bin wipplec -- compile library/base/*.wipple --interface artifacts/base.wippleinterface --library artifacts/base.wipplelibrary
-
-    project:compile:
-        run: once
-        deps:
-            - base:compile
-        cmds:
-            - cargo run --bin wipplec -- compile library/project/*.wipple --dependency artifacts/base.wippleinterface --interface artifacts/project.wippleinterface --library artifacts/project.wipplelibrary
+  build:web:
+    deps:
+      - build:ir-bindings
+      - build:site
+  build:ir-bindings:
+    dir: compiler
+    cmds:
+      - cargo binstall typeshare-cli
+      - typeshare . --lang=typescript --output-file=../interpreter/ir.d.ts
+  build:site:
+    deps:
+      - build:playground
+      - build:docs
+    dir: site
+    cmds:
+      - rm -rf dist
+      - npm run build
+      - cp -r ../playground/build/. dist/playground
+      - cp -r ../docs/book/. dist/docs
+  build:docs:
+    dir: docs
+    cmds:
+      - cargo binstall mdbook
+      - mdbook build
+  build:playground:
+    dir: playground
+    cmds:
+      - npm run build

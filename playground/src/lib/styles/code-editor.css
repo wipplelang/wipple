@@ -1,0 +1,95 @@
+@reference "./fonts.css";
+
+:root {
+    /* Must be literal px values because they are parsed in JavaScript */
+    --code-editor-font-size: 16px;
+    --code-editor-line-height: 24px; /* line height of 1.5 */
+    --code-editor-line-spacing: 6px;
+}
+
+.code-editor {
+    .cm-editor {
+        @apply h-full outline-none;
+        font-size: var(--code-editor-font-size);
+
+        .cm-content {
+            @apply p-px; /* keep cursor visible at beginning of line */
+        }
+
+        .cm-line {
+            @apply p-0;
+        }
+
+        .cm-line > *,
+        .cm-line > *[contenteditable="false"] > * {
+            @apply h-full align-bottom;
+        }
+
+        .cm-line {
+            /* Instead of line-height, which increases the background size of highlighted tokens */
+            height: var(--code-editor-line-height);
+
+            &:not(:last-child) {
+                margin-bottom: var(--code-editor-line-spacing);
+            }
+        }
+
+        .cm-cursor {
+            @apply rounded-full border-l-2 border-l-blue-500;
+        }
+
+        .cm-scroller {
+            @apply overflow-auto font-mono;
+        }
+    }
+
+    .token-comment {
+        color: #6a7282;
+    }
+
+    .token-text,
+    .token-number {
+        color: #032f62;
+
+        @variant dark {
+            color: #9ecbff;
+        }
+    }
+
+    .token-keyword {
+        color: #e36209;
+
+        @variant dark {
+            color: #ffab70;
+        }
+    }
+
+    .token-binaryOperator,
+    .token-keywordOperator,
+    .token-variadicOperator {
+        color: #005cc5;
+
+        @variant dark {
+            color: #79b8ff;
+        }
+    }
+
+    .token-capitalName {
+        color: #6f42c1;
+
+        @variant dark {
+            color: #b392f0;
+        }
+    }
+
+    .token-highlighted {
+        @apply inline-flex h-(--code-editor-line-height) items-center gap-[2px] rounded-[4px] px-[4px];
+        color: var(--highlight-color);
+        background-color: color-mix(in oklab, var(--highlight-background-color) 30%, transparent);
+
+        &::before {
+            content: var(--highlight-icon);
+            @apply material-symbol;
+        }
+    }
+}

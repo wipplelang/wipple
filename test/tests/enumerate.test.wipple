@@ -1,4 +1,0 @@
--- [should compile]
-
-list : "a" , "b" , "c"
-list . enumerate . each ((n ; c) -> show ("_: _" n c))

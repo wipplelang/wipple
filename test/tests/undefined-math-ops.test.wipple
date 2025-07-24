@@ -1,7 +1,0 @@
--- [should compile]
-
-show undefined
-show (1 / 0)
-show (0 / 0)
-show (sqrt -1)
-show (2 ^ 2 ^ 2 ^ 2048)

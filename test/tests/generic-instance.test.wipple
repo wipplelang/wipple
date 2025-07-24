@@ -1,9 +1,0 @@
--- [should compile]
-
-Box : A => type {value :: A}
-
-Foo : A B => trait (A -> B)
-
-A => instance (Foo (Box A) A) : {value : value} -> value
-
-show (Foo {value : "Hello, world!"})

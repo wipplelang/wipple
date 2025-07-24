@@ -1,0 +1,48 @@
+-- Produce a piece of `Text` describing the value.
+@(language : "describe")
+Describe : (Value : Text) => trait (Value -> Text)
+
+Value where (Error ("Can't describe _" Value ; Error-Description ("You can't display _ on the screen or use it in placeholders because it can't be converted into text." Value))) =>
+  default instance (Describe Value) : ...
+
+-- Produce a piece of `Text` describing the value.
+describe :: (Value : Text) where (Describe Value) => Value -> Text
+describe : Describe
+
+-- Display a value on the screen.
+@(highlight-category : "io")
+@(highlight-icon : "article")
+show :: (Value : Text) where (Describe Value) => Value -> None
+show : value -> intrinsic "display" (describe value)
+
+print :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not `_`" Source ; Error-Description ("Output is written using `show` in Wipple, not `_`" Source))) => Value -> None
+print : ...
+
+println :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not `_`" Source ; Error-Description ("Output is written using `show` in Wipple, not `_`" Source))) => Value -> None
+println : ...
+
+display :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not `_`" Source ; Error-Description ("Output is written using `show` in Wipple, not `_`" Source))) => Value -> None
+display : ...
+
+instance (Describe Text) : text -> text
+instance (Describe Number) : n -> intrinsic "number-to-text" n
+instance (Describe Boolean) : b -> if b {"True"} {"False"}
+Value where (Describe Value) => instance (Describe (Maybe Value)) : m -> when m {
+  Has value -> "Has _" value
+  Empty -> "Empty"
+}
+
+-- Convert from a piece of `Text` to a value.
+Read : Value => trait (Text -> Maybe Value)
+
+Value where (Error ("Can't read _ from input" Value ; Error-Description ("You can't use `prompt` with _ because there's no way to convert the contents of a text field into _." Value Value))) =>
+  default instance (Read Value) : ...
+
+instance (Read Text) : Has
+instance (Read Number) : text -> intrinsic "text-to-number" text
+
+-- Ask the user to enter a value.
+@(highlight-category : "io")
+@(highlight-icon : "live-help")
+prompt :: Value where (Read Value) => Text -> Value
+prompt : prompt -> intrinsic "prompt" prompt Read

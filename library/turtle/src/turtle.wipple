@@ -1,0 +1,84 @@
+-- The distance (in pixels) the turtle should move.
+Distance : type Number
+
+instance (Describe-Type Distance "distance")
+
+-- Specify a distance in pixels.
+@(highlight-category : "unit")
+pixels :: Number -> Distance
+pixels : Distance
+
+_ where (Error ("Missing `pixels` after `_`" Source ; Error-Description ("Try rewriting this code as `(_ pixels)`, or double-check your parentheses." Source))) =>
+  instance (Mismatch Number Distance)
+
+-- Move the turtle forward by a distance.
+@(highlight-category : "turtle-movement")
+@(highlight-icon : "arrow-upward")
+forward :: Distance -> None
+forward : (Distance pixels) -> runtime-message "forward" pixels
+
+-- Move the turtle backward by a distance.
+@(highlight-category : "turtle-movement")
+@(highlight-icon : "arrow-downward")
+backward :: Distance -> None
+backward : (Distance pixels) -> runtime-message "backward" pixels
+
+-- An arc.
+Arc : type {
+  radius :: Distance
+  angle :: Angle
+}
+
+-- Move the turtle along an arc.
+@(highlight-category : "turtle-movement")
+@(highlight-icon : "progress-activity")
+arc :: Arc -> None
+arc : {
+  radius : (Distance radius)
+  angle : (Angle angle)
+} -> runtime-message "arc" (radius ; angle)
+
+-- Rotate the turtle counterclockwise by an angle.
+@(highlight-category : "turtle-movement")
+@(highlight-icon : "rotate-left")
+left :: Angle -> None
+left : (Angle degrees) -> runtime-message "left" degrees
+
+-- Rotate the turtle clockwise by an angle.
+@(highlight-category : "turtle-movement")
+@(highlight-icon : "rotate-right")
+right :: Angle -> None
+right : (Angle degrees) -> runtime-message "right" degrees
+
+-- Set the pen color.
+@(highlight-category : "turtle-appearance")
+@(highlight-icon : "edit")
+color :: Color -> None
+color : (Color color) -> runtime-message "color" color
+
+-- Draw a path and fill it with a color.
+@(highlight-category : "turtle-appearance")
+@(highlight-icon : "colors")
+fill :: Result => Color {Result} -> Result
+fill : (Color color) body -> do {
+  runtime-message "beginPath" None
+  result : do body
+  runtime-message "endPath" color
+  result
+}
+
+-- Set the speed of the turtle, from `0` to `1`. The default speed is `0.5`.
+@(highlight-category : "turtle-appearance")
+@(highlight-icon : "speed")
+speed :: Number -> None
+speed : value -> runtime-message "speed" value
+
+-- An animal to use instead of the turtle.
+Animal : type Text
+instance (Describe-Type Animal "animal")
+
+-- Change the animal being displayed.
+@(highlight-category : "turtle-appearance")
+@(highlight-icon : "pets")
+animal :: Animal -> None
+animal : (Animal name) -> runtime-message "animal" name

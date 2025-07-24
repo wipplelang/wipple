@@ -1,8 +1,0 @@
--- [should compile]
-
-sports : "Basketball" , "Soccer" , "Golf"
-
-show (sports . contains? "Basketball")
-show (sports . contains? "Soccer")
-show (sports . contains? "Golf")
-show (sports . contains? "Baseball")

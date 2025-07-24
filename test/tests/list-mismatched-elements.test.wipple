@@ -1,4 +1,0 @@
--- [should error]
-
-my-list : 1 , "hi" , None
-my-list . each show

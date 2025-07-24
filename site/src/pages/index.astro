@@ -1,0 +1,112 @@
+---
+import Layout from "@/layouts/Layout.astro";
+---
+
+<Layout>
+    <main style="max-width: 844px" class="flex w-full flex-col gap-5">
+        <section
+            class="flex w-full flex-col items-center gap-8 py-10"
+            style="
+                background: url('/images/background.svg');
+                background-size: cover;
+                background-position: 50%;
+            "
+        >
+            <div class="flex w-full flex-col items-center">
+                <div
+                    class="rounded-t-lg border-4 border-gray-900 bg-white md:border-[6px] dark:border-gray-700"
+                >
+                    <div class="relative h-[150px] w-[224px] md:h-[240px] md:w-[360px]">
+                        <img
+                            id="hero-image"
+                            src="/images/laptop-screen-wipple.png"
+                            class="absolute inset-0 rounded-md transition-opacity duration-500"
+                        />
+                    </div>
+                </div>
+
+                <div
+                    class="h-[7px] w-[272px] rounded-md bg-gradient-to-b from-gray-200 to-gray-300 shadow-md md:h-[11px] md:w-[438px] dark:from-gray-500 dark:to-gray-600"
+                >
+                </div>
+            </div>
+
+            <h1
+                id="hero-text"
+                class="text-center text-3xl leading-tight font-semibold transition-opacity duration-500 md:text-5xl md:leading-tight"
+            >
+                <span
+                    class="inline-block bg-gradient-to-br from-sky-400 to-blue-500 bg-clip-text text-transparent"
+                >
+                    <span id="hero-text-left">Learn to code</span>
+                </span>
+
+                <br class="md:hidden" />
+
+                <span
+                    class="inline-block bg-gradient-to-br from-yellow-500 to-orange-400 bg-clip-text text-transparent"
+                >
+                    <span id="hero-text-right">with Wipple</span>
+                </span>
+            </h1>
+
+            <div class="flex flex-col items-stretch gap-2.5 text-center">
+                <a href="/playground" class="btn btn-blue block no-underline">Start coding now -></a
+                >
+            </div>
+        </section>
+
+        <section class="flex flex-col gap-2">
+            <h2 class="text-2xl font-semibold">What is Wipple?</h2>
+
+            <p>
+                Wipple is a programming language designed for learning. With Wipple, you can explore
+                computer science through creative projects like drawing and music.
+            </p>
+
+            <p>Wipple is free to use and works in your web browser, no setup required.</p>
+
+            <h2 class="mt-8 mb-4 text-2xl font-semibold">Wipple Workshops</h2>
+
+            <div class="grid gap-6 *:overflow-clip *:rounded-lg *:shadow-md sm:grid-cols-2">
+                <div><img src="/images/wipple-workshop-1.jpg" /></div>
+                <div><img src="/images/wipple-workshop-2.jpg" /></div>
+            </div>
+        </section>
+    </main>
+</Layout>
+
+<script>
+    const content = [
+        { image: "/images/laptop-screen-wipple.png", text: "Learn to code" },
+        { image: "/images/laptop-screen-art.png", text: "Make art" },
+        { image: "/images/laptop-screen-music.png", text: "Make music" },
+    ];
+
+    const heroText = document.getElementById("hero-text")!;
+    const heroTextLeft = document.getElementById("hero-text-left")!;
+    const heroImage = document.getElementById("hero-image")! as HTMLImageElement;
+
+    let n = 0;
+    const interval = setInterval(() => {
+        n = (n + 1) % content.length;
+        const { image, text } = content[n];
+
+        heroText.classList.toggle("opacity-0");
+        heroImage.classList.toggle("opacity-0");
+
+        setTimeout(() => {
+            heroTextLeft.innerText = text;
+            heroImage.src = image;
+
+            setTimeout(() => {
+                heroText.classList.toggle("opacity-0");
+                heroImage.classList.toggle("opacity-0");
+            }, 250);
+        }, 500);
+
+        if (n == 0) {
+            clearInterval(interval);
+        }
+    }, 5500);
+</script>

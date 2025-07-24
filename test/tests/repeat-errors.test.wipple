@@ -1,6 +1,0 @@
--- [should error]
-
-with-control-flow {None}
-(while {True}) {None}
-forever {None}
-(4 times) {None}

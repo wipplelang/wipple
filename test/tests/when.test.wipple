@@ -1,8 +1,0 @@
--- [should compile]
-
-x : True
-
-show (when x {
-  True -> "Yay!"
-  False -> "Uh oh"
-})

@@ -1,0 +1,61 @@
+---
+import "@fontsource-variable/inter";
+import "@fontsource-variable/inter/wght-italic.css";
+import Nav from "@/components/Nav.astro";
+import "@/styles/style.css";
+---
+
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <slot name="meta" />
+        <meta name="generator" content={Astro.generator} />
+
+        <title>Wipple</title>
+
+        <meta name="description" content="Learn to code with Wipple." />
+
+        <!-- Facebook Meta Tags -->
+        <meta property="og:url" content="https://wipple.org" />
+        <meta property="og:type" content="website" />
+        <meta property="og:title" content="Wipple" />
+        <meta property="og:description" content="Learn to code with Wipple." />
+        <meta property="og:image" content="https://wipple.org/images/banner.jpg" />
+
+        <!-- Twitter Meta Tags -->
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta property="twitter:domain" content="wipple.org" />
+        <meta property="twitter:url" content="https://wipple.org" />
+        <meta name="twitter:title" content="Wipple" />
+        <meta name="twitter:description" content="Learn to code with Wipple." />
+        <meta name="twitter:image" content="https://wipple.org/images/banner.jpg" />
+
+        <link rel="icon" href="/images/favicon.png" />
+
+        <!-- Google tag (gtag.js) -->
+        <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-QTYHKZPQZ6"></script>
+        <script is:inline>
+            window.dataLayer = window.dataLayer || [];
+            function gtag() {
+                dataLayer.push(arguments);
+            }
+            gtag("js", new Date());
+
+            gtag("config", "G-QTYHKZPQZ6");
+        </script>
+    </head>
+
+    <body>
+        <Nav />
+
+        <main class="mt-14">
+            <slot />
+        </main>
+
+        <section class="my-8 text-secondary text-center">
+            <span class="opacity-50">Made by</span>
+            <a href="https://gramer.dev" class="font-semibold no-underline opacity-70">Wilson Gramer</a>
+        </section>
+    </body>
+</html>

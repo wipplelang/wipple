@@ -1,8 +1,0 @@
--- [should error]
-
-accepts-text :: Text -> None
-accepts-text : ...
-
--- should display 'expected `Text`, found `Number`' rather than
--- 'cannot find instance `Add Number Number Text`'
-accepts-text (Add 1 2)

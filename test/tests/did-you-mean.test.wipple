@@ -1,5 +1,0 @@
--- [should error]
-
-print "hello"
-show hello
-sum : 1 + 2 / / comment

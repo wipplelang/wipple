@@ -1,5 +1,0 @@
--- This file is read by the VSCode extension, but the standard library is
--- actually built using 'wipplec' directly.
-
-include "library/base"
-no-base

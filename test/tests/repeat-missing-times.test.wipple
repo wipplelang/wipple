@@ -1,5 +1,0 @@
--- [should error]
-
-repeat 5 {
-  show "Hello, world!"
-}

@@ -1,0 +1,47 @@
+{
+    "library": "foundation",
+    "ide": {
+        "highlights": {
+            "animal": {
+                "color": "purple",
+                "icon": "pets"
+            },
+            "arc": {
+                "color": "green",
+                "icon": "progress_activity"
+            },
+            "backward": {
+                "color": "green",
+                "icon": "arrow_downward"
+            },
+            "color": {
+                "color": "purple",
+                "icon": "edit"
+            },
+            "degrees": {
+                "color": "sky",
+                "icon": null
+            },
+            "forward": {
+                "color": "green",
+                "icon": "arrow_upward"
+            },
+            "left": {
+                "color": "green",
+                "icon": "rotate_left"
+            },
+            "pixels": {
+                "color": "sky",
+                "icon": null
+            },
+            "right": {
+                "color": "green",
+                "icon": "rotate_right"
+            },
+            "speed": {
+                "color": "purple",
+                "icon": "speed"
+            }
+        }
+    }
+}

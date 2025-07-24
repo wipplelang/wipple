@@ -1,9 +1,0 @@
-{
-    "name": "wipple-wasm",
-    "private": true,
-    "type": "module",
-    "main": "index.js",
-    "scripts": {
-        "build": "./build.sh"
-    }
-}

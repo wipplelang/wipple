@@ -1,0 +1,142 @@
+{
+    "ide": {
+        "highlights": {
+            "all?": {
+                "color": "teal",
+                "icon": "help"
+            },
+            "always": {
+                "color": "teal",
+                "icon": "all_inclusive"
+            },
+            "any?": {
+                "color": "teal",
+                "icon": "help"
+            },
+            "build-sequence": {
+                "color": "teal",
+                "icon": "function"
+            },
+            "collect": {
+                "color": "teal",
+                "icon": "list_alt"
+            },
+            "contains?": {
+                "color": "teal",
+                "icon": "help"
+            },
+            "count": {
+                "color": "teal",
+                "icon": "123"
+            },
+            "each": {
+                "color": "teal",
+                "icon": "checklist"
+            },
+            "enumerate": {
+                "color": "teal",
+                "icon": "123"
+            },
+            "extend": {
+                "color": "teal",
+                "icon": "library_add"
+            },
+            "fill": {
+                "color": "purple",
+                "icon": "colors"
+            },
+            "filter": {
+                "color": "teal",
+                "icon": "filter_alt"
+            },
+            "filter-by": {
+                "color": "teal",
+                "icon": "filter_alt"
+            },
+            "find": {
+                "color": "teal",
+                "icon": "search"
+            },
+            "find-by": {
+                "color": "teal",
+                "icon": "search"
+            },
+            "find-position": {
+                "color": "teal",
+                "icon": "search"
+            },
+            "flatten": {
+                "color": "teal",
+                "icon": "function"
+            },
+            "if": {
+                "color": "orange",
+                "icon": "question_mark"
+            },
+            "join": {
+                "color": "teal",
+                "icon": "merge_type"
+            },
+            "next": {
+                "color": "teal",
+                "icon": "arrow_forward"
+            },
+            "prompt": {
+                "color": "yellow",
+                "icon": "live_help"
+            },
+            "reduce": {
+                "color": "teal",
+                "icon": "function"
+            },
+            "repeat": {
+                "color": "orange",
+                "icon": "repeat"
+            },
+            "replicate": {
+                "color": "teal",
+                "icon": "repeat"
+            },
+            "sequence": {
+                "color": "teal",
+                "icon": "list"
+            },
+            "show": {
+                "color": "yellow",
+                "icon": "article"
+            },
+            "split": {
+                "color": "teal",
+                "icon": "arrow_split"
+            },
+            "split-by": {
+                "color": "teal",
+                "icon": "arrow_split"
+            },
+            "sum": {
+                "color": "teal",
+                "icon": "calculate"
+            },
+            "take": {
+                "color": "teal",
+                "icon": "low_priority"
+            },
+            "times": {
+                "color": "sky",
+                "icon": null
+            },
+            "transform": {
+                "color": "teal",
+                "icon": "category"
+            },
+            "unzip": {
+                "color": "teal",
+                "icon": "sync_alt"
+            },
+            "zip": {
+                "color": "teal",
+                "icon": "sync_alt"
+            }
+        }
+    }
+}

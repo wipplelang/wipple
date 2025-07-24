@@ -1,0 +1,27 @@
+@import "@fontsource-variable/inter/wght.css";
+@import "@fontsource-variable/inter/wght-italic.css";
+@import "@fontsource-variable/jetbrains-mono/wght.css";
+@import "@fontsource-variable/jetbrains-mono/wght-italic.css";
+@import "@fontsource-variable/material-symbols-rounded/wght.css";
+@import "@fontsource-variable/material-symbols-rounded/fill.css";
+
+@utility material-symbol {
+    font-family: "Material Symbols Rounded Variable";
+    font-weight: normal;
+    font-style: normal;
+    display: inline-block;
+    line-height: 1;
+    text-transform: none;
+    letter-spacing: normal;
+    word-wrap: normal;
+    white-space: nowrap;
+    direction: ltr;
+
+    &[data-fill] {
+        font-variation-settings: "FILL" 1;
+    }
+}
+
+.material-symbol {
+    @apply material-symbol;
+}

@@ -1,0 +1,129 @@
+@import "tailwindcss";
+@import "tailwindcss-animated";
+@import "./fonts.css";
+@import "./code-editor.css";
+
+@custom-variant printing (&:where([data-printing] *));
+
+@theme {
+    --font-sans: "Inter Variable", sans-serif;
+    --font-mono: "JetBrains Mono Variable", monospace;
+    --font-mono--font-feature-settings: "calt" 0;
+
+    --icon-size: 1.4em;
+    --toolbar-height: 32px;
+    --standard-spacing: 10px;
+
+    --color-primary: var(--theme-color-primary);
+    --color-secondary: var(--theme-color-secondary);
+    --color-destructive: var(--theme-color-destructive);
+    --color-background: var(--theme-color-background);
+    --color-background-secondary: var(--theme-color-background-secondary);
+    --color-background-secondary-alt: var(--theme-color-background-secondary-alt);
+    --color-background-button: var(--theme-color-background-button);
+    --color-highlight: var(--theme-color-highlight);
+    --color-highlight-secondary: var(--theme-color-highlight-secondary);
+    --color-highlight-button: var(--theme-color-highlight-button);
+    --color-overlay: var(--theme-color-overlay);
+    --color-placeholder: var(--theme-color-placeholder);
+}
+
+:root {
+    --theme-color-primary: var(--color-black);
+    --theme-color-secondary: var(--color-gray-700);
+    --theme-color-destructive: var(--color-red-500);
+    --theme-color-background: var(--color-white);
+    --theme-color-background-secondary: var(--color-gray-100);
+    --theme-color-background-secondary-alt: var(--theme-color-background);
+    --theme-color-background-button: var(--color-blue-500);
+    --theme-color-highlight: var(--color-gray-100);
+    --theme-color-highlight-secondary: var(--color-gray-200);
+    --theme-color-highlight-button: var(--color-blue-600);
+    --theme-color-highlight: var(--color-gray-100);
+    --theme-color-overlay: var(--color-white);
+    --theme-color-placeholder: var(--color-gray-500);
+
+    @variant dark {
+        --theme-color-primary: var(--color-white);
+        --theme-color-secondary: var(--color-gray-300);
+        --theme-color-destructive: var(--color-red-400);
+        --theme-color-background: var(--color-gray-950);
+        --theme-color-background-secondary: var(--color-gray-900);
+        --theme-color-background-secondary-alt: var(--theme-color-background-secondary);
+        --theme-color-background-button: var(--color-blue-500);
+        --theme-color-highlight: var(--color-gray-900);
+        --theme-color-highlight-secondary: var(--color-gray-800);
+        --theme-color-background-button: var(--color-blue-400);
+        --theme-color-overlay: var(--color-gray-900);
+        --theme-color-placeholder: var(--color-gray-500);
+    }
+}
+
+html {
+    @apply overscroll-none antialiased;
+}
+
+body {
+    @apply bg-background text-primary font-medium;
+}
+
+@utility border-standard {
+    @apply border-highlight border-[1.5px];
+}
+
+@utility hover-highlight {
+    @apply hover:bg-highlight transition-[background-color];
+}
+
+@utility hover-highlight-secondary {
+    @apply hover:bg-highlight-secondary transition-[background-color];
+}
+
+@utility hover-highlight-button {
+    @apply hover:bg-highlight-button transition-[background-color];
+}
+
+@utility shadow-standard {
+    @apply shadow-lg shadow-black/2.5;
+}
+
+@utility scrollbar-none {
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+@utility size-icon {
+    width: var(--icon-size);
+    height: var(--icon-size);
+}
+
+@utility text-icon {
+    font-size: var(--icon-size);
+}
+
+@keyframes validate-shake {
+    0% {
+        transform: translateX(0px);
+    }
+    16.7% {
+        transform: translateX(-4px);
+    }
+    33.3% {
+        transform: translateX(4px);
+    }
+    50% {
+        transform: translateX(-4px);
+    }
+    66.7% {
+        transform: translateX(-4px);
+    }
+    83.3% {
+        transform: translateX(4px);
+    }
+    100% {
+        transform: translateX(0);
+    }
+}

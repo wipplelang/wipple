@@ -1,6 +1,0 @@
--- [should error]
-
-show (when True {
-  True -> 42
-  False -> "hi"
-})

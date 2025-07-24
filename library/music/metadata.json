@@ -1,0 +1,19 @@
+{
+    "library": "foundation",
+    "ide": {
+        "highlights": {
+            "play": {
+                "color": "green",
+                "icon": "play_arrow"
+            },
+            "tempo": {
+                "color": "purple",
+                "icon": "speed"
+            },
+            "together": {
+                "color": "orange",
+                "icon": "workspaces"
+            }
+        }
+    }
+}

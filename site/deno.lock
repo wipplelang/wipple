@@ -1,0 +1,26 @@
+{
+  "version": "4",
+  "remote": {
+    "https://edge.netlify.com/": "fd941d61d88673d5f28aab283fb86fcc50f08a3bc80ee5470498fcfa88c65cfb",
+    "https://edge.netlify.com/bootstrap/config.ts": "6a2ce0e544e15e8f8883a5c18da5948e37fd0f2619f68cb31f3af53c51817025",
+    "https://edge.netlify.com/bootstrap/context.ts": "c6e9de479234f3ac500d2fc1544dadf1925e335d0d5551b1a71b7ce14423a683",
+    "https://edge.netlify.com/bootstrap/cookie.ts": "8b0baae708989ca183c6f3b4ab3d029e6abcbc2e43f93edeb0ff447b3bbc3a05",
+    "https://edge.netlify.com/bootstrap/edge_function.ts": "b8253e86aa83c67341f5cfedeba5049d77fbf84dcab7eceff7566b7728ae9b39",
+    "https://edge.netlify.com/bootstrap/globals/types.ts": "eaa6148ded3121d8dee62dd91c86e7fe76601df0f3ca8d7962243a30f4c8935f"
+  },
+  "workspace": {
+    "packageJson": {
+      "dependencies": [
+        "npm:@fontsource-variable/inter@^5.2.6",
+        "npm:@tailwindcss/vite@^4.1.11",
+        "npm:@types/node@^24.1.0",
+        "npm:astro@^5.12.2",
+        "npm:postcss-nesting@^13.0.2",
+        "npm:prettier-plugin-astro@~0.14.1",
+        "npm:prettier-plugin-tailwindcss@~0.6.14",
+        "npm:prettier@^3.6.2",
+        "npm:tailwindcss@^4.1.11"
+      ]
+    }
+  }
+}
