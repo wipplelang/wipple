@@ -42,6 +42,7 @@
         "@fontsource-variable/inter": "^5.2.5",
         "@fontsource-variable/jetbrains-mono": "^5.2.5",
         "@fontsource-variable/material-symbols-rounded": "^5.2.10",
+        "@sentry/browser": "^9.42.0",
         "async-mutex": "^0.5.0",
         "axios": "^1.9.0",
         "codemirror": "^6.0.1",
