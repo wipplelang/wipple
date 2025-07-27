@@ -29,11 +29,13 @@ impl Executable {
         }
 
         for (id, (path, statements)) in &self.items {
-            write!(
-                w,
-                "/**! {} @ {:?} ({}) */ ",
-                statements.info.path, statements.info.span, path
-            )?;
+            if cfg!(debug_assertions) {
+                write!(
+                    w,
+                    "/**! {} @ {:?} ({}) */ ",
+                    statements.info.path, statements.info.span, path
+                )?;
+            }
 
             writeln!(w, "async function {id}(types) {{")?;
             for statement in &statements.item {
@@ -100,11 +102,13 @@ impl Executable {
         w: &mut dyn Write,
         expression: WithInfo<&Expression>,
     ) -> fmt::Result {
-        write!(
-            w,
-            "/*! {} @ {:?} */ ",
-            expression.info.path, expression.info.span
-        )?;
+        if cfg!(debug_assertions) {
+            write!(
+                w,
+                "/*! {} @ {:?} */ ",
+                expression.info.path, expression.info.span
+            )?;
+        }
 
         match expression.item {
             Expression::Variable(id) => {
