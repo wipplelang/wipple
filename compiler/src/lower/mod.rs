@@ -16,7 +16,6 @@ mod utils;
 use crate::util::WithInfo;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, fmt::Debug};
-use typeshare::typeshare;
 
 /// Contains the definitions of items in a file.
 #[derive(Debug, Default)]
@@ -654,7 +653,6 @@ pub struct UnresolvedFieldValue {
 }
 
 /// A path that uniquely identifies a declaration.
-#[typeshare(serialized_as = "String")]
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Path(pub Vec<PathComponent>);
 

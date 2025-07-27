@@ -1,4 +1,4 @@
-mod js;
+pub mod js;
 
 use crate::{
     lower::Path,
@@ -92,9 +92,10 @@ pub struct Codegen<'a> {
     next_id: Id,
     ids: HashMap<Path, Id>,
     vars: BTreeSet<Id>,
-    items: BTreeMap<Id, (Path, WithInfo<Vec<Statement>>)>,
+    items: BTreeMap<Id, (Path, Option<WithInfo<Vec<Statement>>>)>,
     instances: BTreeMap<Id, Vec<Instance>>,
     default_instances: BTreeMap<Id, Vec<Instance>>,
+    referenced_traits: BTreeSet<Path>,
 }
 
 impl<'a> Codegen<'a> {
@@ -107,7 +108,12 @@ impl<'a> Codegen<'a> {
             items: Default::default(),
             instances: Default::default(),
             default_instances: Default::default(),
+            referenced_traits: Default::default(),
         }
+    }
+
+    pub fn references_trait(&self, path: &Path) -> bool {
+        self.referenced_traits.contains(path)
     }
 
     pub fn into_executable(self, entrypoint: &Path) -> Executable {
@@ -123,18 +129,44 @@ impl<'a> Codegen<'a> {
         }
 
         Executable {
-            items: self.items,
+            items: self
+                .items
+                .into_iter()
+                .map(|(id, (path, body))| (id, (path, body.unwrap())))
+                .collect(),
             instances,
             entrypoint,
         }
+    }
+
+    pub fn insert_item(&mut self, path: &Path) -> Result<(Id, bool), ()> {
+        let id = self.path(path);
+
+        if self.items.contains_key(&id) {
+            return Ok((id, false));
+        }
+
+        self.items.insert(id, (path.clone(), None));
+
+        let body = self.driver.get_item_body(path);
+
+        let mut statements = Vec::new();
+        let result = self
+            .expression(body.as_deref(), &mut statements)?
+            .unwrap_or_else(|| body.replace(Expression::Marker));
+        statements.push(Statement::Return(result));
+
+        self.items.get_mut(&id).unwrap().1 = Some(body.replace(statements));
+
+        Ok((id, true))
     }
 
     pub fn insert_instance(
         &mut self,
         path: &Path,
         instance: WithInfo<&typecheck::InstanceDeclaration>,
-    ) -> Result<(), ()> {
-        let id = self.path(path);
+    ) -> Result<bool, ()> {
+        let (id, inserted) = self.insert_item(path)?;
 
         let trait_id = self.path(&instance.item.instance.item.r#trait);
 
@@ -172,26 +204,7 @@ impl<'a> Codegen<'a> {
             .or_default()
             .push(Instance { id, substitutions });
 
-        Ok(())
-    }
-
-    pub fn insert_item(
-        &mut self,
-        path: &Path,
-        body: WithInfo<&typecheck::TypedExpression>,
-    ) -> Result<Id, ()> {
-        let id = self.path(path);
-
-        let mut statements = Vec::new();
-        let result = self
-            .expression(body.as_deref(), &mut statements)?
-            .unwrap_or_else(|| body.replace(Expression::Marker));
-        statements.push(Statement::Return(result));
-
-        self.items
-            .insert(id, (path.clone(), body.replace(statements)));
-
-        Ok(id)
+        Ok(inserted)
     }
 
     fn expression(
@@ -210,7 +223,7 @@ impl<'a> Codegen<'a> {
                 substitutions: parameters,
                 ..
             } => {
-                let id = self.path(path);
+                let (id, _) = self.insert_item(path)?;
 
                 let substitutions = parameters
                     .iter()
@@ -224,6 +237,8 @@ impl<'a> Codegen<'a> {
                 substitutions,
                 ..
             } => {
+                self.referenced_traits.insert(path.clone());
+
                 let id = self.path(path);
 
                 let substitutions = substitutions

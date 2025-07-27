@@ -465,19 +465,28 @@ impl Driver {
     pub fn executable(&self) -> Result<Executable, ()> {
         let mut codegen = Codegen::new(self);
 
-        for (path, expression) in &self.items {
-            codegen.insert_item(path, expression.as_ref())?;
-        }
+        let entrypoint = self.entrypoint.as_ref().ok_or(())?;
+        codegen.insert_item(entrypoint)?;
 
-        for (path, instance) in &self.interface.instance_declarations {
-            if self.items.contains_key(path) {
-                codegen.insert_instance(path, instance.as_ref())?;
-            } else {
-                // Instance for marker trait; will never be executed at runtime
+        // Loop because `insert_instance` may reference additional traits whose
+        // instances must also be inserted
+        loop {
+            let mut progress = false;
+            for (path, instance) in &self.interface.instance_declarations {
+                if codegen.references_trait(&instance.item.instance.item.r#trait) {
+                    if self.items.contains_key(path) {
+                        let inserted = codegen.insert_instance(path, instance.as_ref())?;
+                        progress |= inserted;
+                    } else {
+                        // Instance for marker trait; will never be executed at runtime
+                    }
+                }
+            }
+
+            if !progress {
+                break;
             }
         }
-
-        let entrypoint = self.entrypoint.as_ref().ok_or(())?;
 
         Ok(codegen.into_executable(entrypoint))
     }
@@ -597,5 +606,12 @@ impl crate::typecheck::Driver for Driver {
     fn get_enumeration_for_variant(&self, variant: &Path) -> Path {
         // The parent of a variant is its enumeration
         lower::Path(variant[0..variant.len() - 1].to_vec())
+    }
+
+    fn get_item_body(&self, path: &Path) -> util::WithInfo<&typecheck::TypedExpression> {
+        self.items
+            .get(path)
+            .unwrap_or_else(|| panic!("missing item {:?}", path))
+            .as_ref()
     }
 }

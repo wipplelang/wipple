@@ -8,13 +8,13 @@ use serde::Deserialize;
 use serde_json::Value;
 
 #[derive(Default, Hash, Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 struct InputMetadata {
     library: Option<String>,
 }
 
 #[derive(Deserialize)]
-#[serde(rename_all = "kebab-case")]
+#[serde(rename_all = "camelCase")]
 pub enum Request {
     Compile(compile::CompileRequest),
     Documentation(documentation::DocumentationRequest),

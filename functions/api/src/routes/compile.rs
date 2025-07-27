@@ -8,7 +8,7 @@ use serde_json::{Value, json};
 use wipple_compiler::File;
 
 #[derive(Deserialize)]
-#[serde(deny_unknown_fields)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct CompileRequest {
     #[serde(flatten)]
     metadata: InputMetadata,

@@ -54,6 +54,9 @@ pub trait Driver {
 
     /// Retrieve the enumeration for the variant at the given path.
     fn get_enumeration_for_variant(&self, variant: &Path) -> Path;
+
+    /// Retrieve the body of the item at the given path.
+    fn get_item_body(&self, path: &Path) -> WithInfo<&TypedExpression>;
 }
 
 /// Internal representation of constants, instances, and top-level code for

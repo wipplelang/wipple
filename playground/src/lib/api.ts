@@ -15,7 +15,7 @@ interface IdeInfoResponse {
     info: Record<string, any>[];
 }
 
-export const ideInfo = request<IdeInfoRequest, IdeInfoResponse>("ide-info");
+export const ideInfo = request<IdeInfoRequest, IdeInfoResponse>("ideInfo");
 
 interface CompileRequest extends PlaygroundMetadata {
     code: string;
