@@ -120,6 +120,10 @@ impl<'a> InstantiationContext<'a> {
             })
     }
 
+    pub fn into_substitutions(self) -> Vec<(Path, Type)> {
+        self.types
+    }
+
     pub fn into_types_for_parameters(self) -> Vec<Type> {
         self.types.into_iter().map(|(_, r#type)| r#type).collect()
     }

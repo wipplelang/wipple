@@ -9,13 +9,13 @@ Repeat-Predicate : State Body Result => trait (State -> Control-Flow (Body -> St
 
 -- Repeat using the `Control-Flow` produced by the `repeat` body.
 with-control-flow :: Result => With-Control-Flow Result
-with-control-flow : {current : Continue None}
+with-control-flow : {current : Continue Unit}
 
-With-Control-Flow : Result => type {current :: Control-Flow None Result}
+With-Control-Flow : Result => type {current :: Control-Flow Unit Result}
 
-Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow None Result) Result) :
+Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow Unit Result) Result) :
   {current : current} -> when current {
-    Continue None -> Continue (new -> {current : new})
+    Continue Unit -> Continue (new -> {current : new})
     Stop result -> Stop result
   }
 
@@ -28,11 +28,11 @@ while : condition -> {condition : condition}
 
 While : type {condition :: {Boolean}}
 
-(Body : None) => instance (Repeat-Predicate While Body None) : {condition : condition} ->
-  if (do condition) {Continue (_ -> while condition)} {Stop None}
+(Body : Unit) => instance (Repeat-Predicate While Body Unit) : {condition : condition} ->
+  if (do condition) {Continue (_ -> while condition)} {Stop Unit}
 
-(Body : None) where (Error ("Missing `repeat` before `_" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
-  instance (Mismatch While ({Body} -> None))
+(Body : Unit) where (Error ("Missing `repeat` before `_" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
+  instance (Mismatch While ({Body} -> Unit))
 
 -- Repeat forever.
 forever :: Forever
@@ -40,10 +40,10 @@ forever : Forever
 
 Forever : type
 
-Body (Result : None) => instance (Repeat-Predicate Forever Body Result) :
+Body (Result : Unit) => instance (Repeat-Predicate Forever Body Result) :
   _ -> Continue (_ -> Forever)
 
-Body (Result : None) where (Error ("Missing `repeat` before `_`" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
+Body (Result : Unit) where (Error ("Missing `repeat` before `_`" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
   instance (Mismatch Forever ({Body} -> Result))
 
 Times : type Number
@@ -51,8 +51,8 @@ Times : type Number
 State Body Result where (Error ("Missing `times` after `_`" Source ; Error-Description ("Try rewriting this code as `(_ times)`, or double-check your parentheses." State))) =>
   instance (Repeat-Predicate (State = Number) Body Result) : ...
 
-(Body : None) => instance (Repeat-Predicate Times Body None) : (Times n) ->
-  if (n > 0) {Continue (_ -> (n - 1) times)} {Stop None}
+(Body : Unit) => instance (Repeat-Predicate Times Body Unit) : (Times n) ->
+  if (n > 0) {Continue (_ -> (n - 1) times)} {Stop Unit}
 
 -- Repeat a certain number of times.
 @(highlight-category : "unit")
@@ -60,7 +60,7 @@ times :: Number -> Times
 times : Times
 
 Body where (Error ("Missing `repeat` before `_`" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
-  instance (Mismatch Times ({Body} -> None))
+  instance (Mismatch Times ({Body} -> Unit))
 
 -- Run code repeatedly.
 @(highlight-category : "control-flow")

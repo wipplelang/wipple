@@ -1,5 +1,5 @@
+pub mod codegen;
 pub mod driver;
-pub mod ir;
 pub mod lower;
 pub mod render;
 pub mod syntax;
@@ -25,12 +25,11 @@ impl Compiler {
     }
 
     pub fn compile(&mut self, files: Vec<File>) -> Vec<serde_json::Value> {
-        let result = self.driver.compile(files);
+        let diagnostics = self.driver.compile(files);
 
         let render = self.driver.render();
 
-        result
-            .diagnostics
+        diagnostics
             .into_iter()
             .filter_map(|diagnostic| {
                 Some(serde_json::to_value(&render.render_diagnostic(&diagnostic)?).unwrap())
@@ -45,8 +44,10 @@ impl Compiler {
         serde_json::to_value(documentation).ok()
     }
 
-    pub fn executable(&self) -> serde_json::Value {
-        let executable = self.driver.executable();
-        serde_json::to_value(executable).unwrap()
+    pub fn js_executable(&self) -> Option<String> {
+        self.driver
+            .executable()
+            .ok()
+            .map(|executable| executable.to_js())
     }
 }

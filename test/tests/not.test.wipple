@@ -1,0 +1,5 @@
+-- [should compile]
+
+input : 3.14
+is-42? : n -> n = 42
+show ((not is-42?) input = not (is-42? input))

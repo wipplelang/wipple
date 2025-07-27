@@ -14,6 +14,7 @@ new_without_default = "allow"
 print_stderr = "warn"
 redundant_clone = "warn"
 result_large_err = "allow"
+result_unit_err = "allow"
 too_many_arguments = "allow"
 type_complexity = "allow"
 

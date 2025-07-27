@@ -1,0 +1,12 @@
+-- [should error]
+
+T : A => trait (A -> Unit)
+
+instance (T Number) : _ -> Unit
+instance (T Text) : _ -> Unit
+
+f :: A B where (T A) (T B) => (A ; B)
+f : ...
+
+-- `B` should not be inferred to be `Number`
+(f :: (Number ; _))

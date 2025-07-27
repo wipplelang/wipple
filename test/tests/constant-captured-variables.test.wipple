@@ -1,0 +1,12 @@
+-- [should error]
+
+f : do {
+  n : 42
+
+  f :: Unit -> Number
+  f : Unit -> n
+
+  f
+}
+
+show (f Unit)

@@ -1,0 +1,8 @@
+-- [should compile]
+
+Foo : A => type {inner :: A}
+
+foo : Foo {inner : "Hello, world!"}
+
+{inner : inner} : foo
+show inner

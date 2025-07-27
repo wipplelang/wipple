@@ -3,22 +3,22 @@ Music : type Text
 -- Play a melody or rhythm on an instrument.
 @(highlight-category : "music-play")
 @(highlight-icon : "play-arrow")
-play :: Dropdown Music -> None
+play :: Dropdown Music -> Unit
 play : (Dropdown instrument) (Music music) ->
-  runtime-message "play" (instrument ; music)
+  external "play" (instrument ; music)
 
 -- Set the tempo of your song, in beats per minute. The default tempo is 120.
 @(highlight-category : "music-setup")
 @(highlight-icon : "speed")
-tempo :: Number -> None
-tempo : tempo -> runtime-message "tempo" tempo
+tempo :: Number -> Unit
+tempo : tempo -> external "tempo" tempo
 
 -- Play all the melodies in the block at the same time.
 @(highlight-category : "control-flow")
 @(highlight-icon : "workspaces")
-together :: Body => {Body} -> None
+together :: Body => {Body} -> Unit
 together : body -> do {
-  runtime-message "beginTogether" None
+  external "beginTogether" Unit
   do body
-  runtime-message "endTogether" None
+  external "endTogether" Unit
 }

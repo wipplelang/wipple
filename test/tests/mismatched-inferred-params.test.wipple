@@ -1,0 +1,3 @@
+-- [should error]
+
+(1 , 2 , 3) . transform ((x :: Text) -> x)

@@ -1,0 +1,12 @@
+-- [should error]
+
+T : A => trait Unit
+U : A => trait Unit
+V : A => trait Unit
+W : A => trait Unit
+
+A where (U A) => instance (T A) : Unit
+A where (V A) => instance (U A) : Unit
+A where (W A) => instance (V A) : Unit
+
+T

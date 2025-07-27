@@ -360,7 +360,7 @@ pub fn infer_expression(
                 );
 
                 let r#type = instantiated_language_type(
-                    "none",
+                    "unit",
                     info.clone(),
                     context.driver,
                     context.type_context,
@@ -400,7 +400,7 @@ pub fn infer_expression(
                 );
 
                 let r#type = instantiated_language_type(
-                    "none",
+                    "unit",
                     info.clone(),
                     context.driver,
                     context.type_context,
@@ -795,9 +795,9 @@ pub fn resolve_expression(
             let path = path.clone();
 
             match resolve_item(&path, expression.as_mut(), true, context) {
-                Ok(Some((parameters, bounds))) => ExpressionKind::ResolvedConstant {
+                Ok(Some((substitutions, bounds))) => ExpressionKind::ResolvedConstant {
                     path,
-                    parameters,
+                    substitutions,
                     bounds,
                 },
                 Ok(None) => ExpressionKind::UnresolvedConstant(path), // try again with more type information
@@ -814,15 +814,21 @@ pub fn resolve_expression(
 
             match resolve_trait_parameters_from_type(&path, expression.as_mut(), context) {
                 Some(parameters) => {
+                    let (parameters, parameter_tys): (Vec<_>, Vec<_>) =
+                        parameters.into_iter().unzip();
+
                     let query = expression.replace(Instance {
                         r#trait: path,
-                        parameters,
+                        parameters: parameter_tys,
                     });
 
                     match resolve_trait(query.as_ref(), context) {
                         Ok(instance) => ExpressionKind::ResolvedTrait {
                             trait_path: query.item.r#trait,
-                            parameters: query.item.parameters,
+                            substitutions: parameters
+                                .into_iter()
+                                .zip(query.item.parameters)
+                                .collect(),
                             instance,
                         },
                         Err(error) => {
@@ -845,20 +851,20 @@ pub fn resolve_expression(
         }
         ExpressionKind::ResolvedConstant {
             path,
-            parameters,
+            substitutions,
             bounds,
         } => ExpressionKind::ResolvedConstant {
             path,
-            parameters,
+            substitutions,
             bounds,
         },
         ExpressionKind::ResolvedTrait {
             trait_path,
-            parameters,
+            substitutions,
             instance,
         } => ExpressionKind::ResolvedTrait {
             trait_path,
-            parameters,
+            substitutions,
             instance,
         },
         ExpressionKind::Number(number) => ExpressionKind::Number(number),
@@ -1394,8 +1400,8 @@ pub fn substitute_defaults_in_expression(
         ExpressionKind::Format { segments, .. } => segments.iter_mut().any(|segment| {
             substitute_defaults_in_expression(driver, segment.value.as_mut(), context)
         }),
-        ExpressionKind::ResolvedConstant { parameters, .. } => parameters
-            .iter_mut()
+        ExpressionKind::ResolvedConstant { substitutions, .. } => substitutions
+            .values_mut()
             .any(|r#type| substitute_defaults(driver, r#type, context.type_context)),
         ExpressionKind::Unknown(_)
         | ExpressionKind::Variable(_, _)
@@ -1460,9 +1466,14 @@ pub fn finalize_expression(
 
                         crate::typecheck::TypedExpressionKind::Constant {
                             path: path.clone(),
-                            parameters: parameters
+                            substitutions: parameters
                                 .into_iter()
-                                .map(|r#type| finalize_type(r#type, report_errors, context).item)
+                                .map(|(parameter, r#type)| {
+                                    (
+                                        parameter,
+                                        finalize_type(r#type, report_errors, context).item,
+                                    )
+                                })
                                 .collect(),
                             bounds: bounds
                                 .into_iter()
@@ -1504,13 +1515,18 @@ pub fn finalize_expression(
         }
         ExpressionKind::ResolvedConstant {
             path,
-            parameters,
+            substitutions,
             bounds,
         } => crate::typecheck::TypedExpressionKind::Constant {
             path,
-            parameters: parameters
+            substitutions: substitutions
                 .into_iter()
-                .map(|r#type| finalize_type(r#type, report_errors, context).item)
+                .map(|(parameter, r#type)| {
+                    (
+                        parameter,
+                        finalize_type(r#type, report_errors, context).item,
+                    )
+                })
                 .collect(),
             bounds: bounds
                 .into_iter()
@@ -1522,13 +1538,18 @@ pub fn finalize_expression(
         },
         ExpressionKind::ResolvedTrait {
             trait_path,
-            parameters,
+            substitutions,
             instance,
         } => crate::typecheck::TypedExpressionKind::Trait {
             path: trait_path,
-            parameters: parameters
+            substitutions: substitutions
                 .into_iter()
-                .map(|r#type| finalize_type(r#type, report_errors, context).item)
+                .map(|(parameter, r#type)| {
+                    (
+                        parameter,
+                        finalize_type(r#type, report_errors, context).item,
+                    )
+                })
                 .collect(),
             instance: instance
                 .map(|instance| instance.map_err(|bound| finalize_instance(bound, context))),

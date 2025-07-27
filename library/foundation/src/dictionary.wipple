@@ -1,46 +1,36 @@
-Hasher : type intrinsic
-
 -- Convert the components of a value into a number used by `Dictionary` and
 -- `Set` to organize their elements.
-hash :: Value where (Hash Value) => Value -> Hasher -> Number
-hash : Hash
-
-Hash : Value => trait (Value -> Hasher -> Number)
-instance (Hash Number) : number -> hasher -> intrinsic "hash-number" hasher number
-instance (Hash Text) : text -> hasher -> intrinsic "hash-text" hasher text
-instance (Hash None) : None -> hash 0
+Hash : Value => trait (Value -> Number)
+instance (Hash Number) : number -> number
+instance (Hash Text) : text -> intrinsic "hash-text" text
+instance (Hash Unit) : Unit -> Hash 0
 
 -- A collection of unique keys associated with values.
 Dictionary : Key Value => type {
-  hasher :: Hasher
   size :: Number
   entries :: List (Maybe (Key ; Value))
 }
 
 Key Value => instance (Initial (Dictionary Key Value)) : Dictionary {
-  hasher : intrinsic "make-hasher"
   size : 0
-  entries : (Empty ,)
+  entries : (None ,)
 }
 
 -- Retrieve the value for a key stored in a dictionary.
 entry :: Key Value where (Equal Key) (Hash Key) => Key -> (Dictionary Key Value) -> Maybe Value
-entry : key -> {
-  hasher : hasher
-  entries : entries
-} -> do {
-  initial-index : (hasher . hash key) % count entries
+entry : key -> {entries : entries} -> do {
+  initial-index : (Hash key) % count entries
   index : initial-index
 
   repeat with-control-flow {
     when ((entries . nth index) or unreachable) {
-      Has (existing-key ; value) -> if (key = existing-key) {
-        Stop (Has value)
+      Some (existing-key ; value) -> if (key = existing-key) {
+        Stop (Some value)
       } {
         index! : (index + 1) % count entries
-        if (index = initial-index) {Stop Empty} {Continue None}
+        if (index = initial-index) {Stop None} {Continue Unit}
       }
-      Empty -> Stop Empty
+      None -> Stop None
     }
   }
 }
@@ -48,82 +38,75 @@ entry : key -> {
 -- Add a new entry to a dictionary, returning a new dictionary.
 insert-entry :: Key Value where (Equal Key) (Hash Key) => Key Value -> (Dictionary Key Value) -> Dictionary Key Value
 insert-entry : key value -> {
-  hasher : hasher
   size : size
   entries : entries
 } -> do {
   dictionary : if (size >= count entries / 2) {
     -- Double the size of the dictionary
     resized : Dictionary {
-      hasher : hasher
       size : 0
-      entries : Sequence {Has Empty} . take (count entries * 2) . collect
+      entries : Sequence {Some None} . take (count entries * 2) . collect
     }
 
     -- Populate the new dictionary with the entries from the old dictionary
     entries . reduce resized (entry -> dictionary -> when entry {
-      Has (key ; value) -> dictionary . insert-entry key value
-      Empty -> dictionary
+      Some (key ; value) -> dictionary . insert-entry key value
+      None -> dictionary
     })
   } {{
-    hasher : hasher
     size : size + 1
     entries : entries
   }}
 
-  dictionary . set-entry key (Has value)
+  dictionary . set-entry key (Some value)
 }
 
 -- Remove an entry from a dictionary by its key, returning a new dictionary.
 remove-entry :: Key Value where (Equal Key) (Hash Key) => Key -> (Dictionary Key Value) -> Dictionary Key Value
 remove-entry : key -> {
-  hasher : hasher
   size : size
   entries : entries
 } -> do {
   dictionary : Dictionary {
-    hasher : hasher
     size : if (size = 0) {0} {size - 1}
     entries : entries
   }
 
-  dictionary . set-entry key Empty
+  dictionary . set-entry key None
 }
 
 set-entry :: Key Value where (Equal Key) (Hash Key) => Key (Maybe Value) -> (Dictionary Key Value) -> Dictionary Key Value
 set-entry : key value -> {
-  hasher : hasher
   size : size
   entries : entries
 } -> do {
-  initial-index : (hasher . hash key) % count entries
+  initial-index : (Hash key) % count entries
   index : initial-index
 
   -- Find a spot for the entry
   repeat with-control-flow {
     when ((entries . nth index) or unreachable) {
-      Has (existing ; _) -> do {
+      Some (existing ; _) -> do {
         if (key = existing) {
-          Stop None
+          Stop Unit
         } {
-          index! : ((index + 1) % count entries)
-          if (index = initial-index) {Stop None} {Continue None}
+          index! : (index + 1) % count entries
+          if (index = initial-index) {Stop Unit} {Continue Unit}
         }
       }
-      Empty -> Stop None
+      None -> Stop Unit
     }
   }
 
   new-entry : when value {
-    Has value -> Has (key ; value)
-    Empty -> Empty
+    Some value -> Some (key ; value)
+    None -> None
   }
 
   entries : (((entries . remove-at index) or unreachable) . insert-at index new-entry)
     or unreachable
 
   {
-    hasher : hasher
     size : size
     entries : entries
   }
@@ -133,11 +116,11 @@ Key Value where (Equal Key) (Hash Key) => instance (From-Sequence (Key ; Value) 
   dictionary : (,)
   repeat with-control-flow {
     when (next sequence) {
-      Has (key ; value) -> do {
+      Some (key ; value) -> do {
         dictionary! : dictionary . insert-entry key value
-        Continue None
+        Continue Unit
       }
-      Empty -> Stop None
+      None -> Stop Unit
     }
   }
 
@@ -148,26 +131,26 @@ Key Value => instance (As-Sequence (Dictionary Key Value) (Key ; Value)) :
   {entries : entries} -> flatten entries
 
 Key Value where (Equal Key) (Hash Key) => instance (Container (Dictionary Key Value) Key) :
-  target -> dictionary -> (dictionary . entry target) is Has _
+  target -> dictionary -> (dictionary . entry target) is Some _
 
 -- An unordered collection of unique elements.
-Set : Element => type {dictionary :: Dictionary Element None}
+Set : Element => type {dictionary :: Dictionary Element Unit}
 
 Element => instance (Initial (Set Element)) : {dictionary : Initial}
 
 -- Add a new element to a set, returning a new set.
 insert :: Element where (Equal Element) (Hash Element) => Element -> (Set Element) -> Set Element
-insert : element -> {dictionary : dictionary} -> {dictionary : dictionary . insert-entry element None}
+insert : element -> {dictionary : dictionary} -> {dictionary : dictionary . insert-entry element Unit}
 
 -- Remove an element from a set, returning a new set.
 remove :: Element where (Equal Element) (Hash Element) => Element -> (Set Element) -> Set Element
 remove : element -> {dictionary : dictionary} -> {dictionary : dictionary . remove-entry element}
 
 Element where (Equal Element) (Hash Element) => instance (From-Sequence Element (Set Element)) :
-  sequence -> {dictionary : sequence . transform (key -> (key ; None)) . collect}
+  sequence -> {dictionary : sequence . transform (key -> (key ; Unit)) . collect}
 
 Element => instance (As-Sequence (Set Element) Element) :
-  {dictionary : dictionary} -> dictionary . transform ((key ; None) -> key)
+  {dictionary : dictionary} -> dictionary . transform ((key ; Unit) -> key)
 
 Element where (Equal Element) (Hash Element) => instance (Container (Set Element) Element) :
-  target -> {dictionary : dictionary} -> (dictionary . entry target) is Has None
+  target -> {dictionary : dictionary} -> (dictionary . entry target) is Some Unit

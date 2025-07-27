@@ -1,7 +1,7 @@
--- The number returned from calculations whose result is undefined (eg. dividing
--- by zero).
-undefined :: Number
-undefined : intrinsic "undefined-number"
+-- The number returned from calculations whose result is not a number (eg.
+-- dividing by zero).
+nan :: Number
+nan : intrinsic "nan"
 
 -- Add two values together, returning the sum.
 @(language : "add")
@@ -12,7 +12,7 @@ Left Right Sum where (Error ("Can't add _ and _" Left Right ; Error-Description 
   default instance (Add Left Right Sum) : ...
 
 Right Sum where (Error ("Missing parentheses around the inputs to `+`" ; Error-Description ("Spaces group before operators do, so you need to put parentheses around just the inputs to `+`."))) =>
-  instance (Add None Right Sum) : ...
+  instance (Add Unit Right Sum) : ...
 
 -- Subtract the one value from another, returning the difference.
 @(language : "subtract")
@@ -23,7 +23,7 @@ Left Right Difference where (Error ("Can't subtract _ by _" Left Right ; Error-D
   default instance (Subtract Left Right Difference) : ...
 
 Right Difference where (Error ("Missing parentheses around the inputs to `-`" ; Error-Description ("Spaces group before operators do, so you need to put parentheses around just the inputs to `-`."))) =>
-  instance (Subtract None Right Difference) : ...
+  instance (Subtract Unit Right Difference) : ...
 
 -- Multiply two values together, returning the product.
 @(language : "multiply")
@@ -34,7 +34,7 @@ Left Right Product where (Error ("Can't multiply _ and _" Left Right ; Error-Des
   default instance (Multiply Left Right Product) : ...
 
 Right Product where (Error ("Missing parentheses around the inputs to `*`" ; Error-Description ("Spaces group before operators do, so you need to put parentheses around just the inputs to `*`."))) =>
-  instance (Multiply None Right Product) : ...
+  instance (Multiply Unit Right Product) : ...
 
 -- Divide two numbers, returning the quotient.
 @(language : "divide")
@@ -45,7 +45,7 @@ Left Right Quotient where (Error ("Can't divide _ by _" Left Right ; Error-Descr
   default instance (Divide Left Right Quotient) : ...
 
 Right Quotient where (Error ("Missing parentheses around the inputs to `/`" ; Error-Description ("Spaces group before operators do, so you need to put parentheses around just the inputs to `/`."))) =>
-  instance (Divide None Right Quotient) : ...
+  instance (Divide Unit Right Quotient) : ...
 
 -- Divide two numbers, returning the remainder.
 @(language : "remainder")
@@ -56,7 +56,7 @@ Left Right Remainder where (Error ("Can't divide _ by _ and get the remainder" L
   default instance (Remainder Left Right Remainder) : ...
 
 Right Remainder where (Error ("Missing parentheses around the inputs to `%`" ; Error-Description ("Spaces group before operators do, so you need to put parentheses around just the inputs to `%`."))) =>
-  instance (Remainder None Right Remainder) : ...
+  instance (Remainder Unit Right Remainder) : ...
 
 -- Raise one number to the power of the other number.
 @(language : "power")
@@ -67,7 +67,7 @@ Left Right Power where (Error ("Can't raise _ to the power of _" Left Right ; Er
   default instance (Power Left Right Power) : ...
 
 Right Power where (Error ("Missing parentheses around the inputs to `^`" ; Error-Description ("Spaces group before operators do, so you need to put parentheses around just the inputs to `^`."))) =>
-  instance (Power None Right Power) : ...
+  instance (Power Unit Right Power) : ...
 
 -- Round down a number to the nearest integer.
 floor :: Number -> Number

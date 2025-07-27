@@ -25,7 +25,7 @@ type CompileResponse = CompileResponseSuccess | CompileResponseError;
 
 interface CompileResponseSuccess {
     success: true;
-    executable: any;
+    executable: string;
 }
 
 interface CompileResponseError {

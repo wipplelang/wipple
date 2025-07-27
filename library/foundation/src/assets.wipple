@@ -3,7 +3,7 @@
 -- directly.
 Color : type Text
 
-instance (Random None Color) : None -> do {
+instance (Random Unit Color) : Unit -> do {
   red : random (0 to 256)
   green : random (0 to 256)
   blue : random (0 to 256)

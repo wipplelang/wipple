@@ -1,0 +1,14 @@
+-- [should error]
+
+Compatible : Left Right => trait (Left Right -> Unit)
+
+Left Right where (Error ("_ and _ are incompatible" Left Right)) =>
+  default instance (Compatible Left Right) : ...
+
+Foo : type (Foo)
+foo : Foo
+
+Bar : type (Bar)
+bar : Bar
+
+Compatible foo bar

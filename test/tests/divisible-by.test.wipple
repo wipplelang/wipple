@@ -1,0 +1,9 @@
+-- [should compile]
+
+even? : divisible-by? 2
+odd? : not even?
+
+show (even? 2)
+show (odd? 2)
+show (even? 3)
+show (odd? 3)

@@ -3,18 +3,14 @@
 mod convert;
 
 use crate::{
-    ir,
+    codegen::{Codegen, Executable},
     lower::{self, Path},
     syntax::{self, Location},
     typecheck, util,
 };
 use itertools::Itertools;
-use serde::{Deserialize, Serialize};
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
-use typeshare::typeshare;
+use serde::Deserialize;
+use std::{collections::HashMap, sync::Arc};
 
 /// The default recursion limit.
 // TODO: Make this configurable
@@ -26,7 +22,8 @@ pub const DEFAULT_RECURSION_LIMIT: u32 = 64;
 pub struct Driver {
     recursion_limit: u32,
     pub(crate) interface: Interface,
-    executable: Executable,
+    items: HashMap<lower::Path, util::WithInfo<typecheck::TypedExpression>>,
+    entrypoint: Option<Path>,
 }
 
 impl Driver {
@@ -34,7 +31,8 @@ impl Driver {
         Driver {
             recursion_limit: DEFAULT_RECURSION_LIMIT,
             interface: Default::default(),
-            executable: Default::default(),
+            items: Default::default(),
+            entrypoint: None,
         }
     }
 }
@@ -120,77 +118,6 @@ impl Extend<Self> for Interface {
     }
 }
 
-/// A linked executable.
-#[non_exhaustive]
-#[typeshare]
-#[derive(Debug, Clone, Default, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Executable {
-    /// The implementations of constants and instances.
-    pub items: HashMap<Path, Item>,
-
-    /// The layouts of each declared type.
-    pub layouts: HashMap<Path, crate::ir::LayoutDescriptor>,
-
-    /// The list of instances for each trait.
-    pub instances: HashMap<Path, HashMap<Path, Instance>>,
-
-    /// The default instances for each trait.
-    pub default_instances: HashMap<Path, HashMap<Path, Instance>>,
-
-    /// The item to run when the program starts.
-    pub entrypoint: Option<Path>,
-
-    /// Items exported by the executable.
-    pub exports: HashMap<String, Path>,
-}
-
-/// An analyzed instance.
-#[typeshare]
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Instance {
-    /// The path to the associated [`UnlinkedItem`].
-    pub path: Path,
-
-    /// The list of parameters the instance provides to the trait.
-    pub trait_parameters: Vec<InstanceTraitParameter>,
-}
-
-/// A parameter an instance provides to a trait.
-#[typeshare]
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct InstanceTraitParameter {
-    /// The path of the parameter as defined in the trait.
-    pub path: Path,
-
-    /// The type descriptor of the type provided for this parameter.
-    pub type_descriptor: crate::ir::TypeDescriptor,
-}
-
-/// An analyzed expression along with its compiled IR.
-#[typeshare]
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Item {
-    /// The list of type parameters declared by the item.
-    pub parameters: Vec<Path>,
-
-    /// The list of bounds required by this item.
-    pub bounds: Vec<crate::ir::InstanceDescriptor>,
-
-    /// The compiled IR.
-    pub ir: Vec<crate::ir::Instruction>,
-}
-
-/// The result of [`Driver::compile`].
-#[derive(Debug)]
-pub struct Result {
-    /// Any diagnostics ocurring during compilation.
-    pub diagnostics: Vec<util::WithInfo<Diagnostic>>,
-}
-
 /// Diagnostics produced by the compiler.
 #[derive(Debug)]
 pub enum Diagnostic {
@@ -204,7 +131,7 @@ pub enum Diagnostic {
 
 impl Driver {
     /// Compile a set of source files into a [`Library`] and [`Interface`].
-    pub fn compile(&mut self, files: Vec<File>) -> Result {
+    pub fn compile(&mut self, files: Vec<File>) -> Vec<util::WithInfo<Diagnostic>> {
         let mut diagnostics = Vec::new();
 
         self.interface.files.extend(files.clone());
@@ -403,30 +330,7 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let ir_result = ir::compile(
-                self,
-                path.clone(),
-                &declaration.item.attributes,
-                item.as_ref(),
-                &typecheck_result.captures,
-            );
-
-            for (path, item) in ir_result.items {
-                self.executable.items.insert(
-                    path,
-                    Item {
-                        parameters: declaration.item.parameters.clone(),
-                        bounds: declaration
-                            .item
-                            .bounds
-                            .clone()
-                            .into_iter()
-                            .filter_map(|bound| ir::instance_descriptor(&bound.item))
-                            .collect(),
-                        ir: item.instructions,
-                    },
-                );
-            }
+            self.items.insert(path, item);
         }
 
         for (path, declaration) in lower_result.interface.instance_declarations {
@@ -470,30 +374,7 @@ impl Driver {
                     .map(|error| error.map(Diagnostic::Typecheck)),
             );
 
-            let ir_result = ir::compile(
-                self,
-                path.clone(),
-                &[],
-                item.as_ref(),
-                &typecheck_result.captures,
-            );
-
-            for (path, item) in ir_result.items {
-                self.executable.items.insert(
-                    path,
-                    Item {
-                        parameters: declaration.item.parameters.clone(),
-                        bounds: declaration
-                            .item
-                            .bounds
-                            .clone()
-                            .into_iter()
-                            .filter_map(|bound| ir::instance_descriptor(&bound.item))
-                            .collect(),
-                        ir: item.instructions,
-                    },
-                );
-            }
+            self.items.insert(path, item);
         }
 
         for (path, top_level_code) in lower_result.library.code {
@@ -519,32 +400,8 @@ impl Driver {
                         .map(|error| error.map(Diagnostic::Typecheck)),
                 );
 
-                let ir_result = ir::compile(
-                    self,
-                    path.clone(),
-                    &[],
-                    item.as_ref(),
-                    &typecheck_result.captures,
-                );
-
-                for (path, item) in ir_result.items {
-                    self.executable.items.insert(
-                        path,
-                        Item {
-                            parameters: Vec::new(),
-                            bounds: Vec::new(),
-                            ir: item.instructions,
-                        },
-                    );
-                }
-
-                self.executable.entrypoint = Some(path);
-            }
-        }
-
-        for (path, type_declaration) in &self.interface.type_declarations {
-            if let Some(layout) = ir::layout_descriptor(&type_declaration.item) {
-                self.executable.layouts.insert(path.clone(), layout);
+                self.entrypoint = Some(path.clone());
+                self.items.insert(path, item);
             }
         }
 
@@ -552,68 +409,38 @@ impl Driver {
             .interface
             .instance_declarations
             .iter()
-            .into_group_map_by(|(_, instance)| instance.item.instance.item.r#trait.clone());
+            .map(|(path, instance)| {
+                (
+                    instance.item.instance.item.r#trait.clone(),
+                    (path, instance),
+                )
+            })
+            .into_group_map_by(|(r#trait, _)| r#trait.clone());
 
         for (r#trait, instances) in instances_by_trait {
-            let trait_declaration = typecheck::Driver::get_trait_declaration(self, &r#trait);
-
-            let mut default_instances = HashSet::new();
-            let instances = instances
+            let (default_instances, non_default_instances): (Vec<_>, Vec<_>) = instances
                 .into_iter()
-                .filter_map(|(path, declaration)| {
-                    if declaration.item.default {
-                        default_instances.insert(path.clone());
-                    }
+                .partition(|&(_, (_, instance))| instance.item.default);
 
-                    Some(Instance {
-                        path: path.clone(),
-                        trait_parameters: trait_declaration
-                            .item
-                            .parameters
-                            .clone()
-                            .into_iter()
-                            .zip(declaration.item.instance.item.parameters.clone())
-                            .map(|(path, r#type)| {
-                                Some(InstanceTraitParameter {
-                                    path,
-                                    type_descriptor: ir::type_descriptor(&r#type.item)?,
-                                })
-                            })
-                            .collect::<Option<_>>()?,
-                    })
-                })
-                .collect::<Vec<_>>();
+            for instances in [default_instances, non_default_instances] {
+                let overlap_diagnostics = typecheck::instances_overlap(
+                    self,
+                    &r#trait,
+                    instances
+                        .into_iter()
+                        .map(|(_, (path, _))| path.clone())
+                        .collect(),
+                );
 
-            let overlap_diagnostics = typecheck::instances_overlap(
-                self,
-                &r#trait,
-                instances
-                    .iter()
-                    .map(|instance| instance.path.clone())
-                    .collect(),
-            );
-
-            diagnostics.extend(
-                overlap_diagnostics
-                    .into_iter()
-                    .map(|error| error.map(Diagnostic::Typecheck)),
-            );
-
-            for instance in instances {
-                let instances = if default_instances.contains(&instance.path) {
-                    &mut self.executable.default_instances
-                } else {
-                    &mut self.executable.instances
-                };
-
-                instances
-                    .entry(r#trait.clone())
-                    .or_default()
-                    .insert(instance.path.clone(), instance);
+                diagnostics.extend(
+                    overlap_diagnostics
+                        .into_iter()
+                        .map(|error| error.map(Diagnostic::Typecheck)),
+                );
             }
         }
 
-        Result { diagnostics }
+        diagnostics
     }
 
     /// Resolve an attribute-like trait, where the first parameter is the provided
@@ -635,8 +462,24 @@ impl Driver {
             .is_some_and(|item| item == *path)
     }
 
-    pub fn executable(&self) -> Executable {
-        self.executable.clone()
+    pub fn executable(&self) -> Result<Executable, ()> {
+        let mut codegen = Codegen::new(self);
+
+        for (path, expression) in &self.items {
+            codegen.insert_item(path, expression.as_ref())?;
+        }
+
+        for (path, instance) in &self.interface.instance_declarations {
+            if self.items.contains_key(path) {
+                codegen.insert_instance(path, instance.as_ref())?;
+            } else {
+                // Instance for marker trait; will never be executed at runtime
+            }
+        }
+
+        let entrypoint = self.entrypoint.as_ref().ok_or(())?;
+
+        Ok(codegen.into_executable(entrypoint))
     }
 }
 
@@ -755,66 +598,4 @@ impl crate::typecheck::Driver for Driver {
         // The parent of a variant is its enumeration
         lower::Path(variant[0..variant.len() - 1].to_vec())
     }
-}
-
-impl crate::ir::Driver for Driver {
-    fn number_type(&self) -> Option<Path> {
-        [&self.interface]
-            .into_iter()
-            .filter_map(|interface| interface.language_declarations.get("number"))
-            .flatten()
-            .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Type(_)))
-            .cloned()
-    }
-
-    fn text_type(&self) -> Option<Path> {
-        [&self.interface]
-            .into_iter()
-            .filter_map(|interface| interface.language_declarations.get("text"))
-            .flatten()
-            .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Type(_)))
-            .cloned()
-    }
-
-    fn boolean_type(&self) -> Option<Path> {
-        [&self.interface]
-            .into_iter()
-            .filter_map(|interface| interface.language_declarations.get("boolean"))
-            .flatten()
-            .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Type(_)))
-            .cloned()
-    }
-
-    fn true_variant(&self) -> Option<Path> {
-        [&self.interface]
-            .into_iter()
-            .filter_map(|interface| interface.language_declarations.get("true"))
-            .flatten()
-            .find(|path| matches!(path.last().unwrap(), lower::PathComponent::Constructor(_)))
-            .cloned()
-            .map(variant_from_constructor)
-    }
-
-    fn number_equality_intrinsic(&self) -> Option<String> {
-        Some(String::from("number-equality"))
-    }
-
-    fn text_equality_intrinsic(&self) -> Option<String> {
-        Some(String::from("text-equality"))
-    }
-
-    fn item_path_in(&self, path: &Path, index: u32) -> Path {
-        path.join(lower::PathComponent::Item(index))
-    }
-}
-
-fn variant_from_constructor(mut path: lower::Path) -> lower::Path {
-    let name = match path.pop().unwrap() {
-        lower::PathComponent::Constructor(name) => name,
-        _ => panic!("expected constructor"),
-    };
-
-    path.push(lower::PathComponent::Variant(name));
-
-    path
 }

@@ -34,8 +34,8 @@ instance (And Boolean Boolean Boolean) : a b -> if a b {False}
 Or : Left Right (infer Output) => trait (Left {Right} -> Output)
 instance (Or Boolean Boolean Boolean) : a b -> if a {True} b
 Value => instance (Or (Maybe Value) Value Value) : maybe other -> when maybe {
-  Has value -> value
-  Empty -> do other
+  Some value -> value
+  None -> do other
 }
 
 -- The result of a comparison between two values.
@@ -75,7 +75,7 @@ Value where (Order Value) => instance (Greater-Than-Or-Equal Value) : a b -> (Or
 Equal : Value => trait (Value Value -> Boolean)
 instance (Equal Text) : a b -> intrinsic "text-equality" a b
 instance (Equal Number) : a b -> intrinsic "number-equality" a b
-instance (Equal None) : None None -> True
+instance (Equal Unit) : Unit Unit -> True
 instance (Equal Boolean) : a b -> if a {b} {not b}
 
 -- Returns `True` if two values are not equal.

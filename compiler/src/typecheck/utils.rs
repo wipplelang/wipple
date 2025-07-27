@@ -472,7 +472,7 @@ pub fn resolve_trait_parameters_from_type(
     path: &Path,
     use_expression: WithInfo<&mut Expression>,
     context: &mut ResolveContext<'_>,
-) -> Option<Vec<Type>> {
+) -> Option<Vec<(Path, Type)>> {
     let trait_declaration = context.driver.get_trait_declaration(path);
 
     let use_info = use_expression.info.clone();
@@ -503,5 +503,5 @@ pub fn resolve_trait_parameters_from_type(
         instantiation_context.error_queue,
     );
 
-    Some(instantiation_context.into_types_for_parameters())
+    Some(instantiation_context.into_substitutions())
 }

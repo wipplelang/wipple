@@ -1,0 +1,10 @@
+-- [should compile]
+
+Elephants : type {count :: Number}
+
+instance (Equal Elephants) : {count : a} {count : b} -> a = b
+
+elephants :: Number -> Elephants
+elephants : count -> {count : count}
+
+show (42 elephants = elephants 42)

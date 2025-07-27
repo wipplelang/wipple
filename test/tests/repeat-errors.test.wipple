@@ -1,0 +1,6 @@
+-- [should error]
+
+with-control-flow {Unit}
+(while {True}) {Unit}
+forever {Unit}
+(4 times) {Unit}

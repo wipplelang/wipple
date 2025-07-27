@@ -12,7 +12,7 @@ export default runtime({
         },
         Appearance: {
             color: { code: `color (Color '{"color": "blue"}')` },
-            speed: { code: "speed 0.5" },
+            speed: { code: "speed 50" },
             animal: { code: `animal (Animal '{"animal": "frog"}')` },
         },
         Control: {

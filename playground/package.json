@@ -56,6 +56,6 @@
         "tailwindcss-animated": "^2.0.0",
         "tonal": "^6.4.2",
         "tone": "^15.1.22",
-        "wipple-interpreter": "file:../interpreter"
+        "wipple-runtime": "file:../runtime"
     }
 }

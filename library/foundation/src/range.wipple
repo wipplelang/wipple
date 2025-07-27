@@ -1,4 +1,4 @@
--- A continuous range between two numbers. Each bound may be `undefined` to
+-- A continuous range between two numbers. Each bound may be `nan` to
 -- indicate that the range is unbounded in that direction.
 Range : (Index : Number) => type {
   min :: Index
@@ -34,16 +34,16 @@ instance (As-Sequence (Stride Number) Number) : {
   min : min
   max : max
   step : step
-} -> when (min /= undefined ; max /= undefined) {
+} -> when (min /= nan ; max /= nan) {
   (True ; True) -> do {
     current : min
     Sequence {
       if (current < max) {
         n : current
         current! : current + step
-        Has n
+        Some n
       } {
-        Empty
+        None
       }
     }
   }
@@ -52,8 +52,8 @@ instance (As-Sequence (Stride Number) Number) : {
     Sequence {
       n : current
       current! : current + step
-      Has n
+      Some n
     }
   }
-  _ -> Sequence {Empty}
+  _ -> Sequence {None}
 }

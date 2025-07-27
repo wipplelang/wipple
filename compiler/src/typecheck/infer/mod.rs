@@ -41,12 +41,12 @@ pub enum ExpressionKind {
     UnresolvedTrait(Path),
     ResolvedConstant {
         path: Path,
-        parameters: Vec<Type>,
+        substitutions: HashMap<Path, Type>,
         bounds: Vec<WithInfo<Result<Path, Instance>>>,
     },
     ResolvedTrait {
         trait_path: Path,
-        parameters: Vec<Type>,
+        substitutions: HashMap<Path, Type>,
         instance: WithInfo<Result<Path, Instance>>,
     },
     Number(String),

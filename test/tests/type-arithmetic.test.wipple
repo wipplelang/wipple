@@ -1,0 +1,13 @@
+-- [should error]
+
+Z : type
+S : N => type
+
+Addition : A B Sum => trait Unit
+A => instance (Addition Z A A) : Unit
+A B Sum where (Addition A B Sum) => instance (Addition (S A) B (S Sum)) : Unit
+
+result :: A where (Addition (S (S (S Z))) (S (S Z)) A) => A
+result : ...
+
+_ : _ -> result

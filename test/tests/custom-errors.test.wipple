@@ -1,0 +1,15 @@
+-- [should error]
+
+Distance : type {pixels :: Number}
+
+Distance? : (infer D) => trait Unit
+D where (Error "missing `pixels`") => default instance (Distance? D) : Unit
+instance (Distance? Distance) : Unit
+
+pixels :: Number -> Distance
+pixels : pixels -> {pixels : pixels}
+
+forward :: D where (Distance? D) => D -> Unit
+forward : ...
+
+forward 42

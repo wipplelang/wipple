@@ -1,0 +1,6 @@
+{
+    "name": "wipple-runtime",
+    "private": true,
+    "type": "module",
+    "main": "runtime.js"
+}

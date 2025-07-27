@@ -3,13 +3,8 @@ version: "3"
 tasks:
   install:
     deps:
-      - install:interpreter
       - install:playground
       - install:site
-  install:interpreter:
-    dir: interpreter
-    cmds:
-      - npm install
   install:playground:
     dir: playground
     cmds:
@@ -28,23 +23,31 @@ tasks:
     cmds:
       - npm run dev -- --open
   dev:server:
-    dir: server
+    dir: .
     cmds:
-      - RUST_LOG=debug PORT=3000 cargo run {{.CLI_ARGS}}
+      - RUST_LOG=debug PORT=3000 cargo run --package=wipple-api {{.CLI_ARGS}}
 
-  build:web:
-    deps:
-      - build:ir-bindings
-      - build:site
-  build:ir-bindings:
-    dir: compiler
+  test:
+    dir: .
+    ignore_error: true
+    cmd: |
+      bash -c '
+      cargo build --package=wipple-api
+      PORT=3001 ./target/debug/wipple-api & test_server_pid=$!
+      sleep 1
+      TESTS_SERVER_URL='http://localhost:3001' node --experimental-vm-modules {{.CLI_ARGS}} test/index.js
+      kill $test_server_pid
+      '
+  test:update-snapshots:
     cmds:
-      - cargo binstall typeshare-cli
-      - typeshare . --lang=typescript --output-file=../interpreter/ir.d.ts
+      - task: test
+        vars:
+          CLI_ARGS: --test-update-snapshots
+
   build:site:
     deps:
-      - build:playground
       - build:docs
+      - build:playground
     dir: site
     cmds:
       - rm -rf dist

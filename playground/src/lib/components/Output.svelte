@@ -4,8 +4,8 @@
     import { context } from "$lib/context.svelte";
     import runtimes from "$lib/runtimes";
     import * as Comlink from "comlink";
-    import type { InterpreterWorkerType } from "$lib/interpreter.worker";
-    import InterpreterWorker from "$lib/interpreter.worker?worker";
+    import type { RunnerEnv, RunnerWorkerType } from "$lib/runner.worker";
+    import RunnerWorker from "$lib/runner.worker?worker";
     import type { OutputItem } from "$lib/models/OutputItem";
     import Markdown from "./Markdown.svelte";
     import Prompt from "./Prompt.svelte";
@@ -21,16 +21,16 @@
 
     let { runState = $bindable(), ondiagnostics }: Props = $props();
 
-    let interpreterWorker: InstanceType<typeof InterpreterWorker> | undefined = undefined;
-    let interpreterWorkerLink: Comlink.Remote<InterpreterWorkerType> | undefined = undefined;
+    let runnerWorker: InstanceType<typeof RunnerWorker> | undefined = undefined;
+    let runnerWorkerLink: Comlink.Remote<RunnerWorkerType> | undefined = undefined;
 
-    const createInterpreterWorker = () => {
-        interpreterWorker?.terminate();
+    const createRunnerWorker = () => {
+        runnerWorker?.terminate();
 
-        interpreterWorker = new InterpreterWorker();
-        interpreterWorkerLink = Comlink.wrap<InterpreterWorkerType>(interpreterWorker);
+        runnerWorker = new RunnerWorker();
+        runnerWorkerLink = Comlink.wrap<RunnerWorkerType>(runnerWorker);
 
-        return interpreterWorkerLink;
+        return runnerWorkerLink;
     };
 
     const playground = $derived(context.playground);
@@ -92,55 +92,39 @@
         try {
             await runtimeOutput?._initialize?.();
 
-            const runtime = async (message: string, ...args: unknown[]) => {
-                switch (message) {
-                    case "display": {
-                        const [message] = args as [string];
-
+            const env: RunnerEnv = {
+                display: async (message: string) => {
+                    output.push({
+                        type: "display",
+                        value: message,
+                    });
+                },
+                prompt: async (message: string, submit: (value: string) => Promise<boolean>) => {
+                    await new Promise<void>((resolve) => {
                         output.push({
-                            type: "display",
-                            value: message,
+                            type: "prompt",
+                            prompt: message,
+                            submit: async (value) => {
+                                const valid = await submit(value);
+                                if (valid) {
+                                    resolve();
+                                }
+
+                                return valid;
+                            },
                         });
-
-                        break;
-                    }
-                    case "prompt": {
-                        const [message, submit] = args as [
-                            string,
-                            (value: string) => Promise<boolean>,
-                        ];
-
-                        await new Promise<void>((resolve) => {
-                            output.push({
-                                type: "prompt",
-                                prompt: message,
-                                submit: async (value) => {
-                                    const valid = await submit(value);
-                                    if (valid) {
-                                        resolve();
-                                    }
-
-                                    return valid;
-                                },
-                            });
-                        });
-
-                        break;
-                    }
-                    default: {
-                        if (!runtimeOutput) {
-                            throw new Error(
-                                `message sent to undefined runtime output: ${message}(${args.join(", ")})`,
-                            );
-                        }
-
-                        return runtimeOutput[message](...args);
-                    }
-                }
+                    });
+                },
             };
 
-            const worker = createInterpreterWorker();
-            await worker.run(response.executable, Comlink.proxy(runtime));
+            // Wrap custom functions (which are tied to Svelte components) so
+            // they aren't proxied by Comlink
+            for (const key in runtimeOutput) {
+                env[key] = (...args) => runtimeOutput[key](...args);
+            }
+
+            const worker = createRunnerWorker();
+            await worker.run(response.executable, Comlink.proxy(env));
         } finally {
             await stopRunning(false);
             runState = undefined;
@@ -150,8 +134,8 @@
     const stopRunning = async (force: boolean) => {
         abortController?.abort();
 
-        interpreterWorker?.terminate();
-        interpreterWorker = undefined;
+        runnerWorker?.terminate();
+        runnerWorker = undefined;
 
         await runtimeOutput?._cleanup?.(force);
     };

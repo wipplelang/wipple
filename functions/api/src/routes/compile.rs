@@ -38,7 +38,9 @@ pub async fn handle(req: CompileRequest) -> Result<Value, Error> {
     Ok(match result {
         Ok(compiler) => json!({
             "success": true,
-            "executable": compiler.executable(),
+            "executable": compiler
+                .js_executable()
+                .ok_or_else(|| anyhow::format_err!("could not create executable"))?,
         }),
         Err(diagnostics) => json!({
             "success": false,

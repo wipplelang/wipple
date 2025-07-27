@@ -1,0 +1,16 @@
+-- [should error]
+
+Grade : type {
+  A
+  B
+  C
+  D
+  F
+}
+
+report-card :: Grade -> Text
+report-card : grade -> when grade {
+  A -> "top of the class"
+  B -> "good job"
+  C -> "need to study"
+}

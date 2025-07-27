@@ -58,7 +58,7 @@
         await turtle?.back(distance);
     };
 
-    export const arc = async (radius: number, angle: number) => {
+    export const arc = async ([radius, angle]: [number, number]) => {
         await turtle?.arc(radius, angle);
     };
 
@@ -92,7 +92,7 @@
     };
 
     export const speed = async (speed: number) => {
-        await turtle?.setSpeed(speed);
+        await turtle?.setSpeed(speed / 100);
     };
 
     export const animal = async (animalJson: string) => {

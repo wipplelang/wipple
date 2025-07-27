@@ -1,0 +1,6 @@
+-- [should compile]
+
+show (1 + 2)
+show (4 - 1)
+show (3 * 5)
+show (10 / 4)

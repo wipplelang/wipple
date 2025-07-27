@@ -695,7 +695,7 @@ pub enum TypedExpressionKind {
 
         /// The types of the constant's parameters. This is used in case the
         /// constant's type doesn't reference all type parameters.
-        parameters: Vec<Type>,
+        substitutions: HashMap<Path, Type>,
 
         /// The resolved bounds.
         bounds: Vec<WithInfo<std::result::Result<Path, Instance>>>,
@@ -708,7 +708,7 @@ pub enum TypedExpressionKind {
 
         /// The types of the instance's parameters. This is used in case the
         /// instance's type doesn't reference all type parameters.
-        parameters: Vec<Type>,
+        substitutions: HashMap<Path, Type>,
 
         /// The path to the resolved instance, or a bound.
         instance: WithInfo<std::result::Result<Path, Instance>>,

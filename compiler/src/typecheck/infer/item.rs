@@ -13,13 +13,17 @@ use crate::{
     },
     util::WithInfo,
 };
+use std::collections::HashMap;
 
 pub fn resolve_item(
     path: &Path,
     mut use_expression: WithInfo<&mut Expression>,
     allow_unresolved_bounds: bool,
     context: &mut ResolveContext<'_>,
-) -> Result<Option<(Vec<Type>, Vec<WithInfo<Result<Path, Instance>>>)>, WithInfo<QueuedError>> {
+) -> Result<
+    Option<(HashMap<Path, Type>, Vec<WithInfo<Result<Path, Instance>>>)>,
+    WithInfo<QueuedError>,
+> {
     let item_declaration = context.driver.get_constant_declaration(path);
 
     let use_info = use_expression.info.clone();
@@ -67,7 +71,7 @@ pub fn resolve_item(
         })
         .collect::<Vec<_>>();
 
-    let parameters = instantiation_context.into_types_for_parameters();
+    let parameters = instantiation_context.into_substitutions();
 
     // Unify instantiated declared type with type of referring expression
 
@@ -185,7 +189,12 @@ pub fn resolve_item(
         (
             parameters
                 .into_iter()
-                .map(|parameter| parameter.instantiate_opaque_in_context(context.type_context))
+                .map(|(parameter, ty)| {
+                    (
+                        parameter,
+                        ty.instantiate_opaque_in_context(context.type_context),
+                    )
+                })
                 .collect(),
             bounds,
         )

@@ -1,0 +1,1747 @@
+exports[`all-any.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "True\\nFalse\\nTrue\\nFalse\\n"
+}
+`;
+
+exports[`article-selection.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided an apple, but you need to put an orange here instead.",
+      "location": {
+        "end": {
+          "column": 6,
+          "index": 208,
+          "line": 12
+        },
+        "path": "input",
+        "start": {
+          "column": 1,
+          "index": 203,
+          "line": 12
+        }
+      },
+      "message": "This code is supposed to be an apple, but it's actually an orange",
+      "severity": "error"
+    },
+    {
+      "description": "You provided an apple, but you need to put a banana here instead.",
+      "location": {
+        "end": {
+          "column": 6,
+          "index": 190,
+          "line": 11
+        },
+        "path": "input",
+        "start": {
+          "column": 1,
+          "index": 185,
+          "line": 11
+        }
+      },
+      "message": "This code is supposed to be an apple, but it's actually a banana",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`asset.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "red\\n"
+}
+`;
+
+exports[`average.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "3\\n"
+}
+`;
+
+exports[`bound.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Hello, world!\\n"
+}
+`;
+
+exports[`bounds-are-one-way.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "\`T\` needs this instance to exist so it can use its input correctly. Make sure you're providing the right type of input here, or you can define your own \`instance\`.",
+      "location": {
+        "end": {
+          "column": 5,
+          "index": 71,
+          "line": 5
+        },
+        "path": "input",
+        "start": {
+          "column": 4,
+          "index": 70,
+          "line": 5
+        }
+      },
+      "message": "Using \`T\` requires that \`instance (T Number)\` exists",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`bounds-dont-influence-other-bounds.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Wipple needs more information before it can run this code. Its type is \`Number ; _\`, but the \`_\` placeholders are unknown.",
+      "location": {
+        "end": {
+          "column": 19,
+          "index": 221,
+          "line": 11
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 202,
+          "line": 11
+        }
+      },
+      "message": "Could not determine the meaning of this code",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`build-sequence.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "0\\n1\\n2\\n3\\n4\\n"
+}
+`;
+
+exports[`call-function-diagnostic.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided a function, but you need to put text here instead.",
+      "location": {
+        "end": {
+          "column": 27,
+          "index": 131,
+          "line": 5
+        },
+        "path": "input",
+        "start": {
+          "column": 14,
+          "index": 118,
+          "line": 5
+        }
+      },
+      "message": "This code is supposed to be a function, but it's actually text",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`collections.test.wipple 1`] = `
+{
+  "success": true,
+  "output": ""
+}
+`;
+
+exports[`colliding-instances.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You can't define two instances that match the same types.",
+      "location": {
+        "end": {
+          "column": 14,
+          "index": 63,
+          "line": 5
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 49,
+          "line": 5
+        }
+      },
+      "message": "\`instance (T X)\` already exists",
+      "severity": "error"
+    },
+    {
+      "description": "You can't define two instances that match the same types.",
+      "location": {
+        "end": {
+          "column": 14,
+          "index": 63,
+          "line": 5
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 49,
+          "line": 5
+        }
+      },
+      "message": "\`instance (T X)\` already exists",
+      "severity": "error"
+    },
+    {
+      "description": "You can't define two instances that match the same types.",
+      "location": {
+        "end": {
+          "column": 14,
+          "index": 63,
+          "line": 5
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 49,
+          "line": 5
+        }
+      },
+      "message": "\`instance (T X)\` already exists",
+      "severity": "error"
+    },
+    {
+      "description": "You can't define two instances that match the same types.",
+      "location": {
+        "end": {
+          "column": 14,
+          "index": 85,
+          "line": 6
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 71,
+          "line": 6
+        }
+      },
+      "message": "\`instance (T X)\` already exists",
+      "severity": "error"
+    },
+    {
+      "description": "You can't define two instances that match the same types.",
+      "location": {
+        "end": {
+          "column": 14,
+          "index": 85,
+          "line": 6
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 71,
+          "line": 6
+        }
+      },
+      "message": "\`instance (T X)\` already exists",
+      "severity": "error"
+    },
+    {
+      "description": "You can't define two instances that match the same types.",
+      "location": {
+        "end": {
+          "column": 14,
+          "index": 108,
+          "line": 8
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 94,
+          "line": 8
+        }
+      },
+      "message": "\`instance (T _)\` already exists",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`comment-at-end-of-block.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "42\\n"
+}
+`;
+
+exports[`comparison.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "True\\nTrue\\nTrue\\nTrue\\nTrue\\nTrue\\nTrue\\nFalse\\nTrue\\nTrue\\nFalse\\nTrue\\n"
+}
+`;
+
+exports[`constant-captured-variables.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Double-check your code for spelling mistakes.",
+      "location": {
+        "end": {
+          "column": 15,
+          "index": 75,
+          "line": 6
+        },
+        "path": "input",
+        "start": {
+          "column": 14,
+          "index": 74,
+          "line": 6
+        }
+      },
+      "message": "Couldn't find \`n\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`constant-mismatched-types.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided text, but you need to put a number here instead.",
+      "location": {
+        "end": {
+          "column": 8,
+          "index": 39,
+          "line": 3
+        },
+        "path": "input",
+        "start": {
+          "column": 4,
+          "index": 35,
+          "line": 3
+        }
+      },
+      "message": "This code is supposed to be text, but it's actually a number",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`custom-errors-formatting.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": null,
+      "location": {
+        "end": {
+          "column": 4,
+          "index": 453,
+          "line": 20
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 449,
+          "line": 20
+        }
+      },
+      "message": "\`Herbivore\` does not eat \`Meat\`",
+      "severity": "error"
+    },
+    {
+      "description": null,
+      "location": {
+        "end": {
+          "column": 4,
+          "index": 431,
+          "line": 19
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 427,
+          "line": 19
+        }
+      },
+      "message": "\`Carnivore\` does not eat \`Plants\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`custom-errors.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": null,
+      "location": {
+        "end": {
+          "column": 7,
+          "index": 340,
+          "line": 14
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 333,
+          "line": 14
+        }
+      },
+      "message": "missing \`pixels\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`default-instance.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "using default instance\\nusing specific instance: Hello, world!\\n"
+}
+`;
+
+exports[`default-type-parameter.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "X\\nY\\n"
+}
+`;
+
+exports[`destructuring.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Alice\\nBob\\nCharlie\\n"
+}
+`;
+
+exports[`dictionary.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Basketball has 10 letters\\nSoccer has 6 letters\\nGolf has 4 letters\\n"
+}
+`;
+
+exports[`did-you-mean.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Double-check your parentheses, or remove the code.",
+      "location": {
+        "end": {
+          "column": 13,
+          "index": 57,
+          "line": 4
+        },
+        "path": "input",
+        "start": {
+          "column": 12,
+          "index": 56,
+          "line": 4
+        }
+      },
+      "message": "Unexpected code after the symbol \`/\`",
+      "severity": "error"
+    },
+    {
+      "description": "Double-check your code for spelling mistakes.",
+      "location": {
+        "end": {
+          "column": 10,
+          "index": 43,
+          "line": 3
+        },
+        "path": "input",
+        "start": {
+          "column": 5,
+          "index": 38,
+          "line": 3
+        }
+      },
+      "message": "Couldn't find \`hello\`",
+      "severity": "error"
+    },
+    {
+      "description": "Double-check your code for spelling mistakes.",
+      "location": {
+        "end": {
+          "column": 23,
+          "index": 67,
+          "line": 4
+        },
+        "path": "input",
+        "start": {
+          "column": 16,
+          "index": 60,
+          "line": 4
+        }
+      },
+      "message": "Couldn't find \`comment\`",
+      "severity": "error"
+    },
+    {
+      "description": "Output is written using \`show\` in Wipple, not \`print\`",
+      "location": {
+        "end": {
+          "column": 5,
+          "index": 24,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 19,
+          "line": 2
+        }
+      },
+      "message": "Output is written using \`show\` in Wipple, not \`print\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`divisible-by.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "True\\nFalse\\nFalse\\nTrue\\n"
+}
+`;
+
+exports[`enumerate.test.wipple 1`] = `
+{
+  "success": true,
+  "output": ""
+}
+`;
+
+exports[`enumeration.test.wipple 1`] = `
+{
+  "success": true,
+  "output": ""
+}
+`;
+
+exports[`equal-type.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": null,
+      "location": {
+        "end": {
+          "column": 11,
+          "index": 310,
+          "line": 15
+        },
+        "path": "input",
+        "start": {
+          "column": 9,
+          "index": 308,
+          "line": 15
+        }
+      },
+      "message": "missing \`valid\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`exhaustiveness-checking.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "If the input matches \`D\` or \`F\`, \`when\` won't be able to handle it.",
+      "location": {
+        "end": {
+          "column": 1,
+          "index": 190,
+          "line": 15
+        },
+        "path": "input",
+        "start": {
+          "column": 23,
+          "index": 109,
+          "line": 11
+        }
+      },
+      "message": "\`when\` won't match if it receives \`D\` or \`F\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`format.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Hello, Bob!\\n"
+}
+`;
+
+exports[`function-arrow.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Double-check your parentheses, or remove the a pattern.",
+      "location": {
+        "end": {
+          "column": 3,
+          "index": 22,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 1,
+          "index": 20,
+          "line": 2
+        }
+      },
+      "message": "Unexpected a pattern before the symbol \`->\`",
+      "severity": "error"
+    },
+    {
+      "description": "Double-check your parentheses, or remove the code.",
+      "location": {
+        "end": {
+          "column": 3,
+          "index": 22,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 1,
+          "index": 20,
+          "line": 2
+        }
+      },
+      "message": "Unexpected code after the symbol \`->\`",
+      "severity": "error"
+    },
+    {
+      "description": "Double-check your parentheses, or remove the code.",
+      "location": {
+        "end": {
+          "column": 5,
+          "index": 29,
+          "line": 3
+        },
+        "path": "input",
+        "start": {
+          "column": 3,
+          "index": 27,
+          "line": 3
+        }
+      },
+      "message": "Unexpected code after the symbol \`->\`",
+      "severity": "error"
+    },
+    {
+      "description": "Double-check your parentheses, or remove the a pattern.",
+      "location": {
+        "end": {
+          "column": 3,
+          "index": 34,
+          "line": 4
+        },
+        "path": "input",
+        "start": {
+          "column": 1,
+          "index": 32,
+          "line": 4
+        }
+      },
+      "message": "Unexpected a pattern before the symbol \`->\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`generic-call-within-generic-constant.test.wipple 1`] = `
+{
+  "success": true,
+  "output": ""
+}
+`;
+
+exports[`generic-instance.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Hello, world!\\n"
+}
+`;
+
+exports[`generic-type.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Hello, world!\\n"
+}
+`;
+
+exports[`greet.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Hello, Bob!\\nHello, world!\\n"
+}
+`;
+
+exports[`hello-world.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Hello, world!\\n"
+}
+`;
+
+exports[`help-show-code.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": null,
+      "location": {
+        "end": {
+          "column": 10,
+          "index": 258,
+          "line": 13
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 248,
+          "line": 13
+        }
+      },
+      "message": "a function and a function are incompatible",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`infer.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "C\\nJava\\n"
+}
+`;
+
+exports[`is.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "True\\nFalse\\n"
+}
+`;
+
+exports[`linked-list.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "6\\n"
+}
+`;
+
+exports[`list-mismatched-elements.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided a number, but you need to put no value here instead.",
+      "location": {
+        "end": {
+          "column": 25,
+          "index": 44,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 21,
+          "index": 40,
+          "line": 2
+        }
+      },
+      "message": "This code is supposed to be a number, but it's actually no value",
+      "severity": "error"
+    },
+    {
+      "description": "You provided no value, but you need to put a number here instead.",
+      "location": {
+        "end": {
+          "column": 25,
+          "index": 44,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 21,
+          "index": 40,
+          "line": 2
+        }
+      },
+      "message": "This code is supposed to be no value, but it's actually a number",
+      "severity": "error"
+    },
+    {
+      "description": "You provided text, but you need to put a number here instead.",
+      "location": {
+        "end": {
+          "column": 18,
+          "index": 37,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 14,
+          "index": 33,
+          "line": 2
+        }
+      },
+      "message": "This code is supposed to be text, but it's actually a number",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`lists.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Some 1\\nSome 3\\nSome 2\\nSome 2\\nSome 2\\n"
+}
+`;
+
+exports[`logic.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "b\\na\\n"
+}
+`;
+
+exports[`math.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "3\\n3\\n15\\n2.5\\n"
+}
+`;
+
+exports[`mismatched-block.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided text, but you need to put a number here instead.",
+      "location": {
+        "end": {
+          "column": 6,
+          "index": 73,
+          "line": 5
+        },
+        "path": "input",
+        "start": {
+          "column": 2,
+          "index": 69,
+          "line": 5
+        }
+      },
+      "message": "This code is supposed to be text, but it's actually a number",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`mismatched-call.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided a number, but you need to put text here instead.",
+      "location": {
+        "end": {
+          "column": 22,
+          "index": 205,
+          "line": 7
+        },
+        "path": "input",
+        "start": {
+          "column": 13,
+          "index": 196,
+          "line": 7
+        }
+      },
+      "message": "This code is supposed to be a number, but it's actually text",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`mismatched-higher-order-function.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided a number, but you need to put text here instead.",
+      "location": {
+        "end": {
+          "column": 21,
+          "index": 158,
+          "line": 11
+        },
+        "path": "input",
+        "start": {
+          "column": 19,
+          "index": 156,
+          "line": 11
+        }
+      },
+      "message": "This code is supposed to be a number, but it's actually text",
+      "severity": "error"
+    },
+    {
+      "description": "You provided \`Text -> Number\`, but you need to put \`Text -> Text\` here instead.",
+      "location": {
+        "end": {
+          "column": 3,
+          "index": 135,
+          "line": 9
+        },
+        "path": "input",
+        "start": {
+          "column": 2,
+          "index": 134,
+          "line": 9
+        }
+      },
+      "message": "This code is supposed to be \`Text -> Number\`, but it's actually \`Text -> Text\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`mismatched-inferred-params.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided \`(Text -> Text) -> (List Number) -> Sequence Text\`, but you need to put \`(Number -> Text) -> (List Number) -> Sequence Text\` here instead.",
+      "location": {
+        "end": {
+          "column": 23,
+          "index": 42,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 14,
+          "index": 33,
+          "line": 2
+        }
+      },
+      "message": "This code is supposed to be \`(Text -> Text) -> (List Number) -> Sequence Text\`, but it's actually \`(Number -> Text) -> (List Number) -> Sequence Text\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`mismatched-types.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided a number, but you need to put text here instead.",
+      "location": {
+        "end": {
+          "column": 3,
+          "index": 22,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 1,
+          "index": 20,
+          "line": 2
+        }
+      },
+      "message": "This code is supposed to be a number, but it's actually text",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`missing-closing-parenthesis.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Every opening parenthesis needs a closing parenthesis. Try adding one at the end.",
+      "location": {
+        "end": {
+          "column": 11,
+          "index": 30,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 10,
+          "index": 29,
+          "line": 2
+        }
+      },
+      "message": "Missing closing \`)\`",
+      "severity": "error"
+    },
+    {
+      "description": "Try adding these inputs. If you've already provided them, make sure they're all on one line.",
+      "location": {
+        "end": {
+          "column": 4,
+          "index": 23,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 19,
+          "line": 2
+        }
+      },
+      "message": "\`show\` is missing text",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`missing-inputs.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Try adding these inputs. If you've already provided them, make sure they're all on one line.",
+      "location": {
+        "end": {
+          "column": 4,
+          "index": 23,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 19,
+          "line": 2
+        }
+      },
+      "message": "\`show\` is missing text",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`missing-instance.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You can't display \`Foo\` on the screen or use it in placeholders because it can't be converted into text.",
+      "location": {
+        "end": {
+          "column": 4,
+          "index": 34,
+          "line": 3
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 30,
+          "line": 3
+        }
+      },
+      "message": "Can't describe \`Foo\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`missing-runtime-type.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "done\\n"
+}
+`;
+
+exports[`mutable.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "2\\n"
+}
+`;
+
+exports[`nan-math-ops.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "NaN\\nInfinity\\nNaN\\nNaN\\nInfinity\\n"
+}
+`;
+
+exports[`negate.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "True\\n"
+}
+`;
+
+exports[`nested-bounds.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "\`T\` needs this instance to exist so it can use its input correctly. Make sure you're providing the right type of input here, or you can define your own \`instance\`.",
+      "location": {
+        "end": {
+          "column": 1,
+          "index": 219,
+          "line": 11
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 218,
+          "line": 11
+        }
+      },
+      "message": "Using \`T\` requires that \`instance (W _)\` exists",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`nested-patterns.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "2\\n"
+}
+`;
+
+exports[`not.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "True\\n"
+}
+`;
+
+exports[`number-units.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "True\\n"
+}
+`;
+
+exports[`operator-without-parentheses.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Adding these two items together isn't supported.",
+      "location": {
+        "end": {
+          "column": 15,
+          "index": 64,
+          "line": 4
+        },
+        "path": "input",
+        "start": {
+          "column": 5,
+          "index": 54,
+          "line": 4
+        }
+      },
+      "message": "Can't add a number and text",
+      "severity": "error"
+    },
+    {
+      "description": "\`show True or False\` needs this instance to exist so it can use its input correctly. Make sure you're providing the right type of input here, or you can define your own \`instance\`.",
+      "location": {
+        "end": {
+          "column": 18,
+          "index": 48,
+          "line": 3
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 30,
+          "line": 3
+        }
+      },
+      "message": "Using \`show True or False\` requires that \`instance (Or Unit Boolean _)\` exists",
+      "severity": "error"
+    },
+    {
+      "description": "Spaces group before operators do, so you need to put parentheses around just the inputs to \`+\`.",
+      "location": {
+        "end": {
+          "column": 10,
+          "index": 29,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 19,
+          "line": 2
+        }
+      },
+      "message": "Missing parentheses around the inputs to \`+\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`or-pattern.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "yay\\n"
+}
+`;
+
+exports[`random.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "0\\nNone\\nNone\\n"
+}
+`;
+
+exports[`recursive-instance.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Some Some 42\\n"
+}
+`;
+
+exports[`remove-duplicates.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "5\\n4\\n3\\n2\\n1\\n"
+}
+`;
+
+exports[`repeat-errors.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Try rewriting this code as \`repeat \`Source\`\`, or double-check your parentheses.",
+      "location": {
+        "end": {
+          "column": 9,
+          "index": 90,
+          "line": 5
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 81,
+          "line": 5
+        }
+      },
+      "message": "Missing \`repeat\` before \`(4 times)\`",
+      "severity": "error"
+    },
+    {
+      "description": "Try rewriting this code as \`repeat \`Source\`\`, or double-check your parentheses.",
+      "location": {
+        "end": {
+          "column": 9,
+          "index": 90,
+          "line": 5
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 81,
+          "line": 5
+        }
+      },
+      "message": "Missing \`repeat\` before \`(4 times)\`",
+      "severity": "error"
+    },
+    {
+      "description": "Try rewriting this code as \`repeat \`Source\`\`, or double-check your parentheses.",
+      "location": {
+        "end": {
+          "column": 7,
+          "index": 73,
+          "line": 4
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 66,
+          "line": 4
+        }
+      },
+      "message": "Missing \`repeat\` before \`forever\`",
+      "severity": "error"
+    },
+    {
+      "description": "Try rewriting this code as \`repeat \`Source\`\`, or double-check your parentheses.",
+      "location": {
+        "end": {
+          "column": 14,
+          "index": 58,
+          "line": 3
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 44,
+          "line": 3
+        }
+      },
+      "message": "Missing \`repeat\` before \`(while {True})",
+      "severity": "error"
+    },
+    {
+      "description": "Try rewriting this code as \`repeat \`Source\`\`, or double-check your parentheses.",
+      "location": {
+        "end": {
+          "column": 17,
+          "index": 36,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 19,
+          "line": 2
+        }
+      },
+      "message": "Missing \`repeat\` before \`with-control-flow\`",
+      "severity": "error"
+    },
+    {
+      "description": "Try rewriting this code as \`repeat \`Source\`\`, or double-check your parentheses.",
+      "location": {
+        "end": {
+          "column": 17,
+          "index": 36,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 19,
+          "line": 2
+        }
+      },
+      "message": "Missing \`repeat\` before \`with-control-flow\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`repeat-missing-times.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Try rewriting this code as \`(a number times)\`, or double-check your parentheses.",
+      "location": {
+        "end": {
+          "column": 6,
+          "index": 25,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 19,
+          "line": 2
+        }
+      },
+      "message": "Missing \`times\` after \`repeat\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`repeat.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Hello, world!\\nHello, world!\\nHello, world!\\nHello, world!\\n"
+}
+`;
+
+exports[`replicate.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "abc\\nabc\\nabc\\n"
+}
+`;
+
+exports[`set.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "True\\nTrue\\nTrue\\nFalse\\n"
+}
+`;
+
+exports[`show-variable.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You can't display \`Cannot-Be-Shown\` on the screen or use it in placeholders because it can't be converted into text.",
+      "location": {
+        "end": {
+          "column": 4,
+          "index": 77,
+          "line": 5
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 73,
+          "line": 5
+        }
+      },
+      "message": "Can't describe \`Cannot-Be-Shown\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`too-many-inputs.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "The \`show 1 2 3\` function doesn't need that many inputs. Try removing this input or moving it to a new line.",
+      "location": {
+        "end": {
+          "column": 10,
+          "index": 29,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 19,
+          "line": 2
+        }
+      },
+      "message": "Extra input to \`show 1 2 3\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`trig.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "True\\nTrue\\nTrue\\n"
+}
+`;
+
+exports[`type-arithmetic.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Wipple needs more information before it can run this code. Its type is \`_ -> S (S (S (S (S Z))))\`, but the \`_\` placeholders are unknown.",
+      "location": {
+        "end": {
+          "column": 15,
+          "index": 283,
+          "line": 12
+        },
+        "path": "input",
+        "start": {
+          "column": 4,
+          "index": 272,
+          "line": 12
+        }
+      },
+      "message": "Could not determine the meaning of this code",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`type-span.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Double-check your code for spelling mistakes.",
+      "location": {
+        "end": {
+          "column": 4,
+          "index": 32,
+          "line": 3
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 28,
+          "line": 3
+        }
+      },
+      "message": "Couldn't find \`Show\`",
+      "severity": "error"
+    },
+    {
+      "description": "Adding these two items together isn't supported.",
+      "location": {
+        "end": {
+          "column": 8,
+          "index": 27,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 19,
+          "line": 2
+        }
+      },
+      "message": "Can't add a function and a number",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`type-states.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided an idle drone, but you need to put a hovering drone here instead.",
+      "location": {
+        "end": {
+          "column": 12,
+          "index": 440,
+          "line": 23
+        },
+        "path": "input",
+        "start": {
+          "column": 4,
+          "index": 432,
+          "line": 23
+        }
+      },
+      "message": "This code is supposed to be an idle drone, but it's actually a hovering drone",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`undefined-name.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Double-check your code for spelling mistakes.",
+      "location": {
+        "end": {
+          "column": 3,
+          "index": 22,
+          "line": 2
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 19,
+          "line": 2
+        }
+      },
+      "message": "Couldn't find \`foo\`",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`unknown-type-with-bounds.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Wipple needs more information before it can run this code. Try assigning \`x\` to a variable using \`:\`, and then use it somewhere else in the program, to help Wipple determine its meaning.",
+      "location": {
+        "end": {
+          "column": 1,
+          "index": 89,
+          "line": 7
+        },
+        "path": "input",
+        "start": {
+          "column": 0,
+          "index": 88,
+          "line": 7
+        }
+      },
+      "message": "Could not determine the meaning of this code",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`unresolved-type-multiple-parameters.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "Wipple needs more information before it can run this code. Try assigning \`T\` to a variable using \`:\`, and then use it somewhere else in the program, to help Wipple determine its meaning.",
+      "location": {
+        "end": {
+          "column": 7,
+          "index": 96,
+          "line": 8
+        },
+        "path": "input",
+        "start": {
+          "column": 6,
+          "index": 95,
+          "line": 8
+        }
+      },
+      "message": "Could not determine the meaning of this code",
+      "severity": "error"
+    },
+    {
+      "description": "Wipple needs more information before it can run this code. Try assigning \`U\` to a variable using \`:\`, and then use it somewhere else in the program, to help Wipple determine its meaning.",
+      "location": {
+        "end": {
+          "column": 16,
+          "index": 244,
+          "line": 16
+        },
+        "path": "input",
+        "start": {
+          "column": 15,
+          "index": 243,
+          "line": 16
+        }
+      },
+      "message": "Could not determine the meaning of this code",
+      "severity": "error"
+    },
+    {
+      "description": "Wipple needs more information before it can run this code. Try assigning \`U\` to a variable using \`:\`, and then use it somewhere else in the program, to help Wipple determine its meaning.",
+      "location": {
+        "end": {
+          "column": 21,
+          "index": 266,
+          "line": 17
+        },
+        "path": "input",
+        "start": {
+          "column": 20,
+          "index": 265,
+          "line": 17
+        }
+      },
+      "message": "Could not determine the meaning of this code",
+      "severity": "error"
+    },
+    {
+      "description": "Wipple needs more information before it can run this code. Try assigning \`U\` to a variable using \`:\`, and then use it somewhere else in the program, to help Wipple determine its meaning.",
+      "location": {
+        "end": {
+          "column": 21,
+          "index": 266,
+          "line": 17
+        },
+        "path": "input",
+        "start": {
+          "column": 20,
+          "index": 265,
+          "line": 17
+        }
+      },
+      "message": "Could not determine the meaning of this code",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`unzip.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Left:\\n1\\n2\\n3\\nRight:\\na\\nb\\nc\\n"
+}
+`;
+
+exports[`when-mismatched-types.test.wipple 1`] = `
+{
+  "success": false,
+  "diagnostics": [
+    {
+      "description": "You provided text, but you need to put a number here instead.",
+      "location": {
+        "end": {
+          "column": 15,
+          "index": 65,
+          "line": 4
+        },
+        "path": "input",
+        "start": {
+          "column": 11,
+          "index": 61,
+          "line": 4
+        }
+      },
+      "message": "This code is supposed to be text, but it's actually a number",
+      "severity": "error"
+    }
+  ]
+}
+`;
+
+exports[`when.test.wipple 1`] = `
+{
+  "success": true,
+  "output": "Yay!\\n"
+}
+`;

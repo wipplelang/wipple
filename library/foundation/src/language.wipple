@@ -123,8 +123,8 @@ intrinsic "::"
 -- ```
 intrinsic "=>"
 
-@(language : "none")
-None : type
+@(language : "unit")
+Unit : type
 
 @(language : "number")
 Number : type intrinsic
@@ -133,8 +133,8 @@ Number : type intrinsic
 Text : type intrinsic
 
 Maybe : Value => type {
-  Empty
-  Has Value
+  None
+  Some Value
 }
 
 @(language : "as")
@@ -145,14 +145,14 @@ Input Output where (Error ("Can't convert _ to _" Input Output ; Error-Descripti
 
 Value => instance (As Value Value) : value -> value
 
-error :: (Value : None) => Text -> Value
+error :: (Value : Unit) => Text -> Value
 error : message -> intrinsic "crash" message
 
 ... :: Value => Value
 ... : error "not implemented"
 
-assert :: Text -> Boolean -> None
-assert : message -> condition -> if condition {None} {error message}
+assert :: Text -> Boolean -> Unit
+assert : message -> condition -> if condition {Unit} {error message}
 
 unreachable :: Value => Value
 unreachable : error "unreachable"
@@ -166,16 +166,16 @@ Value where (Error ("Can't create an initial _ value" Value ; Error-Description 
 instance (Initial Number) : 0
 instance (Initial Text) : ""
 instance (Initial Boolean) : False
-Value => instance (Initial (Maybe Value)) : Empty
+Value => instance (Initial (Maybe Value)) : None
 
 -- Send a message to the runtime.
-runtime-message :: Input (Output : None) => Text Input -> Output
-runtime-message : message data -> intrinsic "runtime-message" message data
+external :: Input (Output : Unit) => Text Input -> Output
+external : message data -> intrinsic "external" message data
 
 -- Generate a compile-time error with the provided information. You may provide
 -- a single message, or a tuple with multiple pieces of information. Valid types
 -- for this tuple include text (representing the identifier of the error message
--- template), `Error-Data`, and `Error-Location`.
+-- template), `Error-Description`, and `Error-Location`.
 --
 -- ## Example
 --
@@ -239,7 +239,7 @@ Describe-Type : Type (infer Description) => trait
 @(language : "no-grammar")
 No-Grammar : Message => type
 
-instance (Describe-Type None (No-Grammar "no value"))
+instance (Describe-Type Unit (No-Grammar "no value"))
 instance (Describe-Type Number "number")
 instance (Describe-Type Text (No-Grammar "text"))
 Input Output => default instance (Describe-Type (Input -> Output) "function")
