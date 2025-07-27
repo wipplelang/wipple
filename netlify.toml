@@ -1,5 +1,5 @@
 [build]
-command = "rustup default stable && brew install go-task/tap/go-task cargo-binstall && task install && task build:web"
+command = "rustup default stable && brew install go-task/tap/go-task cargo-binstall && task install && task build:site"
 publish = "site/dist"
 functions = "functions"
 
