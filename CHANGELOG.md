@@ -3,6 +3,7 @@
 ## Unreleased
 
 -   Wipple now compiles to JavaScript instead of an interpreted IR.
+-   Added back the `wipple` CLI, using `node` as the default runtime.
 
 ## Wipple 2025.1 (2025-07-24)
 

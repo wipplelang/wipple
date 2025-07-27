@@ -60,7 +60,7 @@
 
         abortController = new AbortController();
 
-        let response: Awaited<ReturnType<typeof api.compile>>;
+        let response: api.CompileResponse;
         try {
             response = await api.compile(
                 {
@@ -79,11 +79,13 @@
             await throttle();
         }
 
-        if (!response.success) {
+        if ("diagnostics" in response) {
             runState = "error";
             ondiagnostics(response.diagnostics);
             return;
         }
+
+        response satisfies api.CompileResponseSuccess;
 
         runState = "running";
         ondiagnostics([]);

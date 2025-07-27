@@ -1,5 +1,5 @@
 import * as Comlink from "comlink";
-import runtime from "wipple-runtime";
+import buildRuntime from "wipple-runtime";
 
 export type RunnerEnv = Record<string, (...args: any[]) => Promise<any>>;
 
@@ -9,7 +9,7 @@ const worker = {
             /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(executable)}`
         );
 
-        await entrypoint(runtime(env, Comlink.proxy));
+        await entrypoint(buildRuntime(env, Comlink.proxy));
     },
 };
 

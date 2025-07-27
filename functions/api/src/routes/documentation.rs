@@ -1,28 +1,35 @@
 use crate::{context::Context, routes::InputMetadata};
-use lambda_runtime::Error;
-use serde::Deserialize;
-use serde_json::{Value, json};
+use anyhow::Error;
+use serde::{Deserialize, Serialize};
+use wipple_compiler::render::RenderedDocumentation;
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct DocumentationRequest {
     #[serde(flatten)]
-    metadata: InputMetadata,
-    name: String,
+    pub metadata: InputMetadata,
+    pub name: String,
 }
 
-pub async fn handle(req: DocumentationRequest) -> Result<Value, Error> {
-    let Some(library_name) = req.metadata.library.as_deref() else {
-        return Err(anyhow::format_err!("missing library").into());
-    };
+#[derive(Debug, Clone, Serialize)]
+pub struct DocumentationResponse {
+    pub documentation: Option<RenderedDocumentation>,
+}
 
-    let documentation = Context::shared()
-        .compile_library(library_name)
-        .await
-        .ok()
-        .and_then(|compiler| compiler.documentation(&req.name));
+impl super::Handle for DocumentationRequest {
+    type Response = DocumentationResponse;
 
-    Ok(json!({
-        "documentation": documentation,
-    }))
+    async fn response(self) -> Result<Self::Response, Error> {
+        let Some(library_name) = self.metadata.library.as_deref() else {
+            return Err(anyhow::format_err!("missing library"));
+        };
+
+        let documentation = Context::shared()
+            .compile_library(library_name)
+            .await
+            .ok()
+            .and_then(|compiler| compiler.documentation(&self.name));
+
+        Ok(DocumentationResponse { documentation })
+    }
 }

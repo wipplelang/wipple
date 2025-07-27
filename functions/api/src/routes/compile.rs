@@ -2,49 +2,61 @@ use crate::{
     context::{CompileError, Context},
     routes::InputMetadata,
 };
-use lambda_runtime::Error;
-use serde::Deserialize;
-use serde_json::{Value, json};
-use wipple_compiler::File;
+use anyhow::Error;
+use serde::{Deserialize, Serialize};
+use wipple_compiler::{File, codegen, render::RenderedDiagnostic};
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct CompileRequest {
     #[serde(flatten)]
-    metadata: InputMetadata,
-    code: String,
+    pub metadata: InputMetadata,
+    pub code: String,
+    #[serde(default)]
+    pub js_options: codegen::js::Options,
 }
 
-pub async fn handle(req: CompileRequest) -> Result<Value, Error> {
-    let file = File {
-        path: String::from("input"),
-        code: req.code.clone(),
-    };
+#[derive(Debug, Clone, Serialize)]
+#[serde(untagged)]
+pub enum CompileResponse {
+    Success {
+        executable: String,
+    },
+    Failure {
+        diagnostics: Vec<RenderedDiagnostic>,
+    },
+}
 
-    let library_name = req.metadata.library.as_deref();
+impl super::Handle for CompileRequest {
+    type Response = CompileResponse;
 
-    let result = Context::shared()
-        .compile(vec![file], library_name)
-        .await
-        .map_err(|error| match error {
-            CompileError::UnsupportedLibrary(library) => {
-                anyhow::format_err!("unsupported library: '{library}'")
-            }
-            CompileError::LibraryNotCompiled(library) => {
-                anyhow::format_err!("library not compiled: '{library}'")
-            }
-        })?;
+    async fn response(self) -> Result<Self::Response, Error> {
+        let file = File {
+            path: String::from("input"),
+            code: self.code.clone(),
+        };
 
-    Ok(match result {
-        Ok(compiler) => json!({
-            "success": true,
-            "executable": compiler
-                .js_executable()
-                .ok_or_else(|| anyhow::format_err!("could not create executable"))?,
-        }),
-        Err(diagnostics) => json!({
-            "success": false,
-            "diagnostics": diagnostics
-        }),
-    })
+        let library_name = self.metadata.library.as_deref();
+
+        let result = Context::shared()
+            .compile(vec![file], library_name)
+            .await
+            .map_err(|error| match error {
+                CompileError::UnsupportedLibrary(library) => {
+                    anyhow::format_err!("unsupported library: '{library}'")
+                }
+                CompileError::LibraryNotCompiled(library) => {
+                    anyhow::format_err!("library not compiled: '{library}'")
+                }
+            })?;
+
+        Ok(match result {
+            Ok(compiler) => CompileResponse::Success {
+                executable: compiler
+                    .js_executable(self.js_options)
+                    .ok_or_else(|| anyhow::format_err!("could not create executable"))?,
+            },
+            Err(diagnostics) => CompileResponse::Failure { diagnostics },
+        })
+    }
 }

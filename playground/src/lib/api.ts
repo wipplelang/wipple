@@ -9,47 +9,45 @@ const request =
             .post(PUBLIC_SERVER_URL, { [type]: request }, config)
             .then((response) => response.data as Response);
 
-type IdeInfoRequest = PlaygroundMetadata;
+export type IdeInfoRequest = PlaygroundMetadata;
 
-interface IdeInfoResponse {
+export interface IdeInfoResponse {
     info: Record<string, any>[];
 }
 
 export const ideInfo = request<IdeInfoRequest, IdeInfoResponse>("ideInfo");
 
-interface CompileRequest extends PlaygroundMetadata {
+export interface CompileRequest extends PlaygroundMetadata {
     code: string;
 }
 
-type CompileResponse = CompileResponseSuccess | CompileResponseError;
+export type CompileResponse = CompileResponseSuccess | CompileResponseError;
 
-interface CompileResponseSuccess {
-    success: true;
+export interface CompileResponseSuccess {
     executable: string;
 }
 
-interface CompileResponseError {
-    success: false;
+export interface CompileResponseError {
     diagnostics: any[];
 }
 
 export const compile = request<CompileRequest, CompileResponse>("compile");
 
-interface FormatRequest {
+export interface FormatRequest {
     code: string;
 }
 
-interface FormatResponse {
+export interface FormatResponse {
     code: string;
 }
 
 export const format = request<FormatRequest, FormatResponse>("format");
 
-interface DocumentationRequest extends PlaygroundMetadata {
+export interface DocumentationRequest extends PlaygroundMetadata {
     name: string;
 }
 
-interface DocumentationResponse {
+export interface DocumentationResponse {
     documentation: Record<string, any> | null;
 }
 

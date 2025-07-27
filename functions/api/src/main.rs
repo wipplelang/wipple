@@ -1,7 +1,3 @@
-mod context;
-mod libraries;
-mod routes;
-
 use aws_lambda_events::lambda_function_urls::LambdaFunctionUrlResponse;
 use axum::{Json, Router, http, routing::post};
 use lambda_runtime::{Error, LambdaEvent};
@@ -10,6 +6,7 @@ use tower::service_fn;
 use tower_http::trace::TraceLayer;
 use tower_http::{compression::CompressionLayer, cors::CorsLayer};
 use tracing_subscriber::EnvFilter;
+use wipple_api::routes;
 
 #[tokio::main]
 async fn main() {
@@ -28,8 +25,8 @@ async fn main() {
         lambda_runtime::run(service_fn(
             async |event: LambdaEvent<LambdaRequest>| -> Result<LambdaFunctionUrlResponse, Error> {
                 let (req, _context) = event.into_parts();
-                let req = serde_json::from_str(&req.body)?;
-                let response = routes::handle(req).await?;
+                let req: routes::Request = serde_json::from_str(&req.body)?;
+                let response = req.response().await?;
 
                 Ok(LambdaFunctionUrlResponse {
                     status_code: 200,
@@ -51,8 +48,8 @@ async fn main() {
         let router = Router::new()
             .route(
                 "/",
-                post(async |Json(req)| {
-                    routes::handle(req)
+                post(async |Json(req): Json<routes::Request>| {
+                    req.response()
                         .await
                         .map(Json)
                         .map_err(|e| (http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))

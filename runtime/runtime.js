@@ -1,45 +1,192 @@
 // @ts-nocheck
 
-export function variant(index, values) {
-    values[variant] = index;
-    return values;
-}
-
-variant.toString = () => "<variant>";
-
-export const constant = async (func, types, substitutions) =>
-    await func(substitute(types, substitutions));
-
-export const trait = async (instances, types, substitutions) => {
-    types = substitute(types, substitutions);
-
-    for (const [func, instanceSubstitutions] of instances) {
-        const copy = {};
-
-        let unified = true;
-        for (const parameter of Object.keys(instanceSubstitutions)) {
-            if (!unify(types[parameter], instanceSubstitutions[parameter], copy)) {
-                unified = false;
-                break;
-            }
-        }
-
-        if (unified) {
-            for (const [parameter, ty] of Object.entries(instanceSubstitutions)) {
-                // Important: don't override existing parameters -- that would
-                // prevent recursive instances from being resolved properly
-                copy[parameter] ??= ty;
-            }
-
-            return await func(copy);
-        }
+const buildRuntime = (env, proxy = (f) => f) => {
+    function variant(index, values) {
+        values[variant] = index;
+        return values;
     }
 
-    throw new Error("no instance found");
-};
+    variant.toString = () => "<variant>";
 
-export default (env, proxy = (f) => f) => {
-    const runtime = {
+    const constant = async (func, types, substitutions) =>
+        await func(substitute(types, substitutions));
+
+    const trait = async (instances, types, substitutions) => {
+        types = substitute(types, substitutions);
+
+        for (const [func, instanceSubstitutions] of instances) {
+            const copy = {};
+
+            let unified = true;
+            for (const parameter of Object.keys(instanceSubstitutions)) {
+                if (!unify(types[parameter], instanceSubstitutions[parameter], copy)) {
+                    unified = false;
+                    break;
+                }
+            }
+
+            if (unified) {
+                for (const [parameter, ty] of Object.entries(instanceSubstitutions)) {
+                    // Important: don't override existing parameters -- that would
+                    // prevent recursive instances from being resolved properly
+                    copy[parameter] ??= ty;
+                }
+
+                return await func(copy);
+            }
+        }
+
+        throw new Error("no instance found");
+    };
+
+    const fromBoolean = (value) => (value ? variant(1, []) : variant(0, []));
+
+    const fromMaybe = (value) => (value !== undefined ? variant(1, [value]) : variant(0, []));
+
+    const toMaybe = (value) => {
+        switch (value[variant]) {
+            case 0: {
+                return undefined;
+            }
+            case 1: {
+                return value[0];
+            }
+            default: {
+                throw new Error("expected maybe");
+            }
+        }
+    };
+
+    const fromOrdering = (ordering) => variant(ordering + 1, []);
+
+    const isValidListIndex = (index, list, includeEnd = false) =>
+        index === Math.floor(index) &&
+        index >= 0 &&
+        (includeEnd ? index <= list.length : index < list.length);
+
+    const substitute = (types, substitutions) => {
+        const copy = structuredClone(substitutions);
+        for (const [parameter, ty] of Object.entries(copy)) {
+            copy[parameter] = substituteType(ty, types);
+        }
+        return copy;
+    };
+
+    const substituteType = (ty, substitutions) => {
+        if ("parameter" in ty) {
+            return substitutions[ty.parameter] ?? ty;
+        }
+
+        if ("named" in ty) {
+            return {
+                named: [ty.named[0], ty.named[1].map((ty) => substituteType(ty, substitutions))],
+            };
+        }
+
+        if ("function" in ty) {
+            return {
+                function: [
+                    ty.function[0].map((ty) => substituteType(ty, substitutions)),
+                    substituteType(ty.function[1], substitutions),
+                ],
+            };
+        }
+
+        if ("tuple" in ty) {
+            return {
+                tuple: ty.tuple.map((ty) => substituteType(ty, substitutions)),
+            };
+        }
+
+        if ("block" in ty) {
+            return {
+                block: substituteType(ty.block, substitutions),
+            };
+        }
+
+        if ("equal" in ty) {
+            return {
+                equal: [
+                    substituteType(ty.equal[0], substitutions),
+                    substituteType(ty.equal[1], substitutions),
+                ],
+            };
+        }
+
+        return ty;
+    };
+
+    const unify = (left, right, substitutions) => {
+        if ("equal" in left) {
+            return (
+                unify(left.equal[0], right, substitutions) &&
+                unify(left.equal[1], left.equal[0], substitutions)
+            );
+        }
+
+        if ("equal" in right) {
+            return (
+                unify(left, right.equal[0], substitutions) &&
+                unify(right.equal[1], right.equal[0], substitutions)
+            );
+        }
+
+        if ("parameter" in left) {
+            // This occurs when bounds are being resolved that involve type
+            // parameters not mentioned in the item's type descriptor; no value's
+            // type will ever contain a `parameter`
+            return true;
+        }
+
+        if ("parameter" in right) {
+            if (right.parameter in substitutions) {
+                return unify(left, substitutions[right.parameter], substitutions);
+            }
+
+            substitutions[right.parameter] = left;
+            return true;
+        }
+
+        if ("function" in left) {
+            return (
+                "function" in right &&
+                left.function[0].length === right.function[0].length &&
+                left.function[0].every((leftInput, index) =>
+                    unify(leftInput, right.function[0][index], substitutions)
+                ) &&
+                unify(left.function[1], right.function[1], substitutions)
+            );
+        }
+
+        if ("named" in left) {
+            return (
+                "named" in right &&
+                left.named[0] === right.named[0] &&
+                left.named[1].length === right.named[1].length &&
+                left.named[1].every((leftParameter, index) =>
+                    unify(leftParameter, right.named[1][index], substitutions)
+                )
+            );
+        }
+
+        if ("tuple" in left) {
+            return (
+                "tuple" in right &&
+                left.tuple.length === right.tuple.length &&
+                left.tuple.every((leftElement, index) =>
+                    unify(leftElement, right.tuple[index], substitutions)
+                )
+            );
+        }
+
+        if ("block" in left) {
+            return "block" in right && unify(left.block, right.block, substitutions);
+        }
+
+        return false;
+    };
+
+    return {
         variant,
         constant,
         trait,
@@ -254,153 +401,6 @@ export default (env, proxy = (f) => f) => {
             return hash >>> 0;
         },
     };
-
-    return runtime;
 };
 
-const fromBoolean = (value) => (value ? variant(1, []) : variant(0, []));
-
-const fromMaybe = (value) => (value !== undefined ? variant(1, [value]) : variant(0, []));
-
-const toMaybe = (value) => {
-    switch (value[variant]) {
-        case 0: {
-            return undefined;
-        }
-        case 1: {
-            return value[0];
-        }
-        default: {
-            throw new Error("expected maybe");
-        }
-    }
-};
-
-const fromOrdering = (ordering) => variant(ordering + 1, []);
-
-const isValidListIndex = (index, list, includeEnd = false) =>
-    index === Math.floor(index) &&
-    index >= 0 &&
-    (includeEnd ? index <= list.length : index < list.length);
-
-const substitute = (types, substitutions) => {
-    const copy = structuredClone(substitutions);
-    for (const [parameter, ty] of Object.entries(copy)) {
-        copy[parameter] = substituteType(ty, types);
-    }
-    return copy;
-};
-
-const substituteType = (ty, substitutions) => {
-    if ("parameter" in ty) {
-        return substitutions[ty.parameter] ?? ty;
-    }
-
-    if ("named" in ty) {
-        return {
-            named: [ty.named[0], ty.named[1].map((ty) => substituteType(ty, substitutions))],
-        };
-    }
-
-    if ("function" in ty) {
-        return {
-            function: [
-                ty.function[0].map((ty) => substituteType(ty, substitutions)),
-                substituteType(ty.function[1], substitutions),
-            ],
-        };
-    }
-
-    if ("tuple" in ty) {
-        return {
-            tuple: ty.tuple.map((ty) => substituteType(ty, substitutions)),
-        };
-    }
-
-    if ("block" in ty) {
-        return {
-            block: substituteType(ty.block, substitutions),
-        };
-    }
-
-    if ("equal" in ty) {
-        return {
-            equal: [
-                substituteType(ty.equal[0], substitutions),
-                substituteType(ty.equal[1], substitutions),
-            ],
-        };
-    }
-
-    return ty;
-};
-
-const unify = (left, right, substitutions) => {
-    if ("equal" in left) {
-        return (
-            unify(left.equal[0], right, substitutions) &&
-            unify(left.equal[1], left.equal[0], substitutions)
-        );
-    }
-
-    if ("equal" in right) {
-        return (
-            unify(left, right.equal[0], substitutions) &&
-            unify(right.equal[1], right.equal[0], substitutions)
-        );
-    }
-
-    if ("parameter" in left) {
-        // This occurs when bounds are being resolved that involve type
-        // parameters not mentioned in the item's type descriptor; no value's
-        // type will ever contain a `parameter`
-        return true;
-    }
-
-    if ("parameter" in right) {
-        if (right.parameter in substitutions) {
-            return unify(left, substitutions[right.parameter], substitutions);
-        }
-
-        substitutions[right.parameter] = left;
-        return true;
-    }
-
-    if ("function" in left) {
-        return (
-            "function" in right &&
-            left.function[0].length === right.function[0].length &&
-            left.function[0].every((leftInput, index) =>
-                unify(leftInput, right.function[0][index], substitutions)
-            ) &&
-            unify(left.function[1], right.function[1], substitutions)
-        );
-    }
-
-    if ("named" in left) {
-        return (
-            "named" in right &&
-            left.named[0] === right.named[0] &&
-            left.named[1].length === right.named[1].length &&
-            left.named[1].every((leftParameter, index) =>
-                unify(leftParameter, right.named[1][index], substitutions)
-            )
-        );
-    }
-
-    if ("tuple" in left) {
-        return (
-            "tuple" in right &&
-            left.tuple.length === right.tuple.length &&
-            left.tuple.every((leftElement, index) =>
-                unify(leftElement, right.tuple[index], substitutions)
-            )
-        );
-    }
-
-    if ("block" in left) {
-        return "block" in right && unify(left.block, right.block, substitutions);
-    }
-
-    return false;
-};
+export default buildRuntime;

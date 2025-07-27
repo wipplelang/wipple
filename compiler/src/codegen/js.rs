@@ -2,17 +2,36 @@ use crate::{
     codegen::{Condition, Executable, Expression, Statement, Type},
     util::WithInfo,
 };
+use serde::Deserialize;
 use std::fmt::{self, Write};
 
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(default)]
+pub struct Options {
+    pub mode: Mode,
+    pub debug: bool,
+}
+
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Mode {
+    #[default]
+    Module,
+    Iife(String),
+}
+
 impl Executable {
-    pub fn to_js(&self) -> String {
+    pub fn to_js(&self, options: Options) -> String {
         let mut output = String::new();
-        self.write_js(&mut output).unwrap();
+        self.write_js(&mut output, options).unwrap();
         output
     }
 
-    pub fn write_js(&self, w: &mut dyn Write) -> fmt::Result {
-        writeln!(w, "export default async function(runtime) {{")?;
+    pub fn write_js(&self, w: &mut dyn Write, options: Options) -> fmt::Result {
+        match &options.mode {
+            Mode::Module => writeln!(w, "export default async function(runtime) {{")?,
+            Mode::Iife(_) => writeln!(w, "(async (runtime) => {{")?,
+        }
 
         for (r#trait, instances) in &self.instances {
             writeln!(w, "const {trait} = [")?;
@@ -29,7 +48,7 @@ impl Executable {
         }
 
         for (id, (path, statements)) in &self.items {
-            if cfg!(debug_assertions) {
+            if options.debug {
                 write!(
                     w,
                     "/**! {} @ {:?} ({}) */ ",
@@ -39,18 +58,27 @@ impl Executable {
 
             writeln!(w, "async function {id}(types) {{")?;
             for statement in &statements.item {
-                self.write_statement(w, statement)?;
+                self.write_statement(w, statement, &options)?;
             }
             writeln!(w, "}}")?;
         }
 
-        writeln!(w, "return await (await {}({{}}))();", self.entrypoint)?;
-        writeln!(w, "}}")?;
+        writeln!(w, "return (await {}({{}}))();", self.entrypoint)?;
+
+        match options.mode {
+            Mode::Module => writeln!(w, "}};")?,
+            Mode::Iife(arg) => writeln!(w, "}})({arg});")?,
+        }
 
         Ok(())
     }
 
-    fn write_statement(&self, w: &mut dyn Write, statement: &Statement) -> fmt::Result {
+    fn write_statement(
+        &self,
+        w: &mut dyn Write,
+        statement: &Statement,
+        options: &Options,
+    ) -> fmt::Result {
         match statement {
             Statement::If {
                 conditions,
@@ -69,14 +97,14 @@ impl Executable {
                             write!(w, " && ")?;
                         }
 
-                        self.write_condition(w, condition)?;
+                        self.write_condition(w, condition, options)?;
                     }
 
                     writeln!(w, ") {{")?;
                 }
 
                 for statement in statements {
-                    self.write_statement(w, statement)?;
+                    self.write_statement(w, statement, options)?;
                 }
 
                 if !conditions.is_empty() {
@@ -84,12 +112,12 @@ impl Executable {
                 }
             }
             Statement::Expression(expression) => {
-                self.write_expression(w, expression.as_ref())?;
+                self.write_expression(w, expression.as_ref(), options)?;
                 writeln!(w, ";")?;
             }
             Statement::Return(expression) => {
                 write!(w, "return ")?;
-                self.write_expression(w, expression.as_ref())?;
+                self.write_expression(w, expression.as_ref(), options)?;
                 writeln!(w, ";")?;
             }
         }
@@ -101,8 +129,9 @@ impl Executable {
         &self,
         w: &mut dyn Write,
         expression: WithInfo<&Expression>,
+        options: &Options,
     ) -> fmt::Result {
-        if cfg!(debug_assertions) {
+        if options.debug {
             write!(
                 w,
                 "/*! {} @ {:?} */ ",
@@ -115,29 +144,29 @@ impl Executable {
                 write!(w, "{id}")?;
             }
             Expression::Constant(id, substitutions) => {
-                write!(w, "(await runtime.constant({id}, types, {{")?;
+                write!(w, "await runtime.constant({id}, types, {{")?;
                 for (parameter, ty) in substitutions {
                     write!(w, "{parameter}: ")?;
                     self.write_type(w, ty)?;
                     write!(w, ", ")?;
                 }
-                write!(w, "}}))")?;
+                write!(w, "}})")?;
             }
             Expression::Trait(id, substitutions) => {
-                write!(w, "(await runtime.trait({id}, types, {{")?;
+                write!(w, "await runtime.trait({id}, types, {{")?;
                 for (parameter, ty) in substitutions {
                     write!(w, "{parameter}: ")?;
                     self.write_type(w, ty)?;
                     write!(w, ", ")?;
                 }
-                write!(w, "}}))")?;
+                write!(w, "}})")?;
             }
             Expression::Call(function, inputs) => {
                 write!(w, "await (")?;
-                self.write_expression(w, function.as_ref().as_ref())?;
+                self.write_expression(w, function.as_ref().as_ref(), options)?;
                 write!(w, ")(")?;
                 for input in inputs {
-                    self.write_expression(w, input.as_ref())?;
+                    self.write_expression(w, input.as_ref(), options)?;
                     write!(w, ", ")?;
                 }
                 write!(w, ")")?;
@@ -148,7 +177,7 @@ impl Executable {
             Expression::List(items) => {
                 write!(w, "[")?;
                 for item in items {
-                    self.write_expression(w, item.as_ref())?;
+                    self.write_expression(w, item.as_ref(), options)?;
                     write!(w, ", ")?;
                 }
                 write!(w, "]")?;
@@ -156,18 +185,18 @@ impl Executable {
             Expression::Variant(index, items) => {
                 write!(w, "runtime.variant({index}, [")?;
                 for item in items {
-                    self.write_expression(w, item.as_ref())?;
+                    self.write_expression(w, item.as_ref(), options)?;
                     write!(w, ", ")?;
                 }
                 write!(w, "])")?;
             }
             Expression::Intrinsic(name, inputs) => {
-                write!(w, "(await runtime[{name:?}](")?;
+                write!(w, "await runtime[{name:?}](")?;
                 for input in inputs {
-                    self.write_expression(w, input.as_ref())?;
+                    self.write_expression(w, input.as_ref(), options)?;
                     write!(w, ", ")?;
                 }
-                write!(w, "))")?;
+                write!(w, ")")?;
             }
             Expression::Text(value) => {
                 write!(w, "{value:?}")?;
@@ -183,7 +212,7 @@ impl Executable {
                     }
 
                     write!(w, "{text:?} + ")?;
-                    self.write_expression(w, input.as_ref())?;
+                    self.write_expression(w, input.as_ref(), options)?;
                 }
                 write!(w, " + {trailing:?})")?;
             }
@@ -197,7 +226,7 @@ impl Executable {
                     writeln!(w, "let {var};")?;
                 }
                 for statement in statements {
-                    self.write_statement(w, statement)?;
+                    self.write_statement(w, statement, options)?;
                 }
                 write!(w, "}})")?;
             }
@@ -206,11 +235,16 @@ impl Executable {
         Ok(())
     }
 
-    fn write_condition(&self, w: &mut dyn Write, condition: &Condition) -> fmt::Result {
+    fn write_condition(
+        &self,
+        w: &mut dyn Write,
+        condition: &Condition,
+        options: &Options,
+    ) -> fmt::Result {
         match condition {
             Condition::Assign(id, value) => {
                 write!(w, "(({id} = ")?;
-                self.write_expression(w, value.as_ref())?;
+                self.write_expression(w, value.as_ref(), options)?;
                 write!(w, ") || true)")?; // ensure assignments never fail
             }
             Condition::Element(id, parent, index) => {
@@ -232,14 +266,14 @@ impl Executable {
                         write!(w, " && ")?;
                     }
 
-                    self.write_condition(w, condition)?;
+                    self.write_condition(w, condition, options)?;
                 }
                 write!(w, ") || (")?;
                 for (index, condition) in right.iter().enumerate() {
                     if index > 0 {
                         write!(w, " && ")?;
                     }
-                    self.write_condition(w, condition)?;
+                    self.write_condition(w, condition, options)?;
                 }
                 write!(w, ")")?;
             }

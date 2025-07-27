@@ -1,16 +1,24 @@
-use lambda_runtime::Error;
-use serde::Deserialize;
-use serde_json::{Value, json};
+use anyhow::Error;
+use serde::{Deserialize, Serialize};
 use wipple_compiler::Compiler;
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
 pub struct FormatRequest {
     code: String,
 }
 
-pub async fn handle(req: FormatRequest) -> Result<Value, Error> {
-    Ok(json!({
-        "code": Compiler::format(&req.code),
-    }))
+#[derive(Debug, Clone, Serialize)]
+pub struct FormatResponse {
+    code: String,
+}
+
+impl super::Handle for FormatRequest {
+    type Response = FormatResponse;
+
+    async fn response(self) -> Result<Self::Response, Error> {
+        Ok(FormatResponse {
+            code: Compiler::format(&self.code),
+        })
+    }
 }

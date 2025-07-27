@@ -4,7 +4,7 @@ use std::{
     collections::HashMap,
     sync::{Arc, LazyLock},
 };
-use wipple_compiler::{Compiler, File};
+use wipple_compiler::{Compiler, File, render::RenderedDiagnostic};
 
 pub enum CompileError {
     UnsupportedLibrary(String),
@@ -35,7 +35,7 @@ impl Context {
         &self,
         files: Vec<File>,
         library_name: Option<&str>,
-    ) -> Result<Result<Compiler, Vec<serde_json::Value>>, CompileError> {
+    ) -> Result<Result<Compiler, Vec<RenderedDiagnostic>>, CompileError> {
         let mut compiler = match library_name {
             Some(library_name) => Box::pin(self.compile_library(library_name)).await?,
             None => Compiler::new(),

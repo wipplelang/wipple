@@ -1,3 +1,5 @@
+use crate::render::{RenderedDiagnostic, RenderedDocumentation};
+
 pub mod codegen;
 pub mod driver;
 pub mod lower;
@@ -24,30 +26,27 @@ impl Compiler {
         crate::driver::Driver::format(code)
     }
 
-    pub fn compile(&mut self, files: Vec<File>) -> Vec<serde_json::Value> {
+    pub fn compile(&mut self, files: Vec<File>) -> Vec<RenderedDiagnostic> {
         let diagnostics = self.driver.compile(files);
 
         let render = self.driver.render();
 
         diagnostics
             .into_iter()
-            .filter_map(|diagnostic| {
-                Some(serde_json::to_value(&render.render_diagnostic(&diagnostic)?).unwrap())
-            })
+            .filter_map(|diagnostic| render.render_diagnostic(&diagnostic))
             .collect()
     }
 
-    pub fn documentation(&self, name: &str) -> Option<serde_json::Value> {
+    pub fn documentation(&self, name: &str) -> Option<RenderedDocumentation> {
         let render = self.driver.render();
         let declaration = render.get_declaration_from_name(name)?;
-        let documentation = render.render_documentation(&declaration, false)?;
-        serde_json::to_value(documentation).ok()
+        render.render_documentation(&declaration, false)
     }
 
-    pub fn js_executable(&self) -> Option<String> {
+    pub fn js_executable(&self, options: codegen::js::Options) -> Option<String> {
         self.driver
             .executable()
             .ok()
-            .map(|executable| executable.to_js())
+            .map(|executable| executable.to_js(options))
     }
 }

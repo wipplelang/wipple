@@ -2,7 +2,7 @@ import test from "node:test";
 import fs from "node:fs";
 import path from "node:path";
 import vm from "node:vm";
-import runtime from "../runtime/runtime.js";
+import buildRuntime from "../runtime/runtime.js";
 
 const testsPath = path.join(import.meta.dirname, "tests");
 
@@ -28,7 +28,8 @@ for (const testFile of fs.readdirSync(testsPath)) {
             body: JSON.stringify({ compile: { library: "foundation", code } }),
         }).then((response) => response.json());
 
-        if (response.success) {
+        const success = "executable" in response;
+        if (success) {
             const module = new vm.SourceTextModule(response.executable, {
                 identifier: `compiled ${testFile}`,
             });
@@ -46,13 +47,13 @@ for (const testFile of fs.readdirSync(testsPath)) {
                 debug: (value) => console.error("--- debug:", value),
             };
 
-            await entrypoint(runtime(env));
+            await entrypoint(buildRuntime(env));
 
             t.assert.snapshot({ success: true, output });
         } else {
             t.assert.snapshot({ success: false, diagnostics: response.diagnostics });
         }
 
-        t.assert.equal(response.success, shouldCompile);
+        t.assert.equal(success, shouldCompile);
     });
 }

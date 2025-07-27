@@ -1,16 +1,31 @@
-mod compile;
-mod documentation;
-mod format;
-mod ide_info;
+pub mod compile;
+pub mod documentation;
+pub mod format;
+pub mod ide_info;
 
-use lambda_runtime::Error;
+use anyhow::Error;
 use serde::Deserialize;
 use serde_json::Value;
 
-#[derive(Default, Hash, Deserialize)]
+#[allow(async_fn_in_trait)]
+pub trait Handle: Sized {
+    type Response;
+
+    async fn response(self) -> Result<Self::Response, Error>;
+
+    async fn json_response(self) -> Result<Value, Error>
+    where
+        Self::Response: serde::Serialize,
+    {
+        let response = self.response().await?;
+        Ok(serde_json::to_value(response)?)
+    }
+}
+
+#[derive(Debug, Clone, Default, Hash, Deserialize)]
 #[serde(deny_unknown_fields, rename_all = "camelCase")]
-struct InputMetadata {
-    library: Option<String>,
+pub struct InputMetadata {
+    pub library: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -22,11 +37,13 @@ pub enum Request {
     IdeInfo(ide_info::IdeInfoRequest),
 }
 
-pub async fn handle(req: Request) -> Result<Value, Error> {
-    match req {
-        Request::Compile(req) => compile::handle(req).await,
-        Request::Documentation(req) => documentation::handle(req).await,
-        Request::Format(req) => format::handle(req).await,
-        Request::IdeInfo(req) => ide_info::handle(req).await,
+impl Request {
+    pub async fn response(self) -> Result<Value, Error> {
+        match self {
+            Request::Compile(req) => req.json_response().await,
+            Request::Documentation(req) => req.json_response().await,
+            Request::Format(req) => req.json_response().await,
+            Request::IdeInfo(req) => req.json_response().await,
+        }
     }
 }

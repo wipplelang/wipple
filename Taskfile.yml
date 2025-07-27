@@ -25,7 +25,7 @@ tasks:
   dev:server:
     dir: .
     cmds:
-      - RUST_LOG=debug PORT=3000 cargo run --package=wipple-api {{.CLI_ARGS}}
+      - RUST_LOG=debug PORT=3000 cargo run --bin=wipple-api {{.CLI_ARGS}}
 
   test:
     dir: .
@@ -43,6 +43,11 @@ tasks:
       - task: test
         vars:
           CLI_ARGS: --test-update-snapshots
+
+  cli:
+    dir: .
+    cmds:
+      - cargo run --bin=wipple {{.CLI_ARGS}}
 
   build:site:
     deps:
