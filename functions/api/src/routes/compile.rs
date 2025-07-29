@@ -11,9 +11,17 @@ use wipple_compiler::{File, codegen, render::RenderedDiagnostic};
 pub struct CompileRequest {
     #[serde(flatten)]
     pub metadata: InputMetadata,
-    pub code: String,
+    #[serde(flatten)]
+    pub input: CompileRequestInput,
     #[serde(default)]
     pub js_options: codegen::js::Options,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum CompileRequestInput {
+    Code(String),
+    Files(Vec<File>),
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -31,15 +39,18 @@ impl super::Handle for CompileRequest {
     type Response = CompileResponse;
 
     async fn response(self) -> Result<Self::Response, Error> {
-        let file = File {
-            path: String::from("input"),
-            code: self.code.clone(),
+        let files = match self.input {
+            CompileRequestInput::Code(code) => vec![File {
+                path: String::from("input"),
+                code,
+            }],
+            CompileRequestInput::Files(files) => files,
         };
 
         let library_name = self.metadata.library.as_deref();
 
         let result = Context::shared()
-            .compile(vec![file], library_name)
+            .compile(files, library_name)
             .await
             .map_err(|error| match error {
                 CompileError::UnsupportedLibrary(library) => {

@@ -1,4 +1,4 @@
-use anyhow::Context;
+use anyhow::{Context, anyhow};
 use clap::Parser;
 use codespan_reporting::{
     diagnostic::{Diagnostic, Label, Severity},
@@ -9,18 +9,14 @@ use codespan_reporting::{
     },
 };
 use indicatif::{ProgressBar, ProgressStyle};
-use std::{
-    io::Write,
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::{collections::HashMap, io::Write, path::PathBuf, time::Duration};
 use wipple_api::{
     routes::{
         Handle, InputMetadata,
-        compile::{CompileRequest, CompileResponse},
+        compile::{CompileRequest, CompileRequestInput, CompileResponse},
     },
     wipple_compiler::{
-        codegen,
+        File, codegen,
         render::{RenderedDiagnostic, RenderedDiagnosticSeverity},
     },
 };
@@ -28,13 +24,13 @@ use wipple_api::{
 #[derive(Parser)]
 enum Args {
     Compile {
-        path: PathBuf,
+        inputs: Vec<PathBuf>,
 
         #[clap(short, long)]
-        output: PathBuf,
+        output: Option<PathBuf>,
     },
     Run {
-        path: PathBuf,
+        inputs: Vec<PathBuf>,
 
         #[clap(long, default_value = "node")]
         runtime: String,
@@ -48,48 +44,44 @@ const NODE_PRELUDE: &str = include_str!("../../runtime/node-prelude.js");
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    let args = Args::parse();
+
     let progress = ProgressBar::new_spinner();
     progress.set_style(ProgressStyle::default_spinner().tick_strings(PROGRESS_TICKS));
     progress.enable_steady_tick(Duration::from_millis(80));
 
-    let args = Args::parse();
-
     match args {
-        Args::Compile { path, output } => {
-            let code = std::fs::read_to_string(&path)
-                .with_context(|| format!("could not read {}", path.display()))?;
+        Args::Compile { inputs, output } => {
+            let files = read_inputs(&inputs)?;
 
-            progress.set_message(format!("Compiling {}", path.display()));
-
-            let response = compile(&path, &code).await?;
-
+            progress.set_message("Compiling");
+            let response = compile(files.iter().cloned()).await?;
             progress.finish_and_clear();
 
             match response {
                 CompileResponse::Success { executable } => {
-                    let mut output = std::fs::File::options()
-                        .create(true)
-                        .write(true)
-                        .truncate(true)
-                        .open(&output)
-                        .with_context(|| format!("could not open {}", output.display()))?;
+                    if let Some(output) = output {
+                        let mut output = std::fs::File::options()
+                            .create(true)
+                            .write(true)
+                            .truncate(true)
+                            .open(&output)
+                            .with_context(|| format!("could not open {}", output.display()))?;
 
-                    output.write_all(executable.as_bytes())?;
+                        output.write_all(executable.as_bytes())?;
+                    }
                 }
                 CompileResponse::Failure { diagnostics } => {
-                    print_diagnostics(&path, &code, diagnostics)?;
-                    return Err(anyhow::anyhow!("could not compile {}", path.display()));
+                    print_diagnostics(&files, diagnostics)?;
+                    return Err(anyhow!("could not compile"));
                 }
             }
         }
-        Args::Run { path, runtime } => {
-            let code = std::fs::read_to_string(&path)
-                .with_context(|| format!("could not read {}", path.display()))?;
+        Args::Run { inputs, runtime } => {
+            let files = read_inputs(&inputs)?;
 
-            progress.set_message(format!("Compiling {}", path.display()));
-
-            let response = compile(&path, &code).await?;
-
+            progress.set_message("Compiling");
+            let response = compile(files.iter().cloned()).await?;
             progress.finish_and_clear();
 
             match response {
@@ -101,12 +93,12 @@ async fn main() -> anyhow::Result<()> {
                         .with_context(|| format!("could not launch runtime '{runtime}'"))?;
 
                     if !status.success() {
-                        return Err(anyhow::anyhow!("'{runtime}' exited with status {status}"));
+                        return Err(anyhow!("'{runtime}' exited with status {status}"));
                     }
                 }
                 CompileResponse::Failure { diagnostics } => {
-                    print_diagnostics(&path, &code, diagnostics)?;
-                    return Err(anyhow::anyhow!("could not compile {}", path.display()));
+                    print_diagnostics(&files, diagnostics)?;
+                    return Err(anyhow!("could not compile"));
                 }
             }
         }
@@ -115,12 +107,27 @@ async fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn compile(path: &Path, code: &str) -> anyhow::Result<CompileResponse> {
+fn read_inputs(inputs: &[PathBuf]) -> anyhow::Result<Vec<File>> {
+    inputs
+        .iter()
+        .map(|path| {
+            let code = std::fs::read_to_string(path)
+                .with_context(|| format!("could not read {}", path.display()))?;
+
+            Ok(File {
+                path: path.display().to_string(),
+                code,
+            })
+        })
+        .collect()
+}
+
+async fn compile(files: impl IntoIterator<Item = File>) -> anyhow::Result<CompileResponse> {
     let req = CompileRequest {
         metadata: InputMetadata {
             library: Some(String::from("foundation")),
         },
-        code: code.to_string(),
+        input: CompileRequestInput::Files(Vec::from_iter(files)),
         js_options: codegen::js::Options {
             mode: codegen::js::Mode::Iife(String::from("buildRuntime(env)")),
             debug: true,
@@ -130,7 +137,7 @@ async fn compile(path: &Path, code: &str) -> anyhow::Result<CompileResponse> {
     let mut response = req
         .response()
         .await
-        .with_context(|| format!("could not compile {}", path.display()))?;
+        .with_context(|| "internal compiler error")?;
 
     if let CompileResponse::Success { executable } = &mut response {
         let mut bundled = String::new();
@@ -144,17 +151,24 @@ async fn compile(path: &Path, code: &str) -> anyhow::Result<CompileResponse> {
 }
 
 fn print_diagnostics(
-    path: &Path,
-    code: &str,
+    files: &[File],
     diagnostics: impl IntoIterator<Item = RenderedDiagnostic>,
 ) -> anyhow::Result<()> {
-    let mut files = SimpleFiles::new();
-    let file = files.add(path.display().to_string(), code);
+    let mut indices = HashMap::new();
+    let files = files.iter().fold(SimpleFiles::new(), |mut files, file| {
+        let index = files.add(file.path.as_str(), file.code.as_str());
+        indices.insert(file.path.as_str(), index);
+        files
+    });
 
     let mut writer = StandardStream::stderr(ColorChoice::Auto);
     let config = Config::default();
 
     for diagnostic in diagnostics {
+        let Some(&file) = indices.get(diagnostic.location.path.as_str()) else {
+            continue;
+        };
+
         let start = diagnostic.location.start.index as usize;
         let end = diagnostic.location.end.index as usize;
 

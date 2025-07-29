@@ -1,20 +1,20 @@
 version: "3"
 
 tasks:
-  install:
+  setup:
     deps:
-      - install:playground
-      - install:site
-  install:playground:
+      - setup:playground
+      - setup:site
+  setup:playground:
     dir: playground
     cmds:
       - npm install
-  install:site:
+  setup:site:
     dir: site
     cmds:
       - npm install
 
-  dev:
+  dev:site:
     deps:
       - dev:playground
       - dev:server
@@ -26,6 +26,11 @@ tasks:
     dir: .
     cmds:
       - RUST_LOG=debug PORT=3000 cargo run --bin=wipple-api {{.CLI_ARGS}}
+
+  dev:cli:
+    dir: .
+    cmds:
+      - cargo run --bin=wipple {{.CLI_ARGS}}
 
   test:
     dir: .
@@ -43,11 +48,6 @@ tasks:
       - task: test
         vars:
           CLI_ARGS: --test-update-snapshots
-
-  cli:
-    dir: .
-    cmds:
-      - cargo run --bin=wipple {{.CLI_ARGS}}
 
   build:site:
     deps:
@@ -68,3 +68,11 @@ tasks:
     dir: playground
     cmds:
       - npm run build
+
+  install:
+    deps:
+      - install:cli
+  install:cli:
+    dir: cli
+    cmds:
+      - cargo install --path=. --force
