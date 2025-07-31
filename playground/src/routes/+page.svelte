@@ -228,7 +228,7 @@
                 <Box class="flex-1">
                     <div
                         class={[
-                            "relative h-full w-full p-[14px] transition-colors duration-75",
+                            "relative h-full w-full transition-colors duration-75",
                             dragInfo && "bg-background-button/10",
                         ]}
                     >
@@ -242,6 +242,7 @@
                                       onclose: () => (diagnostic = undefined),
                                   }
                                 : undefined}
+                            padding="14px"
                         />
 
                         {#if dropParams}

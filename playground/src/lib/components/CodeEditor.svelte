@@ -31,9 +31,10 @@
             stale: boolean;
             onclose: () => void;
         };
+        padding?: string;
     }
 
-    let { readOnly = false, code = $bindable(), diagnostic }: Props = $props();
+    let { readOnly = false, code = $bindable(), diagnostic, padding }: Props = $props();
 
     const playground = $derived(context.playground);
     const ideInfo = $derived(context.ideInfo);
@@ -53,7 +54,6 @@
             extensions: [
                 minimalSetup,
                 keymap.of([...defaultKeymap, indentWithTab]),
-                EditorView.lineWrapping,
                 EditorState.allowMultipleSelections.of(false),
                 markTokens,
                 markNumbers,
@@ -433,4 +433,8 @@
     });
 </script>
 
-<div use:codemirror class="code-editor h-full w-full"></div>
+<div
+    use:codemirror
+    class="code-editor h-full w-full"
+    style={padding ? `--code-editor-padding: ${padding};` : ""}
+></div>

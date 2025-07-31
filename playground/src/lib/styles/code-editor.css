@@ -26,11 +26,14 @@
         }
 
         .cm-line {
-            /* Instead of line-height, which increases the background size of highlighted tokens */
-            height: var(--code-editor-line-height);
+            &:last-child {
+                height: var(--code-editor-line-height);
+            }
 
             &:not(:last-child) {
-                margin-bottom: var(--code-editor-line-spacing);
+                height: calc(var(--code-editor-line-height) + var(--code-editor-line-spacing));
+                /** Use padding instead of margin to capture all pointer events */
+                padding-bottom: var(--code-editor-line-spacing);
             }
         }
 
@@ -39,7 +42,8 @@
         }
 
         .cm-scroller {
-            @apply overflow-auto font-mono;
+            @apply overflow-scroll font-mono;
+            padding: var(--code-editor-padding);
         }
     }
 

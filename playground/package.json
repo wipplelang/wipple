@@ -36,9 +36,9 @@
     },
     "dependencies": {
         "@codemirror/commands": "^6.8.1",
-        "@codemirror/language": "^6.11.0",
+        "@codemirror/language": "^6.11.2",
         "@codemirror/state": "^6.5.2",
-        "@codemirror/view": "^6.36.8",
+        "@codemirror/view": "^6.38.1",
         "@fontsource-variable/inter": "^5.2.5",
         "@fontsource-variable/jetbrains-mono": "^5.2.5",
         "@fontsource-variable/material-symbols-rounded": "^5.2.10",
