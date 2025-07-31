@@ -1,8 +1,12 @@
 Random : Range Result => trait (Range -> Result)
 
 -- Produce a random value within the provided range.
-random :: Range Result where (Random Range Result) => Range -> Result
-random : Random
+random-in :: Range Result where (Random Range Result) => Range -> Result
+random-in : Random
+
+-- Produce a random value.
+random :: Result where (Random Unit Result) => Result
+random : Random Unit
 
 instance (Random (Range Number) Number) : {
   min : min
@@ -13,6 +17,6 @@ instance (Random (Range Number) Number) : {
 }
 
 Element => instance (Random (List Element) (Maybe Element)) :
-  list -> list . nth (random (0 to count list))
+  list -> list . nth (random-in (0 to count list))
 
-instance (Random Unit Boolean) : Unit -> random (0 to 2) = 1
+instance (Random Unit Boolean) : Unit -> floor (random-in (0 to 2)) = 1

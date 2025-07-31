@@ -4,9 +4,9 @@
 Color : type Text
 
 instance (Random Unit Color) : Unit -> do {
-  red : random (0 to 256)
-  green : random (0 to 256)
-  blue : random (0 to 256)
+  red : random-in (0 to 256)
+  green : random-in (0 to 256)
+  blue : random-in (0 to 256)
   Color ("rgb(_, _, _)" red green blue)
 }
 
