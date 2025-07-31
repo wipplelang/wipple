@@ -5,7 +5,7 @@
     import RealTurtle from "real-turtle";
     import turtleImage from "$lib/assets/turtle.png";
     import { animalSvgUrl } from "$lib/assets/animals";
-    import colors from "$lib/assets/colors";
+    import { getColor } from "$lib/assets/colors";
 
     const canvasSize = 400;
     const canvasPixelRatio = 2.5;
@@ -71,10 +71,8 @@
     };
 
     export const color = async (colorJson: string) => {
-        const { color: colorName } = JSON.parse(colorJson);
-        const { varName } = colors[colorName as keyof typeof colors];
-        const color = getComputedStyle(canvas).getPropertyValue(varName);
-        await turtle?.setStrokeStyle(color);
+        const { color } = JSON.parse(colorJson);
+        await turtle?.setStrokeStyle(getColor(color));
     };
 
     export const beginPath = async () => {
@@ -82,12 +80,10 @@
     };
 
     export const endPath = async (fillColorJson: string) => {
-        const { fillColor: fillColorName } = JSON.parse(fillColorJson);
-        const { varName } = colors[fillColorName as keyof typeof colors];
-        const fillColor = getComputedStyle(canvas).getPropertyValue(varName);
+        const { fillColor } = JSON.parse(fillColorJson);
 
         await turtle?.closePath();
-        await turtle?.setFillStyle(fillColor);
+        await turtle?.setFillStyle(getColor(fillColor));
         await turtle?.fill();
     };
 

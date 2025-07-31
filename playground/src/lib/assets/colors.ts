@@ -272,4 +272,13 @@ const colors = {
     },
 };
 
+export const getColor = (name: string) => {
+    if (name.includes("#") || name.includes("(")) {
+        return name;
+    } else {
+        const { varName } = colors[name as keyof typeof colors];
+        return getComputedStyle(document.body).getPropertyValue(varName);
+    }
+};
+
 export default colors;

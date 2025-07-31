@@ -7,7 +7,7 @@ instance (Random Unit Color) : Unit -> do {
   red : random-in (0 to 256)
   green : random-in (0 to 256)
   blue : random-in (0 to 256)
-  Color ("rgb(_, _, _)" red green blue)
+  Color ('{"color":"rgb(_,_,_)"}' red green blue)
 }
 
 -- Create an image from a URL. In the Wipple Playground, you can drag an image
