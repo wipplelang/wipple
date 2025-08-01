@@ -142,16 +142,12 @@
         <PrintingHeader />
 
         <div class="flex h-full flex-1 flex-row gap-[10px] p-[10px]">
-            <div
-                class="printing:hidden flex w-[250px] flex-col justify-between gap-[10px] overflow-y-scroll"
-            >
-                <div class="flex flex-col gap-[10px]">
-                    <Logo />
+            <div class="printing:hidden flex w-[250px] flex-col gap-[10px]">
+                <Logo />
 
-                    <Box class="min-h-fit p-[14px]">
-                        <Commands bind:dragInfo {ondrop} />
-                    </Box>
-                </div>
+                <Box class="overflow-auto p-[14px]">
+                    <Commands bind:dragInfo {ondrop} />
+                </Box>
 
                 <div class="flex flex-col gap-[10px] *:justify-start *:py-[6px]">
                     <BoxButton onclick={newPlayground}>
@@ -263,7 +259,7 @@
                 </Box>
             </div>
 
-            <div class="flex max-w-[450px] flex-1 flex-col gap-[10px] overflow-y-scroll">
+            <div class="flex max-w-[450px] flex-1 flex-col gap-[10px] overflow-auto">
                 <div
                     class="printing:hidden h-(--toolbar-height) flex shrink-0 flex-row justify-center gap-[10px]"
                 >

@@ -79,7 +79,7 @@
                 <div
                     transition:scale={{ duration, start: 0.95 }}
                     onclick={dismiss}
-                    class="border-standard bg-overlay shadow-standard flex min-w-[150px] flex-col items-stretch justify-start gap-[4px] overflow-scroll rounded-[10px] px-[4px] py-[4px] text-sm"
+                    class="border-standard bg-overlay shadow-standard flex min-w-[150px] flex-col items-stretch justify-start gap-[4px] overflow-auto rounded-[10px] px-[4px] py-[4px] text-sm"
                 >
                     {@render items()}
                 </div>

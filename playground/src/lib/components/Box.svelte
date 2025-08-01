@@ -14,7 +14,7 @@
 <div
     class={[
         "border-standard bg-background-secondary-alt rounded-[10px]",
-        scroll ? "overflow-scroll" : undefined,
+        scroll ? "overflow-auto" : undefined,
         className,
     ]}
     {...props}

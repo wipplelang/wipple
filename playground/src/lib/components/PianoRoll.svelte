@@ -38,7 +38,7 @@
 <Box>
     <div
         bind:this={container}
-        class="max-h-[calc(var(--note-height)*var(--visible-notes))] overflow-y-scroll"
+        class="max-h-[calc(var(--note-height)*var(--visible-notes))] overflow-scroll"
         style={`--note-height: ${noteHeight}px; --visible-notes: ${visibleNotes}`}
     >
         <div class="flex flex-col-reverse">

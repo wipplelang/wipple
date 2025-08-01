@@ -154,7 +154,7 @@
         </p>
     </div>
 {:else}
-    <div class="flex flex-col gap-[10px] overflow-scroll">
+    <div class="flex flex-col gap-[10px] overflow-auto">
         {#if runtime?.Output}
             <runtime.Output bind:this={runtimeOutput} />
         {/if}

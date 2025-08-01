@@ -17,7 +17,7 @@
     </div>
 
     <div
-        class="mx-auto flex w-full max-w-[600px] flex-1 flex-col gap-2.5 overflow-y-scroll px-4 pt-[80px]"
+        class="mx-auto flex w-full max-w-[600px] flex-1 flex-col gap-2.5 overflow-auto px-4 pt-[80px]"
     >
         <h1 class="mb-3.5 flex flex-col items-center gap-2.5 text-center text-2xl font-semibold">
             What do you want to create?
