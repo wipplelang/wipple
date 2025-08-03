@@ -11,7 +11,7 @@ console_error_panic_hook = "0.1"
 dashmap = "6"
 http-cache-reqwest = { version = "0.16", features = ["manager-moka"], default-features = false }
 lambda_runtime = "0.14"
-reqwest = { version = "0.12", features = ["json", "rustls-tls"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-features = false }
 reqwest-middleware = "0.4"
 rust-embed = { version = "8", features = ["include-exclude"] }
 serde = { version = "1", features = ["derive", "rc"] }
