@@ -53,11 +53,11 @@ impl super::Handle for CompileRequest {
             .compile(files, library_name)
             .await
             .map_err(|error| match error {
-                CompileError::UnsupportedLibrary(library) => {
-                    anyhow::format_err!("unsupported library: '{library}'")
+                CompileError::UnsupportedLibrary(library, error) => {
+                    anyhow::format_err!("unsupported library '{library}': {error}")
                 }
                 CompileError::LibraryNotCompiled(library) => {
-                    anyhow::format_err!("library not compiled: '{library}'")
+                    anyhow::format_err!("library '{library}' not compiled")
                 }
             })?;
 

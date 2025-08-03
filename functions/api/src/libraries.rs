@@ -1,75 +1,60 @@
-use rust_embed::RustEmbed;
+use dashmap::DashMap;
+use http_cache_reqwest::{Cache, HttpCache, HttpCacheOptions, MokaManager};
+use reqwest::Client;
+use reqwest_middleware::{ClientBuilder, ClientWithMiddleware};
 use serde::Deserialize;
-use std::{collections::HashMap, path::Path};
+use std::{env, sync::LazyLock};
 use wipple_compiler::File;
 
-#[derive(RustEmbed)]
-#[folder = "../../library"]
-#[include = "*/metadata.json"]
-#[include = "*/src/*.wipple"]
-struct Library;
-
-#[derive(Default)]
-pub struct LibraryEntry {
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Library {
     pub metadata: LibraryMetadata,
     pub files: Vec<File>,
 }
 
-#[derive(Default, Deserialize)]
+#[derive(Debug, Clone, Default, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct LibraryMetadata {
     pub library: Option<String>,
     pub ide: Option<serde_json::Value>,
 }
 
-pub fn load_libraries() -> HashMap<String, LibraryEntry> {
-    let mut libraries = HashMap::<String, LibraryEntry>::new();
-    for path in Library::iter() {
-        let contents = String::from_utf8(Library::get(&path).unwrap().data.to_vec()).unwrap();
+static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
+    ClientBuilder::new(Client::new())
+        .with(Cache(HttpCache {
+            mode: http_cache_reqwest::CacheMode::Default,
+            manager: MokaManager::default(),
+            options: HttpCacheOptions::default(),
+        }))
+        .build()
+});
 
-        let path = Path::new(path.as_ref());
+static CACHE: LazyLock<DashMap<String, Library>> = LazyLock::new(DashMap::new);
 
-        let mut components = path.components().flat_map(|c| c.as_os_str().to_str());
+pub async fn fetch_library(name: &str) -> anyhow::Result<(Library, bool)> {
+    let library_url = env::var("LIBRARY_URL")?;
 
-        let Some(library_name) = components.next() else {
-            continue;
-        };
+    let response = CLIENT
+        .get(format!("{library_url}/{name}.json"))
+        .send()
+        .await?
+        .error_for_status()?;
 
-        let Some(next) = components.next() else {
-            continue;
-        };
+    let is_cached = response
+        .headers()
+        .get("x-cache")
+        .is_some_and(|value| value == "HIT");
 
-        match next {
-            "metadata.json" => {
-                libraries
-                    .entry(library_name.to_string())
-                    .or_default()
-                    .metadata = serde_json::from_str(&contents)
-                    .unwrap_or_else(|_| panic!("invalid metadata: {path:?}"));
-            }
-            "src" => {
-                let Some(file) = components.next() else {
-                    continue;
-                };
-
-                if components.next().is_some() {
-                    continue;
-                };
-
-                let file = File {
-                    path: file.to_string(),
-                    code: contents,
-                };
-
-                libraries
-                    .entry(library_name.to_string())
-                    .or_default()
-                    .files
-                    .push(file);
-            }
-            _ => continue,
+    if is_cached {
+        if let Some(cached) = CACHE.get(name) {
+            return Ok((cached.clone(), true));
         }
     }
 
-    libraries
+    let library: Library = response.json().await?;
+
+    CACHE.insert(name.to_string(), library.clone());
+
+    Ok((library, false))
 }

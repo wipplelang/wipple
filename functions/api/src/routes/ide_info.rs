@@ -1,4 +1,4 @@
-use crate::{context::Context, routes::InputMetadata};
+use crate::{libraries::fetch_library, routes::InputMetadata};
 use anyhow::Error;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -19,19 +19,19 @@ impl super::Handle for IdeInfoRequest {
     type Response = IdeInfoResponse;
 
     async fn response(self) -> Result<Self::Response, Error> {
-        let mut library = self.metadata.library.as_deref();
+        let mut library = self.metadata.library;
         let mut info = Vec::new();
 
         while let Some(next) = library {
-            let Some(library_entry) = Context::shared().libraries.get(next) else {
-                return Err(anyhow::format_err!("unsupported library: '{next}'"));
-            };
+            let (library_entry, _) = fetch_library(&next)
+                .await
+                .map_err(|error| anyhow::format_err!("unsupported library '{next}': {error}"))?;
 
             if let Some(info_entry) = &library_entry.metadata.ide {
                 info.push(info_entry.clone());
             }
 
-            library = library_entry.metadata.library.as_deref();
+            library = library_entry.metadata.library;
         }
 
         Ok(IdeInfoResponse { info })

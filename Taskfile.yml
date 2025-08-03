@@ -16,8 +16,21 @@ tasks:
 
   dev:site:
     deps:
+      - dev:library
       - dev:playground
       - dev:server
+  dev:library:
+    dir: library
+    cmds:
+      - PORT=3001 npx serve & task dev:library:watch
+  dev:library:watch:
+    dir: library
+    watch: true
+    sources:
+      - src/**/*
+    cmds:
+      - node build.js
+
   dev:playground:
     dir: playground
     cmds:
@@ -25,7 +38,7 @@ tasks:
   dev:server:
     dir: .
     cmds:
-      - RUST_LOG=debug PORT=3000 cargo run --bin=wipple-api {{.CLI_ARGS}}
+      - RUST_LOG=debug PORT=3000 LIBRARY_URL="http://localhost:3001" cargo run --bin=wipple-api {{.CLI_ARGS}}
 
   dev:cli:
     dir: .
@@ -52,18 +65,24 @@ tasks:
   build:site:
     deps:
       - build:docs
+      - build:library
       - build:playground
     dir: site
     cmds:
       - rm -rf dist
       - npm run build
-      - cp -r ../playground/build/. dist/playground
       - cp -r ../docs/book/. dist/docs
+      - cp -r ../library/dist/. dist/library
+      - cp -r ../playground/build/. dist/playground
   build:docs:
     dir: docs
     cmds:
       - cargo binstall mdbook
       - mdbook build
+  build:library:
+    dir: library
+    cmds:
+      - node build.js
   build:playground:
     dir: playground
     cmds:

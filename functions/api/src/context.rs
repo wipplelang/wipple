@@ -1,34 +1,23 @@
-use crate::libraries::{LibraryEntry, load_libraries};
+use crate::libraries::fetch_library;
 use dashmap::DashMap;
-use std::{
-    collections::HashMap,
-    sync::{Arc, LazyLock},
-};
+use std::sync::{Arc, LazyLock};
 use wipple_compiler::{Compiler, File, render::RenderedDiagnostic};
 
 pub enum CompileError {
-    UnsupportedLibrary(String),
+    UnsupportedLibrary(String, String),
     LibraryNotCompiled(String),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct Context {
     pub cache: Arc<DashMap<String, Compiler>>,
-    pub libraries: Arc<HashMap<String, LibraryEntry>>,
 }
 
 impl Context {
     pub fn shared() -> &'static Self {
-        static CONTEXT: LazyLock<Context> = LazyLock::new(Context::new);
+        static CONTEXT: LazyLock<Context> = LazyLock::new(Context::default);
 
         LazyLock::force(&CONTEXT)
-    }
-
-    fn new() -> Self {
-        Context {
-            cache: Default::default(),
-            libraries: Arc::new(load_libraries()),
-        }
     }
 
     pub async fn compile(
@@ -51,14 +40,15 @@ impl Context {
     }
 
     pub async fn compile_library(&self, name: &str) -> Result<Compiler, CompileError> {
-        if let Some(cached_compiler) = self.cache.get(name) {
-            return Ok(cached_compiler.clone());
-        }
+        let (library_entry, cached) = fetch_library(name)
+            .await
+            .map_err(|e| CompileError::UnsupportedLibrary(name.to_string(), e.to_string()))?;
 
-        let library_entry = self
-            .libraries
-            .get(name)
-            .ok_or_else(|| CompileError::UnsupportedLibrary(name.to_string()))?;
+        if cached {
+            if let Some(cached_compiler) = self.cache.get(name) {
+                return Ok(cached_compiler.clone());
+            }
+        }
 
         let compiler = self
             .compile(
