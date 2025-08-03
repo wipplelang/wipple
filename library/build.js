@@ -1,8 +1,8 @@
-import path from "node:path";
-import fs from "node:fs";
-import process from "node:process";
+const path = require("node:path");
+const fs = require("node:fs");
+const process = require("node:process");
 
-process.chdir(import.meta.dirname);
+process.chdir(__dirname);
 
 fs.rmSync("dist", { recursive: true, force: true });
 fs.mkdirSync("dist", { recursive: true });
