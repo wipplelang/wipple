@@ -166,7 +166,10 @@
 
                     <BoxButton
                         onclick={() => {
-                            window.open("https://github.com/wipplelang/wipple/releases", "_blank");
+                            window.open(
+                                "https://github.com/wipplelang/wipple/blob/main/CHANGELOG.md",
+                                "_blank",
+                            );
                         }}
                     >
                         <Icon>star</Icon>
