@@ -10,8 +10,6 @@ describe :: (Value : Text) where (Describe Value) => Value -> Text
 describe : Describe
 
 -- Display a value on the screen.
-@(highlight-category : "io")
-@(highlight-icon : "article")
 show :: (Value : Text) where (Describe Value) => Value -> Unit
 show : value -> intrinsic "display" (describe value)
 
@@ -42,7 +40,5 @@ instance (Read Text) : Some
 instance (Read Number) : text -> intrinsic "text-to-number" text
 
 -- Ask the user to enter a value.
-@(highlight-category : "io")
-@(highlight-icon : "live-help")
 prompt :: Value where (Read Value) => Text -> Value
 prompt : prompt -> intrinsic "prompt" prompt Read

@@ -55,7 +55,6 @@ State Body Result where (Error ("Missing `times` after `_`" Source ; Error-Descr
   if (n > 0) {Continue (_ -> (n - 1) times)} {Stop Unit}
 
 -- Repeat a certain number of times.
-@(highlight-category : "unit")
 times :: Number -> Times
 times : Times
 
@@ -63,8 +62,6 @@ Body where (Error ("Missing `repeat` before `_`" Source ; Error-Description ("Tr
   instance (Mismatch Times ({Body} -> Unit))
 
 -- Run code repeatedly.
-@(highlight-category : "control-flow")
-@(highlight-icon : "repeat")
 repeat :: State (infer Body) (infer Result) where (Repeat-Predicate State Body Result) => State {Body} -> Result
 repeat : state body -> when (Repeat-Predicate state) {
   Continue next -> repeat (next (do body)) body

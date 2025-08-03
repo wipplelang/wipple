@@ -4,7 +4,6 @@ Distance : type Number
 instance (Describe-Type Distance "distance")
 
 -- Specify a distance in pixels.
-@(highlight-category : "unit")
 pixels :: Number -> Distance
 pixels : Distance
 
@@ -12,14 +11,10 @@ _ where (Error ("Missing `pixels` after `_`" Source ; Error-Description ("Try re
   instance (Mismatch Number Distance)
 
 -- Move the turtle forward by a distance.
-@(highlight-category : "turtle-movement")
-@(highlight-icon : "arrow-upward")
 forward :: Distance -> Unit
 forward : (Distance pixels) -> external "forward" pixels
 
 -- Move the turtle backward by a distance.
-@(highlight-category : "turtle-movement")
-@(highlight-icon : "arrow-downward")
 backward :: Distance -> Unit
 backward : (Distance pixels) -> external "backward" pixels
 
@@ -30,8 +25,6 @@ Arc : type {
 }
 
 -- Move the turtle along an arc.
-@(highlight-category : "turtle-movement")
-@(highlight-icon : "progress-activity")
 arc :: Arc -> Unit
 arc : {
   radius : (Distance radius)
@@ -39,14 +32,10 @@ arc : {
 } -> external "arc" (radius ; angle)
 
 -- Rotate the turtle counterclockwise by an angle.
-@(highlight-category : "turtle-movement")
-@(highlight-icon : "rotate-left")
 left :: Angle -> Unit
 left : (Angle degrees) -> external "left" degrees
 
 -- Rotate the turtle clockwise by an angle.
-@(highlight-category : "turtle-movement")
-@(highlight-icon : "rotate-right")
 right :: Angle -> Unit
 right : (Angle degrees) -> external "right" degrees
 
@@ -55,14 +44,10 @@ go :: Distance Distance -> Unit
 go : (Distance x) (Distance y) -> external "go" (x ; y)
 
 -- Set the pen color.
-@(highlight-category : "turtle-appearance")
-@(highlight-icon : "edit")
 color :: Color -> Unit
 color : (Color color) -> external "color" color
 
 -- Draw a path and fill it with a color.
-@(highlight-category : "turtle-appearance")
-@(highlight-icon : "colors")
 fill :: Result => Color {Result} -> Result
 fill : (Color color) body -> do {
   external "beginPath" Unit
@@ -72,8 +57,6 @@ fill : (Color color) body -> do {
 }
 
 -- Set the speed of the turtle, from `0` to `100`. The default speed is `50`.
-@(highlight-category : "turtle-appearance")
-@(highlight-icon : "speed")
 speed :: Number -> Unit
 speed : value -> external "speed" value
 
@@ -82,7 +65,5 @@ Animal : type Text
 instance (Describe-Type Animal "animal")
 
 -- Change the animal being displayed.
-@(highlight-category : "turtle-appearance")
-@(highlight-icon : "pets")
 animal :: Animal -> Unit
 animal : (Animal name) -> external "animal" name
