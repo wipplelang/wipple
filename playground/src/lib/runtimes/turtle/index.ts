@@ -9,6 +9,7 @@ export default runtime({
             backward: { code: "backward (50 pixels)" },
             left: { code: "left (90 degrees)" },
             right: { code: "right (90 degrees)" },
+            go: { code: "go (100 pixels) (100 pixels)" },
         },
         Appearance: {
             color: { code: `color (Color '{"color": "blue"}')` },

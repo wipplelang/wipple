@@ -38,6 +38,10 @@
                 "color": "green",
                 "icon": "rotate_right"
             },
+            "go": {
+                "color": "green",
+                "icon": "left_click"
+            },
             "speed": {
                 "color": "purple",
                 "icon": "speed"

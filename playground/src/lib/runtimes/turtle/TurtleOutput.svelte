@@ -6,6 +6,8 @@
     import turtleImage from "$lib/assets/turtle.png";
     import { animalSvgUrl } from "$lib/assets/animals";
     import { getColor } from "$lib/assets/colors";
+    import type { Action } from "svelte/action";
+    import { scale } from "svelte/transition";
 
     const canvasSize = 400;
     const canvasPixelRatio = 2.5;
@@ -13,8 +15,8 @@
     let canvas: HTMLCanvasElement;
     let turtle: RealTurtle;
 
-    const initializeTurtle = async (canvasEl: HTMLCanvasElement) => {
-        const turtle = new RealTurtle(canvasEl, {
+    const initializeTurtle = async (canvas: HTMLCanvasElement) => {
+        const turtle = new RealTurtle(canvas, {
             async: true,
             image: turtleImage,
             state: {
@@ -70,6 +72,10 @@
         await turtle?.right(angle);
     };
 
+    export const go = async ([x, y]: [number, number]) => {
+        await turtle?.setPosition(x + canvasSize / 2, y + canvasSize / 2);
+    };
+
     export const color = async (colorJson: string) => {
         const { color } = JSON.parse(colorJson);
         await turtle?.setStrokeStyle(getColor(color));
@@ -95,10 +101,56 @@
         const { animal } = JSON.parse(animalJson);
         await turtle?.setImage(animalSvgUrl(animal));
     };
+
+    const portal: Action = (node) => {
+        $effect(() => {
+            document.body.appendChild(node);
+
+            return () => {
+                node.remove();
+            };
+        });
+    };
+
+    const hoverDelay = 500;
+
+    let startTime = $state<number>();
+    let hoverActive = $state(false);
+    let hoverPosition = $state<{ x: number; y: number; clientX: number; clientY: number }>();
+
+    const onmouseenter = (e: MouseEvent) => {
+        startTime = e.timeStamp;
+
+        setTimeout(() => {
+            startTime = undefined;
+            hoverActive = true;
+        }, hoverDelay);
+    };
+
+    const onmousemove = (e: MouseEvent) => {
+        const { clientX, clientY, offsetX, offsetY } = e;
+
+        hoverPosition = {
+            x:
+                Math.floor((offsetX * canvas.width) / (canvas.clientWidth * canvasPixelRatio)) -
+                canvasSize / 2,
+            y:
+                Math.floor((offsetY * canvas.height) / (canvas.clientHeight * canvasPixelRatio)) -
+                canvasSize / 2,
+            clientX,
+            clientY,
+        };
+    };
+
+    const onmouseleave = () => {
+        startTime = undefined;
+        hoverActive = false;
+        hoverPosition = undefined;
+    };
 </script>
 
-<div class="data-[printing]:size-[5in]">
-    <Box class="relative aspect-square">
+<div class="relative data-[printing]:size-[5in]">
+    <Box class="relative aspect-square" {onmouseenter} {onmousemove} {onmouseleave}>
         <canvas
             bind:this={canvas}
             width={canvasSize}
@@ -106,4 +158,24 @@
             class="absolute inset-0 size-full"
         ></canvas>
     </Box>
+
+    {#if hoverActive && hoverPosition}
+        <div
+            use:portal
+            class="pointer-events-none absolute size-0 -translate-x-1/2 translate-y-[4px]"
+            style:left="{hoverPosition.clientX}px"
+            style:top="{hoverPosition.clientY}px"
+            transition:scale={{ duration: 150, start: 0.95 }}
+        >
+            <code
+                class="bg-background-button float-right inline-block text-nowrap rounded-lg p-[2px] text-xs text-white/60 shadow-md"
+            >
+                (<span class="text-white">{hoverPosition.x}</span> pixels) (<span
+                    class="text-white"
+                >
+                    {hoverPosition.y}
+                </span> pixels)
+            </code>
+        </div>
+    {/if}
 </div>

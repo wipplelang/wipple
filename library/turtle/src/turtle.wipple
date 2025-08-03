@@ -50,6 +50,10 @@ left : (Angle degrees) -> external "left" degrees
 right :: Angle -> Unit
 right : (Angle degrees) -> external "right" degrees
 
+-- Go to a position on the screen without drawing.
+go :: Distance Distance -> Unit
+go : (Distance x) (Distance y) -> external "go" (x ; y)
+
 -- Set the pen color.
 @(highlight-category : "turtle-appearance")
 @(highlight-icon : "edit")
