@@ -5,12 +5,17 @@ tasks:
     deps:
       - setup:playground
       - setup:site
+      - setup:functions:share
   setup:playground:
     dir: playground
     cmds:
       - npm install
   setup:site:
     dir: site
+    cmds:
+      - npm install
+  setup:functions:share:
+    dir: functions/share
     cmds:
       - npm install
 
@@ -22,7 +27,7 @@ tasks:
   dev:library:
     dir: library
     cmds:
-      - PORT=3001 npx serve & task dev:library:watch
+      - PORT=3001 npx serve & task dev:library:watch & task dev:functions:share
   dev:library:watch:
     dir: library
     watch: true
@@ -30,6 +35,13 @@ tasks:
       - src/**/*
     cmds:
       - node build.js
+  dev:functions:share:
+    dir: functions/share
+    cmds:
+      - npx netlify functions:serve --functions=.
+    env:
+      MONGO_URI: "mongodb://localhost:27017"
+      MONGO_DB_NAME: "wipple-share"
 
   dev:playground:
     dir: playground

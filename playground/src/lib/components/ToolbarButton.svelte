@@ -1,8 +1,8 @@
 <script lang="ts">
     import type { Snippet } from "svelte";
-    import type { HTMLAttributes } from "svelte/elements";
+    import type { HTMLButtonAttributes } from "svelte/elements";
 
-    interface Props extends HTMLAttributes<HTMLButtonElement> {
+    interface Props extends HTMLButtonAttributes {
         children: Snippet;
         prominent?: boolean;
         square?: boolean;

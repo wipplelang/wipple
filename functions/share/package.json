@@ -1,0 +1,11 @@
+{
+    "name": "wipple-functions-share",
+    "type": "module",
+    "private": true,
+    "main": "share.js",
+    "dependencies": {
+        "mongodb": "^6.18.0",
+        "nanoid": "^5.1.5",
+        "zod": "^4.0.17"
+    }
+}

@@ -17,6 +17,9 @@
     import { context } from "$lib/context.svelte";
     import Output, { type RunState } from "$lib/components/Output.svelte";
     import PrintButton from "$lib/components/PrintButton.svelte";
+    import ShareButton from "$lib/components/ShareButton.svelte";
+    import * as shareApi from "$lib/share";
+    import { onMount } from "svelte";
 
     const loadPlayground = (): Playground | undefined => {
         const json = window.localStorage.getItem("playground");
@@ -55,6 +58,40 @@
             playground = undefined;
         }
     };
+
+    const tryLoadSharedPlayground = async () => {
+        const params = new URLSearchParams(window.location.search);
+
+        const shareId = params.get("share");
+        if (!shareId) return;
+
+        if (playground != null && playground.code.length > 0) {
+            const confirmed = confirm(
+                "Opening this shared playground will clear your current playground. Are you sure?",
+            );
+
+            if (!confirmed) {
+                return;
+            }
+        }
+
+        try {
+            const response = await shareApi.get({ id: shareId });
+            playground = {
+                runtime: response.playground.runtime,
+                code: response.playground.code,
+            };
+        } catch (e) {
+            console.error(e);
+            alert("Couldn't open this shared playground. Please verify the link and try again.");
+        } finally {
+            window.location.search = "";
+        }
+    };
+
+    onMount(() => {
+        tryLoadSharedPlayground();
+    });
 
     const runtime = $derived(playground && runtimes[playground.runtime]);
 
@@ -289,6 +326,8 @@
                     {#if runtime?.printEnabled}
                         <PrintButton />
                     {/if}
+
+                    <ShareButton />
                 </div>
 
                 <Output
