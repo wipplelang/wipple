@@ -1,6 +1,6 @@
 use crate::libraries::fetch_library;
 use dashmap::DashMap;
-use std::sync::{Arc, LazyLock};
+use std::sync::{Arc, OnceLock};
 use wipple_compiler::{Compiler, File, render::RenderedDiagnostic};
 
 pub enum CompileError {
@@ -11,13 +11,20 @@ pub enum CompileError {
 #[derive(Clone, Default)]
 pub struct Context {
     pub cache: Arc<DashMap<String, Compiler>>,
+    pub db: Option<mongodb::Database>,
 }
 
-impl Context {
-    pub fn shared() -> &'static Self {
-        static CONTEXT: LazyLock<Context> = LazyLock::new(Context::default);
+static SHARED: OnceLock<Context> = OnceLock::new();
 
-        LazyLock::force(&CONTEXT)
+impl Context {
+    pub fn set_shared(this: Self) -> anyhow::Result<()> {
+        SHARED
+            .set(this)
+            .map_err(|_| anyhow::format_err!("context already initialized"))
+    }
+
+    pub fn shared() -> &'static Self {
+        SHARED.get().expect("context not initialized")
     }
 
     pub async fn compile(

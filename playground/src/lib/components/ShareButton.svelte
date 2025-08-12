@@ -2,7 +2,7 @@
     import Icon from "./Icon.svelte";
     import ToolbarButton from "./ToolbarButton.svelte";
     import Tooltip from "./Tooltip.svelte";
-    import * as shareApi from "$lib/share";
+    import * as api from "$lib/api";
     import { context } from "$lib/context.svelte";
 
     const playground = $derived(context.playground);
@@ -21,7 +21,7 @@
 
         loading = true;
         try {
-            const { id } = await shareApi.share({
+            const { id } = await api.share({
                 runtime: playground.runtime,
                 code: playground.code,
             });
@@ -30,7 +30,7 @@
             navigator.clipboard.writeText(shareUrl);
 
             shareId = id;
-            alert(`Share link copied to clipboard:\n\n${shareUrl}`);
+            alert(`Share link copied to clipboard:\n\n${shareUrl}\n\nLink expires in 7 days.`);
         } catch (e) {
             console.error(e);
             alert("An error occurred while creating a link. Please try again.");

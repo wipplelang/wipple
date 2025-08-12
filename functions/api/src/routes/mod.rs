@@ -1,7 +1,9 @@
 pub mod compile;
 pub mod documentation;
 pub mod format;
+pub mod get_shared;
 pub mod ide_info;
+pub mod share;
 
 use anyhow::Error;
 use serde::Deserialize;
@@ -34,7 +36,9 @@ pub enum Request {
     Compile(compile::CompileRequest),
     Documentation(documentation::DocumentationRequest),
     Format(format::FormatRequest),
+    GetShared(get_shared::GetSharedRequest),
     IdeInfo(ide_info::IdeInfoRequest),
+    Share(share::ShareRequest),
 }
 
 impl Request {
@@ -43,7 +47,9 @@ impl Request {
             Request::Compile(req) => req.json_response().await,
             Request::Documentation(req) => req.json_response().await,
             Request::Format(req) => req.json_response().await,
+            Request::GetShared(req) => req.json_response().await,
             Request::IdeInfo(req) => req.json_response().await,
+            Request::Share(req) => req.json_response().await,
         }
     }
 }

@@ -18,7 +18,6 @@
     import Output, { type RunState } from "$lib/components/Output.svelte";
     import PrintButton from "$lib/components/PrintButton.svelte";
     import ShareButton from "$lib/components/ShareButton.svelte";
-    import * as shareApi from "$lib/share";
     import { onMount } from "svelte";
 
     const loadPlayground = (): Playground | undefined => {
@@ -76,10 +75,10 @@
         }
 
         try {
-            const response = await shareApi.get({ id: shareId });
+            const response = await api.getShared({ id: shareId });
             playground = {
-                runtime: response.playground.runtime,
-                code: response.playground.code,
+                runtime: response.runtime,
+                code: response.code,
             };
         } catch (e) {
             console.error(e);

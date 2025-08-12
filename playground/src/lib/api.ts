@@ -1,6 +1,7 @@
 import axios, { type AxiosRequestConfig } from "axios";
 import type { PlaygroundMetadata } from "./models/Playground";
 import { PUBLIC_SERVER_URL } from "$env/static/public";
+import type { RuntimeId } from "./runtimes";
 
 const request =
     <Request, Response>(type: string) =>
@@ -52,3 +53,25 @@ export interface DocumentationResponse {
 }
 
 export const documentation = request<DocumentationRequest, DocumentationResponse>("documentation");
+
+export interface ShareRequest {
+    runtime: RuntimeId;
+    code: string;
+}
+
+export interface ShareResponse {
+    id: string;
+}
+
+export const share = request<ShareRequest, ShareResponse>("share");
+
+export interface GetSharedRequest {
+    id: string;
+}
+
+export interface GetSharedResponse {
+    runtime: RuntimeId;
+    code: string;
+}
+
+export const getShared = request<GetSharedRequest, GetSharedResponse>("getShared");

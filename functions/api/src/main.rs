@@ -6,13 +6,28 @@ use tower::service_fn;
 use tower_http::trace::TraceLayer;
 use tower_http::{compression::CompressionLayer, cors::CorsLayer};
 use tracing_subscriber::EnvFilter;
-use wipple_api::routes;
+use wipple_api::{context::Context, routes};
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
         .with_env_filter(EnvFilter::from_default_env())
         .init();
+
+    let mut context = Context::default();
+
+    if let (Some(mongo_uri), Some(mongo_db_name)) = (
+        std::env::var("MONGO_URI").ok(),
+        std::env::var("MONGO_DB_NAME").ok(),
+    ) {
+        let mongo_client = mongodb::Client::with_uri_str(&mongo_uri)
+            .await
+            .expect("could not connect to MongoDB");
+
+        context.db = Some(mongo_client.database(&mongo_db_name));
+    }
+
+    Context::set_shared(context).unwrap();
 
     let lambda = std::env::var("LAMBDA_TASK_ROOT").is_ok();
 

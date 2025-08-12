@@ -5,17 +5,12 @@ tasks:
     deps:
       - setup:playground
       - setup:site
-      - setup:functions:share
   setup:playground:
     dir: playground
     cmds:
       - npm install
   setup:site:
     dir: site
-    cmds:
-      - npm install
-  setup:functions:share:
-    dir: functions/share
     cmds:
       - npm install
 
@@ -27,7 +22,9 @@ tasks:
   dev:library:
     dir: library
     cmds:
-      - PORT=3001 npx serve & task dev:library:watch & task dev:functions:share
+      - npx serve & task dev:library:watch
+    env:
+      PORT: "3001"
   dev:library:watch:
     dir: library
     watch: true
@@ -35,14 +32,6 @@ tasks:
       - src/**/*
     cmds:
       - node build.js
-  dev:functions:share:
-    dir: functions/share
-    cmds:
-      - npx netlify functions:serve --functions=.
-    env:
-      MONGO_URI: "mongodb://localhost:27017"
-      MONGO_DB_NAME: "wipple-share"
-
   dev:playground:
     dir: playground
     cmds:
@@ -50,7 +39,13 @@ tasks:
   dev:server:
     dir: .
     cmds:
-      - RUST_LOG=debug PORT=3000 LIBRARY_URL="http://localhost:3001" cargo run --bin=wipple-api {{.CLI_ARGS}}
+      - cargo run --bin=wipple-api {{.CLI_ARGS}}
+    env:
+      RUST_LOG: "trace"
+      PORT: "3000"
+      LIBRARY_URL: "http://localhost:3001"
+      MONGO_URI: "mongodb://localhost:27017"
+      MONGO_DB_NAME: "wipple-share"
 
   dev:cli:
     dir: .
