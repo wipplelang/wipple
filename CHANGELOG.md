@@ -5,6 +5,7 @@
 -   Wipple now compiles to JavaScript instead of an interpreted IR.
 -   Added back the `wipple` CLI, using `node` as the default runtime.
 -   Added the `go` command to the Turtle runtime, and show the mouse's coordinates when hovering over the canvas.
+-   Added a Share button to generate a link to your playground.
 
 ## Wipple 2025.1 (2025-07-24)
 
