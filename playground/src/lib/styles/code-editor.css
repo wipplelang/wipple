@@ -43,6 +43,7 @@
 
         .cm-scroller {
             @apply overflow-auto font-mono;
+            display: initial !important;
             padding: var(--code-editor-padding);
         }
     }
