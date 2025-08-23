@@ -123,6 +123,8 @@ fn read_inputs(inputs: &[PathBuf]) -> anyhow::Result<Vec<File>> {
 }
 
 async fn compile(files: impl IntoIterator<Item = File>) -> anyhow::Result<CompileResponse> {
+    wipple_api::context::Context::set_shared(Default::default()).unwrap();
+
     let req = CompileRequest {
         metadata: InputMetadata {
             library: Some(String::from("foundation")),

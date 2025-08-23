@@ -47,21 +47,19 @@ tasks:
       MONGO_URI: "mongodb://localhost:27017"
       MONGO_DB_NAME: "wipple-share"
 
-  dev:cli:
-    dir: .
-    cmds:
-      - cargo run --bin=wipple {{.CLI_ARGS}}
-
   test:
     dir: .
     ignore_error: true
     cmd: |
       bash -c '
       cargo build --package=wipple-api
-      PORT=3001 ./target/debug/wipple-api & test_server_pid=$!
+      PORT=3001 task dev:library & library_server_pid=$!
       sleep 1
-      TESTS_SERVER_URL='http://localhost:3001' node --experimental-vm-modules {{.CLI_ARGS}} test/index.js
+      PORT=3000 LIBRARY_URL='http://localhost:3001' ./target/debug/wipple-api & test_server_pid=$!
+      sleep 1
+      TESTS_SERVER_URL='http://localhost:3000' node --experimental-vm-modules {{.CLI_ARGS}} test/index.js
       kill $test_server_pid
+      kill $library_server_pid
       '
   test:update-snapshots:
     cmds:

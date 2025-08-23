@@ -33,7 +33,8 @@ static CLIENT: LazyLock<ClientWithMiddleware> = LazyLock::new(|| {
 static CACHE: LazyLock<DashMap<String, Library>> = LazyLock::new(DashMap::new);
 
 pub async fn fetch_library(name: &str) -> anyhow::Result<(Library, bool)> {
-    let library_url = env::var("LIBRARY_URL")?;
+    let library_url = env::var("LIBRARY_URL")
+        .map_err(|_| anyhow::format_err!("missing LIBRARY_URL environment variable"))?;
 
     let response = CLIENT
         .get(format!("{library_url}/{name}.json"))

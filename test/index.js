@@ -26,7 +26,13 @@ for (const testFile of fs.readdirSync(testsPath)) {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ compile: { library: "foundation", code } }),
-        }).then((response) => response.json());
+        }).then(async (response) => {
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+
+            return response.json();
+        });
 
         const success = "executable" in response;
         if (success) {
