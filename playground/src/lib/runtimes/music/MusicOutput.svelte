@@ -1,5 +1,4 @@
 <script lang="ts">
-    import Tooltip from "$lib/components/Tooltip.svelte";
     import {
         getDrumMachine,
         getSoundfontInstrument,
@@ -10,7 +9,7 @@
         getAudioContext,
     } from "$lib/assets/instruments";
     import Icon from "$lib/components/Icon.svelte";
-    import { defaultTempo, type Music } from "$lib/assets/music";
+    import { defaultTempo, notesInMeasure, type Music } from "$lib/assets/music";
 
     let isRunning = $state(false);
     let icon: HTMLDivElement;
@@ -100,27 +99,30 @@
 
         await instrument.init();
 
-        const noteDuration = 60 / currentTempo;
+        const noteDuration = 60 / (currentTempo * notesInMeasure);
         const totalDuration = noteDuration * music.notes.length;
 
         const startTime = getAudioContext().currentTime;
         let time = startTime;
-        for (const notes of music.notes) {
+        music.notes.forEach((notes, index) => {
             for (const note of notes) {
                 instrument.play({ note, time, duration: noteDuration });
             }
 
-            setTimeout(
-                () => {
-                    if (!isRunning) return;
+            const shouldPlayBeatAnimation = index % notesInMeasure == 0;
+            if (shouldPlayBeatAnimation) {
+                setTimeout(
+                    () => {
+                        if (!isRunning) return;
 
-                    runBeatAnimation();
-                },
-                (time - startTime) * 1000,
-            );
+                        runBeatAnimation();
+                    },
+                    (time - startTime) * 1000,
+                );
+            }
 
             time += noteDuration;
-        }
+        });
 
         if (together != null) {
             together = Math.max(together, totalDuration);

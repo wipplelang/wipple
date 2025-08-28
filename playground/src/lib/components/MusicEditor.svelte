@@ -15,7 +15,7 @@
     import randomColor from "randomcolor";
     import MenuButton from "./MenuButton.svelte";
     import Menu from "./Menu.svelte";
-    import { defaultTempo, maxNotes, type Music } from "$lib/assets/music";
+    import { defaultTempo, maxNotes, notesInMeasure, type Music } from "$lib/assets/music";
     import PianoRoll from "./PianoRoll.svelte";
 
     interface Props {
@@ -60,7 +60,7 @@
 
         await instrument.init();
 
-        const noteDuration = 60 / defaultTempo;
+        const noteDuration = 60 / (defaultTempo * notesInMeasure);
 
         let time = getAudioContext().currentTime;
         for (const notes of musicDraft.notes) {
@@ -118,7 +118,7 @@
 >
     <div transition:fly={{ y: 50 }}>
         <Box class="flex w-[650px] flex-col gap-[14px] p-[14px]">
-            <div class="h-(--toolbar-height) flex flex-1 flex-row gap-[10px]">
+            <div class="flex h-(--toolbar-height) flex-1 flex-row gap-[10px]">
                 <Tooltip content="Change color" onclick={() => (musicDraft.color = randomColor())}>
                     <Box class="size-(--toolbar-height) text-xl">
                         <MusicPreview {icon} color={musicDraft.color} />
@@ -145,7 +145,7 @@
                 <div class="border-standard h-(--toolbar-height) w-0 rounded-full"></div>
 
                 <Menu>
-                    <ToolbarButton class="pl-[10px] pr-[6px]">
+                    <ToolbarButton class="pr-[6px] pl-[10px]">
                         {musicDraft.notes.length}
                         {musicDraft.notes.length === 1 ? "note" : "notes"}
                         <Icon>keyboard_arrow_down</Icon>
