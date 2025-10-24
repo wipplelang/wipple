@@ -81,7 +81,14 @@
         const { top, bottom, left, right } = editorView.contentDOM.getBoundingClientRect();
         const width = editorView.contentDOM.clientWidth;
 
-        if (x < left || x > right || y < top || y > bottom) {
+        const padding = 100;
+
+        if (
+            x < left - padding ||
+            x > right + padding ||
+            y < top - padding ||
+            y > bottom + padding
+        ) {
             // Out of bounds
             return undefined;
         }
@@ -116,7 +123,7 @@
         // Choose the closest line, and allow going one past the end
         const startLineNumber =
             Math.min(
-                Math.floor((y - top) / (lineHeight + lineSpacing)),
+                Math.floor(Math.max(y - top, 0) / (lineHeight + lineSpacing)),
                 editorView.state.doc.lines,
             ) + 1;
 
