@@ -56,7 +56,7 @@
                 keymap.of([...defaultKeymap, indentWithTab]),
                 EditorState.allowMultipleSelections.of(false),
                 markTokens,
-                markNumbers,
+                markNumbers.of([]),
                 markAssets,
                 markNames.of([]),
                 markDiagnostic.of([]),
@@ -239,53 +239,64 @@
 
     // MARK: - Highlight numbers
 
-    const markNumbers = markRegex(
-        new RegExp(
-            `\\((${tokens.number.source})` + / +/.source + `(${tokens.lowercaseName.source})\\)`,
-            "g",
-        ),
-        (lineNumber, lineFrom, _lineTo, [_text, number, unit], view) => {
-            if (!playground) {
-                return [];
-            }
+    const markNumbers = new Compartment();
 
-            const unitInfo = runtimes[playground.runtime].units?.[unit];
-            if (!unitInfo) {
-                return [];
-            }
+    const createMarkNumbers = () =>
+        markRegex(
+            new RegExp(
+                `\\((${tokens.number.source})` +
+                    / +/.source +
+                    `(${tokens.lowercaseName.source})\\)`,
+                "g",
+            ),
+            (lineNumber, lineFrom, _lineTo, [_text, number, unit], view) => {
+                if (!playground) {
+                    return [];
+                }
 
-            lineFrom += 1; // skip the parenthesis
-            const length = number.length;
+                const unitInfo = runtimes[playground.runtime].units?.[unit];
+                if (!unitInfo) {
+                    return [];
+                }
 
-            return [
-                {
-                    decoration: () => {
-                        const element = new NumberWidget.element!();
-                        Object.assign(element, {
-                            number: parseFloat(number),
-                            unit,
-                            unitInfo,
-                        });
+                lineFrom += 1; // skip the parenthesis
+                const length = number.length;
 
-                        element.addEventListener("change", () => {
-                            const line = view.state.doc.line(lineNumber);
-
-                            view.dispatch({
-                                changes: {
-                                    from: line.from + lineFrom,
-                                    to: line.from + lineFrom + length,
-                                    insert: (element as any).number.toString(),
-                                },
+                return [
+                    {
+                        decoration: () => {
+                            const element = new NumberWidget.element!();
+                            Object.assign(element, {
+                                number: parseFloat(number),
+                                unit,
+                                unitInfo,
                             });
-                        });
 
-                        return accessoryDecoration(element);
+                            element.addEventListener("change", () => {
+                                const line = view.state.doc.line(lineNumber);
+
+                                view.dispatch({
+                                    changes: {
+                                        from: line.from + lineFrom,
+                                        to: line.from + lineFrom + length,
+                                        insert: (element as any).number.toString(),
+                                    },
+                                });
+                            });
+
+                            return accessoryDecoration(element);
+                        },
+                        index: length + 1,
                     },
-                    index: length + 1,
-                },
-            ];
-        },
-    );
+                ];
+            },
+        );
+
+    $effect(() => {
+        editorView.dispatch({
+            effects: markNumbers.reconfigure(createMarkNumbers()),
+        });
+    });
 
     // MARK: - Highlight assets
 

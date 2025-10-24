@@ -1,4 +1,4 @@
-import { MapMode, Prec, RangeSet, StateEffect, StateField } from "@codemirror/state";
+import { Prec, RangeSet, StateEffect, StateField } from "@codemirror/state";
 import {
     Decoration,
     type DecorationSet,
