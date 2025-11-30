@@ -10,36 +10,6 @@ The Wipple compiler and related programs, including the interpreter that runs th
 
 Here's an overview of how your code goes from text to a runnable program.
 
-```mermaid
-flowchart TD
-    input["<strong>Input</strong><br><code>show (1 + 2)</code>"]
-    lexing["<strong>Lexing</strong><br><code>'show' '(' '1' '+' '2' ')'</code>"]
-    parsing["<strong>Parsing</strong><br><code>(call (name 'show') (operator '+' (number '1') (number '2')))</code>"]
-    externalInterface["<strong>External Interface</strong><br><code>show :: Value -> None, Add : trait, ...</code>"]
-    lowering["<strong>Lowering</strong><br><code>'constant show' ('trait Add' ('constructor Number' 1) ('constructor Number' 2))</code>"]
-    typechecking["<strong>Typechecking</strong><br><code>(show :: Number -> None) ((instance Add Number Number Number) 1 2)</code>"]
-    interfaceGeneration["<strong>Interface Generation</strong><br><code>top level</code>"]
-    irGeneration["<strong>IR Generation</strong><br><code>push 1, push 2, constant 'add', call 2, constant 'show', call 1</code>"]
-    libraryGeneration["<strong>Library Generation</strong><br><code>top level</code>"]
-    externalLibrary["<strong>External Library</strong><br><code>show, instance Add Number Number Number</code>"]
-    linking["<strong>Linking</strong><br><code>show, instance Add Number Number Number, top level</code>"]
-    executable["<strong>Executable</strong>"]
-    output["<strong>Output</strong><br><code>3</code>"]
-    input --> lexing
-    lexing --> parsing
-    parsing --> lowering
-    externalInterface --> lowering
-    lowering --> typechecking
-    typechecking --> interfaceGeneration
-    interfaceGeneration --> lowering
-    interfaceGeneration --> irGeneration
-    irGeneration --> libraryGeneration
-    externalLibrary --> linking
-    libraryGeneration --> linking
-    linking --> executable
-    executable --> output
-```
-
 1.  **Input:** Wipple reads your code and stores it in a string.
 2.  **[Lexing (tokenization)](./lexing.md):** The string is split into a list of tokens, where each token represents a single piece of syntax, like a name, number, or symbol.
 3.  **[Parsing](./parsing.md):** Wipple converts this list of tokens into a structured tree that it can traverse.
