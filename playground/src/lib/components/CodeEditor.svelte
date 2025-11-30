@@ -304,7 +304,7 @@
             `\\((${tokens.capitalName.source})` + / */.source + `(${tokens.text.source})\\)`,
             "g",
         ),
-        ([_text, type, propsString], view) => {
+        ([text, type, propsString], view) => {
             let props: Omit<Asset, "type"> | undefined;
             try {
                 props = JSON.parse(propsString.slice(1, -1));
@@ -312,6 +312,8 @@
                 console.error(error);
                 // continue; always replace the JSON with a decoration
             }
+
+            const length = text.length;
 
             return [
                 {
