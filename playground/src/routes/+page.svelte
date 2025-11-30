@@ -19,6 +19,7 @@
     import PrintButton from "$lib/components/PrintButton.svelte";
     import ShareButton from "$lib/components/ShareButton.svelte";
     import { onMount } from "svelte";
+    import Footer from "$lib/components/Footer.svelte";
 
     const loadPlayground = (): Playground | undefined => {
         const json = window.localStorage.getItem("playground");
@@ -178,46 +179,23 @@
         <PrintingHeader />
 
         <div class="flex h-full flex-1 flex-row gap-[10px] p-[10px]">
-            <div class="printing:hidden flex w-[250px] flex-col gap-[10px]">
+            <div class="printing:hidden flex h-full w-[250px] flex-col gap-[10px]">
                 <Logo />
 
-                <Box class="overflow-auto p-[14px]">
+                <Box class="h-full overflow-auto p-[14px]">
                     <Commands bind:dragInfo {ondrop} />
                 </Box>
-
-                <div class="flex flex-col gap-[10px] *:justify-start *:py-[6px]">
-                    <BoxButton onclick={newPlayground}>
-                        <Icon>add</Icon>
-                        New Playground
-                    </BoxButton>
-
-                    <BoxButton
-                        onclick={() => {
-                            window.open("/docs", "_blank");
-                        }}
-                    >
-                        <Icon>sticky_note_2</Icon>
-                        Wipple Guide
-                    </BoxButton>
-
-                    <BoxButton
-                        onclick={() => {
-                            window.open(
-                                "https://github.com/wipplelang/wipple/blob/main/CHANGELOG.md",
-                                "_blank",
-                            );
-                        }}
-                    >
-                        <Icon>star</Icon>
-                        What’s New
-                    </BoxButton>
-                </div>
             </div>
 
             <div class="flex min-w-[350px] flex-1 shrink-0 flex-col gap-[10px]">
                 <div
                     class="printing:hidden h-(--toolbar-height) flex shrink-0 flex-row justify-between gap-[10px]"
                 >
+                    <ToolbarButton onclick={newPlayground}>
+                        <Icon>add</Icon>
+                        New
+                    </ToolbarButton>
+
                     <div class="flex flex-row gap-[10px]">
                         <Tooltip content="Move Up">
                             <ToolbarButton
@@ -343,3 +321,5 @@
 {:else}
     <Create onCreate={createPlayground} />
 {/if}
+
+<Footer />

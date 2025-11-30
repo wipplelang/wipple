@@ -8,6 +8,12 @@
     Sentry.init({
         dsn: PUBLIC_SENTRY_DSN,
         enabled: import.meta.env.PROD,
+        integrations: [
+            Sentry.feedbackIntegration({
+                colorScheme: "system",
+                autoInject: false,
+            }),
+        ],
     });
 </script>
 
