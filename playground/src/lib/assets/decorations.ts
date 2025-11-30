@@ -42,9 +42,6 @@ export const blockDecoration = (element: HTMLElement) =>
 export const markRegex = (
     regex: RegExp,
     decorate: (
-        lineNumber: number,
-        lineFrom: number,
-        lineTo: number,
         match: RegExpMatchArray,
         view: EditorView,
     ) => {
@@ -70,35 +67,12 @@ export const markRegex = (
         },
     });
 
-    const created = new Set<string>();
-
     const decorator = new MatchDecorator({
         regexp: regex,
         decorate: (add, from, to, match, view) => {
-            const cache = view.state.field(cacheField);
+            const decorations = decorate(match, view);
 
-            // MatchDecorator updates decorations per-line, so make positions
-            // relative to the current line. When a decoration needs to update
-            // the document, it will have the right line number and relative
-            // positions, and the actual document positions can be computed from
-            // those. When the line is edited, MatchDecorator will recompute the
-            // line's decorations and thus the relative positions too.
-            const line = view.state.doc.lineAt(from);
-            const lineFrom = from - line.from;
-            const lineTo = to - line.from;
-
-            const decorations = decorate(line.number, lineFrom, lineTo, match, view);
-
-            for (const { decoration: getDecoration, index } of decorations) {
-                const key = `${line.number}:${lineFrom}-${lineTo}`;
-                created.add(key);
-
-                let decoration = cache[key];
-                if (!decoration) {
-                    decoration = getDecoration();
-                    cache[key] = decoration;
-                }
-
+            for (const { decoration, index } of decorations) {
                 // For accessory decorations, like the number widget
                 if (index != null) {
                     // Fix both positions to the single index
@@ -106,7 +80,7 @@ export const markRegex = (
                     from = to;
                 }
 
-                add(from, to, decoration);
+                add(from, to, decoration());
             }
         },
     });
@@ -123,16 +97,6 @@ export const markRegex = (
 
                 update(update: ViewUpdate) {
                     this.decorations = decorator.updateDeco(update, this.decorations);
-
-                    // Remove old decorations
-                    const cache = update.state.field(cacheField);
-                    for (const key in cache) {
-                        if (!created.has(key)) {
-                            delete cache[key];
-                        }
-                    }
-
-                    created.clear();
                 }
             },
             {

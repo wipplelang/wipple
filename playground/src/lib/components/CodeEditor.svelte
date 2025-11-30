@@ -249,7 +249,7 @@
                     `(${tokens.lowercaseName.source})\\)`,
                 "g",
             ),
-            (lineNumber, lineFrom, _lineTo, [_text, number, unit], view) => {
+            ([_text, number, unit], view) => {
                 if (!playground) {
                     return [];
                 }
@@ -259,7 +259,6 @@
                     return [];
                 }
 
-                lineFrom += 1; // skip the parenthesis
                 const length = number.length;
 
                 return [
@@ -273,12 +272,12 @@
                             });
 
                             element.addEventListener("change", () => {
-                                const line = view.state.doc.line(lineNumber);
+                                const pos = view.posAtDOM(element);
 
                                 view.dispatch({
                                     changes: {
-                                        from: line.from + lineFrom,
-                                        to: line.from + lineFrom + length,
+                                        from: pos - length,
+                                        to: pos,
                                         insert: (element as any).number.toString(),
                                     },
                                 });
@@ -305,7 +304,7 @@
             `\\((${tokens.capitalName.source})` + / */.source + `(${tokens.text.source})\\)`,
             "g",
         ),
-        (lineNumber, lineFrom, lineTo, [_text, type, propsString], view) => {
+        ([_text, type, propsString], view) => {
             let props: Omit<Asset, "type"> | undefined;
             try {
                 props = JSON.parse(propsString.slice(1, -1));
@@ -313,10 +312,6 @@
                 console.error(error);
                 // continue; always replace the JSON with a decoration
             }
-
-            // Skip the parenthesis
-            lineFrom += 1;
-            lineTo -= 1;
 
             return [
                 {
@@ -335,12 +330,13 @@
                                     (newProps as any)[key] = (element as any)[key];
                                 }
 
-                                const line = view.state.doc.line(lineNumber);
+                                const pos = view.posAtDOM(element);
 
                                 view.dispatch({
                                     changes: {
-                                        from: line.from + lineFrom,
-                                        to: line.from + lineTo,
+                                        // Skip the parenthesis
+                                        from: pos + 1,
+                                        to: pos + length - 1,
                                         insert: stringifyAsset({ type, ...newProps } as any),
                                     },
                                 });
@@ -363,30 +359,27 @@
     const markNames = new Compartment();
 
     const createMarkNames = (highlights: Record<string, any>) =>
-        markRegex(
-            new RegExp(tokens.lowercaseName, "g"),
-            (_lineNumber, _lineFrom, _lineTo, [name]) => {
-                const highlight = highlights[name];
-                if (!highlight) {
-                    return [];
-                }
+        markRegex(new RegExp(tokens.lowercaseName, "g"), ([name]) => {
+            const highlight = highlights[name];
+            if (!highlight) {
+                return [];
+            }
 
-                // Using the color CSS variable is OK here because all the color
-                // classes are already defined in full and will be properly
-                // included by Tailwind
-                return [
-                    {
-                        decoration: () =>
-                            markDecoration(
-                                "token-highlighted",
-                                `--highlight-color: var(--color-${highlight.color}-500);` +
-                                    ` --highlight-background-color: var(--color-${highlight.color}-300);` +
-                                    `${highlight.icon ? ` --highlight-icon: '${highlight.icon}';` : ""}`,
-                            ),
-                    },
-                ];
-            },
-        );
+            // Using the color CSS variable is OK here because all the color
+            // classes are already defined in full and will be properly
+            // included by Tailwind
+            return [
+                {
+                    decoration: () =>
+                        markDecoration(
+                            "token-highlighted",
+                            `--highlight-color: var(--color-${highlight.color}-500);` +
+                                ` --highlight-background-color: var(--color-${highlight.color}-300);` +
+                                `${highlight.icon ? ` --highlight-icon: '${highlight.icon}';` : ""}`,
+                        ),
+                },
+            ];
+        });
 
     $effect(() => {
         editorView.dispatch({
