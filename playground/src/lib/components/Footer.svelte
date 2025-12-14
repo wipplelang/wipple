@@ -20,7 +20,9 @@
     <a href={url} target="_blank" class="opacity-60 hover:opacity-100">{title}</a>
 {/snippet}
 
-<footer class="flex flex-row items-center justify-between px-[20px] pb-[10px] text-sm">
+<footer
+    class="printing:hidden flex flex-row items-center justify-between px-[20px] pb-[10px] text-sm"
+>
     <div class="flex flex-row items-center gap-[8px]">
         {@render link("/", "About")}
         {@render separator()}
