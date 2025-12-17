@@ -60,9 +60,9 @@ func (node *AsExpressionNode) Visit(visitor *visit.Visitor) {
 	}
 
 	visitor.Visit(node.asFunction)
-	visitor.Constraint(typecheck.TypeConstraint(node.asFunction, typecheck.FunctionType([]database.Node{node.Left}, node.Right)))
+	visitor.Constraint(typecheck.NewTypeConstraint(node.asFunction, typecheck.FunctionType([]database.Node{node.Left}, node.Right)))
 
-	visitor.Constraint(typecheck.GroupConstraint(node, node.Right))
+	visitor.Constraint(typecheck.NewGroupConstraint(node, node.Right))
 }
 
 func (node *AsExpressionNode) Codegen(c *codegen.Codegen) error {

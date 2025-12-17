@@ -5,30 +5,26 @@ import (
 	"slices"
 )
 
-var constraintOrder []*[]reflect.Value
-
-func init() {
-	constraintOrder = []*[]reflect.Value{
-		{reflect.ValueOf(GroupConstraint)},
-		{reflect.ValueOf(TypeConstraint)},
-		{reflect.ValueOf(InstantiateConstraint)},
-		{reflect.ValueOf(BoundConstraint), reflect.ValueOf(DefaultConstraint)},
-	}
+var constraintOrder = []*[]reflect.Type{
+	{reflect.TypeFor[*GroupConstraint]()},
+	{reflect.TypeFor[*TypeConstraint]()},
+	{reflect.TypeFor[*InstantiateConstraint]()},
+	{reflect.TypeFor[*BoundConstraint](), reflect.TypeFor[*DefaultConstraint]()},
 }
 
 type Constraints struct {
-	constraints map[*[]reflect.Value][]Constraint
+	constraints map[*[]reflect.Type][]Constraint
 }
 
 func (c *Constraints) Add(constraints ...Constraint) {
 	if c.constraints == nil {
-		c.constraints = make(map[*[]reflect.Value][]Constraint, len(constraintOrder))
+		c.constraints = make(map[*[]reflect.Type][]Constraint, len(constraintOrder))
 	}
 
 	for _, constraint := range constraints {
-		var key *[]reflect.Value
+		var key *[]reflect.Type
 		for _, group := range constraintOrder {
-			if slices.Contains(*group, constraint.key) {
+			if slices.Contains(*group, reflect.TypeOf(constraint)) {
 				key = group
 				break
 			}
@@ -46,7 +42,7 @@ func (c *Constraints) Add(constraints ...Constraint) {
 	}
 }
 
-func (c *Constraints) RunUntil(solver *Solver, stop any) {
+func (c *Constraints) RunUntil(solver *Solver, stop reflect.Type) {
 	expectedConstraints := 0
 	for _, constraints := range c.constraints {
 		expectedConstraints += len(constraints)
@@ -59,8 +55,8 @@ func (c *Constraints) RunUntil(solver *Solver, stop any) {
 			break
 		}
 
-		if constraint.IsActive {
-			ok := constraint.run(solver)
+		if constraint.Info().IsActive {
+			ok := constraint.Run(solver)
 			if !ok {
 				requeuedConstraints = append(requeuedConstraints, constraint)
 			}
@@ -88,13 +84,13 @@ func (c *Constraints) All() []Constraint {
 	return all
 }
 
-func (c *Constraints) dequeue(stop any) (Constraint, bool) {
+func (c *Constraints) dequeue(stop reflect.Type) (Constraint, bool) {
 	for _, key := range constraintOrder {
 		if constraints, ok := c.constraints[key]; ok && len(constraints) > 0 {
 			constraint := constraints[0]
 
-			if stop != nil && constraint.key == reflect.ValueOf(stop) {
-				return Constraint{}, false
+			if stop != nil && reflect.TypeOf(constraint) == stop {
+				return nil, false
 			}
 
 			c.constraints[key] = constraints[1:]
@@ -102,5 +98,5 @@ func (c *Constraints) dequeue(stop any) (Constraint, bool) {
 		}
 	}
 
-	return Constraint{}, false
+	return nil, false
 }

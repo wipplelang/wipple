@@ -144,7 +144,7 @@ func (node *InstanceDefinitionNode) Visit(visitor *visit.Visitor) {
 					visitor.Visit(constraint)
 				}
 
-				visitor.Constraint(typecheck.InstantiateConstraint(typecheck.Instantiation{
+				visitor.Constraint(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
 					Source:        node,
 					Definition:    traitDefinition.Node,
 					Substitutions: substitutions,
@@ -169,7 +169,7 @@ func (node *InstanceDefinitionNode) Visit(visitor *visit.Visitor) {
 				visitor.CurrentDefinition.WithinConstantValue = true
 
 				visitor.Visit(node.Value)
-				visitor.Constraint(typecheck.GroupConstraint(node.Value, node))
+				visitor.Constraint(typecheck.NewGroupConstraint(node.Value, node))
 
 				if attributes.Error {
 					database.SetFact(node, ExtraInstanceValueFact{})

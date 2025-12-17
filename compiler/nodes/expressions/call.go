@@ -57,7 +57,7 @@ func (node *CallExpressionNode) Visit(visitor *visit.Visitor) {
 					visitor.Visit(unit)
 					visitor.Visit(node.Function)
 
-					visitor.Constraint(typecheck.TypeConstraint(unit, typecheck.FunctionType[database.Node]([]database.Node{node.Function}, node)))
+					visitor.Constraint(typecheck.NewTypeConstraint(unit, typecheck.FunctionType[database.Node]([]database.Node{node.Function}, node)))
 
 					node.isUnit = true
 
@@ -73,7 +73,7 @@ func (node *CallExpressionNode) Visit(visitor *visit.Visitor) {
 
 	visitor.Visit(node.Function)
 
-	visitor.Constraint(typecheck.TypeConstraint(node.Function, typecheck.FunctionType[database.Node](node.Inputs, node)))
+	visitor.Constraint(typecheck.NewTypeConstraint(node.Function, typecheck.FunctionType[database.Node](node.Inputs, node)))
 }
 
 func (node *CallExpressionNode) Codegen(c *codegen.Codegen) error {

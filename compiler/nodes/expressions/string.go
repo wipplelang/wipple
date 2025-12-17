@@ -44,7 +44,7 @@ func (node *StringExpressionNode) Visit(visitor *visit.Visitor) {
 	}
 	visitor.Visit(stringType)
 
-	visitor.Constraint(typecheck.GroupConstraint(node, stringType))
+	visitor.Constraint(typecheck.NewGroupConstraint(node, stringType))
 }
 
 func (node *StringExpressionNode) Codegen(c *codegen.Codegen) error {

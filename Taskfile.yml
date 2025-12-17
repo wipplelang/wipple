@@ -6,7 +6,7 @@ tasks:
       - go run ./compiler {{.CLI_ARGS}}
   test:
     cmds:
-      - go test work
+      - go test work {{.CLI_ARGS}}
   install:
     cmds:
       - go install ./compiler

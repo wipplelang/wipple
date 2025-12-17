@@ -42,7 +42,7 @@ func (node *DoExpressionNode) Visit(visitor *visit.Visitor) {
 	visitExpression(visitor, node)
 
 	visitor.Visit(node.Input)
-	visitor.Constraint(typecheck.TypeConstraint(node.Input, typecheck.BlockType(node)))
+	visitor.Constraint(typecheck.NewTypeConstraint(node.Input, typecheck.BlockType(node)))
 }
 
 func (node *DoExpressionNode) Codegen(c *codegen.Codegen) error {

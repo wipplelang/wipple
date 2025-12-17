@@ -248,7 +248,7 @@ func GetDefinitionConstraints(node database.Node) []typecheck.Constraint {
 
 func (definition *CurrentDefinition) Constraint(constraint typecheck.Constraint) {
 	if definition.WithinConstantValue {
-		constraint.ShouldInstantiate = false
+		constraint.Info().ShouldInstantiate = false
 	}
 
 	constraints := GetDefinitionConstraints(definition.Node)

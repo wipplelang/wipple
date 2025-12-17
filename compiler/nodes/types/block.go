@@ -44,5 +44,5 @@ func (node *BlockTypeNode) Visit(visitor *visit.Visitor) {
 	visitType(visitor, node)
 
 	visitor.Visit(node.Output)
-	visitor.Constraint(typecheck.TypeConstraint(node, typecheck.BlockType(node.Output)))
+	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.BlockType(node.Output)))
 }

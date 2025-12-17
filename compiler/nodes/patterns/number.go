@@ -46,7 +46,7 @@ func (node *NumberPatternNode) Visit(visitor *visit.Visitor) {
 
 	visitor.Visit(numberType)
 
-	visitor.Constraint(typecheck.GroupConstraint(node, numberType))
+	visitor.Constraint(typecheck.NewGroupConstraint(node, numberType))
 }
 
 func (node *NumberPatternNode) Codegen(c *codegen.Codegen) error {

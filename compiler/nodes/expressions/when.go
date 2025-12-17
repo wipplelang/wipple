@@ -108,7 +108,7 @@ func (node *WhenExpressionNode) Visit(visitor *visit.Visitor) {
 
 	visitor.Db.Register(node.inputTemporary)
 
-	visitor.Constraint(typecheck.GroupConstraint(node.inputTemporary, node.Input))
+	visitor.Constraint(typecheck.NewGroupConstraint(node.inputTemporary, node.Input))
 
 	visit.Matching(visitor, node.inputTemporary, true, func() struct{} {
 		for _, arm := range node.Arms {
@@ -117,7 +117,7 @@ func (node *WhenExpressionNode) Visit(visitor *visit.Visitor) {
 			visitor.Visit(arm.Value)
 			visitor.PopScope()
 
-			visitor.Constraint(typecheck.GroupConstraint(arm.Value, node))
+			visitor.Constraint(typecheck.NewGroupConstraint(arm.Value, node))
 		}
 
 		return struct{}{}

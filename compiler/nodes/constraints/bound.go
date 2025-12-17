@@ -83,7 +83,7 @@ func (node *BoundConstraintNode) Visit(visitor *visit.Visitor) {
 		database.SetFact(extra, types.ExtraTypeFact{})
 	}
 
-	visitor.Constraint(typecheck.BoundConstraint(node, typecheck.UnresolvedBound{
+	visitor.Constraint(typecheck.NewBoundConstraint(node, typecheck.UnresolvedBound{
 		Source:        node,
 		Trait:         trait.Node,
 		Substitutions: &substitutions,

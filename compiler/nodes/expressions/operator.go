@@ -159,7 +159,7 @@ func traitOperator(trait string) visitOperator {
 	return func(visitor *visit.Visitor, node database.Node, left database.Node, right database.Node) database.Node {
 		operatorNode := resolveOperatorTrait(visitor, node, trait)
 
-		visitor.Constraint(typecheck.TypeConstraint(operatorNode, typecheck.FunctionType([]database.Node{left, right}, node)))
+		visitor.Constraint(typecheck.NewTypeConstraint(operatorNode, typecheck.FunctionType([]database.Node{left, right}, node)))
 
 		return &CallExpressionNode{
 			Function: operatorNode,
@@ -173,7 +173,7 @@ func shortCircuitOperator(trait string) visitOperator {
 	return func(visitor *visit.Visitor, node database.Node, left database.Node, right database.Node) database.Node {
 		operatorNode := resolveOperatorTrait(visitor, node, trait)
 
-		visitor.Constraint(typecheck.TypeConstraint(operatorNode, typecheck.FunctionType[typecheck.Type]([]typecheck.Type{left, typecheck.BlockType(right)}, node)))
+		visitor.Constraint(typecheck.NewTypeConstraint(operatorNode, typecheck.FunctionType[typecheck.Type]([]typecheck.Type{left, typecheck.BlockType(right)}, node)))
 
 		return &CallExpressionNode{
 			Function: operatorNode,
@@ -195,7 +195,7 @@ func shortCircuitOperator(trait string) visitOperator {
 }
 
 func applyOperator(visitor *visit.Visitor, node database.Node, left database.Node, right database.Node) database.Node {
-	visitor.Constraint(typecheck.TypeConstraint(right, typecheck.FunctionType([]database.Node{left}, node)))
+	visitor.Constraint(typecheck.NewTypeConstraint(right, typecheck.FunctionType([]database.Node{left}, node)))
 
 	return &CallExpressionNode{
 		Function: right,

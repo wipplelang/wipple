@@ -69,7 +69,7 @@ func (node *AssignmentNode) Visit(visitor *visit.Visitor) {
 
 						visitor.Visit(node.Value)
 
-						visitor.Constraint(typecheck.GroupConstraint(node.Value, constantType))
+						visitor.Constraint(typecheck.NewGroupConstraint(node.Value, constantType))
 
 						definition.Assigned = true
 						definition.Value = node.Value
@@ -95,7 +95,7 @@ func (node *AssignmentNode) Visit(visitor *visit.Visitor) {
 			return struct{}{}
 		})
 
-		visitor.Constraint(typecheck.GroupConstraint(node.Pattern, node.Value))
+		visitor.Constraint(typecheck.NewGroupConstraint(node.Pattern, node.Value))
 	})
 }
 

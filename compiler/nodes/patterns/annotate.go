@@ -26,8 +26,8 @@ func (node *AnnotatePatternNode) Visit(visitor *visit.Visitor) {
 	visitor.Visit(node.Pattern)
 	visitor.Visit(node.Type)
 
-	visitor.Constraint(typecheck.GroupConstraint(node.Pattern, node.Type))
-	visitor.Constraint(typecheck.GroupConstraint(node, node.Pattern))
+	visitor.Constraint(typecheck.NewGroupConstraint(node.Pattern, node.Type))
+	visitor.Constraint(typecheck.NewGroupConstraint(node, node.Pattern))
 }
 
 func (node *AnnotatePatternNode) Codegen(c *codegen.Codegen) error {

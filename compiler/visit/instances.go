@@ -2,6 +2,7 @@ package visit
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 
 	"wipple/database"
@@ -21,7 +22,7 @@ func CheckForOverlappingInstances(db *database.Db, traitDefinition database.Node
 	nonDefaultInstances := make([]typecheck.Instance, 0, len(instances))
 	for _, instance := range instances {
 		// Instantiate the instance to bring all referenced types into the solver
-		solver.Constraints.Add(typecheck.InstantiateConstraint(typecheck.Instantiation{
+		solver.Constraints.Add(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
 			Source:        instance.Node,
 			Definition:    instance.Node,
 			Replacements:  map[database.Node]database.Node{},
@@ -36,7 +37,7 @@ func CheckForOverlappingInstances(db *database.Db, traitDefinition database.Node
 		}
 	}
 
-	solver.RunPassUntil(typecheck.BoundConstraint)
+	solver.RunPassUntil(reflect.TypeFor[*typecheck.BoundConstraint]())
 
 	for _, instances := range [][]typecheck.Instance{defaultInstances, nonDefaultInstances} {
 		var overlapping []database.Node

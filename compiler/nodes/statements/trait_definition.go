@@ -105,7 +105,7 @@ func (node *TraitDefinitionNode) Visit(visitor *visit.Visitor) {
 		visitor.AfterAllDefinitions(func() {
 			visitor.Visit(node.Type)
 
-			visitor.Constraint(typecheck.GroupConstraint(node, node.Type))
+			visitor.Constraint(typecheck.NewGroupConstraint(node, node.Type))
 
 			for _, constraint := range node.Constraints {
 				visitor.Visit(constraint)

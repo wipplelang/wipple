@@ -42,7 +42,7 @@ func (node *NumberExpressionNode) Visit(visitor *visit.Visitor) {
 	}
 	visitor.Visit(numberType)
 
-	visitor.Constraint(typecheck.GroupConstraint(node, numberType))
+	visitor.Constraint(typecheck.NewGroupConstraint(node, numberType))
 }
 
 func (node *NumberExpressionNode) Codegen(c *codegen.Codegen) error {

@@ -65,7 +65,7 @@ func (node *BlockExpressionNode) Visit(visitor *visit.Visitor) {
 		output = typecheck.TupleType([]typecheck.Type{})
 	}
 
-	visitor.Constraint(typecheck.TypeConstraint(node, typecheck.BlockType(output)))
+	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.BlockType(output)))
 }
 
 func (node *BlockExpressionNode) Codegen(c *codegen.Codegen) error {

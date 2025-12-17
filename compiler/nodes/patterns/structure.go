@@ -117,7 +117,7 @@ func (node *StructurePatternNode) Visit(visitor *visit.Visitor) {
 		}
 	}
 
-	visitor.Constraint(typecheck.InstantiateConstraint(typecheck.Instantiation{
+	visitor.Constraint(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
 		Source:        node,
 		Definition:    definition.Node,
 		Substitutions: &map[database.Node]typecheck.Type{},

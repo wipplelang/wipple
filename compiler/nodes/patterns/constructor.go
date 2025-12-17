@@ -109,7 +109,7 @@ func (node *ConstructorPatternNode) Visit(visitor *visit.Visitor) {
 			database.SetFact(element, ExtraElementFact{})
 		}
 
-		visitor.Constraint(typecheck.InstantiateConstraint(typecheck.Instantiation{
+		visitor.Constraint(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
 			Source:        node,
 			Definition:    definition.Node,
 			Substitutions: &map[database.Node]typecheck.Type{},
@@ -133,7 +133,7 @@ func (node *ConstructorPatternNode) Visit(visitor *visit.Visitor) {
 		}
 
 		if len(node.Elements) == 0 {
-			visitor.Constraint(typecheck.InstantiateConstraint(typecheck.Instantiation{
+			visitor.Constraint(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
 				Source:        node,
 				Definition:    definition.Node,
 				Substitutions: &map[database.Node]typecheck.Type{},
@@ -146,14 +146,14 @@ func (node *ConstructorPatternNode) Visit(visitor *visit.Visitor) {
 			visitor.Db.Register(constructorNode)
 			database.SetFact(constructorNode, typecheck.TypedFact{})
 
-			visitor.Constraint(typecheck.InstantiateConstraint(typecheck.Instantiation{
+			visitor.Constraint(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
 				Source:        node,
 				Definition:    definition.Node,
 				Substitutions: &map[database.Node]typecheck.Type{},
 				Replacements:  map[database.Node]database.Node{definition.Node: constructorNode},
 			}, visit.GetDefinitionConstraints))
 
-			visitor.Constraint(typecheck.TypeConstraint(constructorNode, typecheck.FunctionType[database.Node](node.Elements, node)))
+			visitor.Constraint(typecheck.NewTypeConstraint(constructorNode, typecheck.FunctionType[database.Node](node.Elements, node)))
 		}
 	}
 }

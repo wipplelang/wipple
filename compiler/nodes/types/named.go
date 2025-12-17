@@ -87,7 +87,7 @@ func (node *NamedTypeNode) Visit(visitor *visit.Visitor) {
 		database.SetFact(extra, ExtraTypeFact{})
 	}
 
-	visitor.Constraint(typecheck.InstantiateConstraint(typecheck.Instantiation{
+	visitor.Constraint(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
 		Source:        node,
 		Definition:    typeDefinition.Node,
 		Substitutions: &substitutions,

@@ -80,7 +80,7 @@ func (node *FunctionExpressionNode) Visit(visitor *visit.Visitor) {
 
 	visitor.PopScope()
 
-	visitor.Constraint(typecheck.TypeConstraint(node, typecheck.FunctionType(node.Inputs, node.Output)))
+	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.FunctionType(node.Inputs, node.Output)))
 }
 
 func (node *FunctionExpressionNode) Codegen(c *codegen.Codegen) error {

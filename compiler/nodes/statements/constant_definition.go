@@ -99,7 +99,7 @@ func (node *ConstantDefinitionNode) Visit(visitor *visit.Visitor) {
 				}
 			})
 
-			visitor.Constraint(typecheck.GroupConstraint(node, node.Type))
+			visitor.Constraint(typecheck.NewGroupConstraint(node, node.Type))
 		})
 
 		visitor.PopScope()

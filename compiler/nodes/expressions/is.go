@@ -62,7 +62,7 @@ func (node *IsExpressionNode) Visit(visitor *visit.Visitor) {
 		return struct{}{}
 	})
 
-	visitor.Constraint(typecheck.GroupConstraint(node.inputTemporary, node.Left))
+	visitor.Constraint(typecheck.NewGroupConstraint(node.inputTemporary, node.Left))
 
 	booleanTypeDefinition, ok := visit.Resolve[*visit.TypeDefinition](visitor, "Boolean", node)
 	if !ok {
@@ -82,7 +82,7 @@ func (node *IsExpressionNode) Visit(visitor *visit.Visitor) {
 	node.trueVariant = trueVariant.Node
 	node.falseVariant = falseVariant.Node
 
-	visitor.Constraint(typecheck.GroupConstraint(node, booleanTypeDefinition.Node))
+	visitor.Constraint(typecheck.NewGroupConstraint(node, booleanTypeDefinition.Node))
 }
 
 func (node *IsExpressionNode) Codegen(c *codegen.Codegen) error {

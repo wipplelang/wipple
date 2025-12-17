@@ -39,7 +39,7 @@ func ParseExpressionStatement(parser *syntax.Parser, parseExpression ParseExpres
 func (node *ExpressionStatementNode) Visit(visitor *visit.Visitor) {
 	visitor.AfterAllDefinitions(func() {
 		visitor.Visit(node.Expression)
-		visitor.Constraint(typecheck.GroupConstraint(node, node.Expression))
+		visitor.Constraint(typecheck.NewGroupConstraint(node, node.Expression))
 	})
 }
 

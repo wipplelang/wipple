@@ -38,5 +38,5 @@ func ParseUnitType(parser *syntax.Parser) (*UnitTypeNode, *syntax.Error) {
 func (node *UnitTypeNode) Visit(visitor *visit.Visitor) {
 	visitType(visitor, node)
 
-	visitor.Constraint(typecheck.TypeConstraint(node, typecheck.TupleType([]typecheck.Type{})))
+	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.TupleType([]typecheck.Type{})))
 }

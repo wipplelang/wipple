@@ -52,11 +52,11 @@ func (node *VariableExpressionNode) Visit(visitor *visit.Visitor) {
 
 	switch definition := definition.(type) {
 	case *visit.VariableDefinition:
-		visitor.Constraint(typecheck.GroupConstraint(node, definition.Node))
+		visitor.Constraint(typecheck.NewGroupConstraint(node, definition.Node))
 	case *visit.ConstantDefinition:
 		node.resolvedSubstitutions = &map[database.Node]typecheck.Type{}
 
-		visitor.Constraint(typecheck.InstantiateConstraint(typecheck.Instantiation{
+		visitor.Constraint(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
 			Source:        node,
 			Definition:    definition.Node,
 			Substitutions: node.resolvedSubstitutions,

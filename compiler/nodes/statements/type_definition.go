@@ -315,7 +315,7 @@ func (node *TypeDefinitionNode) Visit(visitor *visit.Visitor) {
 			}
 		})
 
-		visitor.Constraint(typecheck.TypeConstraint(node, typecheck.NamedType(node, node.Name, node.Parameters)))
+		visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.NamedType(node, node.Name, node.Parameters)))
 
 		typeConstraints := visit.GetDefinitionConstraints(node)
 
@@ -390,9 +390,9 @@ func (node *TypeDefinitionNode) Visit(visitor *visit.Visitor) {
 							}
 
 							if len(variant.Elements) == 0 {
-								visitor.Constraint(typecheck.GroupConstraint(variantNode, node))
+								visitor.Constraint(typecheck.NewGroupConstraint(variantNode, node))
 							} else {
-								visitor.Constraint(typecheck.TypeConstraint(variantNode, typecheck.FunctionType[database.Node](variant.Elements, node)))
+								visitor.Constraint(typecheck.NewTypeConstraint(variantNode, typecheck.FunctionType[database.Node](variant.Elements, node)))
 							}
 
 							constructorDefinition := &visit.VariantConstructorDefinition{

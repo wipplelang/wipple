@@ -53,7 +53,7 @@ func (node *OrPatternNode) Visit(visitor *visit.Visitor) {
 
 	for _, pattern := range node.Patterns {
 		visitor.Visit(pattern)
-		visitor.Constraint(typecheck.GroupConstraint(node, pattern))
+		visitor.Constraint(typecheck.NewGroupConstraint(node, pattern))
 	}
 }
 

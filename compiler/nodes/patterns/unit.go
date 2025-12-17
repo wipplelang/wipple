@@ -42,7 +42,7 @@ func (node *UnitPatternNode) Visit(visitor *visit.Visitor) {
 	visitPattern(visitor, node)
 	node.matching = visitor.CurrentMatch.Node
 
-	visitor.Constraint(typecheck.TypeConstraint(node, typecheck.TupleType([]typecheck.Type{})))
+	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.TupleType([]typecheck.Type{})))
 }
 
 func (node *UnitPatternNode) Codegen(c *codegen.Codegen) error {

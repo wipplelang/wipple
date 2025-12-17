@@ -54,8 +54,8 @@ func (node *AnnotateExpressionNode) Visit(visitor *visit.Visitor) {
 	visitor.Visit(node.Expression)
 	visitor.Visit(node.Type)
 
-	visitor.Constraint(typecheck.GroupConstraint(node.Expression, node.Type))
-	visitor.Constraint(typecheck.GroupConstraint(node, node.Expression))
+	visitor.Constraint(typecheck.NewGroupConstraint(node.Expression, node.Type))
+	visitor.Constraint(typecheck.NewGroupConstraint(node, node.Expression))
 }
 
 func (node *AnnotateExpressionNode) Codegen(c *codegen.Codegen) error {

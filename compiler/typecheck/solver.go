@@ -1,6 +1,7 @@
 package typecheck
 
 import (
+	"reflect"
 	"slices"
 
 	"wipple/database"
@@ -51,7 +52,7 @@ func (s *Solver) Run() {
 	s.RunPassUntil(nil)
 }
 
-func (s *Solver) RunPassUntil(stop any) {
+func (s *Solver) RunPassUntil(stop reflect.Type) {
 	s.Constraints.RunUntil(s, stop)
 }
 

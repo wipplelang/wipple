@@ -115,11 +115,11 @@ func Compile(db *database.Db, root *RootNode, files []*file.FileNode) {
 		// Also imply all of the definition's bounds (so they remain generic
 		// while resolving the definition)
 		for _, constraint := range definitionConstraints {
-			if constraint.Instance != nil {
+			if constraint.Info().Instance != nil {
 				// Only imply bounds from constraints, not from inside the
 				// definition's value!
-				if _, ok := constraint.Node.(*constraints.BoundConstraintNode); ok {
-					solver.Imply(*constraint.Instance)
+				if _, ok := constraint.Info().Node.(*constraints.BoundConstraintNode); ok {
+					solver.Imply(*constraint.Info().Instance)
 				}
 			}
 		}

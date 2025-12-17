@@ -168,7 +168,7 @@ func (node *TypeParameterNode) Visit(visitor *visit.Visitor) {
 
 	existing, ok := visit.Resolve[*visit.TypeParameterDefinition](visitor, node.Name, node)
 	if ok {
-		visitor.Constraint(typecheck.GroupConstraint(node, existing.Node))
+		visitor.Constraint(typecheck.NewGroupConstraint(node, existing.Node))
 	} else {
 		definition := &visit.TypeParameterDefinition{
 			Name: node.Name,
@@ -176,7 +176,7 @@ func (node *TypeParameterNode) Visit(visitor *visit.Visitor) {
 		}
 		visitor.Define(node.Name, definition)
 
-		visitor.Constraint(typecheck.TypeConstraint(node, typecheck.ParameterType(node, node.Name)))
+		visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.ParameterType(node, node.Name)))
 
 		if node.Infer {
 			database.SetFact(node, typecheck.InferredParameterFact{})
@@ -188,8 +188,8 @@ func (node *TypeParameterNode) Visit(visitor *visit.Visitor) {
 		if node.Value != nil {
 			visitor.Visit(node.Value)
 
-			constraint := typecheck.GroupConstraint(node, node.Value)
-			constraint.IsActive = false // wait until instantiated
+			constraint := typecheck.NewGroupConstraint(node, node.Value)
+			constraint.Info().IsActive = false // wait until instantiated
 			visitor.Constraint(constraint)
 		}
 

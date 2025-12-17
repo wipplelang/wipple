@@ -51,7 +51,7 @@ func (node *ConstructorExpressionNode) Visit(visitor *visit.Visitor) {
 
 	substitutions := map[database.Node]typecheck.Type{}
 
-	visitor.Constraint(typecheck.InstantiateConstraint(typecheck.Instantiation{
+	visitor.Constraint(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
 		Source:        node,
 		Definition:    constructorDefinition.GetNode(),
 		Substitutions: &substitutions,
@@ -59,7 +59,7 @@ func (node *ConstructorExpressionNode) Visit(visitor *visit.Visitor) {
 	}, visit.GetDefinitionConstraints))
 
 	if traitDefinition, ok := constructorDefinition.(*visit.TraitDefinition); ok {
-		visitor.Constraint(typecheck.BoundConstraint(node, typecheck.UnresolvedBound{
+		visitor.Constraint(typecheck.NewBoundConstraint(node, typecheck.UnresolvedBound{
 			Source:        node,
 			Trait:         traitDefinition.Node,
 			Substitutions: &substitutions,

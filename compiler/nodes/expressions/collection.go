@@ -90,7 +90,7 @@ func (node *CollectionExpressionNode) Visit(visitor *visit.Visitor) {
 	database.SetFact(elementType, typecheck.TypedFact{})
 
 	if len(node.Elements) > 0 {
-		visitor.Constraint(typecheck.GroupConstraint(node.Elements[0], elementType))
+		visitor.Constraint(typecheck.NewGroupConstraint(node.Elements[0], elementType))
 	}
 
 	node.collectionNode = database.Node(&ConstructorExpressionNode{
@@ -110,7 +110,7 @@ func (node *CollectionExpressionNode) Visit(visitor *visit.Visitor) {
 	}
 
 	visitor.Visit(node.collectionNode)
-	visitor.Constraint(typecheck.GroupConstraint(node.collectionNode, node))
+	visitor.Constraint(typecheck.NewGroupConstraint(node.collectionNode, node))
 }
 
 func (node *CollectionExpressionNode) Codegen(c *codegen.Codegen) error {

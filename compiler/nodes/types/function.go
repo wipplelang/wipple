@@ -69,5 +69,5 @@ func (node *FunctionTypeNode) Visit(visitor *visit.Visitor) {
 
 	visitor.Visit(node.Output)
 
-	visitor.Constraint(typecheck.TypeConstraint(node, typecheck.FunctionType(node.Inputs, node.Output)))
+	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.FunctionType(node.Inputs, node.Output)))
 }

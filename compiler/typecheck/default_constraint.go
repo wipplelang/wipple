@@ -6,24 +6,37 @@ import (
 	"wipple/database"
 )
 
-func DefaultConstraint(node database.Node, ty Type) Constraint {
-	return newConstraint(DefaultConstraint, constraintConfig{
-		Node: node,
-		Debug: func() string {
-			return fmt.Sprintf("DefaultConstraint(%v :: %v)", database.DisplayNode(node), DisplayType(ty, true))
-		},
-		Instantiate: func(solver *Solver, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
-			node := GetOrInstantiate(solver, node, source, replacements)
-			ty := InstantiateType(solver, ty, source, substitutions, replacements)
+type DefaultConstraint struct {
+	info *ConstraintInfo
+	Ty   Type
+}
 
-			return DefaultConstraint(node, ty)
-		},
-		Run: func(solver *Solver) bool {
-			if _, ok := solver.Apply(node).(database.Node); ok {
-				solver.Unify(node, ty)
-			}
+func (c *DefaultConstraint) Info() *ConstraintInfo {
+	return c.info
+}
 
-			return true
-		},
-	})
+func (c *DefaultConstraint) String() string {
+	return fmt.Sprintf("DefaultConstraint(%v :: %v)", database.DisplayNode(c.info.Node), DisplayType(c.Ty, true))
+}
+
+func (c *DefaultConstraint) Instantiate(solver *Solver, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
+	node := GetOrInstantiate(solver, c.info.Node, source, replacements)
+	ty := InstantiateType(solver, c.Ty, source, substitutions, replacements)
+
+	return NewDefaultConstraint(node, ty)
+}
+
+func (c *DefaultConstraint) Run(solver *Solver) bool {
+	if _, ok := solver.Apply(c.info.Node).(database.Node); ok {
+		solver.Unify(c.info.Node, c.Ty)
+	}
+
+	return true
+}
+
+func NewDefaultConstraint(node database.Node, ty Type) *DefaultConstraint {
+	return &DefaultConstraint{
+		Ty:   ty,
+		info: DefaultConstraintInfo(node),
+	}
 }

@@ -57,7 +57,7 @@ func (node *SetPatternNode) Visit(visitor *visit.Visitor) {
 		return
 	}
 
-	visitor.Constraint(typecheck.GroupConstraint(node, variableDefinition.Node))
+	visitor.Constraint(typecheck.NewGroupConstraint(node, variableDefinition.Node))
 
 	node.matchingVariable = variableDefinition.Node
 

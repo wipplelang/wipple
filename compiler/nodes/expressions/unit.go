@@ -39,7 +39,7 @@ func ParseUnitExpression(parser *syntax.Parser) (*UnitExpressionNode, *syntax.Er
 func (node *UnitExpressionNode) Visit(visitor *visit.Visitor) {
 	visitExpression(visitor, node)
 
-	visitor.Constraint(typecheck.TypeConstraint(node, typecheck.TupleType([]database.Node{})))
+	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.TupleType([]database.Node{})))
 }
 
 func (node *UnitExpressionNode) Codegen(c *codegen.Codegen) error {

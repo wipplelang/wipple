@@ -79,7 +79,7 @@ func (node *TuplePatternNode) Visit(visitor *visit.Visitor) {
 		node.elementTemporaries = append(node.elementTemporaries, visitor.VisitMatching(element))
 	}
 
-	visitor.Constraint(typecheck.TypeConstraint(node, typecheck.TupleType(node.elementTemporaries)))
+	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.TupleType(node.elementTemporaries)))
 }
 
 func (node *TuplePatternNode) Codegen(c *codegen.Codegen) error {

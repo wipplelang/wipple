@@ -85,7 +85,7 @@ func (node *FormatExpressionNode) Visit(visitor *visit.Visitor) {
 	}
 	visitor.Visit(stringType)
 
-	visitor.Constraint(typecheck.GroupConstraint(node, stringType))
+	visitor.Constraint(typecheck.NewGroupConstraint(node, stringType))
 
 	node.segments = make([]*formatSegment, 0, len(segmentStrings))
 	missing := make([]string, 0, len(segmentStrings))
@@ -122,7 +122,7 @@ func (node *FormatExpressionNode) Visit(visitor *visit.Visitor) {
 
 			visitor.Visit(segment.describeNode)
 
-			visitor.Constraint(typecheck.TypeConstraint(segment.describeNode, typecheck.FunctionType[database.Node]([]database.Node{segment.input}, stringType)))
+			visitor.Constraint(typecheck.NewTypeConstraint(segment.describeNode, typecheck.FunctionType[database.Node]([]database.Node{segment.input}, stringType)))
 		}
 	}
 }

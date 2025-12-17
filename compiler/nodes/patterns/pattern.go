@@ -219,7 +219,7 @@ func ParseAnnotatePattern(parser *syntax.Parser) (*AnnotatePatternNode, *syntax.
 func visitPattern(visitor *visit.Visitor, node database.Node) {
 	database.SetFact(node, IsPatternFact{})
 	database.SetFact(node, typecheck.TypedFact{})
-	visitor.Constraint(typecheck.GroupConstraint(node, visitor.CurrentMatch.Node))
+	visitor.Constraint(typecheck.NewGroupConstraint(node, visitor.CurrentMatch.Node))
 }
 
 type eachTemporary interface {

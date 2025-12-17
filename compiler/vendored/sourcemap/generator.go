@@ -61,7 +61,9 @@ func NewGenerator(file string) *Generator {
 	return &Generator{file: file}
 }
 
-func (gen *Generator) Sources() []string { return gen.rawSources }
+func (gen *Generator) Sources() []string {
+	return gen.rawSources
+}
 
 // Adds a source to the source map
 func (gen *Generator) AddSource(fileName string) SourceIndex {

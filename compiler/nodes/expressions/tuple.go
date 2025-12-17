@@ -71,7 +71,7 @@ func (node *TupleExpressionNode) Visit(visitor *visit.Visitor) {
 		visitor.Visit(element)
 	}
 
-	visitor.Constraint(typecheck.TypeConstraint(node, typecheck.TupleType(node.Elements)))
+	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.TupleType(node.Elements)))
 }
 
 func (node *TupleExpressionNode) Codegen(c *codegen.Codegen) error {
