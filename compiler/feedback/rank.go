@@ -9,11 +9,11 @@ type Rank int
 
 const (
 	RankSyntax Rank = iota
-	RankName
+	RankNames
 	RankCustom
-	RankTypes
 	RankBounds
-	RankPlaceholder
+	RankTypes
+	RankPlaceholders
 )
 
 func sort(items []FeedbackItem) {

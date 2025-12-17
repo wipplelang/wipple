@@ -9,7 +9,7 @@ import (
 func registerPlaceholders() {
 	register(Feedback[typecheck.Type]{
 		Id:    "placeholder",
-		Rank:  RankPlaceholder,
+		Rank:  RankPlaceholders,
 		Query: queries.Placeholder,
 		Render: func(render *Render, node database.Node, ty typecheck.Type) {
 			if ty != nil {
