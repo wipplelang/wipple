@@ -508,4 +508,6 @@ Feedback:
   `output` (infer-constraint.wipple:20:1) must be the same type as `add-infer 1 2` (infer-
   constraint.wipple:20:10), `add-infer 1 2` (infer-constraint.wipple:20:11), and `String` (infer-
   constraint.wipple:20:28); double-check these.
+  
+    -  Annotated as `String` here.
 

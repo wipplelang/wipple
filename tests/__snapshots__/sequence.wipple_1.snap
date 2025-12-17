@@ -344,6 +344,10 @@ Feedback:
   
   `_` (sequence.wipple:24:14) must be the same type as `Number` (sequence.wipple:24:19), `_`
   (sequence.wipple:24:13), and `String` (sequence.wipple:23:17); double-check these.
+  
+    -  Annotated as `String` here.
+  
+    -  Annotated as `Number` here.
 
 `_` (sequence.wipple:24:30) (placeholder):
 

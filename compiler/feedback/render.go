@@ -8,7 +8,6 @@ import (
 
 	"wipple/colors"
 	"wipple/database"
-	"wipple/nodes/types"
 	"wipple/queries"
 	"wipple/typecheck"
 )
@@ -161,19 +160,26 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 	case *typecheck.TypeConstraint:
 		node := c.Info().Node
 
-		if database.IsHiddenNode(node) {
+		if database.IsHiddenNode(node) || c.Type.Instantiate != nil {
 			return false
 		}
 
-		if _, ok := database.GetFact[types.IsTypeFact](node); ok {
-			return false
+		span := database.GetSpanFact(node)
+
+		// Don't repeat the type if it is from the source code
+		if span.Source == typecheck.DisplayType(c.Type, true) {
+			render.WriteString(prefix)
+			render.WriteString("Annotated as ")
+			render.WriteType(c.Type)
+			render.WriteString(" here.")
+		} else {
+			render.WriteString(prefix)
+			render.WriteNode(node)
+			render.WriteString(" is a ")
+			render.WriteType(c.Type)
+			render.WriteString(".")
 		}
 
-		render.WriteString(prefix)
-		render.WriteNode(node)
-		render.WriteString(" is a ")
-		render.WriteType(c.Type)
-		render.WriteString(".")
 		return true
 	}
 	return false
