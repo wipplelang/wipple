@@ -24,7 +24,9 @@ func (c *GroupConstraint) Instantiate(solver *Solver, source database.Node, repl
 	left := GetOrInstantiate(solver, c.Left, source, replacements)
 	right := GetOrInstantiate(solver, c.Right, source, replacements)
 
-	return NewGroupConstraint(left, right)
+	constraint := NewGroupConstraint(left, right)
+	constraint.info.Node = source
+	return constraint
 }
 
 func (c *GroupConstraint) Run(solver *Solver) bool {

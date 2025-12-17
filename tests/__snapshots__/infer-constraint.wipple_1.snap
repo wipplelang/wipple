@@ -511,5 +511,8 @@ Feedback:
   constraint.wipple:20:10), `add-infer 1 2` (infer-constraint.wipple:20:11), and `String` (infer-
   constraint.wipple:20:28); double-check these.
   
+    -  See `add-infer :: left right -> sum where (Add-Infer left right sum)` (infer-
+  constraint.wipple:17:1).
+  
     -  Explicitly annotated as a `String`.
 

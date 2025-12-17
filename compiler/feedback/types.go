@@ -69,8 +69,9 @@ func registerTypes() {
 			}
 
 			if len(data.Trace) > 0 {
+				seen := map[database.Node]struct{}{}
 				for _, constraint := range data.Trace {
-					render.WriteConstraint("\n\n  -  ", constraint)
+					render.WriteConstraint("\n\n  -  ", constraint, seen)
 				}
 			}
 		},

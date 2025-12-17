@@ -11,6 +11,7 @@ import (
 	"wipple/nodes/constraints"
 	"wipple/queries"
 	"wipple/typecheck"
+	"wipple/visit"
 )
 
 type Render struct {
@@ -40,6 +41,10 @@ func (render *Render) WriteNumber(n int, singular string, plural string) {
 
 func (render *Render) WriteNode(node database.Node) {
 	fmt.Fprintf(&render.buf, "%s", database.RenderNode(node))
+}
+
+func (render *Render) WriteDefinition(node database.Node) {
+	fmt.Fprintf(&render.buf, "%s", database.RenderDefinition(node))
 }
 
 func (render *Render) WriteCode(code string) {
@@ -156,13 +161,33 @@ func (render *Render) WriteComments(data queries.CommentsData) {
 	render.WriteString(commentsString[lastIndex:])
 }
 
-func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constraint) bool {
+func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constraint, seenLinks map[database.Node]struct{}) bool {
 	node := constraint.Info().Node
-	if database.IsHiddenNode(node) {
+	if node != nil && database.IsHiddenNode(node) {
 		return false
 	}
 
 	switch constraint := constraint.(type) {
+	case *typecheck.GroupConstraint:
+		if node == nil {
+			return false
+		}
+
+		if fact, ok := database.GetFact[visit.ResolvedFact](node); ok && len(fact.Definitions) == 1 {
+			definition := fact.Definitions[0].GetNode()
+			if _, ok := seenLinks[definition]; ok {
+				return false
+			} else {
+				seenLinks[definition] = struct{}{}
+			}
+
+			render.WriteString(prefix)
+			render.WriteString("See ")
+			render.WriteDefinition(definition)
+			render.WriteString(".")
+
+			return true
+		}
 	case *typecheck.TypeConstraint:
 		if constraint.Type.Instantiate != nil {
 			return false
@@ -206,6 +231,7 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 		render.WriteBound(bound)
 		render.WriteString(".")
 	}
+
 	return false
 }
 

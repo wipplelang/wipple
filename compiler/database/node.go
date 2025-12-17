@@ -96,8 +96,14 @@ func DefinitionSource(node Node) string {
 }
 
 func RenderNode(node Node) string {
-	source := NodeSource(node)
+	return renderSource(node, NodeSource(node))
+}
 
+func RenderDefinition(node Node) string {
+	return renderSource(node, DefinitionSource(node))
+}
+
+func renderSource(node Node, source string) string {
 	if LspEnabled {
 		return colors.Code(source)
 	} else {

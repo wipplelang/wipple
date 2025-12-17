@@ -346,7 +346,14 @@ Feedback:
   `_` (sequence.wipple:24:14) must be the same type as `Number` (sequence.wipple:24:19), `_`
   (sequence.wipple:24:13), and `String` (sequence.wipple:23:17); double-check these.
   
+    -  See `filter :: (item -> Boolean) -> collection -> Sequence item where (As-Sequence collection
+  item)` (sequence.wipple:20:1).
+  
     -  Explicitly annotated as a `String`.
+  
+    -  See `Box : value => type {
+      value :: value
+  }` (sequence.wipple:13:1).
   
     -  Explicitly annotated as a `Number`.
 
