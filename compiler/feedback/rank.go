@@ -11,8 +11,9 @@ const (
 	RankSyntax Rank = iota
 	RankNames
 	RankCustom
+	RankConflicts
 	RankBounds
-	RankTypes
+	RankUnknown
 	RankPlaceholders
 )
 
@@ -21,10 +22,10 @@ func sort(items []FeedbackItem) {
 		leftSpan := database.GetSpanFact(left.On)
 		rightSpan := database.GetSpanFact(right.On)
 
-		if leftSpan.Start.Line == rightSpan.Start.Line {
-			return int(left.Rank) - int(right.Rank)
+		if leftSpan.Start.Line != rightSpan.Start.Line {
+			return leftSpan.Start.Line - rightSpan.Start.Line
 		}
 
-		return leftSpan.Start.Line - rightSpan.Start.Line
+		return int(left.Rank) - int(right.Rank)
 	})
 }

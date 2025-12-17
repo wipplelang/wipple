@@ -17,7 +17,7 @@ func registerTypes() {
 
 	register(Feedback[conflictingTypesData]{
 		Id:   "conflicting-types",
-		Rank: RankTypes,
+		Rank: RankConflicts,
 		Query: func(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(data conflictingTypesData)) {
 			queries.ConflictingTypes(db, node, filter, func(source database.Node, from database.Node, nodes []database.Node, types []*typecheck.ConstructedType, trace []typecheck.Constraint) {
 				f(conflictingTypesData{
@@ -79,7 +79,7 @@ func registerTypes() {
 
 	register(Feedback[*typecheck.ConstructedType]{
 		Id:    "incomplete-type",
-		Rank:  RankTypes,
+		Rank:  RankUnknown,
 		Query: queries.IncompleteType,
 		Render: func(render *Render, node database.Node, ty *typecheck.ConstructedType) {
 			render.WriteString("Missing information for the type of ")
@@ -96,7 +96,7 @@ func registerTypes() {
 
 	register(Feedback[*typecheck.Group]{
 		Id:    "unknown-type",
-		Rank:  RankTypes,
+		Rank:  RankUnknown,
 		Query: queries.UnknownType,
 		Render: func(render *Render, node database.Node, group *typecheck.Group) {
 			render.WriteString("Could not determine the type of ")
