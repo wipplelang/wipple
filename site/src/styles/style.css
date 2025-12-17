@@ -10,17 +10,12 @@
     html {
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
-        scroll-behavior: smooth;
         font-weight: 500;
     }
 
     body {
         font-family: Inter, sans-serif;
         @apply bg-white text-black;
-    }
-
-    main {
-        @apply mx-auto max-w-4xl px-4;
     }
 
     a:not(.no-underline) {
@@ -52,6 +47,8 @@
     }
 
     .markdown {
+        @apply flex flex-col;
+
         h1,
         h2,
         h3 {
@@ -75,12 +72,11 @@
         }
 
         code:not(pre > code) {
-            @apply rounded-md border-current/10 px-1;
-            border-width: var(--border-width);
+            @apply rounded-md border-[1.5px] border-current/10 px-1;
         }
 
         pre:has(code) {
-            @apply mb-(--paragraph-spacing) rounded-xl border-[1.5px] border-current/10 p-4;
+            @apply mb-(--paragraph-spacing) shrink rounded-xl border-[1.5px] border-current/10 p-4 whitespace-pre-wrap;
         }
     }
 }

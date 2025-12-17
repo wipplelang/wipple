@@ -1,10 +1,78 @@
 ---
 import Layout from "@/layouts/Layout.astro";
-import Guide from "../../../GUIDE.md";
+import Guide, { getHeadings } from "../../../GUIDE.md";
+
+const headings = getHeadings();
 ---
 
 <Layout>
-    <div class="markdown">
-        <Guide />
-    </div>
+    <main class="mx-auto flex max-w-6xl flex-1 flex-row gap-[20px] px-4">
+        <div class="sticky top-0 hidden h-screen w-xs flex-col pt-10 md:flex">
+            <p class="text-lg font-semibold">Table of Contents</p>
+
+            {
+                headings
+                    .filter((heading) => heading.depth > 1)
+                    .map((heading) => (
+                        <a
+                            href={`#${heading.slug}`}
+                            class="mt-2 no-underline data-[active]:text-blue-500"
+                            style={`margin-left: ${(heading.depth - 2) * 20}px`}
+                            onclick="ontocclick"
+                        >
+                            {heading.text}
+                        </a>
+                    ))
+            }
+        </div>
+
+        <div class="markdown flex-1">
+            <Guide />
+        </div>
+    </main>
 </Layout>
+
+<script is:inline>
+    let intersecting = new Set();
+    let lastActive;
+
+    const update = (element) => {
+        if (lastActive != null) {
+            delete lastActive.dataset.active;
+        }
+
+        element.dataset.active = "active";
+
+        lastActive = element;
+    };
+
+    const observer = new IntersectionObserver(async (entries) => {
+        for (const entry of entries) {
+            const link = document.querySelector(`a[href="#${entry.target.id}"]`);
+
+            if (entry.isIntersecting) {
+                intersecting.add(link);
+            } else {
+                intersecting.delete(link);
+            }
+        }
+
+        const active = intersecting.values().next().value;
+
+        if (active == null || active === lastActive) {
+            return;
+        }
+
+        update(active);
+    });
+
+    for (const section of document.querySelectorAll("h2, h3")) {
+        observer.observe(section);
+    }
+
+    const ontocclick = (e) => {
+        requestAnimationFrame(() => {
+            update(e.currentTarget);
+        });
+    };
+</script>
