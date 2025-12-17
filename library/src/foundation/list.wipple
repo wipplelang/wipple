@@ -1,37 +1,35 @@
-List : Element => type intrinsic
+[intrinsic] List : element => type
 
-Element => instance (Describe-Type (List Element) ("_ list" Element))
-
-Element => instance (Initial (List Element)) : intrinsic "make-empty-list"
+instance (Initial (List element)) : intrinsic "make-empty-list"
 
 -- Retrieve the first item inside a list, or `None` if the list is empty.
-first :: Element => (List Element) -> Maybe Element
+first :: (List element) -> Maybe element
 first : list -> intrinsic "list-first" list
 
 -- Retrieve the last item inside a list, or `None` if the list is empty.
-last :: Element => (List Element) -> Maybe Element
+last :: (List element) -> Maybe element
 last : list -> intrinsic "list-last" list
 
 -- Retrieve all but the last item inside a list, or `None` if the list is empty.
-initial :: Element => (List Element) -> Maybe (List Element)
+initial :: (List element) -> Maybe (List element)
 initial : list -> intrinsic "list-initial" list
 
 -- Retrieve all but the first item inside a list, or `None` if the list is empty.
-tail :: Element => (List Element) -> Maybe (List Element)
+tail :: (List element) -> Maybe (List element)
 tail : list -> intrinsic "list-tail" list
 
 -- Retrieve the value in a list at a particular location, if it exists.
-nth :: Element => Number -> (List Element) -> Maybe Element
+nth :: Number -> (List element) -> Maybe element
 nth : index -> list -> intrinsic "list-nth" list index
 
 -- Add a new item to the end of a list, producing a new list.
-append :: Element => Element -> (List Element) -> List Element
+append :: element -> (List element) -> List element
 append : element -> list -> intrinsic "list-append" list element
 
 -- Insert a new item at a particular location inside a list, shifting the elements from that location on one place to the right, producing a new list.
-insert-at :: Element => Number Element -> (List Element) -> Maybe (List Element)
+insert-at :: Number element -> (List element) -> Maybe (List element)
 insert-at : index element -> list -> intrinsic "list-insert-at" list index element
 
 -- Remove the item at a particular location inside a list, producing a new list.
-remove-at :: Element => Number -> (List Element) -> Maybe (List Element)
+remove-at :: Number -> (List element) -> Maybe (List element)
 remove-at : index -> list -> intrinsic "list-remove-at" list index

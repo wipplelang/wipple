@@ -1,0 +1,218 @@
+TypeDefinitionNode `Number` (recursive-bounds.wipple:1:1)
+  at recursive-bounds.wipple:1:1
+  is a definition
+  has definition constraints
+
+FileNode `Number : type⋯` (recursive-bounds.wipple:1:1)
+  at recursive-bounds.wipple:1:1
+
+TypeDefinitionNode `String` (recursive-bounds.wipple:2:1)
+  at recursive-bounds.wipple:2:1
+  is a definition
+  has definition constraints
+
+TypeDefinitionNode `Maybe` (recursive-bounds.wipple:3:1)
+  at recursive-bounds.wipple:3:1
+  is a definition
+  has definition constraints
+  has type parameters
+
+TypeParameterNode `value` (recursive-bounds.wipple:3:21)
+  at recursive-bounds.wipple:3:21
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (recursive-bounds.wipple:3:21)
+
+TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+  at recursive-bounds.wipple:5:1
+  has instances
+  is a definition
+  has definition constraints
+  has type parameters
+
+TypeParameterNode `value` (recursive-bounds.wipple:5:12)
+  at recursive-bounds.wipple:5:12
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (recursive-bounds.wipple:5:12)
+
+FunctionTypeNode `value -> String` (recursive-bounds.wipple:5:27)
+  at recursive-bounds.wipple:5:27
+  has type `value -> String`
+  is a type
+
+TypeParameterNode `value` (recursive-bounds.wipple:5:28)
+  at recursive-bounds.wipple:5:28
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (recursive-bounds.wipple:5:12)
+
+NamedTypeNode `String` (recursive-bounds.wipple:5:37)
+  at recursive-bounds.wipple:5:37
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (recursive-bounds.wipple:2:1)
+
+InstanceDefinitionNode `instance (Describe String)` (recursive-bounds.wipple:6:1)
+  at recursive-bounds.wipple:6:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+
+NamedTypeNode `String` (recursive-bounds.wipple:6:20)
+  at recursive-bounds.wipple:6:20
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (recursive-bounds.wipple:2:1)
+
+PlaceholderExpressionNode `_` (recursive-bounds.wipple:6:30)
+  at recursive-bounds.wipple:6:30
+  is an expression
+  is a placeholder
+  has type `String -> String`
+
+InstanceDefinitionNode `instance (Describe (Maybe value))` (recursive-bounds.wipple:7:1)
+  at recursive-bounds.wipple:7:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+  has type parameters
+
+NamedTypeNode `Maybe value` (recursive-bounds.wipple:7:20)
+  at recursive-bounds.wipple:7:20
+  has type `Maybe value`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Maybe` (recursive-bounds.wipple:3:1)
+
+TypeParameterNode `value` (recursive-bounds.wipple:7:27)
+  at recursive-bounds.wipple:7:27
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (recursive-bounds.wipple:7:27)
+
+BoundConstraintNode `Describe value` (recursive-bounds.wipple:7:41)
+  at recursive-bounds.wipple:7:41
+  resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+
+TypeParameterNode `value` (recursive-bounds.wipple:7:51)
+  at recursive-bounds.wipple:7:51
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (recursive-bounds.wipple:7:27)
+
+PlaceholderExpressionNode `_` (recursive-bounds.wipple:7:60)
+  at recursive-bounds.wipple:7:60
+  is an expression
+  is a placeholder
+  has type `(Maybe value) -> String`
+
+ConstructorExpressionNode `Describe` (recursive-bounds.wipple:9:1)
+  at recursive-bounds.wipple:9:1
+  is an expression
+  has bound(s) `Describe (Maybe String)` (InstanceDefinitionNode `instance (Describe (Maybe value))` (recursive-bounds.wipple:7:1)), `Describe String` (InstanceDefinitionNode `instance (Describe String)` (recursive-bounds.wipple:6:1))
+  has type `(Maybe String) -> String`
+  resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+
+ExpressionStatementNode `Describe (_` (recursive-bounds.wipple:9:1)
+  at recursive-bounds.wipple:9:1
+
+CallExpressionNode `Describe (_` (recursive-bounds.wipple:9:1)
+  at recursive-bounds.wipple:9:1
+  is an expression
+  has type `String`
+
+AnnotateExpressionNode `_` (recursive-bounds.wipple:9:10)
+  at recursive-bounds.wipple:9:10
+  is an expression
+  has type `Maybe String`
+
+PlaceholderExpressionNode `_` (recursive-bounds.wipple:9:11)
+  at recursive-bounds.wipple:9:11
+  is an expression
+  is a placeholder
+  has type `Maybe String`
+
+NamedTypeNode `Maybe String` (recursive-bounds.wipple:9:16)
+  at recursive-bounds.wipple:9:16
+  has type `Maybe String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Maybe` (recursive-bounds.wipple:3:1)
+
+NamedTypeNode `String` (recursive-bounds.wipple:9:22)
+  at recursive-bounds.wipple:9:22
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (recursive-bounds.wipple:2:1)
+
+ConstructorExpressionNode `Describe` (recursive-bounds.wipple:10:1)
+  at recursive-bounds.wipple:10:1
+  is an expression
+  has bound(s) `Describe (Maybe Number)` (InstanceDefinitionNode `instance (Describe (Maybe value))` (recursive-bounds.wipple:7:1)), `Describe Number` (unresolved)
+  has type `(Maybe Number) -> String`
+  resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+
+ExpressionStatementNode `Describe (_` (recursive-bounds.wipple:10:1)
+  at recursive-bounds.wipple:10:1
+
+CallExpressionNode `Describe (_` (recursive-bounds.wipple:10:1)
+  at recursive-bounds.wipple:10:1
+  is an expression
+  has type `String`
+
+AnnotateExpressionNode `_` (recursive-bounds.wipple:10:10)
+  at recursive-bounds.wipple:10:10
+  is an expression
+  has type `Maybe Number`
+
+PlaceholderExpressionNode `_` (recursive-bounds.wipple:10:11)
+  at recursive-bounds.wipple:10:11
+  is an expression
+  is a placeholder
+  has type `Maybe Number`
+
+NamedTypeNode `Maybe Number` (recursive-bounds.wipple:10:16)
+  at recursive-bounds.wipple:10:16
+  has type `Maybe Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Maybe` (recursive-bounds.wipple:3:1)
+
+NamedTypeNode `Number` (recursive-bounds.wipple:10:22)
+  at recursive-bounds.wipple:10:22
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Number` (recursive-bounds.wipple:1:1)
+
+
+Feedback:
+
+`_` (recursive-bounds.wipple:6:30) (placeholder):
+
+  Found a placeholder of type `String -> String`.
+  
+  Add a `String -> String` value here before running your program.
+
+`_` (recursive-bounds.wipple:7:60) (placeholder):
+
+  Found a placeholder of type `(Maybe value) -> String`.
+  
+  Add a `(Maybe value) -> String` value here before running your program.
+
+`_` (recursive-bounds.wipple:9:11) (placeholder):
+
+  Found a placeholder of type `Maybe String`.
+  
+  Add a `Maybe String` value here before running your program.
+
+`Describe` (recursive-bounds.wipple:10:1) (unresolved-bound):
+
+  `Describe` (recursive-bounds.wipple:10:1) requires the instance `Describe Number`, but this
+  instance isn't defined.
+  
+  Double-check that these types are correct.
+
+`_` (recursive-bounds.wipple:10:11) (placeholder):
+
+  Found a placeholder of type `Maybe Number`.
+  
+  Add a `Maybe Number` value here before running your program.
+

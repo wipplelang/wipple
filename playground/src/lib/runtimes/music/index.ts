@@ -2,8 +2,8 @@ import { soundfontInstrumentNames } from "$lib/assets/instruments";
 import { runtime } from "$lib/models/Runtime";
 import MusicOutput from "./MusicOutput.svelte";
 
-const melody = `melody : (Music '{"music":{"type":"melody","color":"#38bdf8","notes":[[],[],[],[]]}}')`;
-const rhythm = `rhythm : (Music '{"music":{"type":"rhythm","color":"#fb7185","notes":[[],[],[],[]]}}')`;
+const melody = `melody : (music-widget '{"music":{"type":"melody","color":"#38bdf8","notes":[[],[],[],[]]}}')`;
+const rhythm = `rhythm : (music-widget '{"music":{"type":"rhythm","color":"#fb7185","notes":[[],[],[],[]]}}')`;
 
 export default runtime({
     library: "music",
@@ -18,7 +18,7 @@ export default runtime({
                 code: rhythm,
             },
             play: {
-                code: `play (Dropdown '{"selection":"piano","options":${JSON.stringify([...Object.keys(soundfontInstrumentNames), "drums"])}}') melody`,
+                code: `play (dropdown-widget '{"selection":"piano","options":${JSON.stringify([...Object.keys(soundfontInstrumentNames), "drums"])}}') melody`,
             },
         },
         Sequencing: {

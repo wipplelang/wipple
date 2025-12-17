@@ -1,3 +1,0 @@
--- [should compile]
-
-"abc" . replicate 3 . each show

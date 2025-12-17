@@ -1,0 +1,303 @@
+TypeDefinitionNode `Number` (default-constraint.wipple:1:1)
+  at default-constraint.wipple:1:1
+  is a definition
+  has definition constraints
+
+FileNode `Number : type⋯` (default-constraint.wipple:1:1)
+  at default-constraint.wipple:1:1
+
+TypeDefinitionNode `String` (default-constraint.wipple:2:1)
+  at default-constraint.wipple:2:1
+  is a definition
+  has definition constraints
+
+TypeDefinitionNode `List` (default-constraint.wipple:3:1)
+  at default-constraint.wipple:3:1
+  is a definition
+  has definition constraints
+  has type parameters
+
+TypeParameterNode `element` (default-constraint.wipple:3:20)
+  at default-constraint.wipple:3:20
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:3:20)
+
+TypeDefinitionNode `Set` (default-constraint.wipple:4:1)
+  at default-constraint.wipple:4:1
+  is a definition
+  has definition constraints
+  has type parameters
+
+TypeParameterNode `element` (default-constraint.wipple:4:19)
+  at default-constraint.wipple:4:19
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:4:19)
+
+TraitDefinitionNode `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1)
+  at default-constraint.wipple:6:1
+  has instances
+  is a definition
+  has definition constraints
+  has type parameters
+
+TypeParameterNode `element` (default-constraint.wipple:6:11)
+  at default-constraint.wipple:6:11
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:6:11)
+
+TypeParameterNode `collection` (default-constraint.wipple:6:19)
+  at default-constraint.wipple:6:19
+  has type `collection`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `collection` (default-constraint.wipple:6:19)
+
+FunctionTypeNode `element -> collection` (default-constraint.wipple:6:39)
+  at default-constraint.wipple:6:39
+  has type `element -> collection`
+  is a type
+
+TypeParameterNode `element` (default-constraint.wipple:6:40)
+  at default-constraint.wipple:6:40
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:6:11)
+
+TypeParameterNode `collection` (default-constraint.wipple:6:51)
+  at default-constraint.wipple:6:51
+  has type `collection`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `collection` (default-constraint.wipple:6:19)
+
+InstanceDefinitionNode `instance (Collect element (List element))` (default-constraint.wipple:7:1)
+  at default-constraint.wipple:7:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1)
+  has type parameters
+
+TypeParameterNode `element` (default-constraint.wipple:7:19)
+  at default-constraint.wipple:7:19
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:7:19)
+
+NamedTypeNode `List element` (default-constraint.wipple:7:27)
+  at default-constraint.wipple:7:27
+  has type `List element`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `List` (default-constraint.wipple:3:1)
+
+TypeParameterNode `element` (default-constraint.wipple:7:33)
+  at default-constraint.wipple:7:33
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:7:19)
+
+PlaceholderExpressionNode `_` (default-constraint.wipple:7:45)
+  at default-constraint.wipple:7:45
+  is an expression
+  is a placeholder
+  has type `element -> List element`
+
+InstanceDefinitionNode `instance (Collect element (Set element))` (default-constraint.wipple:8:1)
+  at default-constraint.wipple:8:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1)
+  has type parameters
+
+TypeParameterNode `element` (default-constraint.wipple:8:19)
+  at default-constraint.wipple:8:19
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:8:19)
+
+NamedTypeNode `Set element` (default-constraint.wipple:8:27)
+  at default-constraint.wipple:8:27
+  has type `Set element`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Set` (default-constraint.wipple:4:1)
+
+TypeParameterNode `element` (default-constraint.wipple:8:32)
+  at default-constraint.wipple:8:32
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:8:19)
+
+PlaceholderExpressionNode `_` (default-constraint.wipple:8:44)
+  at default-constraint.wipple:8:44
+  is an expression
+  is a placeholder
+  has type `element -> Set element`
+
+ConstantDefinitionNode `collect` (default-constraint.wipple:10:1)
+  at default-constraint.wipple:10:1
+  is a definition
+  has definition constraints
+  has type parameters
+
+TypeParameterNode `element` (default-constraint.wipple:11:12)
+  at default-constraint.wipple:11:12
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:11:12)
+
+FunctionTypeNode `element -> output` (default-constraint.wipple:11:12)
+  at default-constraint.wipple:11:12
+  has type `element -> output`
+  is a type
+
+TypeParameterNode `output` (default-constraint.wipple:11:23)
+  at default-constraint.wipple:11:23
+  has type `output`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `output` (default-constraint.wipple:11:23)
+
+DefaultConstraintNode `output` (default-constraint.wipple:11:36)
+  at default-constraint.wipple:11:36
+
+TypeParameterNode `output` (default-constraint.wipple:11:37)
+  at default-constraint.wipple:11:37
+  has type `output`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `output` (default-constraint.wipple:11:23)
+
+NamedTypeNode `List element` (default-constraint.wipple:11:47)
+  at default-constraint.wipple:11:47
+  has type `List element`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `List` (default-constraint.wipple:3:1)
+
+TypeParameterNode `element` (default-constraint.wipple:11:52)
+  at default-constraint.wipple:11:52
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:11:12)
+
+BoundConstraintNode `Collect element output` (default-constraint.wipple:11:61)
+  at default-constraint.wipple:11:61
+  resolved to 1 definition(s): TraitDefinitionNode `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1)
+
+TypeParameterNode `element` (default-constraint.wipple:11:70)
+  at default-constraint.wipple:11:70
+  has type `element`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:11:12)
+
+TypeParameterNode `output` (default-constraint.wipple:11:78)
+  at default-constraint.wipple:11:78
+  has type `output`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `output` (default-constraint.wipple:11:23)
+
+AssignmentNode `collect` (default-constraint.wipple:12:1)
+  at default-constraint.wipple:12:1
+
+PlaceholderExpressionNode `_` (default-constraint.wipple:12:11)
+  at default-constraint.wipple:12:11
+  is an expression
+  is a placeholder
+  has type `element -> output`
+
+WildcardPatternNode `_` (default-constraint.wipple:14:1)
+  at default-constraint.wipple:14:1
+  is a pattern
+  has type `List String`
+
+AssignmentNode `_` (default-constraint.wipple:14:1)
+  at default-constraint.wipple:14:1
+
+VariableExpressionNode `collect` (default-constraint.wipple:14:5)
+  at default-constraint.wipple:14:5
+  is an expression
+  has bound(s) `Collect String (List String)` (InstanceDefinitionNode `instance (Collect element (List element))` (default-constraint.wipple:7:1))
+  has type `String -> List String`
+  resolved to 1 definition(s): ConstantDefinitionNode `collect` (default-constraint.wipple:10:1)
+
+CallExpressionNode `collect "hi"` (default-constraint.wipple:14:5)
+  at default-constraint.wipple:14:5
+  is an expression
+  has type `List String`
+
+StringExpressionNode `"hi"` (default-constraint.wipple:14:13)
+  at default-constraint.wipple:14:13
+  is an expression
+  has type `String`
+
+NamedTypeNode `"hi"` (default-constraint.wipple:14:13)
+  at default-constraint.wipple:14:13
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (default-constraint.wipple:2:1)
+
+WildcardPatternNode `_` (default-constraint.wipple:15:1)
+  at default-constraint.wipple:15:1
+  is a pattern
+  has type `Set String`
+
+AssignmentNode `_` (default-constraint.wipple:15:1)
+  at default-constraint.wipple:15:1
+
+AnnotateExpressionNode `collect "hi"` (default-constraint.wipple:15:5)
+  at default-constraint.wipple:15:5
+  is an expression
+  has type `Set String`
+
+VariableExpressionNode `collect` (default-constraint.wipple:15:6)
+  at default-constraint.wipple:15:6
+  is an expression
+  has bound(s) `Collect String (Set String)` (InstanceDefinitionNode `instance (Collect element (Set element))` (default-constraint.wipple:8:1))
+  has type `String -> Set String`
+  resolved to 1 definition(s): ConstantDefinitionNode `collect` (default-constraint.wipple:10:1)
+
+CallExpressionNode `collect "hi"` (default-constraint.wipple:15:6)
+  at default-constraint.wipple:15:6
+  is an expression
+  has type `Set String`
+
+StringExpressionNode `"hi"` (default-constraint.wipple:15:14)
+  at default-constraint.wipple:15:14
+  is an expression
+  has type `String`
+
+NamedTypeNode `"hi"` (default-constraint.wipple:15:14)
+  at default-constraint.wipple:15:14
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (default-constraint.wipple:2:1)
+
+NamedTypeNode `Set _` (default-constraint.wipple:15:22)
+  at default-constraint.wipple:15:22
+  has type `Set String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Set` (default-constraint.wipple:4:1)
+
+PlaceholderTypeNode `_` (default-constraint.wipple:15:26)
+  at default-constraint.wipple:15:26
+  has type `String`
+  is a type
+
+
+Feedback:
+
+`_` (default-constraint.wipple:7:45) (placeholder):
+
+  Found a placeholder of type `element -> List element`.
+  
+  Add a `element -> List element` value here before running your program.
+
+`_` (default-constraint.wipple:8:44) (placeholder):
+
+  Found a placeholder of type `element -> Set element`.
+  
+  Add a `element -> Set element` value here before running your program.
+
+`_` (default-constraint.wipple:12:11) (placeholder):
+
+  Found a placeholder of type `element -> output`.
+  
+  Add a `element -> output` value here before running your program.
+

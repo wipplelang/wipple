@@ -1,9 +1,35 @@
-.task/
-test.wipple
+test*.wipple
 out.js
+*.pprof
+.task/
+netlify/
+.netlify/
 
-# Created by https://www.toptal.com/developers/gitignore/api/macos,linux,rust,node
-# Edit at https://www.toptal.com/developers/gitignore?templates=macos,linux,rust,node
+# Created by https://www.toptal.com/developers/gitignore/api/macos,linux,go,rust,node
+# Edit at https://www.toptal.com/developers/gitignore?templates=macos,linux,go,rust,node
+
+### Go ###
+# If you prefer the allow list template instead of the deny list, see community template:
+# https://github.com/github/gitignore/blob/main/community/Golang/Go.AllowList.gitignore
+#
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (remove the comment below to include it)
+# vendor/
+
+# Go workspace file
+# go.work
 
 ### Linux ###
 *~
@@ -209,7 +235,4 @@ Cargo.lock
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
 
-# End of https://www.toptal.com/developers/gitignore/api/macos,linux,rust,node
-
-# Local Netlify folder
-.netlify
+# End of https://www.toptal.com/developers/gitignore/api/macos,linux,go,rust,node

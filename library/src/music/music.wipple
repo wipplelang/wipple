@@ -1,18 +1,21 @@
-Music : type Text
+Music : type {music :: String}
+
+music-widget :: String -> Music
+music-widget : music -> Music {music : music}
 
 -- Play a melody or rhythm on an instrument.
-play :: Dropdown Music -> Unit
-play : (Dropdown instrument) (Music music) ->
-  external "play" (instrument ; music)
+play :: Dropdown Music -> ()
+play : (Dropdown {value : instrument}) (Music {music : music}) ->
+  external "play" (instrument; music)
 
 -- Set the tempo of your song, in beats per minute. The default tempo is 120.
-tempo :: Number -> Unit
+tempo :: Number -> ()
 tempo : tempo -> external "tempo" tempo
 
 -- Play all the melodies in the block at the same time.
-together :: Body => {Body} -> Unit
+together :: {body} -> ()
 together : body -> do {
-  external "beginTogether" Unit
+  external "beginTogether" ()
   do body
-  external "endTogether" Unit
+  external "endTogether" ()
 }

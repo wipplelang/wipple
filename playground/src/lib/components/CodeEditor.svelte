@@ -301,7 +301,7 @@
 
     const markAssets = markRegex(
         new RegExp(
-            `\\((${tokens.capitalName.source})` + / */.source + `(${tokens.text.source})\\)`,
+            `\\((${tokens.lowercaseName.source})` + / */.source + `(${tokens.text.source})\\)`,
             "g",
         ),
         ([text, type, propsString], view) => {

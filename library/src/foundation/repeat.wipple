@@ -1,38 +1,30 @@
 -- Used by `repeat` to determine whether to continue running or stop with a value.
-Control-Flow : State Result => type {
-  Continue State
-  Stop Result
+Control-Flow : state result => type {
+  Continue state
+  Stop result
 }
 
 -- Determines whether to evaluate a `repeat` body again.
-Repeat-Predicate : State Body Result => trait (State -> Control-Flow (Body -> State) Result)
+Repeat-Predicate : state body result => trait (state -> Control-Flow (body -> state) result)
 
 -- Repeat using the `Control-Flow` produced by the `repeat` body.
-with-control-flow :: Result => With-Control-Flow Result
-with-control-flow : {current : Continue Unit}
+with-control-flow :: With-Control-Flow result
+with-control-flow : With-Control-Flow {current : Continue ()}
 
-With-Control-Flow : Result => type {current :: Control-Flow Unit Result}
+With-Control-Flow : result => type {current :: Control-Flow () result}
 
-Result => instance (Repeat-Predicate (With-Control-Flow Result) (Control-Flow Unit Result) Result) :
-  {current : current} -> when current {
-    Continue Unit -> Continue (new -> {current : new})
-    Stop result -> Stop result
+instance (Repeat-Predicate (With-Control-Flow result) (Control-Flow () result) result) : (With-Control-Flow {current : current}) -> when current {
+    (Continue ()) -> Continue (new -> With-Control-Flow {current : new})
+    (Stop result) -> Stop result
   }
-
-Body Result where (Error ("Missing `repeat` before `_`" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
-  instance (Mismatch (With-Control-Flow Result) ({Body} -> Result))
 
 -- Repeat so long as the provided condition is `True`.
 while :: {Boolean} -> While
-while : condition -> {condition : condition}
+while : condition -> While {condition : condition}
 
 While : type {condition :: {Boolean}}
 
-(Body : Unit) => instance (Repeat-Predicate While Body Unit) : {condition : condition} ->
-  if (do condition) {Continue (_ -> while condition)} {Stop Unit}
-
-(Body : Unit) where (Error ("Missing `repeat` before `_" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
-  instance (Mismatch While ({Body} -> Unit))
+instance (Repeat-Predicate While body ()) where (body :: ()) : (While {condition : condition}) -> if (do condition) {Continue (_ -> while condition)} {Stop ()}
 
 -- Repeat forever.
 forever :: Forever
@@ -40,30 +32,24 @@ forever : Forever
 
 Forever : type
 
-Body (Result : Unit) => instance (Repeat-Predicate Forever Body Result) :
-  _ -> Continue (_ -> Forever)
+instance (Repeat-Predicate Forever body result) where (result :: ()) : _ -> Continue (_ -> Forever)
 
-Body (Result : Unit) where (Error ("Missing `repeat` before `_`" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
-  instance (Mismatch Forever ({Body} -> Result))
+Times : type {times :: Number}
 
-Times : type Number
+-- Missing `times` after [`state`].
+--
+-- Try rewriting this code as `([`state`] times)`, or double-check your parentheses.
+[error] instance (Repeat-Predicate (state :: Number) body result)
 
-State Body Result where (Error ("Missing `times` after `_`" Source ; Error-Description ("Try rewriting this code as `(_ times)`, or double-check your parentheses." State))) =>
-  instance (Repeat-Predicate (State = Number) Body Result) : ...
-
-(Body : Unit) => instance (Repeat-Predicate Times Body Unit) : (Times n) ->
-  if (n > 0) {Continue (_ -> (n - 1) times)} {Stop Unit}
+instance (Repeat-Predicate Times body ()) where (body :: ()) : (Times {times : n}) -> if (n > 0) {Continue (_ -> (n - 1) times)} {Stop ()}
 
 -- Repeat a certain number of times.
-times :: Number -> Times
-times : Times
-
-Body where (Error ("Missing `repeat` before `_`" Source ; Error-Description ("Try rewriting this code as `repeat _`, or double-check your parentheses." Source))) =>
-  instance (Mismatch Times ({Body} -> Unit))
+[unit] times :: Number -> Times
+times : times -> Times {times : times}
 
 -- Run code repeatedly.
-repeat :: State (infer Body) (infer Result) where (Repeat-Predicate State Body Result) => State {Body} -> Result
+repeat :: state {body} -> result where (Repeat-Predicate state body result)
 repeat : state body -> when (Repeat-Predicate state) {
-  Continue next -> repeat (next (do body)) body
-  Stop result -> result
+  (Continue next) -> repeat (next (do body)) body
+  (Stop result) -> result
 }

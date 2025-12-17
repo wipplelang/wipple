@@ -1,5 +1,0 @@
--- [should compile]
-
-show (random-in (0 to 0))
-show (random-in (1 ,))
-show (random-in (,) :: Maybe Number)

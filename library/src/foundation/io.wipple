@@ -1,44 +1,36 @@
--- Produce a piece of `Text` describing the value.
-@(language : "describe")
-Describe : (Value : Text) => trait (Value -> Text)
+-- Produce a `String` describing the value.
+Describe : value => trait (value -> String)
 
-Value where (Error ("Can't describe _" Value ; Error-Description ("You can't display _ on the screen or use it in placeholders because it can't be converted into text." Value))) =>
-  default instance (Describe Value) : ...
-
--- Produce a piece of `Text` describing the value.
-describe :: (Value : Text) where (Describe Value) => Value -> Text
-describe : Describe
+-- Can't describe [`value`].
+--
+-- You can't display [`value`] on the screen or use it in placeholders because
+-- it can't be converted into a string.
+[default] [error] instance (Describe value)
 
 -- Display a value on the screen.
-show :: (Value : Text) where (Describe Value) => Value -> Unit
-show : value -> intrinsic "display" (describe value)
+show :: value -> () where (Describe value)
+show : value -> intrinsic "display" (Describe value)
 
-print :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not `_`" Source ; Error-Description ("Output is written using `show` in Wipple, not `_`" Source))) => Value -> Unit
-print : ...
-
-println :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not `_`" Source ; Error-Description ("Output is written using `show` in Wipple, not `_`" Source))) => Value -> Unit
-println : ...
-
-display :: (Value : Text) where (Error ("Output is written using `show` in Wipple, not `_`" Source ; Error-Description ("Output is written using `show` in Wipple, not `_`" Source))) => Value -> Unit
-display : ...
-
-instance (Describe Text) : text -> text
-instance (Describe Number) : n -> intrinsic "number-to-text" n
+instance (Describe String) : string -> string
+instance (Describe Number) : n -> intrinsic "number-to-string" n
 instance (Describe Boolean) : b -> if b {"True"} {"False"}
-Value where (Describe Value) => instance (Describe (Maybe Value)) : m -> when m {
-  Some value -> "Some _" value
+instance (Describe (Maybe value)) where (Describe value) : m -> when m {
+  (Some value) -> "Some _" value
   None -> "None"
 }
 
--- Convert from a piece of `Text` to a value.
-Read : Value => trait (Text -> Maybe Value)
+-- Convert from a `String` to a value.
+Read : value => trait (String -> Maybe value)
 
-Value where (Error ("Can't read _ from input" Value ; Error-Description ("You can't use `prompt` with _ because there's no way to convert the contents of a text field into _." Value Value))) =>
-  default instance (Read Value) : ...
+-- Can't read [`value`] from input.
+--
+-- You can't use `prompt` with [`value`] because there's no way to convert the
+-- contents of a text field into [`value`].
+[default] [error] instance (Read value)
 
-instance (Read Text) : Some
-instance (Read Number) : text -> intrinsic "text-to-number" text
+instance (Read String) : Some
+instance (Read Number) : string -> intrinsic "string-to-number" string
 
 -- Ask the user to enter a value.
-prompt :: Value where (Read Value) => Text -> Value
+prompt :: String -> value where (value :: String) (Read value)
 prompt : prompt -> intrinsic "prompt" prompt Read

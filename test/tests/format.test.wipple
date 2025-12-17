@@ -1,8 +1,0 @@
--- [should compile]
-
-Person : type {name :: Text}
-
-instance (Describe Person) : {name : name} -> name
-
-bob : Person {name : "Bob"}
-show ("Hello, _!" bob)

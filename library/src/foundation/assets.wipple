@@ -1,15 +1,11 @@
--- Create a color from a piece of text. In the Wipple Playground, you can drag a
--- color from the palette into the editor instead of calling this function
--- directly.
-Color : type Text
+Color : type {color :: String}
 
-instance (Random Unit Color) : Unit -> do {
+color-widget :: String -> Color
+color-widget : color -> Color {color : color}
+
+instance (Random () Color) : () -> do {
   red : random-in (0 to 256)
   green : random-in (0 to 256)
   blue : random-in (0 to 256)
-  Color ('{"color":"rgb(_,_,_)"}' red green blue)
+  Color {color : '{"color":"rgb(_,_,_)"}' red green blue}
 }
-
--- Create an image from a URL. In the Wipple Playground, you can drag an image
--- from the palette into the editor instead of calling this function directly.
-Image : type Text

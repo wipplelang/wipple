@@ -18,6 +18,16 @@
     }
 
     let { diagnostic, stale, onclose }: Props = $props();
+
+    const [title, ...body] = diagnostic.message.split("\n\n");
+    const description = body
+        .map((s: string) =>
+            s
+                .split("\n")
+                .map((s: string) => s.trim())
+                .join(" "),
+        )
+        .join("\n\n");
 </script>
 
 <div class="flex h-full w-full items-stretch justify-stretch pb-[10px]">
@@ -28,10 +38,10 @@
         <div class="flex flex-row items-start justify-between">
             <div class="flex flex-col gap-[2px]">
                 <div class="font-semibold">
-                    <Markdown content={diagnostic.message} />
+                    <Markdown content={title} />
                 </div>
 
-                <Markdown content={diagnostic.description} />
+                <Markdown content={description} />
             </div>
 
             <ToolbarButton onclick={onclose} square>

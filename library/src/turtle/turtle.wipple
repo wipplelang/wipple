@@ -1,23 +1,17 @@
 -- The distance (in pixels) the turtle should move.
-Distance : type Number
-
-instance (Describe-Type Distance "distance")
+Distance : type {pixels :: Number}
 
 -- Specify a distance in pixels.
-pixels :: Number -> Distance
-pixels : Distance
-
-_ where (Error ("Missing `pixels` after `_`" Source ; Error-Description ("Try rewriting this code as `(_ pixels)`, or double-check your parentheses." Source))) =>
-  instance (Mismatch Number Distance)
+[unit] pixels :: Number -> Distance
+pixels : pixels -> Distance {pixels : pixels}
 
 -- Move the turtle forward by a distance.
-forward :: Distance -> Unit
-forward : (Distance pixels) -> external "forward" pixels
+forward :: Distance -> ()
+forward : (Distance {pixels : pixels}) -> external "forward" pixels
 
 -- Move the turtle backward by a distance.
-backward :: Distance -> Unit
-backward : (Distance pixels) -> external "backward" pixels
-
+backward :: Distance -> ()
+backward : (Distance {pixels : pixels}) -> external "backward" pixels
 -- An arc.
 Arc : type {
   radius :: Distance
@@ -25,45 +19,46 @@ Arc : type {
 }
 
 -- Move the turtle along an arc.
-arc :: Arc -> Unit
-arc : {
-  radius : (Distance radius)
-  angle : (Angle angle)
-} -> external "arc" (radius ; angle)
+arc :: Arc -> ()
+arc : (Arc {
+  radius : (Distance {pixels : radius})
+  angle : (Angle {degrees : angle})
+}) -> external "arc" (radius; angle)
 
 -- Rotate the turtle counterclockwise by an angle.
-left :: Angle -> Unit
-left : (Angle degrees) -> external "left" degrees
+left :: Angle -> ()
+left : (Angle {degrees : degrees}) -> external "left" degrees
 
 -- Rotate the turtle clockwise by an angle.
-right :: Angle -> Unit
-right : (Angle degrees) -> external "right" degrees
-
+right :: Angle -> ()
+right : (Angle {degrees : degrees}) -> external "right" degrees
 -- Go to a position on the screen without drawing.
-go :: Distance Distance -> Unit
-go : (Distance x) (Distance y) -> external "go" (x ; y)
+go :: Distance Distance -> ()
+go : (Distance {pixels : x}) (Distance {pixels : y}) -> external "go" (x; y)
 
 -- Set the pen color.
-color :: Color -> Unit
-color : (Color color) -> external "color" color
+color :: Color -> ()
+color : (Color {color : color}) -> external "color" color
 
 -- Draw a path and fill it with a color.
-fill :: Result => Color {Result} -> Result
-fill : (Color color) body -> do {
-  external "beginPath" Unit
+fill :: Color {result} -> result
+fill : (Color {color : color}) body -> do {
+  external "beginPath" ()
   result : do body
   external "endPath" color
   result
 }
 
 -- Set the speed of the turtle, from `0` to `100`. The default speed is `50`.
-speed :: Number -> Unit
+speed :: Number -> ()
 speed : value -> external "speed" value
 
 -- An animal to use instead of the turtle.
-Animal : type Text
-instance (Describe-Type Animal "animal")
+Animal : type {name :: String}
+
+animal-widget :: String -> Animal
+animal-widget : name -> Animal {name : name}
 
 -- Change the animal being displayed.
-animal :: Animal -> Unit
-animal : (Animal name) -> external "animal" name
+animal :: Animal -> ()
+animal : (Animal {name : name}) -> external "animal" name

@@ -1,59 +1,56 @@
 -- A continuous range between two numbers. Each bound may be `nan` to
 -- indicate that the range is unbounded in that direction.
-Range : (Index : Number) => type {
-  min :: Index
-  max :: Index
+Range : index => type {
+  min :: index
+  max :: index
 }
 
-@(language : "to")
-To : Index => trait (Index Index -> Range Index)
-(Index : Number) => instance (To Index) : min max -> {
+To : index => trait (index index -> Range index)
+instance (To Number) : min max -> Range {
   min : min
   max : max
 }
 
 -- A range between two numbers that counts up in discrete steps.
-Stride : (Index : Number) => type {
-  min :: Index
-  max :: Index
-  step :: Index
+Stride : index => type {
+  min :: index
+  max :: index
+  step :: index
 }
 
-@(language : "by")
-By : (Index : Number) => trait ((Range Index) Index -> Stride Index)
-(Index : Number) => instance (By Index) : {
+By : index => trait ((Range index) index -> Stride index)
+instance (By Number) : (Range {
   min : min
   max : max
-} step -> {
+}) step -> Stride {
   min : min
   max : max
   step : step
 }
 
-instance (As-Sequence (Stride Number) Number) : {
+instance (As-Sequence (Stride Number) Number) : (Stride {
   min : min
   max : max
   step : step
-} -> when (min /= nan ; max /= nan) {
-  (True ; True) -> do {
+}) -> when ((min /= nan); (max /= nan)) {
+  (True; True) -> do {
     current : min
-    Sequence {
+    sequence {
       if (current < max) {
         n : current
-        current! : current + step
+        set current : current + step
         Some n
       } {
         None
       }
     }
   }
-  (True ; False) -> do {
+  (True; False) -> do {
     current : min
-    Sequence {
+    sequence {
       n : current
-      current! : current + step
+      set current : current + step
       Some n
     }
   }
-  _ -> Sequence {None}
 }

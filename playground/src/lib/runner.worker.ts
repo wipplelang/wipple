@@ -1,15 +1,22 @@
 import * as Comlink from "comlink";
-import buildRuntime from "wipple-runtime";
 
 export type RunnerEnv = Record<string, (...args: any[]) => Promise<any>>;
 
 const worker = {
     async run(executable: string, env: RunnerEnv) {
-        const { default: entrypoint } = await import(
+        const { default: entrypoint, buildRuntime } = await import(
             /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(executable)}`
         );
 
-        await entrypoint(buildRuntime(env, Comlink.proxy));
+        const proxy = (value: any) => {
+            if (typeof value === "function") {
+                return Comlink.proxy(value);
+            } else {
+                return value; // Note: nested functions aren't supported
+            }
+        };
+
+        await entrypoint(buildRuntime(env, proxy));
     },
 };
 

@@ -1,13 +1,13 @@
 -- A container for a sequence that produces the next value on demand.
-Sequence : Element => type ({Maybe Element})
+Sequence : element => type {next :: {Maybe element}}
 
 -- Retrieve the next item in a sequence.
-next :: Element => (Sequence Element) -> Maybe Element
-next : (Sequence next) -> do next
+next :: (Sequence element) -> Maybe element
+next : (Sequence {next : next}) -> do next
 
--- Produce an infinite sequence.
-sequence :: Element => {Element} -> Sequence Element
-sequence : next -> Sequence {Some (do next)}
+-- Create a sequence.
+sequence :: {Maybe element} -> Sequence element
+sequence : next -> Sequence {next : next}
 
 -- Create a sequence that always produces the provided element.
 --
@@ -19,23 +19,23 @@ sequence : next -> Sequence {Some (do next)}
 -- show (next my-sequence) -- Hello, world!
 -- show (next my-sequence) -- Hello, world!
 -- ```
-always :: Element => Element -> Sequence Element
-always : element -> Sequence {Some element}
+always :: element -> Sequence element
+always : element -> sequence {Some element}
 
 -- Create a sequence that produces the provided element a certain number of
 -- times. `element . replicate n` is equivalent to `always element . take n`.
-replicate :: Element => Number -> Element -> Sequence Element
+replicate :: Number -> element -> Sequence element
 replicate : n -> element -> always element . take n
 
 -- Build a sequence from an initial item and a transform function.
-build-sequence :: Element => (Maybe Element) (Element -> Maybe Element) -> Sequence Element
+build-sequence :: (Maybe element) (element -> Maybe element) -> Sequence element
 build-sequence : initial transform -> do {
   next : initial
 
-  Sequence {
+  sequence {
     when next {
-      Some current -> do {
-        next! : transform current
+      (Some current) -> do {
+        set next : transform current
         Some current
       }
       None -> None
@@ -44,44 +44,46 @@ build-sequence : initial transform -> do {
 }
 
 -- Convert a collection into a sequence.
-As-Sequence : Container (infer Element) => trait (Container -> Sequence Element)
-Container (infer Element) where (Error ("Can't make a sequence from _" Container ; Error-Description ("You can't use _ as a sequence. Try using a list instead." Container))) =>
-  default instance (As-Sequence Container Element) : ...
+As-Sequence : container (infer element) => trait (container -> Sequence element)
 
-Element => instance (As-Sequence (Sequence Element) Element) : sequence -> sequence
+-- Can't make a sequence from [`container`].
+--
+-- You can't use [`container`] as a sequence. Try using a list instead.
+[default] [error] instance (As-Sequence container element)
 
-Element => instance (As-Sequence (Maybe Element) Element) : maybe -> Sequence {
+instance (As-Sequence (Sequence element) element) : sequence -> sequence
+
+instance (As-Sequence (Maybe element) element) : maybe -> sequence {
   when maybe {
-    Some value -> do {
-      maybe! : None
+    (Some value) -> do {
+      set maybe : None
       Some value
     }
     None -> None
   }
 }
 
--- Transform each item in a sequence, producing a new sequence.
-transform :: Container (infer Element) Result where (As-Sequence Container Element) => (Element -> Result) -> Container -> Sequence Result
+transform :: (input -> output) -> container -> Sequence output where (As-Sequence container input)
 transform : f -> container -> do {
   base : As-Sequence container
 
-  Sequence {
+  sequence {
     when (next base) {
-      Some value -> Some (f value)
+      (Some value) -> Some (f value)
       None -> None
     }
   }
 }
 
 -- Keep only the items in the sequence that satisfy the provided condition.
-filter :: Container (infer Element) where (As-Sequence Container Element) => (Element -> Boolean) -> Container -> Sequence Element
+filter :: (element -> Boolean) -> container -> Sequence element where (As-Sequence container element)
 filter : include? -> container -> do {
   base : As-Sequence container
 
-  Sequence {
+  sequence {
     repeat with-control-flow {
       when (next base) {
-        Some value -> if (include? value) {Stop (Some value)} {Continue Unit}
+        (Some value) -> if (include? value) {Stop (Some value)} {Continue ()}
         None -> Stop None
       }
     }
@@ -89,16 +91,16 @@ filter : include? -> container -> do {
 }
 
 -- Transform each item in a sequence, keeping only the items that aren't `None`.
-filter-by :: Container (infer Element) Result where (As-Sequence Container Element) => (Element -> Maybe Result) -> Container -> Sequence Result
+filter-by :: (element -> Maybe result) -> container -> Sequence result where (As-Sequence container element)
 filter-by : transform -> container -> do {
   base : As-Sequence container
 
-  Sequence {
+  sequence {
     repeat with-control-flow {
       when (next base) {
-        Some value -> when (transform value) {
-          Some value -> Stop (Some value)
-          None -> Continue Unit
+        (Some value) -> when (transform value) {
+          (Some value) -> Stop (Some value)
+          None -> Continue ()
         }
         None -> Stop None
       }
@@ -107,22 +109,22 @@ filter-by : transform -> container -> do {
 }
 
 -- Flatten a sequence of sequences.
-flatten :: Outer (infer Inner) (infer Element) where (As-Sequence Outer Inner) (As-Sequence Inner Element) => Outer -> Sequence Element
+flatten :: outer -> Sequence element where (As-Sequence outer inner) (As-Sequence inner element)
 flatten : outer -> do {
   outer : As-Sequence outer
 
   when (next outer) {
-    Some inner -> do {
+    (Some inner) -> do {
       inner : As-Sequence inner
 
-      Sequence {
+      sequence {
         repeat with-control-flow {
           when (next inner) {
-            Some value -> Stop (Some value)
+            (Some value) -> Stop (Some value)
             None -> when (next outer) {
-              Some next-inner -> do {
-                inner! : As-Sequence next-inner
-                Continue Unit
+              (Some next-inner) -> do {
+                set inner : As-Sequence next-inner
+                Continue ()
               }
               None -> Stop None
             }
@@ -130,20 +132,20 @@ flatten : outer -> do {
         }
       }
     }
-    None -> Sequence {None}
+    None -> sequence {None}
   }
 }
 
 -- Find the first item in a sequence that can be transformed into a `Some` value.
-find-by :: Collection (infer Element) Result where (As-Sequence Collection Element) => (Element -> Maybe Result) -> Collection -> Maybe Result
+find-by :: (element -> Maybe result) -> collection -> Maybe result where (As-Sequence collection element)
 find-by : f -> collection -> do {
   base : As-Sequence collection
 
   repeat with-control-flow {
     when (next base) {
-      Some element -> when (f element) {
-        Some result -> Stop (Some result)
-        None -> Continue Unit
+      (Some element) -> when (f element) {
+        (Some result) -> Stop (Some result)
+        None -> Continue ()
       }
       None -> Stop None
     }
@@ -151,53 +153,53 @@ find-by : f -> collection -> do {
 }
 
 -- Reduce a sequence down to a single item.
-reduce :: Container (infer Element) Result where (As-Sequence Container Element) => Result (Element -> Result -> Result) -> Container -> Result
-reduce : result f -> container -> do {
-  helper :: Element Result => Result (Element -> Result -> Result) -> (Sequence Element) -> Result
-  helper : result f -> sequence -> when (next sequence) {
-    Some next -> (helper (result . f next) f) sequence
-    None -> result
-  }
+reduce :: result (element -> result -> result) -> container -> result where (As-Sequence container element)
+reduce : result f -> container -> As-Sequence container . reduce-helper result f
 
-  As-Sequence container . helper result f
+reduce-helper :: result (element -> result -> result) -> (Sequence element) -> result
+reduce-helper : result f -> sequence -> when (next sequence) {
+  (Some next) -> (reduce-helper (result . f next) f) sequence
+  None -> result
 }
 
 -- Find the sum of all the numbers in a sequence.
-sum :: Container (infer N) where (As-Sequence Container N) (Initial N) (Add N N N) => Container -> N
+sum :: container -> n where (As-Sequence container n) (Initial n) (Add n n n)
 sum : reduce Initial (next -> result -> result + next)
 
-From-Sequence : Element Container => trait ((Sequence Element) -> Container)
+From-Sequence : element container => trait ((Sequence element) -> container)
 
-Element Container where (Error ("Can't create _ from items that are _" Container Element ; Error-Description ("You can't use `collect` to create _ from these items." Container))) =>
-  default instance (From-Sequence Element Container) : ...
+-- Can't create [`container`] from [`element`] items.
+--
+-- You can't use `collect` to create [`container`] from these items.
+[default] [error] instance (From-Sequence element container)
 
 -- Collect a sequence into a single container, like a list.
-collect :: Input (infer Element) (Output : List Element) where (As-Sequence Input Element) (From-Sequence Element Output) => Input -> Output
+collect :: input -> output where (As-Sequence input element) (From-Sequence element output) (output :: List element)
 collect : collection -> From-Sequence (As-Sequence collection)
 
-Element => instance (From-Sequence Element (List Element)) : sequence -> do {
+instance (From-Sequence element (List element)) : sequence -> do {
   list : (,)
 
   repeat with-control-flow {
     when (next sequence) {
-      Some value -> do {
-        list! : list . append value
-        Continue Unit
+      (Some value) -> do {
+        set list : list . append value
+        Continue ()
       }
-      None -> Stop Unit
+      None -> Stop ()
     }
   }
 
   list
 }
 
-Element => instance (As-Sequence (List Element) Element) : list -> do {
+instance (As-Sequence (List element) element) : list -> do {
   index : 0
 
-  Sequence {
+  sequence {
     when (list . nth index) {
-      Some element -> do {
-        index! : index + 1
+      (Some element) -> do {
+        set index : index + 1
         Some element
       }
       None -> None
@@ -205,45 +207,45 @@ Element => instance (As-Sequence (List Element) Element) : list -> do {
   }
 }
 
-instance (From-Sequence Unit Unit) : sequence -> repeat with-control-flow {
+instance (From-Sequence () ()) : sequence -> repeat with-control-flow {
   when (next sequence) {
-    Some Unit -> Continue Unit
-    None -> Stop Unit
+    (Some ()) -> Continue ()
+    None -> Stop ()
   }
 }
 
 -- Perform an action for each item in a sequence.
-each :: Container (infer Element) where (As-Sequence Container Element) => (Element -> Unit) -> Container -> Unit
+each :: (element -> ()) -> container -> () where (As-Sequence container element)
 each : action -> container -> container . transform action . collect
 
 -- Split a sequence into groups of consecutive items satisfying a condition.
-split-by :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Sequence (List Element)
+split-by :: (element -> Boolean) -> collection -> Sequence (List element) where (As-Sequence collection element)
 split-by : separator -> collection -> do {
   base : As-Sequence collection
   group : Some (,)
 
-  Sequence {
+  sequence {
     repeat with-control-flow {
       when (next base) {
-        Some x -> do {
+        (Some x) -> do {
           if (separator x) {
             result : group
-            group! : None
+            set group : None
             Stop result
           } {
             inner : when group {
-              Some inner -> inner
+              (Some inner) -> inner
               None -> (,)
             }
 
-            group! : Some (inner . append x)
+            set group : Some (inner . append x)
 
-            Continue Unit
+            Continue ()
           }
         }
         None -> do {
           result : group
-          group! : None
+          set group : None
           Stop result
         }
       }
@@ -252,20 +254,20 @@ split-by : separator -> collection -> do {
 }
 
 -- Split a sequence into groups of consecutive items equal to a value.
-split :: Collection (infer Element) where (As-Sequence Collection Element) (Equal Element) => Element -> Collection -> Sequence (List Element)
+split :: element -> collection -> Sequence (List element) where (As-Sequence collection element) (Equal element)
 split : separator -> split-by (item -> item = separator)
 
 -- Count the number of items in a sequence.
-count :: Collection (infer Element) where (As-Sequence Collection Element) => Collection -> Number
+count :: collection -> Number where (As-Sequence collection element)
 count : collection -> do {
-  sequence : As-Sequence collection
+  base : As-Sequence collection
 
   count : 0
   repeat with-control-flow {
-    when (next sequence) {
-      Some _ -> do {
-        count! : count + 1
-        Continue Unit
+    when (next base) {
+      (Some _) -> do {
+        set count : count + 1
+        Continue ()
       }
       None -> Stop count
     }
@@ -273,51 +275,51 @@ count : collection -> do {
 }
 
 -- Collect two sequences into a single value.
-join :: A B (infer Element) (C : A) where (As-Sequence A Element) (As-Sequence B Element) (From-Sequence Element C) => A B -> C
+join :: a b -> c where (As-Sequence a element) (As-Sequence b element) (From-Sequence element c) (c :: a)
 join : a b -> collect (flatten ((,) . append (As-Sequence a) . append (As-Sequence b)))
 
 -- Take up to a fixed number of values from a sequence.
-take :: Collection (infer Element) where (As-Sequence Collection Element) => Number -> Collection -> Sequence Element
+take :: Number -> collection -> Sequence element where (As-Sequence collection element)
 take : count -> collection -> do {
   base : As-Sequence collection
 
   counter : 0
-  Sequence {
+  sequence {
     if (counter >= count) {
       None
     } {
-      counter! : counter + 1
+      set counter : counter + 1
       next base
     }
   }
 }
 
 -- Find the first item in a sequence that satisfies a condition.
-find :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Maybe Element
+find :: (element -> Boolean) -> collection -> Maybe element where (As-Sequence collection element)
 find : found? -> collection -> do {
-  sequence : As-Sequence collection
+  base : As-Sequence collection
 
   repeat with-control-flow {
-    when (next sequence) {
-      Some element -> if (found? element) {Stop (Some element)} {Continue Unit}
+    when (next base) {
+      (Some element) -> if (found? element) {Stop (Some element)} {Continue ()}
       None -> Stop None
     }
   }
 }
 
 -- Find the position of the first item in a sequence that satisfies a condition.
-find-position :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Maybe Number
+find-position :: (element -> Boolean) -> collection -> Maybe Number where (As-Sequence collection element)
 find-position : found? -> collection -> do {
-  sequence : As-Sequence collection
+  base : As-Sequence collection
   counter : 0
 
   repeat with-control-flow {
-    when (next sequence) {
-      Some element -> if (found? element) {
+    when (next base) {
+      (Some element) -> if (found? element) {
         Stop (Some counter)
       } {
-        counter! : counter + 1
-        Continue Unit
+        set counter : counter + 1
+        Continue ()
       }
       None -> Stop None
     }
@@ -325,95 +327,91 @@ find-position : found? -> collection -> do {
 }
 
 -- Returns `True` if the condition is `True` for all items in the sequence, or if the sequence is empty.
-all? :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Boolean
-all? : condition? -> collection -> do {
-  helper :: Element => (Element -> Boolean) -> (Sequence Element) -> Boolean
-  helper : condition? -> sequence -> when (next sequence) {
-    Some element -> condition? element and (helper condition?) sequence
-    None -> True
-  }
+all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)
+all? : condition? -> collection -> As-Sequence collection . all-helper condition?
 
-  As-Sequence collection . helper condition?
+all-helper :: (element -> Boolean) -> (Sequence element) -> Boolean
+all-helper : condition? -> sequence -> when (next sequence) {
+  (Some element) -> condition? element and (all-helper condition?) sequence
+  None -> True
 }
 
 -- Returns `True` if the condition is `True` for any item in the sequence, or `False` if the sequence is empty.
-any? :: Collection (infer Element) where (As-Sequence Collection Element) => (Element -> Boolean) -> Collection -> Boolean
-any? : condition? -> collection -> do {
-  helper :: Element => (Element -> Boolean) -> (Sequence Element) -> Boolean
-  helper : condition? -> sequence -> when (next sequence) {
-    Some element -> condition? element or (helper condition?) sequence
-    None -> False
-  }
+any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)
+any? : condition? -> collection -> As-Sequence collection . any-helper condition?
 
-  As-Sequence collection . helper condition?
+any-helper :: (element -> Boolean) -> (Sequence element) -> Boolean
+any-helper : condition? -> sequence -> when (next sequence) {
+  (Some element) -> condition? element or (any-helper condition?) sequence
+  None -> False
 }
 
 -- Create a sequence that takes values from two sequences at a time until either sequence runs out.
-zip :: Left (infer Left-Element) Right (infer Right-Element) where (As-Sequence Left Left-Element) (As-Sequence Right Right-Element) => Left Right -> Sequence (Left-Element ; Right-Element)
+zip :: left right -> Sequence (left-element; right-element) where (As-Sequence left left-element) (As-Sequence right right-element)
 zip : left right -> do {
   left : As-Sequence left
   right : As-Sequence right
 
-  Sequence {
-    when (next left ; next right) {
-      (Some a ; Some b) -> Some (a ; b)
+  sequence {
+    when (next left; next right) {
+      (Some a; Some b) -> Some (a; b)
       _ -> None
     }
   }
 }
 
 -- Create a sequence that maintains a counter indicating the number of elements
--- produced. For example, `enumerate ("a" , "b" , "c")` produces `(0 ; "a")`,
--- `(1 ; "b")`, and `(2 ; "c")`.
-enumerate :: Collection (infer Element) where (As-Sequence Collection Element) => Collection -> Sequence (Number ; Element)
+-- produced. For example, `enumerate ("a", "b", "c")` produces `(0; "a")`,
+-- `(1; "b")`, and `(2; "c")`.
+enumerate :: collection -> Sequence (Number; element) where (As-Sequence collection element)
 enumerate : collection -> zip (0 to nan by 1) collection
 
-Extend : Container (infer Element) => trait ((Sequence Element) -> Container -> Container)
-Element => instance (Extend (List Element) Element) : sequence -> list -> sequence . reduce list append
+Extend : container (infer element) => trait ((Sequence element) -> container -> container)
+instance (Extend (List element) element) : sequence -> list -> sequence . reduce list append
 
 -- Append the contents of a sequence to a collection.
-extend :: From Container (infer Element) where (As-Sequence From Element) (Extend Container Element) => From -> Container -> Container
+extend :: from -> container -> container where (As-Sequence from element) (Extend container element)
 extend : collection -> Extend (As-Sequence collection)
 
-Left (infer Left-Element) Right (infer Right-Element) where (Extend Left Left-Element) (Extend Right Right-Element) => instance (Extend (Left ; Right) (Left-Element ; Right-Element)) : sequence -> (left ; right) -> do {
+instance (Extend (left; right) (left-element; right-element)) where (Extend left left-element) (Extend right right-element) : sequence -> (left; right) -> do {
   repeat with-control-flow {
     when (next sequence) {
-      Some (a ; b) -> do {
-        left! : left . extend (Some a)
-        right! : right . extend (Some b)
-        Continue Unit
+      (Some (a; b)) -> do {
+        set left : left . extend (Some a)
+        set right : right . extend (Some b)
+        Continue ()
       }
-      None -> Stop Unit
+      None -> Stop ()
     }
   }
 
-  left ; right
+  left; right
 }
 
 -- Split a sequence that produces two values at a time into two separate collections.
-unzip :: Collection (infer Left-Element) (infer Right-Element) Left Right where (As-Sequence Collection (Left-Element ; Right-Element)) (Extend Left Left-Element) (Extend Right Right-Element) (Initial Left) (Initial Right) => Collection -> (Left ; Right)
-unzip : collection -> (Initial ; Initial) . extend (As-Sequence collection)
+unzip :: collection -> (left; right) where (Initial left) (Initial right) (As-Sequence collection (left-element; right-element)) (Extend left left-element) (Extend right right-element)
+unzip : collection -> (Initial; Initial) . extend (As-Sequence collection)
 
-Container : Collection (infer Element) => trait (Element -> Collection -> Boolean)
+Container : collection (infer element) => trait (element -> collection -> Boolean)
 
 -- Returns `True` if the collection contains the element.
-contains? :: Collection (infer Element) where (Container Collection Element) => Element -> Collection -> Boolean
+contains? :: element -> collection -> Boolean where (Container collection element)
 contains? : Container
 
-Element where (Equal Element) => instance (Container (List Element) Element) : target -> list -> do {
-  sequence : As-Sequence list
+instance (Container (List element) element) where (Equal element) : target -> list -> do {
+  base : As-Sequence list
 
   repeat with-control-flow {
-    when (next sequence) {
-      Some element -> if (element = target) {Stop True} {Continue Unit}
+    when (next base) {
+      (Some element) -> if (element = target) {Stop True} {Continue ()}
       None -> Stop False
     }
   }
 }
 
-instance (Add Text Text Text) : a b -> "__" a b
+instance (Add String String String) : a b -> "__" a b
 
-instance (As-Sequence Text Text) : text ->
-  As-Sequence (intrinsic "text-characters" text :: List Text)
+instance (As-Sequence String String) : string ->
+  As-Sequence (intrinsic "string-characters" string :: List String)
 
-instance (From-Sequence Text Text) : reduce "" (right -> left -> left + right)
+instance (From-Sequence String String) : reduce "" (right -> left -> left + right)

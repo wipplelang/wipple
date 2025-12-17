@@ -1,0 +1,8 @@
+[intrinsic] Boolean : type
+
+Not : value => trait (value -> value)
+instance (Not Boolean) : _
+instance (Not (a -> b)) where (Not b) : f -> x -> not (f x)
+
+not :: value -> value where (Not value)
+not : Not

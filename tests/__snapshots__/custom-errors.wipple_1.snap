@@ -1,0 +1,388 @@
+TypeDefinitionNode `Number` (custom-errors.wipple:1:1)
+  at custom-errors.wipple:1:1
+  is a definition
+  has definition constraints
+
+FileNode `Number : type⋯` (custom-errors.wipple:1:1)
+  at custom-errors.wipple:1:1
+
+TypeDefinitionNode `String` (custom-errors.wipple:2:1)
+  at custom-errors.wipple:2:1
+  is a definition
+  has definition constraints
+
+TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
+  at custom-errors.wipple:4:1
+  has instances
+  is a definition
+  has definition constraints
+  has type parameters
+
+TypeParameterNode `left` (custom-errors.wipple:4:7)
+  at custom-errors.wipple:4:7
+  has type `left`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `left` (custom-errors.wipple:4:7)
+
+TypeParameterNode `right` (custom-errors.wipple:4:12)
+  at custom-errors.wipple:4:12
+  has type `right`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `right` (custom-errors.wipple:4:12)
+
+TypeParameterNode `infer sum` (custom-errors.wipple:4:18)
+  at custom-errors.wipple:4:18
+  is inferred type parameter
+  has type `sum`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `infer sum` (custom-errors.wipple:4:18)
+
+FunctionTypeNode `left right -> sum` (custom-errors.wipple:4:39)
+  at custom-errors.wipple:4:39
+  has type `left right -> sum`
+  is a type
+
+TypeParameterNode `left` (custom-errors.wipple:4:40)
+  at custom-errors.wipple:4:40
+  has type `left`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `left` (custom-errors.wipple:4:7)
+
+TypeParameterNode `right` (custom-errors.wipple:4:45)
+  at custom-errors.wipple:4:45
+  has type `right`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `right` (custom-errors.wipple:4:12)
+
+TypeParameterNode `sum` (custom-errors.wipple:4:54)
+  at custom-errors.wipple:4:54
+  has type `sum`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `infer sum` (custom-errors.wipple:4:18)
+
+InstanceDefinitionNode `instance (Add Number Number Number)` (custom-errors.wipple:5:1)
+  at custom-errors.wipple:5:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
+
+NamedTypeNode `Number` (custom-errors.wipple:5:15)
+  at custom-errors.wipple:5:15
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Number` (custom-errors.wipple:1:1)
+
+NamedTypeNode `Number` (custom-errors.wipple:5:22)
+  at custom-errors.wipple:5:22
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Number` (custom-errors.wipple:1:1)
+
+NamedTypeNode `Number` (custom-errors.wipple:5:29)
+  at custom-errors.wipple:5:29
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Number` (custom-errors.wipple:1:1)
+
+PlaceholderExpressionNode `_` (custom-errors.wipple:5:39)
+  at custom-errors.wipple:5:39
+  is an expression
+  is a placeholder
+  has type `Number Number -> Number`
+
+InstanceDefinitionNode `instance (Add String String String)` (custom-errors.wipple:6:1)
+  at custom-errors.wipple:6:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
+
+NamedTypeNode `String` (custom-errors.wipple:6:15)
+  at custom-errors.wipple:6:15
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (custom-errors.wipple:2:1)
+
+NamedTypeNode `String` (custom-errors.wipple:6:22)
+  at custom-errors.wipple:6:22
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (custom-errors.wipple:2:1)
+
+NamedTypeNode `String` (custom-errors.wipple:6:29)
+  at custom-errors.wipple:6:29
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (custom-errors.wipple:2:1)
+
+PlaceholderExpressionNode `_` (custom-errors.wipple:6:39)
+  at custom-errors.wipple:6:39
+  is an expression
+  is a placeholder
+  has type `String String -> String`
+
+InstanceDefinitionNode `instance (Add () right sum)` (custom-errors.wipple:8:1)
+  at custom-errors.wipple:8:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
+  has type parameters
+
+UnitTypeNode `()` (custom-errors.wipple:9:23)
+  at custom-errors.wipple:9:23
+  has type `()`
+  is a type
+
+TypeParameterNode `right` (custom-errors.wipple:9:26)
+  at custom-errors.wipple:9:26
+  has type `right`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `right` (custom-errors.wipple:9:26)
+
+TypeParameterNode `sum` (custom-errors.wipple:9:32)
+  at custom-errors.wipple:9:32
+  has type `sum`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `sum` (custom-errors.wipple:9:32)
+
+InstanceDefinitionNode `instance (Add left right sum)` (custom-errors.wipple:11:1)
+  at custom-errors.wipple:11:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
+  has type parameters
+
+TypeParameterNode `left` (custom-errors.wipple:12:33)
+  at custom-errors.wipple:12:33
+  has type `left`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `left` (custom-errors.wipple:12:33)
+
+TypeParameterNode `right` (custom-errors.wipple:12:38)
+  at custom-errors.wipple:12:38
+  has type `right`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `right` (custom-errors.wipple:12:38)
+
+TypeParameterNode `sum` (custom-errors.wipple:12:44)
+  at custom-errors.wipple:12:44
+  has type `sum`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `sum` (custom-errors.wipple:12:44)
+
+WildcardPatternNode `_` (custom-errors.wipple:14:1)
+  at custom-errors.wipple:14:1
+  is a pattern
+  has type `Number`
+
+AssignmentNode `_` (custom-errors.wipple:14:1)
+  at custom-errors.wipple:14:1
+
+ConstructorExpressionNode `Add` (custom-errors.wipple:14:5)
+  at custom-errors.wipple:14:5
+  is an expression
+  has bound(s) `Add Number Number Number` (InstanceDefinitionNode `instance (Add Number Number Number)` (custom-errors.wipple:5:1))
+  has type `Number Number -> Number`
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
+
+CallExpressionNode `Add 1 2` (custom-errors.wipple:14:5)
+  at custom-errors.wipple:14:5
+  is an expression
+  has type `Number`
+
+NumberExpressionNode `1` (custom-errors.wipple:14:9)
+  at custom-errors.wipple:14:9
+  is an expression
+  has type `Number`
+
+NamedTypeNode `1` (custom-errors.wipple:14:9)
+  at custom-errors.wipple:14:9
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Number` (custom-errors.wipple:1:1)
+
+NumberExpressionNode `2` (custom-errors.wipple:14:11)
+  at custom-errors.wipple:14:11
+  is an expression
+  has type `Number`
+
+NamedTypeNode `2` (custom-errors.wipple:14:11)
+  at custom-errors.wipple:14:11
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Number` (custom-errors.wipple:1:1)
+
+WildcardPatternNode `_` (custom-errors.wipple:15:1)
+  at custom-errors.wipple:15:1
+  is a pattern
+  has type `String`
+
+AssignmentNode `_` (custom-errors.wipple:15:1)
+  at custom-errors.wipple:15:1
+
+ConstructorExpressionNode `Add` (custom-errors.wipple:15:5)
+  at custom-errors.wipple:15:5
+  is an expression
+  has bound(s) `Add String String String` (InstanceDefinitionNode `instance (Add String String String)` (custom-errors.wipple:6:1))
+  has type `String String -> String`
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
+
+CallExpressionNode `Add "a" "b"` (custom-errors.wipple:15:5)
+  at custom-errors.wipple:15:5
+  is an expression
+  has type `String`
+
+StringExpressionNode `"a"` (custom-errors.wipple:15:9)
+  at custom-errors.wipple:15:9
+  is an expression
+  has type `String`
+
+NamedTypeNode `"a"` (custom-errors.wipple:15:9)
+  at custom-errors.wipple:15:9
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (custom-errors.wipple:2:1)
+
+StringExpressionNode `"b"` (custom-errors.wipple:15:13)
+  at custom-errors.wipple:15:13
+  is an expression
+  has type `String`
+
+NamedTypeNode `"b"` (custom-errors.wipple:15:13)
+  at custom-errors.wipple:15:13
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (custom-errors.wipple:2:1)
+
+WildcardPatternNode `_` (custom-errors.wipple:16:1)
+  at custom-errors.wipple:16:1
+  is a pattern
+  missing type (group: WildcardPatternNode `_` (custom-errors.wipple:16:1), CallExpressionNode `Add 1 "a"` (custom-errors.wipple:16:5))
+
+AssignmentNode `_` (custom-errors.wipple:16:1)
+  at custom-errors.wipple:16:1
+
+ConstructorExpressionNode `Add` (custom-errors.wipple:16:5)
+  at custom-errors.wipple:16:5
+  is an expression
+  has bound(s) `Add Number String _` (InstanceDefinitionNode `instance (Add left right sum)` (custom-errors.wipple:11:1))
+  has type `Number String -> _`
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
+
+CallExpressionNode `Add 1 "a"` (custom-errors.wipple:16:5)
+  at custom-errors.wipple:16:5
+  is an expression
+  missing type (group: WildcardPatternNode `_` (custom-errors.wipple:16:1), CallExpressionNode `Add 1 "a"` (custom-errors.wipple:16:5))
+
+NumberExpressionNode `1` (custom-errors.wipple:16:9)
+  at custom-errors.wipple:16:9
+  is an expression
+  has type `Number`
+
+NamedTypeNode `1` (custom-errors.wipple:16:9)
+  at custom-errors.wipple:16:9
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Number` (custom-errors.wipple:1:1)
+
+StringExpressionNode `"a"` (custom-errors.wipple:16:11)
+  at custom-errors.wipple:16:11
+  is an expression
+  has type `String`
+
+NamedTypeNode `"a"` (custom-errors.wipple:16:11)
+  at custom-errors.wipple:16:11
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (custom-errors.wipple:2:1)
+
+WildcardPatternNode `_` (custom-errors.wipple:17:1)
+  at custom-errors.wipple:17:1
+  is a pattern
+  missing type (group: WildcardPatternNode `_` (custom-errors.wipple:17:1), CallExpressionNode `Add () 2` (custom-errors.wipple:17:5))
+
+AssignmentNode `_` (custom-errors.wipple:17:1)
+  at custom-errors.wipple:17:1
+
+ConstructorExpressionNode `Add` (custom-errors.wipple:17:5)
+  at custom-errors.wipple:17:5
+  is an expression
+  has bound(s) `Add () Number _` (InstanceDefinitionNode `instance (Add () right sum)` (custom-errors.wipple:8:1))
+  has type `() Number -> _`
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
+
+CallExpressionNode `Add () 2` (custom-errors.wipple:17:5)
+  at custom-errors.wipple:17:5
+  is an expression
+  missing type (group: WildcardPatternNode `_` (custom-errors.wipple:17:1), CallExpressionNode `Add () 2` (custom-errors.wipple:17:5))
+
+UnitExpressionNode `()` (custom-errors.wipple:17:9)
+  at custom-errors.wipple:17:9
+  is an expression
+  has type `()`
+
+NumberExpressionNode `2` (custom-errors.wipple:17:12)
+  at custom-errors.wipple:17:12
+  is an expression
+  has type `Number`
+
+NamedTypeNode `2` (custom-errors.wipple:17:12)
+  at custom-errors.wipple:17:12
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Number` (custom-errors.wipple:1:1)
+
+
+Feedback:
+
+`_` (custom-errors.wipple:5:39) (placeholder):
+
+  Found a placeholder of type `Number Number -> Number`.
+  
+  Add a `Number Number -> Number` value here before running your program.
+
+`_` (custom-errors.wipple:6:39) (placeholder):
+
+  Found a placeholder of type `String String -> String`.
+  
+  Add a `String String -> String` value here before running your program.
+
+`Add` (custom-errors.wipple:16:5) (error-instance):
+
+  Cannot add `1` (custom-errors.wipple:16:9) and `"a"` (custom-errors.wipple:16:11).
+  
+  (This feedback comes from the instance `Add Number String _`.)
+
+`Add` (custom-errors.wipple:16:5) (incomplete-type):
+
+  Missing information for the type of `Add` (custom-errors.wipple:16:5).
+  
+  Wipple determined this code is `Number String -> _`, but it needs some more information for the
+  `_` placeholders.
+
+`_` (custom-errors.wipple:16:1) (unknown-type):
+
+  Could not determine the type of `_` (custom-errors.wipple:16:1).
+  
+  Wipple needs to know the type of this code before running it. Try using a function or assigning it
+  to a variable.
+
+`Add` (custom-errors.wipple:17:5) (error-instance):
+
+  Missing parentheses around the inputs to `+`.
+  
+  (This feedback comes from the instance `Add () Number _`.)
+
+`Add` (custom-errors.wipple:17:5) (incomplete-type):
+
+  Missing information for the type of `Add` (custom-errors.wipple:17:5).
+  
+  Wipple determined this code is `() Number -> _`, but it needs some more information for the `_`
+  placeholders.
+
+`_` (custom-errors.wipple:17:1) (unknown-type):
+
+  Could not determine the type of `_` (custom-errors.wipple:17:1).
+  
+  Wipple needs to know the type of this code before running it. Try using a function or assigning it
+  to a variable.
+

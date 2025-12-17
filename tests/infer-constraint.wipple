@@ -1,0 +1,20 @@
+[intrinsic] Number : type
+[intrinsic] String : type
+
+Add : left right sum => trait (left right -> sum)
+instance (Add Number Number Number) : _
+instance (Add String String String) : _
+
+add :: left right -> sum where (Add left right sum)
+add : _
+
+_ : (add 1 2 :: String)
+
+Add-Infer : left right (infer sum) => trait (left right -> sum)
+instance (Add-Infer Number Number Number) : _
+instance (Add-Infer String String String) : _
+
+add-infer :: left right -> sum where (Add-Infer left right sum)
+add-infer : _
+
+output : (add-infer 1 2 :: String)

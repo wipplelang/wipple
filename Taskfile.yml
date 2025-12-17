@@ -1,6 +1,20 @@
 version: "3"
 
 tasks:
+  compiler:
+    cmds:
+      - go run ./compiler {{.CLI_ARGS}}
+  test:
+    cmds:
+      - go test work
+  install:
+    cmds:
+      - go install ./compiler
+  vscode:
+    dir: vscode
+    cmds:
+      - npm run extension
+
   setup:
     deps:
       - setup:playground
@@ -14,64 +28,44 @@ tasks:
     cmds:
       - npm install
 
-  dev:site:
+  serve:
     deps:
-      - dev:library
-      - dev:playground
-      - dev:server
-  dev:library:
+      - serve:library
+      - serve:playground
+      - serve:server
+  serve:library:
     dir: library
     cmds:
-      - npx serve & task dev:library:watch
+      - npx serve & task serve:library:watch
     env:
       PORT: "3001"
-  dev:library:watch:
+  serve:library:watch:
     dir: library
     watch: true
     sources:
       - src/**/*
     cmds:
       - node build.js
-  dev:playground:
+  serve:playground:
     dir: playground
     cmds:
       - npm run dev -- --open
-  dev:server:
+  serve:server:
     dir: .
     cmds:
-      - cargo run --bin=wipple-api {{.CLI_ARGS}}
+      - go run ./compiler -- server
     env:
-      RUST_LOG: "trace"
       PORT: "3000"
       LIBRARY_URL: "http://localhost:3001"
       MONGO_URI: "mongodb://localhost:27017"
       MONGO_DB_NAME: "wipple-share"
 
-  test:
-    dir: .
-    ignore_error: true
-    cmd: |
-      bash -c '
-      cargo build --package=wipple-api
-      PORT=3001 task dev:library & library_server_pid=$!
-      sleep 1
-      PORT=3000 LIBRARY_URL='http://localhost:3001' ./target/debug/wipple-api & test_server_pid=$!
-      sleep 1
-      TESTS_SERVER_URL='http://localhost:3000' node --experimental-vm-modules {{.CLI_ARGS}} test/index.js
-      kill $test_server_pid
-      kill $library_server_pid
-      '
-  test:update-snapshots:
-    cmds:
-      - task: test
-        vars:
-          CLI_ARGS: --test-update-snapshots
-
-  build:site:
+  build:
     deps:
       - build:docs
       - build:library
       - build:playground
+      - build:functions
     dir: site
     cmds:
       - rm -rf dist
@@ -92,11 +86,8 @@ tasks:
     dir: playground
     cmds:
       - npm run build
-
-  install:
-    deps:
-      - install:cli
-  install:cli:
-    dir: cli
+  build:functions:
+    dir: .
     cmds:
-      - cargo install --path=. --force
+      - rm -rf netlify/functions && mkdir -p netlify/functions
+      - GOOS=linux GOARCH=amd64 go build -o netlify/functions/api ./compiler

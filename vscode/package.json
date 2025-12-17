@@ -1,0 +1,58 @@
+{
+    "name": "wipple-vscode",
+    "displayName": "Wipple",
+    "description": "",
+    "version": "0.0.0",
+    "type": "commonjs",
+    "engines": {
+        "vscode": "^1.104.0"
+    },
+    "scripts": {
+        "build": "esbuild src/extension.js --bundle --platform=node --external:vscode --outfile=dist/extension.js",
+        "extension": "npm run build && vsce package --no-dependencies --allow-missing-repository --skip-license && code --install-extension wipple-vscode-0.0.0.vsix"
+    },
+    "activationEvents": [],
+    "main": "./dist/extension.js",
+    "categories": [
+        "Programming Languages"
+    ],
+    "contributes": {
+        "languages": [
+            {
+                "id": "wipple",
+                "aliases": [
+                    "Wipple",
+                    "wipple"
+                ],
+                "extensions": [
+                    ".wipple"
+                ],
+                "configuration": "./language-configuration.json"
+            }
+        ],
+        "grammars": [
+            {
+                "language": "wipple",
+                "scopeName": "source.wipple",
+                "path": "./syntaxes/wipple.tmLanguage.json"
+            }
+        ],
+        "configuration": {
+            "wippleLanguageServer.trace.server": {
+                "scope": "window",
+                "type": "string",
+                "enum": [
+                    "off",
+                    "messages",
+                    "verbose"
+                ],
+                "default": "verbose"
+            }
+        }
+    },
+    "devDependencies": {
+        "@vscode/vsce": "^3.6.2",
+        "esbuild": "^0.25.10",
+        "vscode-languageclient": "^9.0.1"
+    }
+}

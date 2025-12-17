@@ -1,9 +1,0 @@
--- [should compile]
-
-block :: {Number}
-block : {
-  42
-  -- this comment shouldn't cause this line to be parsed as an empty list
-}
-
-show (do block)

@@ -1,0 +1,235 @@
+TypeDefinitionNode `Number` (nested-bounds.wipple:1:1)
+  at nested-bounds.wipple:1:1
+  is a definition
+  has definition constraints
+
+FileNode `Number : type⋯` (nested-bounds.wipple:1:1)
+  at nested-bounds.wipple:1:1
+
+TypeDefinitionNode `String` (nested-bounds.wipple:2:1)
+  at nested-bounds.wipple:2:1
+  is a definition
+  has definition constraints
+
+TraitDefinitionNode `A : value => trait (value -> ())` (nested-bounds.wipple:4:1)
+  at nested-bounds.wipple:4:1
+  has instances
+  is a definition
+  has definition constraints
+  has type parameters
+
+TypeParameterNode `value` (nested-bounds.wipple:4:5)
+  at nested-bounds.wipple:4:5
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:4:5)
+
+FunctionTypeNode `value -> ()` (nested-bounds.wipple:4:20)
+  at nested-bounds.wipple:4:20
+  has type `value -> ()`
+  is a type
+
+TypeParameterNode `value` (nested-bounds.wipple:4:21)
+  at nested-bounds.wipple:4:21
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:4:5)
+
+UnitTypeNode `()` (nested-bounds.wipple:4:30)
+  at nested-bounds.wipple:4:30
+  has type `()`
+  is a type
+
+InstanceDefinitionNode `instance (A Number)` (nested-bounds.wipple:5:1)
+  at nested-bounds.wipple:5:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `A : value => trait (value -> ())` (nested-bounds.wipple:4:1)
+
+NamedTypeNode `Number` (nested-bounds.wipple:5:13)
+  at nested-bounds.wipple:5:13
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Number` (nested-bounds.wipple:1:1)
+
+PlaceholderExpressionNode `_` (nested-bounds.wipple:5:23)
+  at nested-bounds.wipple:5:23
+  is an expression
+  is a placeholder
+  has type `Number -> ()`
+
+InstanceDefinitionNode `instance (A String)` (nested-bounds.wipple:6:1)
+  at nested-bounds.wipple:6:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `A : value => trait (value -> ())` (nested-bounds.wipple:4:1)
+
+NamedTypeNode `String` (nested-bounds.wipple:6:13)
+  at nested-bounds.wipple:6:13
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (nested-bounds.wipple:2:1)
+
+PlaceholderExpressionNode `_` (nested-bounds.wipple:6:23)
+  at nested-bounds.wipple:6:23
+  is an expression
+  is a placeholder
+  has type `String -> ()`
+
+TraitDefinitionNode `B : value => trait (value -> ())` (nested-bounds.wipple:8:1)
+  at nested-bounds.wipple:8:1
+  has instances
+  is a definition
+  has definition constraints
+  has type parameters
+
+TypeParameterNode `value` (nested-bounds.wipple:8:5)
+  at nested-bounds.wipple:8:5
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:8:5)
+
+FunctionTypeNode `value -> ()` (nested-bounds.wipple:8:20)
+  at nested-bounds.wipple:8:20
+  has type `value -> ()`
+  is a type
+
+TypeParameterNode `value` (nested-bounds.wipple:8:21)
+  at nested-bounds.wipple:8:21
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:8:5)
+
+UnitTypeNode `()` (nested-bounds.wipple:8:30)
+  at nested-bounds.wipple:8:30
+  has type `()`
+  is a type
+
+InstanceDefinitionNode `instance (B value)` (nested-bounds.wipple:9:1)
+  at nested-bounds.wipple:9:1
+  is a definition
+  has definition constraints
+  resolved to 1 definition(s): TraitDefinitionNode `B : value => trait (value -> ())` (nested-bounds.wipple:8:1)
+  has type parameters
+
+TypeParameterNode `value` (nested-bounds.wipple:9:13)
+  at nested-bounds.wipple:9:13
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:9:13)
+
+BoundConstraintNode `A value` (nested-bounds.wipple:9:26)
+  at nested-bounds.wipple:9:26
+  resolved to 1 definition(s): TraitDefinitionNode `A : value => trait (value -> ())` (nested-bounds.wipple:4:1)
+
+TypeParameterNode `value` (nested-bounds.wipple:9:29)
+  at nested-bounds.wipple:9:29
+  has type `value`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:9:13)
+
+PlaceholderExpressionNode `_` (nested-bounds.wipple:9:38)
+  at nested-bounds.wipple:9:38
+  is an expression
+  is a placeholder
+  has type `value -> ()`
+
+ConstructorExpressionNode `B` (nested-bounds.wipple:11:1)
+  at nested-bounds.wipple:11:1
+  is an expression
+  has bound(s) `B Number` (InstanceDefinitionNode `instance (B value)` (nested-bounds.wipple:9:1)), `A Number` (InstanceDefinitionNode `instance (A Number)` (nested-bounds.wipple:5:1))
+  has type `Number -> ()`
+  resolved to 1 definition(s): TraitDefinitionNode `B : value => trait (value -> ())` (nested-bounds.wipple:8:1)
+
+ExpressionStatementNode `B 123` (nested-bounds.wipple:11:1)
+  at nested-bounds.wipple:11:1
+
+CallExpressionNode `B 123` (nested-bounds.wipple:11:1)
+  at nested-bounds.wipple:11:1
+  is an expression
+  has type `()`
+
+NumberExpressionNode `123` (nested-bounds.wipple:11:3)
+  at nested-bounds.wipple:11:3
+  is an expression
+  has type `Number`
+
+NamedTypeNode `123` (nested-bounds.wipple:11:3)
+  at nested-bounds.wipple:11:3
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `Number` (nested-bounds.wipple:1:1)
+
+ConstructorExpressionNode `B` (nested-bounds.wipple:12:1)
+  at nested-bounds.wipple:12:1
+  is an expression
+  has bound(s) `B String` (InstanceDefinitionNode `instance (B value)` (nested-bounds.wipple:9:1)), `A String` (InstanceDefinitionNode `instance (A String)` (nested-bounds.wipple:6:1))
+  has type `String -> ()`
+  resolved to 1 definition(s): TraitDefinitionNode `B : value => trait (value -> ())` (nested-bounds.wipple:8:1)
+
+ExpressionStatementNode `B "abc"` (nested-bounds.wipple:12:1)
+  at nested-bounds.wipple:12:1
+
+CallExpressionNode `B "abc"` (nested-bounds.wipple:12:1)
+  at nested-bounds.wipple:12:1
+  is an expression
+  has type `()`
+
+StringExpressionNode `"abc"` (nested-bounds.wipple:12:3)
+  at nested-bounds.wipple:12:3
+  is an expression
+  has type `String`
+
+NamedTypeNode `"abc"` (nested-bounds.wipple:12:3)
+  at nested-bounds.wipple:12:3
+  has type `String`
+  is a type
+  resolved to 1 definition(s): TypeDefinitionNode `String` (nested-bounds.wipple:2:1)
+
+ConstructorExpressionNode `B` (nested-bounds.wipple:13:1)
+  at nested-bounds.wipple:13:1
+  is an expression
+  has bound(s) `B ()` (InstanceDefinitionNode `instance (B value)` (nested-bounds.wipple:9:1)), `A ()` (unresolved)
+  has type `() -> ()`
+  resolved to 1 definition(s): TraitDefinitionNode `B : value => trait (value -> ())` (nested-bounds.wipple:8:1)
+
+ExpressionStatementNode `B ()` (nested-bounds.wipple:13:1)
+  at nested-bounds.wipple:13:1
+
+CallExpressionNode `B ()` (nested-bounds.wipple:13:1)
+  at nested-bounds.wipple:13:1
+  is an expression
+  has type `()`
+
+UnitExpressionNode `()` (nested-bounds.wipple:13:3)
+  at nested-bounds.wipple:13:3
+  is an expression
+  has type `()`
+
+
+Feedback:
+
+`_` (nested-bounds.wipple:5:23) (placeholder):
+
+  Found a placeholder of type `Number -> ()`.
+  
+  Add a `Number -> ()` value here before running your program.
+
+`_` (nested-bounds.wipple:6:23) (placeholder):
+
+  Found a placeholder of type `String -> ()`.
+  
+  Add a `String -> ()` value here before running your program.
+
+`_` (nested-bounds.wipple:9:38) (placeholder):
+
+  Found a placeholder of type `value -> ()`.
+  
+  Add a `value -> ()` value here before running your program.
+
+`B` (nested-bounds.wipple:13:1) (unresolved-bound):
+
+  `B` (nested-bounds.wipple:13:1) requires the instance `A ()`, but this instance isn't defined.
+  
+  Double-check that these types are correct.
+

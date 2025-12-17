@@ -12,9 +12,9 @@ export default runtime({
             go: { code: "go (100 pixels) (100 pixels)" },
         },
         Appearance: {
-            color: { code: `color (Color '{"color": "blue"}')` },
+            color: { code: `color (color-widget '{"color": "blue"}')` },
             speed: { code: "speed 50" },
-            animal: { code: `animal (Animal '{"animal": "frog"}')` },
+            animal: { code: `animal (animal-widget '{"animal": "frog"}')` },
         },
         Control: {
             repeat: {

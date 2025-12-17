@@ -1,9 +1,0 @@
--- [should compile]
-
-Do-Something : A => trait (A -> Unit)
-
-A => default instance (Do-Something A) : _ -> show "using default instance"
-instance (Do-Something Text) : text -> show ("using specific instance: _" text)
-
-Do-Something 42
-Do-Something "Hello, world!"

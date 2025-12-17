@@ -1,0 +1,32 @@
+
+[TestParseBoundConstraint - 1]
+&constraints.BoundConstraintNode{
+    Trait:      "Foo",
+    Parameters: {
+        &types.TypeParameterNode{
+            Name:  "value",
+            Infer: false,
+            Value: nil,
+            Facts: (*database.Facts)(nil),
+        },
+    },
+    Facts: (*database.Facts)(nil),
+}
+---
+
+[TestParseDefaultConstraint - 1]
+&constraints.DefaultConstraintNode{
+    Parameter: &types.TypeParameterNode{
+        Name:  "value",
+        Infer: false,
+        Value: nil,
+        Facts: (*database.Facts)(nil),
+    },
+    Value: &types.NamedTypeNode{
+        Name:       "Number",
+        Parameters: nil,
+        Facts:      (*database.Facts)(nil),
+    },
+    Facts: (*database.Facts)(nil),
+}
+---

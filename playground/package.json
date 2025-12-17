@@ -55,7 +55,6 @@
         "svelte-exmarkdown": "^5.0.1",
         "tailwindcss-animated": "^2.0.0",
         "tonal": "^6.4.2",
-        "tone": "^15.1.22",
-        "wipple-runtime": "file:../runtime"
+        "tone": "^15.1.22"
     }
 }

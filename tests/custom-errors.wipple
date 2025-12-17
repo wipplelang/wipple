@@ -1,0 +1,17 @@
+[intrinsic] Number : type
+[intrinsic] String : type
+
+Add : left right (infer sum) => trait (left right -> sum)
+instance (Add Number Number Number) : _
+instance (Add String String String) : _
+
+-- Missing parentheses around the inputs to `+`.
+[error] instance (Add () right sum)
+
+-- Cannot add [`left`] and [`right`].
+[default] [error] instance (Add left right sum)
+
+_ : Add 1 2
+_ : Add "a" "b"
+_ : Add 1 "a"
+_ : Add () 2

@@ -1,6 +1,0 @@
--- [should error]
-
-produces-text : Unit -> "Hello, world!"
-displays-text : (text :: Text) -> show text
-
-displays-text produces-text

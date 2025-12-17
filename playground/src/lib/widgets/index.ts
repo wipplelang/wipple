@@ -6,10 +6,10 @@ import MusicWidget from "./MusicWidget.svelte";
 import NumberWidget from "./NumberWidget.svelte";
 
 const widgets = {
-    Animal: widget(AnimalWidget),
-    Color: widget(ColorWidget),
-    Dropdown: widget(DropdownWidget),
-    Music: widget(MusicWidget),
+    "animal-widget": widget(AnimalWidget),
+    "color-widget": widget(ColorWidget),
+    "dropdown-widget": widget(DropdownWidget),
+    "music-widget": widget(MusicWidget),
 };
 
 // Rendered automatically for numbers with units

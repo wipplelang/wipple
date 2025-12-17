@@ -1,4 +1,0 @@
--- [should compile]
-
-numbers : build-sequence (Some 0) (n -> Some (n + 1))
-numbers . take 5 . each show

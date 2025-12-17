@@ -1,0 +1,51 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Wipple",
+    "scopeName": "source.wipple",
+    "patterns": [
+        { "include": "#comment.line" },
+        { "include": "#string.double" },
+        { "include": "#string.single" },
+        { "include": "#number" },
+        { "include": "#keyword" },
+        { "include": "#keyword.operator" },
+        { "include": "#capitalName" },
+        { "include": "#lowercaseName" }
+    ],
+    "repository": {
+        "comment.line": {
+            "name": "comment.line.double-dash.wipple",
+            "match": "--[^\\n]*"
+        },
+        "string.double": {
+            "name": "string.quoted.double.wipple",
+            "begin": "\"",
+            "end": "\""
+        },
+        "string.single": {
+            "name": "string.quoted.single.wipple",
+            "begin": "'",
+            "end": "'"
+        },
+        "number": {
+            "name": "constant.numeric.wipple",
+            "match": "\\b[+-]?\\d+(?:\\.\\d+)?\\b"
+        },
+        "keyword": {
+            "name": "keyword.other.wipple",
+            "match": "\\b(?:do|infer|instance|intrinsic|set|trait|type|when|where)\\b"
+        },
+        "keyword.operator": {
+            "name": "keyword.operator.wipple",
+            "match": "_|\\-|\\->|\\,|;|:|::|\\.|\\*|\\/|\\/=|%|\\^|\\+|<|<=|=|=>|>|>=|\\b(?:and|as|by|is|or|to)\\b"
+        },
+        "capitalName": {
+            "name": "entity.name.type.wipple",
+            "match": "\\b(?:\\d-)*[A-Z][A-Za-z0-9_]*(?:-[A-Za-z0-9_]+)*(?:[!?])?\\b"
+        },
+        "lowercaseName": {
+            "name": "variable.other.wipple",
+            "match": "\\b[a-z0-9_][A-Za-z0-9_]*(?:-[A-Za-z0-9_]+)*(?:[!?])?\\b"
+        }
+    }
+}

@@ -1,13 +1,16 @@
-@(language : "build-collection")
-Build-Collection : Element (Collection : List Element) => trait (Element -> Collection -> Collection)
+Build-Collection : (infer element) collection => trait (element collection -> collection)
 
-(infer Element) (Collection : List Element) where (Error ("Can't create _ from items that are _" Collection Element ; Error-Description ("Creating _ from these items isn't supported. Double-check that you're providing the right kinds of items here." Collection))) =>
-  default instance (Build-Collection Element Collection) : ...
+-- Can't create [`collection`] from items that are [`element`].
+--
+-- Creating [`collection`] from these items isn't supported. Double-check that
+-- you're providing the right kinds of items here.
+[default] [error] instance (Build-Collection element collection)
 
-@(language : "initial-collection")
-initial-collection :: (infer Element) (Collection : List Element) where (Initial Collection) (Build-Collection Element Collection) => Collection
-initial-collection : Initial
+Initial-Collection : (infer element) collection => trait collection
+instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element) : Initial
 
-Element => instance (Build-Collection Element (List Element)) : append
-Key Value where (Equal Key) (Hash Key) => instance (Build-Collection (Key ; Value) (Dictionary Key Value)) : (key ; value) -> insert-entry key value
-Element where (Equal Element) (Hash Element) => instance (Build-Collection Element (Set Element)) : insert
+instance (Build-Collection element (List element)) : element l -> l . append element
+
+instance (Build-Collection (key; value) (Dictionary key value)) where (Equal key) (Hash key) : (key; value) d -> d . insert-entry key value
+
+instance (Build-Collection element (Set element)) where (Equal element) (Hash element) : element s -> s . insert element

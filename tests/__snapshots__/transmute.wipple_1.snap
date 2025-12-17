@@ -1,0 +1,55 @@
+ConstantDefinitionNode `transmute` (transmute.wipple:1:1)
+  at transmute.wipple:1:1
+  is a definition
+  has definition constraints
+  has type parameters
+
+FileNode `transmute` (transmute.wipple:1:1)
+  at transmute.wipple:1:1
+
+TypeParameterNode `a` (transmute.wipple:1:14)
+  at transmute.wipple:1:14
+  has type `a` or `b`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `a` (transmute.wipple:1:14)
+
+FunctionTypeNode `a -> b` (transmute.wipple:1:14)
+  at transmute.wipple:1:14
+  has type `a -> a`
+  is a type
+
+TypeParameterNode `b` (transmute.wipple:1:19)
+  at transmute.wipple:1:19
+  has type `a` or `b`
+  is a type
+  resolved to 1 definition(s): TypeParameterNode `b` (transmute.wipple:1:19)
+
+AssignmentNode `transmute` (transmute.wipple:2:1)
+  at transmute.wipple:2:1
+
+VariablePatternNode `x` (transmute.wipple:2:13)
+  at transmute.wipple:2:13
+  is a pattern
+  has type `a` or `b`
+
+FunctionExpressionNode `x -> x` (transmute.wipple:2:13)
+  at transmute.wipple:2:13
+  is an expression
+  has type `a -> a`
+
+VariableExpressionNode `x` (transmute.wipple:2:18)
+  at transmute.wipple:2:18
+  is an expression
+  has type `a` or `b`
+  resolved to 1 definition(s): VariablePatternNode `x` (transmute.wipple:2:13)
+
+
+Feedback:
+
+`x` (transmute.wipple:2:13) (conflicting-types):
+
+  `x` (transmute.wipple:2:13) is `a` or `b`, but it can only be one of these.
+  
+  `x` (transmute.wipple:2:13) must be the same type as `x` (transmute.wipple:2:18), `a`
+  (transmute.wipple:1:14), and `b` (transmute.wipple:1:19); double-check these.
+

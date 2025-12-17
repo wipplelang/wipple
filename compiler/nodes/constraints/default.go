@@ -1,0 +1,75 @@
+package constraints
+
+import (
+	"wipple/database"
+	"wipple/nodes/types"
+	"wipple/syntax"
+	"wipple/typecheck"
+	"wipple/visit"
+)
+
+type DefaultConstraintNode struct {
+	Parameter database.Node
+	Value     database.Node
+	Facts     *database.Facts
+}
+
+func (node *DefaultConstraintNode) GetFacts() *database.Facts {
+	return node.Facts
+}
+
+func ParseDefaultConstraint(parser *syntax.Parser) (*DefaultConstraintNode, *syntax.Error) {
+	span := parser.Spanned()
+
+	_, err := parser.Token("LeftParenthesis", syntax.TokenConfig{
+		Reason: "between these parentheses",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	parameterSpan := parser.Spanned()
+
+	name, err := syntax.ParseTypeParameterName(parser)
+	if err != nil {
+		return nil, err
+	}
+
+	parameter := &types.TypeParameterNode{
+		Name:  name,
+		Infer: false,
+		Value: nil,
+		Facts: database.NewFacts(parameterSpan()),
+	}
+
+	_, err = parser.Token("AnnotateOperator", syntax.TokenConfig{
+		Commit: "in this type annotation",
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	parser.ConsumeLineBreaks()
+
+	value, err := types.ParseType(parser)
+	if err != nil {
+		return nil, err
+	}
+
+	_, err = parser.Token("RightParenthesis")
+	if err != nil {
+		return nil, err
+	}
+
+	return &DefaultConstraintNode{
+		Parameter: parameter,
+		Value:     value,
+		Facts:     database.NewFacts(span()),
+	}, nil
+}
+
+func (node *DefaultConstraintNode) Visit(visitor *visit.Visitor) {
+	visitor.Visit(node.Parameter)
+	visitor.Visit(node.Value)
+	visitor.Constraint(typecheck.DefaultConstraint(node.Parameter, node.Value))
+}
