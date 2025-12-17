@@ -1,10 +1,41 @@
 # Changelog
 
-## Unreleased
+## Wipple 2025.3 (2025-12-17)
+
+-   The Wipple compiler has been rearchitected to use a database of facts that are queried for diagnostics. This new architecture is substantially faster and can compile the standard library in under 100 ms!
+
+-   Redesigned typechecker around constraints and groups for more localized and informative error messages.
+
+-   Reintroduced the VSCode extension and LSP server.
+
+-   The JavaScript output now includes source maps, enabling debugging Wipple in your IDE.
+
+-   Type parameters in constants and instances are now defined implicitly instead of with `=>`, and are lowercase. `where` bounds have been moved to the end, so signatures are cleaner. For example, `show :: Value where (Describe Value) => Value -> ()` is now `show :: value -> () where (Describe value)`.
+
+-   Custom error messages are now written as comments instead of with the `Error` trait. To write an error instance, use the `[error]` attribute. Similarly, default instances are written with the `[default]` attribute.
+
+-   Lists and tuples are now formatted without a space before the separator, i.e. `1, 2, 3` instead of `1 , 2 , 3`.
+
+-   Renamed `Text` to `String` and `Unit` to `()`.
+
+-   Removed wrapper types (`Wrapper : type Number`) in favor of single-field structure types (`Wrapper : type {value :: Number}`). Similarly, destructuring syntax requires the name of the structure now (`Wrapper {value : value}` instead of `{value : value}`).
+
+-   Changed attribute syntax from `@attribute` to `[attribute]`.
+
+-   Changed mutation syntax to `set a : b` instead of `a! : b`.
+
+-   `when` arms containing complex patterns now require parentheses to align with function syntax.
+
+-   Implemented placeholder expressions (`_`) that report their type at compile-time. Also replaced `...` with `todo`.
+
+## Wipple 2025.2 (2025-12-14)
 
 -   Wipple now compiles to JavaScript instead of an interpreted IR.
+
 -   Added back the `wipple` CLI, using `node` as the default runtime.
+
 -   Added the `go` command to the Turtle runtime, and show the mouse's coordinates when hovering over the canvas.
+
 -   Added a Share button to generate a link to your playground.
 
 ## Wipple 2025.1 (2025-07-24)
