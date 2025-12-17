@@ -24,7 +24,7 @@ func Related(db *database.Db, node database.Node, filter func(node database.Node
 	}
 }
 
-func ConflictingTypes(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(source database.Node, from database.Node, nodes []database.Node, types []*typecheck.ConstructedType)) {
+func ConflictingTypes(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(source database.Node, from database.Node, nodes []database.Node, types []*typecheck.ConstructedType, trace []typecheck.Constraint)) {
 	fact, ok := database.GetFact[typecheck.TypedFact](node)
 	if !ok || fact.Group == nil {
 		return
@@ -63,7 +63,7 @@ func ConflictingTypes(db *database.Db, node database.Node, filter func(node data
 			database.SortByProximity(nodes, from)
 		}
 
-		f(source, from, nodes, group.Types)
+		f(source, from, nodes, group.Types, group.Trace)
 	}
 }
 

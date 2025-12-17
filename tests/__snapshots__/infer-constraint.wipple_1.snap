@@ -502,7 +502,8 @@ Feedback:
 
 `output` (infer-constraint.wipple:20:1) (conflicting-types):
 
-  `output` (infer-constraint.wipple:20:1) is `Number` or `String`, but it can only be one of these.
+  `output` (infer-constraint.wipple:20:1) is a `Number` or a `String`, but it can only be one of
+  these.
   
   `output` (infer-constraint.wipple:20:1) must be the same type as `add-infer 1 2` (infer-
   constraint.wipple:20:10), `add-infer 1 2` (infer-constraint.wipple:20:11), and `String` (infer-

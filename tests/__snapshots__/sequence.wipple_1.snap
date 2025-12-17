@@ -340,7 +340,7 @@ Feedback:
 
 `_` (sequence.wipple:24:14) (conflicting-types):
 
-  `_` (sequence.wipple:24:14) is `String` or `Number`, but it can only be one of these.
+  `_` (sequence.wipple:24:14) is a `String` or a `Number`, but it can only be one of these.
   
   `_` (sequence.wipple:24:14) must be the same type as `Number` (sequence.wipple:24:19), `_`
   (sequence.wipple:24:13), and `String` (sequence.wipple:23:17); double-check these.

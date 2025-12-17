@@ -10,23 +10,26 @@ import (
 type Group struct {
 	Nodes []database.Node
 	Types []*ConstructedType
+	Trace []Constraint
 }
 
-func makeGroup(nodes []database.Node, types []*ConstructedType) *Group {
+func makeGroup(nodes []database.Node, types []*ConstructedType, trace []Constraint) *Group {
 	return &Group{
 		Nodes: nodes,
 		Types: types,
+		Trace: trace,
 	}
 }
 
 func NewGroup(nodes ...database.Node) *Group {
-	return makeGroup(nodes, make([]*ConstructedType, 0, 1))
+	return makeGroup(nodes, make([]*ConstructedType, 0, 1), nil)
 }
 
-func (group *Group) ShallowCopy() *Group {
+func (group *Group) Clone() *Group {
 	return &Group{
 		Nodes: slices.Clone(group.Nodes),
 		Types: slices.Clone(group.Types),
+		Trace: slices.Clone(group.Trace),
 	}
 }
 
@@ -135,13 +138,13 @@ func (g *groups) add(group *Group) {
 	}
 }
 
-func (g *groups) Copy(group *Group) *Group {
-	newGroup := group.ShallowCopy()
+func (g *groups) Clone(group *Group) *Group {
+	newGroup := group.Clone()
 	g.add(newGroup)
 	return newGroup
 }
 
-func (g *groups) merge(left database.Node, right database.Node, unify func(left *ConstructedType, right *ConstructedType) bool) {
+func (g *groups) merge(trace Constraint, left database.Node, right database.Node, unify func(left *ConstructedType, right *ConstructedType) bool) {
 	leftEntry, leftGroup, ok := g.FindGroup(left)
 	if !ok {
 		leftGroup = NewGroup(left)
@@ -163,7 +166,7 @@ func (g *groups) merge(left database.Node, right database.Node, unify func(left 
 	// Make a copy of the left group if it is shared with a parent
 	newGroup := leftGroup
 	if leftEntry != g {
-		newGroup = g.Copy(leftGroup)
+		newGroup = g.Clone(leftGroup)
 	}
 
 	// Update the nodes to point to the new group. Note that these changes will
@@ -176,6 +179,11 @@ func (g *groups) merge(left database.Node, right database.Node, unify func(left 
 	// Then merge the old group's contents into the new group.
 	newGroup.Nodes = append(newGroup.Nodes, oldGroup.Nodes...)
 	newGroup.unifyWithTypes(oldGroup.Types, unify)
+	newGroup.Trace = append(newGroup.Trace, oldGroup.Trace...)
+
+	if trace != nil {
+		newGroup.Trace = append(newGroup.Trace, trace)
+	}
 }
 
 func (g *groups) FindGroup(node database.Node) (*groups, *Group, bool) {

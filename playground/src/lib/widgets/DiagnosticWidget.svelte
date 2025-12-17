@@ -20,14 +20,7 @@
     let { diagnostic, stale, onclose }: Props = $props();
 
     const [title, ...body] = diagnostic.message.split("\n\n");
-    const description = body
-        .map((s: string) =>
-            s
-                .split("\n")
-                .map((s: string) => s.trim())
-                .join(" "),
-        )
-        .join("\n\n");
+    const description = body.join("\n\n");
 </script>
 
 <div class="flex h-full w-full items-stretch justify-stretch pb-[10px]">

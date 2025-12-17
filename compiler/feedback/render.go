@@ -8,6 +8,7 @@ import (
 
 	"wipple/colors"
 	"wipple/database"
+	"wipple/nodes/types"
 	"wipple/queries"
 	"wipple/typecheck"
 )
@@ -153,6 +154,29 @@ func (render *Render) WriteComments(data queries.CommentsData) {
 	}
 
 	render.WriteString(commentsString[lastIndex:])
+}
+
+func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constraint) bool {
+	switch c := constraint.(type) {
+	case *typecheck.TypeConstraint:
+		node := c.Info().Node
+
+		if database.IsHiddenNode(node) {
+			return false
+		}
+
+		if _, ok := database.GetFact[types.IsTypeFact](node); ok {
+			return false
+		}
+
+		render.WriteString(prefix)
+		render.WriteNode(node)
+		render.WriteString(" is a ")
+		render.WriteType(c.Type)
+		render.WriteString(".")
+		return true
+	}
+	return false
 }
 
 func (render *Render) Finish() string {

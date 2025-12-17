@@ -1,0 +1,16 @@
+.markdown {
+    @apply flex flex-col gap-[10px];
+
+    ul {
+        @apply flex list-inside list-disc flex-col gap-[10px];
+
+        > li {
+            @apply flex flex-row gap-[10px];
+
+            &::before {
+                content: "•";
+                @apply ml-[10px];
+            }
+        }
+    }
+}

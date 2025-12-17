@@ -8,10 +8,10 @@ func (fact InferredParameterFact) String() string {
 	return "is inferred type parameter"
 }
 
-func UnifySubstitutions(left *map[database.Node]Type, right *map[database.Node]Type, solver *Solver) {
+func UnifySubstitutions(trace Constraint, left *map[database.Node]Type, right *map[database.Node]Type, solver *Solver) {
 	for parameter, leftType := range *left {
 		if rightType, ok := (*right)[parameter]; ok {
-			solver.Unify(leftType, rightType)
+			solver.Unify(trace, leftType, rightType)
 		}
 	}
 }

@@ -28,7 +28,7 @@ func (c *DefaultConstraint) Instantiate(solver *Solver, source database.Node, re
 
 func (c *DefaultConstraint) Run(solver *Solver) bool {
 	if _, ok := solver.Apply(c.info.Node).(database.Node); ok {
-		solver.Unify(c.info.Node, c.Ty)
+		solver.Unify(c, c.info.Node, c.Ty)
 	}
 
 	return true

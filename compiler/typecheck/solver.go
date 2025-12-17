@@ -64,7 +64,7 @@ func (s *Solver) Imply(instance Instance) {
 	}
 }
 
-func (s *Solver) Unify(left Type, right Type) {
+func (s *Solver) Unify(trace Constraint, left Type, right Type) {
 	if left == right {
 		return
 	}
@@ -76,7 +76,7 @@ func (s *Solver) Unify(left Type, right Type) {
 	originalRightNode, rightWasNode := right.(database.Node)
 
 	if leftWasNode && rightWasNode {
-		s.merge(originalLeftNode, originalRightNode)
+		s.merge(trace, originalLeftNode, originalRightNode)
 		s.Progress = true
 		return
 	}
@@ -88,13 +88,13 @@ func (s *Solver) Unify(left Type, right Type) {
 	rightNode, rightIsNode := right.(database.Node)
 
 	if leftIsNode && rightIsNode {
-		s.merge(leftNode, rightNode)
+		s.merge(trace, leftNode, rightNode)
 		s.Progress = true
 	} else if leftIsNode {
-		s.insert(leftNode, right)
+		s.insert(trace, leftNode, right)
 		s.Progress = true
 	} else if rightIsNode {
-		s.insert(rightNode, left)
+		s.insert(trace, rightNode, left)
 		s.Progress = true
 	} else {
 		left := left.(*ConstructedType)
@@ -106,10 +106,10 @@ func (s *Solver) Unify(left Type, right Type) {
 
 			// Report conflicts on the original nodes
 			if leftWasNode {
-				s.insert(originalLeftNode, right)
+				s.insert(trace, originalLeftNode, right)
 			}
 			if rightWasNode {
-				s.insert(originalRightNode, left)
+				s.insert(trace, originalRightNode, left)
 			}
 		}
 	}
@@ -132,7 +132,7 @@ func (s *Solver) unifyConstructedTypes(left *ConstructedType, right *Constructed
 				continue
 			}
 
-			s.Unify(leftChild, rightChild)
+			s.Unify(nil, leftChild, rightChild)
 		}
 	}
 
@@ -164,16 +164,20 @@ func (s *Solver) applyShallow(ty Type) Type {
 	return ty
 }
 
-func (s *Solver) insert(node database.Node, types ...Type) {
+func (s *Solver) insert(trace Constraint, node database.Node, types ...Type) {
 	if entry, group, ok := s.groups.FindGroup(node); ok {
 		for _, ty := range types {
 			switch ty := ty.(type) {
 			case database.Node:
-				s.merge(node, ty)
+				s.merge(trace, node, ty)
 				entry, group, _ = s.groups.FindGroup(node)
 			case *ConstructedType:
-				group = entry.Copy(group)
+				group = entry.Clone(group)
 				group.Types = append(group.Types, ty)
+
+				if trace != nil {
+					group.Trace = append(group.Trace, trace)
+				}
 			}
 		}
 
@@ -193,14 +197,14 @@ func (s *Solver) insert(node database.Node, types ...Type) {
 		}
 	}
 
-	group := makeGroup(groupNodes, groupTypes)
+	group := makeGroup(groupNodes, groupTypes, []Constraint{trace})
 	group.normalize()
 
 	s.AppendGroup(group)
 }
 
-func (s *Solver) merge(leftNode database.Node, rightNode database.Node) {
-	s.groups.merge(leftNode, rightNode, func(left, right *ConstructedType) bool {
+func (s *Solver) merge(trace Constraint, leftNode database.Node, rightNode database.Node) {
+	s.groups.merge(trace, leftNode, rightNode, func(left, right *ConstructedType) bool {
 		return s.unifyConstructedTypes(left, right, leftNode, rightNode)
 	})
 }

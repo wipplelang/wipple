@@ -28,7 +28,7 @@ func (c *GroupConstraint) Instantiate(solver *Solver, source database.Node, repl
 }
 
 func (c *GroupConstraint) Run(solver *Solver) bool {
-	solver.Unify(c.Left, c.Right)
+	solver.Unify(c, c.Left, c.Right)
 	return true
 }
 

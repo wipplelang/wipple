@@ -12,18 +12,20 @@ func registerTypes() {
 		From   database.Node
 		Nodes  []database.Node
 		Types  []*typecheck.ConstructedType
+		Trace  []typecheck.Constraint
 	}
 
 	register(Feedback[conflictingTypesData]{
 		Id:   "conflicting-types",
 		Rank: RankTypes,
 		Query: func(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(data conflictingTypesData)) {
-			queries.ConflictingTypes(db, node, filter, func(source database.Node, from database.Node, nodes []database.Node, types []*typecheck.ConstructedType) {
+			queries.ConflictingTypes(db, node, filter, func(source database.Node, from database.Node, nodes []database.Node, types []*typecheck.ConstructedType, trace []typecheck.Constraint) {
 				f(conflictingTypesData{
 					Source: source,
 					From:   from,
 					Nodes:  nodes,
 					Types:  types,
+					Trace:  trace,
 				})
 			})
 		},
@@ -38,7 +40,7 @@ func registerTypes() {
 			}
 
 			render.WriteNode(data.From)
-			render.WriteString(" is ")
+			render.WriteString(" is a ")
 
 			tys := make([]func(), 0, len(data.Types))
 			for _, ty := range data.Types {
@@ -46,7 +48,7 @@ func registerTypes() {
 					render.WriteType(ty)
 				})
 			}
-			render.WriteList(tys, "or", 3)
+			render.WriteList(tys, "or a", 3)
 
 			render.WriteString(", but it can only be one of these.")
 
@@ -64,6 +66,12 @@ func registerTypes() {
 
 				render.WriteList(nodes, "and", 3)
 				render.WriteString("; double-check these.")
+			}
+
+			if len(data.Trace) > 0 {
+				for _, constraint := range data.Trace {
+					render.WriteConstraint("\n\n  -  ", constraint)
+				}
 			}
 		},
 	})

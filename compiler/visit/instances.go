@@ -45,7 +45,7 @@ func CheckForOverlappingInstances(db *database.Db, traitDefinition database.Node
 			for _, rightInstance := range instances[i+1:] {
 				copy := typecheck.CopySolver(solver)
 
-				typecheck.UnifySubstitutions(leftInstance.Substitutions, rightInstance.Substitutions, copy)
+				typecheck.UnifySubstitutions(nil, leftInstance.Substitutions, rightInstance.Substitutions, copy)
 
 				if !copy.Error {
 					if !slices.Contains(overlapping, leftInstance.Node) {

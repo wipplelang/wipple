@@ -117,9 +117,9 @@ func (c *BoundConstraint) Run(solver *Solver) bool {
 			}
 
 			copy.Error = false
-			UnifySubstitutions(&instanceSubstitutions, &boundSubstitutions, copy)
+			UnifySubstitutions(c, &instanceSubstitutions, &boundSubstitutions, copy)
 			if !copy.Error {
-				UnifySubstitutions(&instanceInferred, &boundInferred, copy)
+				UnifySubstitutions(c, &instanceInferred, &boundInferred, copy)
 				candidates = append(candidates, candidate{
 					Solver: copy,
 					Node:   instance.Node,

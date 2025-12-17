@@ -2,6 +2,7 @@
 @import "tailwindcss-animated";
 @import "./fonts.css";
 @import "./code-editor.css";
+@import "./markdown.css";
 
 @custom-variant printing (&:where([data-printing] *));
 
