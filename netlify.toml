@@ -1,5 +1,5 @@
 [build]
-command = "curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash && task setup && task build"
+command = "brew install go-task/tap/go-task cargo-binstall && task setup && task build"
 publish = "site/dist"
 
 [dev]
