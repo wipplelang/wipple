@@ -12,6 +12,9 @@
   <a href="https://wipple.org/docs">
     <img src="https://img.shields.io/badge/docs-wipple.org%2Fdocs-blue">
   </a>
+  <a href="https://github.com/wipplelang/wipple/actions/workflows/test.yml">
+    <img src="https://github.com/wipplelang/wipple/actions/workflows/test.yml/badge.svg" alt="Tests">
+  </a>
   <a href="https://app.netlify.com/sites/wipple/deploys">
     <img src="https://api.netlify.com/api/v1/badges/e72cbb94-f8a4-4e15-8769-11d51bbae200/deploy-status" alt="Netlify Status">
   </a>
