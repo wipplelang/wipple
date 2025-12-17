@@ -149,6 +149,7 @@ TypeParameterNode `sum` (infer-constraint.wipple:8:22)
   resolved to 1 definition(s): TypeParameterNode `sum` (infer-constraint.wipple:8:22)
 
 BoundConstraintNode `Add left right sum` (infer-constraint.wipple:8:32)
+  is a constraint
   at infer-constraint.wipple:8:32
   resolved to 1 definition(s): TraitDefinitionNode `Add : left right sum => trait (left right -> sum)` (infer-constraint.wipple:4:1)
 
@@ -371,6 +372,7 @@ TypeParameterNode `sum` (infer-constraint.wipple:17:28)
   resolved to 1 definition(s): TypeParameterNode `sum` (infer-constraint.wipple:17:28)
 
 BoundConstraintNode `Add-Infer left right sum` (infer-constraint.wipple:17:38)
+  is a constraint
   at infer-constraint.wipple:17:38
   resolved to 1 definition(s): TraitDefinitionNode `Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-constraint.wipple:13:1)
 
@@ -509,5 +511,5 @@ Feedback:
   constraint.wipple:20:10), `add-infer 1 2` (infer-constraint.wipple:20:11), and `String` (infer-
   constraint.wipple:20:28); double-check these.
   
-    -  Annotated as `String` here.
+    -  Explicitly annotated as a `String`.
 

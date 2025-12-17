@@ -56,6 +56,8 @@ func ParseBoundConstraint(parser *syntax.Parser) (*BoundConstraintNode, *syntax.
 }
 
 func (node *BoundConstraintNode) Visit(visitor *visit.Visitor) {
+	visitConstraint(visitor, node)
+
 	trait, ok := visit.Resolve[*visit.TraitDefinition](visitor, node.Trait, node)
 	if !ok {
 		return

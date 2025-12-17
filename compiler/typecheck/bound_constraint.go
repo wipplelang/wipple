@@ -13,6 +13,7 @@ type BoundConstraint struct {
 	info                     *ConstraintInfo
 	Bound                    UnresolvedBound
 	GetDefinitionConstraints func(database.Node) []Constraint
+	Solver                   *Solver // to display the bound
 }
 
 func (c *BoundConstraint) Info() *ConstraintInfo {
@@ -24,15 +25,21 @@ func (c *BoundConstraint) String() string {
 }
 
 func (c *BoundConstraint) Instantiate(solver *Solver, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
-	return NewBoundConstraint(c.info.Node, UnresolvedBound{
+	constraint := NewBoundConstraint(c.info.Node, UnresolvedBound{
 		Source:        source,
 		Trait:         c.Bound.Trait,
 		Substitutions: InstantiateSubstitutions(solver, c.Bound.Substitutions, source, substitutions, replacements),
 		TraitName:     c.Bound.TraitName,
 	}, c.GetDefinitionConstraints)
+
+	constraint.Solver = solver
+
+	return constraint
 }
 
 func (c *BoundConstraint) Run(solver *Solver) bool {
+	c.Solver = solver
+
 	// These are for the *trait's* parameters
 	boundSubstitutions := map[database.Node]Type{}
 	boundInferred := map[database.Node]Type{}

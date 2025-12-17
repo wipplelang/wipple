@@ -3,7 +3,14 @@ package constraints
 import (
 	"wipple/database"
 	"wipple/syntax"
+	"wipple/visit"
 )
+
+type IsConstraintFact struct{}
+
+func (fact IsConstraintFact) String() string {
+	return "is a constraint"
+}
 
 func ParseConstraints(parser *syntax.Parser) ([]database.Node, *syntax.Error) {
 	_, err := parser.Token("WhereKeyword", syntax.TokenConfig{
@@ -46,4 +53,8 @@ func ParseConstraint(parser *syntax.Parser) (database.Node, *syntax.Error) {
 
 		return nil, parser.Error("Expected constraint")
 	})
+}
+
+func visitConstraint(visitor *visit.Visitor, node database.Node) {
+	database.SetFact(node, IsConstraintFact{})
 }

@@ -91,6 +91,7 @@ TypeParameterNode `value` (recursive-bounds.wipple:7:27)
   resolved to 1 definition(s): TypeParameterNode `value` (recursive-bounds.wipple:7:27)
 
 BoundConstraintNode `Describe value` (recursive-bounds.wipple:7:41)
+  is a constraint
   at recursive-bounds.wipple:7:41
   resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
 

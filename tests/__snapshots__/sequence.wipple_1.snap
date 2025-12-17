@@ -195,6 +195,7 @@ TypeParameterNode `item` (sequence.wipple:20:55)
   resolved to 1 definition(s): TypeParameterNode `item` (sequence.wipple:20:12)
 
 BoundConstraintNode `As-Sequence collection item` (sequence.wipple:20:66)
+  is a constraint
   at sequence.wipple:20:66
   resolved to 1 definition(s): TraitDefinitionNode `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (sequence.wipple:17:1)
 
@@ -345,9 +346,9 @@ Feedback:
   `_` (sequence.wipple:24:14) must be the same type as `Number` (sequence.wipple:24:19), `_`
   (sequence.wipple:24:13), and `String` (sequence.wipple:23:17); double-check these.
   
-    -  Annotated as `String` here.
+    -  Explicitly annotated as a `String`.
   
-    -  Annotated as `Number` here.
+    -  Explicitly annotated as a `Number`.
 
 `_` (sequence.wipple:24:30) (placeholder):
 

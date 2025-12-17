@@ -79,6 +79,7 @@ TypeParameterNode `b` (complex-nested-bounds.wipple:5:21)
   resolved to 1 definition(s): TypeParameterNode `b` (complex-nested-bounds.wipple:5:21)
 
 BoundConstraintNode `Not b` (complex-nested-bounds.wipple:5:31)
+  is a constraint
   at complex-nested-bounds.wipple:5:31
   resolved to 1 definition(s): TraitDefinitionNode `Not : value => trait (value -> value)` (complex-nested-bounds.wipple:3:1)
 
@@ -160,6 +161,7 @@ TypeParameterNode `value` (complex-nested-bounds.wipple:7:17)
   resolved to 1 definition(s): TypeParameterNode `value` (complex-nested-bounds.wipple:7:8)
 
 BoundConstraintNode `Not value` (complex-nested-bounds.wipple:7:29)
+  is a constraint
   at complex-nested-bounds.wipple:7:29
   resolved to 1 definition(s): TraitDefinitionNode `Not : value => trait (value -> value)` (complex-nested-bounds.wipple:3:1)
 

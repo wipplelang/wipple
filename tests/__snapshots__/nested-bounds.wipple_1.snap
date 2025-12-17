@@ -119,6 +119,7 @@ TypeParameterNode `value` (nested-bounds.wipple:9:13)
   resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:9:13)
 
 BoundConstraintNode `A value` (nested-bounds.wipple:9:26)
+  is a constraint
   at nested-bounds.wipple:9:26
   resolved to 1 definition(s): TraitDefinitionNode `A : value => trait (value -> ())` (nested-bounds.wipple:4:1)
 

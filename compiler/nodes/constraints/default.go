@@ -69,6 +69,8 @@ func ParseDefaultConstraint(parser *syntax.Parser) (*DefaultConstraintNode, *syn
 }
 
 func (node *DefaultConstraintNode) Visit(visitor *visit.Visitor) {
+	visitConstraint(visitor, node)
+
 	visitor.Visit(node.Parameter)
 	visitor.Visit(node.Value)
 	visitor.Constraint(typecheck.NewDefaultConstraint(node.Parameter, node.Value))

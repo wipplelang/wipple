@@ -157,6 +157,7 @@ TypeParameterNode `output` (default-constraint.wipple:11:23)
   resolved to 1 definition(s): TypeParameterNode `output` (default-constraint.wipple:11:23)
 
 DefaultConstraintNode `output` (default-constraint.wipple:11:36)
+  is a constraint
   at default-constraint.wipple:11:36
 
 TypeParameterNode `output` (default-constraint.wipple:11:37)
@@ -178,6 +179,7 @@ TypeParameterNode `element` (default-constraint.wipple:11:52)
   resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:11:12)
 
 BoundConstraintNode `Collect element output` (default-constraint.wipple:11:61)
+  is a constraint
   at default-constraint.wipple:11:61
   resolved to 1 definition(s): TraitDefinitionNode `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1)
 

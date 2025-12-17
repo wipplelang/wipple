@@ -8,6 +8,7 @@ import (
 
 	"wipple/colors"
 	"wipple/database"
+	"wipple/nodes/constraints"
 	"wipple/queries"
 	"wipple/typecheck"
 )
@@ -156,31 +157,54 @@ func (render *Render) WriteComments(data queries.CommentsData) {
 }
 
 func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constraint) bool {
-	switch c := constraint.(type) {
-	case *typecheck.TypeConstraint:
-		node := c.Info().Node
+	node := constraint.Info().Node
+	if database.IsHiddenNode(node) {
+		return false
+	}
 
-		if database.IsHiddenNode(node) || c.Type.Instantiate != nil {
+	switch constraint := constraint.(type) {
+	case *typecheck.TypeConstraint:
+		if constraint.Type.Instantiate != nil {
 			return false
 		}
 
 		span := database.GetSpanFact(node)
 
 		// Don't repeat the type if it is from the source code
-		if span.Source == typecheck.DisplayType(c.Type, true) {
+		if span.Source == typecheck.DisplayType(constraint.Type, true) {
 			render.WriteString(prefix)
-			render.WriteString("Annotated as ")
-			render.WriteType(c.Type)
-			render.WriteString(" here.")
+			render.WriteString("Explicitly annotated as a ")
+			render.WriteType(constraint.Type)
+			render.WriteString(".")
 		} else {
 			render.WriteString(prefix)
 			render.WriteNode(node)
 			render.WriteString(" is a ")
-			render.WriteType(c.Type)
+			render.WriteType(constraint.Type)
 			render.WriteString(".")
 		}
 
 		return true
+	case *typecheck.BoundConstraint:
+		if constraint.Solver == nil {
+			return false
+		}
+
+		// Don't repeat the bound if it is from the source code
+		if _, ok := database.GetFact[constraints.IsConstraintFact](constraint.Info().Node); ok {
+			return false
+		}
+
+		bound := typecheck.ResolvedBound{
+			UnresolvedBound: constraint.Bound,
+			Solver:          constraint.Solver,
+		}
+
+		render.WriteString(prefix)
+		render.WriteNode(node)
+		render.WriteString(" requires ")
+		render.WriteBound(bound)
+		render.WriteString(".")
 	}
 	return false
 }

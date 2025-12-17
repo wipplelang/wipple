@@ -82,6 +82,7 @@ TypeParameterNode `value` (implied-instance.wipple:7:13)
   resolved to 1 definition(s): TypeParameterNode `value` (implied-instance.wipple:7:13)
 
 BoundConstraintNode `U value` (implied-instance.wipple:7:26)
+  is a constraint
   at implied-instance.wipple:7:26
   resolved to 1 definition(s): TraitDefinitionNode `U : value => trait (value -> ())` (implied-instance.wipple:5:1)
 
@@ -120,6 +121,7 @@ UnitTypeNode `()` (implied-instance.wipple:9:15)
   is a type
 
 BoundConstraintNode `U value` (implied-instance.wipple:9:24)
+  is a constraint
   at implied-instance.wipple:9:24
   resolved to 1 definition(s): TraitDefinitionNode `U : value => trait (value -> ())` (implied-instance.wipple:5:1)
 
