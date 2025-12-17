@@ -9,15 +9,14 @@ type FormatRequest struct {
 }
 
 type FormatResponse struct {
-	Code string `json:"code"`
+	Code *string `json:"code"`
 }
 
 func (request *FormatRequest) handle() (FormatResponse, error) {
 	formatted, err := syntax.Format(request.Code)
-	if err != nil {
-		// Return the original code if it can't be parsed
-		return FormatResponse{Code: request.Code}, nil
+	if err != nil || formatted == request.Code {
+		return FormatResponse{Code: nil}, nil
 	}
 
-	return FormatResponse{Code: formatted}, nil
+	return FormatResponse{Code: &formatted}, nil
 }

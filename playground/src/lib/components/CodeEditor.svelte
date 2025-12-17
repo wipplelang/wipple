@@ -216,16 +216,18 @@
         (async () => {
             const { code: formatted } = await api.format({ code });
 
+            if (formatted == null) {
+                return;
+            }
+
             // Ensure the formatted code doesn't overwrite new changes
             if (code !== editorView.state.sliceDoc()) {
                 return;
             }
 
-            if (formatted !== code) {
-                editorView.dispatch({
-                    changes: { from: 0, to: code.length, insert: formatted },
-                });
-            }
+            editorView.dispatch({
+                changes: { from: 0, to: code.length, insert: formatted },
+            });
         })();
     };
 
