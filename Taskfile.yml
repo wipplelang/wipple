@@ -62,7 +62,6 @@ tasks:
 
   build:
     deps:
-      - build:docs
       - build:library
       - build:playground
       - build:functions
@@ -70,14 +69,8 @@ tasks:
     cmds:
       - rm -rf dist
       - npm run build
-      - cp -r ../docs/book/. dist/docs
       - cp -r ../library/dist/. dist/library
       - cp -r ../playground/build/. dist/playground
-  build:docs:
-    dir: docs
-    cmds:
-      - cargo binstall mdbook
-      - mdbook build
   build:library:
     dir: library
     cmds:

@@ -2,7 +2,8 @@
 
 @theme {
     --font-sans: "Inter Variable", sans-serif;
-    --font-mono: "Fira Code Variable", sans-serif;
+    --font-mono: "JetBrains Mono Variable", monospace;
+    --paragraph-spacing: 1rem;
 }
 
 @layer base {
@@ -48,5 +49,38 @@
     .disable-scrollbars {
         scrollbar-width: none; /* Firefox */
         -ms-overflow-style: none; /* IE 10+ */
+    }
+
+    .markdown {
+        h1,
+        h2,
+        h3 {
+            @apply mt-10 mb-2.5 font-semibold;
+        }
+
+        h1 {
+            @apply text-2xl md:text-3xl;
+        }
+
+        h2 {
+            @apply text-xl md:text-2xl;
+        }
+
+        h3 {
+            @apply text-lg md:text-xl;
+        }
+
+        p {
+            @apply mb-(--paragraph-spacing) leading-[175%];
+        }
+
+        code:not(pre > code) {
+            @apply rounded-md border-current/10 px-1;
+            border-width: var(--border-width);
+        }
+
+        pre:has(code) {
+            @apply mb-(--paragraph-spacing) rounded-xl border-[1.5px] border-current/10 p-4;
+        }
     }
 }

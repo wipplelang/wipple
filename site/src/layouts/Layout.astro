@@ -1,8 +1,9 @@
 ---
 import "@fontsource-variable/inter";
 import "@fontsource-variable/inter/wght-italic.css";
-import Nav from "@/components/Nav.astro";
+import "@fontsource-variable/jetbrains-mono";
 import "@/styles/style.css";
+import Nav from "@/components/Nav.astro";
 ---
 
 <html lang="en">
@@ -34,7 +35,8 @@ import "@/styles/style.css";
         <link rel="icon" href="/images/favicon.png" />
 
         <!-- Google tag (gtag.js) -->
-        <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-QTYHKZPQZ6"></script>
+        <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-QTYHKZPQZ6"
+        ></script>
         <script is:inline>
             window.dataLayer = window.dataLayer || [];
             function gtag() {
@@ -49,13 +51,15 @@ import "@/styles/style.css";
     <body>
         <Nav />
 
-        <main class="mt-14">
+        <main>
             <slot />
         </main>
 
-        <section class="my-8 text-secondary text-center">
+        <section class="text-secondary my-8 text-center">
             <span class="opacity-50">Made by</span>
-            <a href="https://gramer.dev" class="font-semibold no-underline opacity-70">Wilson Gramer</a>
+            <a href="https://gramer.dev" class="font-semibold no-underline opacity-70"
+                >Wilson Gramer</a
+            >
         </section>
     </body>
 </html>
