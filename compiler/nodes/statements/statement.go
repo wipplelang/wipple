@@ -9,7 +9,18 @@ type ParseExpressionFunc func(*syntax.Parser) (database.Node, *syntax.Error)
 
 func ParseStatements(parser *syntax.Parser, parseExpression ParseExpressionFunc) ([]database.Node, *syntax.Error) {
 	lines, err := syntax.ParseLines(parser, 0, true, func(parser *syntax.Parser) (database.Node, *syntax.Error) {
-		return ParseStatement(parser, parseExpression)
+		statement, err := ParseStatement(parser, parseExpression)
+		if err != nil {
+			return nil, err
+		}
+
+		// Trailing comments
+		_, _, err = syntax.ParseOptional(parser, ParseComment)
+		if err != nil {
+			return nil, err
+		}
+
+		return statement, nil
 	})
 	if err != nil {
 		return nil, err
