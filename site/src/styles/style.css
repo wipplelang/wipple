@@ -52,7 +52,7 @@
         h1,
         h2,
         h3 {
-            @apply mt-10 mb-2.5 font-semibold;
+            @apply pt-10 pb-2.5 font-semibold;
         }
 
         h1 {
