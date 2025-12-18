@@ -53,7 +53,13 @@
         h1,
         h2,
         h3 {
-            @apply pt-10 pb-2.5 font-semibold;
+            @apply py-2.5 font-semibold;
+        }
+
+        h1,
+        h2:not(h1 + h2),
+        h3:not(h2 + h3) {
+            @apply pt-5;
         }
 
         h1 {
@@ -95,6 +101,10 @@
 
         li {
             @apply pl-[1em];
+        }
+
+        li:not(:last-child) {
+            @apply mb-(--paragraph-spacing);
         }
     }
 }
