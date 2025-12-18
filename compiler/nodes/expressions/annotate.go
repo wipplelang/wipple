@@ -22,7 +22,7 @@ func (node *AnnotateExpressionNode) GetFacts() *database.Facts {
 func ParseAnnotateExpression(parser *syntax.Parser) (*AnnotateExpressionNode, *syntax.Error) {
 	span := parser.Spanned()
 
-	left, err := ParseExpressionElement(parser)
+	left, err := ParseOperatorExpression(parser)
 	if err != nil {
 		return nil, err
 	}

@@ -4,7 +4,6 @@ import (
 	"slices"
 
 	"wipple/database"
-	"wipple/nodes/types"
 	"wipple/syntax"
 	"wipple/typecheck"
 	"wipple/visit"
@@ -185,35 +184,6 @@ func ParseParenthesizedPattern(parser *syntax.Parser) (database.Node, *syntax.Er
 	database.SetSpanFact(value, span())
 
 	return value, nil
-}
-
-func ParseAnnotatePattern(parser *syntax.Parser) (*AnnotatePatternNode, *syntax.Error) {
-	span := parser.Spanned()
-
-	left, err := ParsePatternElement(parser)
-	if err != nil {
-		return nil, err
-	}
-
-	_, err = parser.Token("AnnotateOperator", syntax.TokenConfig{
-		Commit: "in this type annotation",
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	parser.ConsumeLineBreaks()
-
-	right, err := types.ParseTypeElement(parser)
-	if err != nil {
-		return nil, err
-	}
-
-	return &AnnotatePatternNode{
-		Pattern: left,
-		Type:    right,
-		Facts:   database.NewFacts(span()),
-	}, nil
 }
 
 func visitPattern(visitor *visit.Visitor, node database.Node) {
