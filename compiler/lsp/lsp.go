@@ -41,6 +41,8 @@ func Run() error {
 		TextDocumentDidOpen:            didOpen,
 		TextDocumentDidChange:          didChange,
 		TextDocumentHover:              hover,
+		TextDocumentDefinition:         definition,
+		TextDocumentReferences:         references,
 		TextDocumentDocumentHighlight:  documentHighlight,
 		TextDocumentSemanticTokensFull: semanticTokens,
 		TextDocumentFormatting:         format,
@@ -91,6 +93,9 @@ func setTrace(context *glsp.Context, params *protocol.SetTraceParams) error {
 
 func didOpen(context *glsp.Context, params *protocol.DidOpenTextDocumentParams) error {
 	sources[params.TextDocument.URI] = params.TextDocument.Text
+
+	update(context, params.TextDocument.URI)
+
 	return nil
 }
 
@@ -98,12 +103,20 @@ func didChange(context *glsp.Context, params *protocol.DidChangeTextDocumentPara
 	source := params.ContentChanges[0].(protocol.TextDocumentContentChangeEventWhole).Text
 	sources[params.TextDocument.URI] = source
 
-	filter := nodeFilter(params.TextDocument.URI)
+	update(context, params.TextDocument.URI)
+
+	return nil
+}
+
+func update(context *glsp.Context, uri protocol.DocumentUri) {
+	source := sources[uri]
+
+	filter := nodeFilter(uri)
 
 	db, root := driver.MakeRoot()
 
 	// TODO: Support multiple files
-	f, err := syntax.Parse(db, path(params.TextDocument.URI), source, file.ParseFile)
+	f, err := syntax.Parse(db, path(uri), source, file.ParseFile)
 	if err == nil {
 		driver.Compile(db, root, []*file.FileNode{f})
 	} else {
@@ -113,13 +126,11 @@ func didChange(context *glsp.Context, params *protocol.DidChangeTextDocumentPara
 	diagnostics := addFeedback(db, filter)
 
 	context.Notify("textDocument/publishDiagnostics", &protocol.PublishDiagnosticsParams{
-		URI:         params.TextDocument.URI,
+		URI:         uri,
 		Diagnostics: diagnostics,
 	})
 
-	dbs[params.TextDocument.URI] = db
-
-	return nil
+	dbs[uri] = db
 }
 
 func semanticTokens(context *glsp.Context, params *protocol.SemanticTokensParams) (*protocol.SemanticTokens, error) {
@@ -144,6 +155,51 @@ func hover(context *glsp.Context, params *protocol.HoverParams) (*protocol.Hover
 	}
 
 	return hover, nil
+}
+
+func definition(context *glsp.Context, params *protocol.DefinitionParams) (any, error) {
+	db, ok := dbs[params.TextDocument.URI]
+	if !ok {
+		return nil, nil
+	}
+
+	nodeAtPosition := getNodeAtPosition(db, params.TextDocument.URI, params.Position)
+	if nodeAtPosition == nil {
+		return nil, nil
+	}
+
+	filter := nodeFilter(params.TextDocument.URI)
+
+	var nodes []database.Node
+	queries.Definitions(db, nodeAtPosition, filter, func(ns []database.Node) {
+		nodes = append(nodes, ns...)
+	})
+	queries.References(db, nodeAtPosition, filter, func(ns []database.Node) {
+		nodes = append(nodes, ns...)
+	})
+
+	return getLocations(nodes, params.TextDocument.URI), nil
+}
+
+func references(context *glsp.Context, params *protocol.ReferenceParams) ([]protocol.Location, error) {
+	db, ok := dbs[params.TextDocument.URI]
+	if !ok {
+		return nil, nil
+	}
+
+	nodeAtPosition := getNodeAtPosition(db, params.TextDocument.URI, params.Position)
+	if nodeAtPosition == nil {
+		return nil, nil
+	}
+
+	filter := nodeFilter(params.TextDocument.URI)
+
+	var references []database.Node
+	queries.References(db, nodeAtPosition, filter, func(r []database.Node) {
+		references = append(references, r...)
+	})
+
+	return getLocations(references, params.TextDocument.URI), nil
 }
 
 func documentHighlight(context *glsp.Context, params *protocol.DocumentHighlightParams) ([]protocol.DocumentHighlight, error) {
@@ -355,6 +411,31 @@ func getRelated(db *database.Db, uri protocol.DocumentUri, position protocol.Pos
 	})
 
 	return highlights
+}
+
+func getLocations(nodes []database.Node, uri protocol.DocumentUri) []protocol.Location {
+	path := path(uri)
+
+	seen := map[database.Span]struct{}{}
+	locations := make([]protocol.Location, 0, len(nodes))
+	for _, definition := range nodes {
+		span := database.GetSpanFact(definition)
+		if span.Path != path {
+			continue // ignore definitions from other files
+		}
+
+		if _, ok := seen[span]; ok {
+			continue
+		}
+		seen[span] = struct{}{}
+
+		locations = append(locations, protocol.Location{
+			URI:   uri,
+			Range: convertSpan(span),
+		})
+	}
+
+	return locations
 }
 
 func getNodeAtPosition(db *database.Db, uri protocol.DocumentUri, position protocol.Position) database.Node {

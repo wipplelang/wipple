@@ -1,9 +1,36 @@
 package queries
 
 import (
+	"slices"
 	"wipple/database"
 	"wipple/visit"
 )
+
+func Definitions(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(definitions []database.Node)) {
+	var definitions []database.Node
+	if resolved, ok := database.GetFact[visit.ResolvedFact](node); ok {
+		for _, definition := range resolved.Definitions {
+			definitions = append(definitions, definition.GetNode())
+		}
+	}
+
+	f(definitions)
+}
+
+func References(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(references []database.Node)) {
+	var references []database.Node
+	database.ContainsFact(db, func(other database.Node, fact visit.ResolvedFact) (struct{}, bool) {
+		if slices.ContainsFunc(fact.Definitions, func(definition visit.Definition) bool {
+			return definition.GetNode() == node
+		}) {
+			references = append(references, other)
+		}
+
+		return struct{}{}, false
+	})
+
+	f(references)
+}
 
 func Unresolved(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(name string)) {
 	fact, ok := database.GetFact[visit.ResolvedFact](node)
