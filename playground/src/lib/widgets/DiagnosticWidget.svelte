@@ -7,6 +7,7 @@
 
 <script lang="ts">
     import Box from "$lib/components/Box.svelte";
+    import BoxButton from "$lib/components/BoxButton.svelte";
     import Icon from "$lib/components/Icon.svelte";
     import Markdown from "$lib/components/Markdown.svelte";
     import ToolbarButton from "$lib/components/ToolbarButton.svelte";
@@ -19,27 +20,47 @@
 
     let { diagnostic, stale, onclose }: Props = $props();
 
-    const [title, ...body] = diagnostic.message.split("\n\n");
-    const description = body.join("\n\n");
+    const [title, description, ...extra] = diagnostic.message.split("\n\n");
+
+    let showExtra = $state(false);
 </script>
 
-<div class="flex h-full w-full items-stretch justify-stretch pb-[10px]">
+<div class="relative flex h-full w-full items-stretch justify-stretch pb-[10px]">
     <Box
         data-stale={stale || undefined}
         class="not-[[data-stale]]:border-blue-500 not-[[data-stale]]:shadow-md flex flex-1 flex-col px-[10px] py-[8px] font-sans shadow-blue-500/10 transition data-[stale]:opacity-60"
     >
-        <div class="flex flex-row items-start justify-between">
-            <div class="flex flex-col gap-[2px]">
-                <div class="font-semibold">
-                    <Markdown content={title} />
-                </div>
-
-                <Markdown content={description} />
+        <div class="scroll flex flex-col gap-[2px]">
+            <div class="font-semibold">
+                <Markdown content={title} />
             </div>
 
-            <ToolbarButton onclick={onclose} square>
-                <Icon fill>close</Icon>
-            </ToolbarButton>
+            {#if description}
+                <Markdown content={description} />
+            {/if}
+
+            {#if extra.length > 0}
+                <ToolbarButton
+                    class="text-background-button -mx-[4px] self-start bg-transparent px-[4px]"
+                    onclick={() => (showExtra = !showExtra)}
+                >
+                    {#if showExtra}
+                        Hide details&zwj;<Icon>expand_less</Icon>
+                    {:else}
+                        Show details&zwj;<Icon>expand_more</Icon>
+                    {/if}
+                </ToolbarButton>
+
+                {#if showExtra}
+                    <Markdown content={extra.join("\n\n")} />
+                {/if}
+            {/if}
         </div>
     </Box>
+
+    <div class="absolute right-[10px] top-[10px]">
+        <ToolbarButton onclick={onclose} square>
+            <Icon fill>close</Icon>
+        </ToolbarButton>
+    </div>
 </div>

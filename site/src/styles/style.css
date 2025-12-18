@@ -3,6 +3,7 @@
 @theme {
     --font-sans: "Inter Variable", sans-serif;
     --font-mono: "JetBrains Mono Variable", monospace;
+    --default-mono-font-feature-settings: "calt" 0;
     --paragraph-spacing: 1rem;
 }
 
@@ -47,7 +48,7 @@
     }
 
     .markdown {
-        @apply flex flex-col;
+        @apply flex flex-col leading-[175%];
 
         h1,
         h2,
@@ -68,15 +69,32 @@
         }
 
         p {
-            @apply mb-(--paragraph-spacing) leading-[175%];
+            @apply mb-(--paragraph-spacing);
         }
 
         code:not(pre > code) {
-            @apply rounded-md border-[1.5px] border-current/10 px-1;
+            @apply rounded-md border-[1.5px] border-current/10 px-1 whitespace-nowrap;
         }
 
         pre:has(code) {
             @apply mb-(--paragraph-spacing) shrink rounded-xl border-[1.5px] border-current/10 p-4 whitespace-pre-wrap;
+        }
+
+        ul,
+        ol {
+            @apply mb-(--paragraph-spacing) ml-[2.5em] list-outside;
+        }
+
+        ul {
+            @apply list-disc;
+        }
+
+        ol {
+            @apply list-decimal;
+        }
+
+        li {
+            @apply pl-[1em];
         }
     }
 }

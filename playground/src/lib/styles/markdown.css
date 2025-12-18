@@ -1,16 +1,24 @@
 .markdown {
-    @apply flex flex-col gap-[10px];
+    @apply flex flex-col gap-[10px] whitespace-normal;
+
+    ul,
+    ol {
+        @apply ml-[1.5em] list-outside whitespace-nowrap;
+    }
 
     ul {
-        @apply flex list-inside list-disc flex-col gap-[10px];
+        @apply list-disc;
+    }
 
-        > li {
-            @apply flex flex-row gap-[10px];
+    ol {
+        @apply list-decimal;
+    }
 
-            &::before {
-                content: "•";
-                @apply ml-[10px];
-            }
+    li {
+        @apply pl-[0.5em];
+
+        &:not(:last-child) {
+            @apply mb-[10px];
         }
     }
 }

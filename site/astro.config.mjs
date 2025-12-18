@@ -36,4 +36,14 @@ export default defineConfig({
             },
         },
     },
+    integrations: [
+        {
+            name: "watch-guide",
+            hooks: {
+                "astro:server:setup": ({ server }) => {
+                    server.watcher.add(resolve("../GUIDE.md"));
+                },
+            },
+        },
+    ],
 });

@@ -28,11 +28,19 @@ tasks:
     cmds:
       - npm install
 
-  serve:
+  serve:site:
+    dir: site
+    cmds:
+      - npm run dev -- --open
+  serve:playground:
     deps:
       - serve:library
-      - serve:playground
       - serve:server
+      - serve:playground:watch
+  serve:playground:watch:
+    dir: playground
+    cmds:
+      - npm run dev -- --open
   serve:library:
     dir: library
     cmds:
@@ -46,10 +54,6 @@ tasks:
       - src/**/*
     cmds:
       - node build.js
-  serve:playground:
-    dir: playground
-    cmds:
-      - npm run dev -- --open
   serve:server:
     dir: .
     cmds:
