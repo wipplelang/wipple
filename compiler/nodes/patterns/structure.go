@@ -132,16 +132,20 @@ func (node *StructurePatternNode) Codegen(c *codegen.Codegen) error {
 
 	span := database.GetSpanFact(node)
 
-	for name, field := range node.fieldTemporaries {
+	for _, field := range node.Fields {
+		temporary, ok := node.fieldTemporaries[field.Name]
+		if !ok {
+			return c.Error(node)
+		}
 		c.WriteString(span, " && ((")
-		c.WriteNode(span, field.temporary)
+		c.WriteNode(span, temporary.temporary)
 		c.WriteString(span, " = ")
 		c.WriteNode(span, node.matching)
 		c.WriteString(span, "[")
-		c.WriteString(span, strconv.Quote(name))
+		c.WriteString(span, strconv.Quote(field.Name))
 		c.WriteString(span, "]) || true)")
 
-		if err := c.Write(field.pattern); err != nil {
+		if err := c.Write(temporary.pattern); err != nil {
 			return err
 		}
 	}
@@ -150,8 +154,13 @@ func (node *StructurePatternNode) Codegen(c *codegen.Codegen) error {
 }
 
 func (node *StructurePatternNode) EachTemporary(f func(database.Node)) {
-	for _, field := range node.fieldTemporaries {
-		f(field.temporary)
-		EachTemporary(field.pattern, f)
+	for _, field := range node.Fields {
+		temporary, ok := node.fieldTemporaries[field.Name]
+		if !ok {
+			continue
+		}
+
+		f(temporary.temporary)
+		EachTemporary(temporary.pattern, f)
 	}
 }

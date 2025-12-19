@@ -249,11 +249,20 @@ func (c *Codegen) writeInstances(trait database.Node) error {
 			continue // skip error instances that have no value
 		}
 
+		parameters := make([]database.Node, 0, len(*instance.Substitutions))
+		for parameter := range *instance.Substitutions {
+			parameters = append(parameters, parameter)
+		}
+		slices.SortStableFunc(parameters, func(left database.Node, right database.Node) int {
+			return database.CompareSpans(database.GetSpanFact(left), database.GetSpanFact(right))
+		})
+
 		span := database.GetSpanFact(instance.Node)
 		c.WriteString(span, "[")
 		c.WriteNode(span, instance.Node)
 		c.WriteString(span, ", {")
-		for parameter, substitution := range *instance.Substitutions {
+		for _, parameter := range parameters {
+			substitution := (*instance.Substitutions)[parameter]
 			c.WriteNode(span, parameter)
 			c.WriteString(span, ": ")
 

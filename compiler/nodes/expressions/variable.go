@@ -2,6 +2,7 @@ package expressions
 
 import (
 	"reflect"
+	"slices"
 
 	"wipple/codegen"
 	"wipple/database"
@@ -77,11 +78,20 @@ func (node *VariableExpressionNode) Codegen(c *codegen.Codegen) error {
 		return nil
 	}
 
+	parameters := make([]database.Node, 0, len(*node.resolvedSubstitutions))
+	for parameter := range *node.resolvedSubstitutions {
+		parameters = append(parameters, parameter)
+	}
+	slices.SortStableFunc(parameters, func(left database.Node, right database.Node) int {
+		return database.CompareSpans(database.GetSpanFact(left), database.GetSpanFact(right))
+	})
+
 	c.WriteString(span, "await runtime.constant(")
 	c.WriteNode(span, node.resolvedNode)
 	c.WriteString(span, ", types, {")
 
-	for parameter, ty := range *node.resolvedSubstitutions {
+	for _, parameter := range parameters {
+		ty := (*node.resolvedSubstitutions)[parameter]
 		c.WriteNode(span, parameter)
 		c.WriteString(span, ": ")
 		if err := c.WriteType(span, ty); err != nil {
