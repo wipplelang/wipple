@@ -4,7 +4,7 @@ Welcome to the Wipple Guide! This guide contains a tour of the Wipple programmin
 
 You can jump between sections using the **table of contents** on the left.
 
-To try any example, copy and paste it into the [**Wipple Playground**](https://www.wipple.org/playground).
+To try any example, click on **Open in Playground**.
 
 ## Getting started
 
@@ -12,7 +12,7 @@ To try any example, copy and paste it into the [**Wipple Playground**](https://w
 
 Let's start by displaying the string "Hello, world!" on the screen. Wipple has a built-in function named `show` for this:
 
-```wipple
+```wipple,playground
 show "Hello, world!"
 ```
 
@@ -26,7 +26,7 @@ show (1 + 2)
 
 You can also store values in variables to give them a name. In Wipple, variables are defined using a colon (`:`):
 
-```wipple
+```wipple,playground
 name : "Wipple"
 show name
 
@@ -44,7 +44,7 @@ show ("Hello, _!" name)
 
 A _block_ is a piece of code surrounded in braces (`{⋯}`). Blocks let you store code to run it later. To run the code in a block, use `do`:
 
-```wipple
+```wipple,playground
 greeting : {show "displays second"}
 show "displays first"
 do greeting
@@ -52,7 +52,7 @@ do greeting
 
 Wipple uses blocks to implement control flow. For example, the `if` function accepts a Boolean condition (`True` or `False`) and two blocks. If the condition is `True`, the first block will be evaluated with `do`, and if it's `False`, the second block will be evaluated.
 
-```wipple
+```wipple,playground
 secret : 5
 guess : 3
 if (guess = secret) {show "You win!"} {show "Try again"}
@@ -62,7 +62,7 @@ If the calls to `show` weren't wrapped in blocks, they would both run and both m
 
 You can run a block with `do` multiple times, which is how `repeat` is implemented:
 
-```wipple
+```wipple,playground
 repeat (3 times) {
     show "Hello, world!"
 }
@@ -72,7 +72,7 @@ Just like with `if`, without the block, the message would only be displayed once
 
 Blocks produce values, which means you can assign the result of `if` to a variable and factor out the `show`:
 
-```wipple
+```wipple,playground
 message : if (guess = secret) {"You win!"} {"Try again"}
 show message
 ```
@@ -83,7 +83,7 @@ It's important to remember that blocks are values, just like strings and numbers
 
 Functions in Wipple are written with an arrow (`->`) separating the inputs from the output. Just like blocks, Wipple's functions are also values. That means to give a function a name, you assign it to a variable; there's no special syntax for defining a named function. Putting it all together, here's a function that adds two numbers:
 
-```wipple
+```wipple,playground
 add : a b -> a + b
 show (add 1 2)
 ```
@@ -92,7 +92,7 @@ show (add 1 2)
 
 If you want to have multiple statements in a function, you can run a block with `do`. If a block has multiple statements, the last one is the function's return value:
 
-```wipple
+```wipple,playground
 debug-add : a b -> do {
     show ("called debug-add with _ and _" a b)
     a + b
@@ -105,7 +105,7 @@ Don't forget to put `do` before the block — since blocks are values, without `
 
 You can combine blocks and functions to build your own control flow. Here, `twice` accepts a block as input and runs it twice:
 
-```wipple
+```wipple,playground
 twice : block -> do {
     do block
     do block
@@ -132,7 +132,7 @@ At compile time, Wipple simulates the flow of information through the program an
 
 Let's apply these rules to an example program:
 
-```wipple
+```wipple,playground
 increment : x -> x + 1
 a : increment 123
 b : increment "abc"
@@ -165,7 +165,7 @@ As a bonus, this group-based design means you can easily see code related to you
 
 In addition to letting Wipple infer types, you can use `::` to annotate any piece of code with its expected data type, and Wipple will verify that it's correct at compile time. These _type annotations_ serve as a form of documentation, describing the kinds of values your code works with and produces.
 
-```wipple
+```wipple,playground
 sum : 1 + 1
 show (sum :: Number) -- correct
 show (sum :: String) -- error
@@ -173,7 +173,7 @@ show (sum :: String) -- error
 
 As a special case, if you add a type annotation on its own line, Wipple defines a _constant_ value that is "lifted" out of the normal control flow and can be used anywhere. Constant values are evaluated when they are used, not at their definition like with variables.
 
-```wipple
+```wipple,playground
 show pi -- defined below
 
 pi :: Number
@@ -199,7 +199,7 @@ When a constant is generic, a **copy** of its type annotation is made whenever i
 
 Recall our earlier program involving `increment` that had an error (because `x`, `123`, and `"abc"` were all grouped together):
 
-```wipple
+```wipple,playground
 increment : x -> x + 1
 a : increment 123
 b : increment "abc"
@@ -207,7 +207,7 @@ b : increment "abc"
 
 Let's try to fix the error by making `increment` generic, and run our rules again!
 
-```wipple
+```wipple,playground
 increment :: value -> value
 increment : x -> x + 1
 
@@ -226,7 +226,7 @@ However, in fixing this issue, we have introduced another one! Because a new cop
 
 Wipple supports fixing this new error by introducing a _constraint_ to our function. With the `where` keyword, we move the requirement that `+ 1` is valid to each user of `increment`. It looks like this:
 
-```wipple
+```wipple,playground
 increment :: value -> value where (Add value Number value)
 increment : x -> x + 1
 ```
@@ -297,7 +297,7 @@ instance (Count (Pair first second)) where (Count first) (Count second)
 
 To define a structure type, use the `type` keyword:
 
-```wipple
+```wipple,playground
 Sport : type {
     name :: String
     players :: Number
@@ -306,7 +306,7 @@ Sport : type {
 
 You can construct a structure value similarly:
 
-```wipple
+```wipple,playground
 basketball : Sport {
     name : "Basketball"
     players : 5
@@ -315,7 +315,7 @@ basketball : Sport {
 
 To get the values out of a structure, you can put a block on the left-hand side of the colon (`:`), listing the field(s)' names and the corresponding variable names.
 
-```wipple
+```wipple,playground
 Sport {name : sport-name} : basketball
 show sport-name
 ```
@@ -328,7 +328,7 @@ Basketball
 
 Wipple uses pattern matching to express control flow. For example, let's say we want to generate a report card:
 
-```wipple
+```wipple,playground
 Grade : type {
     A
     B
@@ -352,7 +352,7 @@ First, we define our patterns using `type`. Rather than providing fields, we lis
 
 In fact, in Wipple, `if` is just a regular function that matches on `Boolean`. We can create our own easily:
 
-```wipple
+```wipple,playground
 My-Boolean : type {
     My-True
     My-False
@@ -389,7 +389,7 @@ show (describe-maybe-number No-Number)
 
 Why is this useful? It means we can represent errors in our program! Let's go back to our report card example, and allow the user to specify a grade as input:
 
-```wipple
+```wipple,playground
 Maybe-Grade : type {
     Valid-Grade Grade
     Invalid-Grade
@@ -439,7 +439,7 @@ Read : output => trait (String -> Maybe output)
 
 The example above can be rewritten to use `Maybe` and `Read`, and `prompt` will handle validation for us!
 
-```wipple
+```wipple,playground
 instance (Read Grade) : string -> when string {
     "A" -> Some A
     "B" -> Some B

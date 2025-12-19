@@ -6,8 +6,8 @@ const headings = getHeadings();
 ---
 
 <Layout>
-    <main class="not-print:mx-auto flex not-print:max-w-6xl flex-1 flex-row gap-[20px] px-4">
-        <div class="print:hidden sticky top-0 hidden h-screen w-xs flex-col pt-10 md:flex">
+    <main class="flex flex-1 flex-row gap-[20px] px-4 not-print:mx-auto not-print:max-w-6xl">
+        <div class="sticky top-0 hidden h-screen w-xs flex-col pt-10 md:flex print:hidden">
             <p class="text-lg font-semibold">Table of contents</p>
 
             {
@@ -75,4 +75,32 @@ const headings = getHeadings();
             update(e.currentTarget);
         });
     };
+</script>
+
+<div
+    id="code-tools"
+    class="flex w-full flex-row items-center bg-gray-50 px-[14px] py-[8px] font-sans text-sm"
+    style="display: none;"
+>
+    <a target="_blank" class="text-blue-500 no-underline">Open in Playground &rarr;</a>
+</div>
+
+<script>
+    const codeTools = document.getElementById("code-tools")!;
+
+    for (const pre of document.querySelectorAll("pre")) {
+        if (pre.dataset.language !== "wipple,playground") {
+            continue;
+        }
+
+        const code = pre.querySelector("code")!.textContent;
+
+        const copy = codeTools.cloneNode(true) as HTMLElement;
+        copy.style.removeProperty("display");
+
+        const link = copy.querySelector("a")!;
+        link.href = "https://www.wipple.org/playground?code=" + encodeURIComponent(code);
+
+        pre.prepend(copy);
+    }
 </script>

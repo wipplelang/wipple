@@ -24,6 +24,7 @@ export default defineConfig({
             langs: [JSON.parse(readFileSync("../vscode/syntaxes/wipple.tmLanguage.json", "utf8"))],
             langAlias: {
                 wipple: "Wipple",
+                "wipple,playground": "Wipple",
             },
             wrap: null,
         },

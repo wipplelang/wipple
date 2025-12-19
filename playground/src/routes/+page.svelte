@@ -62,30 +62,55 @@
     const tryLoadSharedPlayground = async () => {
         const params = new URLSearchParams(window.location.search);
 
-        const shareId = params.get("share");
-        if (!shareId) return;
+        const confirmOverwrite = async () => {
+            // Wait for the page to load so the current playground is visible
+            await new Promise((resolve) => setTimeout(resolve, 200));
 
-        if (playground != null && playground.code.length > 0) {
-            const confirmed = confirm(
+            if (playground == null || playground.code.length === 0) {
+                return true;
+            }
+
+            return confirm(
                 "Opening this shared playground will clear your current playground. Are you sure?",
             );
+        };
 
-            if (!confirmed) {
+        const inlineCode = params.get("code");
+        if (inlineCode) {
+            if (!(await confirmOverwrite())) {
                 return;
             }
+
+            playground = {
+                runtime: "foundation",
+                code: inlineCode,
+            };
+
+            window.location.search = "";
+
+            return;
         }
 
-        try {
-            const response = await api.getShared({ id: shareId });
-            playground = {
-                runtime: response.runtime,
-                code: response.code,
-            };
-        } catch (e) {
-            console.error(e);
-            alert("Couldn't open this shared playground. Please verify the link and try again.");
-        } finally {
-            window.location.search = "";
+        const shareId = params.get("share");
+        if (shareId) {
+            if (!(await confirmOverwrite())) {
+                return;
+            }
+
+            try {
+                const response = await api.getShared({ id: shareId });
+                playground = {
+                    runtime: response.runtime,
+                    code: response.code,
+                };
+            } catch (e) {
+                console.error(e);
+                alert(
+                    "Couldn't open this shared playground. Please verify the link and try again.",
+                );
+            } finally {
+                window.location.search = "";
+            }
         }
     };
 

@@ -83,7 +83,11 @@
         }
 
         pre:has(code) {
-            @apply mb-(--paragraph-spacing) shrink rounded-xl border-[1.5px] border-current/10 p-4 whitespace-pre-wrap;
+            @apply mb-(--paragraph-spacing) overflow-clip rounded-xl border-[1.5px] border-current/10;
+
+            code {
+                @apply block px-[14px] py-[10px] whitespace-pre-wrap;
+            }
         }
 
         ul,
