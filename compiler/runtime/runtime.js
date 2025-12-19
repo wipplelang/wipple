@@ -199,7 +199,7 @@ const buildRuntime = (env, proxy = (f) => f) => {
                 proxy(async (input) => {
                     const validated = await validate(input);
                     value = toMaybe(validated);
-                    return validated !== undefined;
+                    return value !== undefined;
                 }),
             );
 
