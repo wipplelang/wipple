@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+-   Added an `-O` flag to the compiler to enable optimization using [esbuild](https://esbuild.github.io).
+
 ## Wipple 2025.3 (2025-12-17)
 
 -   The Wipple compiler has been rearchitected to use a database of facts that are queried for diagnostics. This new architecture is substantially faster and can compile the standard library in under 100 ms!
