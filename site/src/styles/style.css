@@ -15,7 +15,7 @@
     }
 
     body {
-        font-family: Inter, sans-serif;
+        font-family: "Inter Variable", sans-serif;
         @apply bg-white text-black;
     }
 
