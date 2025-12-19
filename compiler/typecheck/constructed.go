@@ -27,9 +27,9 @@ func NamedType[T Type](definition database.Node, name string, parameters []T) *C
 		},
 		Codegen: func(children []any, node func(node database.Node) string) any {
 			return map[string]any{
-				"type":       "named",
-				"name":       node(definition),
-				"parameters": children,
+				"__wipple_type":       "named",
+				"__wipple_name":       node(definition),
+				"__wipple_parameters": children,
 			}
 		},
 	}
@@ -70,9 +70,9 @@ func FunctionType[T Type](inputs []T, output T) *ConstructedType {
 			inputs := children[1:]
 
 			return map[string]any{
-				"type":   "function",
-				"inputs": inputs,
-				"output": output,
+				"__wipple_type":   "function",
+				"__wipple_inputs": inputs,
+				"__wipple_output": output,
 			}
 		},
 	}
@@ -109,8 +109,8 @@ func TupleType[T Type](elements []T) *ConstructedType {
 		},
 		Codegen: func(children []any, node func(node database.Node) string) any {
 			return map[string]any{
-				"type":     "tuple",
-				"elements": children,
+				"__wipple_type":     "tuple",
+				"__wipple_elements": children,
 			}
 		},
 	}
@@ -125,8 +125,8 @@ func BlockType(output Type) *ConstructedType {
 		},
 		Codegen: func(children []any, node func(node database.Node) string) any {
 			return map[string]any{
-				"type":   "block",
-				"output": children[0],
+				"__wipple_type":   "block",
+				"__wipple_output": children[0],
 			}
 		},
 	}
@@ -142,8 +142,8 @@ func ParameterType(definition database.Node, name string) *ConstructedType {
 		},
 		Codegen: func(children []any, node func(node database.Node) string) any {
 			return map[string]any{
-				"type": "parameter",
-				"name": node(definition),
+				"__wipple_type": "parameter",
+				"__wipple_name": node(definition),
 			}
 		},
 	}

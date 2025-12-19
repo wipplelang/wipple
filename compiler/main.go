@@ -37,6 +37,7 @@ type CompileCmd struct {
 	Lib            []string `type:"path"`
 	Facts          bool
 	Output         string   `short:"o" type:"path"`
+	Optimize       bool     `short:"O"`
 	FilterLines    []string `short:"l"`
 	FilterFeedback []string
 	Paths          []string `arg:"" name:"path" type:"path"`
@@ -330,6 +331,7 @@ func compile(cmd *CompileCmd, run bool) (string, string, error) {
 		codegen := codegen.NewCodegen(db, outputPath, codegen.Options{
 			Prelude:   nodePrelude + runtime,
 			Sourcemap: true,
+			Optimize:  cmd.Optimize,
 		})
 
 		files := make([]database.Node, 0, len(root.Files))

@@ -7,6 +7,8 @@ import (
 	"slices"
 	"strings"
 
+	esbuild "github.com/evanw/esbuild/pkg/api"
+
 	"wipple/database"
 	"wipple/typecheck"
 	"wipple/vendored/sourcemap"
@@ -17,13 +19,15 @@ type Options struct {
 	Prelude   string
 	Module    bool
 	Sourcemap bool
+	Optimize  bool
 }
 
 type mapping struct {
-	span   database.Span
-	index  sourcemap.SourceIndex
-	line   int
-	column int
+	span       database.Span
+	index      sourcemap.SourceIndex
+	line       int
+	column     int
+	identifier string
 }
 
 type Codegen struct {
@@ -36,6 +40,7 @@ type Codegen struct {
 	sourceIndices map[string]sourcemap.SourceIndex
 	line          int
 	column        int
+	identifier    string
 
 	nodes        []database.Node
 	writtenTypes map[string]writtenType
@@ -121,8 +126,19 @@ type Write interface {
 	Codegen(c *Codegen) error
 }
 
+type WriteIdentifier interface {
+	Write
+	CodegenIdentifier() string
+}
+
 func (c *Codegen) Write(node database.Node) error {
 	if write, ok := node.(Write); ok {
+		prevIdentifier := c.identifier
+		if identifier, ok := node.(WriteIdentifier); ok {
+			c.identifier = identifier.CodegenIdentifier()
+			defer func() { c.identifier = prevIdentifier }()
+		}
+
 		return write.Codegen(c)
 	} else {
 		panic(fmt.Sprintf("node is missing `Write` method: %s", database.DisplayNode(node)))
@@ -331,7 +347,7 @@ func (c *Codegen) String(root database.Node, files []database.Node) (string, err
 	typeCache := fmt.Sprintf("const typeCache = [\n%s,\n];\n", types.String())
 
 	prelude := c.Options.Prelude + typeCache
-	preludeLines := strings.Count(prelude, "\n")
+	preludeLines := strings.Count(prelude, "\n") - 1
 
 	for _, mapping := range c.mappings {
 		mapping.line += preludeLines
@@ -339,8 +355,13 @@ func (c *Codegen) String(root database.Node, files []database.Node) (string, err
 
 	mappings := make([]*mapping, 0, len(c.mappings))
 	for _, mapping := range c.mappings {
+		if mapping.span.Path == "" {
+			continue
+		}
+
 		mappings = append(mappings, mapping)
 	}
+
 	slices.SortFunc(mappings, func(left *mapping, right *mapping) int {
 		if left.line != right.line {
 			return left.line - right.line
@@ -350,11 +371,30 @@ func (c *Codegen) String(root database.Node, files []database.Node) (string, err
 			return left.column - right.column
 		}
 
+		if left.index != right.index {
+			return int(left.index) - int(right.index)
+		}
+
 		return database.CompareSpans(left.span, right.span)
 	})
 
+	nameIndices := map[string]sourcemap.NameIndex{}
 	for _, mapping := range mappings {
-		err = generator.AddSourceMapping(mapping.line, mapping.column, mapping.index, mapping.span.Start.Line, mapping.span.Start.Column-1)
+		var nameIndex sourcemap.NameIndex
+		if mapping.identifier != "" {
+			var ok bool
+			if nameIndex, ok = nameIndices[mapping.identifier]; !ok {
+				nameIndex = generator.AddName(mapping.identifier)
+				nameIndices[mapping.identifier] = nameIndex
+			}
+		}
+
+		if mapping.identifier != "" {
+			err = generator.AddNamedSourceMapping(mapping.line, mapping.column, mapping.index, mapping.span.Start.Line-1, mapping.span.Start.Column-1, nameIndex)
+		} else {
+			err = generator.AddSourceMapping(mapping.line, mapping.column, mapping.index, mapping.span.Start.Line-1, mapping.span.Start.Column-1)
+		}
+
 		if err != nil {
 			return "", err
 		}
@@ -378,16 +418,40 @@ func (c *Codegen) String(root database.Node, files []database.Node) (string, err
 		c.output.WriteString("\n")
 	}
 
-	return prelude + c.output.String(), nil
+	script := prelude + c.output.String()
+
+	if c.Options.Optimize {
+		result := esbuild.Transform(script, esbuild.TransformOptions{
+			TreeShaking:       esbuild.TreeShakingTrue,
+			MinifyWhitespace:  true,
+			MinifyIdentifiers: true,
+			MinifySyntax:      true,
+
+			// Even if `c.Options.Module` is false, the script is self-contained
+			// and this enables more optimizations
+			Format: esbuild.FormatESModule,
+
+			Sourcemap: esbuild.SourceMapInline,
+		})
+
+		if len(result.Errors) > 0 {
+			return "", fmt.Errorf("esbuild error: %s", result.Errors[0].Text)
+		}
+
+		script = string(result.Code)
+	}
+
+	return script, nil
 }
 
 func (c *Codegen) writeMapping(span database.Span) {
-	if _, exists := c.mappings[span]; !exists {
+	if _, ok := c.mappings[span]; !ok {
 		c.mappings[span] = &mapping{
-			span:   span,
-			index:  c.sourceIndices[span.Path],
-			line:   c.line,
-			column: c.column,
+			span:       span,
+			index:      c.sourceIndices[span.Path],
+			line:       c.line,
+			column:     c.column,
+			identifier: c.identifier,
 		}
 	}
 }

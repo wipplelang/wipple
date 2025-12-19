@@ -30,6 +30,14 @@
                 "PORT": "3000",
                 "LIBRARY_URL": "http://localhost:3001"
             }
+        },
+        {
+            "name": "Debug Current File",
+            "type": "node",
+            "request": "launch",
+            "program": "${file}",
+            "cwd": "${workspaceFolder}",
+            "skipFiles": ["**", "!${file}"]
         }
     ]
 }

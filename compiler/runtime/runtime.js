@@ -80,15 +80,15 @@ const __wipple_substitute = (types, substitutions) => {
 };
 
 const __wipple_substituteType = (ty, substitutions) => {
-    switch (ty.type) {
+    switch (ty.__wipple_type) {
         case "parameter": {
-            return substitutions[ty.name] ?? ty;
+            return substitutions[ty.__wipple_name] ?? ty;
         }
         case "named": {
             return {
-                type: "named",
-                name: ty.name,
-                parameters: ty.parameters.map((param) =>
+                __wipple_type: "named",
+                __wipple_name: ty.__wipple_name,
+                __wipple_parameters: ty.__wipple_parameters.map((param) =>
                     __wipple_substituteType(param, substitutions),
                 ),
             };
@@ -96,16 +96,18 @@ const __wipple_substituteType = (ty, substitutions) => {
 
         case "function": {
             return {
-                type: "function",
-                inputs: ty.inputs.map((input) => __wipple_substituteType(input, substitutions)),
-                output: __wipple_substituteType(ty.output, substitutions),
+                __wipple_type: "function",
+                __wipple_inputs: ty.__wipple_inputs.map((input) =>
+                    __wipple_substituteType(input, substitutions),
+                ),
+                __wipple_output: __wipple_substituteType(ty.__wipple_output, substitutions),
             };
         }
 
         case "tuple": {
             return {
-                type: "tuple",
-                elements: ty.elements.map((element) =>
+                __wipple_type: "tuple",
+                __wipple_elements: ty.__wipple_elements.map((element) =>
                     __wipple_substituteType(element, substitutions),
                 ),
             };
@@ -113,8 +115,8 @@ const __wipple_substituteType = (ty, substitutions) => {
 
         case "block": {
             return {
-                type: "block",
-                output: __wipple_substituteType(ty.output, substitutions),
+                __wipple_type: "block",
+                __wipple_output: __wipple_substituteType(ty.__wipple_output, substitutions),
             };
         }
         default: {
@@ -124,56 +126,59 @@ const __wipple_substituteType = (ty, substitutions) => {
 };
 
 const __wipple_unify = (left, right, substitutions) => {
-    if (left.type === "parameter") {
+    if (left.__wipple_type === "parameter") {
         // This occurs when bounds are being resolved that involve type
         // parameters not mentioned in the item's type descriptor; no value's
         // type will ever contain a `parameter`
         return true;
     }
 
-    if (right.type === "parameter") {
-        if (right.name in substitutions) {
-            return __wipple_unify(left, substitutions[right.name], substitutions);
+    if (right.__wipple_type === "parameter") {
+        if (right.__wipple_name in substitutions) {
+            return __wipple_unify(left, substitutions[right.__wipple_name], substitutions);
         }
 
-        substitutions[right.name] = left;
+        substitutions[right.__wipple_name] = left;
         return true;
     }
 
-    if (left.type === "function") {
+    if (left.__wipple_type === "function") {
         return (
-            right.type === "function" &&
-            left.inputs.length === right.inputs.length &&
-            left.inputs.every((leftInput, index) =>
-                __wipple_unify(leftInput, right.inputs[index], substitutions),
+            right.__wipple_type === "function" &&
+            left.__wipple_inputs.length === right.__wipple_inputs.length &&
+            left.__wipple_inputs.every((leftInput, index) =>
+                __wipple_unify(leftInput, right.__wipple_inputs[index], substitutions),
             ) &&
-            __wipple_unify(left.output, right.output, substitutions)
+            __wipple_unify(left.__wipple_output, right.__wipple_output, substitutions)
         );
     }
 
-    if (left.type === "named") {
+    if (left.__wipple_type === "named") {
         return (
-            right.type === "named" &&
-            left.name === right.name &&
-            left.parameters.length === right.parameters.length &&
-            left.parameters.every((leftParameter, index) =>
-                __wipple_unify(leftParameter, right.parameters[index], substitutions),
+            right.__wipple_type === "named" &&
+            left.__wipple_name === right.__wipple_name &&
+            left.__wipple_parameters.length === right.__wipple_parameters.length &&
+            left.__wipple_parameters.every((leftParameter, index) =>
+                __wipple_unify(leftParameter, right.__wipple_parameters[index], substitutions),
             )
         );
     }
 
-    if (left.type === "tuple") {
+    if (left.__wipple_type === "tuple") {
         return (
-            right.type === "tuple" &&
-            left.elements.length === right.elements.length &&
-            left.elements.every((leftElement, index) =>
-                __wipple_unify(leftElement, right.elements[index], substitutions),
+            right.__wipple_type === "tuple" &&
+            left.__wipple_elements.length === right.__wipple_elements.length &&
+            left.__wipple_elements.every((leftElement, index) =>
+                __wipple_unify(leftElement, right.__wipple_elements[index], substitutions),
             )
         );
     }
 
-    if (left.type === "block") {
-        return right.type === "block" && __wipple_unify(left.output, right.output, substitutions);
+    if (left.__wipple_type === "block") {
+        return (
+            right.__wipple_type === "block" &&
+            __wipple_unify(left.__wipple_output, right.__wipple_output, substitutions)
+        );
     }
 
     return false;
@@ -226,7 +231,7 @@ const __wipple_runtime_string_to_number = async (string) => {
         return __wipple_fromMaybe(NaN);
     } else {
         const number = parseFloat(string);
-        return isNaN(number) ? none : __wipple_fromMaybe(number);
+        return isNaN(number) ? __wipple_fromMaybe(undefined) : __wipple_fromMaybe(number);
     }
 };
 

@@ -59,6 +59,10 @@ func (node *VariablePatternNode) Codegen(c *codegen.Codegen) error {
 	return nil
 }
 
+func (node *VariablePatternNode) CodegenIdentifier() string {
+	return node.Variable
+}
+
 func (node *VariablePatternNode) EachTemporary(f func(database.Node)) {
 	f(node)
 }

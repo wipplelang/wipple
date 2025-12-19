@@ -99,6 +99,7 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 			Module:    true,
 			Prelude:   Prelude,
 			Sourcemap: true,
+			Optimize:  true,
 		})
 
 		files := make([]database.Node, 0, len(root.Files))

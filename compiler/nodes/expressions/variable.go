@@ -104,3 +104,7 @@ func (node *VariableExpressionNode) Codegen(c *codegen.Codegen) error {
 
 	return nil
 }
+
+func (node *VariableExpressionNode) CodegenIdentifier() string {
+	return node.Variable
+}

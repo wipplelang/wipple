@@ -6,6 +6,7 @@ require (
 	github.com/alecthomas/kong v1.13.0
 	github.com/aws/aws-lambda-go v1.51.0
 	github.com/charmbracelet/x/ansi v0.11.3
+	github.com/evanw/esbuild v0.27.2
 	github.com/fatih/color v1.18.0
 	github.com/gkampitakis/go-snaps v0.5.18
 	github.com/joho/godotenv v1.5.1
