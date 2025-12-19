@@ -96,8 +96,9 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 		}, nil
 	} else {
 		codegen := codegen.NewCodegen(db, "index.js", codegen.Options{
-			Format:  codegen.ModuleFormat,
-			Prelude: Prelude,
+			Module:    true,
+			Prelude:   Prelude,
+			Sourcemap: true,
 		})
 
 		files := make([]database.Node, 0, len(root.Files))

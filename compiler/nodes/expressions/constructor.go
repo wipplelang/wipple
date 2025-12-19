@@ -96,7 +96,7 @@ func (node *ConstructorExpressionNode) Codegen(c *codegen.Codegen) error {
 			return database.CompareSpans(database.GetSpanFact(left), database.GetSpanFact(right))
 		})
 
-		c.WriteString(span, "await runtime.trait(")
+		c.WriteString(span, "await __wipple_trait(")
 		c.WriteNode(span, definition.Node)
 		c.WriteString(span, ", types, {")
 

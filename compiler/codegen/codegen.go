@@ -13,17 +13,9 @@ import (
 	"wipple/visit"
 )
 
-type CodegenFormat int
-
-const (
-	ModuleFormat CodegenFormat = iota
-	IifeFormat
-)
-
 type Options struct {
 	Prelude   string
-	Format    CodegenFormat
-	Input     string
+	Module    bool
 	Sourcemap bool
 }
 
@@ -297,13 +289,14 @@ func (c *Codegen) String(root database.Node, files []database.Node) (string, err
 
 	rootSpan := database.GetSpanFact(root)
 
-	switch c.Options.Format {
-	case ModuleFormat:
-		c.WriteString(rootSpan, "export default async function(runtime) {")
-	case IifeFormat:
-		c.WriteString(rootSpan, "(async (runtime) => {")
+	if c.Options.Module {
+		c.WriteString(rootSpan, "export let __wipple_env;")
+		c.WriteLine()
+		c.WriteString(rootSpan, "export default async function(env) {")
+		c.WriteLine()
+		c.WriteString(rootSpan, "__wipple_env = env;")
+		c.WriteLine()
 	}
-	c.WriteLine()
 
 	err := c.writeDefinitions()
 	if err != nil {
@@ -320,11 +313,8 @@ func (c *Codegen) String(root database.Node, files []database.Node) (string, err
 		}
 	}
 
-	switch c.Options.Format {
-	case ModuleFormat:
+	if c.Options.Module {
 		c.appendString("};\n")
-	case IifeFormat:
-		c.appendString(fmt.Sprintf("})(%s);\n", c.Options.Input))
 	}
 
 	typeCodes := make([]string, len(c.writtenTypes))

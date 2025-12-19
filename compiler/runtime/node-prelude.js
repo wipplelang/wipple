@@ -1,4 +1,4 @@
-const env = {
+const __wipple_env = {
     display: console.log,
     prompt: async (message, submit) => {
         const rl = require("node:readline/promises").createInterface({

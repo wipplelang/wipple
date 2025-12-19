@@ -168,7 +168,7 @@ func (node *ConstructorPatternNode) Codegen(c *codegen.Codegen) error {
 	case node.matchingVariantConstructor != nil:
 		c.WriteString(span, " && (")
 		c.WriteNode(span, node.matching)
-		c.WriteString(span, "[runtime.variant] === ")
+		c.WriteString(span, "[__wipple_variant] === ")
 		c.WriteString(span, fmt.Sprintf("%d", node.matchingVariantConstructor.index))
 		c.WriteString(span, ")")
 

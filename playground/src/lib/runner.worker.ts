@@ -4,7 +4,7 @@ export type RunnerEnv = Record<string, (...args: any[]) => Promise<any>>;
 
 const worker = {
     async run(executable: string, env: RunnerEnv) {
-        const { default: entrypoint, buildRuntime } = await import(
+        const module = await import(
             /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(executable)}`
         );
 
@@ -16,7 +16,7 @@ const worker = {
             }
         };
 
-        await entrypoint(buildRuntime(env, proxy));
+        await module.default(env, proxy);
     },
 };
 

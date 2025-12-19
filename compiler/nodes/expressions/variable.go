@@ -86,7 +86,7 @@ func (node *VariableExpressionNode) Codegen(c *codegen.Codegen) error {
 		return database.CompareSpans(database.GetSpanFact(left), database.GetSpanFact(right))
 	})
 
-	c.WriteString(span, "await runtime.constant(")
+	c.WriteString(span, "await __wipple_constant(")
 	c.WriteNode(span, node.resolvedNode)
 	c.WriteString(span, ", types, {")
 

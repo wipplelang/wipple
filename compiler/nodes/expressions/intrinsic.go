@@ -1,7 +1,8 @@
 package expressions
 
 import (
-	"strconv"
+	"fmt"
+	"strings"
 
 	"wipple/codegen"
 	"wipple/database"
@@ -67,9 +68,8 @@ func (node *IntrinsicExpressionNode) Visit(visitor *visit.Visitor) {
 func (node *IntrinsicExpressionNode) Codegen(c *codegen.Codegen) error {
 	span := database.GetSpanFact(node)
 
-	c.WriteString(span, "await runtime[")
-	c.WriteString(span, strconv.Quote(node.Name))
-	c.WriteString(span, "](")
+	name := strings.ReplaceAll(node.Name, "-", "_")
+	c.WriteString(span, fmt.Sprintf("await __wipple_runtime_%s(", name))
 
 	for _, input := range node.Inputs {
 		if err := c.Write(input); err != nil {

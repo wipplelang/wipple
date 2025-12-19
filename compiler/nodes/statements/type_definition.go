@@ -454,7 +454,7 @@ func (node *variantNode) Codegen(c *codegen.Codegen) error {
 	}
 
 	if len(elementTemporaries) == 0 {
-		c.WriteString(span, fmt.Sprintf("runtime.variant(%d, [])", node.Index))
+		c.WriteString(span, fmt.Sprintf("__wipple_variant(%d, [])", node.Index))
 	} else {
 		c.WriteString(span, "(async (")
 		for _, temporary := range elementTemporaries {
@@ -464,7 +464,7 @@ func (node *variantNode) Codegen(c *codegen.Codegen) error {
 		c.WriteString(span, ") => {")
 		c.WriteLine()
 
-		c.WriteString(span, fmt.Sprintf("return runtime.variant(%d, [", node.Index))
+		c.WriteString(span, fmt.Sprintf("return __wipple_variant(%d, [", node.Index))
 		for _, temporary := range elementTemporaries {
 			c.WriteNode(span, temporary)
 			c.WriteString(span, ", ")

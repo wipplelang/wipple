@@ -126,7 +126,7 @@ type ServerCmd struct {
 func (cmd *ServerCmd) Run(ctx *Context) error {
 	color.NoColor = true
 	database.LspEnabled = true
-	server.Prelude = runtime + "\nexport { buildRuntime };\n"
+	server.Prelude = runtime
 	return server.Run(cmd.Lambda)
 }
 
@@ -328,9 +328,7 @@ func compile(cmd *CompileCmd, run bool) (string, string, error) {
 		}
 
 		codegen := codegen.NewCodegen(db, outputPath, codegen.Options{
-			Format:    codegen.IifeFormat,
 			Prelude:   nodePrelude + runtime,
-			Input:     "buildRuntime(env)",
 			Sourcemap: true,
 		})
 
