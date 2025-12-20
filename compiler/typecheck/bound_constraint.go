@@ -55,13 +55,19 @@ func (c *BoundConstraint) Run(solver *Solver) bool {
 
 	instances, _ := database.GetFact[InstancesFact](c.Bound.Trait)
 
-	var nonDefaultInstances []Instance
+	var regularInstances []Instance
+	var errorInstances []Instance
 	var defaultInstances []Instance
+	var defaultErrorInstances []Instance
 	for _, instance := range instances {
-		if instance.Default {
+		if instance.Error && instance.Default {
+			defaultErrorInstances = append(defaultErrorInstances, instance)
+		} else if instance.Error {
+			errorInstances = append(errorInstances, instance)
+		} else if instance.Default {
 			defaultInstances = append(defaultInstances, instance)
 		} else {
-			nonDefaultInstances = append(nonDefaultInstances, instance)
+			regularInstances = append(regularInstances, instance)
 		}
 	}
 
@@ -70,8 +76,10 @@ func (c *BoundConstraint) Run(solver *Solver) bool {
 		Instantiate bool
 	}{
 		{solver.ImpliedInstances, false},
-		{nonDefaultInstances, true},
+		{regularInstances, true},
+		{errorInstances, true},
 		{defaultInstances, true},
+		{defaultErrorInstances, true},
 	}
 
 	type candidate struct {
