@@ -9,11 +9,12 @@ var constraintOrder = []*[]reflect.Type{
 	{reflect.TypeFor[*GroupConstraint]()},
 	{reflect.TypeFor[*TypeConstraint]()},
 	{reflect.TypeFor[*InstantiateConstraint]()},
-	{reflect.TypeFor[*BoundConstraint](), reflect.TypeFor[*DefaultConstraint]()},
+	{reflect.TypeFor[*BoundConstraint]()},
 }
 
 type Constraints struct {
-	constraints map[*[]reflect.Type][]Constraint
+	constraints        map[*[]reflect.Type][]Constraint
+	defaultConstraints []*DefaultConstraint
 }
 
 func (c *Constraints) Add(constraints ...Constraint) {
@@ -22,6 +23,11 @@ func (c *Constraints) Add(constraints ...Constraint) {
 	}
 
 	for _, constraint := range constraints {
+		if constraint, ok := constraint.(*DefaultConstraint); ok {
+			c.defaultConstraints = append(c.defaultConstraints, constraint)
+			continue
+		}
+
 		var key *[]reflect.Type
 		for _, group := range constraintOrder {
 			if slices.Contains(*group, reflect.TypeOf(constraint)) {
@@ -66,19 +72,31 @@ func (c *Constraints) RunUntil(solver *Solver, stop reflect.Type) {
 	c.Add(requeuedConstraints...)
 }
 
+func (c *Constraints) RunDefaults(solver *Solver) {
+	for _, constraint := range c.defaultConstraints {
+		constraint.Run(solver)
+	}
+
+	c.defaultConstraints = nil
+}
+
 func (c *Constraints) All() []Constraint {
-	total := 0
+	count := len(c.defaultConstraints)
 	for _, key := range constraintOrder {
 		if constraints, ok := c.constraints[key]; ok {
-			total += len(constraints)
+			count += len(constraints)
 		}
 	}
 
-	all := make([]Constraint, 0, total)
+	all := make([]Constraint, 0, count)
 	for _, key := range constraintOrder {
 		if constraints, ok := c.constraints[key]; ok {
 			all = append(all, constraints...)
 		}
+	}
+
+	for _, constraint := range c.defaultConstraints {
+		all = append(all, constraint)
 	}
 
 	return all

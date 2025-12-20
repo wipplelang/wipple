@@ -54,6 +54,10 @@ func (s *Solver) Run() {
 
 func (s *Solver) RunPassUntil(stop reflect.Type) {
 	s.Constraints.RunUntil(s, stop)
+
+	if !s.Progress {
+		s.Constraints.RunDefaults(s)
+	}
 }
 
 func (s *Solver) Imply(instance Instance) {
