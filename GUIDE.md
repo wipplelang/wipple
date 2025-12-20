@@ -452,3 +452,51 @@ instance (Read Grade) : string -> when string {
 grade : prompt "Enter your grade"
 show (report-card grade)
 ```
+
+## Custom feedback
+
+In Wipple, you're encouraged to provide custom feedback when your API is used incorrectly. Wipple supports defining custom error messages during instance resolution — just add the `[error]` attribute to your instance, and Wipple will replace the default error message with the instance's comment:
+
+```wipple
+-- Can't count the contents of a block. Are you missing `do`?
+[error] instance (Count {output})
+```
+
+You can combine `[error]` with `[default]` to customize the error displayed when no other instances match:
+
+```wipple
+-- Can't count the contents of [`value`].
+[default] [error] instance (Count value)
+```
+
+The example above uses a link to reference the `value` parameter. Wipple will automatically replace the link with the first member of the group `value` belongs to:
+
+```wipple
+Uncountable : type
+
+x : Uncountable
+Count x -- Can't count the contents of `x`.
+```
+
+To list all members of the group, use `` [`value@related`] ``, and to display the type of the group, use `` [`value@type`] ``.
+
+```wipple
+-- Can't count the contents of [`value`] (a [`value@type`] value).
+[default] [error] instance (Count value)
+
+x : Uncountable
+Count x -- Can't count the contents of `x` (a `Uncountable` value).
+```
+
+Finally, if you want to reference group members in an error message, but your instance works with concrete types, you can use an inline type annotation:
+
+```wipple,playground
+Count : value => trait (value -> Number)
+
+-- Can't count the contents of [`block`]. Try adding `do` to count the
+-- inner [`output`].
+[error] instance (Count (block :: {output}))
+
+number : {123}
+Count number
+```
