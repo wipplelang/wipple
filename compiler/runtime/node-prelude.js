@@ -15,3 +15,5 @@ const __wipple_env = {
         rl.close();
     },
 };
+
+const __wipple_proxy = (x) => x;

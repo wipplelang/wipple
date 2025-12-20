@@ -98,7 +98,7 @@ func (node *ConstructorExpressionNode) Codegen(c *codegen.Codegen) error {
 
 		c.WriteString(span, "await __wipple_trait(")
 		c.WriteNode(span, definition.Node)
-		c.WriteString(span, ", types, {")
+		c.WriteString(span, ", __wipple_types, {")
 
 		for _, parameter := range parameters {
 			ty := node.matchingSubstitutions[parameter]

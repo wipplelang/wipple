@@ -116,7 +116,7 @@ func (c *Codegen) WriteType(span database.Span, ty typecheck.Type) error {
 	}
 
 	writtenType := typeCode.(writtenType)
-	c.WriteString(span, fmt.Sprintf("/**! %s */ typeCache[%d]", writtenType.typeString, writtenType.index))
+	c.WriteString(span, fmt.Sprintf("/**! %s */ __wipple_typeCache[%d]", writtenType.typeString, writtenType.index))
 
 	return nil
 }
@@ -228,7 +228,7 @@ func (c *Codegen) writeDefinitions() error {
 		c.WriteString(span, fmt.Sprintf("/**! %s */ ", database.DisplayNode(node)))
 		c.WriteString(span, "async function ")
 		c.WriteNode(span, node)
-		c.WriteString(span, "(types) {")
+		c.WriteString(span, "(__wipple_types) {")
 		c.WriteLine()
 		c.WriteString(span, "return ")
 		c.Write(body)
@@ -306,11 +306,13 @@ func (c *Codegen) String(root database.Node, files []database.Node) (string, err
 	rootSpan := database.GetSpanFact(root)
 
 	if c.Options.Module {
-		c.WriteString(rootSpan, "export let __wipple_env;")
+		c.WriteString(rootSpan, "let __wipple_env, __wipple_proxy;")
 		c.WriteLine()
-		c.WriteString(rootSpan, "export default async function(env) {")
+		c.WriteString(rootSpan, "export default async function(env, proxy) {")
 		c.WriteLine()
 		c.WriteString(rootSpan, "__wipple_env = env;")
+		c.WriteLine()
+		c.WriteString(rootSpan, "__wipple_proxy = proxy;")
 		c.WriteLine()
 	}
 
@@ -319,7 +321,7 @@ func (c *Codegen) String(root database.Node, files []database.Node) (string, err
 		return "", err
 	}
 
-	c.WriteString(rootSpan, "const types = {};")
+	c.WriteString(rootSpan, "const __wipple_types = {};")
 	c.WriteLine()
 
 	for _, file := range files {
@@ -344,7 +346,7 @@ func (c *Codegen) String(root database.Node, files []database.Node) (string, err
 		types.WriteString(",\n")
 	}
 
-	typeCache := fmt.Sprintf("const typeCache = [\n%s,\n];\n", types.String())
+	typeCache := fmt.Sprintf("const __wipple_typeCache = [\n%s,\n];\n", types.String())
 
 	prelude := c.Options.Prelude + typeCache
 	preludeLines := strings.Count(prelude, "\n") - 1
