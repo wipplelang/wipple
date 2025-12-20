@@ -7,7 +7,7 @@ import (
 type FeedbackItem struct {
 	Id     string
 	Rank   Rank
-	On     database.Node
+	On     []database.Node
 	String func() string
 }
 
@@ -15,7 +15,7 @@ type Feedback[T any] struct {
 	Id     string
 	Rank   Rank
 	Query  func(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(data T))
-	On     func(data T) database.Node // defaults to the queried node
+	On     func(data T) []database.Node // defaults to the queried node
 	Render func(render *Render, node database.Node, data T)
 }
 
@@ -24,12 +24,12 @@ var registered = []func(db *database.Db, node database.Node, filter func(node da
 func register[T any](entry Feedback[T]) {
 	registered = append(registered, func(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(item FeedbackItem)) {
 		entry.Query(db, node, filter, func(data T) {
-			var on database.Node
+			var on []database.Node
 			if entry.On != nil {
 				on = entry.On(data)
 			}
-			if on == nil {
-				on = node
+			if len(on) == 0 {
+				on = []database.Node{node}
 			}
 
 			f(FeedbackItem{
@@ -38,7 +38,7 @@ func register[T any](entry Feedback[T]) {
 				On:   on,
 				String: func() string {
 					render := NewRender(db)
-					entry.Render(render, on, data)
+					entry.Render(render, on[0], data)
 					return render.Finish()
 				},
 			})

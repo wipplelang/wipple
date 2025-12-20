@@ -38,8 +38,8 @@ type CompileResponseFailure struct {
 }
 
 type ResponseDiagnostic struct {
-	Location database.Span `json:"location"`
-	Message  string        `json:"message"`
+	Locations []database.Span `json:"locations"`
+	Message   string          `json:"message"`
 }
 
 type ResponseDiagnosticLocation struct {
@@ -67,15 +67,15 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 
 	seenFeedback := map[database.Node][]string{}
 	feedbackItems := feedback.Collect(db, filter, func(item feedback.FeedbackItem) bool {
-		if database.IsHiddenNode(item.On) || !filter(item.On) {
+		if database.IsHiddenNode(item.On[0]) || !filter(item.On[0]) {
 			return false
 		}
 
-		if slices.Contains(seenFeedback[item.On], item.Id) {
+		if slices.Contains(seenFeedback[item.On[0]], item.Id) {
 			return false
 		}
 
-		seenFeedback[item.On] = append(seenFeedback[item.On], item.Id)
+		seenFeedback[item.On[0]] = append(seenFeedback[item.On[0]], item.Id)
 
 		return true
 	})
@@ -83,11 +83,15 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 	if len(feedbackItems) > 0 {
 		responseDiagnostics := make([]ResponseDiagnostic, 0, len(feedbackItems))
 		for _, item := range feedbackItems {
-			span := database.GetSpanFact(item.On)
+			spans := make([]database.Span, 0, len(item.On))
+			for _, node := range item.On {
+				spans = append(spans, database.GetSpanFact(node))
+			}
+			database.RemoveOverlappingSpans(spans)
 
 			responseDiagnostics = append(responseDiagnostics, ResponseDiagnostic{
-				Location: span,
-				Message:  item.String(),
+				Locations: spans,
+				Message:   item.String(),
 			})
 		}
 

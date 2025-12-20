@@ -1,6 +1,7 @@
 package feedback
 
 import (
+	"slices"
 	"wipple/database"
 	"wipple/queries"
 	"wipple/typecheck"
@@ -29,8 +30,15 @@ func registerTypes() {
 				})
 			})
 		},
-		On: func(data conflictingTypesData) database.Node {
-			return data.Source
+		On: func(data conflictingTypesData) []database.Node {
+			nodes := []database.Node{data.Source}
+			for _, node := range data.Nodes {
+				if !slices.Contains(nodes, node) {
+					nodes = append(nodes, node)
+				}
+			}
+
+			return nodes
 		},
 		Render: func(render *Render, node database.Node, data conflictingTypesData) {
 			if data.Source != nil && !database.HaveEqualSpans(data.Source, data.From) {
@@ -52,18 +60,19 @@ func registerTypes() {
 
 			render.WriteString(", but it can only be one of these.")
 
-			if len(data.Nodes) > 1 {
-				render.WriteBreak()
-				render.WriteNode(data.From)
-				render.WriteString(" must be the same type as ")
-
-				nodes := make([]func(), 0, len(data.Nodes))
-				for _, related := range data.Nodes {
+			nodes := make([]func(), 0, len(data.Nodes))
+			for _, related := range data.Nodes {
+				if !database.IsHiddenNode(related) {
 					nodes = append(nodes, func() {
 						render.WriteNode(related)
 					})
 				}
+			}
 
+			if len(nodes) > 1 {
+				render.WriteBreak()
+				render.WriteNode(data.From)
+				render.WriteString(" must be the same type as ")
 				render.WriteList(nodes, "and", 3)
 				render.WriteString("; double-check these.")
 			}

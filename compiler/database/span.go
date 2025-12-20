@@ -97,3 +97,13 @@ func SortByProximity(nodes []Node, source Node) {
 		return leftDistance - rightDistance
 	})
 }
+
+func RemoveOverlappingSpans(spans []Span) []Span {
+	return slices.DeleteFunc(spans, func(span Span) bool {
+		return slices.ContainsFunc(spans, func(other Span) bool {
+			return span.Path == other.Path &&
+				span.Start.Index < other.Start.Index &&
+				span.End.Index > other.End.Index
+		})
+	})
+}

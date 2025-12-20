@@ -34,10 +34,10 @@ func registerBounds() {
 				f(errorInstanceData{bound: bound, comments: comments})
 			})
 		},
-		On: func(data errorInstanceData) database.Node {
+		On: func(data errorInstanceData) []database.Node {
 			if len(data.comments.Links) == 1 {
 				for _, link := range data.comments.Links {
-					return link.Node
+					return []database.Node{link.Node}
 				}
 			}
 

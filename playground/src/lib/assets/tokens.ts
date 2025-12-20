@@ -21,4 +21,7 @@ const tokens = {
     lowercaseName: /\w+(?:\-\w+)*[!?]?/,
 };
 
+export const enableHighlightingBefore = /^ *$|(?:\d|\(|\{)+ *$|: +$/;
+export const disableHighlightingAfter = /^[^"']*: /;
+
 export default tokens;

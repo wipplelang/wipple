@@ -32,7 +32,7 @@ func ConflictingTypes(db *database.Db, node database.Node, filter func(node data
 
 	group := fact.Group
 	if len(group.Types) > 1 && isFirstNodeInGroup(node, group, filter) {
-		var source database.Node
+		source := node
 		from := node
 		if instantiated, ok := database.GetFact[typecheck.InstantiatedFact](node); ok {
 			source = instantiated.Source
@@ -41,7 +41,7 @@ func ConflictingTypes(db *database.Db, node database.Node, filter func(node data
 
 		nodes := make([]database.Node, 0, len(group.Nodes))
 		for _, other := range group.Nodes {
-			if other != from && !database.IsHiddenNode(other) && filter(other) {
+			if other != from && filter(other) {
 				nodes = append(nodes, other)
 			}
 		}
@@ -57,11 +57,7 @@ func ConflictingTypes(db *database.Db, node database.Node, filter func(node data
 			return false
 		})
 
-		if source != nil {
-			database.SortByProximity(nodes, source)
-		} else {
-			database.SortByProximity(nodes, from)
-		}
+		database.SortByProximity(nodes, source)
 
 		f(source, from, nodes, group.Types, group.Trace)
 	}

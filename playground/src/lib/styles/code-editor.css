@@ -88,7 +88,7 @@
     }
 
     .token-highlighted {
-        @apply inline-flex h-(--code-editor-line-height) items-center gap-[2px] rounded-[4px] px-[4px];
+        @apply inline-flex h-(--code-editor-line-height) items-center gap-[2px] rounded-[4px] px-[4px] align-text-bottom;
         color: var(--highlight-color);
         background-color: color-mix(in oklab, var(--highlight-background-color) 30%, transparent);
 

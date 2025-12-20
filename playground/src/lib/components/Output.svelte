@@ -80,8 +80,8 @@
         }
 
         if ("diagnostics" in response) {
-            runState = "error";
             ondiagnostics(response.diagnostics);
+            runState = "error";
             return;
         }
 

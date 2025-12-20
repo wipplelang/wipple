@@ -7,12 +7,11 @@
         markRange,
         blockDecoration,
     } from "$lib/assets/decorations";
-    import tokens from "$lib/assets/tokens";
+    import tokens, { enableHighlightingBefore, disableHighlightingAfter } from "$lib/assets/tokens";
     import { stringifyAsset, type Asset } from "$lib/models/Asset";
     import runtimes from "$lib/runtimes";
     import widgets, { type WidgetType } from "$lib/widgets";
     import NumberWidget from "$lib/widgets/NumberWidget.svelte";
-    import PlaceholderWidget from "$lib/widgets/PlaceholderWidget.svelte";
     import { defaultKeymap, indentWithTab } from "@codemirror/commands";
     import { Compartment, EditorState, Prec, RangeSet } from "@codemirror/state";
     import { EditorView, keymap, placeholder, type Command } from "@codemirror/view";
@@ -307,6 +306,10 @@
             "g",
         ),
         ([text, type, propsString], view) => {
+            if (!(type in widgets)) {
+                return [];
+            }
+
             let props: Omit<Asset, "type"> | undefined;
             try {
                 props = JSON.parse(propsString.slice(1, -1));
@@ -320,10 +323,7 @@
             return [
                 {
                     decoration: () => {
-                        const element =
-                            type in widgets
-                                ? new widgets[type as WidgetType]()
-                                : new PlaceholderWidget.element!();
+                        const element = new widgets[type as WidgetType]();
 
                         if (props) {
                             Object.assign(element, props);
@@ -363,7 +363,17 @@
     const markNames = new Compartment();
 
     const createMarkNames = (highlights: Record<string, any>) =>
-        markRegex(new RegExp(tokens.lowercaseName, "g"), ([name]) => {
+        markRegex(new RegExp(tokens.lowercaseName, "g"), (match, view, from, to) => {
+            const [name] = match;
+
+            // Don't highlight nested names
+            const line = view.state.doc.lineAt(from);
+            const before = view.state.doc.slice(line.from, from).toString();
+            const after = view.state.doc.slice(to, line.to).toString();
+            if (!enableHighlightingBefore.test(before) || disableHighlightingAfter.test(after)) {
+                return [];
+            }
+
             const highlight = highlights[name];
             if (!highlight) {
                 return [];
@@ -399,7 +409,7 @@
         }
 
         try {
-            return editorView.state.doc.lineAt(diagnostic.value.location.end.index).number;
+            return editorView.state.doc.lineAt(diagnostic.value.locations[0].end.index).number;
         } catch {
             // Position no longer valid
             return undefined;
@@ -429,11 +439,19 @@
             stale
                 ? []
                 : Prec.high(
-                      markRange(value.location.start.index, value.location.end.index, () =>
-                          markDecoration(
-                              "bg-blue-500/10 rounded-[6px] underline underline-offset-[2pt] decoration-wavy decoration-blue-500",
-                          ),
-                      ),
+                      (value.locations as any[]).flatMap(({ start, end }, index) => {
+                          if (start.index === end.index) {
+                              return [];
+                          }
+
+                          const decoration = markRange(start.index, end.index, () =>
+                              markDecoration(
+                                  `rounded-[6px] ring-[1.5px] ${index === 0 ? "underline [text-decoration-skip-ink:none] decoration-wavy decoration-blue-500 ring-blue-500/50 bg-blue-500/15 dark:bg-blue-500/20" : "ring-blue-500/20 bg-blue-500/10 dark:bg-blue-500/5 "}`,
+                              ),
+                          );
+
+                          return [decoration];
+                      }),
                   ),
             EditorView.decorations.of(RangeSet.of([blockDecoration(diagnosticWidget).range(pos)])),
         ];

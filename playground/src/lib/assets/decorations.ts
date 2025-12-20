@@ -44,6 +44,8 @@ export const markRegex = (
     decorate: (
         match: RegExpMatchArray,
         view: EditorView,
+        from: number,
+        to: number,
     ) => {
         decoration: () => Decoration;
         index?: number;
@@ -70,7 +72,7 @@ export const markRegex = (
     const decorator = new MatchDecorator({
         regexp: regex,
         decorate: (add, from, to, match, view) => {
-            const decorations = decorate(match, view);
+            const decorations = decorate(match, view, from, to);
 
             for (const { decoration, index } of decorations) {
                 // For accessory decorations, like the number widget

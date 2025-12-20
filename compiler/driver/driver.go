@@ -178,15 +178,15 @@ func WriteFeedback(db *database.Db, filter func(node database.Node) bool, filter
 			return false
 		}
 
-		if database.IsHiddenNode(item.On) || !filter(item.On) {
+		if database.IsHiddenNode(item.On[0]) || !filter(item.On[0]) {
 			return false
 		}
 
-		if slices.Contains(seenFeedback[item.On], item.Id) {
+		if slices.Contains(seenFeedback[item.On[0]], item.Id) {
 			return false
 		}
 
-		seenFeedback[item.On] = append(seenFeedback[item.On], item.Id)
+		seenFeedback[item.On[0]] = append(seenFeedback[item.On[0]], item.Id)
 
 		return true
 	})
@@ -212,7 +212,7 @@ func WriteFeedback(db *database.Db, filter func(node database.Node) bool, filter
 			}
 		}
 
-		_, err := fmt.Fprintf(w, "%s (%s):\n\n%s\n\n", database.RenderNode(item.On), item.Id, rendered)
+		_, err := fmt.Fprintf(w, "%s (%s):\n\n%s\n\n", database.RenderNode(item.On[0]), item.Id, rendered)
 		if err != nil {
 			panic(err)
 		}
