@@ -81,8 +81,10 @@ func (node *BoundConstraintNode) Visit(visitor *visit.Visitor) {
 		database.SetFact(node, types.MissingTypesFact(missing))
 	}
 
-	for _, extra := range node.Parameters[len(trait.Parameters):] {
-		database.SetFact(extra, types.ExtraTypeFact{})
+	if len(node.Parameters) > len(trait.Parameters) {
+		for _, extra := range node.Parameters[len(trait.Parameters):] {
+			database.SetFact(extra, types.ExtraTypeFact{})
+		}
 	}
 
 	visitor.Constraint(typecheck.NewBoundConstraint(node, typecheck.UnresolvedBound{

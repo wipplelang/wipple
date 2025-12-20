@@ -136,8 +136,10 @@ func (node *InstanceDefinitionNode) Visit(visitor *visit.Visitor) {
 					database.SetFact(node, types.MissingTypesFact(missing))
 				}
 
-				for _, extra := range node.Bound.Parameters[len(traitDefinition.Parameters):] {
-					database.SetFact(extra, types.ExtraTypeFact{})
+				if len(node.Bound.Parameters) > len(traitDefinition.Parameters) {
+					for _, extra := range node.Bound.Parameters[len(traitDefinition.Parameters):] {
+						database.SetFact(extra, types.ExtraTypeFact{})
+					}
 				}
 
 				for _, constraint := range node.Constraints {

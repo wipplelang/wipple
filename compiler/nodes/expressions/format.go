@@ -109,8 +109,10 @@ func (node *FormatExpressionNode) Visit(visitor *visit.Visitor) {
 		database.SetFact(node, MissingFormatInputsFact(len(missing)))
 	}
 
-	for _, extra := range node.Inputs[len(node.segments):] {
-		database.SetFact(extra, ExtraFormatInputFact{})
+	if len(node.Inputs) > len(node.segments) {
+		for _, extra := range node.Inputs[len(node.segments):] {
+			database.SetFact(extra, ExtraFormatInputFact{})
+		}
 	}
 
 	for _, segment := range node.segments {

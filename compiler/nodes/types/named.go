@@ -83,8 +83,10 @@ func (node *NamedTypeNode) Visit(visitor *visit.Visitor) {
 		database.SetFact(node, MissingTypesFact(missing))
 	}
 
-	for _, extra := range node.Parameters[len(typeDefinition.Parameters):] {
-		database.SetFact(extra, ExtraTypeFact{})
+	if len(node.Parameters) > len(typeDefinition.Parameters) {
+		for _, extra := range node.Parameters[len(typeDefinition.Parameters):] {
+			database.SetFact(extra, ExtraTypeFact{})
+		}
 	}
 
 	visitor.Constraint(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
