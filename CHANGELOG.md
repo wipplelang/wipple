@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+-   Updated the instance resolution order: (1) regular instances, (2) `[error]` instances, (3) `[default]` instances, and (4) instances with both attributes.
+
 -   Added an `-O` flag to the compiler to enable optimization using [esbuild](https://esbuild.github.io).
 
 ## Wipple 2025.3 (2025-12-17)
