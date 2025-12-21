@@ -64,3 +64,45 @@ func CheckForOverlappingInstances(db *database.Db, traitDefinition database.Node
 		}
 	}
 }
+
+func RunMismatchedTrait(db *database.Db, trait *TraitDefinition, filter func(node database.Node) bool) []*typecheck.Solver {
+	var solvers []*typecheck.Solver
+	database.ContainsFact(db, func(node database.Node, fact typecheck.TypedFact) (struct{}, bool) {
+		if !filter(node) || fact.Group == nil || node != fact.Group.Nodes[0] {
+			return struct{}{}, false
+		}
+
+		if len(fact.Group.Types) > 1 {
+			for i, left := range fact.Group.Types {
+				for _, right := range fact.Group.Types[i+1:] {
+					solver := typecheck.NewSolver(db)
+
+					solver.Constraints.Add(typecheck.NewTypeConstraint(node, left))
+
+					solver.Constraints.Add(typecheck.NewBoundConstraint(
+						node,
+						typecheck.UnresolvedBound{
+							Source: node,
+							Trait:  trait.Node,
+							Substitutions: &map[database.Node]typecheck.Type{
+								trait.Parameters[0]: node,
+								trait.Parameters[1]: right,
+							},
+							TraitName: "Mismatched",
+							Optional:  true,
+						},
+						GetDefinitionConstraints,
+					))
+
+					if solver.Run() {
+						solvers = append(solvers, solver)
+					}
+				}
+			}
+		}
+
+		return struct{}{}, false
+	})
+
+	return solvers
+}

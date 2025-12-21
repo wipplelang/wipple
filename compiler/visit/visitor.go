@@ -58,9 +58,19 @@ type Visitor struct {
 	constraints []typecheck.Constraint
 }
 
+type utility struct {
+	name string
+	ty   reflect.Type
+}
+
+var utilities = []utility{
+	{name: "Mismatched", ty: reflect.TypeFor[*TraitDefinition]()},
+}
+
 type Result struct {
 	Constraints []typecheck.Constraint
 	Scope       Scope
+	Utilities   map[string]Definition
 }
 
 func NewVisitor(db *database.Db, scopes []Scope) *Visitor {
@@ -223,9 +233,12 @@ func (visitor *Visitor) Finish() Result {
 		visitor.CurrentDefinition = previousDefinition
 	}
 
+	utilities := visitor.collectUtilities()
+
 	return Result{
 		Constraints: visitor.constraints,
 		Scope:       visitor.PopScope(),
+		Utilities:   utilities,
 	}
 }
 
@@ -316,4 +329,15 @@ func (queue *Queue) dequeue() (queuedVisit, bool) {
 	}
 
 	return queuedVisit{}, false
+}
+
+func (visitor *Visitor) collectUtilities() map[string]Definition {
+	result := map[string]Definition{}
+	for _, utility := range utilities {
+		if definitions, ok := PeekOf(visitor, utility.name, []reflect.Type{utility.ty}); ok && len(definitions) == 1 {
+			result[utility.name] = definitions[0]
+		}
+	}
+
+	return result
 }

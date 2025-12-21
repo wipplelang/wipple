@@ -39,17 +39,22 @@ func (s *Solver) AppendGroup(group *Group) {
 	})
 }
 
-func (s *Solver) Run() {
+func (s *Solver) Run() bool {
+	progress := false
 	for {
 		s.Progress = false
 		s.RunPassUntil(nil)
 		if !s.Progress {
 			break
 		}
+
+		progress = true
 	}
 
 	// Run a final pass
 	s.RunPassUntil(nil)
+
+	return progress || s.Progress
 }
 
 func (s *Solver) RunPassUntil(stop reflect.Type) {

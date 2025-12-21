@@ -148,10 +148,20 @@ func Compile(db *database.Db, root *RootNode, files []*file.FileNode) {
 
 	setGroups(solver, nodeIsFromFiles)
 
+	// Check for overlapping instances
+
 	database.ContainsFact(db, func(traitDefinition database.Node, instances typecheck.InstancesFact) (struct{}, bool) {
 		visit.CheckForOverlappingInstances(db, traitDefinition, instances)
 		return struct{}{}, false
 	})
+
+	// Resolve `Mismatched` trait for mismatched types
+
+	if mismatchedTrait, ok := topLevel.Utilities["Mismatched"].(*visit.TraitDefinition); ok {
+		for _, solver := range visit.RunMismatchedTrait(db, mismatchedTrait, nodeIsFromFiles) {
+			setGroups(solver, nodeIsFromFiles)
+		}
+	}
 }
 
 func setGroups(solver *typecheck.Solver, filter func(node database.Node) bool) {

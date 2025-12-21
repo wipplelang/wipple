@@ -41,6 +41,10 @@ instance (Initial String) : ""
 instance (Initial Boolean) : False
 instance (Initial (Maybe value)) : None
 
+-- Resolved by the compiler for all type mismatches, so you can write better
+-- error messages for your types.
+Mismatched : actual expected => trait ()
+
 -- Send a message to the runtime.
 external :: String input -> output where (output :: ())
 external : message data -> intrinsic "external" message data

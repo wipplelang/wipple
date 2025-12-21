@@ -5,6 +5,11 @@ Distance : type {pixels :: Number}
 [unit] pixels :: Number -> Distance
 pixels : pixels -> Distance {pixels : pixels}
 
+-- Missing `pixels` after [`n`].
+--
+-- Double-check your parentheses.
+[error] instance (Mismatched (n :: Number) Distance)
+
 -- Move the turtle forward by a distance.
 forward :: Distance -> ()
 forward : (Distance {pixels : pixels}) -> external "forward" pixels

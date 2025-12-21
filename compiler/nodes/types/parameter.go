@@ -193,8 +193,10 @@ func (node *TypeParameterNode) Visit(visitor *visit.Visitor) {
 			visitor.Constraint(constraint)
 		}
 
-		typeParameters, _ := database.GetFact[visit.TypeParametersFact](visitor.CurrentDefinition.Node)
-		typeParameters = append(typeParameters, node)
-		database.SetFact(visitor.CurrentDefinition.Node, typeParameters)
+		if visitor.CurrentDefinition != nil {
+			typeParameters, _ := database.GetFact[visit.TypeParametersFact](visitor.CurrentDefinition.Node)
+			typeParameters = append(typeParameters, node)
+			database.SetFact(visitor.CurrentDefinition.Node, typeParameters)
+		}
 	}
 }

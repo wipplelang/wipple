@@ -30,6 +30,7 @@ func (c *BoundConstraint) Instantiate(solver *Solver, source database.Node, repl
 		Trait:         c.Bound.Trait,
 		Substitutions: InstantiateSubstitutions(solver, c.Bound.Substitutions, source, substitutions, replacements),
 		TraitName:     c.Bound.TraitName,
+		Optional:      c.Bound.Optional,
 	}, c.GetDefinitionConstraints)
 
 	constraint.Solver = solver
@@ -200,7 +201,7 @@ func (c *BoundConstraint) Run(solver *Solver) bool {
 			return false // ambiguous; try again
 		}
 
-		if lastInstanceSet {
+		if lastInstanceSet && !c.Bound.Optional {
 			var fact BoundsFact
 			if f, ok := database.GetFact[BoundsFact](c.Bound.Source); ok {
 				fact = f

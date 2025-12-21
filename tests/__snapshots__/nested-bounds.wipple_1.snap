@@ -210,24 +210,6 @@ UnitExpressionNode `()` (nested-bounds.wipple:13:3)
 
 Feedback:
 
-`_` (nested-bounds.wipple:5:23) (placeholder):
-
-  Found a placeholder of type `Number -> ()`.
-  
-  Add a `Number -> ()` value here before running your program.
-
-`_` (nested-bounds.wipple:6:23) (placeholder):
-
-  Found a placeholder of type `String -> ()`.
-  
-  Add a `String -> ()` value here before running your program.
-
-`_` (nested-bounds.wipple:9:38) (placeholder):
-
-  Found a placeholder of type `value -> ()`.
-  
-  Add a `value -> ()` value here before running your program.
-
 `B` (nested-bounds.wipple:13:1) (unresolved-bound):
 
   `B` (nested-bounds.wipple:13:1) requires the instance `A ()`, but this instance isn't defined.

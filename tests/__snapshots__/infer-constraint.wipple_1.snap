@@ -459,49 +459,6 @@ NamedTypeNode `String` (infer-constraint.wipple:20:28)
 
 Feedback:
 
-`_` (infer-constraint.wipple:5:39) (placeholder):
-
-  Found a placeholder of type `Number Number -> Number`.
-  
-  Add a `Number Number -> Number` value here before running your program.
-
-`_` (infer-constraint.wipple:6:39) (placeholder):
-
-  Found a placeholder of type `String String -> String`.
-  
-  Add a `String String -> String` value here before running your program.
-
-`_` (infer-constraint.wipple:9:7) (placeholder):
-
-  Found a placeholder of type `left right -> sum`.
-  
-  Add a `left right -> sum` value here before running your program.
-
-`add` (infer-constraint.wipple:11:6) (unresolved-bound):
-
-  `add` (infer-constraint.wipple:11:6) requires the instance `Add Number Number String`, but this
-  instance isn't defined.
-  
-  Double-check that these types are correct.
-
-`_` (infer-constraint.wipple:14:45) (placeholder):
-
-  Found a placeholder of type `Number Number -> Number`.
-  
-  Add a `Number Number -> Number` value here before running your program.
-
-`_` (infer-constraint.wipple:15:45) (placeholder):
-
-  Found a placeholder of type `String String -> String`.
-  
-  Add a `String String -> String` value here before running your program.
-
-`_` (infer-constraint.wipple:18:13) (placeholder):
-
-  Found a placeholder of type `left right -> sum`.
-  
-  Add a `left right -> sum` value here before running your program.
-
 `output` (infer-constraint.wipple:20:1) (conflicting-types):
 
   `output` (infer-constraint.wipple:20:1) is a `Number` or a `String`, but it can only be one of

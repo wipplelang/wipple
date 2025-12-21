@@ -27,6 +27,7 @@ type UnresolvedBound struct {
 	Trait         database.Node
 	Substitutions *map[database.Node]Type
 	TraitName     string
+	Optional      bool
 }
 
 type ResolvedBound struct {
@@ -43,6 +44,7 @@ func (b ResolvedBound) Clone() ResolvedBound {
 			Trait:         b.Trait,
 			Substitutions: &substitutions,
 			TraitName:     b.TraitName,
+			Optional:      b.Optional,
 		},
 		Solver: b.Solver,
 	}
@@ -80,6 +82,7 @@ func ApplyBound(b ResolvedBound) ResolvedBound {
 			Trait:         b.Trait,
 			Substitutions: ApplySubstitutions(b.Substitutions, b.Solver),
 			TraitName:     b.TraitName,
+			Optional:      b.Optional,
 		},
 		Solver: b.Solver,
 	}

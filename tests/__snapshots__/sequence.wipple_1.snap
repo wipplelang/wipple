@@ -321,24 +321,6 @@ VariableExpressionNode `box` (sequence.wipple:25:20)
 
 Feedback:
 
-`_` (sequence.wipple:18:44) (placeholder):
-
-  Found a placeholder of type `(Box value) -> Sequence value`.
-  
-  Add a `(Box value) -> Sequence value` value here before running your program.
-
-`_` (sequence.wipple:21:10) (placeholder):
-
-  Found a placeholder of type `(item -> Boolean) -> collection -> Sequence item`.
-  
-  Add a `(item -> Boolean) -> collection -> Sequence item` value here before running your program.
-
-`_` (sequence.wipple:23:8) (placeholder):
-
-  Found a placeholder of type `Box String`.
-  
-  Add a `Box String` value here before running your program.
-
 `_` (sequence.wipple:24:14) (conflicting-types):
 
   `_` (sequence.wipple:24:14) is a `String` or a `Number`, but it can only be one of these.
@@ -356,10 +338,4 @@ Feedback:
   }` (sequence.wipple:13:1).
   
     -  Explicitly annotated as a `Number`.
-
-`_` (sequence.wipple:24:30) (placeholder):
-
-  Found a placeholder of type `Boolean`.
-  
-  Add a `Boolean` value here before running your program.
 
