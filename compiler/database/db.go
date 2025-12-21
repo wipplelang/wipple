@@ -24,14 +24,19 @@ func (db *Db) Register(node Node) {
 	db.nodes = append(db.nodes, node)
 }
 
-func ContainsNode(db *Db, f func(node Node) bool) bool {
+func ContainsNode[T any](db *Db, f func(node Node) (T, bool)) (T, bool) {
+	var result T
 	for current := db; current != nil; current = current.parent {
-		if slices.ContainsFunc(current.nodes, f) {
-			return true
+		if slices.ContainsFunc(current.nodes, func(node Node) bool {
+			var ok bool
+			result, ok = f(node)
+			return ok
+		}) {
+			return result, true
 		}
 	}
 
-	return false
+	return result, false
 }
 
 func ContainsFact[T any, U any](db *Db, f func(node Node, fact T) (U, bool)) (U, bool) {

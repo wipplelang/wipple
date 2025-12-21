@@ -23,6 +23,7 @@ func registerBounds() {
 
 	type errorInstanceData struct {
 		bound    typecheck.ResolvedBound
+		group    *typecheck.Group
 		comments queries.CommentsData
 	}
 
@@ -30,18 +31,27 @@ func registerBounds() {
 		Id:   "error-instance",
 		Rank: RankCustom,
 		Query: func(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(data errorInstanceData)) {
+			typed, ok := database.GetFact[typecheck.TypedFact](node)
+			if !ok || typed.Group == nil {
+				return
+			}
+
 			queries.ErrorInstance(db, node, filter, func(bound typecheck.ResolvedBound, comments queries.CommentsData) {
-				f(errorInstanceData{bound: bound, comments: comments})
+				f(errorInstanceData{
+					bound:    bound,
+					group:    typed.Group,
+					comments: comments,
+				})
 			})
 		},
 		On: func(data errorInstanceData) []database.Node {
-			if len(data.comments.Links) == 1 {
-				for _, link := range data.comments.Links {
-					return []database.Node{link.Node}
-				}
+			nodes := []database.Node{data.bound.Source, data.comments.Node}
+			nodes = append(nodes, data.group.Nodes...)
+			for _, link := range data.comments.Links {
+				nodes = append(nodes, link.Node)
 			}
 
-			return nil
+			return nodes
 		},
 		Render: func(render *Render, node database.Node, data errorInstanceData) {
 			render.WriteComments(data.comments)

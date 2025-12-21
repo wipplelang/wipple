@@ -63,7 +63,7 @@ func init() {
 
 func Collect(db *database.Db, nodeFilter func(node database.Node) bool, itemFilter func(item FeedbackItem) bool) []FeedbackItem {
 	var items []FeedbackItem
-	database.ContainsNode(db, func(node database.Node) bool {
+	database.ContainsNode(db, func(node database.Node) (struct{}, bool) {
 		if nodeFilter(node) {
 			for _, run := range registered {
 				run(db, node, nodeFilter, func(item FeedbackItem) {
@@ -74,7 +74,7 @@ func Collect(db *database.Db, nodeFilter func(node database.Node) bool, itemFilt
 			}
 		}
 
-		return false
+		return struct{}{}, false
 	})
 
 	sort(items)

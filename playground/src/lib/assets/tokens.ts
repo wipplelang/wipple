@@ -16,7 +16,7 @@ const tokens = {
     keywordOperator: withBoundary(
         /(?:where|=>|::|:)(?!(?:[\.\d]|(?:and|as|to|by|<=|>=|\/=|is|or|\x2d>|\^|\*|\/|%|\+|\x2d|<|>|=|\.)))/,
     ),
-    keyword: withBoundary(/(?:intrinsic|instance|default|infer|trait|type|when|set|do|_)/),
+    keyword: withBoundary(/(?:intrinsic|instance|infer|trait|type|when|set|do|_)/),
     capitalName: /(?<!(?:\w+|\-))(?:\d-)*[A-Z]\w*(?:\-\w+)*[!?]?/,
     lowercaseName: /\w+(?:\-\w+)*[!?]?/,
 };

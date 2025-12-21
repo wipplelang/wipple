@@ -303,16 +303,16 @@ func addSemanticTokens(db *database.Db, uri protocol.DocumentUri) protocol.Seman
 	filter := nodeFilter(uri)
 
 	tokens := map[database.Span]semtok.Type{}
-	database.ContainsNode(db, func(node database.Node) bool {
+	database.ContainsNode(db, func(node database.Node) (struct{}, bool) {
 		if !filter(node) {
-			return false
+			return struct{}{}, false
 		}
 
 		span := database.GetSpanFact(node)
 
 		// Don't highlight across whitespace
 		if span.Start.Line != span.End.Line || strings.ContainsFunc(span.Source, unicode.IsSpace) {
-			return false
+			return struct{}{}, false
 		}
 
 		queries.HighlightType(db, node, filter, func(struct{}) {
@@ -331,7 +331,7 @@ func addSemanticTokens(db *database.Db, uri protocol.DocumentUri) protocol.Seman
 			tokens[span] = semtok.TokFunction
 		})
 
-		return false
+		return struct{}{}, false
 	})
 
 	sortedTokens := make([]semtok.Token, 0, len(tokens))
@@ -447,9 +447,9 @@ func getNodeAtPosition(db *database.Db, uri protocol.DocumentUri, position proto
 	}
 
 	matches := []match{}
-	database.ContainsNode(db, func(node database.Node) bool {
+	database.ContainsNode(db, func(node database.Node) (struct{}, bool) {
 		if !filter(node) {
-			return false
+			return struct{}{}, false
 		}
 
 		r := convertSpan(database.GetSpanFact(node))
@@ -464,7 +464,7 @@ func getNodeAtPosition(db *database.Db, uri protocol.DocumentUri, position proto
 			})
 		}
 
-		return false
+		return struct{}{}, false
 	})
 
 	slices.SortFunc(matches, func(left match, right match) int {

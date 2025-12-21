@@ -36,9 +36,9 @@ func (request *DocumentationRequest) handle() (DocumentationResponse, error) {
 		return true
 	}
 
-	var data queries.DocumentationData
-	ok := false
-	database.ContainsNode(db, func(node database.Node) bool {
+	data, ok := database.ContainsNode(db, func(node database.Node) (queries.DocumentationData, bool) {
+		var data queries.DocumentationData
+		ok := false
 		queries.Documentation(db, node, filter, func(name string, d queries.DocumentationData) {
 			if name == request.Name {
 				ok = true
@@ -46,7 +46,7 @@ func (request *DocumentationRequest) handle() (DocumentationResponse, error) {
 			}
 		})
 
-		return ok
+		return data, ok
 	})
 
 	if !ok {

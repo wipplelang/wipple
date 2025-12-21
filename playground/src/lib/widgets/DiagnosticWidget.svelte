@@ -7,7 +7,7 @@
 
 <script lang="ts">
     import Box from "$lib/components/Box.svelte";
-    import BoxButton from "$lib/components/BoxButton.svelte";
+    import CodeEditor from "$lib/components/CodeEditor.svelte";
     import Icon from "$lib/components/Icon.svelte";
     import Markdown from "$lib/components/Markdown.svelte";
     import ToolbarButton from "$lib/components/ToolbarButton.svelte";
@@ -37,6 +37,30 @@
 
             {#if description}
                 <Markdown content={description} />
+            {/if}
+
+            {#if diagnostic.lines != null && diagnostic.lines.length > 0}
+                <div class="mb-[5px] mt-[15px] flex flex-col gap-[10px]">
+                    {#each diagnostic.lines as line}
+                        <div class="rounded-xl border-[1.5px] border-black/5">
+                            <CodeEditor
+                                readOnly
+                                code={line.source}
+                                diagnostic={{
+                                    value: {
+                                        locations: [
+                                            {
+                                                start: { index: line.start },
+                                                end: { index: line.end },
+                                            },
+                                        ],
+                                    },
+                                    hideWidget: true,
+                                }}
+                            />
+                        </div>
+                    {/each}
+                </div>
             {/if}
 
             {#if extra.length > 0}

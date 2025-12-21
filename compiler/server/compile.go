@@ -3,6 +3,7 @@ package server
 import (
 	"fmt"
 	"slices"
+	"strings"
 	"sync"
 	"wipple/codegen"
 	"wipple/colors"
@@ -25,21 +26,14 @@ type File struct {
 }
 
 type CompileResponse struct {
-	*CompileResponseSuccess
-	*CompileResponseFailure
-}
-
-type CompileResponseSuccess struct {
-	Executable string `json:"executable"`
-}
-
-type CompileResponseFailure struct {
-	Diagnostics []ResponseDiagnostic `json:"diagnostics"`
+	Executable  string               `json:"executable,omitempty"`
+	Diagnostics []ResponseDiagnostic `json:"diagnostics,omitempty"`
 }
 
 type ResponseDiagnostic struct {
-	Locations []database.Span `json:"locations"`
-	Message   string          `json:"message"`
+	Locations []database.Span          `json:"locations"`
+	Lines     []ResponseDiagnosticLine `json:"lines"`
+	Message   string                   `json:"message"`
 }
 
 type ResponseDiagnosticLocation struct {
@@ -48,12 +42,22 @@ type ResponseDiagnosticLocation struct {
 	Index  int `json:"index"`
 }
 
+type ResponseDiagnosticLine struct {
+	Path   string `json:"path"`
+	number int
+	Source string `json:"source"`
+	Start  int    `json:"start"`
+	End    int    `json:"end"`
+}
+
+const defaultPath = "input"
+
 func (request *CompileRequest) handle() (*CompileResponse, error) {
 	var files []File
 	if len(request.Files) > 0 {
 		files = request.Files
 	} else {
-		files = []File{{Path: "input", Code: request.Code}}
+		files = []File{{Path: defaultPath, Code: request.Code}}
 	}
 
 	db, root, err := compile(files, request.Library)
@@ -88,16 +92,66 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 				spans = append(spans, database.GetSpanFact(node))
 			}
 			database.RemoveOverlappingSpans(spans)
+			slices.SortFunc(spans[1:], database.CompareSpans)
+
+			var lines []ResponseDiagnosticLine
+			for _, span := range spans {
+				if span.Path == defaultPath || slices.ContainsFunc(lines, func(line ResponseDiagnosticLine) bool {
+					return line.Path == span.Path && line.number == span.Start.Line
+				}) {
+					continue
+				}
+
+				source, ok := database.ContainsNode(db, func(node database.Node) (string, bool) {
+					if _, ok := node.(*file.FileNode); !ok {
+						return "", false
+					}
+
+					fileSpan := database.GetSpanFact(node)
+					if fileSpan.Path == span.Path {
+						return fileSpan.Source, true
+					}
+
+					return "", false
+				})
+
+				if !ok {
+					continue
+				}
+
+				sourceLines := strings.Split(source, "\n")[span.Start.Line-1 : span.End.Line]
+				trimmedLines := 0
+				for {
+					if strings.HasPrefix(strings.TrimLeft(sourceLines[0], " "), "--") {
+						sourceLines = sourceLines[1:]
+						trimmedLines++
+					} else {
+						break
+					}
+				}
+
+				offset := 0
+				for i := 0; i < span.End.Line-span.Start.Line-trimmedLines; i++ {
+					offset += len(sourceLines[i]) + 1
+				}
+
+				lines = append(lines, ResponseDiagnosticLine{
+					Path:   span.Path,
+					number: span.Start.Line,
+					Source: strings.Join(sourceLines, "\n"),
+					Start:  span.Start.Column - 1 + offset,
+					End:    span.End.Column + offset,
+				})
+			}
 
 			responseDiagnostics = append(responseDiagnostics, ResponseDiagnostic{
 				Locations: spans,
+				Lines:     lines,
 				Message:   item.String(),
 			})
 		}
 
-		return &CompileResponse{
-			CompileResponseFailure: &CompileResponseFailure{Diagnostics: responseDiagnostics},
-		}, nil
+		return &CompileResponse{Diagnostics: responseDiagnostics}, nil
 	} else {
 		codegen := codegen.NewCodegen(db, "index.js", codegen.Options{
 			Module:    true,
@@ -121,9 +175,7 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 			return nil, err
 		}
 
-		return &CompileResponse{
-			CompileResponseSuccess: &CompileResponseSuccess{Executable: script},
-		}, nil
+		return &CompileResponse{Executable: script}, nil
 	}
 }
 

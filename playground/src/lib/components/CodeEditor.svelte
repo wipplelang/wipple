@@ -27,8 +27,9 @@
         code: string;
         diagnostic?: {
             value: any;
-            stale: boolean;
-            onclose: () => void;
+            hideWidget?: boolean;
+            stale?: boolean;
+            onclose?: () => void;
         };
         padding?: string;
     }
@@ -431,7 +432,7 @@
             pos = editorView.state.doc.line(diagnosticLine!).to;
         } catch {
             // Position no longer valid; close the diagnostic
-            onclose();
+            onclose?.();
             return [];
         }
 
@@ -446,14 +447,18 @@
 
                           const decoration = markRange(start.index, end.index, () =>
                               markDecoration(
-                                  `rounded-[6px] ring-[1.5px] ${index === 0 ? "underline [text-decoration-skip-ink:none] decoration-wavy decoration-blue-500 ring-blue-500/50 bg-blue-500/15 dark:bg-blue-500/20" : "ring-blue-500/20 bg-blue-500/10 dark:bg-blue-500/5 "}`,
+                                  `rounded-[6px] ring-[1.5px] ${index === 0 && !diagnostic?.hideWidget ? "underline [text-decoration-skip-ink:none] decoration-wavy decoration-blue-500 ring-blue-500/50 bg-blue-500/15 dark:bg-blue-500/20" : "ring-blue-500/20 bg-blue-500/10 dark:bg-blue-500/5 "}`,
                               ),
                           );
 
                           return [decoration];
                       }),
                   ),
-            EditorView.decorations.of(RangeSet.of([blockDecoration(diagnosticWidget).range(pos)])),
+            diagnostic?.hideWidget
+                ? []
+                : EditorView.decorations.of(
+                      RangeSet.of([blockDecoration(diagnosticWidget).range(pos)]),
+                  ),
         ];
     };
 
