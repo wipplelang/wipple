@@ -1,0 +1,3 @@
+{
+    "wipple.lspArgs": ["--lib", "${workspaceFolder}/library/src/foundation"]
+}

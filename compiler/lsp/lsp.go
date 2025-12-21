@@ -1,6 +1,7 @@
 package lsp
 
 import (
+	"fmt"
 	"net/url"
 	"path/filepath"
 	"slices"
@@ -25,14 +26,39 @@ import (
 var (
 	handler       protocol.Handler
 	workspacePath = ""
+	paths         = map[string]protocol.DocumentUri{}
 	sources       = map[protocol.DocumentUri]string{}
+	rootDb        *database.Db
+	root          *driver.RootNode
 	dbs           = map[protocol.DocumentUri]*database.Db{}
 
 	tokenTypes = []string{"type", "interface", "typeParameter", "function"}
 )
 
-func Run() error {
+type Options struct {
+	Lib []string
+}
+
+func Run(options Options) error {
 	commonlog.Configure(2, nil)
+
+	database.LspEnabled = true
+
+	rootDb, root = driver.MakeRoot()
+
+	switch len(options.Lib) {
+	case 0:
+		break
+	case 1:
+		layer, err := driver.ReadLayers(rootDb, options.Lib[0], "")
+		if err != nil {
+			return err
+		}
+
+		driver.Compile(rootDb, root, layer.Files)
+	default:
+		return fmt.Errorf("can only specify `--lib` once")
+	}
 
 	handler = protocol.Handler{
 		Initialize:                     initialize,
@@ -113,7 +139,8 @@ func update(context *glsp.Context, uri protocol.DocumentUri) {
 
 	filter := nodeFilter(uri)
 
-	db, root := driver.MakeRoot()
+	db := database.NewDb(rootDb)
+	root := driver.CloneRoot(root)
 
 	// TODO: Support multiple files
 	f, err := syntax.Parse(db, path(uri), source, file.ParseFile)
@@ -413,21 +440,25 @@ func getRelated(db *database.Db, uri protocol.DocumentUri, position protocol.Pos
 	return highlights
 }
 
-func getLocations(nodes []database.Node, uri protocol.DocumentUri) []protocol.Location {
-	path := path(uri)
+func getLocations(nodes []database.Node, openUri protocol.DocumentUri) []protocol.Location {
+	openPath := path(openUri)
 
 	seen := map[database.Span]struct{}{}
 	locations := make([]protocol.Location, 0, len(nodes))
 	for _, definition := range nodes {
 		span := database.GetSpanFact(definition)
-		if span.Path != path {
-			continue // ignore definitions from other files
-		}
 
 		if _, ok := seen[span]; ok {
 			continue
 		}
 		seen[span] = struct{}{}
+
+		var uri protocol.DocumentUri
+		if span.Path == openPath {
+			uri = openUri
+		} else {
+			uri = protocol.DocumentUri((&url.URL{Scheme: "file", Path: span.Path}).String())
+		}
 
 		locations = append(locations, protocol.Location{
 			URI:   uri,

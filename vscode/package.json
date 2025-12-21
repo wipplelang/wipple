@@ -38,15 +38,12 @@
             }
         ],
         "configuration": {
-            "wippleLanguageServer.trace.server": {
-                "scope": "window",
-                "type": "string",
-                "enum": [
-                    "off",
-                    "messages",
-                    "verbose"
-                ],
-                "default": "verbose"
+            "wipple.lspArgs": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                },
+                "default": []
             }
         }
     },

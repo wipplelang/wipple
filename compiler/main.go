@@ -108,16 +108,14 @@ func (cmd *FormatCmd) Run(ctx *Context) error {
 }
 
 type LspCmd struct {
-	Stdio bool
+	Stdio bool     `required:""`
+	Lib   []string `type:"path"`
 }
 
 func (cmd *LspCmd) Run(ctx *Context) error {
-	if !cmd.Stdio {
-		return fmt.Errorf("expected --stdio")
-	}
-
-	database.LspEnabled = true
-	return lsp.Run()
+	return lsp.Run(lsp.Options{
+		Lib: cmd.Lib,
+	})
 }
 
 type ServerCmd struct {
@@ -185,71 +183,36 @@ func compile(cmd *CompileCmd, run bool) (string, string, error) {
 		panic(err)
 	}
 
-	readFile := func(path string) (*file.FileNode, error) {
-		source, err := os.ReadFile(path)
-		if err != nil {
-			return nil, err
-		}
-
-		file, _ := syntax.Parse(db, path, string(source), file.ParseFile)
-		return file, nil
-	}
-
-	type layer struct {
-		name  string
-		files []*file.FileNode
-	}
-
-	layers := make([]layer, 0, len(cmd.Lib)+1)
+	layers := make([]driver.Layer, 0, len(cmd.Lib)+1)
 	for _, path := range cmd.Lib {
-		path, err = filepath.Rel(cwd, path)
+		layer, err := driver.ReadLayers(db, path, cwd)
 		if err != nil {
 			return "", "", err
 		}
-
-		entries, err := os.ReadDir(path)
-		if err != nil {
-			return "", "", err
-		}
-
-		files := make([]*file.FileNode, 0, len(entries))
-		for _, entry := range entries {
-			if !entry.IsDir() && filepath.Ext(entry.Name()) == ".wipple" {
-				file, err := readFile(filepath.Join(path, entry.Name()))
-				if err != nil {
-					return "", "", err
-				}
-
-				if file != nil {
-					files = append(files, file)
-				}
-			}
-		}
-
-		layers = append(layers, layer{name: path, files: files})
+		layers = append(layers, layer)
 	}
 
-	var files layer
-	files.files = make([]*file.FileNode, 0, len(cmd.Paths))
+	var files driver.Layer
+	files.Files = make([]*file.FileNode, 0, len(cmd.Paths))
 	for i, path := range cmd.Paths {
 		path, err := filepath.Rel(cwd, path)
 		if err != nil {
 			return "", "", err
 		}
 
-		file, err := readFile(path)
+		file, err := driver.ReadFile(db, path)
 		if err != nil {
 			return "", "", err
 		}
 
 		if file != nil {
 			if i > 0 {
-				files.name += ", "
+				files.Name += ", "
 			}
 
-			files.name += path
+			files.Name += path
 
-			files.files = append(files.files, file)
+			files.Files = append(files.Files, file)
 		}
 	}
 
@@ -291,13 +254,13 @@ func compile(cmd *CompileCmd, run bool) (string, string, error) {
 	}
 
 	for _, layer := range layers {
-		_, err = fmt.Fprintf(os.Stderr, "Compiling %s...", layer.name)
+		_, err = fmt.Fprintf(os.Stderr, "Compiling %s...", layer.Name)
 		if err != nil {
 			panic(err)
 		}
 
 		start := time.Now()
-		driver.Compile(db, root, layer.files)
+		driver.Compile(db, root, layer.Files)
 		duration := time.Since(start)
 
 		_, err = fmt.Fprintf(os.Stderr, " done (%dms)\n", duration.Milliseconds())

@@ -7,9 +7,16 @@ export const activate = (context) => {
     let output = vscode.window.createOutputChannel("Wipple");
     output.appendLine("Wipple extension initialized");
 
+    const args = (vscode.workspace.getConfiguration("wipple").get("lspArgs") ?? []).map((arg) =>
+        arg.replaceAll(
+            "${workspaceFolder}",
+            vscode.workspace.workspaceFolders?.[0]?.uri.fsPath ?? "",
+        ),
+    );
+
     const serverOptions = {
         command: "wipple",
-        args: ["lsp"],
+        args: ["lsp", ...args],
         transport: TransportKind.stdio,
     };
 
