@@ -169,7 +169,7 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 
 	switch constraint := constraint.(type) {
 	case *typecheck.GroupConstraint:
-		if node == nil {
+		if node == nil || database.LspEnabled {
 			return false
 		}
 
