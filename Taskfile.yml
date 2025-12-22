@@ -55,9 +55,9 @@ tasks:
     cmds:
       - node build.js
   serve:server:
-    dir: .
+    dir: compiler
     cmds:
-      - go run ./compiler -- server
+      - go run github.com/air-verse/air@latest -- server
     env:
       PORT: "3000"
       LIBRARY_URL: "http://localhost:3001"
