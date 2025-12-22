@@ -22,7 +22,7 @@ func (node *HiddenNode) GetFacts() *Facts {
 }
 
 var hiddenNodes = map[reflect.Type]struct{}{
-	reflect.TypeOf(&HiddenNode{}): {},
+	reflect.TypeFor[*HiddenNode](): {},
 }
 
 func HideNode[T Node]() {

@@ -203,6 +203,7 @@ func InstantiateType(solver *Solver, ty Type, source database.Node, substitution
 					Facts: database.NewFacts(database.GetSpanFact(parameter)),
 				}
 				solver.Db.Register(substitution)
+				database.SetParentFact(substitution, database.GetParentFact(parameter))
 				database.SetFact(substitution, TypedFact{})
 
 				database.SetFact(substitution, InstantiatedFact{
@@ -231,6 +232,7 @@ func GetOrInstantiate(solver *Solver, node database.Node, source database.Node, 
 		Facts: database.NewFacts(database.GetSpanFact(node)),
 	}
 	solver.Db.Register(instantiated)
+	database.SetParentFact(instantiated, database.GetParentFact(node))
 	database.SetFact(instantiated, TypedFact{})
 
 	database.SetFact(instantiated, InstantiatedFact{

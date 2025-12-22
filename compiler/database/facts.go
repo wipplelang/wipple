@@ -53,6 +53,27 @@ func GetSpanFact(node Node) Span {
 	return Span(span)
 }
 
+type ParentFact struct {
+	Parent Node
+}
+
+func (fact ParentFact) String() string {
+	return ""
+}
+
+func SetParentFact(node Node, parent Node) {
+	SetFact(node, ParentFact{Parent: parent})
+}
+
+func GetParentFact(node Node) Node {
+	fact, ok := GetFact[ParentFact](node)
+	if !ok {
+		return nil
+	}
+
+	return fact.Parent
+}
+
 func (facts *Facts) String() string {
 	s := ""
 
@@ -68,8 +89,11 @@ func (facts *Facts) String() string {
 	for _, key := range keys {
 		value := (*facts)[key]
 
-		if _, ok := value.(fmt.Stringer); ok {
-			s += fmt.Sprintf("  %v\n", value)
+		if stringer, ok := value.(fmt.Stringer); ok {
+			valueString := stringer.String()
+			if valueString != "" {
+				s += fmt.Sprintf("  %v\n", value)
+			}
 		} else {
 			s += fmt.Sprintf("  %s(%v)\n", reflect.TypeOf(value).Name(), value)
 		}

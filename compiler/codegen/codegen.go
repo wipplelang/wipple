@@ -152,7 +152,7 @@ func (c *Codegen) Error(node database.Node) error {
 func (c *Codegen) ty(ty typecheck.Type, root bool) (any, error) {
 	// Get the latest type
 	if node, ok := ty.(database.Node); ok {
-		if fact, ok := database.GetFact[typecheck.TypedFact](node); ok && fact.Group != nil {
+		if fact, ok := database.GetFact[typecheck.TypedFact](node); ok && fact.Group != nil && len(fact.Group.Types) > 0 {
 			ty = fact.Group.Types[0]
 		}
 	}

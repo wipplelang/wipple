@@ -55,6 +55,7 @@ func init() {
 	registerNames()
 	registerPatterns()
 	registerPlaceholders()
+	registerFunctions()
 	registerStructures()
 	registerSyntax()
 	registerTypeDefinitions()

@@ -51,6 +51,7 @@ type Visit interface {
 type Visitor struct {
 	Db                *database.Db
 	Scopes            []Scope
+	CurrentNode       database.Node
 	CurrentDefinition *CurrentDefinition
 	CurrentMatch      *CurrentMatch
 	Queue             Queue
@@ -88,7 +89,11 @@ func (visitor *Visitor) Visit(node database.Node) {
 	visitor.Db.Register(node)
 
 	if visit, ok := node.(Visit); ok {
+		parent := visitor.CurrentNode
+		database.SetParentFact(node, parent)
+		visitor.CurrentNode = node
 		visit.Visit(visitor)
+		visitor.CurrentNode = parent
 	} else {
 		panic(fmt.Sprintf("node is missing `Visit` method: %s", database.DisplayNode(node)))
 	}

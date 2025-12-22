@@ -39,6 +39,20 @@ func (render *Render) WriteNumber(n int, singular string, plural string) {
 	}
 }
 
+func (render *Render) WriteOrdinal(n int) {
+	suffix := "th"
+	switch n % 10 {
+	case 1:
+		suffix = "st"
+	case 2:
+		suffix = "nd"
+	case 3:
+		suffix = "rd"
+	}
+
+	fmt.Fprintf(&render.buf, "%d%s", n, suffix)
+}
+
 func (render *Render) WriteNode(node database.Node) {
 	fmt.Fprintf(&render.buf, "%s", database.RenderNode(node))
 }
@@ -54,7 +68,7 @@ func (render *Render) WriteCode(code string) {
 func (render *Render) WriteType(ty typecheck.Type) {
 	// Get the latest type
 	if node, ok := ty.(database.Node); ok {
-		if fact, ok := database.GetFact[typecheck.TypedFact](node); ok && fact.Group != nil {
+		if fact, ok := database.GetFact[typecheck.TypedFact](node); ok && fact.Group != nil && len(fact.Group.Types) > 0 {
 			ty = fact.Group.Types[0]
 		}
 	}

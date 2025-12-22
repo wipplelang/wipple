@@ -90,10 +90,12 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 	if len(feedbackItems) > 0 {
 		responseDiagnostics := make([]ResponseDiagnostic, 0, len(feedbackItems))
 		for _, item := range feedbackItems {
-			database.RemoveOverlappingNodes(item.On[1:])
-			slices.SortFunc(item.On[1:], func(left database.Node, right database.Node) int {
+			others := item.On[1:]
+			others = database.RemoveOverlappingNodes(others)
+			slices.SortFunc(others, func(left database.Node, right database.Node) int {
 				return database.CompareSpans(database.GetSpanFact(left), database.GetSpanFact(right))
 			})
+			item.On = slices.Replace(item.On, 1, len(item.On), others...)
 
 			spans := make([]database.Span, len(item.On))
 			for i, node := range item.On {
