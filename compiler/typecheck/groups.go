@@ -57,6 +57,17 @@ func (group *Group) normalize() {
 	if len(types) != len(group.Types) {
 		group.Types = types
 	}
+
+	slices.SortStableFunc(group.Trace, func(left Constraint, right Constraint) int {
+		leftNode := left.Info().Node
+		rightNode := right.Info().Node
+
+		if leftNode == nil || rightNode == nil {
+			return 0
+		}
+
+		return database.CompareSpans(database.GetSpanFact(leftNode), database.GetSpanFact(rightNode))
+	})
 }
 
 func (group *Group) String() string {
