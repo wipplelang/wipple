@@ -26,15 +26,15 @@ func (c *InstantiateConstraint) String() string {
 	return "InstantiateConstraint(...)"
 }
 
-func (c *InstantiateConstraint) Instantiate(solver *Solver, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
+func (c *InstantiateConstraint) Instantiate(solver *Solver, source database.Node, definition database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
 	newReplacements := make(map[database.Node]database.Node, len(c.Instantiation.Replacements))
 	for node, replacement := range c.Instantiation.Replacements {
-		newReplacements[node] = GetOrInstantiate(solver, replacement, source, replacements)
+		newReplacements[node] = GetOrInstantiate(solver, replacement, definition, source, replacements)
 	}
 
 	newSubstitutions := make(map[database.Node]Type, len(*c.Instantiation.Substitutions))
 	for node, substitution := range *c.Instantiation.Substitutions {
-		newSubstitutions[node] = InstantiateType(solver, substitution, source, substitutions, replacements)
+		newSubstitutions[node] = InstantiateType(solver, substitution, definition, source, substitutions, replacements)
 	}
 
 	return NewInstantiateConstraint(Instantiation{
@@ -59,7 +59,7 @@ func (c *InstantiateConstraint) Run(solver *Solver) bool {
 		}
 
 		if !c.Instantiation.KeepGeneric {
-			constraint = constraint.Instantiate(solver, c.Instantiation.Source, c.Instantiation.Replacements, c.Instantiation.Substitutions)
+			constraint = constraint.Instantiate(solver, c.Instantiation.Definition, c.Instantiation.Source, c.Instantiation.Replacements, c.Instantiation.Substitutions)
 		}
 
 		constraints = append(constraints, constraint)

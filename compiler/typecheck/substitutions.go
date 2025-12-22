@@ -25,10 +25,10 @@ func ApplySubstitutions(s *map[database.Node]Type, solver *Solver) *map[database
 	return &applied
 }
 
-func InstantiateSubstitutions(solver *Solver, s *map[database.Node]Type, source database.Node, substitutions *map[database.Node]Type, replacements map[database.Node]database.Node) *map[database.Node]Type {
+func InstantiateSubstitutions(solver *Solver, s *map[database.Node]Type, definition database.Node, source database.Node, substitutions *map[database.Node]Type, replacements map[database.Node]database.Node) *map[database.Node]Type {
 	instantiated := map[database.Node]Type{}
 	for parameter, ty := range *s {
-		instantiated[parameter] = InstantiateType(solver, ty, source, substitutions, replacements)
+		instantiated[parameter] = InstantiateType(solver, ty, definition, source, substitutions, replacements)
 	}
 
 	return &instantiated

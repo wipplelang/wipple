@@ -188,11 +188,6 @@ WildcardPatternNode `_` (infer-constraint.wipple:11:1)
 AssignmentNode `_` (infer-constraint.wipple:11:1)
   at infer-constraint.wipple:11:1
 
-AnnotateExpressionNode `add 1 2` (infer-constraint.wipple:11:5)
-  at infer-constraint.wipple:11:5
-  is an expression
-  has type `String`
-
 VariableExpressionNode `add` (infer-constraint.wipple:11:6)
   at infer-constraint.wipple:11:6
   is an expression
@@ -411,11 +406,6 @@ VariablePatternNode `output` (infer-constraint.wipple:20:1)
 AssignmentNode `output` (infer-constraint.wipple:20:1)
   at infer-constraint.wipple:20:1
 
-AnnotateExpressionNode `add-infer 1 2` (infer-constraint.wipple:20:10)
-  at infer-constraint.wipple:20:10
-  is an expression
-  has type `Number` or `String`
-
 VariableExpressionNode `add-infer` (infer-constraint.wipple:20:11)
   at infer-constraint.wipple:20:11
   is an expression
@@ -464,14 +454,15 @@ Feedback:
   `output` (infer-constraint.wipple:20:1) is a `Number` or a `String`, but it can only be one of
   these.
   
-  `output` (infer-constraint.wipple:20:1) must be the same type as `add-infer 1 2` (infer-
-  constraint.wipple:20:10), `add-infer 1 2` (infer-constraint.wipple:20:11), and `String` (infer-
-  constraint.wipple:20:28); double-check these.
+    -  See `Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-
+  constraint.wipple:13:1).
+  
+    -  `add-infer` (infer-constraint.wipple:20:11) explicitly requires a `Number`.
+  
+    -  `add-infer` (infer-constraint.wipple:20:11) requires `Add-Infer Number Number Number`.
   
     -  See `add-infer :: left right -> sum where (Add-Infer left right sum)` (infer-
   constraint.wipple:17:1).
-  
-    -  `add-infer` (infer-constraint.wipple:20:11) requires `Add-Infer Number Number Number`.
   
     -  Explicitly annotated as a `String`.
 

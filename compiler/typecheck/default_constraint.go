@@ -19,9 +19,9 @@ func (c *DefaultConstraint) String() string {
 	return fmt.Sprintf("DefaultConstraint(%v :: %v)", database.DisplayNode(c.info.Node), DisplayType(c.Ty, true))
 }
 
-func (c *DefaultConstraint) Instantiate(solver *Solver, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
-	node := GetOrInstantiate(solver, c.info.Node, source, replacements)
-	ty := InstantiateType(solver, c.Ty, source, substitutions, replacements)
+func (c *DefaultConstraint) Instantiate(solver *Solver, source database.Node, definition database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
+	node := GetOrInstantiate(solver, c.info.Node, definition, source, replacements)
+	ty := InstantiateType(solver, c.Ty, definition, source, substitutions, replacements)
 
 	return NewDefaultConstraint(node, ty)
 }

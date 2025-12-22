@@ -3,6 +3,7 @@ package feedback
 import (
 	"slices"
 	"wipple/database"
+	"wipple/nodes/types"
 	"wipple/queries"
 	"wipple/typecheck"
 )
@@ -47,22 +48,47 @@ func registerTypes() {
 				render.WriteString(", ")
 			}
 
-			render.WriteNode(data.From)
-			render.WriteString(" is a ")
-
-			tys := make([]func(), 0, len(data.Types))
-			for _, ty := range data.Types {
-				tys = append(tys, func() {
-					render.WriteType(ty)
-				})
+			var typeConstraint *typecheck.TypeConstraint
+			for _, constraint := range data.Trace {
+				if c, ok := constraint.(*typecheck.TypeConstraint); ok {
+					typeConstraint = c
+					break
+				}
 			}
-			render.WriteList(tys, "or a", 3)
 
-			render.WriteString(", but it can only be one of these.")
+			if typeConstraint != nil && len(data.Nodes) == 2 && len(data.Types) == 2 {
+				render.WriteNode(data.From)
+				render.WriteString(" isn't a ")
+				render.WriteType(data.Types[1])
+				render.WriteString(".")
+				render.WriteBreak()
+			} else {
+				render.WriteNode(data.From)
+				render.WriteString(" is a ")
 
-			nodes := make([]func(), 0, len(data.Nodes))
+				tys := make([]func(), 0, len(data.Types))
+				for _, ty := range data.Types {
+					tys = append(tys, func() {
+						render.WriteType(ty)
+					})
+				}
+				render.WriteList(tys, "or a", 3)
+
+				render.WriteString(", but it can only be one of these.")
+			}
+
+			var nodes []func()
+			sources := map[string]struct{}{
+				database.GetSpanFact(data.From).Source: {},
+			}
 			for _, related := range data.Nodes {
-				if !database.IsHiddenNode(related) {
+				if _, ok := database.GetFact[types.IsTypeFact](related); !ok && !database.IsHiddenNode(related) {
+					source := database.GetSpanFact(related).Source
+					if _, ok := sources[source]; ok {
+						continue
+					}
+					sources[source] = struct{}{}
+
 					nodes = append(nodes, func() {
 						render.WriteNode(related)
 					})

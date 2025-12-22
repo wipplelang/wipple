@@ -61,8 +61,9 @@ func (fact TypedFact) String() string {
 }
 
 type InstantiatedFact struct {
-	From   database.Node
-	Source database.Node
+	Definition database.Node
+	From       database.Node
+	Source     database.Node
 }
 
 type ConstructedType struct {
@@ -189,11 +190,11 @@ func TypesAreEqual(left Type, right Type) bool {
 	return false
 }
 
-func InstantiateType(solver *Solver, ty Type, source database.Node, substitutions *map[database.Node]Type, replacements map[database.Node]database.Node) Type {
+func InstantiateType(solver *Solver, ty Type, definition database.Node, source database.Node, substitutions *map[database.Node]Type, replacements map[database.Node]database.Node) Type {
 	return TraverseType(ty, func(ty Type) (Type, bool) {
 		switch ty := ty.(type) {
 		case database.Node:
-			return GetOrInstantiate(solver, ty, source, replacements), false
+			return GetOrInstantiate(solver, ty, definition, source, replacements), false
 		case *ConstructedType:
 			if ty.Instantiate != nil {
 				parameter := ty.Instantiate
@@ -210,8 +211,9 @@ func InstantiateType(solver *Solver, ty Type, source database.Node, substitution
 				database.SetFact(substitution, TypedFact{})
 
 				database.SetFact(substitution, InstantiatedFact{
-					From:   parameter,
-					Source: source,
+					Definition: definition,
+					From:       parameter,
+					Source:     source,
 				})
 
 				(*substitutions)[parameter] = substitution
@@ -226,7 +228,7 @@ func InstantiateType(solver *Solver, ty Type, source database.Node, substitution
 	})
 }
 
-func GetOrInstantiate(solver *Solver, node database.Node, source database.Node, replacements map[database.Node]database.Node) database.Node {
+func GetOrInstantiate(solver *Solver, node database.Node, definition database.Node, source database.Node, replacements map[database.Node]database.Node) database.Node {
 	if replacement, ok := replacements[node]; ok {
 		return replacement
 	}
@@ -239,8 +241,9 @@ func GetOrInstantiate(solver *Solver, node database.Node, source database.Node, 
 	database.SetFact(instantiated, TypedFact{})
 
 	database.SetFact(instantiated, InstantiatedFact{
-		From:   node,
-		Source: source,
+		Definition: definition,
+		From:       node,
+		Source:     source,
 	})
 
 	replacements[node] = instantiated

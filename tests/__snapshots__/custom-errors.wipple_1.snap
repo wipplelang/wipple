@@ -356,6 +356,8 @@ Feedback:
   
     -  See `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1).
   
+    -  `instance (Add () right sum)` (custom-errors.wipple:8:1) explicitly requires a `()`.
+  
     -  `Add` (custom-errors.wipple:17:5) requires `Add () Number _`.
   
     -  Explicitly annotated as a `()`.

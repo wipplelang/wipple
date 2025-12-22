@@ -20,9 +20,9 @@ func (c *GroupConstraint) String() string {
 	return fmt.Sprintf("GroupConstraint(%v == %v)", database.DisplayNode(c.Left), database.DisplayNode(c.Right))
 }
 
-func (c *GroupConstraint) Instantiate(solver *Solver, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
-	left := GetOrInstantiate(solver, c.Left, source, replacements)
-	right := GetOrInstantiate(solver, c.Right, source, replacements)
+func (c *GroupConstraint) Instantiate(solver *Solver, definition database.Node, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
+	left := GetOrInstantiate(solver, c.Left, definition, source, replacements)
+	right := GetOrInstantiate(solver, c.Right, definition, source, replacements)
 
 	constraint := NewGroupConstraint(left, right)
 	constraint.info.Node = source

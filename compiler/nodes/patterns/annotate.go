@@ -51,6 +51,8 @@ func ParseAnnotatePattern(parser *syntax.Parser) (*AnnotatePatternNode, *syntax.
 }
 
 func (node *AnnotatePatternNode) Visit(visitor *visit.Visitor) {
+	database.HideNode[*AnnotatePatternNode]()
+
 	visitPattern(visitor, node)
 	node.matching = visitor.CurrentMatch.Node
 

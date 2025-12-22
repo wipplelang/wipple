@@ -122,11 +122,6 @@ CallExpressionNode `Describe (_` (recursive-bounds.wipple:9:1)
   is an expression
   has type `String`
 
-AnnotateExpressionNode `_` (recursive-bounds.wipple:9:10)
-  at recursive-bounds.wipple:9:10
-  is an expression
-  has type `Maybe String`
-
 PlaceholderExpressionNode `_` (recursive-bounds.wipple:9:11)
   at recursive-bounds.wipple:9:11
   is an expression
@@ -159,11 +154,6 @@ CallExpressionNode `Describe (_` (recursive-bounds.wipple:10:1)
   at recursive-bounds.wipple:10:1
   is an expression
   has type `String`
-
-AnnotateExpressionNode `_` (recursive-bounds.wipple:10:10)
-  at recursive-bounds.wipple:10:10
-  is an expression
-  has type `Maybe Number`
 
 PlaceholderExpressionNode `_` (recursive-bounds.wipple:10:11)
   at recursive-bounds.wipple:10:11

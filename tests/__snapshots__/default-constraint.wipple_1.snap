@@ -243,11 +243,6 @@ WildcardPatternNode `_` (default-constraint.wipple:15:1)
 AssignmentNode `_` (default-constraint.wipple:15:1)
   at default-constraint.wipple:15:1
 
-AnnotateExpressionNode `collect "hi"` (default-constraint.wipple:15:5)
-  at default-constraint.wipple:15:5
-  is an expression
-  has type `Set String`
-
 VariableExpressionNode `collect` (default-constraint.wipple:15:6)
   at default-constraint.wipple:15:6
   is an expression

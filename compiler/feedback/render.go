@@ -199,7 +199,7 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 			return true
 		}
 	case *typecheck.TypeConstraint:
-		if node == nil || database.IsHiddenNode(node) || constraint.Type.Instantiate != nil {
+		if node == nil || constraint.Type.Instantiate != nil {
 			return false
 		}
 
@@ -208,9 +208,18 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 		// Don't repeat the type if it is from the source code
 		if span.Source == typecheck.DisplayType(constraint.Type, true) {
 			render.WriteString(prefix)
-			render.WriteString("Explicitly annotated as a ")
-			render.WriteType(constraint.Type)
-			render.WriteString(".")
+
+			if fact, ok := database.GetFact[typecheck.InstantiatedFact](node); ok {
+				render.WriteNode(fact.Definition)
+				render.WriteString(" explicitly requires a ")
+				render.WriteType(constraint.Type)
+				render.WriteString(".")
+			} else {
+				render.WriteString("Explicitly annotated as a ")
+				render.WriteType(constraint.Type)
+				render.WriteString(".")
+			}
+
 		} else {
 			render.WriteString(prefix)
 			render.WriteNode(node)

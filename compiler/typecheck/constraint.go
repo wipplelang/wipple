@@ -8,7 +8,7 @@ import (
 type Constraint interface {
 	fmt.Stringer
 	Info() *ConstraintInfo
-	Instantiate(solver *Solver, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint
+	Instantiate(solver *Solver, definition database.Node, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint
 	Run(solver *Solver) bool
 }
 

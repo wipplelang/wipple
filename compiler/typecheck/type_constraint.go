@@ -19,9 +19,9 @@ func (c *TypeConstraint) String() string {
 	return fmt.Sprintf("TypeConstraint(%v :: %v)", database.DisplayNode(c.info.Node), DisplayType(c.Type, true))
 }
 
-func (c *TypeConstraint) Instantiate(solver *Solver, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
-	node := GetOrInstantiate(solver, c.info.Node, source, replacements)
-	ty := InstantiateType(solver, c.Type, source, substitutions, replacements)
+func (c *TypeConstraint) Instantiate(solver *Solver, definition database.Node, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
+	node := GetOrInstantiate(solver, c.info.Node, definition, source, replacements)
+	ty := InstantiateType(solver, c.Type, definition, source, substitutions, replacements)
 
 	switch ty := ty.(type) {
 	case database.Node:

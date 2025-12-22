@@ -24,11 +24,11 @@ func (c *BoundConstraint) String() string {
 	return fmt.Sprintf("BoundConstraint(%v)", DisplayUnresolvedBound(c.Bound))
 }
 
-func (c *BoundConstraint) Instantiate(solver *Solver, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
+func (c *BoundConstraint) Instantiate(solver *Solver, definition database.Node, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {
 	constraint := NewBoundConstraint(c.info.Node, UnresolvedBound{
 		Source:        source,
 		Trait:         c.Bound.Trait,
-		Substitutions: InstantiateSubstitutions(solver, c.Bound.Substitutions, source, substitutions, replacements),
+		Substitutions: InstantiateSubstitutions(solver, c.Bound.Substitutions, definition, source, substitutions, replacements),
 		TraitName:     c.Bound.TraitName,
 		Optional:      c.Bound.Optional,
 	}, c.GetDefinitionConstraints)
@@ -122,7 +122,7 @@ func (c *BoundConstraint) Run(solver *Solver) bool {
 			instanceInferred := map[database.Node]Type{}
 			for parameter, substitution := range *instance.Substitutions {
 				if group.Instantiate {
-					substitution = InstantiateType(solver, substitution, c.info.Node, &substitutions, replacements)
+					substitution = InstantiateType(solver, substitution, instance.Node, c.info.Node, &substitutions, replacements)
 				}
 
 				if _, ok := database.GetFact[InferredParameterFact](parameter); ok {

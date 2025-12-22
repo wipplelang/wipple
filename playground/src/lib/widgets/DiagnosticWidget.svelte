@@ -20,7 +20,7 @@
 
     let { diagnostic, stale, onclose }: Props = $props();
 
-    const [title, description, ...extra] = diagnostic.message.split("\n\n");
+    const [title, ...extra] = diagnostic.message.split("\n\n");
 
     let showExtra = $state(false);
 </script>
@@ -52,15 +52,15 @@
                 <Markdown content={title} />
             </div>
 
-            {#if description}
-                <Markdown content={description} />
+            {#if extra.length === 1}
+                <Markdown content={extra[0]} />
             {/if}
 
             {#if diagnostic.primaryLines != null && diagnostic.primaryLines.length > 0}
                 {@render lines(diagnostic.primaryLines)}
             {/if}
 
-            {#if extra.length > 0}
+            {#if extra.length > 1}
                 <ToolbarButton
                     class="text-background-button -mx-[4px] self-start bg-transparent px-[4px]"
                     onclick={() => (showExtra = !showExtra)}

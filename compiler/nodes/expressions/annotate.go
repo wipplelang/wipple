@@ -49,6 +49,8 @@ func ParseAnnotateExpression(parser *syntax.Parser) (*AnnotateExpressionNode, *s
 }
 
 func (node *AnnotateExpressionNode) Visit(visitor *visit.Visitor) {
+	database.HideNode[*AnnotateExpressionNode]()
+
 	visitExpression(visitor, node)
 
 	visitor.Visit(node.Expression)
