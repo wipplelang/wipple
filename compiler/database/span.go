@@ -100,10 +100,25 @@ func SortByProximity(nodes []Node, source Node) {
 
 func RemoveOverlappingSpans(spans []Span) []Span {
 	return slices.DeleteFunc(spans, func(span Span) bool {
-		return slices.ContainsFunc(spans, func(other Span) bool {
-			return span.Path == other.Path &&
-				span.Start.Index < other.Start.Index &&
-				span.End.Index > other.End.Index
-		})
+		return hasOverlappingSpan(span, spans)
+	})
+}
+
+func RemoveOverlappingNodes(nodes []Node) []Node {
+	spans := make([]Span, len(nodes))
+	for i, node := range nodes {
+		spans[i] = GetSpanFact(node)
+	}
+
+	return slices.DeleteFunc(nodes, func(node Node) bool {
+		return hasOverlappingSpan(GetSpanFact(node), spans)
+	})
+}
+
+func hasOverlappingSpan(span Span, spans []Span) bool {
+	return slices.ContainsFunc(spans, func(other Span) bool {
+		return span.Path == other.Path &&
+			span.Start.Index < other.Start.Index &&
+			span.End.Index > other.End.Index
 	})
 }

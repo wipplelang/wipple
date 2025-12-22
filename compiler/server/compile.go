@@ -12,6 +12,7 @@ import (
 	"wipple/feedback"
 	"wipple/nodes/file"
 	"wipple/syntax"
+	"wipple/visit"
 )
 
 type CompileRequest struct {
@@ -31,9 +32,10 @@ type CompileResponse struct {
 }
 
 type ResponseDiagnostic struct {
-	Locations []database.Span          `json:"locations"`
-	Lines     []ResponseDiagnosticLine `json:"lines"`
-	Message   string                   `json:"message"`
+	Locations      []database.Span          `json:"locations"`
+	PrimaryLines   []ResponseDiagnosticLine `json:"primaryLines"`
+	Message        string                   `json:"message"`
+	SecondaryLines []ResponseDiagnosticLine `json:"secondaryLines"`
 }
 
 type ResponseDiagnosticLocation struct {
@@ -48,6 +50,7 @@ type ResponseDiagnosticLine struct {
 	Source string `json:"source"`
 	Start  int    `json:"start"`
 	End    int    `json:"end"`
+	node   database.Node
 }
 
 const defaultPath = "input"
@@ -87,67 +90,51 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 	if len(feedbackItems) > 0 {
 		responseDiagnostics := make([]ResponseDiagnostic, 0, len(feedbackItems))
 		for _, item := range feedbackItems {
-			spans := make([]database.Span, 0, len(item.On))
-			for _, node := range item.On {
-				spans = append(spans, database.GetSpanFact(node))
+			database.RemoveOverlappingNodes(item.On[1:])
+			slices.SortFunc(item.On[1:], func(left database.Node, right database.Node) int {
+				return database.CompareSpans(database.GetSpanFact(left), database.GetSpanFact(right))
+			})
+
+			spans := make([]database.Span, len(item.On))
+			for i, node := range item.On {
+				spans[i] = database.GetSpanFact(node)
 			}
-			database.RemoveOverlappingSpans(spans)
-			slices.SortFunc(spans[1:], database.CompareSpans)
 
-			var lines []ResponseDiagnosticLine
-			for _, span := range spans {
-				if span.Path == defaultPath || slices.ContainsFunc(lines, func(line ResponseDiagnosticLine) bool {
-					return line.Path == span.Path && line.number == span.Start.Line
-				}) {
-					continue
+			getPriority := func(node database.Node) int {
+				definition, isDefinition := database.GetFact[visit.DefinedFact](node)
+				if !isDefinition {
+					return 0
 				}
 
-				source, ok := database.ContainsNode(db, func(node database.Node) (string, bool) {
-					if _, ok := node.(*file.FileNode); !ok {
-						return "", false
-					}
-
-					fileSpan := database.GetSpanFact(node)
-					if fileSpan.Path == span.Path {
-						return fileSpan.Source, true
-					}
-
-					return "", false
-				})
-
-				if !ok {
-					continue
+				switch definition.Definition.(type) {
+				case *visit.ConstantDefinition:
+					return -3
+				case *visit.TraitDefinition:
+					return -2
+				case *visit.InstanceDefinition:
+					return -1
+				default:
+					return 0
 				}
-
-				sourceLines := strings.Split(source, "\n")[span.Start.Line-1 : span.End.Line]
-				trimmedLines := 0
-				for {
-					if strings.HasPrefix(strings.TrimLeft(sourceLines[0], " "), "--") {
-						sourceLines = sourceLines[1:]
-						trimmedLines++
-					} else {
-						break
-					}
-				}
-
-				offset := 0
-				for i := 0; i < span.End.Line-span.Start.Line-trimmedLines; i++ {
-					offset += len(sourceLines[i]) + 1
-				}
-
-				lines = append(lines, ResponseDiagnosticLine{
-					Path:   span.Path,
-					number: span.Start.Line,
-					Source: strings.Join(sourceLines, "\n"),
-					Start:  span.Start.Column - 1 + offset,
-					End:    span.End.Column + offset,
-				})
 			}
+
+			priorities := map[database.Node]int{}
+			highestPriority := 0
+			for _, node := range item.On[1:] {
+				priority := getPriority(node)
+				priorities[node] = priority
+				if priority < highestPriority {
+					highestPriority = priority
+				}
+			}
+
+			primaryLines, secondaryLines := collectLines(db, item.On[1:])
 
 			responseDiagnostics = append(responseDiagnostics, ResponseDiagnostic{
-				Locations: spans,
-				Lines:     lines,
-				Message:   item.String(),
+				Locations:      spans,
+				PrimaryLines:   primaryLines,
+				SecondaryLines: secondaryLines,
+				Message:        item.String(),
 			})
 		}
 
@@ -258,4 +245,107 @@ func compileLibrary(name string) (*database.Db, *driver.RootNode, error) {
 	db.Register(root)
 
 	return db, root, nil
+}
+
+func collectLines(db *database.Db, nodes []database.Node) ([]ResponseDiagnosticLine, []ResponseDiagnosticLine) {
+	var lines []ResponseDiagnosticLine
+	for _, node := range nodes {
+		span := database.GetSpanFact(node)
+
+		if span.Path == defaultPath || slices.ContainsFunc(lines, func(line ResponseDiagnosticLine) bool {
+			return line.Path == span.Path && line.number == span.Start.Line
+		}) {
+			continue
+		}
+
+		source, ok := database.ContainsNode(db, func(node database.Node) (string, bool) {
+			if _, ok := node.(*file.FileNode); !ok {
+				return "", false
+			}
+
+			fileSpan := database.GetSpanFact(node)
+			if fileSpan.Path == span.Path {
+				return fileSpan.Source, true
+			}
+
+			return "", false
+		})
+
+		if !ok {
+			continue
+		}
+
+		sourceLines := strings.Split(source, "\n")[span.Start.Line-1 : span.End.Line]
+		trimmedLines := 0
+		for {
+			if strings.HasPrefix(strings.TrimLeft(sourceLines[0], " "), "--") {
+				sourceLines = sourceLines[1:]
+				trimmedLines++
+			} else {
+				break
+			}
+		}
+
+		offset := 0
+		for i := 0; i < span.End.Line-span.Start.Line-trimmedLines; i++ {
+			offset += len(sourceLines[i]) + 1
+		}
+
+		lines = append(lines, ResponseDiagnosticLine{
+			Path:   span.Path,
+			number: span.Start.Line,
+			Source: strings.Join(sourceLines, "\n"),
+			Start:  span.Start.Column - 1 + offset,
+			End:    span.End.Column + offset,
+			node:   node,
+		})
+	}
+
+	getPriority := func(node database.Node) int {
+		span := database.GetSpanFact(node)
+
+		// Get the definition on this line
+		if definition, ok := database.ContainsFact(db, func(definitionNode database.Node, fact visit.DefinedFact) (visit.Definition, bool) {
+			definitionSpan := database.GetSpanFact(definitionNode)
+
+			if definitionSpan.Path == span.Path && span.Start.Line >= definitionSpan.Start.Line && span.End.Line <= definitionSpan.End.Line {
+				return fact.Definition, true
+			}
+
+			return nil, false
+		}); ok {
+			switch definition.(type) {
+			case *visit.TraitDefinition:
+				return 0
+			case *visit.InstanceDefinition:
+				return 1
+			case *visit.ConstantDefinition:
+				return 2
+			}
+		}
+
+		return 3
+	}
+
+	priorities := map[database.Node]int{}
+	highestPriority := 0
+	for _, line := range lines {
+		priority := getPriority(line.node)
+		priorities[line.node] = priority
+		if priority > highestPriority {
+			highestPriority = priority
+		}
+	}
+
+	var primaryLines []ResponseDiagnosticLine
+	var secondaryLines []ResponseDiagnosticLine
+	for _, line := range lines {
+		if priorities[line.node] == highestPriority {
+			primaryLines = append(primaryLines, line)
+		} else {
+			secondaryLines = append(secondaryLines, line)
+		}
+	}
+
+	return primaryLines, secondaryLines
 }

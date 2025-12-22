@@ -25,6 +25,30 @@
     let showExtra = $state(false);
 </script>
 
+{#snippet lines(lines: any[])}
+    <div class="mb-[5px] mt-[15px] flex flex-col gap-[10px]">
+        {#each lines as line}
+            <div class="rounded-xl border-[1.5px] border-black/5">
+                <CodeEditor
+                    readOnly
+                    code={line.source}
+                    diagnostic={{
+                        value: {
+                            locations: [
+                                {
+                                    start: { index: line.start },
+                                    end: { index: line.end },
+                                },
+                            ],
+                        },
+                        hideWidget: true,
+                    }}
+                />
+            </div>
+        {/each}
+    </div>
+{/snippet}
+
 <div class="relative flex h-full w-full items-stretch justify-stretch pb-[10px]">
     <Box
         data-stale={stale || undefined}
@@ -39,28 +63,8 @@
                 <Markdown content={description} />
             {/if}
 
-            {#if diagnostic.lines != null && diagnostic.lines.length > 0}
-                <div class="mb-[5px] mt-[15px] flex flex-col gap-[10px]">
-                    {#each diagnostic.lines as line}
-                        <div class="rounded-xl border-[1.5px] border-black/5">
-                            <CodeEditor
-                                readOnly
-                                code={line.source}
-                                diagnostic={{
-                                    value: {
-                                        locations: [
-                                            {
-                                                start: { index: line.start },
-                                                end: { index: line.end },
-                                            },
-                                        ],
-                                    },
-                                    hideWidget: true,
-                                }}
-                            />
-                        </div>
-                    {/each}
-                </div>
+            {#if diagnostic.primaryLines != null && diagnostic.primaryLines.length > 0}
+                {@render lines(diagnostic.primaryLines)}
             {/if}
 
             {#if extra.length > 0}
@@ -76,7 +80,13 @@
                 </ToolbarButton>
 
                 {#if showExtra}
-                    <Markdown content={extra.join("\n\n")} />
+                    <div class="mt-[5px]">
+                        <Markdown content={extra.join("\n\n")} />
+                    </div>
+
+                    {#if diagnostic.secondaryLines != null && diagnostic.secondaryLines.length > 0}
+                        {@render lines(diagnostic.secondaryLines)}
+                    {/if}
                 {/if}
             {/if}
         </div>
