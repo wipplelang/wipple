@@ -38,6 +38,10 @@ func ErrorInstance(db *database.Db, node database.Node, filter func(node databas
 				}
 			}
 
+			slices.SortStableFunc(trace, func(left typecheck.Constraint, right typecheck.Constraint) int {
+				return database.CompareSpans(left.Info().Span, right.Info().Span)
+			})
+
 			f(bound.Bound, comments, trace)
 		}
 	}
