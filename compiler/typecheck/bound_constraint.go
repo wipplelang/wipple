@@ -188,7 +188,7 @@ func (c *BoundConstraint) Run(solver *Solver) bool {
 				}
 
 				fact = append(fact, BoundsFactItem{
-					Bound:    ApplyBound(resolvedBound),
+					Bound:    resolvedBound,
 					Instance: candidate.Node,
 					Error:    candidate.Error,
 				})
@@ -207,9 +207,7 @@ func (c *BoundConstraint) Run(solver *Solver) bool {
 				fact = f
 			}
 
-			fact = append(fact, BoundsFactItem{
-				Bound: ApplyBound(resolvedBound),
-			})
+			fact = append(fact, BoundsFactItem{Bound: resolvedBound})
 
 			database.SetFact(c.Bound.Source, fact)
 		}

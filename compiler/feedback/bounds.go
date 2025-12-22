@@ -25,6 +25,7 @@ func registerBounds() {
 		bound    typecheck.ResolvedBound
 		group    *typecheck.Group
 		comments queries.CommentsData
+		trace    []typecheck.Constraint
 	}
 
 	register(Feedback[errorInstanceData]{
@@ -36,17 +37,19 @@ func registerBounds() {
 				return
 			}
 
-			queries.ErrorInstance(db, node, filter, func(bound typecheck.ResolvedBound, comments queries.CommentsData) {
+			queries.ErrorInstance(db, node, filter, func(bound typecheck.ResolvedBound, comments queries.CommentsData, trace []typecheck.Constraint) {
 				f(errorInstanceData{
 					bound:    bound,
 					group:    typed.Group,
 					comments: comments,
+					trace:    trace,
 				})
 			})
 		},
 		On: func(data errorInstanceData) []database.Node {
-			nodes := []database.Node{data.bound.Source, data.comments.Node}
+			nodes := []database.Node{data.bound.Source}
 			nodes = append(nodes, data.group.Nodes...)
+			nodes = append(nodes, data.comments.Nodes...)
 			for _, link := range data.comments.Links {
 				nodes = append(nodes, link.Node)
 			}
@@ -59,6 +62,13 @@ func registerBounds() {
 			render.WriteString("(This feedback comes from the instance ")
 			render.WriteBound(data.bound)
 			render.WriteString(".)")
+
+			if len(data.trace) > 0 {
+				seen := map[database.Node]struct{}{}
+				for _, constraint := range data.trace {
+					render.WriteConstraint("\n\n  -  ", constraint, seen)
+				}
+			}
 		},
 	})
 }

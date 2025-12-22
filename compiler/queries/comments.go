@@ -9,7 +9,7 @@ import (
 	"wipple/visit"
 )
 
-func ErrorInstance(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(bound typecheck.ResolvedBound, comments CommentsData)) {
+func ErrorInstance(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(bound typecheck.ResolvedBound, comments CommentsData, trace []typecheck.Constraint)) {
 	bounds, ok := database.GetFact[typecheck.BoundsFact](node)
 	if !ok {
 		return
@@ -22,17 +22,29 @@ func ErrorInstance(db *database.Db, node database.Node, filter func(node databas
 				continue
 			}
 
-			f(bound.Bound, CommentsData{
-				Node:     instance,
+			comments := CommentsData{
+				Nodes:    []database.Node{instance},
 				Comments: instance.Comments,
 				Links:    getLinks(db, instance, node, filter),
-			})
+			}
+
+			var trace []typecheck.Constraint
+			for _, ty := range *bound.Bound.Substitutions {
+				if node, ok := ty.(database.Node); ok {
+					if fact, ok := database.GetFact[typecheck.TypedFact](node); ok && fact.Group != nil {
+						trace = append(trace, fact.Group.Trace...)
+						comments.Nodes = append(comments.Nodes, fact.Group.Nodes...)
+					}
+				}
+			}
+
+			f(bound.Bound, comments, trace)
 		}
 	}
 }
 
 type CommentsData struct {
-	Node     database.Node
+	Nodes    []database.Node
 	Comments []string
 	Links    map[string]Link
 }
@@ -40,7 +52,7 @@ type CommentsData struct {
 func Comments(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(data CommentsData)) {
 	if defined, ok := database.GetFact[visit.DefinedFact](node); ok {
 		f(CommentsData{
-			Node:     node,
+			Nodes:    []database.Node{node},
 			Comments: defined.Definition.GetComments(),
 			Links:    getLinks(db, node, node, filter),
 		})
@@ -48,7 +60,7 @@ func Comments(db *database.Db, node database.Node, filter func(node database.Nod
 		definition := resolved.Definitions[0]
 
 		f(CommentsData{
-			Node:     definition.GetNode(),
+			Nodes:    []database.Node{definition.GetNode()},
 			Comments: definition.GetComments(),
 			Links:    getLinks(db, definition.GetNode(), node, filter),
 		})

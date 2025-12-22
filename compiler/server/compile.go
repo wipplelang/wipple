@@ -12,6 +12,7 @@ import (
 	"wipple/feedback"
 	"wipple/nodes/file"
 	"wipple/syntax"
+	"wipple/typecheck"
 	"wipple/visit"
 )
 
@@ -32,25 +33,25 @@ type CompileResponse struct {
 }
 
 type ResponseDiagnostic struct {
-	Locations      []database.Span          `json:"locations"`
-	PrimaryLines   []ResponseDiagnosticLine `json:"primaryLines"`
-	Message        string                   `json:"message"`
-	SecondaryLines []ResponseDiagnosticLine `json:"secondaryLines"`
+	Locations      []ResponseDiagnosticLocation `json:"locations"`
+	PrimaryLines   []ResponseDiagnosticLine     `json:"primaryLines"`
+	Message        string                       `json:"message"`
+	SecondaryLines []ResponseDiagnosticLine     `json:"secondaryLines"`
 }
 
 type ResponseDiagnosticLocation struct {
-	Line   int `json:"line"`
-	Column int `json:"column"`
-	Index  int `json:"index"`
+	Start int `json:"start"`
+	End   int `json:"end"`
+	Group int `json:"group"`
 }
 
 type ResponseDiagnosticLine struct {
-	Path   string `json:"path"`
-	number int
-	Source string `json:"source"`
-	Start  int    `json:"start"`
-	End    int    `json:"end"`
-	node   database.Node
+	Path      string                       `json:"path"`
+	Source    string                       `json:"source"`
+	Locations []ResponseDiagnosticLocation `json:"locations"`
+	number    int
+	offset    int
+	node      database.Node
 }
 
 const defaultPath = "input"
@@ -97,43 +98,38 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 			})
 			item.On = slices.Replace(item.On, 1, len(item.On), others...)
 
-			spans := make([]database.Span, len(item.On))
-			for i, node := range item.On {
-				spans[i] = database.GetSpanFact(node)
-			}
+			var groups []*typecheck.Group
+			var locations []ResponseDiagnosticLocation
+			for _, node := range item.On {
+				span := database.GetSpanFact(node)
 
-			getPriority := func(node database.Node) int {
-				definition, isDefinition := database.GetFact[visit.DefinedFact](node)
-				if !isDefinition {
-					return 0
+				if span.Path != defaultPath {
+					continue
 				}
 
-				switch definition.Definition.(type) {
-				case *visit.ConstantDefinition:
-					return -3
-				case *visit.TraitDefinition:
-					return -2
-				case *visit.InstanceDefinition:
-					return -1
-				default:
-					return 0
+				fact, ok := database.GetFact[typecheck.TypedFact](node)
+				groupIndex := -1
+				if ok {
+					groupIndex = slices.Index(groups, fact.Group)
+					if groupIndex == -1 {
+						groupIndex = len(groups)
+						groups = append(groups, fact.Group)
+					}
 				}
+
+				locations = append(locations, ResponseDiagnosticLocation{
+					Start: span.Start.Index,
+					End:   span.End.Index,
+					Group: groupIndex,
+				})
 			}
 
-			priorities := map[database.Node]int{}
-			highestPriority := 0
-			for _, node := range item.On[1:] {
-				priority := getPriority(node)
-				priorities[node] = priority
-				if priority < highestPriority {
-					highestPriority = priority
-				}
-			}
+			locations = removeOverlappingLocations(locations)
 
-			primaryLines, secondaryLines := collectLines(db, item.On[1:])
+			primaryLines, secondaryLines := collectLines(db, item.On[1:], groups)
 
 			responseDiagnostics = append(responseDiagnostics, ResponseDiagnostic{
-				Locations:      spans,
+				Locations:      locations,
 				PrimaryLines:   primaryLines,
 				SecondaryLines: secondaryLines,
 				Message:        item.String(),
@@ -249,58 +245,89 @@ func compileLibrary(name string) (*database.Db, *driver.RootNode, error) {
 	return db, root, nil
 }
 
-func collectLines(db *database.Db, nodes []database.Node) ([]ResponseDiagnosticLine, []ResponseDiagnosticLine) {
+func collectLines(db *database.Db, nodes []database.Node, groups []*typecheck.Group) ([]ResponseDiagnosticLine, []ResponseDiagnosticLine) {
 	var lines []ResponseDiagnosticLine
 	for _, node := range nodes {
 		span := database.GetSpanFact(node)
 
-		if span.Path == defaultPath || slices.ContainsFunc(lines, func(line ResponseDiagnosticLine) bool {
+		if span.Path == defaultPath {
+			continue
+		}
+
+		fact, ok := database.GetFact[typecheck.TypedFact](node)
+		groupIndex := -1
+		if ok {
+			groupIndex = slices.Index(groups, fact.Group)
+			if groupIndex == -1 {
+				groupIndex = len(groups)
+				groups = append(groups, fact.Group)
+			}
+		}
+
+		getLocation := func(offset int) ResponseDiagnosticLocation {
+			return ResponseDiagnosticLocation{
+				Start: span.Start.Column - 1 + offset,
+				End:   span.End.Column + offset,
+				Group: groupIndex,
+			}
+		}
+
+		if index := slices.IndexFunc(lines, func(line ResponseDiagnosticLine) bool {
 			return line.Path == span.Path && line.number == span.Start.Line
-		}) {
-			continue
-		}
+		}); index != -1 {
+			existing := &lines[index]
+			location := getLocation(existing.offset)
 
-		source, ok := database.ContainsNode(db, func(node database.Node) (string, bool) {
-			if _, ok := node.(*file.FileNode); !ok {
+			if !slices.Contains(existing.Locations, location) {
+				existing.Locations = append(existing.Locations, location)
+			}
+		} else {
+			source, ok := database.ContainsNode(db, func(node database.Node) (string, bool) {
+				if _, ok := node.(*file.FileNode); !ok {
+					return "", false
+				}
+
+				fileSpan := database.GetSpanFact(node)
+				if fileSpan.Path == span.Path {
+					return fileSpan.Source, true
+				}
+
 				return "", false
+			})
+
+			if !ok {
+				continue
 			}
 
-			fileSpan := database.GetSpanFact(node)
-			if fileSpan.Path == span.Path {
-				return fileSpan.Source, true
+			sourceLines := strings.Split(source, "\n")[span.Start.Line-1 : span.End.Line]
+			trimmedLines := 0
+			for {
+				if strings.HasPrefix(strings.TrimLeft(sourceLines[0], " "), "--") {
+					sourceLines = sourceLines[1:]
+					trimmedLines++
+				} else {
+					break
+				}
 			}
 
-			return "", false
-		})
-
-		if !ok {
-			continue
-		}
-
-		sourceLines := strings.Split(source, "\n")[span.Start.Line-1 : span.End.Line]
-		trimmedLines := 0
-		for {
-			if strings.HasPrefix(strings.TrimLeft(sourceLines[0], " "), "--") {
-				sourceLines = sourceLines[1:]
-				trimmedLines++
-			} else {
-				break
+			offset := 0
+			for i := 0; i < span.End.Line-span.Start.Line-trimmedLines; i++ {
+				offset += len(sourceLines[i]) + 1
 			}
-		}
 
-		offset := 0
-		for i := 0; i < span.End.Line-span.Start.Line-trimmedLines; i++ {
-			offset += len(sourceLines[i]) + 1
+			lines = append(lines, ResponseDiagnosticLine{
+				Path:      span.Path,
+				Source:    strings.Join(sourceLines, "\n"),
+				Locations: []ResponseDiagnosticLocation{getLocation(offset)},
+				number:    span.Start.Line,
+				offset:    offset,
+				node:      node,
+			})
 		}
+	}
 
-		lines = append(lines, ResponseDiagnosticLine{
-			Path:   span.Path,
-			number: span.Start.Line,
-			Source: strings.Join(sourceLines, "\n"),
-			Start:  span.Start.Column - 1 + offset,
-			End:    span.End.Column + offset,
-			node:   node,
-		})
+	for _, line := range lines {
+		line.Locations = removeOverlappingLocations(line.Locations)
 	}
 
 	getPriority := func(node database.Node) int {
@@ -350,4 +377,34 @@ func collectLines(db *database.Db, nodes []database.Node) ([]ResponseDiagnosticL
 	}
 
 	return primaryLines, secondaryLines
+}
+
+func removeOverlappingLocations(locations []ResponseDiagnosticLocation) []ResponseDiagnosticLocation {
+	primary := locations[0]
+	others := locations[1:]
+
+	slices.SortFunc(others, func(left ResponseDiagnosticLocation, right ResponseDiagnosticLocation) int {
+		return (left.End - left.Start) - (right.End - right.Start)
+	})
+
+	original := make([]ResponseDiagnosticLocation, len(others))
+	copy(original, others)
+
+	// Deduplicate first
+	seen := map[ResponseDiagnosticLocation]struct{}{}
+	others = slices.DeleteFunc(others, func(location ResponseDiagnosticLocation) bool {
+		if _, ok := seen[location]; ok {
+			return true
+		}
+		seen[location] = struct{}{}
+		return false
+	})
+
+	others = slices.DeleteFunc(others, func(location ResponseDiagnosticLocation) bool {
+		return location == primary || slices.ContainsFunc(original, func(other ResponseDiagnosticLocation) bool {
+			return location.Start < other.Start && location.End > other.End
+		})
+	})
+
+	return append([]ResponseDiagnosticLocation{primary}, others...)
 }

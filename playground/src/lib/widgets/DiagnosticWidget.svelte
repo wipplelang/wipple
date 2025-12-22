@@ -33,14 +33,7 @@
                     readOnly
                     code={line.source}
                     diagnostic={{
-                        value: {
-                            locations: [
-                                {
-                                    start: { index: line.start },
-                                    end: { index: line.end },
-                                },
-                            ],
-                        },
+                        value: { locations: line.locations },
                         hideWidget: true,
                     }}
                 />

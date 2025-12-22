@@ -229,6 +229,12 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 			return false
 		}
 
+		if _, ok := seenLinks[constraint.Info().Node]; ok {
+			return false
+		} else {
+			seenLinks[constraint.Info().Node] = struct{}{}
+		}
+
 		// Don't repeat the bound if it is from the source code
 		if _, ok := database.GetFact[constraints.IsConstraintFact](constraint.Info().Node); ok {
 			return false

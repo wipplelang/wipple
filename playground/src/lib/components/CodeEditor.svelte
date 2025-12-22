@@ -1,3 +1,12 @@
+<script module lang="ts">
+    export const diagnosticGroupColors = [
+        "var(--color-blue-500)",
+        "var(--color-orange-500)",
+        "var(--color-emerald-500)",
+        "var(--color-pink-500)",
+    ];
+</script>
+
 <script lang="ts">
     import {
         elementDecoration,
@@ -410,7 +419,7 @@
         }
 
         try {
-            return editorView.state.doc.lineAt(diagnostic.value.locations[0].end.index).number;
+            return editorView.state.doc.lineAt(diagnostic.value.locations[0].end).number;
         } catch {
             // Position no longer valid
             return undefined;
@@ -440,14 +449,17 @@
             stale
                 ? []
                 : Prec.high(
-                      (value.locations as any[]).flatMap(({ start, end }, index) => {
-                          if (start.index === end.index) {
+                      (value.locations as any[]).flatMap(({ start, end, group }, index) => {
+                          if (start === end) {
                               return [];
                           }
 
-                          const decoration = markRange(start.index, end.index, () =>
+                          const color = diagnosticGroupColors[group % diagnosticGroupColors.length];
+
+                          const decoration = markRange(start, end, () =>
                               markDecoration(
-                                  `rounded-[6px] ring-[1.5px] ${index === 0 && !diagnostic?.hideWidget ? "underline [text-decoration-skip-ink:none] decoration-wavy decoration-blue-500 ring-blue-500/50 bg-blue-500/15 dark:bg-blue-500/20" : "ring-blue-500/20 bg-blue-500/10 dark:bg-blue-500/5 "}`,
+                                  `rounded-[6px] ring-[1.5px] ${index === 0 && !diagnostic!.hideWidget ? "underline [text-decoration-skip-ink:none] decoration-wavy decoration-(--color) ring-(--color)/50 bg-(--color)/15 dark:bg-(--color)/20" : "ring-(--color)/20 bg-(--color)/10 dark:bg-(--color)/5 "}`,
+                                  `--color: ${color}`,
                               ),
                           );
 

@@ -399,7 +399,7 @@ func getHover(db *database.Db, uri protocol.DocumentUri, position protocol.Posit
 	})
 
 	queries.Comments(db, nodeAtPosition, filter, func(data queries.CommentsData) {
-		if data.Node != nodeAtPosition {
+		if !slices.Contains(data.Nodes, nodeAtPosition) {
 			return
 		}
 
