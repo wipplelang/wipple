@@ -59,14 +59,7 @@ func (group *Group) normalize() {
 	}
 
 	slices.SortStableFunc(group.Trace, func(left Constraint, right Constraint) int {
-		leftNode := left.Info().Node
-		rightNode := right.Info().Node
-
-		if leftNode == nil || rightNode == nil {
-			return 0
-		}
-
-		return database.CompareSpans(database.GetSpanFact(leftNode), database.GetSpanFact(rightNode))
+		return database.CompareSpans(left.Info().Span, right.Info().Span)
 	})
 }
 

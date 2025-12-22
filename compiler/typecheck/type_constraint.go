@@ -40,7 +40,7 @@ func (c *TypeConstraint) Run(solver *Solver) bool {
 
 func NewTypeConstraint(node database.Node, ty *ConstructedType) *TypeConstraint {
 	return &TypeConstraint{
-		info: DefaultConstraintInfo(node),
+		info: DefaultConstraintInfo(node, database.GetSpanFact(node)),
 		Type: ty,
 	}
 }

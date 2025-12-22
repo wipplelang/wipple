@@ -331,11 +331,11 @@ Feedback:
     -  See `filter :: (item -> Boolean) -> collection -> Sequence item where (As-Sequence collection
   item)` (sequence.wipple:20:1).
   
-    -  Explicitly annotated as a `String`.
-  
     -  See `Box : value => type {
       value :: value
   }` (sequence.wipple:13:1).
+  
+    -  Explicitly annotated as a `String`.
   
     -  Explicitly annotated as a `Number`.
 

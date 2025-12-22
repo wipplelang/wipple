@@ -37,6 +37,6 @@ func (c *DefaultConstraint) Run(solver *Solver) bool {
 func NewDefaultConstraint(node database.Node, ty Type) *DefaultConstraint {
 	return &DefaultConstraint{
 		Ty:   ty,
-		info: DefaultConstraintInfo(node),
+		info: DefaultConstraintInfo(node, database.GetSpanFact(node)),
 	}
 }

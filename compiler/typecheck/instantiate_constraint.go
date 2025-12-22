@@ -72,7 +72,7 @@ func (c *InstantiateConstraint) Run(solver *Solver) bool {
 
 func NewInstantiateConstraint(i Instantiation, getDefinitionConstraints func(database.Node) []Constraint) Constraint {
 	return &InstantiateConstraint{
-		info:                     DefaultConstraintInfo(nil),
+		info:                     DefaultConstraintInfo(nil, database.GetSpanFact(i.Source)),
 		Instantiation:            i,
 		GetDefinitionConstraints: getDefinitionConstraints,
 	}

@@ -14,14 +14,16 @@ type Constraint interface {
 
 type ConstraintInfo struct {
 	Node              database.Node
+	Span              database.Span
 	Instance          *Instance
 	IsActive          bool
 	ShouldInstantiate bool
 }
 
-func DefaultConstraintInfo(node database.Node) *ConstraintInfo {
+func DefaultConstraintInfo(node database.Node, span database.Span) *ConstraintInfo {
 	return &ConstraintInfo{
 		Node:              node,
+		Span:              span,
 		IsActive:          true,
 		ShouldInstantiate: true,
 	}

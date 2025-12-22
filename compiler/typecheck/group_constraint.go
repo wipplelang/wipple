@@ -36,7 +36,7 @@ func (c *GroupConstraint) Run(solver *Solver) bool {
 
 func NewGroupConstraint(left database.Node, right database.Node) *GroupConstraint {
 	return &GroupConstraint{
-		info:  DefaultConstraintInfo(nil),
+		info:  DefaultConstraintInfo(nil, database.GetSpanFact(left)),
 		Left:  left,
 		Right: right,
 	}

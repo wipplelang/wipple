@@ -217,7 +217,7 @@ func (c *BoundConstraint) Run(solver *Solver) bool {
 }
 
 func NewBoundConstraint(node database.Node, bound UnresolvedBound, getDefinitionConstraints func(database.Node) []Constraint) *BoundConstraint {
-	info := DefaultConstraintInfo(node)
+	info := DefaultConstraintInfo(node, database.GetSpanFact(node))
 	info.Instance = &Instance{
 		Node:          node,
 		Trait:         bound.Trait,
