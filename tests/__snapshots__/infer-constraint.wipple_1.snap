@@ -471,5 +471,7 @@ Feedback:
     -  See `add-infer :: left right -> sum where (Add-Infer left right sum)` (infer-
   constraint.wipple:17:1).
   
+    -  `add-infer` (infer-constraint.wipple:20:11) requires `Add-Infer Number Number Number`.
+  
     -  Explicitly annotated as a `String`.
 

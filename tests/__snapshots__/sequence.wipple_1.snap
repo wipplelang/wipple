@@ -335,6 +335,8 @@ Feedback:
       value :: value
   }` (sequence.wipple:13:1).
   
+    -  `filter` (sequence.wipple:25:2) requires `As-Sequence (Box String) String`.
+  
     -  Explicitly annotated as a `String`.
   
     -  Explicitly annotated as a `Number`.

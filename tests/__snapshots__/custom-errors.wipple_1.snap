@@ -338,7 +338,7 @@ Feedback:
 
   Cannot add `1` (custom-errors.wipple:16:9) and `"a"` (custom-errors.wipple:16:11).
   
-  (This feedback comes from the instance `Add Number String _`.)
+  
   
     -  See `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1).
   
@@ -352,7 +352,7 @@ Feedback:
 
   Missing parentheses around the inputs to `+`.
   
-  (This feedback comes from the instance `Add () Number _`.)
+  
   
     -  See `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1).
   

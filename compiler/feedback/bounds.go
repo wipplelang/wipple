@@ -58,12 +58,9 @@ func registerBounds() {
 		},
 		Render: func(render *Render, node database.Node, data errorInstanceData) {
 			render.WriteComments(data.comments)
-			render.WriteBreak()
-			render.WriteString("(This feedback comes from the instance ")
-			render.WriteBound(data.bound)
-			render.WriteString(".)")
 
 			if len(data.trace) > 0 {
+				render.WriteBreak()
 				seen := map[database.Node]struct{}{}
 				for _, constraint := range data.trace {
 					render.WriteConstraint("\n\n  -  ", constraint, seen)

@@ -8,7 +8,6 @@ import (
 
 	"wipple/colors"
 	"wipple/database"
-	"wipple/nodes/constraints"
 	"wipple/queries"
 	"wipple/typecheck"
 	"wipple/visit"
@@ -177,13 +176,10 @@ func (render *Render) WriteComments(data queries.CommentsData) {
 
 func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constraint, seenLinks map[database.Node]struct{}) bool {
 	node := constraint.Info().Node
-	if node != nil && database.IsHiddenNode(node) {
-		return false
-	}
 
 	switch constraint := constraint.(type) {
 	case *typecheck.GroupConstraint:
-		if node == nil || database.LspEnabled {
+		if node == nil || database.IsHiddenNode(node) || database.LspEnabled {
 			return false
 		}
 
@@ -203,7 +199,7 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 			return true
 		}
 	case *typecheck.TypeConstraint:
-		if constraint.Type.Instantiate != nil {
+		if node == nil || database.IsHiddenNode(node) || constraint.Type.Instantiate != nil {
 			return false
 		}
 
@@ -229,15 +225,10 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 			return false
 		}
 
-		if _, ok := seenLinks[constraint.Info().Node]; ok {
+		if _, ok := seenLinks[node]; ok {
 			return false
 		} else {
-			seenLinks[constraint.Info().Node] = struct{}{}
-		}
-
-		// Don't repeat the bound if it is from the source code
-		if _, ok := database.GetFact[constraints.IsConstraintFact](constraint.Info().Node); ok {
-			return false
+			seenLinks[node] = struct{}{}
 		}
 
 		bound := typecheck.ResolvedBound{
@@ -246,7 +237,8 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 		}
 
 		render.WriteString(prefix)
-		render.WriteNode(node)
+
+		render.WriteNode(bound.Source)
 		render.WriteString(" requires ")
 		render.WriteBound(bound)
 		render.WriteString(".")
