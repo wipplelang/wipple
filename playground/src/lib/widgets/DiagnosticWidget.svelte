@@ -28,7 +28,7 @@
 {#snippet lines(lines: any[])}
     <div class="mb-[5px] mt-[15px] flex flex-col gap-[10px]">
         {#each lines as line}
-            <div class="rounded-xl border-[1.5px] border-black/5">
+            <div class="rounded-xl border-[1.5px] border-black/5 dark:bg-gray-800">
                 <CodeEditor
                     readOnly
                     code={line.source}

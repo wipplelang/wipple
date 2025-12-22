@@ -12,7 +12,7 @@
 
     const throttleMs = 200;
 
-    export type RunState = "compiling" | "error" | "running";
+    export type RunState = "compiling" | "running";
 
     interface Props {
         runState: RunState | undefined;
@@ -81,7 +81,7 @@
 
         if ("diagnostics" in response) {
             ondiagnostics(response.diagnostics);
-            runState = "error";
+            runState = undefined;
             return;
         }
 

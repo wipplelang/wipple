@@ -175,21 +175,7 @@
 
     $effect(() => {
         playground?.code;
-
-        if (runState === "error") {
-            runState = undefined;
-        }
-    });
-
-    $effect(() => {
-        playground?.code;
         diagnosticIsStale = true;
-    });
-
-    $effect(() => {
-        if (runState === "error" && diagnostic == null) {
-            runState = undefined;
-        }
     });
 </script>
 
@@ -306,19 +292,21 @@
                     class="printing:hidden h-(--toolbar-height) flex shrink-0 flex-row justify-center gap-[10px]"
                 >
                     <ToolbarButton
-                        prominent={runState !== "error"}
+                        prominent={runState !== undefined || diagnosticIsStale}
                         onclick={() => output?.run()}
                         data-state={runState}
                         class="data-[state='error']:border-standard data-[state='error']:bg-background w-[200px] transition data-[prominent]:data-[state='compiling']:bg-sky-500 data-[prominent]:data-[state='running']:bg-sky-500 data-[state='error']:opacity-75"
                     >
                         {#if runState === undefined}
-                            <Icon fill>play_arrow</Icon>
-                            Run
+                            {#if diagnosticIsStale}
+                                <Icon fill>play_arrow</Icon>
+                                Run
+                            {:else}
+                                <Icon>error</Icon>
+                                Errors found
+                            {/if}
                         {:else if runState === "compiling"}
                             <Icon fill class="animate-spin">progress_activity</Icon>
-                        {:else if runState === "error"}
-                            <Icon>error</Icon>
-                            Errors found
                         {:else if runState === "running"}
                             <Icon fill>stop</Icon>
                             Stop
