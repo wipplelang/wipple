@@ -41,7 +41,7 @@ func DisplayNode(node Node) string {
 func NodeSource(node Node) string {
 	source := DefinitionSource(node)
 	source = regexp.MustCompile(`(?s)\{.*\}`).ReplaceAllString(source, "{⋯}")   // collapse braces
-	source = regexp.MustCompile(`(?s)::.*`).ReplaceAllString(source, "")        // remove type annotations
+	source = regexp.MustCompile(`(?s)::?.*`).ReplaceAllString(source, "")       // remove assignments and type annotations
 	source = regexp.MustCompile(`(?s)\bwhere\b.*`).ReplaceAllString(source, "") // remove bounds
 	source = regexp.MustCompile(`(?s)\n.*`).ReplaceAllString(source, "⋯")       // collapse multiple lines
 

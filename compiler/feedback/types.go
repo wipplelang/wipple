@@ -109,6 +109,32 @@ func registerTypes() {
 					render.WriteConstraint("\n\n  -  ", constraint, seen)
 				}
 			}
+
+			var definition database.Node
+			var parameter *types.TypeParameterNode
+			parameterCount := 0
+			for _, node := range data.Nodes {
+				if fact, ok := database.GetFact[typecheck.InstantiatedFact](node); ok {
+					if p, ok := fact.From.(*types.TypeParameterNode); ok {
+						if parameter == nil {
+							definition = fact.Definition
+							parameter = p
+						}
+
+						if p.Name == parameter.Name {
+							parameterCount++
+						}
+					}
+				}
+			}
+
+			if parameterCount > 1 {
+				render.WriteString("\n\n  -  ")
+				render.WriteNode(parameter)
+				render.WriteString(" must have the same type everywhere in this use of ")
+				render.WriteNode(definition)
+				render.WriteString(".")
+			}
 		},
 	})
 

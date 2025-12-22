@@ -3,7 +3,7 @@ TypeDefinitionNode `Number` (sequence.wipple:1:1)
   is a definition
   has definition constraints
 
-FileNode `Number : type⋯` (sequence.wipple:1:1)
+FileNode `Number` (sequence.wipple:1:1)
   at sequence.wipple:1:1
 
 TypeDefinitionNode `String` (sequence.wipple:2:1)
@@ -11,7 +11,7 @@ TypeDefinitionNode `String` (sequence.wipple:2:1)
   is a definition
   has definition constraints
 
-TypeDefinitionNode `Boolean : type {⋯}` (sequence.wipple:4:1)
+TypeDefinitionNode `Boolean` (sequence.wipple:4:1)
   at sequence.wipple:4:1
   is a definition
   has definition constraints
@@ -28,7 +28,7 @@ variantNode `False` (sequence.wipple:6:5)
   is a definition
   has definition constraints
 
-TypeDefinitionNode `Sequence : element => type {⋯}` (sequence.wipple:9:1)
+TypeDefinitionNode `Sequence` (sequence.wipple:9:1)
   at sequence.wipple:9:1
   is a definition
   has definition constraints
@@ -51,7 +51,7 @@ TypeParameterNode `element` (sequence.wipple:10:14)
   is a type
   resolved to 1 definition(s): TypeParameterNode `element` (sequence.wipple:9:12)
 
-TypeDefinitionNode `Box : value => type {⋯}` (sequence.wipple:13:1)
+TypeDefinitionNode `Box` (sequence.wipple:13:1)
   at sequence.wipple:13:1
   is a definition
   has definition constraints
@@ -69,7 +69,7 @@ TypeParameterNode `value` (sequence.wipple:14:14)
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (sequence.wipple:13:7)
 
-TraitDefinitionNode `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (sequence.wipple:17:1)
+TraitDefinitionNode `As-Sequence` (sequence.wipple:17:1)
   at sequence.wipple:17:1
   has instances
   is a definition
@@ -104,7 +104,7 @@ NamedTypeNode `Sequence element` (sequence.wipple:17:66)
   at sequence.wipple:17:66
   has type `Sequence element`
   is a type
-  resolved to 1 definition(s): TypeDefinitionNode `Sequence : element => type {⋯}` (sequence.wipple:9:1)
+  resolved to 1 definition(s): TypeDefinitionNode `Sequence` (sequence.wipple:9:1)
 
 TypeParameterNode `element` (sequence.wipple:17:75)
   at sequence.wipple:17:75
@@ -116,14 +116,14 @@ InstanceDefinitionNode `instance (As-Sequence (Box value) value)` (sequence.wipp
   at sequence.wipple:18:1
   is a definition
   has definition constraints
-  resolved to 1 definition(s): TraitDefinitionNode `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (sequence.wipple:17:1)
+  resolved to 1 definition(s): TraitDefinitionNode `As-Sequence` (sequence.wipple:17:1)
   has type parameters
 
 NamedTypeNode `Box value` (sequence.wipple:18:23)
   at sequence.wipple:18:23
   has type `Box value`
   is a type
-  resolved to 1 definition(s): TypeDefinitionNode `Box : value => type {⋯}` (sequence.wipple:13:1)
+  resolved to 1 definition(s): TypeDefinitionNode `Box` (sequence.wipple:13:1)
 
 TypeParameterNode `value` (sequence.wipple:18:28)
   at sequence.wipple:18:28
@@ -169,7 +169,7 @@ NamedTypeNode `Boolean` (sequence.wipple:20:20)
   at sequence.wipple:20:20
   has type `Boolean`
   is a type
-  resolved to 1 definition(s): TypeDefinitionNode `Boolean : type {⋯}` (sequence.wipple:4:1)
+  resolved to 1 definition(s): TypeDefinitionNode `Boolean` (sequence.wipple:4:1)
 
 TypeParameterNode `collection` (sequence.wipple:20:32)
   at sequence.wipple:20:32
@@ -186,7 +186,7 @@ NamedTypeNode `Sequence item` (sequence.wipple:20:46)
   at sequence.wipple:20:46
   has type `Sequence item`
   is a type
-  resolved to 1 definition(s): TypeDefinitionNode `Sequence : element => type {⋯}` (sequence.wipple:9:1)
+  resolved to 1 definition(s): TypeDefinitionNode `Sequence` (sequence.wipple:9:1)
 
 TypeParameterNode `item` (sequence.wipple:20:55)
   at sequence.wipple:20:55
@@ -197,7 +197,7 @@ TypeParameterNode `item` (sequence.wipple:20:55)
 BoundConstraintNode `As-Sequence collection item` (sequence.wipple:20:66)
   is a constraint
   at sequence.wipple:20:66
-  resolved to 1 definition(s): TraitDefinitionNode `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (sequence.wipple:17:1)
+  resolved to 1 definition(s): TraitDefinitionNode `As-Sequence` (sequence.wipple:17:1)
 
 TypeParameterNode `collection` (sequence.wipple:20:79)
   at sequence.wipple:20:79
@@ -238,7 +238,7 @@ NamedTypeNode `Box String` (sequence.wipple:23:13)
   at sequence.wipple:23:13
   has type `Box String`
   is a type
-  resolved to 1 definition(s): TypeDefinitionNode `Box : value => type {⋯}` (sequence.wipple:13:1)
+  resolved to 1 definition(s): TypeDefinitionNode `Box` (sequence.wipple:13:1)
 
 NamedTypeNode `String` (sequence.wipple:23:17)
   at sequence.wipple:23:17
@@ -330,4 +330,7 @@ Feedback:
     -  Explicitly annotated as a `String`.
   
     -  Explicitly annotated as a `Number`.
+  
+    -  `value` (sequence.wipple:18:35) must have the same type everywhere in this use of `instance
+  (As-Sequence (Box value) value)` (sequence.wipple:18:1).
 

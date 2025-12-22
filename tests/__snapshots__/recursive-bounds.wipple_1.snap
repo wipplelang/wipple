@@ -3,7 +3,7 @@ TypeDefinitionNode `Number` (recursive-bounds.wipple:1:1)
   is a definition
   has definition constraints
 
-FileNode `Number : type⋯` (recursive-bounds.wipple:1:1)
+FileNode `Number` (recursive-bounds.wipple:1:1)
   at recursive-bounds.wipple:1:1
 
 TypeDefinitionNode `String` (recursive-bounds.wipple:2:1)
@@ -23,7 +23,7 @@ TypeParameterNode `value` (recursive-bounds.wipple:3:21)
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (recursive-bounds.wipple:3:21)
 
-TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+TraitDefinitionNode `Describe` (recursive-bounds.wipple:5:1)
   at recursive-bounds.wipple:5:1
   has instances
   is a definition
@@ -57,7 +57,7 @@ InstanceDefinitionNode `instance (Describe String)` (recursive-bounds.wipple:6:1
   at recursive-bounds.wipple:6:1
   is a definition
   has definition constraints
-  resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Describe` (recursive-bounds.wipple:5:1)
 
 NamedTypeNode `String` (recursive-bounds.wipple:6:20)
   at recursive-bounds.wipple:6:20
@@ -75,7 +75,7 @@ InstanceDefinitionNode `instance (Describe (Maybe value))` (recursive-bounds.wip
   at recursive-bounds.wipple:7:1
   is a definition
   has definition constraints
-  resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Describe` (recursive-bounds.wipple:5:1)
   has type parameters
 
 NamedTypeNode `Maybe value` (recursive-bounds.wipple:7:20)
@@ -93,7 +93,7 @@ TypeParameterNode `value` (recursive-bounds.wipple:7:27)
 BoundConstraintNode `Describe value` (recursive-bounds.wipple:7:41)
   is a constraint
   at recursive-bounds.wipple:7:41
-  resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Describe` (recursive-bounds.wipple:5:1)
 
 TypeParameterNode `value` (recursive-bounds.wipple:7:51)
   at recursive-bounds.wipple:7:51
@@ -112,7 +112,7 @@ ConstructorExpressionNode `Describe` (recursive-bounds.wipple:9:1)
   is an expression
   has bound(s) `Describe (Maybe String)` (InstanceDefinitionNode `instance (Describe (Maybe value))` (recursive-bounds.wipple:7:1)), `Describe String` (InstanceDefinitionNode `instance (Describe String)` (recursive-bounds.wipple:6:1))
   has type `(Maybe String) -> String`
-  resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Describe` (recursive-bounds.wipple:5:1)
 
 ExpressionStatementNode `Describe (_` (recursive-bounds.wipple:9:1)
   at recursive-bounds.wipple:9:1
@@ -145,7 +145,7 @@ ConstructorExpressionNode `Describe` (recursive-bounds.wipple:10:1)
   is an expression
   has bound(s) `Describe (Maybe Number)` (InstanceDefinitionNode `instance (Describe (Maybe value))` (recursive-bounds.wipple:7:1)), `Describe Number` (unresolved)
   has type `(Maybe Number) -> String`
-  resolved to 1 definition(s): TraitDefinitionNode `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Describe` (recursive-bounds.wipple:5:1)
 
 ExpressionStatementNode `Describe (_` (recursive-bounds.wipple:10:1)
   at recursive-bounds.wipple:10:1
