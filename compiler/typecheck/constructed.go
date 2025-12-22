@@ -1,6 +1,7 @@
 package typecheck
 
 import (
+	"strings"
 	"wipple/database"
 )
 
@@ -96,16 +97,16 @@ func TupleType[T Type](elements []T) *ConstructedType {
 				return "(" + children[0](true) + ";)"
 			}
 
-			s := ""
+			var s strings.Builder
 			for i, child := range children {
 				if i > 0 {
-					s += "; "
+					s.WriteString("; ")
 				}
 
-				s += child(true)
+				s.WriteString(child(true))
 			}
 
-			return "(" + s + ")"
+			return "(" + s.String() + ")"
 		},
 		Codegen: func(children []any, node func(node database.Node) string) any {
 			return map[string]any{

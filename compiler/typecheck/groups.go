@@ -3,6 +3,7 @@ package typecheck
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"wipple/database"
 )
@@ -64,28 +65,28 @@ func (group *Group) normalize() {
 }
 
 func (group *Group) String() string {
-	nodes := ""
+	var nodes strings.Builder
 	i := 0
 	for _, node := range group.Nodes {
 		if i > 0 {
-			nodes += ", "
+			nodes.WriteString(", ")
 		}
 
-		nodes += database.DisplayNode(node)
+		nodes.WriteString(database.DisplayNode(node))
 
 		i++
 	}
 
-	types := ""
+	var types strings.Builder
 	for i, ty := range group.Types {
 		if i > 0 {
-			types += ", "
+			types.WriteString(", ")
 		}
 
-		types += DisplayType(ty, true)
+		types.WriteString(DisplayType(ty, true))
 	}
 
-	return fmt.Sprintf("Group{Nodes: [%s], Types: [%s]}", nodes, types)
+	return fmt.Sprintf("Group{Nodes: [%s], Types: [%s]}", nodes.String(), types.String())
 }
 
 type groups struct {

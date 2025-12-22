@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"reflect"
 	"slices"
+	"strings"
 
 	"wipple/database"
 	"wipple/typecheck"
@@ -19,16 +20,17 @@ func (fact ResolvedFact) String() string {
 		return "unresolved"
 	}
 
-	s := fmt.Sprintf("resolved to %d definition(s): ", len(fact.Definitions))
+	var s strings.Builder
+	s.WriteString(fmt.Sprintf("resolved to %d definition(s): ", len(fact.Definitions)))
 	for i, definition := range fact.Definitions {
 		if i > 0 {
-			s += ", "
+			s.WriteString(", ")
 		}
 
-		s += database.DisplayNode(definition.GetNode())
+		s.WriteString(database.DisplayNode(definition.GetNode()))
 	}
 
-	return s
+	return s.String()
 }
 
 type DefinitionConstraintsFact []typecheck.Constraint

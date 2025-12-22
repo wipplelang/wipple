@@ -3,6 +3,7 @@ package typecheck
 import (
 	"fmt"
 	"slices"
+	"strings"
 
 	"wipple/colors"
 	"wipple/database"
@@ -18,10 +19,11 @@ func (fact TypedFact) String() string {
 	}
 
 	if len(fact.Group.Types) == 0 {
-		s := "missing type"
+		var s strings.Builder
+		s.WriteString("missing type")
 
 		if len(fact.Group.Nodes) > 1 {
-			s += " (group: "
+			s.WriteString(" (group: ")
 
 			i := 0
 			for _, node := range fact.Group.Nodes {
@@ -30,31 +32,32 @@ func (fact TypedFact) String() string {
 				}
 
 				if i > 0 {
-					s += ", "
+					s.WriteString(", ")
 				}
 
-				s += database.DisplayNode(node)
+				s.WriteString(database.DisplayNode(node))
 
 				i++
 			}
 
-			s += ")"
+			s.WriteString(")")
 		}
 
-		return s
+		return s.String()
 	}
 
-	s := "has type"
+	var s strings.Builder
+	s.WriteString("has type")
 
 	for i, ty := range fact.Group.Types {
 		if i > 0 {
-			s += colors.Conflict(" or")
+			s.WriteString(colors.Conflict(" or"))
 		}
 
-		s += " " + colors.Code(DisplayType(ty, true))
+		s.WriteString(" " + colors.Code(DisplayType(ty, true)))
 	}
 
-	return s
+	return s.String()
 }
 
 type InstantiatedFact struct {

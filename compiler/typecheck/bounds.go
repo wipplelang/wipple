@@ -3,6 +3,7 @@ package typecheck
 import (
 	"maps"
 	"slices"
+	"strings"
 
 	"wipple/colors"
 	"wipple/database"
@@ -56,7 +57,8 @@ func DisplayResolvedBound(b ResolvedBound) string {
 }
 
 func DisplayUnresolvedBound(b UnresolvedBound) string {
-	s := b.TraitName
+	var s strings.Builder
+	s.WriteString(b.TraitName)
 
 	parameters := make([]database.Node, 0, len(*b.Substitutions))
 	for parameter := range *b.Substitutions {
@@ -68,11 +70,11 @@ func DisplayUnresolvedBound(b UnresolvedBound) string {
 	})
 
 	for _, parameter := range parameters {
-		s += " "
-		s += DisplayType((*b.Substitutions)[parameter], false)
+		s.WriteString(" ")
+		s.WriteString(DisplayType((*b.Substitutions)[parameter], false))
 	}
 
-	return s
+	return s.String()
 }
 
 func ApplyBound(b ResolvedBound) ResolvedBound {
@@ -101,23 +103,24 @@ func (fact BoundsFact) String() string {
 		return "has bound(s)"
 	}
 
-	s := "has bound(s) "
+	var s strings.Builder
+	s.WriteString("has bound(s) ")
 	for i, item := range fact {
 		if i > 0 {
-			s += ", "
+			s.WriteString(", ")
 		}
 
-		s += colors.Code(DisplayResolvedBound(ApplyBound(item.Bound)))
+		s.WriteString(colors.Code(DisplayResolvedBound(ApplyBound(item.Bound))))
 
-		s += " ("
+		s.WriteString(" (")
 		if item.Instance != nil {
-			s += database.DisplayNode(item.Instance)
+			s.WriteString(database.DisplayNode(item.Instance))
 		} else {
-			s += "unresolved"
+			s.WriteString("unresolved")
 		}
 
-		s += ")"
+		s.WriteString(")")
 	}
 
-	return s
+	return s.String()
 }
