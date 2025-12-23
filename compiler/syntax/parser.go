@@ -15,7 +15,7 @@ type Parser struct {
 	Source string
 	tokens []*Token
 	index  int
-	stack  []commitEntry
+	stack  []*commitEntry
 	cache  map[uintptr]map[int]parseResult
 }
 
@@ -86,7 +86,6 @@ func (parser *Parser) ErrorWithReason(message string, reason string) *Error {
 
 type TokenConfig struct {
 	Name   string
-	Commit string
 	Reason string
 }
 
@@ -120,19 +119,16 @@ func (parser *Parser) Token(kind string, configs ...TokenConfig) (string, *Error
 		return "", &Error{
 			Message: fmt.Sprintf("Expected %s, but found %s", expected, tokenNames[token.kind]),
 			Reason:  reason,
+			Span:    token.span,
 		}
 	}
 
 	parser.index += 1
 
-	if config.Commit != "" {
-		parser.commit(config.Commit)
-	}
-
 	return token.value, nil
 }
 
-func (parser *Parser) commit(trace string) {
+func (parser *Parser) Commit(trace string) {
 	parser.stack[len(parser.stack)-1].trace = trace
 }
 
@@ -193,7 +189,7 @@ func ParseCached[T any](parser *Parser, f ParseFunc[T]) (T, *Error) {
 func ParseOptional[T any](parser *Parser, f ParseFunc[T]) (T, bool, *Error) {
 	start := parser.index
 
-	entry := commitEntry{}
+	entry := &commitEntry{}
 	parser.stack = append(parser.stack, entry)
 	defer func() {
 		parser.stack = parser.stack[:len(parser.stack)-1]

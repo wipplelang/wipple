@@ -18,19 +18,16 @@ func (node *SyntaxErrorNode) GetFacts() *database.Facts {
 }
 
 func Parse[T database.Node](db *database.Db, path string, source string, f ParseFunc[T]) (T, *Error) {
-	var zero T
+	var result T
 
 	parser, err := NewParser(db, path, source)
-	if err != nil {
-		return zero, err
+	if err == nil {
+		result, err = f(parser)
+	}
+	if err == nil {
+		err = parser.Finish()
 	}
 
-	result, err := f(parser)
-	if err != nil {
-		return zero, err
-	}
-
-	err = parser.Finish()
 	if err != nil {
 		node := &SyntaxErrorNode{
 			Facts: database.NewFacts(err.Span),
@@ -40,7 +37,7 @@ func Parse[T database.Node](db *database.Db, path string, source string, f Parse
 
 		SetSyntaxErrorFact(node, *err)
 
-		return zero, err
+		return result, err
 	}
 
 	return result, nil

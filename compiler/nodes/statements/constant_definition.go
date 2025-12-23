@@ -64,12 +64,12 @@ func ParseConstantDefinitionStatement(parser *syntax.Parser) (*ConstantDefinitio
 }
 
 func ParseConstantConstraints(parser *syntax.Parser) (database.Node, []database.Node, *syntax.Error) {
-	_, err := parser.Token("AnnotateOperator", syntax.TokenConfig{
-		Commit: "in this constant definition",
-	})
+	_, err := parser.Token("AnnotateOperator")
 	if err != nil {
 		return nil, nil, err
 	}
+
+	parser.Commit("in this constant definition")
 
 	parser.ConsumeLineBreaks()
 

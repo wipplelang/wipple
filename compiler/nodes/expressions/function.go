@@ -49,12 +49,12 @@ func ParseFunctionExpressionInputs(parser *syntax.Parser) ([]database.Node, *syn
 		return nil, err
 	}
 
-	_, err = parser.Token("FunctionOperator", syntax.TokenConfig{
-		Commit: "in this function",
-	})
+	_, err = parser.Token("FunctionOperator")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this function")
 
 	parser.ConsumeLineBreaks()
 

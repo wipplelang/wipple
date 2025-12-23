@@ -72,12 +72,12 @@ func ParseTraitDefinitionStatement(parser *syntax.Parser) (*TraitDefinitionNode,
 }
 
 func ParseTraitConstraints(parser *syntax.Parser) (database.Node, []database.Node, *syntax.Error) {
-	_, err := parser.Token("TraitKeyword", syntax.TokenConfig{
-		Commit: "in this trait definition",
-	})
+	_, err := parser.Token("TraitKeyword")
 	if err != nil {
 		return nil, nil, err
 	}
+
+	parser.Commit("in this trait definition")
 
 	traitType, err := types.ParseAtomicType(parser)
 	if err != nil {

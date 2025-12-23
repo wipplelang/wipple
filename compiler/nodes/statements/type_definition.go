@@ -201,12 +201,12 @@ func ParseFieldDefinition(parser *syntax.Parser) (FieldDefinition, *syntax.Error
 		return FieldDefinition{}, err
 	}
 
-	_, err = parser.Token("AnnotateOperator", syntax.TokenConfig{
-		Commit: "in this type annotation",
-	})
+	_, err = parser.Token("AnnotateOperator")
 	if err != nil {
 		return FieldDefinition{}, err
 	}
+
+	parser.Commit("in this type annotation")
 
 	parser.ConsumeLineBreaks()
 
@@ -254,12 +254,12 @@ func ParseEnumerationTypeRepresentation(parser *syntax.Parser) (*EnumerationType
 func ParseMarkerTypeRepresentation(parser *syntax.Parser) (*MarkerTypeRepresentation, *syntax.Error) {
 	span := parser.Spanned()
 
-	_, err := parser.Token("TypeKeyword", syntax.TokenConfig{
-		Commit: "in this type definition",
-	})
+	_, err := parser.Token("TypeKeyword")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this type definition")
 
 	return &MarkerTypeRepresentation{
 		Span: span(),

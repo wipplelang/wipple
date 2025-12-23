@@ -25,9 +25,7 @@ func ParseTypeParameters(parser *syntax.Parser) ([]TypeParameterNode, *syntax.Er
 	}
 
 	if len(many) > 0 {
-		_, err := parser.Token("TypeFunctionOperator", syntax.TokenConfig{
-			Commit: "in this generic item",
-		})
+		_, err := parser.Token("TypeFunctionOperator")
 
 		if err != nil {
 			return nil, err
@@ -74,12 +72,12 @@ func ParseAnnotatedParameterType(parser *syntax.Parser) (*TypeParameterNode, *sy
 		return nil, err
 	}
 
-	_, err = parser.Token("AnnotateOperator", syntax.TokenConfig{
-		Commit: "in this type annotation",
-	})
+	_, err = parser.Token("AnnotateOperator")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this type annotation")
 
 	parser.ConsumeLineBreaks()
 
@@ -138,12 +136,12 @@ func ParseInferTypeParameter(parser *syntax.Parser) (*TypeParameterNode, *syntax
 		return nil, err
 	}
 
-	_, err = parser.Token("InferKeyword", syntax.TokenConfig{
-		Commit: "in this inferred type parameter",
-	})
+	_, err = parser.Token("InferKeyword")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this inferred type parameter")
 
 	name, err := syntax.ParseTypeParameterName(parser)
 	if err != nil {

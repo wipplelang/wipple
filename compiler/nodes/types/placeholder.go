@@ -17,12 +17,12 @@ func (node *PlaceholderTypeNode) GetFacts() *database.Facts {
 func ParsePlaceholderType(parser *syntax.Parser) (*PlaceholderTypeNode, *syntax.Error) {
 	span := parser.Spanned()
 
-	_, err := parser.Token("UnderscoreKeyword", syntax.TokenConfig{
-		Commit: "in this placeholder type",
-	})
+	_, err := parser.Token("UnderscoreKeyword")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this placeholder type")
 
 	return &PlaceholderTypeNode{
 		Facts: database.NewFacts(span()),

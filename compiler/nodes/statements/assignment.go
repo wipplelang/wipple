@@ -34,12 +34,12 @@ func ParseAssignmentStatement(parser *syntax.Parser, parseExpression ParseExpres
 		return nil, err
 	}
 
-	_, err = parser.Token("AssignOperator", syntax.TokenConfig{
-		Commit: "in this variable assignment",
-	})
+	_, err = parser.Token("AssignOperator")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this variable assignment")
 
 	parser.ConsumeLineBreaks()
 

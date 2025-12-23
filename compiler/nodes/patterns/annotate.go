@@ -29,12 +29,12 @@ func ParseAnnotatePattern(parser *syntax.Parser) (*AnnotatePatternNode, *syntax.
 		return nil, err
 	}
 
-	_, err = parser.Token("AnnotateOperator", syntax.TokenConfig{
-		Commit: "in this type annotation",
-	})
+	_, err = parser.Token("AnnotateOperator")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this type annotation")
 
 	parser.ConsumeLineBreaks()
 

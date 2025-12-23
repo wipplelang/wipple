@@ -30,12 +30,12 @@ func (node *SetPatternNode) GetFacts() *database.Facts {
 func ParseSetPattern(parser *syntax.Parser) (*SetPatternNode, *syntax.Error) {
 	span := parser.Spanned()
 
-	_, err := parser.Token("SetKeyword", syntax.TokenConfig{
-		Commit: "in this `set` pattern",
-	})
+	_, err := parser.Token("SetKeyword")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this `set` pattern")
 
 	name, err := syntax.ParseVariableName(parser)
 	if err != nil {

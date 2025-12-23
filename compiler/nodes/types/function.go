@@ -43,12 +43,12 @@ func ParseFunctionTypeInputs(parser *syntax.Parser) ([]database.Node, *syntax.Er
 		return nil, err
 	}
 
-	_, err = parser.Token("FunctionOperator", syntax.TokenConfig{
-		Commit: "in this function type",
-	})
+	_, err = parser.Token("FunctionOperator")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this function type")
 
 	parser.ConsumeLineBreaks()
 

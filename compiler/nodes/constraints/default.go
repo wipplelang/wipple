@@ -42,12 +42,12 @@ func ParseDefaultConstraint(parser *syntax.Parser) (*DefaultConstraintNode, *syn
 		Facts: database.NewFacts(parameterSpan()),
 	}
 
-	_, err = parser.Token("AnnotateOperator", syntax.TokenConfig{
-		Commit: "in this type annotation",
-	})
+	_, err = parser.Token("AnnotateOperator")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this type annotation")
 
 	parser.ConsumeLineBreaks()
 

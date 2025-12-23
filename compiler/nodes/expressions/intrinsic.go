@@ -23,12 +23,12 @@ func (node *IntrinsicExpressionNode) GetFacts() *database.Facts {
 func ParseIntrinsicExpression(parser *syntax.Parser) (*IntrinsicExpressionNode, *syntax.Error) {
 	span := parser.Spanned()
 
-	_, err := parser.Token("IntrinsicKeyword", syntax.TokenConfig{
-		Commit: "in this `intrinsic` expression",
-	})
+	_, err := parser.Token("IntrinsicKeyword")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this `intrinsic` expression")
 
 	name, err := parser.Token("String")
 	if err != nil {

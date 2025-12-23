@@ -30,12 +30,12 @@ type Arm struct {
 func ParseWhenExpression(parser *syntax.Parser) (*WhenExpressionNode, *syntax.Error) {
 	span := parser.Spanned()
 
-	_, err := parser.Token("WhenKeyword", syntax.TokenConfig{
-		Commit: "in this `when` expression",
-	})
+	_, err := parser.Token("WhenKeyword")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this `when` expression")
 
 	input, err := ParseAtomicExpression(parser)
 	if err != nil {
@@ -72,9 +72,9 @@ func ParseArm(parser *syntax.Parser) (Arm, *syntax.Error) {
 		return Arm{}, err
 	}
 
-	_, err = parser.Token("FunctionOperator", syntax.TokenConfig{
-		Commit: "in this `when` arm",
-	})
+	parser.Commit("in this `when` arm")
+
+	_, err = parser.Token("FunctionOperator")
 	if err != nil {
 		return Arm{}, err
 	}

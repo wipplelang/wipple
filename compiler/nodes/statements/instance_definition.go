@@ -55,12 +55,12 @@ func ParseInstanceDefinitionStatement(parser *syntax.Parser, parseExpression Par
 	}
 
 	value, _, err := syntax.ParseOptional(parser, func(parser *syntax.Parser) (database.Node, *syntax.Error) {
-		_, err := parser.Token("AssignOperator", syntax.TokenConfig{
-			Commit: "in this instance definition",
-		})
+		_, err := parser.Token("AssignOperator")
 		if err != nil {
 			return nil, err
 		}
+
+		parser.Commit("in this instance definition")
 
 		parser.ConsumeLineBreaks()
 
@@ -81,12 +81,12 @@ func ParseInstanceDefinitionStatement(parser *syntax.Parser, parseExpression Par
 }
 
 func ParseInstanceConstraints(parser *syntax.Parser) (*constraints.BoundConstraintNode, []database.Node, *syntax.Error) {
-	_, err := parser.Token("InstanceKeyword", syntax.TokenConfig{
-		Commit: "in this instance definition",
-	})
+	_, err := parser.Token("InstanceKeyword")
 	if err != nil {
 		return nil, nil, err
 	}
+
+	parser.Commit("in this instance definition")
 
 	bound, err := constraints.ParseBoundConstraint(parser)
 	if err != nil {

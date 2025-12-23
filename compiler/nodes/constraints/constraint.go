@@ -13,12 +13,12 @@ func (fact IsConstraintFact) String() string {
 }
 
 func ParseConstraints(parser *syntax.Parser) ([]database.Node, *syntax.Error) {
-	_, err := parser.Token("WhereKeyword", syntax.TokenConfig{
-		Commit: "in these constraints",
-	})
+	_, err := parser.Token("WhereKeyword")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in these constraints")
 
 	many, err := syntax.ParseMany(parser, 0, ParseConstraint, syntax.ParseNothing)
 	if err != nil {

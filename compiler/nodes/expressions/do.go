@@ -20,12 +20,12 @@ func (node *DoExpressionNode) GetFacts() *database.Facts {
 func ParseDoExpression(parser *syntax.Parser) (*DoExpressionNode, *syntax.Error) {
 	span := parser.Spanned()
 
-	_, err := parser.Token("DoKeyword", syntax.TokenConfig{
-		Commit: "in this `do` expression",
-	})
+	_, err := parser.Token("DoKeyword")
 	if err != nil {
 		return nil, err
 	}
+
+	parser.Commit("in this `do` expression")
 
 	value, err := ParseAtomicExpression(parser)
 	if err != nil {
