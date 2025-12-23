@@ -19,16 +19,16 @@ TypeParameterNode `value` (complex-nested-bounds.wipple:3:7)
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (complex-nested-bounds.wipple:3:7)
 
-FunctionTypeNode `value -> value` (complex-nested-bounds.wipple:3:22)
-  at complex-nested-bounds.wipple:3:22
-  has type `value -> value`
-  is a type
-
 TypeParameterNode `value` (complex-nested-bounds.wipple:3:23)
   at complex-nested-bounds.wipple:3:23
   has type `value`
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (complex-nested-bounds.wipple:3:7)
+
+FunctionTypeNode `value -> value` (complex-nested-bounds.wipple:3:23)
+  at complex-nested-bounds.wipple:3:23
+  has type `value -> value`
+  is a type
 
 TypeParameterNode `value` (complex-nested-bounds.wipple:3:32)
   at complex-nested-bounds.wipple:3:32
@@ -61,16 +61,16 @@ InstanceDefinitionNode `instance (Not (a -> b))` (complex-nested-bounds.wipple:5
   resolved to 1 definition(s): TraitDefinitionNode `Not` (complex-nested-bounds.wipple:3:1)
   has type parameters
 
-FunctionTypeNode `a -> b` (complex-nested-bounds.wipple:5:15)
-  at complex-nested-bounds.wipple:5:15
-  has type `a -> b`
-  is a type
-
 TypeParameterNode `a` (complex-nested-bounds.wipple:5:16)
   at complex-nested-bounds.wipple:5:16
   has type `a`
   is a type
   resolved to 1 definition(s): TypeParameterNode `a` (complex-nested-bounds.wipple:5:16)
+
+FunctionTypeNode `a -> b` (complex-nested-bounds.wipple:5:16)
+  at complex-nested-bounds.wipple:5:16
+  has type `a -> b`
+  is a type
 
 TypeParameterNode `b` (complex-nested-bounds.wipple:5:21)
   at complex-nested-bounds.wipple:5:21
@@ -120,16 +120,16 @@ CallExpressionNode `not (f x)` (complex-nested-bounds.wipple:5:51)
   is an expression
   has type `b`
 
-CallExpressionNode `f x` (complex-nested-bounds.wipple:5:55)
-  at complex-nested-bounds.wipple:5:55
-  is an expression
-  has type `b`
-
 VariableExpressionNode `f` (complex-nested-bounds.wipple:5:56)
   at complex-nested-bounds.wipple:5:56
   is an expression
   has type `a -> b`
   resolved to 1 definition(s): VariablePatternNode `f` (complex-nested-bounds.wipple:5:41)
+
+CallExpressionNode `f x` (complex-nested-bounds.wipple:5:56)
+  at complex-nested-bounds.wipple:5:56
+  is an expression
+  has type `b`
 
 VariableExpressionNode `x` (complex-nested-bounds.wipple:5:58)
   at complex-nested-bounds.wipple:5:58

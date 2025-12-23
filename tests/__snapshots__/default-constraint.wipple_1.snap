@@ -54,16 +54,16 @@ TypeParameterNode `collection` (default-constraint.wipple:6:19)
   is a type
   resolved to 1 definition(s): TypeParameterNode `collection` (default-constraint.wipple:6:19)
 
-FunctionTypeNode `element -> collection` (default-constraint.wipple:6:39)
-  at default-constraint.wipple:6:39
-  has type `element -> collection`
-  is a type
-
 TypeParameterNode `element` (default-constraint.wipple:6:40)
   at default-constraint.wipple:6:40
   has type `element`
   is a type
   resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:6:11)
+
+FunctionTypeNode `element -> collection` (default-constraint.wipple:6:40)
+  at default-constraint.wipple:6:40
+  has type `element -> collection`
+  is a type
 
 TypeParameterNode `collection` (default-constraint.wipple:6:51)
   at default-constraint.wipple:6:51
@@ -84,8 +84,8 @@ TypeParameterNode `element` (default-constraint.wipple:7:19)
   is a type
   resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:7:19)
 
-NamedTypeNode `List element` (default-constraint.wipple:7:27)
-  at default-constraint.wipple:7:27
+NamedTypeNode `List element` (default-constraint.wipple:7:28)
+  at default-constraint.wipple:7:28
   has type `List element`
   is a type
   resolved to 1 definition(s): TypeDefinitionNode `List` (default-constraint.wipple:3:1)
@@ -115,8 +115,8 @@ TypeParameterNode `element` (default-constraint.wipple:8:19)
   is a type
   resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:8:19)
 
-NamedTypeNode `Set element` (default-constraint.wipple:8:27)
-  at default-constraint.wipple:8:27
+NamedTypeNode `Set element` (default-constraint.wipple:8:28)
+  at default-constraint.wipple:8:28
   has type `Set element`
   is a type
   resolved to 1 definition(s): TypeDefinitionNode `Set` (default-constraint.wipple:4:1)

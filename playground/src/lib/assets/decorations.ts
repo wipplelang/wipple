@@ -1,4 +1,4 @@
-import { Prec, RangeSet, StateEffect, StateField } from "@codemirror/state";
+import { Prec, RangeSet } from "@codemirror/state";
 import {
     Decoration,
     type DecorationSet,
@@ -52,23 +52,6 @@ export const markRegex = (
     }[],
     options: { atomic?: boolean } = {},
 ) => {
-    type Cache = Record<string, Decoration>;
-
-    const updateCacheEffect = StateEffect.define<Cache>();
-
-    const cacheField = StateField.define<Cache>({
-        create: () => ({}),
-        update: (value, transaction) => {
-            for (const effect of transaction.effects) {
-                if (effect.is(updateCacheEffect)) {
-                    value = effect.value;
-                }
-            }
-
-            return value;
-        },
-    });
-
     const decorator = new MatchDecorator({
         regexp: regex,
         decorate: (add, from, to, match, view) => {
@@ -87,30 +70,27 @@ export const markRegex = (
         },
     });
 
-    return [
-        cacheField,
-        ViewPlugin.fromClass(
-            class {
-                public decorations: DecorationSet;
+    return ViewPlugin.fromClass(
+        class {
+            public decorations: DecorationSet;
 
-                constructor(view: EditorView) {
-                    this.decorations = decorator.createDeco(view);
-                }
+            constructor(view: EditorView) {
+                this.decorations = decorator.createDeco(view);
+            }
 
-                update(update: ViewUpdate) {
-                    this.decorations = decorator.updateDeco(update, this.decorations);
-                }
-            },
-            {
-                decorations: (instance) => instance.decorations,
-                provide: (plugin) =>
-                    EditorView.atomicRanges.of(
-                        (view) =>
-                            (options.atomic && view.plugin(plugin)?.decorations) || Decoration.none,
-                    ),
-            },
-        ),
-    ];
+            update(update: ViewUpdate) {
+                this.decorations = decorator.updateDeco(update, this.decorations);
+            }
+        },
+        {
+            decorations: (instance) => instance.decorations,
+            provide: (plugin) =>
+                EditorView.atomicRanges.of(
+                    (view) =>
+                        (options.atomic && view.plugin(plugin)?.decorations) || Decoration.none,
+                ),
+        },
+    );
 };
 
 export const markRange = (from: number, to: number, decoration: () => Decoration) =>

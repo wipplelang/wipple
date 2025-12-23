@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"reflect"
 
-	db "wipple/database"
+	"wipple/database"
 )
 
 type ParseFunc[T any] func(*Parser) (T, *Error)
 
 type Parser struct {
-	Db     *db.Db
+	Db     *database.Db
 	Path   string
 	Source string
 	tokens []*Token
@@ -28,7 +28,7 @@ type parseResult struct {
 	value any
 }
 
-func NewParser(db *db.Db, path string, source string) (*Parser, *Error) {
+func NewParser(db *database.Db, path string, source string) (*Parser, *Error) {
 	parser := &Parser{
 		Db:     db,
 		Path:   path,
@@ -45,21 +45,19 @@ func NewParser(db *db.Db, path string, source string) (*Parser, *Error) {
 	return parser, nil
 }
 
-func (parser *Parser) Spanned() func() db.Span {
-	index := parser.index
+func (parser *Parser) Spanned() func() database.Span {
+	start := parser.eofSpan()
+	if parser.index < len(parser.tokens) {
+		start = parser.tokens[parser.index].span
+	}
 
-	return func() db.Span {
-		start := parser.eofSpan()
-		if index < len(parser.tokens) {
-			start = parser.tokens[index].span
-		}
-
+	return func() database.Span {
 		end := parser.eofSpan()
-		if parser.index > 0 {
+		if parser.index > 0 && parser.index <= len(parser.tokens) {
 			end = parser.tokens[parser.index-1].span
 		}
 
-		return db.JoinSpans(start, end, parser.Source)
+		return database.JoinSpans(start, end, parser.Source)
 	}
 }
 
@@ -136,9 +134,9 @@ func (parser *Parser) ConsumeLineBreaks() {
 	parser.Token("LineBreak")
 }
 
-func (parser *Parser) eofSpan() db.Span {
+func (parser *Parser) eofSpan() database.Span {
 	if len(parser.tokens) == 0 {
-		return db.NullSpan()
+		return database.NullSpan()
 	} else {
 		return parser.tokens[len(parser.tokens)-1].span
 	}
@@ -214,8 +212,9 @@ func ParseOptional[T any](parser *Parser, f ParseFunc[T]) (T, bool, *Error) {
 }
 
 type Many[T any, S any] struct {
-	Value     T
-	Separator S
+	Value         T
+	Separator     S
+	SeparatorSpan database.Span
 }
 
 func ParseMany[T any, S any](parser *Parser, min int, f ParseFunc[T], separator ParseFunc[S]) ([]Many[T, S], *Error) {
@@ -225,7 +224,9 @@ func ParseMany[T any, S any](parser *Parser, min int, f ParseFunc[T], separator 
 	for {
 		start := parser.index
 
+		span := parser.Spanned()
 		var separatorResult S
+		var separatorSpan database.Span
 		if !first {
 			var ok bool
 			var err *Error
@@ -238,6 +239,7 @@ func ParseMany[T any, S any](parser *Parser, min int, f ParseFunc[T], separator 
 				break
 			}
 		}
+		separatorSpan = span()
 
 		result, ok, err := ParseOptional(parser, f)
 		if err != nil {
@@ -250,8 +252,9 @@ func ParseMany[T any, S any](parser *Parser, min int, f ParseFunc[T], separator 
 		}
 
 		results = append(results, Many[T, S]{
-			Value:     result,
-			Separator: separatorResult,
+			Value:         result,
+			Separator:     separatorResult,
+			SeparatorSpan: separatorSpan,
 		})
 
 		first = false

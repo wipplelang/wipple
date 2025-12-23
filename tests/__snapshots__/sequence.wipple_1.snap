@@ -89,16 +89,16 @@ TypeParameterNode `infer element` (sequence.wipple:17:26)
   is a type
   resolved to 1 definition(s): TypeParameterNode `infer element` (sequence.wipple:17:26)
 
-FunctionTypeNode `collection -> Sequence element` (sequence.wipple:17:51)
-  at sequence.wipple:17:51
-  has type `collection -> Sequence element`
-  is a type
-
 TypeParameterNode `collection` (sequence.wipple:17:52)
   at sequence.wipple:17:52
   has type `collection`
   is a type
   resolved to 1 definition(s): TypeParameterNode `collection` (sequence.wipple:17:15)
+
+FunctionTypeNode `collection -> Sequence element` (sequence.wipple:17:52)
+  at sequence.wipple:17:52
+  has type `collection -> Sequence element`
+  is a type
 
 NamedTypeNode `Sequence element` (sequence.wipple:17:66)
   at sequence.wipple:17:66
@@ -119,8 +119,8 @@ InstanceDefinitionNode `instance (As-Sequence (Box value) value)` (sequence.wipp
   resolved to 1 definition(s): TraitDefinitionNode `As-Sequence` (sequence.wipple:17:1)
   has type parameters
 
-NamedTypeNode `Box value` (sequence.wipple:18:23)
-  at sequence.wipple:18:23
+NamedTypeNode `Box value` (sequence.wipple:18:24)
+  at sequence.wipple:18:24
   has type `Box value`
   is a type
   resolved to 1 definition(s): TypeDefinitionNode `Box` (sequence.wipple:13:1)
@@ -149,11 +149,6 @@ ConstantDefinitionNode `filter` (sequence.wipple:20:1)
   has definition constraints
   has type parameters
 
-FunctionTypeNode `item -> Boolean` (sequence.wipple:20:11)
-  at sequence.wipple:20:11
-  has type `item -> Boolean`
-  is a type
-
 FunctionTypeNode `(item -> Boolean) -> collection -> Sequence item` (sequence.wipple:20:11)
   at sequence.wipple:20:11
   has type `(item -> Boolean) -> collection -> Sequence item`
@@ -164,6 +159,11 @@ TypeParameterNode `item` (sequence.wipple:20:12)
   has type `item`
   is a type
   resolved to 1 definition(s): TypeParameterNode `item` (sequence.wipple:20:12)
+
+FunctionTypeNode `item -> Boolean` (sequence.wipple:20:12)
+  at sequence.wipple:20:12
+  has type `item -> Boolean`
+  is a type
 
 NamedTypeNode `Boolean` (sequence.wipple:20:20)
   at sequence.wipple:20:20
@@ -276,11 +276,6 @@ PlaceholderExpressionNode `_` (sequence.wipple:24:30)
   is a placeholder
   has type `Boolean`
 
-CallExpressionNode `filter positive?` (sequence.wipple:25:1)
-  at sequence.wipple:25:1
-  is an expression
-  has type `(Box String) -> Sequence String`
-
 ExpressionStatementNode `(filter positive?) box` (sequence.wipple:25:1)
   at sequence.wipple:25:1
 
@@ -295,6 +290,11 @@ VariableExpressionNode `filter` (sequence.wipple:25:2)
   has bound(s) `As-Sequence (Box String) String` (InstanceDefinitionNode `instance (As-Sequence (Box value) value)` (sequence.wipple:18:1))
   has type `(String -> Boolean) -> (Box String) -> Sequence String`
   resolved to 1 definition(s): ConstantDefinitionNode `filter` (sequence.wipple:20:1)
+
+CallExpressionNode `filter positive?` (sequence.wipple:25:2)
+  at sequence.wipple:25:2
+  is an expression
+  has type `(Box String) -> Sequence String`
 
 VariableExpressionNode `positive?` (sequence.wipple:25:9)
   at sequence.wipple:25:9

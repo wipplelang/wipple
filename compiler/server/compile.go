@@ -13,7 +13,6 @@ import (
 	"wipple/nodes/file"
 	"wipple/syntax"
 	"wipple/typecheck"
-	"wipple/visit"
 )
 
 type CompileRequest struct {
@@ -33,23 +32,24 @@ type CompileResponse struct {
 }
 
 type ResponseDiagnostic struct {
-	Locations      []ResponseDiagnosticLocation `json:"locations"`
-	PrimaryLines   []ResponseDiagnosticLine     `json:"primaryLines"`
-	Message        string                       `json:"message"`
-	SecondaryLines []ResponseDiagnosticLine     `json:"secondaryLines"`
+	Locations []*ResponseDiagnosticLocation `json:"locations"`
+	Lines     []*ResponseDiagnosticLine     `json:"lines"`
+	Message   string                        `json:"message"`
 }
 
 type ResponseDiagnosticLocation struct {
 	Start int `json:"start"`
 	End   int `json:"end"`
 	Group int `json:"group"`
+	node  database.Node
 }
 
 type ResponseDiagnosticLine struct {
-	Path      string                       `json:"path"`
-	Source    string                       `json:"source"`
-	Locations []ResponseDiagnosticLocation `json:"locations"`
-	number    int
+	Path      string                        `json:"path"`
+	Source    string                        `json:"source"`
+	Locations []*ResponseDiagnosticLocation `json:"locations"`
+	start     int
+	end       int
 	offset    int
 	node      database.Node
 }
@@ -91,48 +91,19 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 	if len(feedbackItems) > 0 {
 		responseDiagnostics := make([]ResponseDiagnostic, 0, len(feedbackItems))
 		for _, item := range feedbackItems {
-			others := item.On[1:]
-			others = database.RemoveOverlappingNodes(others)
-			slices.SortFunc(others, func(left database.Node, right database.Node) int {
+			slices.SortStableFunc(item.On, func(left database.Node, right database.Node) int {
 				return database.CompareSpans(database.GetSpanFact(left), database.GetSpanFact(right))
 			})
-			item.On = slices.Replace(item.On, 1, len(item.On), others...)
+			item.On = slices.CompactFunc(item.On, func(left database.Node, right database.Node) bool {
+				return database.HaveEqualSpans(left, right)
+			})
 
-			var groups []*typecheck.Group
-			var locations []ResponseDiagnosticLocation
-			for _, node := range item.On {
-				span := database.GetSpanFact(node)
-
-				if span.Path != defaultPath {
-					continue
-				}
-
-				fact, ok := database.GetFact[typecheck.TypedFact](node)
-				groupIndex := -1
-				if ok {
-					groupIndex = slices.Index(groups, fact.Group)
-					if groupIndex == -1 {
-						groupIndex = len(groups)
-						groups = append(groups, fact.Group)
-					}
-				}
-
-				locations = append(locations, ResponseDiagnosticLocation{
-					Start: span.Start.Index,
-					End:   span.End.Index,
-					Group: groupIndex,
-				})
-			}
-
-			locations = removeOverlappingLocations(locations)
-
-			primaryLines, secondaryLines := collectLines(db, item.On[1:], groups)
+			locations, lines := collectLines(db, item.On)
 
 			responseDiagnostics = append(responseDiagnostics, ResponseDiagnostic{
-				Locations:      locations,
-				PrimaryLines:   primaryLines,
-				SecondaryLines: secondaryLines,
-				Message:        item.String(),
+				Locations: locations,
+				Lines:     lines,
+				Message:   item.String(),
 			})
 		}
 
@@ -245,166 +216,131 @@ func compileLibrary(name string) (*database.Db, *driver.RootNode, error) {
 	return db, root, nil
 }
 
-func collectLines(db *database.Db, nodes []database.Node, groups []*typecheck.Group) ([]ResponseDiagnosticLine, []ResponseDiagnosticLine) {
-	var lines []ResponseDiagnosticLine
+func collectLines(db *database.Db, nodes []database.Node) ([]*ResponseDiagnosticLocation, []*ResponseDiagnosticLine) {
+	var locations []*ResponseDiagnosticLocation
+	var lines []*ResponseDiagnosticLine
+	groups := map[*typecheck.Group]int{}
 	for _, node := range nodes {
-		span := database.GetSpanFact(node)
-
-		if span.Path == defaultPath {
+		fact, ok := database.GetFact[typecheck.TypedFact](node)
+		if !ok || fact.Group == nil {
 			continue
 		}
 
-		fact, ok := database.GetFact[typecheck.TypedFact](node)
-		groupIndex := -1
-		if ok {
-			groupIndex = slices.Index(groups, fact.Group)
-			if groupIndex == -1 {
-				groupIndex = len(groups)
-				groups = append(groups, fact.Group)
-			}
+		if _, ok := groups[fact.Group]; !ok {
+			groups[fact.Group] = len(groups)
 		}
 
-		getLocation := func(offset int) ResponseDiagnosticLocation {
-			return ResponseDiagnosticLocation{
+		groupIndex := groups[fact.Group]
+
+		span := database.GetSpanFact(node)
+
+		if span.Path == defaultPath {
+			locations = append(locations, &ResponseDiagnosticLocation{
+				Start: span.Start.Index,
+				End:   span.End.Index,
+				Group: groupIndex,
+				node:  node,
+			})
+
+			continue
+		}
+
+		getLocation := func(offset int) *ResponseDiagnosticLocation {
+			return &ResponseDiagnosticLocation{
 				Start: span.Start.Column - 1 + offset,
 				End:   span.End.Column + offset,
 				Group: groupIndex,
+				node:  node,
 			}
 		}
 
-		if index := slices.IndexFunc(lines, func(line ResponseDiagnosticLine) bool {
-			return line.Path == span.Path && line.number == span.Start.Line
+		if index := slices.IndexFunc(lines, func(line *ResponseDiagnosticLine) bool {
+			return line.Path == span.Path && span.Start.Line >= line.start && span.End.Line <= line.end
 		}); index != -1 {
-			existing := &lines[index]
+			existing := lines[index]
 			location := getLocation(existing.offset)
 
-			if !slices.Contains(existing.Locations, location) {
+			if !slices.ContainsFunc(existing.Locations, func(other *ResponseDiagnosticLocation) bool {
+				return other.Start == location.Start && other.End == location.End
+			}) {
 				existing.Locations = append(existing.Locations, location)
 			}
-		} else {
-			source, ok := database.ContainsNode(db, func(node database.Node) (string, bool) {
-				if _, ok := node.(*file.FileNode); !ok {
-					return "", false
-				}
 
-				fileSpan := database.GetSpanFact(node)
-				if fileSpan.Path == span.Path {
-					return fileSpan.Source, true
-				}
+			continue
+		}
 
+		source, ok := database.ContainsNode(db, func(node database.Node) (string, bool) {
+			if _, ok := node.(*file.FileNode); !ok {
 				return "", false
-			})
-
-			if !ok {
-				continue
 			}
 
-			sourceLines := strings.Split(source, "\n")[span.Start.Line-1 : span.End.Line]
-			trimmedLines := 0
-			for {
-				if strings.HasPrefix(strings.TrimLeft(sourceLines[0], " "), "--") {
-					sourceLines = sourceLines[1:]
-					trimmedLines++
-				} else {
-					break
-				}
+			fileSpan := database.GetSpanFact(node)
+			if fileSpan.Path == span.Path {
+				return fileSpan.Source, true
 			}
 
-			offset := 0
-			for i := 0; i < span.End.Line-span.Start.Line-trimmedLines; i++ {
-				offset += len(sourceLines[i]) + 1
-			}
+			return "", false
+		})
 
-			lines = append(lines, ResponseDiagnosticLine{
-				Path:      span.Path,
-				Source:    strings.Join(sourceLines, "\n"),
-				Locations: []ResponseDiagnosticLocation{getLocation(offset)},
-				number:    span.Start.Line,
-				offset:    offset,
-				node:      node,
-			})
+		if !ok {
+			continue
 		}
+
+		sourceLines := strings.Split(source, "\n")[span.Start.Line-1 : span.End.Line]
+		trimmedLines := 0
+		for {
+			if strings.HasPrefix(strings.TrimLeft(sourceLines[0], " "), "--") {
+				sourceLines = sourceLines[1:]
+				trimmedLines++
+			} else {
+				break
+			}
+		}
+
+		offset := 0
+		for i := 0; i < span.End.Line-span.Start.Line-trimmedLines; i++ {
+			offset += len(sourceLines[i]) + 1
+		}
+
+		lines = append(lines, &ResponseDiagnosticLine{
+			Path:      span.Path,
+			Source:    strings.Join(sourceLines, "\n"),
+			Locations: []*ResponseDiagnosticLocation{getLocation(offset)},
+			start:     span.Start.Line,
+			end:       span.End.Line,
+			offset:    offset,
+			node:      node,
+		})
 	}
+
+	locations = removeDuplicateLocations(locations)
 
 	for _, line := range lines {
-		line.Locations = removeOverlappingLocations(line.Locations)
+		line.Locations = removeDuplicateLocations(line.Locations)
 	}
 
-	getPriority := func(node database.Node) int {
-		span := database.GetSpanFact(node)
-
-		// Get the definition on this line
-		if definition, ok := database.ContainsFact(db, func(definitionNode database.Node, fact visit.DefinedFact) (visit.Definition, bool) {
-			definitionSpan := database.GetSpanFact(definitionNode)
-
-			if definitionSpan.Path == span.Path && span.Start.Line >= definitionSpan.Start.Line && span.End.Line <= definitionSpan.End.Line {
-				return fact.Definition, true
-			}
-
-			return nil, false
-		}); ok {
-			switch definition.(type) {
-			case *visit.TraitDefinition:
-				return 0
-			case *visit.InstanceDefinition:
-				return 1
-			case *visit.ConstantDefinition:
-				return 2
-			}
-		}
-
-		return 3
-	}
-
-	priorities := map[database.Node]int{}
-	highestPriority := 0
-	for _, line := range lines {
-		priority := getPriority(line.node)
-		priorities[line.node] = priority
-		if priority > highestPriority {
-			highestPriority = priority
-		}
-	}
-
-	var primaryLines []ResponseDiagnosticLine
-	var secondaryLines []ResponseDiagnosticLine
-	for _, line := range lines {
-		if priorities[line.node] == highestPriority {
-			primaryLines = append(primaryLines, line)
-		} else {
-			secondaryLines = append(secondaryLines, line)
-		}
-	}
-
-	return primaryLines, secondaryLines
+	return locations, lines
 }
 
-func removeOverlappingLocations(locations []ResponseDiagnosticLocation) []ResponseDiagnosticLocation {
-	primary := locations[0]
-	others := locations[1:]
+func removeDuplicateLocations(locations []*ResponseDiagnosticLocation) []*ResponseDiagnosticLocation {
+	if len(locations) == 0 {
+		return nil
+	}
 
-	slices.SortFunc(others, func(left ResponseDiagnosticLocation, right ResponseDiagnosticLocation) int {
+	slices.SortStableFunc(locations, func(left *ResponseDiagnosticLocation, right *ResponseDiagnosticLocation) int {
+		// Prefer non-hidden nodes
+		if !database.IsHiddenNode(left.node) && database.IsHiddenNode(right.node) {
+			return -1
+		} else if database.IsHiddenNode(left.node) && !database.IsHiddenNode(right.node) {
+			return 1
+		}
+
 		return (left.End - left.Start) - (right.End - right.Start)
 	})
 
-	original := make([]ResponseDiagnosticLocation, len(others))
-	copy(original, others)
-
-	// Deduplicate first
-	seen := map[ResponseDiagnosticLocation]struct{}{}
-	others = slices.DeleteFunc(others, func(location ResponseDiagnosticLocation) bool {
-		if _, ok := seen[location]; ok {
-			return true
-		}
-		seen[location] = struct{}{}
-		return false
+	locations = slices.CompactFunc(locations, func(left *ResponseDiagnosticLocation, right *ResponseDiagnosticLocation) bool {
+		return left.Start == right.Start && left.End == right.End
 	})
 
-	others = slices.DeleteFunc(others, func(location ResponseDiagnosticLocation) bool {
-		return location == primary || slices.ContainsFunc(original, func(other ResponseDiagnosticLocation) bool {
-			return location.Start < other.Start && location.End > other.End
-		})
-	})
-
-	return append([]ResponseDiagnosticLocation{primary}, others...)
+	return locations
 }

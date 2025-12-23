@@ -37,16 +37,16 @@ TypeParameterNode `infer sum` (custom-errors.wipple:4:18)
   is a type
   resolved to 1 definition(s): TypeParameterNode `infer sum` (custom-errors.wipple:4:18)
 
-FunctionTypeNode `left right -> sum` (custom-errors.wipple:4:39)
-  at custom-errors.wipple:4:39
-  has type `left right -> sum`
-  is a type
-
 TypeParameterNode `left` (custom-errors.wipple:4:40)
   at custom-errors.wipple:4:40
   has type `left`
   is a type
   resolved to 1 definition(s): TypeParameterNode `left` (custom-errors.wipple:4:7)
+
+FunctionTypeNode `left right -> sum` (custom-errors.wipple:4:40)
+  at custom-errors.wipple:4:40
+  has type `left right -> sum`
+  is a type
 
 TypeParameterNode `right` (custom-errors.wipple:4:45)
   at custom-errors.wipple:4:45

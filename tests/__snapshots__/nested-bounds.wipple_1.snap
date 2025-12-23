@@ -24,16 +24,16 @@ TypeParameterNode `value` (nested-bounds.wipple:4:5)
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:4:5)
 
-FunctionTypeNode `value -> ()` (nested-bounds.wipple:4:20)
-  at nested-bounds.wipple:4:20
-  has type `value -> ()`
-  is a type
-
 TypeParameterNode `value` (nested-bounds.wipple:4:21)
   at nested-bounds.wipple:4:21
   has type `value`
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:4:5)
+
+FunctionTypeNode `value -> ()` (nested-bounds.wipple:4:21)
+  at nested-bounds.wipple:4:21
+  has type `value -> ()`
+  is a type
 
 UnitTypeNode `()` (nested-bounds.wipple:4:30)
   at nested-bounds.wipple:4:30
@@ -89,16 +89,16 @@ TypeParameterNode `value` (nested-bounds.wipple:8:5)
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:8:5)
 
-FunctionTypeNode `value -> ()` (nested-bounds.wipple:8:20)
-  at nested-bounds.wipple:8:20
-  has type `value -> ()`
-  is a type
-
 TypeParameterNode `value` (nested-bounds.wipple:8:21)
   at nested-bounds.wipple:8:21
   has type `value`
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (nested-bounds.wipple:8:5)
+
+FunctionTypeNode `value -> ()` (nested-bounds.wipple:8:21)
+  at nested-bounds.wipple:8:21
+  has type `value -> ()`
+  is a type
 
 UnitTypeNode `()` (nested-bounds.wipple:8:30)
   at nested-bounds.wipple:8:30

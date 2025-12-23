@@ -97,4 +97,43 @@
             @apply material-symbol;
         }
     }
+
+    .diagnostic-primary,
+    .diagnostic-secondary {
+        @apply rounded-[6px] ring-[1.5px];
+    }
+
+    .diagnostic-primary {
+        @apply underline decoration-(--color) decoration-wavy [text-decoration-skip-ink:none];
+
+        --tw-ring-color: color-mix(in oklab, var(--color) 80%, var(--color-background));
+
+        background-color: color-mix(in oklab, var(--color) 15%, var(--color-background));
+
+        @variant dark {
+            --tw-ring-color: color-mix(in oklab, var(--color) 100%, var(--color-background));
+
+            background-color: color-mix(
+                in oklab,
+                var(--color) 50%,
+                var(--color-background-secondary)
+            );
+        }
+    }
+
+    .diagnostic-secondary {
+        --tw-ring-color: color-mix(in oklab, var(--color) 40%, var(--color-background));
+
+        background-color: color-mix(in oklab, var(--color) 10%, var(--color-background));
+
+        @variant dark {
+            --tw-ring-color: color-mix(in oklab, var(--color) 70%, var(--color-background));
+
+            background-color: color-mix(
+                in oklab,
+                var(--color) 40%,
+                var(--color-background-secondary)
+            );
+        }
+    }
 }

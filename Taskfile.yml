@@ -57,7 +57,7 @@ tasks:
   serve:server:
     dir: compiler
     cmds:
-      - go run github.com/air-verse/air@latest -- server
+      - if [[ ! -v NO_SERVER ]]; then go run github.com/air-verse/air@latest -- server; fi
     env:
       PORT: "3000"
       LIBRARY_URL: "http://localhost:3001"

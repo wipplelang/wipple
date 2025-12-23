@@ -16,13 +16,17 @@
         markRange,
         blockDecoration,
     } from "$lib/assets/decorations";
-    import tokens, { enableHighlightingBefore, disableHighlightingAfter } from "$lib/assets/tokens";
+    import tokens, {
+        enableHighlightingBefore,
+        disableHighlightingAfter,
+        tokensRegex,
+    } from "$lib/assets/tokens";
     import { stringifyAsset, type Asset } from "$lib/models/Asset";
     import runtimes from "$lib/runtimes";
     import widgets, { type WidgetType } from "$lib/widgets";
     import NumberWidget from "$lib/widgets/NumberWidget.svelte";
     import { defaultKeymap, indentWithTab } from "@codemirror/commands";
-    import { Compartment, EditorState, Prec, RangeSet } from "@codemirror/state";
+    import { Compartment, EditorState, RangeSet } from "@codemirror/state";
     import { EditorView, keymap, placeholder, type Command } from "@codemirror/view";
     import { minimalSetup } from "codemirror";
     import type { Action } from "svelte/action";
@@ -242,11 +246,18 @@
 
     // MARK: - Highlight tokens
 
-    const markTokens = Object.entries(tokens).map(([token, regex]) =>
-        markRegex(new RegExp(regex, "g"), () => [
-            { decoration: () => markDecoration(`token-${token}`) },
-        ]),
-    );
+    const markTokens = markRegex(new RegExp(tokensRegex, "g"), (match) => {
+        const [token] =
+            (match.groups &&
+                Object.entries(match.groups).find(([_, value]) => value !== undefined)) ??
+            [];
+
+        if (!token) {
+            return [];
+        }
+
+        return [{ decoration: () => markDecoration(`token-${token}`) }];
+    });
 
     // MARK: - Highlight numbers
 
@@ -413,6 +424,8 @@
 
     // MARK: - Display diagnostic
 
+    let diagnosticWidgetIsExpanded = $state(false);
+
     const diagnosticLine = $derived.by(() => {
         if (!diagnostic) {
             return undefined;
@@ -428,12 +441,24 @@
 
     const markDiagnostic = new Compartment();
 
-    const createMarkDiagnostic = ({ value, stale, onclose }: NonNullable<typeof diagnostic>) => {
+    const createMarkDiagnostic = ({
+        value,
+        stale,
+        hideWidget,
+        onclose,
+    }: NonNullable<typeof diagnostic>) => {
         const diagnosticWidget = new DiagnosticWidget.element!();
         Object.assign(diagnosticWidget, {
             diagnostic: value,
             stale,
-            onclose,
+            showExtra: diagnosticWidgetIsExpanded,
+            ontoggleshowextra: (visible: boolean) => {
+                diagnosticWidgetIsExpanded = visible;
+            },
+            onclose: () => {
+                onclose?.();
+                diagnosticWidgetIsExpanded = false;
+            },
         });
 
         let pos: number;
@@ -445,29 +470,32 @@
             return [];
         }
 
+        const full = hideWidget || diagnosticWidgetIsExpanded;
+
         return [
             stale
                 ? []
-                : Prec.high(
-                      (value.locations as any[]).flatMap(({ start, end, group }, index) => {
-                          if (start === end) {
-                              return [];
-                          }
+                : (value.locations as any[]).flatMap(({ start, end, group }, index) => {
+                      if (start === end || (index > 0 && !full)) {
+                          return [];
+                      }
 
-                          const color =
-                              diagnosticGroupColors[group % diagnosticGroupColors.length] ??
-                              "var(--color-blue-500)";
+                      const color =
+                          full && diagnosticGroupColors.length > 0
+                              ? diagnosticGroupColors[group % diagnosticGroupColors.length]
+                              : "var(--color-blue-500)";
 
-                          const decoration = markRange(start, end, () =>
-                              markDecoration(
-                                  `rounded-[6px] ring-[1.5px] ${index === 0 && !diagnostic!.hideWidget ? "underline [text-decoration-skip-ink:none] decoration-wavy decoration-(--color) ring-(--color)/50 bg-(--color)/15 dark:bg-(--color)/20" : "ring-(--color)/20 bg-(--color)/10 dark:bg-(--color)/5 "}`,
-                                  `--color: ${color}`,
-                              ),
-                          );
+                      const decoration = markRange(start, end, () =>
+                          markDecoration(
+                              index === 0 && !diagnostic!.hideWidget
+                                  ? "diagnostic-primary"
+                                  : "diagnostic-secondary",
+                              `--color: ${color}`,
+                          ),
+                      );
 
-                          return [decoration];
-                      }),
-                  ),
+                      return [decoration];
+                  }),
             diagnostic?.hideWidget
                 ? []
                 : EditorView.decorations.of(

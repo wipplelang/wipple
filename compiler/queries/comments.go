@@ -113,7 +113,7 @@ func getLinks(db *database.Db, node database.Node, source database.Node, filter 
 
 		var uses []database.Node
 		for _, node := range fact.Group.Nodes {
-			if node != instantiated && !database.IsHiddenNode(node) && filter(node) {
+			if node != instantiated && filter(node) {
 				if _, ok := database.GetFact[typecheck.TypedFact](node); ok {
 					uses = append(uses, node)
 				}

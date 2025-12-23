@@ -36,16 +36,16 @@ TypeParameterNode `value` (recursive-bounds.wipple:5:12)
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (recursive-bounds.wipple:5:12)
 
-FunctionTypeNode `value -> String` (recursive-bounds.wipple:5:27)
-  at recursive-bounds.wipple:5:27
-  has type `value -> String`
-  is a type
-
 TypeParameterNode `value` (recursive-bounds.wipple:5:28)
   at recursive-bounds.wipple:5:28
   has type `value`
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (recursive-bounds.wipple:5:12)
+
+FunctionTypeNode `value -> String` (recursive-bounds.wipple:5:28)
+  at recursive-bounds.wipple:5:28
+  has type `value -> String`
+  is a type
 
 NamedTypeNode `String` (recursive-bounds.wipple:5:37)
   at recursive-bounds.wipple:5:37
@@ -78,8 +78,8 @@ InstanceDefinitionNode `instance (Describe (Maybe value))` (recursive-bounds.wip
   resolved to 1 definition(s): TraitDefinitionNode `Describe` (recursive-bounds.wipple:5:1)
   has type parameters
 
-NamedTypeNode `Maybe value` (recursive-bounds.wipple:7:20)
-  at recursive-bounds.wipple:7:20
+NamedTypeNode `Maybe value` (recursive-bounds.wipple:7:21)
+  at recursive-bounds.wipple:7:21
   has type `Maybe value`
   is a type
   resolved to 1 definition(s): TypeDefinitionNode `Maybe` (recursive-bounds.wipple:3:1)

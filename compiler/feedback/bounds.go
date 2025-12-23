@@ -47,12 +47,27 @@ func registerBounds() {
 			})
 		},
 		On: func(data errorInstanceData) []database.Node {
-			nodes := []database.Node{data.bound.Source}
-			nodes = append(nodes, data.group.Nodes...)
-			nodes = append(nodes, data.comments.Nodes...)
-			for _, link := range data.comments.Links {
-				nodes = append(nodes, link.Node)
+			var nodes []database.Node
+
+			// If the error instance links to a single node, put that node
+			// first...
+			if len(data.comments.Links) == 1 {
+				for _, link := range data.comments.Links {
+					nodes = append(nodes, link.Node)
+				}
+			} else {
+				// ...otherwise, put the source first
+				nodes = append(nodes, data.bound.Source)
+
+				for _, link := range data.comments.Links {
+					nodes = append(nodes, link.Node)
+				}
 			}
+
+			nodes = append(nodes, data.comments.Nodes...)
+			nodes = append(nodes, data.group.Nodes...)
+
+			database.SortByProximity(nodes, data.bound.Source)
 
 			return nodes
 		},

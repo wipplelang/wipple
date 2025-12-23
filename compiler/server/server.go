@@ -110,7 +110,7 @@ func Run(onLambda bool) error {
 			return fmt.Errorf("expected PORT")
 		}
 
-		fmt.Printf("Listening on port %s\n", port)
+		fmt.Println("Listening on port", port)
 
 		return http.ListenAndServe(":"+port, cors.AllowAll().Handler(mux))
 	}

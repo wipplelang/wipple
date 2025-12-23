@@ -140,8 +140,6 @@ func ParseAtomicType(parser *syntax.Parser) (database.Node, *syntax.Error) {
 }
 
 func ParseParenthesizedType(parser *syntax.Parser) (database.Node, *syntax.Error) {
-	span := parser.Spanned()
-
 	_, err := parser.Token("LeftParenthesis", syntax.TokenConfig{
 		Reason: "between these parentheses",
 	})
@@ -162,8 +160,6 @@ func ParseParenthesizedType(parser *syntax.Parser) (database.Node, *syntax.Error
 	if err != nil {
 		return nil, err
 	}
-
-	database.SetSpanFact(value, span())
 
 	return value, nil
 }

@@ -24,16 +24,16 @@ TypeParameterNode `value` (implied-instance.wipple:4:5)
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (implied-instance.wipple:4:5)
 
-FunctionTypeNode `value -> ()` (implied-instance.wipple:4:20)
-  at implied-instance.wipple:4:20
-  has type `value -> ()`
-  is a type
-
 TypeParameterNode `value` (implied-instance.wipple:4:21)
   at implied-instance.wipple:4:21
   has type `value`
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (implied-instance.wipple:4:5)
+
+FunctionTypeNode `value -> ()` (implied-instance.wipple:4:21)
+  at implied-instance.wipple:4:21
+  has type `value -> ()`
+  is a type
 
 UnitTypeNode `()` (implied-instance.wipple:4:30)
   at implied-instance.wipple:4:30
@@ -52,16 +52,16 @@ TypeParameterNode `value` (implied-instance.wipple:5:5)
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (implied-instance.wipple:5:5)
 
-FunctionTypeNode `value -> ()` (implied-instance.wipple:5:20)
-  at implied-instance.wipple:5:20
-  has type `value -> ()`
-  is a type
-
 TypeParameterNode `value` (implied-instance.wipple:5:21)
   at implied-instance.wipple:5:21
   has type `value`
   is a type
   resolved to 1 definition(s): TypeParameterNode `value` (implied-instance.wipple:5:5)
+
+FunctionTypeNode `value -> ()` (implied-instance.wipple:5:21)
+  at implied-instance.wipple:5:21
+  has type `value -> ()`
+  is a type
 
 UnitTypeNode `()` (implied-instance.wipple:5:30)
   at implied-instance.wipple:5:30

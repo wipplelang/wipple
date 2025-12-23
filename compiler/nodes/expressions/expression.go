@@ -226,8 +226,6 @@ func ParseAtomicExpression(parser *syntax.Parser) (database.Node, *syntax.Error)
 }
 
 func ParseParenthesizedExpression(parser *syntax.Parser) (database.Node, *syntax.Error) {
-	span := parser.Spanned()
-
 	_, err := parser.Token("LeftParenthesis", syntax.TokenConfig{
 		Reason: "between these parentheses",
 	})
@@ -248,8 +246,6 @@ func ParseParenthesizedExpression(parser *syntax.Parser) (database.Node, *syntax
 	if err != nil {
 		return nil, err
 	}
-
-	database.SetSpanFact(value, span())
 
 	return value, nil
 }

@@ -36,16 +36,16 @@ TypeParameterNode `sum` (infer-constraint.wipple:4:18)
   is a type
   resolved to 1 definition(s): TypeParameterNode `sum` (infer-constraint.wipple:4:18)
 
-FunctionTypeNode `left right -> sum` (infer-constraint.wipple:4:31)
-  at infer-constraint.wipple:4:31
-  has type `left right -> sum`
-  is a type
-
 TypeParameterNode `left` (infer-constraint.wipple:4:32)
   at infer-constraint.wipple:4:32
   has type `left`
   is a type
   resolved to 1 definition(s): TypeParameterNode `left` (infer-constraint.wipple:4:7)
+
+FunctionTypeNode `left right -> sum` (infer-constraint.wipple:4:32)
+  at infer-constraint.wipple:4:32
+  has type `left right -> sum`
+  is a type
 
 TypeParameterNode `right` (infer-constraint.wipple:4:37)
   at infer-constraint.wipple:4:37
@@ -254,16 +254,16 @@ TypeParameterNode `infer sum` (infer-constraint.wipple:13:24)
   is a type
   resolved to 1 definition(s): TypeParameterNode `infer sum` (infer-constraint.wipple:13:24)
 
-FunctionTypeNode `left right -> sum` (infer-constraint.wipple:13:45)
-  at infer-constraint.wipple:13:45
-  has type `left right -> sum`
-  is a type
-
 TypeParameterNode `left` (infer-constraint.wipple:13:46)
   at infer-constraint.wipple:13:46
   has type `left`
   is a type
   resolved to 1 definition(s): TypeParameterNode `left` (infer-constraint.wipple:13:13)
+
+FunctionTypeNode `left right -> sum` (infer-constraint.wipple:13:46)
+  at infer-constraint.wipple:13:46
+  has type `left right -> sum`
+  is a type
 
 TypeParameterNode `right` (infer-constraint.wipple:13:51)
   at infer-constraint.wipple:13:51

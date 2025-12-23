@@ -15,14 +15,13 @@
     interface Props {
         diagnostic: any;
         stale: boolean;
+        showExtra: boolean;
+        ontoggleshowextra: (value: boolean) => void;
         onclose: () => void;
     }
 
-    let { diagnostic, stale, onclose }: Props = $props();
-
+    let { diagnostic, stale, showExtra, ontoggleshowextra, onclose }: Props = $props();
     const [title, ...extra] = diagnostic.message.split("\n\n");
-
-    let showExtra = $state(false);
 </script>
 
 {#snippet lines(lines: any[])}
@@ -56,14 +55,10 @@
                 <Markdown content={extra[0]} />
             {/if}
 
-            {#if diagnostic.primaryLines != null && diagnostic.primaryLines.length > 0}
-                {@render lines(diagnostic.primaryLines)}
-            {/if}
-
             {#if extra.length > 1}
                 <ToolbarButton
                     class="text-background-button -mx-[4px] self-start bg-transparent px-[4px]"
-                    onclick={() => (showExtra = !showExtra)}
+                    onclick={() => ontoggleshowextra(!showExtra)}
                 >
                     {#if showExtra}
                         Hide details&zwj;<Icon>expand_less</Icon>
@@ -77,8 +72,8 @@
                         <Markdown content={extra.join("\n\n")} />
                     </div>
 
-                    {#if diagnostic.secondaryLines != null && diagnostic.secondaryLines.length > 0}
-                        {@render lines(diagnostic.secondaryLines)}
+                    {#if diagnostic.lines != null && diagnostic.lines.length > 0}
+                        {@render lines(diagnostic.lines)}
                     {/if}
                 {/if}
             {/if}

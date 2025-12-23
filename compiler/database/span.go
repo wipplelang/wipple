@@ -25,7 +25,7 @@ func JoinSpans(left Span, right Span, source string) Span {
 		Path:   left.Path,
 		Start:  left.Start,
 		End:    right.End,
-		Source: source[left.Start.Index:right.End.Index],
+		Source: source[left.Start.Index:max(right.End.Index, left.Start.Index)],
 	}
 }
 
@@ -95,33 +95,5 @@ func SortByProximity(nodes []Node, source Node) {
 		rightDistance = max(rightDistance, -rightDistance)
 
 		return leftDistance - rightDistance
-	})
-}
-
-func RemoveOverlappingSpans(spans []Span) []Span {
-	original := make([]Span, len(spans))
-	copy(original, spans)
-
-	return slices.DeleteFunc(spans, func(span Span) bool {
-		return hasOverlappingSpan(span, original)
-	})
-}
-
-func RemoveOverlappingNodes(nodes []Node) []Node {
-	spans := make([]Span, len(nodes))
-	for i, node := range nodes {
-		spans[i] = GetSpanFact(node)
-	}
-
-	return slices.DeleteFunc(nodes, func(node Node) bool {
-		return hasOverlappingSpan(GetSpanFact(node), spans)
-	})
-}
-
-func hasOverlappingSpan(span Span, spans []Span) bool {
-	return slices.ContainsFunc(spans, func(other Span) bool {
-		return span.Path == other.Path &&
-			span.Start.Index < other.Start.Index &&
-			span.End.Index > other.End.Index
 	})
 }

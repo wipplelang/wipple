@@ -25,3 +25,10 @@ export const enableHighlightingBefore = /^ *$|(?:\d|\(|\{)+ *$|: +$/;
 export const disableHighlightingAfter = /^[^"']*: /;
 
 export default tokens;
+
+export const tokensRegex = new RegExp(
+    Object.entries(tokens)
+        .map(([name, regex]) => `(?<${name}>${regex.source})`)
+        .join("|"),
+    "g",
+);
