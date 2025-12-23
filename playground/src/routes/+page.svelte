@@ -292,13 +292,15 @@
                     class="printing:hidden h-(--toolbar-height) flex shrink-0 flex-row justify-center gap-[10px]"
                 >
                     <ToolbarButton
-                        prominent={runState !== undefined || diagnosticIsStale}
+                        prominent={runState !== undefined ||
+                            diagnostic == null ||
+                            diagnosticIsStale}
                         onclick={() => output?.run()}
                         data-state={runState}
                         class="data-[state='error']:border-standard data-[state='error']:bg-background w-[200px] transition data-[prominent]:data-[state='compiling']:bg-sky-500 data-[prominent]:data-[state='running']:bg-sky-500 data-[state='error']:opacity-75"
                     >
                         {#if runState === undefined}
-                            {#if diagnosticIsStale}
+                            {#if diagnostic == null || diagnosticIsStale}
                                 <Icon fill>play_arrow</Icon>
                                 Run
                             {:else}
