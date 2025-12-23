@@ -454,7 +454,9 @@
                               return [];
                           }
 
-                          const color = diagnosticGroupColors[group % diagnosticGroupColors.length];
+                          const color =
+                              diagnosticGroupColors[group % diagnosticGroupColors.length] ??
+                              "var(--color-blue-500)";
 
                           const decoration = markRange(start, end, () =>
                               markDecoration(
