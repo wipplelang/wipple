@@ -392,9 +392,9 @@ func (c *Codegen) String(root database.Node, files []database.Node) (string, err
 		}
 
 		if mapping.identifier != "" {
-			err = generator.AddNamedSourceMapping(mapping.line, mapping.column, mapping.index, mapping.span.Start.Line-1, mapping.span.Start.Column-1, nameIndex)
+			err = generator.AddNamedSourceMapping(mapping.line, mapping.column, mapping.index, mapping.span.Start.Line-1, max(mapping.span.Start.Column-1, 0), nameIndex)
 		} else {
-			err = generator.AddSourceMapping(mapping.line, mapping.column, mapping.index, mapping.span.Start.Line-1, mapping.span.Start.Column-1)
+			err = generator.AddSourceMapping(mapping.line, mapping.column, mapping.index, mapping.span.Start.Line-1, max(mapping.span.Start.Column-1, 0))
 		}
 
 		if err != nil {
