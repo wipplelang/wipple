@@ -4,10 +4,17 @@ import (
 	"wipple/database"
 	"wipple/nodes/expressions"
 	"wipple/nodes/patterns"
+	"wipple/nodes/types"
+	"wipple/typecheck"
 )
 
 func OrderGroupNodes(node database.Node) int {
-	// Prefer showing patterns first, then expressions
+	// Use the original node if instantiated
+	if instantiated, ok := database.GetFact[typecheck.InstantiatedFact](node); ok {
+		return OrderGroupNodes(instantiated.From)
+	}
+
+	// Prefer showing patterns first, then expressions, then types
 
 	if _, ok := database.GetFact[patterns.IsPatternFact](node); ok {
 		return 0
@@ -17,5 +24,9 @@ func OrderGroupNodes(node database.Node) int {
 		return 1
 	}
 
-	return 2
+	if _, ok := database.GetFact[types.IsTypeFact](node); ok {
+		return 2
+	}
+
+	return 3
 }

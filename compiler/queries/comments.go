@@ -113,7 +113,7 @@ func getLinks(db *database.Db, node database.Node, source database.Node, filter 
 
 		var uses []database.Node
 		for _, node := range fact.Group.Nodes {
-			if node != instantiated && filter(node) {
+			if filter(node) {
 				if _, ok := database.GetFact[typecheck.TypedFact](node); ok {
 					uses = append(uses, node)
 				}
@@ -122,6 +122,13 @@ func getLinks(db *database.Db, node database.Node, source database.Node, filter 
 
 		if len(uses) == 0 {
 			continue
+		}
+
+		// Prefer to use non-hidden nodes if possible
+		if slices.ContainsFunc(uses, func(node database.Node) bool {
+			return !database.IsHiddenNode(node)
+		}) {
+			uses = slices.DeleteFunc(uses, database.IsHiddenNode)
 		}
 
 		slices.SortStableFunc(uses, func(left database.Node, right database.Node) int {

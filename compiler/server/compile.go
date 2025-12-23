@@ -318,6 +318,17 @@ func collectLines(db *database.Db, nodes []database.Node) ([]*ResponseDiagnostic
 		line.Locations = removeDuplicateLocations(line.Locations)
 	}
 
+	// Delete lines that have no groups
+	lines = slices.DeleteFunc(lines, func(line *ResponseDiagnosticLine) bool {
+		for _, location := range line.Locations {
+			if location.Group != -1 {
+				return false
+			}
+		}
+
+		return true
+	})
+
 	return locations, lines
 }
 
