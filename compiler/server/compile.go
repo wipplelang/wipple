@@ -221,16 +221,15 @@ func collectLines(db *database.Db, nodes []database.Node) ([]*ResponseDiagnostic
 	var lines []*ResponseDiagnosticLine
 	groups := map[*typecheck.Group]int{}
 	for _, node := range nodes {
+		groupIndex := -1
 		fact, ok := database.GetFact[typecheck.TypedFact](node)
-		if !ok || fact.Group == nil {
-			continue
-		}
+		if ok && fact.Group != nil {
+			if _, ok := groups[fact.Group]; !ok {
+				groups[fact.Group] = len(groups)
+			}
 
-		if _, ok := groups[fact.Group]; !ok {
-			groups[fact.Group] = len(groups)
+			groupIndex = groups[fact.Group]
 		}
-
-		groupIndex := groups[fact.Group]
 
 		span := database.GetSpanFact(node)
 
