@@ -259,7 +259,7 @@
                         <CodeEditor
                             bind:this={editor}
                             bind:code={playground.code}
-                            diagnostic={dragInfo == null
+                            diagnostic={dragInfo == null && diagnostic != null
                                 ? {
                                       value: diagnostic,
                                       stale: diagnosticIsStale,

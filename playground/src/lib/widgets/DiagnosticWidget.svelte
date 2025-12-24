@@ -11,17 +11,23 @@
     import Icon from "$lib/components/Icon.svelte";
     import Markdown from "$lib/components/Markdown.svelte";
     import ToolbarButton from "$lib/components/ToolbarButton.svelte";
+    import { scale } from "svelte/transition";
 
     interface Props {
         diagnostic: any;
         stale: boolean;
-        showExtra: boolean;
+        animate: boolean;
         ontoggleshowextra: (value: boolean) => void;
         onclose: () => void;
     }
 
-    let { diagnostic, stale, showExtra, ontoggleshowextra, onclose }: Props = $props();
+    let { diagnostic, stale, animate, ontoggleshowextra, onclose }: Props = $props();
+
     const [title, ...extra] = diagnostic.message.split("\n\n");
+
+    let showExtra = $state(false);
+
+    const transition = animate ? scale : () => ({});
 </script>
 
 {#snippet lines(lines: any[])}
@@ -41,7 +47,10 @@
     </div>
 {/snippet}
 
-<div class="relative flex h-full w-full items-stretch justify-stretch pb-[10px]">
+<div
+    class="relative flex h-full w-full items-stretch justify-stretch pb-[10px]"
+    in:transition={{ start: 0.95, opacity: 0.5 }}
+>
     <Box
         data-stale={stale || undefined}
         class="not-[[data-stale]]:border-blue-500 not-[[data-stale]]:shadow-md flex flex-1 flex-col px-[10px] py-[8px] font-sans shadow-blue-500/10 transition data-[stale]:opacity-60"
@@ -58,7 +67,10 @@
             {#if extra.length > 1}
                 <ToolbarButton
                     class="text-background-button -mx-[4px] self-start bg-transparent px-[4px]"
-                    onclick={() => ontoggleshowextra(!showExtra)}
+                    onclick={() => {
+                        showExtra = !showExtra;
+                        ontoggleshowextra(showExtra);
+                    }}
                 >
                     {#if showExtra}
                         Hide details&zwj;<Icon>expand_less</Icon>

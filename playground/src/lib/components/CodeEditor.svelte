@@ -73,6 +73,7 @@
                 markAssets,
                 markNames.of([]),
                 markDiagnostic.of([]),
+                diagnosticWidget.of([]),
                 placeholder("Type or drag your code here..."),
                 EditorView.editable.of(!readOnly),
                 EditorView.updateListener.of((update) => {
@@ -441,17 +442,59 @@
 
     const markDiagnostic = new Compartment();
 
-    const createMarkDiagnostic = ({
-        value,
-        stale,
-        hideWidget,
-        onclose,
-    }: NonNullable<typeof diagnostic>) => {
+    const createMarkDiagnostic = ({ value, stale, hideWidget }: NonNullable<typeof diagnostic>) => {
+        const full = hideWidget || diagnosticWidgetIsExpanded;
+
+        return [
+            stale
+                ? []
+                : (value.locations as any[]).flatMap(({ start, end, group }, index) => {
+                      if (start === end || (index > 0 && !full)) {
+                          return [];
+                      }
+
+                      const color =
+                          full && diagnosticGroupColors.length > 0
+                              ? diagnosticGroupColors[group % diagnosticGroupColors.length]
+                              : "var(--color-blue-500)";
+
+                      const decoration = markRange(start, end, () =>
+                          markDecoration(
+                              index === 0 && !hideWidget
+                                  ? "diagnostic-primary"
+                                  : "diagnostic-secondary",
+                              `--color: ${color}`,
+                          ),
+                      );
+
+                      return [decoration];
+                  }),
+        ];
+    };
+
+    $effect(() => {
+        code; // required to update the position of the diagnostic
+
+        editorView.dispatch({
+            effects: markDiagnostic.reconfigure(diagnostic ? createMarkDiagnostic(diagnostic) : []),
+        });
+    });
+
+    const diagnosticWidget = new Compartment();
+
+    const createDiagnosticWidget = (
+        { value, stale, hideWidget, onclose }: NonNullable<typeof diagnostic>,
+        animate: boolean,
+    ) => {
+        if (hideWidget) {
+            return [];
+        }
+
         const diagnosticWidget = new DiagnosticWidget.element!();
         Object.assign(diagnosticWidget, {
             diagnostic: value,
             stale,
-            showExtra: diagnosticWidgetIsExpanded,
+            animate,
             ontoggleshowextra: (visible: boolean) => {
                 diagnosticWidgetIsExpanded = visible;
             },
@@ -470,46 +513,25 @@
             return [];
         }
 
-        const full = hideWidget || diagnosticWidgetIsExpanded;
-
-        return [
-            stale
-                ? []
-                : (value.locations as any[]).flatMap(({ start, end, group }, index) => {
-                      if (start === end || (index > 0 && !full)) {
-                          return [];
-                      }
-
-                      const color =
-                          full && diagnosticGroupColors.length > 0
-                              ? diagnosticGroupColors[group % diagnosticGroupColors.length]
-                              : "var(--color-blue-500)";
-
-                      const decoration = markRange(start, end, () =>
-                          markDecoration(
-                              index === 0 && !diagnostic!.hideWidget
-                                  ? "diagnostic-primary"
-                                  : "diagnostic-secondary",
-                              `--color: ${color}`,
-                          ),
-                      );
-
-                      return [decoration];
-                  }),
-            diagnostic?.hideWidget
-                ? []
-                : EditorView.decorations.of(
-                      RangeSet.of([blockDecoration(diagnosticWidget).range(pos)]),
-                  ),
-        ];
+        return EditorView.decorations.of(
+            RangeSet.of([blockDecoration(diagnosticWidget).range(pos)]),
+        );
     };
 
+    let prevDiagnostic = diagnostic?.value;
     $effect(() => {
         code; // required to update the position of the diagnostic
+        diagnostic;
 
         editorView.dispatch({
-            effects: markDiagnostic.reconfigure(diagnostic ? createMarkDiagnostic(diagnostic) : []),
+            effects: diagnosticWidget.reconfigure(
+                diagnostic
+                    ? createDiagnosticWidget(diagnostic, diagnostic.value !== prevDiagnostic)
+                    : [],
+            ),
         });
+
+        prevDiagnostic = diagnostic?.value;
     });
 </script>
 
