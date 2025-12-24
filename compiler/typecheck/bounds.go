@@ -51,15 +51,15 @@ func (b ResolvedBound) Clone() ResolvedBound {
 	}
 }
 
-func DisplayResolvedBound(b ResolvedBound, root bool) string {
-	return DisplayUnresolvedBound(b.UnresolvedBound, root, func(ty Type) Type {
+func DisplayResolvedBound(b ResolvedBound, wrapped bool) string {
+	return DisplayUnresolvedBound(b.UnresolvedBound, wrapped, func(ty Type) Type {
 		return b.Solver.Apply(ty)
 	})
 }
 
-func DisplayUnresolvedBound(b UnresolvedBound, root bool, apply func(Type) Type) string {
+func DisplayUnresolvedBound(b UnresolvedBound, wrapped bool, apply func(Type) Type) string {
 	var s strings.Builder
-	if root {
+	if wrapped {
 		s.WriteString(b.TraitName)
 	} else {
 		s.WriteString(colors.Code(b.TraitName))
@@ -85,10 +85,12 @@ func DisplayUnresolvedBound(b UnresolvedBound, root bool, apply func(Type) Type)
 		ty := DisplayType(substitution, false)
 
 		s.WriteString(" ")
-		if ok && !root {
+		if wrapped {
+			s.WriteString(ty)
+		} else if ok {
 			s.WriteString(database.RenderSource(node, ty))
 		} else {
-			s.WriteString(ty)
+			s.WriteString(colors.Code(ty))
 		}
 	}
 

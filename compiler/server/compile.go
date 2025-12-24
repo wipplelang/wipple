@@ -108,7 +108,7 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 					}
 				}
 
-				return source
+				return "`" + source + "`"
 			}, func() string {
 				return item.String()
 			})
