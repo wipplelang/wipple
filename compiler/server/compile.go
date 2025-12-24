@@ -91,19 +91,32 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 	if len(feedbackItems) > 0 {
 		responseDiagnostics := make([]ResponseDiagnostic, 0, len(feedbackItems))
 		for _, item := range feedbackItems {
-			slices.SortStableFunc(item.On, func(left database.Node, right database.Node) int {
+			slices.SortStableFunc(item.On[1:], func(left database.Node, right database.Node) int {
 				return database.CompareSpans(database.GetSpanFact(left), database.GetSpanFact(right))
 			})
 			item.On = slices.CompactFunc(item.On, func(left database.Node, right database.Node) bool {
 				return database.HaveEqualSpans(left, right)
 			})
 
-			locations, lines := collectLines(db, item.On)
+			groups := map[*typecheck.Group]int{}
+			locations, lines := collectLines(db, item.On, groups)
+
+			message := database.WrappingDisplayNode(func(node database.Node, source string) string {
+				if fact, ok := database.GetFact[typecheck.TypedFact](node); ok {
+					if groupIndex, ok := groups[fact.Group]; ok {
+						return fmt.Sprintf("<code data-group=\"%d\">%s</code>", groupIndex, source)
+					}
+				}
+
+				return source
+			}, func() string {
+				return item.String()
+			})
 
 			responseDiagnostics = append(responseDiagnostics, ResponseDiagnostic{
 				Locations: locations,
 				Lines:     lines,
-				Message:   item.String(),
+				Message:   message,
 			})
 		}
 
@@ -216,10 +229,9 @@ func compileLibrary(name string) (*database.Db, *driver.RootNode, error) {
 	return db, root, nil
 }
 
-func collectLines(db *database.Db, nodes []database.Node) ([]*ResponseDiagnosticLocation, []*ResponseDiagnosticLine) {
+func collectLines(db *database.Db, nodes []database.Node, groups map[*typecheck.Group]int) ([]*ResponseDiagnosticLocation, []*ResponseDiagnosticLine) {
 	var locations []*ResponseDiagnosticLocation
 	var lines []*ResponseDiagnosticLine
-	groups := map[*typecheck.Group]int{}
 	for _, node := range nodes {
 		groupIndex := -1
 		fact, ok := database.GetFact[typecheck.TypedFact](node)

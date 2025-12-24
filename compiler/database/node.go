@@ -95,21 +95,35 @@ func DefinitionSource(node Node) string {
 	return strings.TrimSpace(source)
 }
 
+var WrapDisplayNode func(Node, string) string
+
+func WrappingDisplayNode[T any](wrap func(Node, string) string, f func() T) T {
+	prev := WrapDisplayNode
+	WrapDisplayNode = wrap
+	result := f()
+	WrapDisplayNode = prev
+	return result
+}
+
 func RenderNode(node Node) string {
-	return renderSource(node, NodeSource(node))
+	return RenderSource(node, NodeSource(node))
 }
 
 func RenderDefinition(node Node) string {
-	return renderSource(node, DefinitionSource(node))
+	return RenderSource(node, DefinitionSource(node))
 }
 
-func renderSource(node Node, source string) string {
-	if LspEnabled {
-		return colors.Code(source)
-	} else {
-		span := GetSpanFact(node)
-		return fmt.Sprintf("%s %s", colors.Code(source), colors.Extra(span.String()))
+func RenderSource(node Node, source string) string {
+	if node != nil {
+		if WrapDisplayNode != nil {
+			return WrapDisplayNode(node, source)
+		} else if !LspEnabled {
+			span := GetSpanFact(node)
+			return fmt.Sprintf("%s %s", colors.Code(source), colors.Extra(span.String()))
+		}
 	}
+
+	return colors.Code(source)
 }
 
 type FilterFunc func(node Node) bool

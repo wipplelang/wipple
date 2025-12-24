@@ -313,7 +313,8 @@ Feedback:
 
 `_` (sequence.wipple:24:14) (conflicting-types):
 
-  `_` (sequence.wipple:24:14) is a `String` or a `Number`, but it can only be one of these.
+  `_` (sequence.wipple:24:14) is a `String` (sequence.wipple:24:14) or a `Number`
+  (sequence.wipple:24:14), but it can only be one of these.
   
     -  See `As-Sequence : collection (infer element) => trait (collection -> Sequence element)`
   (sequence.wipple:17:1).
@@ -327,9 +328,9 @@ Feedback:
   
     -  `filter` (sequence.wipple:25:2) requires `As-Sequence (Box String) String`.
   
-    -  Explicitly annotated as a `String`.
+    -  Explicitly annotated as a `String` (sequence.wipple:23:17).
   
-    -  Explicitly annotated as a `Number`.
+    -  Explicitly annotated as a `Number` (sequence.wipple:24:19).
   
     -  `value` (sequence.wipple:18:35) must have the same type everywhere in this use of `instance
   (As-Sequence (Box value) value)` (sequence.wipple:18:1).

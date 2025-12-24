@@ -69,7 +69,7 @@ func registerTypes() {
 				tys := make([]func(), 0, len(data.Types))
 				for _, ty := range data.Types {
 					tys = append(tys, func() {
-						render.WriteType(ty)
+						render.WriteTypeInGroup(ty, data.From)
 					})
 				}
 				render.WriteList(tys, "or a", 3)

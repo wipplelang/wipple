@@ -52,6 +52,7 @@
         "jspdf": "^3.0.1",
         "randomcolor": "^0.6.2",
         "real-turtle": "^1.1.6",
+        "rehype-raw": "^7.0.0",
         "svelte-exmarkdown": "^5.0.1",
         "tailwindcss-animated": "^2.0.0",
         "tonal": "^6.4.2",

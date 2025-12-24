@@ -1,7 +1,6 @@
 package feedback
 
 import (
-	"bytes"
 	"fmt"
 	"regexp"
 	"strings"
@@ -15,7 +14,7 @@ import (
 
 type Render struct {
 	db  *database.Db
-	buf bytes.Buffer
+	buf strings.Builder
 }
 
 func NewRender(db *database.Db) *Render {
@@ -67,16 +66,29 @@ func (render *Render) WriteCode(code string) {
 func (render *Render) WriteType(ty typecheck.Type) {
 	// Get the latest type
 	if node, ok := ty.(database.Node); ok {
+		render.WriteTypeInGroup(ty, node)
+	} else {
+		fmt.Fprintf(&render.buf, "%s", colors.Code(typecheck.DisplayType(ty, true)))
+	}
+}
+
+func (render *Render) WriteTypeInGroup(ty typecheck.Type, representative database.Node) {
+	// Get the latest type
+	if node, ok := ty.(database.Node); ok {
 		if fact, ok := database.GetFact[typecheck.TypedFact](node); ok && fact.Group != nil && len(fact.Group.Types) > 0 {
 			ty = fact.Group.Types[0]
 		}
 	}
 
-	fmt.Fprintf(&render.buf, "%s", colors.Code(typecheck.DisplayType(ty, true)))
+	fmt.Fprintf(&render.buf, "%s", database.RenderSource(representative, typecheck.DisplayType(ty, true)))
 }
 
 func (render *Render) WriteBound(bound typecheck.ResolvedBound) {
-	fmt.Fprintf(&render.buf, "%s", colors.Code(typecheck.DisplayResolvedBound(bound)))
+	if database.WrapDisplayNode != nil {
+		fmt.Fprintf(&render.buf, "%s", typecheck.DisplayResolvedBound(bound, false))
+	} else {
+		fmt.Fprintf(&render.buf, "%s", colors.Code(typecheck.DisplayResolvedBound(bound, true)))
+	}
 }
 
 func (render *Render) WriteList(items []func(), separator string, limit int) {
@@ -212,11 +224,11 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 			if fact, ok := database.GetFact[typecheck.InstantiatedFact](node); ok {
 				render.WriteNode(fact.Definition)
 				render.WriteString(" explicitly requires a ")
-				render.WriteType(constraint.Type)
+				render.WriteTypeInGroup(constraint.Type, node)
 				render.WriteString(".")
 			} else {
 				render.WriteString("Explicitly annotated as a ")
-				render.WriteType(constraint.Type)
+				render.WriteTypeInGroup(constraint.Type, node)
 				render.WriteString(".")
 			}
 
@@ -224,7 +236,7 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 			render.WriteString(prefix)
 			render.WriteNode(node)
 			render.WriteString(" is a ")
-			render.WriteType(constraint.Type)
+			render.WriteTypeInGroup(constraint.Type, node)
 			render.WriteString(".")
 		}
 

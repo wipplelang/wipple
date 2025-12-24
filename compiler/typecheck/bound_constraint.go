@@ -21,7 +21,7 @@ func (c *BoundConstraint) Info() *ConstraintInfo {
 }
 
 func (c *BoundConstraint) String() string {
-	return fmt.Sprintf("BoundConstraint(%v)", DisplayUnresolvedBound(c.Bound))
+	return fmt.Sprintf("BoundConstraint(%v)", DisplayUnresolvedBound(c.Bound, true, nil))
 }
 
 func (c *BoundConstraint) Instantiate(solver *Solver, definition database.Node, source database.Node, replacements map[database.Node]database.Node, substitutions *map[database.Node]Type) Constraint {

@@ -51,14 +51,19 @@ func (b ResolvedBound) Clone() ResolvedBound {
 	}
 }
 
-func DisplayResolvedBound(b ResolvedBound) string {
-	b = ApplyBound(b)
-	return DisplayUnresolvedBound(b.UnresolvedBound)
+func DisplayResolvedBound(b ResolvedBound, root bool) string {
+	return DisplayUnresolvedBound(b.UnresolvedBound, root, func(ty Type) Type {
+		return b.Solver.Apply(ty)
+	})
 }
 
-func DisplayUnresolvedBound(b UnresolvedBound) string {
+func DisplayUnresolvedBound(b UnresolvedBound, root bool, apply func(Type) Type) string {
 	var s strings.Builder
-	s.WriteString(b.TraitName)
+	if root {
+		s.WriteString(b.TraitName)
+	} else {
+		s.WriteString(colors.Code(b.TraitName))
+	}
 
 	parameters := make([]database.Node, 0, len(*b.Substitutions))
 	for parameter := range *b.Substitutions {
@@ -70,8 +75,21 @@ func DisplayUnresolvedBound(b UnresolvedBound) string {
 	})
 
 	for _, parameter := range parameters {
+		substitution := (*b.Substitutions)[parameter]
+		node, ok := substitution.(database.Node)
+
+		if apply != nil {
+			substitution = apply(substitution)
+		}
+
+		ty := DisplayType(substitution, false)
+
 		s.WriteString(" ")
-		s.WriteString(DisplayType((*b.Substitutions)[parameter], false))
+		if ok && !root {
+			s.WriteString(database.RenderSource(node, ty))
+		} else {
+			s.WriteString(ty)
+		}
 	}
 
 	return s.String()
@@ -110,7 +128,7 @@ func (fact BoundsFact) String() string {
 			s.WriteString(", ")
 		}
 
-		s.WriteString(colors.Code(DisplayResolvedBound(ApplyBound(item.Bound))))
+		s.WriteString(colors.Code(DisplayResolvedBound(ApplyBound(item.Bound), true)))
 
 		s.WriteString(" (")
 		if item.Instance != nil {

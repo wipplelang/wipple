@@ -344,9 +344,9 @@ Feedback:
   
     -  `Add` (custom-errors.wipple:16:5) requires `Add Number String _`.
   
-    -  `1` (custom-errors.wipple:16:9) is a `Number`.
+    -  `1` (custom-errors.wipple:16:9) is a `Number` (custom-errors.wipple:16:9).
   
-    -  `"a"` (custom-errors.wipple:16:11) is a `String`.
+    -  `"a"` (custom-errors.wipple:16:11) is a `String` (custom-errors.wipple:16:11).
 
 `Add` (custom-errors.wipple:17:5) (error-instance):
 
@@ -356,11 +356,12 @@ Feedback:
   
     -  See `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1).
   
-    -  `instance (Add () right sum)` (custom-errors.wipple:8:1) explicitly requires a `()`.
+    -  `instance (Add () right sum)` (custom-errors.wipple:8:1) explicitly requires a `()` (custom-
+  errors.wipple:9:23).
   
     -  `Add` (custom-errors.wipple:17:5) requires `Add () Number _`.
   
-    -  Explicitly annotated as a `()`.
+    -  Explicitly annotated as a `()` (custom-errors.wipple:17:9).
   
-    -  `2` (custom-errors.wipple:17:12) is a `Number`.
+    -  `2` (custom-errors.wipple:17:12) is a `Number` (custom-errors.wipple:17:12).
 

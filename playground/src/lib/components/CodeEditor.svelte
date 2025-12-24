@@ -38,6 +38,7 @@
     interface Props {
         readOnly?: boolean;
         code: string;
+        highlightGroup?: number;
         diagnostic?: {
             value: any;
             hideWidget?: boolean;
@@ -47,7 +48,13 @@
         padding?: string;
     }
 
-    let { readOnly = false, code = $bindable(), diagnostic, padding }: Props = $props();
+    let {
+        readOnly = false,
+        code = $bindable(),
+        highlightGroup,
+        diagnostic,
+        padding,
+    }: Props = $props();
 
     const playground = $derived(context.playground);
     const ideInfo = $derived(context.ideInfo);
@@ -442,34 +449,48 @@
 
     const markDiagnostic = new Compartment();
 
+    const getMarkDiagnosticDecoration = (options: {
+        start: number;
+        end: number;
+        group: number;
+        full: boolean;
+        primary: boolean;
+    }) => {
+        const color =
+            options.full && diagnosticGroupColors.length > 0
+                ? diagnosticGroupColors[options.group % diagnosticGroupColors.length]
+                : "var(--color-blue-500)";
+
+        return markRange(options.start, options.end, () =>
+            markDecoration(
+                options.primary ? "diagnostic-primary" : "diagnostic-secondary",
+                `--color: ${color}`,
+            ),
+        );
+    };
+
     const createMarkDiagnostic = ({ value, stale, hideWidget }: NonNullable<typeof diagnostic>) => {
+        if (stale) {
+            return [];
+        }
+
         const full = hideWidget || diagnosticWidgetIsExpanded;
 
-        return [
-            stale
-                ? []
-                : (value.locations as any[]).flatMap(({ start, end, group }, index) => {
-                      if (start === end || (index > 0 && !full)) {
-                          return [];
-                      }
+        return (value.locations as any[]).flatMap(({ start, end, group }, index) => {
+            if (start === end || (index > 0 && !full)) {
+                return [];
+            }
 
-                      const color =
-                          full && diagnosticGroupColors.length > 0
-                              ? diagnosticGroupColors[group % diagnosticGroupColors.length]
-                              : "var(--color-blue-500)";
-
-                      const decoration = markRange(start, end, () =>
-                          markDecoration(
-                              index === 0 && !hideWidget
-                                  ? "diagnostic-primary"
-                                  : "diagnostic-secondary",
-                              `--color: ${color}`,
-                          ),
-                      );
-
-                      return [decoration];
-                  }),
-        ];
+            return [
+                getMarkDiagnosticDecoration({
+                    start,
+                    end,
+                    group,
+                    full,
+                    primary: index === 0 && !hideWidget,
+                }),
+            ];
+        });
     };
 
     $effect(() => {
@@ -477,6 +498,26 @@
 
         editorView.dispatch({
             effects: markDiagnostic.reconfigure(diagnostic ? createMarkDiagnostic(diagnostic) : []),
+        });
+    });
+
+    $effect(() => {
+        if (diagnostic != null) {
+            return;
+        }
+
+        editorView.dispatch({
+            effects: markDiagnostic.reconfigure(
+                highlightGroup != null
+                    ? getMarkDiagnosticDecoration({
+                          start: 0,
+                          end: editorView.state.doc.length,
+                          group: highlightGroup,
+                          full: true,
+                          primary: false,
+                      })
+                    : [],
+            ),
         });
     });
 

@@ -48,5 +48,6 @@ Feedback:
 
 `x` (transmute.wipple:2:13) (conflicting-types):
 
-  `x` (transmute.wipple:2:13) is a `a` or a `b`, but it can only be one of these.
+  `x` (transmute.wipple:2:13) is a `a` (transmute.wipple:2:13) or a `b` (transmute.wipple:2:13), but
+  it can only be one of these.
 

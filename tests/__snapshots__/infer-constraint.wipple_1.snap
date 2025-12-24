@@ -451,20 +451,21 @@ Feedback:
 
 `output` (infer-constraint.wipple:20:1) (conflicting-types):
 
-  `output` (infer-constraint.wipple:20:1) is a `Number` or a `String`, but it can only be one of
-  these.
+  `output` (infer-constraint.wipple:20:1) is a `Number` (infer-constraint.wipple:20:1) or a `String`
+  (infer-constraint.wipple:20:1), but it can only be one of these.
   
     -  See `Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-
   constraint.wipple:13:1).
   
-    -  `add-infer` (infer-constraint.wipple:20:11) explicitly requires a `Number`.
+    -  `add-infer` (infer-constraint.wipple:20:11) explicitly requires a `Number` (infer-
+  constraint.wipple:14:35).
   
     -  `add-infer` (infer-constraint.wipple:20:11) requires `Add-Infer Number Number Number`.
   
     -  See `add-infer :: left right -> sum where (Add-Infer left right sum)` (infer-
   constraint.wipple:17:1).
   
-    -  Explicitly annotated as a `String`.
+    -  Explicitly annotated as a `String` (infer-constraint.wipple:20:28).
   
     -  `sum` (infer-constraint.wipple:17:60) must have the same type everywhere in this use of `add-
   infer` (infer-constraint.wipple:17:1).

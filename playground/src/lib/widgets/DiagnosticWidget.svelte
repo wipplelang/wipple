@@ -57,11 +57,11 @@
     >
         <div class="scroll flex flex-col gap-[2px]">
             <div class="font-semibold">
-                <Markdown content={title} />
+                <Markdown content={title} highlightGroups={showExtra} />
             </div>
 
             {#if extra.length === 1}
-                <Markdown content={extra[0]} />
+                <Markdown content={extra[0]} highlightGroups={false} />
             {/if}
 
             {#if extra.length > 1}
@@ -81,7 +81,7 @@
 
                 {#if showExtra}
                     <div class="mt-[5px]">
-                        <Markdown content={extra.join("\n\n")} />
+                        <Markdown content={extra.join("\n\n")} highlightGroups />
                     </div>
 
                     {#if diagnostic.lines != null && diagnostic.lines.length > 0}
