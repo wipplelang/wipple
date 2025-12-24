@@ -10,7 +10,7 @@
     import Markdown from "./Markdown.svelte";
     import Prompt from "./Prompt.svelte";
 
-    const throttleMs = 200;
+    const throttleMs = 500;
 
     export type RunState = "compiling" | "running";
 
@@ -46,10 +46,12 @@
 
     let abortController: AbortController | undefined;
 
-    export const run = async () => {
+    export const run = () =>
+        Promise.allSettled([throttle(), runInner()]).then(() => (runState = undefined));
+
+    const runInner = async () => {
         if (playground == null || runState != null) {
             await stopRunning(true);
-            runState = undefined;
             return;
         }
 
@@ -75,13 +77,10 @@
             console.error(error);
             abortController = undefined;
             return;
-        } finally {
-            await throttle();
         }
 
         if ("diagnostics" in response) {
             ondiagnostics(response.diagnostics);
-            runState = undefined;
             return;
         }
 
@@ -129,7 +128,7 @@
             await worker.run(response.executable, Comlink.proxy(env));
         } finally {
             await stopRunning(false);
-            runState = undefined;
+            return;
         }
     };
 
