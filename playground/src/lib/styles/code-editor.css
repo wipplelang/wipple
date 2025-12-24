@@ -98,12 +98,15 @@
         }
     }
 
-    .diagnostic-primary,
-    .diagnostic-secondary {
-        @apply rounded-[6px] ring-[1.5px];
+    .diagnostic {
+        @apply transition-all;
+
+        &:not([data-dimmed]) {
+            @apply rounded-[6px] ring-[1.5px];
+        }
     }
 
-    .diagnostic-primary {
+    .diagnostic-primary:not([data-dimmed]) {
         @apply underline decoration-(--color) decoration-wavy [text-decoration-skip-ink:none];
 
         --tw-ring-color: color-mix(in oklab, var(--color) 80%, var(--color-background));
@@ -121,7 +124,7 @@
         }
     }
 
-    .diagnostic-secondary {
+    .diagnostic-secondary:not([data-dimmed]) {
         --tw-ring-color: color-mix(in oklab, var(--color) 40%, var(--color-background));
 
         background-color: color-mix(in oklab, var(--color) 10%, var(--color-background));

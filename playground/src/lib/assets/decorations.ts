@@ -9,10 +9,10 @@ import {
     WidgetType,
 } from "@codemirror/view";
 
-export const markDecoration = (className: string, style?: string) =>
+export const markDecoration = (className: string, style?: string, attributes = {}) =>
     Decoration.mark({
         class: className,
-        attributes: style ? { style } : undefined,
+        attributes: style ? { style, ...attributes } : attributes,
         inclusive: true,
     });
 

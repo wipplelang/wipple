@@ -246,12 +246,18 @@ func collectLines(db *database.Db, nodes []database.Node, groups map[*typecheck.
 		span := database.GetSpanFact(node)
 
 		if span.Path == defaultPath {
-			locations = append(locations, &ResponseDiagnosticLocation{
+			location := ResponseDiagnosticLocation{
 				Start: span.Start.Index,
 				End:   span.End.Index,
 				Group: groupIndex,
 				node:  node,
-			})
+			}
+
+			if !slices.ContainsFunc(locations, func(other *ResponseDiagnosticLocation) bool {
+				return other.Start == location.Start && other.End == location.End
+			}) {
+				locations = append(locations, &location)
+			}
 
 			continue
 		}

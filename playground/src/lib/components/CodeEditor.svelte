@@ -34,6 +34,7 @@
     import * as api from "$lib/api";
     import { context } from "$lib/context.svelte";
     import DiagnosticWidget from "$lib/widgets/DiagnosticWidget.svelte";
+    import { nanoid } from "nanoid";
 
     interface Props {
         readOnly?: boolean;
@@ -461,12 +462,63 @@
                 ? diagnosticGroupColors[options.group % diagnosticGroupColors.length]
                 : "var(--color-blue-500)";
 
-        return markRange(options.start, options.end, () =>
-            markDecoration(
-                options.primary ? "diagnostic-primary" : "diagnostic-secondary",
-                `--color: ${color}`,
+        const id = nanoid();
+
+        const attributes =
+            options.full && options.group !== -1
+                ? {
+                      "data-diagnostic-decoration-id": id,
+                      "data-diagnostic-group-label": (options.group + 1).toString(),
+                  }
+                : {};
+
+        const decorations = [
+            markRange(options.start, options.end, () =>
+                markDecoration(
+                    `diagnostic ${options.primary ? "diagnostic-primary" : "diagnostic-secondary"}`,
+                    `--color: ${color}`,
+                    attributes,
+                ),
             ),
-        );
+        ];
+
+        if (options.full && options.group !== -1) {
+            requestAnimationFrame(() => {
+                const element = document.querySelector(
+                    `[data-diagnostic-decoration-id="${id}"]`,
+                ) as HTMLElement;
+
+                const allDecorations = () =>
+                    [...document.querySelectorAll("[data-diagnostic-decoration-id]")]
+                        .flatMap((node) => {
+                            const element = node as HTMLElement;
+
+                            return [
+                                [
+                                    element,
+                                    parseFloat(element.dataset.diagnosticGroupLabel!) - 1,
+                                ] as const,
+                            ];
+                        })
+                        .filter(([_element, label]) => label !== -1);
+
+                element.addEventListener("mouseenter", () => {
+                    for (const [other, label] of allDecorations()) {
+                        if (label !== options.group) {
+                            other.dataset.dimmed = "true";
+                        }
+                    }
+                });
+
+                element.addEventListener("mouseleave", () => {
+                    for (const [element] of allDecorations()) {
+                        delete element.dataset.dimmed;
+                    }
+                });
+            });
+        }
+
+        return decorations;
     };
 
     const createMarkDiagnostic = ({ value, stale, hideWidget }: NonNullable<typeof diagnostic>) => {

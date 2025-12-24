@@ -87,6 +87,11 @@
                     {#if diagnostic.lines != null && diagnostic.lines.length > 0}
                         {@render lines(diagnostic.lines)}
                     {/if}
+
+                    <p class="mx-[4px] my-[8px] text-sm opacity-75">
+                        <strong>Tip:</strong>
+                        Hover over a highlighted piece of code to focus on its group members.
+                    </p>
                 {/if}
             {/if}
         </div>
