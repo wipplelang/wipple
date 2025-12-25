@@ -34,6 +34,7 @@ type CompileResponse struct {
 type ResponseDiagnostic struct {
 	Locations []*ResponseDiagnosticLocation `json:"locations"`
 	Lines     []*ResponseDiagnosticLine     `json:"lines"`
+	Groups    int                           `json:"groups"`
 	Message   string                        `json:"message"`
 }
 
@@ -116,6 +117,7 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 			responseDiagnostics = append(responseDiagnostics, ResponseDiagnostic{
 				Locations: locations,
 				Lines:     lines,
+				Groups:    len(groups),
 				Message:   message,
 			})
 		}

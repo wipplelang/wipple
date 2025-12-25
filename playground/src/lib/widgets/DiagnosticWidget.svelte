@@ -12,18 +12,18 @@
     import Markdown from "$lib/components/Markdown.svelte";
     import ToolbarButton from "$lib/components/ToolbarButton.svelte";
     import { scale } from "svelte/transition";
+    import { context } from "$lib/context.svelte";
 
     interface Props {
-        diagnostic: any;
         stale: boolean;
         animate: boolean;
         ontoggleshowextra: (value: boolean) => void;
         onclose: () => void;
     }
 
-    let { diagnostic, stale, animate, ontoggleshowextra, onclose }: Props = $props();
+    let { stale, animate, ontoggleshowextra, onclose }: Props = $props();
 
-    const [title, ...extra] = diagnostic.message.split("\n\n");
+    const [title, ...extra] = context.diagnostic.message.split("\n\n");
 
     let showExtra = $state(false);
 
@@ -84,14 +84,18 @@
                         <Markdown content={extra.join("\n\n")} highlightGroups />
                     </div>
 
-                    {#if diagnostic.lines != null && diagnostic.lines.length > 0}
-                        {@render lines(diagnostic.lines)}
+                    {#if context.diagnostic.lines != null && context.diagnostic.lines.length > 0}
+                        {@render lines(context.diagnostic.lines)}
                     {/if}
 
-                    <p class="mx-[4px] my-[8px] text-sm opacity-75">
-                        <strong>Tip:</strong>
-                        Hover over a highlighted piece of code to focus on its group members.
-                    </p>
+                    {#if context.diagnostic.groups > 1}
+                        <p class="mx-[4px] my-[8px] text-sm opacity-75">
+                            <strong>Tip:</strong>
+                            Hover over an
+                            <span class="diagnostic diagnostic-secondary">outlined</span>
+                            piece of code to highlight related code.
+                        </p>
+                    {/if}
                 {/if}
             {/if}
         </div>

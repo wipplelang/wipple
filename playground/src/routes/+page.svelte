@@ -13,7 +13,6 @@
     import Commands from "$lib/components/Commands.svelte";
     import * as api from "$lib/api";
     import type { Command } from "$lib/models/Command";
-    import BoxButton from "$lib/components/BoxButton.svelte";
     import { context } from "$lib/context.svelte";
     import Output, { type RunState } from "$lib/components/Output.svelte";
     import PrintButton from "$lib/components/PrintButton.svelte";
@@ -170,7 +169,6 @@
     };
 
     let runState = $state<RunState>();
-    let diagnostic = $state<any>();
     let diagnosticIsStale = $state(false);
 
     $effect(() => {
@@ -259,11 +257,11 @@
                         <CodeEditor
                             bind:this={editor}
                             bind:code={playground.code}
-                            diagnostic={dragInfo == null && diagnostic != null
+                            diagnostic={dragInfo == null && context.diagnostic != null
                                 ? {
-                                      value: diagnostic,
+                                      value: context.diagnostic,
                                       stale: diagnosticIsStale,
-                                      onclose: () => (diagnostic = undefined),
+                                      onclose: () => (context.diagnostic = undefined),
                                   }
                                 : undefined}
                             padding="14px"
@@ -293,14 +291,14 @@
                 >
                     <ToolbarButton
                         prominent={runState !== undefined ||
-                            diagnostic == null ||
+                            context.diagnostic == null ||
                             diagnosticIsStale}
                         onclick={() => output?.run()}
                         data-state={runState}
                         class="data-[state='error']:border-standard data-[state='error']:bg-background w-[200px] transition data-[prominent]:data-[state='compiling']:bg-sky-500 data-[prominent]:data-[state='running']:bg-sky-500 data-[state='error']:opacity-75"
                     >
                         {#if runState === undefined}
-                            {#if diagnostic == null || diagnosticIsStale}
+                            {#if context.diagnostic == null || diagnosticIsStale}
                                 <Icon fill>play_arrow</Icon>
                                 Run
                             {:else}
@@ -326,7 +324,7 @@
                     bind:this={output}
                     bind:runState
                     ondiagnostics={(diagnostics) => {
-                        diagnostic = diagnostics[0];
+                        context.diagnostic = diagnostics[0];
                         diagnosticIsStale = false;
                     }}
                 />

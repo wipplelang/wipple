@@ -1,12 +1,3 @@
-<script module lang="ts">
-    export const diagnosticGroupColors = [
-        "var(--color-blue-500)",
-        "var(--color-orange-500)",
-        "var(--color-emerald-500)",
-        "var(--color-pink-500)",
-    ];
-</script>
-
 <script lang="ts">
     import {
         elementDecoration,
@@ -457,26 +448,24 @@
         full: boolean;
         primary: boolean;
     }) => {
-        const color =
-            options.full && diagnosticGroupColors.length > 0
-                ? diagnosticGroupColors[options.group % diagnosticGroupColors.length]
-                : "var(--color-blue-500)";
-
         const id = nanoid();
 
-        const attributes =
-            options.full && options.group !== -1
-                ? {
-                      "data-diagnostic-decoration-id": id,
-                      "data-diagnostic-group-label": (options.group + 1).toString(),
-                  }
-                : {};
+        if (options.group === -1) {
+            return [];
+        }
+
+        const attributes = options.full
+            ? {
+                  "data-diagnostic-decoration-id": id,
+                  "data-diagnostic-group-label": (options.group + 1).toString(),
+              }
+            : {};
 
         const decorations = [
             markRange(options.start, options.end, () =>
                 markDecoration(
                     `diagnostic ${options.primary ? "diagnostic-primary" : "diagnostic-secondary"}`,
-                    `--color: ${color}`,
+                    "",
                     attributes,
                 ),
             ),
@@ -494,25 +483,35 @@
                             const element = node as HTMLElement;
 
                             return [
-                                [
+                                {
                                     element,
-                                    parseFloat(element.dataset.diagnosticGroupLabel!) - 1,
-                                ] as const,
+                                    label: parseFloat(element.dataset.diagnosticGroupLabel!) - 1,
+                                },
                             ];
                         })
-                        .filter(([_element, label]) => label !== -1);
+                        .filter(({ label }) => label !== -1);
 
-                element.addEventListener("mouseenter", () => {
-                    for (const [other, label] of allDecorations()) {
-                        if (label !== options.group) {
-                            other.dataset.dimmed = "true";
+                element.addEventListener("mouseover", (e) => {
+                    e.stopPropagation();
+
+                    for (const { element, label } of allDecorations()) {
+                        if (label === options.group) {
+                            element.dataset.highlighted = "true";
+                        } else {
+                            element.dataset.dimmed = "true";
                         }
                     }
                 });
 
-                element.addEventListener("mouseleave", () => {
-                    for (const [element] of allDecorations()) {
-                        delete element.dataset.dimmed;
+                element.addEventListener("mouseout", (e) => {
+                    e.stopPropagation();
+
+                    for (const { element, label } of allDecorations()) {
+                        if (label === options.group) {
+                            delete element.dataset.highlighted;
+                        } else {
+                            delete element.dataset.dimmed;
+                        }
                     }
                 });
             });

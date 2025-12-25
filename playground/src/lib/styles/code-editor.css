@@ -99,44 +99,62 @@
     }
 
     .diagnostic {
-        @apply transition-all;
+        @apply rounded-[6px] ring-[1.5px] transition-all;
+    }
+
+    .diagnostic-primary {
+        @apply underline decoration-blue-500 decoration-wavy [text-decoration-skip-ink:none];
+    }
+
+    .diagnostic-primary,
+    .diagnostic-secondary[data-highlighted] {
+        &[data-dimmed] {
+            --tw-ring-color: transparent;
+            background-color: transparent;
+        }
 
         &:not([data-dimmed]) {
-            @apply rounded-[6px] ring-[1.5px];
-        }
-    }
-
-    .diagnostic-primary:not([data-dimmed]) {
-        @apply underline decoration-(--color) decoration-wavy [text-decoration-skip-ink:none];
-
-        --tw-ring-color: color-mix(in oklab, var(--color) 80%, var(--color-background));
-
-        background-color: color-mix(in oklab, var(--color) 15%, var(--color-background));
-
-        @variant dark {
-            --tw-ring-color: color-mix(in oklab, var(--color) 100%, var(--color-background));
+            --tw-ring-color: color-mix(
+                in oklab,
+                var(--color-blue-500) 80%,
+                var(--color-background)
+            );
 
             background-color: color-mix(
                 in oklab,
-                var(--color) 50%,
-                var(--color-background-secondary)
+                var(--color-blue-500) 15%,
+                var(--color-background)
             );
+
+            @variant dark {
+                --tw-ring-color: color-mix(
+                    in oklab,
+                    var(--color-blue-500) 100%,
+                    var(--color-background)
+                );
+
+                background-color: color-mix(
+                    in oklab,
+                    var(--color-blue-500) 50%,
+                    var(--color-background-secondary)
+                );
+            }
         }
     }
 
-    .diagnostic-secondary:not([data-dimmed]) {
-        --tw-ring-color: color-mix(in oklab, var(--color) 40%, var(--color-background));
-
-        background-color: color-mix(in oklab, var(--color) 10%, var(--color-background));
+    .diagnostic-secondary {
+        --tw-ring-color: color-mix(in oklab, var(--color-slate-500) 15%, var(--color-background));
 
         @variant dark {
-            --tw-ring-color: color-mix(in oklab, var(--color) 70%, var(--color-background));
-
-            background-color: color-mix(
+            --tw-ring-color: color-mix(
                 in oklab,
-                var(--color) 40%,
-                var(--color-background-secondary)
+                var(--color-slate-500) 50%,
+                var(--color-background)
             );
+        }
+
+        &[data-dimmed] {
+            --tw-ring-color: transparent;
         }
     }
 }
