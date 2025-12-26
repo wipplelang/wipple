@@ -99,50 +99,34 @@
     }
 
     .diagnostic {
-        @apply rounded-[6px] ring-[1.5px] transition-all;
+        @apply rounded-[6px] ring-[1.5px] ring-transparent transition-all;
     }
 
-    .diagnostic-primary {
+    .diagnostic.diagnostic-primary:not(.diagnostic-dimmed) {
         @apply underline decoration-blue-500 decoration-wavy [text-decoration-skip-ink:none];
     }
 
-    .diagnostic-primary,
-    .diagnostic-secondary[data-highlighted] {
-        &[data-dimmed] {
-            --tw-ring-color: transparent;
-            background-color: transparent;
-        }
+    .diagnostic.diagnostic-highlighted {
+        --tw-ring-color: color-mix(in oklab, var(--color-blue-500) 80%, var(--color-background));
 
-        &:not([data-dimmed]) {
+        background-color: color-mix(in oklab, var(--color-blue-500) 15%, var(--color-background));
+
+        @variant dark {
             --tw-ring-color: color-mix(
                 in oklab,
-                var(--color-blue-500) 80%,
+                var(--color-blue-500) 100%,
                 var(--color-background)
             );
 
             background-color: color-mix(
                 in oklab,
-                var(--color-blue-500) 15%,
-                var(--color-background)
+                var(--color-blue-500) 50%,
+                var(--color-background-secondary)
             );
-
-            @variant dark {
-                --tw-ring-color: color-mix(
-                    in oklab,
-                    var(--color-blue-500) 100%,
-                    var(--color-background)
-                );
-
-                background-color: color-mix(
-                    in oklab,
-                    var(--color-blue-500) 50%,
-                    var(--color-background-secondary)
-                );
-            }
         }
     }
 
-    .diagnostic-secondary {
+    .diagnostic.diagnostic-dimmed:not(.diagnostic-highlighted *) {
         --tw-ring-color: color-mix(in oklab, var(--color-slate-500) 15%, var(--color-background));
 
         @variant dark {
@@ -151,10 +135,6 @@
                 var(--color-slate-500) 50%,
                 var(--color-background)
             );
-        }
-
-        &[data-dimmed] {
-            --tw-ring-color: transparent;
         }
     }
 }

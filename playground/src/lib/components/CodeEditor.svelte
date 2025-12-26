@@ -464,7 +464,7 @@
         const decorations = [
             markRange(options.start, options.end, () =>
                 markDecoration(
-                    `diagnostic ${options.primary ? "diagnostic-primary" : "diagnostic-secondary"}`,
+                    `diagnostic ${options.primary ? "diagnostic-primary diagnostic-highlighted" : "diagnostic-dimmed"}`,
                     "",
                     attributes,
                 ),
@@ -495,10 +495,12 @@
                     e.stopPropagation();
 
                     for (const { element, label } of allDecorations()) {
+                        element.classList.remove("diagnostic-highlighted", "diagnostic-dimmed");
+
                         if (label === options.group) {
-                            element.dataset.highlighted = "true";
+                            element.classList.add("diagnostic-highlighted");
                         } else {
-                            element.dataset.dimmed = "true";
+                            element.classList.add("diagnostic-dimmed");
                         }
                     }
                 });
@@ -506,11 +508,13 @@
                 element.addEventListener("mouseout", (e) => {
                     e.stopPropagation();
 
-                    for (const { element, label } of allDecorations()) {
-                        if (label === options.group) {
-                            delete element.dataset.highlighted;
+                    for (const { element } of allDecorations()) {
+                        if (element.classList.contains("diagnostic-primary")) {
+                            element.classList.add("diagnostic-highlighted");
+                            element.classList.remove("diagnostic-dimmed");
                         } else {
-                            delete element.dataset.dimmed;
+                            element.classList.add("diagnostic-dimmed");
+                            element.classList.remove("diagnostic-highlighted");
                         }
                     }
                 });

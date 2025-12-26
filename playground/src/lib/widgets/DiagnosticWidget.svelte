@@ -92,7 +92,7 @@
                         <p class="mx-[4px] my-[8px] text-sm opacity-75">
                             <strong>Tip:</strong>
                             Hover over an
-                            <span class="diagnostic diagnostic-secondary">outlined</span>
+                            <span class="diagnostic diagnostic-dimmed">outlined</span>
                             piece of code to highlight related code.
                         </p>
                     {/if}
