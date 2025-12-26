@@ -4,6 +4,7 @@ out.js
 .task/
 netlify/
 .netlify/
+coverage.html
 
 # Created by https://www.toptal.com/developers/gitignore/api/macos,linux,go,rust,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,linux,go,rust,node

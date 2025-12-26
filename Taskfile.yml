@@ -7,6 +7,10 @@ tasks:
   test:
     cmds:
       - go test work {{.CLI_ARGS}}
+  test:coverage:
+    cmds:
+      - go test work -coverpkg=work -coverprofile=coverage.out {{.CLI_ARGS}}
+      - go tool cover -html coverage.out -o coverage.html
   install:
     cmds:
       - go install ./compiler
