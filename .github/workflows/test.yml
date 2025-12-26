@@ -16,3 +16,7 @@ jobs:
                   cache-dependency-path: go.work.sum
             - run: task test:coverage
             - uses: codecov/codecov-action@v3
+              with:
+                  fail_ci_if_error: true
+                  files: ./coverage.out
+                  token: ${{ secrets.CODECOV_TOKEN }}
