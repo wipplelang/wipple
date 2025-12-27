@@ -59,6 +59,9 @@ func (node *CallExpressionNode) Visit(visitor *visit.Visitor) {
 
 					visitor.Constraint(typecheck.NewTypeConstraint(unit, typecheck.FunctionType[database.Node]([]database.Node{node.Function}, node)))
 
+					visitor.Db.Graph.Edge(node.Function, node, "function")
+					visitor.Db.Graph.Edge(unit, node, "input")
+
 					node.isUnit = true
 
 					return
@@ -69,9 +72,11 @@ func (node *CallExpressionNode) Visit(visitor *visit.Visitor) {
 
 	for _, input := range node.Inputs {
 		visitor.Visit(input)
+		visitor.Db.Graph.Edge(input, node, "input")
 	}
 
 	visitor.Visit(node.Function)
+	visitor.Db.Graph.Edge(node.Function, node, "function")
 
 	visitor.Constraint(typecheck.NewTypeConstraint(node.Function, typecheck.FunctionType[database.Node](node.Inputs, node)))
 }

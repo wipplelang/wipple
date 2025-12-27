@@ -185,6 +185,7 @@ func (node *TypeParameterNode) Visit(visitor *visit.Visitor) {
 
 		if node.Value != nil {
 			visitor.Visit(node.Value)
+			visitor.Db.Graph.Edge(node.Value, node, "value")
 
 			constraint := typecheck.NewGroupConstraint(node, node.Value)
 			constraint.Info().IsActive = false // wait until instantiated

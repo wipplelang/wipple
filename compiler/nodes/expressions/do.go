@@ -42,6 +42,7 @@ func (node *DoExpressionNode) Visit(visitor *visit.Visitor) {
 	visitExpression(visitor, node)
 
 	visitor.Visit(node.Input)
+	visitor.Db.Graph.Edge(node.Input, node, "input")
 	visitor.Constraint(typecheck.NewTypeConstraint(node.Input, typecheck.BlockType(node)))
 }
 

@@ -312,13 +312,15 @@ func addFeedback(db *database.Db, filter func(node database.Node) bool) []protoc
 
 	diagnostics := []protocol.Diagnostic{}
 	for _, item := range items {
+		message, _ := item.String()
+
 		diagnosticSeverity := protocol.DiagnosticSeverityInformation
 		diagnosticSource := "wipple"
 
 		diagnostics = append(diagnostics, protocol.Diagnostic{
 			Severity: &diagnosticSeverity,
 			Range:    convertSpan(database.GetSpanFact(item.On[0])),
-			Message:  item.String(),
+			Message:  message,
 			Source:   &diagnosticSource,
 		})
 	}
@@ -405,7 +407,8 @@ func getHover(db *database.Db, uri protocol.DocumentUri, position protocol.Posit
 
 		render := feedback.NewRender(db)
 		render.WriteComments(data)
-		documentation := strings.TrimSpace(render.Finish())
+		message, _ := render.Finish()
+		documentation := strings.TrimSpace(message)
 
 		if documentation != "" {
 			contents = append(contents, documentation)

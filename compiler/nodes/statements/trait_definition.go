@@ -99,16 +99,19 @@ func (node *TraitDefinitionNode) Visit(visitor *visit.Visitor) {
 		visitor.CurrentDefinition.WithImplicitTypeParameters(func() {
 			for _, parameter := range node.Parameters {
 				visitor.Visit(parameter)
+				visitor.Db.Graph.Edge(parameter, node, "parameter")
 			}
 		})
 
 		visitor.AfterAllDefinitions(func() {
 			visitor.Visit(node.Type)
+			visitor.Db.Graph.Edge(node.Type, node, "type")
 
 			visitor.Constraint(typecheck.NewGroupConstraint(node, node.Type))
 
 			for _, constraint := range node.Constraints {
 				visitor.Visit(constraint)
+				visitor.Db.Graph.Edge(constraint, node, "constraint")
 			}
 
 			// The bound for this trait is added where needed

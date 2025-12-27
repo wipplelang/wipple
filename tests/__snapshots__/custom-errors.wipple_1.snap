@@ -3,7 +3,7 @@ TypeDefinitionNode `Number` (custom-errors.wipple:1:1)
   is a definition
   has definition constraints
 
-FileNode `Number` (custom-errors.wipple:1:1)
+FileNode `Number : type⋯` (custom-errors.wipple:1:1)
   at custom-errors.wipple:1:1
 
 TypeDefinitionNode `String` (custom-errors.wipple:2:1)
@@ -11,7 +11,7 @@ TypeDefinitionNode `String` (custom-errors.wipple:2:1)
   is a definition
   has definition constraints
 
-TraitDefinitionNode `Add` (custom-errors.wipple:4:1)
+TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
   at custom-errors.wipple:4:1
   has instances
   is a definition
@@ -64,7 +64,7 @@ InstanceDefinitionNode `instance (Add Number Number Number)` (custom-errors.wipp
   at custom-errors.wipple:5:1
   is a definition
   has definition constraints
-  resolved to 1 definition(s): TraitDefinitionNode `Add` (custom-errors.wipple:4:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
 
 NamedTypeNode `Number` (custom-errors.wipple:5:15)
   at custom-errors.wipple:5:15
@@ -94,7 +94,7 @@ InstanceDefinitionNode `instance (Add String String String)` (custom-errors.wipp
   at custom-errors.wipple:6:1
   is a definition
   has definition constraints
-  resolved to 1 definition(s): TraitDefinitionNode `Add` (custom-errors.wipple:4:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
 
 NamedTypeNode `String` (custom-errors.wipple:6:15)
   at custom-errors.wipple:6:15
@@ -124,7 +124,7 @@ InstanceDefinitionNode `instance (Add () right sum)` (custom-errors.wipple:8:1)
   at custom-errors.wipple:8:1
   is a definition
   has definition constraints
-  resolved to 1 definition(s): TraitDefinitionNode `Add` (custom-errors.wipple:4:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
   has type parameters
 
 UnitTypeNode `()` (custom-errors.wipple:9:23)
@@ -148,7 +148,7 @@ InstanceDefinitionNode `instance (Add left right sum)` (custom-errors.wipple:11:
   at custom-errors.wipple:11:1
   is a definition
   has definition constraints
-  resolved to 1 definition(s): TraitDefinitionNode `Add` (custom-errors.wipple:4:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
   has type parameters
 
 TypeParameterNode `left` (custom-errors.wipple:12:33)
@@ -182,7 +182,7 @@ ConstructorExpressionNode `Add` (custom-errors.wipple:14:5)
   is an expression
   has bound(s) `Add Number Number Number` (InstanceDefinitionNode `instance (Add Number Number Number)` (custom-errors.wipple:5:1))
   has type `Number Number -> Number`
-  resolved to 1 definition(s): TraitDefinitionNode `Add` (custom-errors.wipple:4:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
 
 CallExpressionNode `Add 1 2` (custom-errors.wipple:14:5)
   at custom-errors.wipple:14:5
@@ -224,7 +224,7 @@ ConstructorExpressionNode `Add` (custom-errors.wipple:15:5)
   is an expression
   has bound(s) `Add String String String` (InstanceDefinitionNode `instance (Add String String String)` (custom-errors.wipple:6:1))
   has type `String String -> String`
-  resolved to 1 definition(s): TraitDefinitionNode `Add` (custom-errors.wipple:4:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
 
 CallExpressionNode `Add "a" "b"` (custom-errors.wipple:15:5)
   at custom-errors.wipple:15:5
@@ -266,7 +266,7 @@ ConstructorExpressionNode `Add` (custom-errors.wipple:16:5)
   is an expression
   has bound(s) `Add Number String _` (InstanceDefinitionNode `instance (Add left right sum)` (custom-errors.wipple:11:1))
   has type `Number String -> _`
-  resolved to 1 definition(s): TraitDefinitionNode `Add` (custom-errors.wipple:4:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
 
 CallExpressionNode `Add 1 "a"` (custom-errors.wipple:16:5)
   at custom-errors.wipple:16:5
@@ -308,7 +308,7 @@ ConstructorExpressionNode `Add` (custom-errors.wipple:17:5)
   is an expression
   has bound(s) `Add () Number _` (InstanceDefinitionNode `instance (Add () right sum)` (custom-errors.wipple:8:1))
   has type `() Number -> _`
-  resolved to 1 definition(s): TraitDefinitionNode `Add` (custom-errors.wipple:4:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1)
 
 CallExpressionNode `Add () 2` (custom-errors.wipple:17:5)
   at custom-errors.wipple:17:5
@@ -356,8 +356,7 @@ Feedback:
   
     -  See `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1).
   
-    -  `instance (Add () right sum)` (custom-errors.wipple:8:1) explicitly requires a `()` (custom-
-  errors.wipple:9:23).
+    -  `Add` (custom-errors.wipple:17:5) explicitly requires a `()` (custom-errors.wipple:9:23).
   
     -  `Add` (custom-errors.wipple:17:5) requires `Add () Number _`.
   

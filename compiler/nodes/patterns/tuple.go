@@ -77,6 +77,7 @@ func (node *TuplePatternNode) Visit(visitor *visit.Visitor) {
 	node.elementTemporaries = make([]database.Node, 0, len(node.Elements))
 	for _, element := range node.Elements {
 		node.elementTemporaries = append(node.elementTemporaries, visitor.VisitMatching(element))
+		visitor.Db.Graph.Edge(element, node, "element")
 	}
 
 	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.TupleType(node.elementTemporaries)))

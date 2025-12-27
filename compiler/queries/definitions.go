@@ -71,7 +71,7 @@ func Documentation(db *database.Db, node database.Node, filter func(node databas
 	})
 
 	data := DocumentationData{
-		Declaration: database.DefinitionSource(fact.Definition.GetNode()),
+		Declaration: database.DefinitionSource(database.GetSpanFact(fact.Definition.GetNode()).Source),
 		Comments:    commentsData,
 	}
 

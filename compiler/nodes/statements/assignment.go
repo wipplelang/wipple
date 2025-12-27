@@ -68,6 +68,7 @@ func (node *AssignmentNode) Visit(visitor *visit.Visitor) {
 						visitor.CurrentDefinition.WithinConstantValue = true
 
 						visitor.Visit(node.Value)
+						visitor.Db.Graph.Edge(node.Value, definition.Node, "value")
 
 						visitor.Constraint(typecheck.NewGroupConstraint(node.Value, constantType))
 
@@ -83,6 +84,7 @@ func (node *AssignmentNode) Visit(visitor *visit.Visitor) {
 		}
 
 		visitor.Visit(node.Value)
+		visitor.Db.Graph.Edge(node.Value, node.Pattern, "value")
 
 		node.temporary = &database.HiddenNode{
 			Facts: database.NewFacts(database.GetSpanFact(node)),

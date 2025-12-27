@@ -312,6 +312,7 @@ func (node *TypeDefinitionNode) Visit(visitor *visit.Visitor) {
 		visitor.CurrentDefinition.WithImplicitTypeParameters(func() {
 			for _, parameter := range node.Parameters {
 				visitor.Visit(parameter)
+				visitor.Db.Graph.Edge(parameter, node, "parameter")
 			}
 		})
 
@@ -344,6 +345,7 @@ func (node *TypeDefinitionNode) Visit(visitor *visit.Visitor) {
 					fields := make(map[string]database.Node, len(representation.Fields))
 					for _, field := range representation.Fields {
 						visitor.Visit(field.Type)
+						visitor.Db.Graph.Edge(field.Type, node, "field")
 
 						if _, ok := fields[field.Name]; ok {
 							database.SetFact(node, DuplicateFieldDefinitionFact{})
@@ -387,6 +389,7 @@ func (node *TypeDefinitionNode) Visit(visitor *visit.Visitor) {
 
 							for _, element := range variant.Elements {
 								visitor.Visit(element)
+								visitor.Db.Graph.Edge(element, variantNode, "element")
 							}
 
 							if len(variant.Elements) == 0 {

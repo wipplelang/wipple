@@ -60,6 +60,7 @@ func (node *SetPatternNode) Visit(visitor *visit.Visitor) {
 	visitor.Constraint(typecheck.NewGroupConstraint(node, variableDefinition.Node))
 
 	node.matchingVariable = variableDefinition.Node
+	visitor.Db.Graph.Replace(node, node.matchingVariable)
 
 	if !visitor.CurrentMatch.AllowSet {
 		database.SetFact(node, InvalidSetPatternFact{})

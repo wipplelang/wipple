@@ -93,6 +93,7 @@ func (node *FormatExpressionNode) Visit(visitor *visit.Visitor) {
 		if i < len(node.Inputs) {
 			input := node.Inputs[i]
 			visitor.Visit(input)
+			visitor.Db.Graph.Edge(input, node, "input")
 
 			node.segments = append(node.segments, &formatSegment{
 				string: segment,

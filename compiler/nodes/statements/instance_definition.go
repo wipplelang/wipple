@@ -120,6 +120,7 @@ func (node *InstanceDefinitionNode) Visit(visitor *visit.Visitor) {
 			visitor.CurrentDefinition.WithImplicitTypeParameters(func() {
 				for _, parameter := range node.Bound.Parameters {
 					visitor.Visit(parameter)
+					visitor.Db.Graph.Edge(parameter, node, "parameter")
 				}
 
 				*substitutions = make(map[database.Node]typecheck.Type, len(traitDefinition.Parameters))
@@ -144,6 +145,7 @@ func (node *InstanceDefinitionNode) Visit(visitor *visit.Visitor) {
 
 				for _, constraint := range node.Constraints {
 					visitor.Visit(constraint)
+					visitor.Db.Graph.Edge(constraint, node, "constraint")
 				}
 
 				visitor.Constraint(typecheck.NewInstantiateConstraint(typecheck.Instantiation{
@@ -171,6 +173,7 @@ func (node *InstanceDefinitionNode) Visit(visitor *visit.Visitor) {
 				visitor.CurrentDefinition.WithinConstantValue = true
 
 				visitor.Visit(node.Value)
+				visitor.Db.Graph.Edge(node.Value, node, "value")
 				visitor.Constraint(typecheck.NewGroupConstraint(node.Value, node))
 
 				if attributes.Error {

@@ -8,9 +8,10 @@ import (
 
 func registerPlaceholders() {
 	register(Feedback[typecheck.Type]{
-		Id:    "placeholder",
-		Rank:  RankPlaceholders,
-		Query: queries.Placeholder,
+		Id:        "placeholder",
+		Rank:      RankPlaceholders,
+		ShowGraph: true,
+		Query:     queries.Placeholder,
 		Render: func(render *Render, node database.Node, ty typecheck.Type) {
 			if ty != nil {
 				render.WriteString("Found a placeholder of type ")

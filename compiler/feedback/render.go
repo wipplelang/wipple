@@ -13,12 +13,16 @@ import (
 )
 
 type Render struct {
-	db  *database.Db
-	buf strings.Builder
+	db    *database.Db
+	buf   strings.Builder
+	Nodes *map[database.Node]struct{}
 }
 
 func NewRender(db *database.Db) *Render {
-	return &Render{db: db}
+	return &Render{
+		db:    db,
+		Nodes: &map[database.Node]struct{}{},
+	}
 }
 
 func (render *Render) WriteString(s string) {
@@ -53,10 +57,12 @@ func (render *Render) WriteOrdinal(n int) {
 
 func (render *Render) WriteNode(node database.Node) {
 	fmt.Fprintf(&render.buf, "%s", database.RenderNode(node))
+	(*render.Nodes)[node] = struct{}{}
 }
 
 func (render *Render) WriteDefinition(node database.Node) {
 	fmt.Fprintf(&render.buf, "%s", database.RenderDefinition(node))
+	(*render.Nodes)[node] = struct{}{}
 }
 
 func (render *Render) WriteCode(code string) {
@@ -222,7 +228,7 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 			render.WriteString(prefix)
 
 			if fact, ok := database.GetFact[typecheck.InstantiatedFact](node); ok {
-				render.WriteNode(fact.Definition)
+				render.WriteNode(fact.Source)
 				render.WriteString(" explicitly requires a ")
 				render.WriteTypeInGroup(constraint.Type, node)
 				render.WriteString(".")
@@ -268,6 +274,11 @@ func (render *Render) WriteConstraint(prefix string, constraint typecheck.Constr
 	return false
 }
 
-func (render *Render) Finish() string {
-	return render.buf.String()
+func (render *Render) Finish() (string, []database.Node) {
+	nodes := make([]database.Node, 0, len(*render.Nodes))
+	for node := range *render.Nodes {
+		nodes = append(nodes, node)
+	}
+
+	return render.buf.String(), nodes
 }

@@ -111,6 +111,7 @@ func (node *StructureExpressionNode) Visit(visitor *visit.Visitor) {
 	fields := map[string]database.Node{}
 	for _, field := range node.Fields {
 		visitor.Visit(field.Value)
+		visitor.Db.Graph.Edge(field.Value, node, "field")
 		fields[field.Name] = field.Value
 	}
 

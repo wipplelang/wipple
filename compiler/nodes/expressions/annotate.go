@@ -49,12 +49,13 @@ func ParseAnnotateExpression(parser *syntax.Parser) (*AnnotateExpressionNode, *s
 }
 
 func (node *AnnotateExpressionNode) Visit(visitor *visit.Visitor) {
-	database.HideNode[*AnnotateExpressionNode]()
-
 	visitExpression(visitor, node)
 
 	visitor.Visit(node.Expression)
 	visitor.Visit(node.Type)
+
+	visitor.Db.Graph.Replace(node.Expression, node)
+	visitor.Db.Graph.Replace(node.Type, node)
 
 	visitor.Constraint(typecheck.NewGroupConstraint(node.Expression, node.Type))
 	visitor.Constraint(typecheck.NewGroupConstraint(node, node.Expression))

@@ -11,12 +11,14 @@ var LspEnabled = false
 type Db struct {
 	parent *Db
 	nodes  []Node
+	Graph  *Graph
 }
 
 func NewDb(parent *Db) *Db {
 	return &Db{
 		parent: parent,
 		nodes:  []Node{},
+		Graph:  NewGraph(),
 	}
 }
 
@@ -52,6 +54,27 @@ func ContainsFact[T any, U any](db *Db, f func(node Node, fact T) (U, bool)) (U,
 
 	var zero U
 	return zero, false
+}
+
+func (db *Db) FilterGraph(initialNodes []Node) *Graph {
+	graph := NewGraph()
+	graph.SetInitialNodes(initialNodes)
+
+	for current := db; current != nil; current = current.parent {
+		for node, replacement := range current.Graph.Replacements {
+			graph.Replace(node, replacement)
+		}
+
+		for _, edge := range current.Graph.Edges {
+			graph.Edge(edge.From, edge.To, edge.Label)
+		}
+	}
+
+	for _, group := range db.Graph.Groups {
+		graph.Group(group.Nodes, group.Labels)
+	}
+
+	return graph
 }
 
 func (db *Db) Write(w io.Writer, filter func(node Node) bool) {

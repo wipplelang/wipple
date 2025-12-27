@@ -44,5 +44,6 @@ func (node *BlockTypeNode) Visit(visitor *visit.Visitor) {
 	visitType(visitor, node)
 
 	visitor.Visit(node.Output)
+	visitor.Db.Graph.Edge(node.Output, node, "output")
 	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.BlockType(node.Output)))
 }

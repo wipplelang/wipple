@@ -55,7 +55,7 @@ func (request *DocumentationRequest) handle() (DocumentationResponse, error) {
 
 	render := feedback.NewRender(db)
 	render.WriteComments(data.Comments)
-	docs := render.Finish()
+	docs, _ := render.Finish()
 
 	return DocumentationResponse{
 		Documentation: &Documentation{

@@ -52,7 +52,9 @@ func (node *AsExpressionNode) Visit(visitor *visit.Visitor) {
 	visitExpression(visitor, node)
 
 	visitor.Visit(node.Left)
+	visitor.Db.Graph.Edge(node.Left, node, "left")
 	visitor.Visit(node.Right)
+	visitor.Db.Graph.Edge(node.Right, node, "right")
 
 	node.asFunction = &ConstructorExpressionNode{
 		ConstructorName: "As",

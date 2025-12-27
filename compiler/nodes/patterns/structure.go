@@ -107,6 +107,7 @@ func (node *StructurePatternNode) Visit(visitor *visit.Visitor) {
 			temporary: visitor.VisitMatching(field.Pattern),
 			pattern:   field.Pattern,
 		}
+		visitor.Db.Graph.Edge(field.Pattern, node, "field")
 	}
 
 	replacements := map[database.Node]database.Node{definition.Node: node}

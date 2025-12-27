@@ -69,6 +69,7 @@ func (node *TupleExpressionNode) Visit(visitor *visit.Visitor) {
 
 	for _, element := range node.Elements {
 		visitor.Visit(element)
+		visitor.Db.Graph.Edge(element, node, "element")
 	}
 
 	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.TupleType(node.Elements)))

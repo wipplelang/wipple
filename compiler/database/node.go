@@ -38,20 +38,23 @@ func DisplayNode(node Node) string {
 	return fmt.Sprintf("%s %s", reflect.TypeOf(node).Elem().Name(), RenderNode(node))
 }
 
-func NodeSource(node Node) string {
-	source := DefinitionSource(node)
-	source = regexp.MustCompile(`(?s)\{.*\}`).ReplaceAllString(source, "{⋯}")   // collapse braces
-	source = regexp.MustCompile(`(?s)::?.*`).ReplaceAllString(source, "")       // remove assignments and type annotations
+func NodeSource(source string) string {
+	source = DefinitionSource(source)
+	source = regexp.MustCompile(`(?s)\{.*\}`).ReplaceAllString(source, "{⋯}") // collapse braces
+
+	leftParenthesisIndex := strings.Index(source, "(")
+	annotateIndex := strings.Index(source, "::")
+	if annotateIndex != -1 && annotateIndex < leftParenthesisIndex {
+		source = regexp.MustCompile(`(?s)::?.*`).ReplaceAllString(source, "") // remove assignments and type annotations
+	}
+
 	source = regexp.MustCompile(`(?s)\bwhere\b.*`).ReplaceAllString(source, "") // remove bounds
 	source = regexp.MustCompile(`(?s)\n.*`).ReplaceAllString(source, "⋯")       // collapse multiple lines
 
 	return strings.TrimSpace(source)
 }
 
-func DefinitionSource(node Node) string {
-	span := GetSpanFact(node)
-
-	source := span.Source
+func DefinitionSource(source string) string {
 	source = regexp.MustCompile(`(\[.*\]\s*)*`).ReplaceAllString(source, "") // strip attributes
 	source = regexp.MustCompile(`--.*\n`).ReplaceAllString(source, "")       // strip comments
 
@@ -106,11 +109,11 @@ func WrappingDisplayNode[T any](wrap func(Node, string) string, f func() T) T {
 }
 
 func RenderNode(node Node) string {
-	return RenderSource(node, NodeSource(node))
+	return RenderSource(node, NodeSource(GetSpanFact(node).Source))
 }
 
 func RenderDefinition(node Node) string {
-	return RenderSource(node, DefinitionSource(node))
+	return RenderSource(node, DefinitionSource(GetSpanFact(node).Source))
 }
 
 func RenderSource(node Node, source string) string {

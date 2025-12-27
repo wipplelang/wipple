@@ -72,6 +72,8 @@ func (node *DefaultConstraintNode) Visit(visitor *visit.Visitor) {
 	visitConstraint(visitor, node)
 
 	visitor.Visit(node.Parameter)
+	visitor.Db.Graph.Edge(node.Parameter, node, "parameter")
 	visitor.Visit(node.Value)
+	visitor.Db.Graph.Edge(node.Value, node, "value")
 	visitor.Constraint(typecheck.NewDefaultConstraint(node.Parameter, node.Value))
 }

@@ -139,6 +139,8 @@ func (node *OperatorExpressionNode) Visit(visitor *visit.Visitor) {
 	}
 
 	node.operatorNode = visitOperator(visitor, node.OperatorSpan, node, node.Left, node.Right)
+	visitor.Db.Graph.Replace(node, node.operatorNode)
+	visitor.Visit(node.operatorNode)
 }
 
 func (node *OperatorExpressionNode) Codegen(c *codegen.Codegen) error {
@@ -149,20 +151,18 @@ func (node *OperatorExpressionNode) Codegen(c *codegen.Codegen) error {
 	return c.Write(node.operatorNode)
 }
 
-func resolveOperatorTrait(visitor *visit.Visitor, operatorSpan database.Span, node database.Node, name string) database.Node {
-	operatorNode := &ConstructorExpressionNode{
+func traitOperatorNode(operatorSpan database.Span, name string) database.Node {
+	return &ConstructorExpressionNode{
 		ConstructorName: name,
 		Facts:           database.NewFacts(operatorSpan),
 	}
-	visitor.Visit(operatorNode)
-	return operatorNode
 }
 
 type visitOperator func(visitor *visit.Visitor, operatorSpan database.Span, node database.Node, left database.Node, right database.Node) database.Node
 
 func traitOperator(trait string) visitOperator {
 	return func(visitor *visit.Visitor, operatorSpan database.Span, node database.Node, left database.Node, right database.Node) database.Node {
-		operatorNode := resolveOperatorTrait(visitor, operatorSpan, node, trait)
+		operatorNode := traitOperatorNode(operatorSpan, trait)
 
 		visitor.Constraint(typecheck.NewTypeConstraint(operatorNode, typecheck.FunctionType([]database.Node{left, right}, node)))
 
@@ -176,7 +176,7 @@ func traitOperator(trait string) visitOperator {
 
 func shortCircuitOperator(trait string) visitOperator {
 	return func(visitor *visit.Visitor, operatorSpan database.Span, node database.Node, left database.Node, right database.Node) database.Node {
-		operatorNode := resolveOperatorTrait(visitor, operatorSpan, node, trait)
+		operatorNode := traitOperatorNode(operatorSpan, trait)
 
 		visitor.Constraint(typecheck.NewTypeConstraint(operatorNode, typecheck.FunctionType[typecheck.Type]([]typecheck.Type{left, typecheck.BlockType(right)}, node)))
 

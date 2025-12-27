@@ -66,6 +66,10 @@ type InstantiatedFact struct {
 	Source     database.Node
 }
 
+func (fact InstantiatedFact) String() string {
+	return ""
+}
+
 type ConstructedType struct {
 	Tag         any
 	Children    []Type
@@ -229,26 +233,29 @@ func InstantiateType(solver *Solver, ty Type, definition database.Node, source d
 }
 
 func GetOrInstantiate(solver *Solver, node database.Node, definition database.Node, source database.Node, replacements map[database.Node]database.Node) database.Node {
-	if replacement, ok := replacements[node]; ok {
-		return replacement
+	replacement, ok := replacements[node]
+	if !ok {
+		instantiated := &database.HiddenNode{
+			Facts: database.NewFacts(database.GetSpanFact(node)),
+		}
+		solver.Db.Register(instantiated)
+		database.SetParentFact(instantiated, database.GetParentFact(node))
+		database.SetFact(instantiated, TypedFact{})
+
+		replacement = instantiated
+		replacements[node] = instantiated
 	}
 
-	instantiated := &database.HiddenNode{
-		Facts: database.NewFacts(database.GetSpanFact(node)),
-	}
-	solver.Db.Register(instantiated)
-	database.SetParentFact(instantiated, database.GetParentFact(node))
-	database.SetFact(instantiated, TypedFact{})
-
-	database.SetFact(instantiated, InstantiatedFact{
+	database.SetFact(replacement, InstantiatedFact{
 		Definition: definition,
 		From:       node,
 		Source:     source,
 	})
 
-	replacements[node] = instantiated
+	solver.Db.Graph.Replace(node, replacement)
 
-	return instantiated
+	return replacement
+
 }
 
 func replaceChildren(ty *ConstructedType, children []Type) *ConstructedType {

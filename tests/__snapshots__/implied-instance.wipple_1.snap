@@ -3,7 +3,7 @@ TypeDefinitionNode `A` (implied-instance.wipple:1:1)
   is a definition
   has definition constraints
 
-FileNode `A` (implied-instance.wipple:1:1)
+FileNode `A : type⋯` (implied-instance.wipple:1:1)
   at implied-instance.wipple:1:1
 
 TypeDefinitionNode `B` (implied-instance.wipple:2:1)
@@ -11,7 +11,7 @@ TypeDefinitionNode `B` (implied-instance.wipple:2:1)
   is a definition
   has definition constraints
 
-TraitDefinitionNode `T` (implied-instance.wipple:4:1)
+TraitDefinitionNode `T : value => trait (value -> ())` (implied-instance.wipple:4:1)
   at implied-instance.wipple:4:1
   has instances
   is a definition
@@ -40,7 +40,7 @@ UnitTypeNode `()` (implied-instance.wipple:4:30)
   has type `()`
   is a type
 
-TraitDefinitionNode `U` (implied-instance.wipple:5:1)
+TraitDefinitionNode `U : value => trait (value -> ())` (implied-instance.wipple:5:1)
   at implied-instance.wipple:5:1
   is a definition
   has definition constraints
@@ -72,7 +72,7 @@ InstanceDefinitionNode `instance (T value)` (implied-instance.wipple:7:1)
   at implied-instance.wipple:7:1
   is a definition
   has definition constraints
-  resolved to 1 definition(s): TraitDefinitionNode `T` (implied-instance.wipple:4:1)
+  resolved to 1 definition(s): TraitDefinitionNode `T : value => trait (value -> ())` (implied-instance.wipple:4:1)
   has type parameters
 
 TypeParameterNode `value` (implied-instance.wipple:7:13)
@@ -84,7 +84,7 @@ TypeParameterNode `value` (implied-instance.wipple:7:13)
 BoundConstraintNode `U value` (implied-instance.wipple:7:26)
   is a constraint
   at implied-instance.wipple:7:26
-  resolved to 1 definition(s): TraitDefinitionNode `U` (implied-instance.wipple:5:1)
+  resolved to 1 definition(s): TraitDefinitionNode `U : value => trait (value -> ())` (implied-instance.wipple:5:1)
 
 TypeParameterNode `value` (implied-instance.wipple:7:29)
   at implied-instance.wipple:7:29
@@ -123,7 +123,7 @@ UnitTypeNode `()` (implied-instance.wipple:9:15)
 BoundConstraintNode `U value` (implied-instance.wipple:9:24)
   is a constraint
   at implied-instance.wipple:9:24
-  resolved to 1 definition(s): TraitDefinitionNode `U` (implied-instance.wipple:5:1)
+  resolved to 1 definition(s): TraitDefinitionNode `U : value => trait (value -> ())` (implied-instance.wipple:5:1)
 
 TypeParameterNode `value` (implied-instance.wipple:9:27)
   at implied-instance.wipple:9:27
@@ -139,7 +139,7 @@ ConstructorExpressionNode `T` (implied-instance.wipple:10:5)
   is an expression
   has bound(s) `T value` (InstanceDefinitionNode `instance (T value)` (implied-instance.wipple:7:1))
   has type `value -> ()`
-  resolved to 1 definition(s): TraitDefinitionNode `T` (implied-instance.wipple:4:1)
+  resolved to 1 definition(s): TraitDefinitionNode `T : value => trait (value -> ())` (implied-instance.wipple:4:1)
 
 
 Feedback:

@@ -441,7 +441,7 @@
 
     const markDiagnostic = new Compartment();
 
-    const getMarkDiagnosticDecoration = (options: {
+    const getMarkDiagnosticDecorations = (options: {
         start: number;
         end: number;
         group: number;
@@ -537,7 +537,7 @@
             }
 
             return [
-                getMarkDiagnosticDecoration({
+                getMarkDiagnosticDecorations({
                     start,
                     end,
                     group,
@@ -564,7 +564,7 @@
         editorView.dispatch({
             effects: markDiagnostic.reconfigure(
                 highlightGroup != null
-                    ? getMarkDiagnosticDecoration({
+                    ? getMarkDiagnosticDecorations({
                           start: 0,
                           end: editorView.state.doc.length,
                           group: highlightGroup,

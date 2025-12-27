@@ -54,11 +54,13 @@ func (node *IsExpressionNode) Visit(visitor *visit.Visitor) {
 	visitExpression(visitor, node)
 
 	visitor.Visit(node.Left)
+	visitor.Db.Graph.Edge(node.Left, node, "left")
 
 	node.inputTemporary = &database.HiddenNode{Facts: database.NewFacts(database.GetSpanFact(node.Left))}
 	visitor.Db.Register(node.inputTemporary)
 	visit.Matching(visitor, node.inputTemporary, false, func() struct{} {
 		visitor.Visit(node.Right)
+		visitor.Db.Graph.Edge(node.Right, node, "right")
 		return struct{}{}
 	})
 

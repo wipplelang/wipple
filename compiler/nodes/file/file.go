@@ -40,6 +40,7 @@ func ParseFile(parser *syntax.Parser) (*FileNode, *syntax.Error) {
 func (node *FileNode) Visit(visitor *visit.Visitor) {
 	for _, statement := range node.Statements {
 		visitor.Visit(statement)
+		visitor.Db.Graph.Edge(statement, node, "statement")
 	}
 }
 

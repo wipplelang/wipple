@@ -106,6 +106,7 @@ func (node *ConstructorPatternNode) Visit(visitor *visit.Visitor) {
 
 		for _, element := range node.Elements {
 			visitor.VisitMatching(element)
+			visitor.Db.Graph.Edge(element, node, "element")
 			database.SetFact(element, ExtraElementFact{})
 		}
 
@@ -121,6 +122,7 @@ func (node *ConstructorPatternNode) Visit(visitor *visit.Visitor) {
 		matchingVariantConstructorElements := make([]matchingVariantConstructorElement, 0, len(node.Elements))
 		for _, element := range node.Elements {
 			temporary := visitor.VisitMatching(element)
+			visitor.Db.Graph.Edge(element, node, "element")
 			matchingVariantConstructorElements = append(matchingVariantConstructorElements, matchingVariantConstructorElement{
 				temporary: temporary,
 				pattern:   element,

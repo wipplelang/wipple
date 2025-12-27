@@ -29,8 +29,9 @@ func registerBounds() {
 	}
 
 	register(Feedback[errorInstanceData]{
-		Id:   "error-instance",
-		Rank: RankCustom,
+		Id:        "error-instance",
+		Rank:      RankCustom,
+		ShowGraph: true,
 		Query: func(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(data errorInstanceData)) {
 			typed, ok := database.GetFact[typecheck.TypedFact](node)
 			if !ok || typed.Group == nil {

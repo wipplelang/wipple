@@ -49,6 +49,10 @@ func SpansAreEqual(left Span, right Span) bool {
 	return CompareSpans(left, right) == 0
 }
 
+func SpanIsInsideSpan(inner Span, outer Span) bool {
+	return inner.Path == outer.Path && inner.Start.Index >= outer.Start.Index && inner.End.Index <= outer.End.Index
+}
+
 func HaveEqualSpans(left Node, right Node) bool {
 	return SpansAreEqual(GetSpanFact(left), GetSpanFact(right))
 }

@@ -36,6 +36,7 @@ type ResponseDiagnostic struct {
 	Lines     []*ResponseDiagnosticLine     `json:"lines"`
 	Groups    int                           `json:"groups"`
 	Message   string                        `json:"message"`
+	Graph     *database.Graph               `json:"graph"`
 }
 
 type ResponseDiagnosticLocation struct {
@@ -52,7 +53,7 @@ type ResponseDiagnosticLine struct {
 	start     int
 	end       int
 	offset    int
-	node      database.Node
+	nodes     map[database.Node]struct{}
 }
 
 const defaultPath = "input"
@@ -102,6 +103,9 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 			groups := map[*typecheck.Group]int{}
 			locations, lines := collectLines(db, item.On, groups)
 
+			on := make([]database.Node, len(item.On))
+			copy(on, item.On)
+
 			message := database.WrappingDisplayNode(func(node database.Node, source string) string {
 				if fact, ok := database.GetFact[typecheck.TypedFact](node); ok {
 					if groupIndex, ok := groups[fact.Group]; ok {
@@ -111,14 +115,27 @@ func (request *CompileRequest) handle() (*CompileResponse, error) {
 
 				return "`" + source + "`"
 			}, func() string {
-				return item.String()
+				message, itemNodes := item.String()
+				for _, node := range itemNodes {
+					if !slices.Contains(on, node) {
+						on = append(on, node)
+					}
+				}
+
+				return message
 			})
+
+			var graph *database.Graph
+			if item.ShowGraph {
+				graph = db.FilterGraph(on)
+			}
 
 			responseDiagnostics = append(responseDiagnostics, ResponseDiagnostic{
 				Locations: locations,
 				Lines:     lines,
 				Groups:    len(groups),
 				Message:   message,
+				Graph:     graph,
 			})
 		}
 
@@ -278,6 +295,7 @@ func collectLines(db *database.Db, nodes []database.Node, groups map[*typecheck.
 		}); index != -1 {
 			existing := lines[index]
 			location := getLocation(existing.offset)
+			existing.nodes[node] = struct{}{}
 
 			if !slices.ContainsFunc(existing.Locations, func(other *ResponseDiagnosticLocation) bool {
 				return other.Start == location.Start && other.End == location.End
@@ -321,14 +339,16 @@ func collectLines(db *database.Db, nodes []database.Node, groups map[*typecheck.
 			offset += len(sourceLines[i]) + 1
 		}
 
+		location := getLocation(offset)
+
 		lines = append(lines, &ResponseDiagnosticLine{
 			Path:      span.Path,
 			Source:    strings.Join(sourceLines, "\n"),
-			Locations: []*ResponseDiagnosticLocation{getLocation(offset)},
+			Locations: []*ResponseDiagnosticLocation{location},
 			start:     span.Start.Line,
 			end:       span.End.Line,
 			offset:    offset,
-			node:      node,
+			nodes:     map[database.Node]struct{}{node: {}},
 		})
 	}
 

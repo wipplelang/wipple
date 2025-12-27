@@ -101,6 +101,7 @@ func (node *WhenExpressionNode) Visit(visitor *visit.Visitor) {
 	visitExpression(visitor, node)
 
 	visitor.Visit(node.Input)
+	visitor.Db.Graph.Edge(node.Input, node, "input")
 
 	node.inputTemporary = &database.HiddenNode{
 		Facts: database.NewFacts(database.GetSpanFact(node.Input)),
@@ -114,7 +115,9 @@ func (node *WhenExpressionNode) Visit(visitor *visit.Visitor) {
 		for _, arm := range node.Arms {
 			visitor.PushScope()
 			visitor.Visit(arm.Pattern)
+			visitor.Db.Graph.Edge(arm.Pattern, node, "pattern")
 			visitor.Visit(arm.Value)
+			visitor.Db.Graph.Edge(arm.Value, node, "value")
 			visitor.PopScope()
 
 			visitor.Constraint(typecheck.NewGroupConstraint(arm.Value, node))

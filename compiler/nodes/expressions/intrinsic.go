@@ -62,6 +62,7 @@ func (node *IntrinsicExpressionNode) Visit(visitor *visit.Visitor) {
 
 	for _, input := range node.Inputs {
 		visitor.Visit(input)
+		visitor.Db.Graph.Edge(input, node, "input")
 	}
 }
 

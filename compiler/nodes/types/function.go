@@ -65,9 +65,11 @@ func (node *FunctionTypeNode) Visit(visitor *visit.Visitor) {
 
 	for _, input := range node.Inputs {
 		visitor.Visit(input)
+		visitor.Db.Graph.Edge(input, node, "input")
 	}
 
 	visitor.Visit(node.Output)
+	visitor.Db.Graph.Edge(node.Output, node, "output")
 
 	visitor.Constraint(typecheck.NewTypeConstraint(node, typecheck.FunctionType(node.Inputs, node.Output)))
 }

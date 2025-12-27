@@ -65,6 +65,7 @@ func (node *BoundConstraintNode) Visit(visitor *visit.Visitor) {
 
 	for _, parameter := range node.Parameters {
 		visitor.Visit(parameter)
+		visitor.Db.Graph.Edge(parameter, node, "parameter")
 	}
 
 	substitutions := make(map[database.Node]typecheck.Type, len(trait.Parameters))

@@ -5,18 +5,20 @@ import (
 )
 
 type FeedbackItem struct {
-	Id     string
-	Rank   Rank
-	On     []database.Node
-	String func() string
+	Id        string
+	Rank      Rank
+	ShowGraph bool
+	On        []database.Node
+	String    func() (string, []database.Node)
 }
 
 type Feedback[T any] struct {
-	Id     string
-	Rank   Rank
-	Query  func(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(data T))
-	On     func(data T) []database.Node // defaults to the queried node
-	Render func(render *Render, node database.Node, data T)
+	Id        string
+	Rank      Rank
+	ShowGraph bool
+	Query     func(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(data T))
+	On        func(data T) []database.Node // defaults to the queried node
+	Render    func(render *Render, node database.Node, data T)
 }
 
 var registered = []func(db *database.Db, node database.Node, filter func(node database.Node) bool, f func(item FeedbackItem)){}
@@ -33,10 +35,11 @@ func register[T any](entry Feedback[T]) {
 			}
 
 			f(FeedbackItem{
-				Id:   entry.Id,
-				Rank: entry.Rank,
-				On:   on,
-				String: func() string {
+				Id:        entry.Id,
+				Rank:      entry.Rank,
+				ShowGraph: entry.ShowGraph,
+				On:        on,
+				String: func() (string, []database.Node) {
 					render := NewRender(db)
 					entry.Render(render, on[0], data)
 					return render.Finish()

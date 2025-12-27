@@ -51,13 +51,13 @@ func ParseAnnotatePattern(parser *syntax.Parser) (*AnnotatePatternNode, *syntax.
 }
 
 func (node *AnnotatePatternNode) Visit(visitor *visit.Visitor) {
-	database.HideNode[*AnnotatePatternNode]()
-
 	visitPattern(visitor, node)
 	node.matching = visitor.CurrentMatch.Node
 
 	visitor.Visit(node.Pattern)
+	visitor.Db.Graph.Edge(node.Pattern, node, "pattern")
 	visitor.Visit(node.Type)
+	visitor.Db.Graph.Edge(node.Type, node, "type")
 
 	visitor.Constraint(typecheck.NewGroupConstraint(node.Pattern, node.Type))
 	visitor.Constraint(typecheck.NewGroupConstraint(node, node.Pattern))

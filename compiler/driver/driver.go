@@ -168,6 +168,7 @@ func setGroups(solver *typecheck.Solver, filter func(node database.Node) bool) {
 	groups := solver.Groups(queries.OrderGroupNodes)
 
 	for _, group := range groups {
+		var nodes []database.Node
 		for _, node := range group.Nodes {
 			if !filter(node) {
 				continue
@@ -175,7 +176,21 @@ func setGroups(solver *typecheck.Solver, filter func(node database.Node) bool) {
 
 			if existing, ok := database.GetFact[typecheck.TypedFact](node); ok && existing.Group == nil {
 				database.SetFact(node, typecheck.TypedFact{Group: group})
+				nodes = append(nodes, node)
 			}
+		}
+
+		if len(nodes) > 0 {
+			labels := make([]string, len(group.Types))
+			for i, ty := range group.Types {
+				labels[i] = typecheck.DisplayType(ty, true)
+			}
+
+			if len(labels) == 0 {
+				labels = append(labels, "_")
+			}
+
+			solver.Db.Graph.Group(nodes, labels)
 		}
 	}
 }
@@ -204,7 +219,8 @@ func WriteFeedback(db *database.Db, filter func(node database.Node) bool, filter
 	for _, item := range items {
 		indent := "  "
 
-		rendered := ansi.Wordwrap(item.String(), 100-len(indent), " ")
+		message, _ := item.String()
+		rendered := ansi.Wordwrap(message, 100-len(indent), " ")
 		for i, line := range strings.Split(rendered, "\n") {
 			if i > 0 {
 				rendered += "\n" + indent

@@ -3,7 +3,7 @@ TypeDefinitionNode `Number` (default-constraint.wipple:1:1)
   is a definition
   has definition constraints
 
-FileNode `Number` (default-constraint.wipple:1:1)
+FileNode `Number : type⋯` (default-constraint.wipple:1:1)
   at default-constraint.wipple:1:1
 
 TypeDefinitionNode `String` (default-constraint.wipple:2:1)
@@ -35,7 +35,7 @@ TypeParameterNode `element` (default-constraint.wipple:4:19)
   is a type
   resolved to 1 definition(s): TypeParameterNode `element` (default-constraint.wipple:4:19)
 
-TraitDefinitionNode `Collect` (default-constraint.wipple:6:1)
+TraitDefinitionNode `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1)
   at default-constraint.wipple:6:1
   has instances
   is a definition
@@ -75,7 +75,7 @@ InstanceDefinitionNode `instance (Collect element (List element))` (default-cons
   at default-constraint.wipple:7:1
   is a definition
   has definition constraints
-  resolved to 1 definition(s): TraitDefinitionNode `Collect` (default-constraint.wipple:6:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1)
   has type parameters
 
 TypeParameterNode `element` (default-constraint.wipple:7:19)
@@ -106,7 +106,7 @@ InstanceDefinitionNode `instance (Collect element (Set element))` (default-const
   at default-constraint.wipple:8:1
   is a definition
   has definition constraints
-  resolved to 1 definition(s): TraitDefinitionNode `Collect` (default-constraint.wipple:6:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1)
   has type parameters
 
 TypeParameterNode `element` (default-constraint.wipple:8:19)
@@ -156,7 +156,7 @@ TypeParameterNode `output` (default-constraint.wipple:11:23)
   is a type
   resolved to 1 definition(s): TypeParameterNode `output` (default-constraint.wipple:11:23)
 
-DefaultConstraintNode `output` (default-constraint.wipple:11:36)
+DefaultConstraintNode `output :: List element` (default-constraint.wipple:11:36)
   is a constraint
   at default-constraint.wipple:11:36
 
@@ -181,7 +181,7 @@ TypeParameterNode `element` (default-constraint.wipple:11:52)
 BoundConstraintNode `Collect element output` (default-constraint.wipple:11:61)
   is a constraint
   at default-constraint.wipple:11:61
-  resolved to 1 definition(s): TraitDefinitionNode `Collect` (default-constraint.wipple:6:1)
+  resolved to 1 definition(s): TraitDefinitionNode `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1)
 
 TypeParameterNode `element` (default-constraint.wipple:11:70)
   at default-constraint.wipple:11:70
@@ -251,6 +251,11 @@ VariableExpressionNode `collect` (default-constraint.wipple:15:6)
   resolved to 1 definition(s): ConstantDefinitionNode `collect` (default-constraint.wipple:10:1)
 
 CallExpressionNode `collect "hi"` (default-constraint.wipple:15:6)
+  at default-constraint.wipple:15:6
+  is an expression
+  has type `Set String`
+
+AnnotateExpressionNode `collect "hi" :: Set _` (default-constraint.wipple:15:6)
   at default-constraint.wipple:15:6
   is an expression
   has type `Set String`

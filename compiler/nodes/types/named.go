@@ -62,6 +62,7 @@ func (node *NamedTypeNode) Visit(visitor *visit.Visitor) {
 
 	for _, parameter := range node.Parameters {
 		visitor.Visit(parameter)
+		visitor.Db.Graph.Edge(parameter, node, "parameter")
 	}
 
 	typeDefinition, ok := visit.Resolve[*visit.TypeDefinition](visitor, node.Name, node)

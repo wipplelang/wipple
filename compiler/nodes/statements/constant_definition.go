@@ -93,9 +93,11 @@ func (node *ConstantDefinitionNode) Visit(visitor *visit.Visitor) {
 		visitor.AfterTypeDefinitions(func() {
 			visitor.CurrentDefinition.WithImplicitTypeParameters(func() {
 				visitor.Visit(node.Type)
+				visitor.Db.Graph.Edge(node.Type, node, "type")
 
 				for _, constraint := range node.Constraints {
 					visitor.Visit(constraint)
+					visitor.Db.Graph.Edge(constraint, node, "constraint")
 				}
 			})
 

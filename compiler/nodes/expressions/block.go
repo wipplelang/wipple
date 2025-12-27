@@ -54,6 +54,7 @@ func (node *BlockExpressionNode) Visit(visitor *visit.Visitor) {
 
 	for _, statement := range node.Statements {
 		visitor.Visit(statement)
+		visitor.Db.Graph.Edge(statement, node, "statement")
 	}
 
 	visitor.PopScope()

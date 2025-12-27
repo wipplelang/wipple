@@ -53,6 +53,7 @@ func (node *VariableExpressionNode) Visit(visitor *visit.Visitor) {
 
 	switch definition := definition.(type) {
 	case *visit.VariableDefinition:
+		visitor.Db.Graph.Replace(node.resolvedNode, node)
 		visitor.Constraint(typecheck.NewGroupConstraint(node, definition.Node))
 	case *visit.ConstantDefinition:
 		node.resolvedSubstitutions = &map[database.Node]typecheck.Type{}

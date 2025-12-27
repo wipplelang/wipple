@@ -186,6 +186,7 @@ func visitPattern(visitor *visit.Visitor, node database.Node) {
 	database.SetFact(node, IsPatternFact{})
 	database.SetFact(node, typecheck.TypedFact{})
 	visitor.Constraint(typecheck.NewGroupConstraint(node, visitor.CurrentMatch.Node))
+	visitor.Db.Graph.Edge(visitor.CurrentMatch.Node, node, "value")
 }
 
 type eachTemporary interface {

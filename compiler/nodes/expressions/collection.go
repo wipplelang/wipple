@@ -110,6 +110,7 @@ func (node *CollectionExpressionNode) Visit(visitor *visit.Visitor) {
 	}
 
 	visitor.Visit(node.collectionNode)
+	visitor.Db.Graph.Edge(node.collectionNode, node, "collection")
 	visitor.Constraint(typecheck.NewGroupConstraint(node.collectionNode, node))
 }
 

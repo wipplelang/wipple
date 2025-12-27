@@ -74,9 +74,11 @@ func (node *FunctionExpressionNode) Visit(visitor *visit.Visitor) {
 	node.inputTemporaries = make([]database.Node, 0, len(node.Inputs))
 	for _, pattern := range node.Inputs {
 		node.inputTemporaries = append(node.inputTemporaries, visitor.VisitMatching(pattern))
+		visitor.Db.Graph.Edge(pattern, node, "input")
 	}
 
 	visitor.Visit(node.Output)
+	visitor.Db.Graph.Edge(node.Output, node, "output")
 
 	visitor.PopScope()
 
