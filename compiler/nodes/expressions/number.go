@@ -41,6 +41,7 @@ func (node *NumberExpressionNode) Visit(visitor *visit.Visitor) {
 		Facts:      database.NewFacts(database.GetSpanFact(node)),
 	}
 	visitor.Visit(numberType)
+	visitor.Db.Graph.Replace(numberType, nil)
 
 	visitor.Constraint(typecheck.NewGroupConstraint(node, numberType))
 }

@@ -47,6 +47,7 @@ func (node *StringPatternNode) Visit(visitor *visit.Visitor) {
 	}
 
 	visitor.Visit(stringType)
+	visitor.Db.Graph.Replace(stringType, nil)
 
 	visitor.Constraint(typecheck.NewGroupConstraint(node, stringType))
 }

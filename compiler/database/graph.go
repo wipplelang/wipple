@@ -49,22 +49,6 @@ func (g *Graph) Group(nodes []Node, labels []string) {
 	g.Groups = append(g.Groups, &Group{Nodes: nodes, Labels: labels})
 }
 
-func (g *Graph) HasNode(node Node) bool {
-	for _, edge := range g.Edges {
-		if edge.From == node || edge.To == node {
-			return true
-		}
-	}
-
-	for _, group := range g.Groups {
-		if slices.Contains(group.Nodes, node) {
-			return true
-		}
-	}
-
-	return false
-}
-
 func (g *Graph) MarshalJSON() ([]byte, error) {
 	type data struct {
 		Nodes  []map[string]any `json:"nodes"`
@@ -97,7 +81,12 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 			}
 
 			delete(ids, node)
+
 			node = replacement
+
+			if node == nil {
+				break
+			}
 		}
 
 		return node
@@ -105,13 +94,23 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 
 	// Register the initial nodes
 	for _, node := range g.initialNodes {
-		id(replace(node))
+		node = replace(node)
+		if node != nil {
+			id(node)
+		}
 	}
 
 	edgeNodes := map[Node]map[Node]string{}
 	for _, edge := range g.Edges {
 		from := replace(edge.From)
+		if from == nil {
+			continue
+		}
+
 		to := replace(edge.To)
+		if to == nil {
+			continue
+		}
 
 		// Don't add edges between hidden and non-hidden nodes
 		if IsHiddenNode(from) && !IsHiddenNode(to) {
@@ -134,6 +133,9 @@ func (g *Graph) MarshalJSON() ([]byte, error) {
 		nodes := []string{}
 		for _, node := range group.Nodes {
 			replacement := replace(node)
+			if replacement == nil {
+				continue
+			}
 
 			id, ok := ids[replacement]
 			if !ok {

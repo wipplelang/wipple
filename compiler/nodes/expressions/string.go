@@ -43,6 +43,7 @@ func (node *StringExpressionNode) Visit(visitor *visit.Visitor) {
 		Facts:      database.NewFacts(database.GetSpanFact(node)),
 	}
 	visitor.Visit(stringType)
+	visitor.Db.Graph.Replace(stringType, nil)
 
 	visitor.Constraint(typecheck.NewGroupConstraint(node, stringType))
 }
