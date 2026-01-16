@@ -31,6 +31,13 @@ async fn main() {
 
                 let mut proxy_response = ApiGatewayProxyResponse::default();
 
+                proxy_response.status_code = 200;
+
+                proxy_response.headers.insert(
+                    "Content-Type",
+                    lambda_http::http::HeaderValue::from_static("application/json"),
+                );
+
                 proxy_response.body =
                     Some(lambda_http::Body::Text(serde_json::to_string(&response)?));
 
