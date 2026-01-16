@@ -6,7 +6,9 @@ mod libraries;
 
 use crate::libraries::fetch_library;
 use dashmap::{DashMap, Entry};
-use lambda_http::RequestPayloadExt;
+use lambda_http::{
+    LambdaEvent, RequestPayloadExt, aws_lambda_events::apigw::ApiGatewayProxyRequest,
+};
 use serde::Deserialize;
 use std::{env, sync::LazyLock};
 use wipple::{
@@ -18,9 +20,28 @@ use wipple::{
 #[tokio::main]
 async fn main() {
     if env::var("LAMBDA_TASK_ROOT").is_ok() {
-        lambda_runtime::run(lambda_runtime::service_fn(server)).await
+        lambda_runtime::run(lambda_runtime::service_fn(
+            async |event: LambdaEvent<ApiGatewayProxyRequest>| {
+                let body = event
+                    .payload
+                    .body
+                    .ok_or_else(|| anyhow::format_err!("missing request body"))?;
+
+                serde_json::from_str::<Request>(&body)?.handle().await
+            },
+        ))
+        .await
     } else {
-        lambda_http::run(lambda_http::service_fn(server)).await
+        lambda_http::run(lambda_http::service_fn(
+            async |request: lambda_http::Request| {
+                request
+                    .payload::<Request>()?
+                    .ok_or_else(|| anyhow::format_err!("missing request body"))?
+                    .handle()
+                    .await
+            },
+        ))
+        .await
     }
     .expect("failed to start Lambda service")
 }
@@ -34,40 +55,20 @@ enum Request {
     IdeInfo(ide_info::Request),
 }
 
-impl TryFrom<lambda_http::Request> for Request {
-    type Error = anyhow::Error;
-
-    fn try_from(event: lambda_http::Request) -> Result<Self, Self::Error> {
-        event
-            .payload()?
-            .ok_or_else(|| anyhow::format_err!("missing request body"))
-    }
-}
-
-impl TryFrom<lambda_runtime::LambdaEvent<Request>> for Request {
-    type Error = anyhow::Error;
-
-    fn try_from(event: lambda_runtime::LambdaEvent<Request>) -> Result<Self, Self::Error> {
-        Ok(event.payload)
-    }
-}
-
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct InputMetadata {
     library: Option<String>,
 }
 
-async fn server<T>(event: T) -> anyhow::Result<serde_json::Value>
-where
-    Request: TryFrom<T>,
-    anyhow::Error: From<<Request as TryFrom<T>>::Error>,
-{
-    match Request::try_from(event)? {
-        Request::Compile(request) => compile::handle(request).await,
-        Request::Documentation(request) => documentation::handle(request).await,
-        Request::Format(request) => format::handle(request).await,
-        Request::IdeInfo(request) => ide_info::handle(request).await,
+impl Request {
+    async fn handle(self) -> anyhow::Result<serde_json::Value> {
+        match self {
+            Request::Compile(request) => compile::handle(request).await,
+            Request::Documentation(request) => documentation::handle(request).await,
+            Request::Format(request) => format::handle(request).await,
+            Request::IdeInfo(request) => ide_info::handle(request).await,
+        }
     }
 }
 
