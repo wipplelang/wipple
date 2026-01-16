@@ -6,10 +6,7 @@ mod libraries;
 
 use crate::libraries::fetch_library;
 use dashmap::{DashMap, Entry};
-use lambda_http::{
-    RequestPayloadExt,
-    aws_lambda_events::apigw::{ApiGatewayProxyRequest, ApiGatewayProxyResponse},
-};
+use lambda_http::{RequestPayloadExt, aws_lambda_events::apigw::ApiGatewayProxyResponse};
 use serde::Deserialize;
 use std::{env, sync::LazyLock};
 use wipple::{
@@ -23,15 +20,14 @@ async fn main() {
     if env::var("LAMBDA_TASK_ROOT").is_ok() {
         lambda_runtime::run(
             #[allow(deprecated)]
-            lambda_runtime::handler_fn(async |mut event: serde_json::Value, _ctx| {
-                dbg!(&event);
-
+            lambda_runtime::handler_fn(async |event: serde_json::Value, _ctx| {
                 let body = event
-                    .get_mut("body")
+                    .get("body")
                     .ok_or_else(|| anyhow::format_err!("missing request body"))?
-                    .take();
+                    .as_str()
+                    .ok_or_else(|| anyhow::format_err!("expected JSON string"))?;
 
-                let response = serde_json::from_value::<Request>(body)?.handle().await?;
+                let response = serde_json::from_str::<Request>(body)?.handle().await?;
 
                 let mut proxy_response = ApiGatewayProxyResponse::default();
 
