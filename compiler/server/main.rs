@@ -23,12 +23,15 @@ async fn main() {
     if env::var("LAMBDA_TASK_ROOT").is_ok() {
         lambda_runtime::run(
             #[allow(deprecated)]
-            lambda_runtime::handler_fn(async |event: ApiGatewayProxyRequest, _ctx| {
-                let body = event
-                    .body
-                    .ok_or_else(|| anyhow::format_err!("missing request body"))?;
+            lambda_runtime::handler_fn(async |mut event: serde_json::Value, _ctx| {
+                dbg!(&event);
 
-                let response = serde_json::from_str::<Request>(&body)?.handle().await?;
+                let body = event
+                    .get_mut("body")
+                    .ok_or_else(|| anyhow::format_err!("missing request body"))?
+                    .take();
+
+                let response = serde_json::from_value::<Request>(body)?.handle().await?;
 
                 let mut proxy_response = ApiGatewayProxyResponse::default();
 
