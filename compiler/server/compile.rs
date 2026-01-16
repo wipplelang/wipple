@@ -7,7 +7,7 @@ use wipple::{
     database::{Db, NodeRef, RenderConfig},
     feedback::{FeedbackItem, collect_feedback},
     nodes::FileNode,
-    typecheck::{Group, Typed},
+    typecheck::{Group, Instantiated, Typed},
 };
 
 const INPUT_PATH: &str = "input";
@@ -131,6 +131,11 @@ fn collect_lines(
     let mut locations = Vec::<Location>::new();
     let mut lines = Vec::<Line>::new();
     for node in [&location.0].into_iter().chain(&location.1) {
+        // Hide non-instantiated, hidden nodes
+        if node.is_hidden() && db.get::<Instantiated>(node).is_none() {
+            continue;
+        }
+
         let mut group_index = -1;
         if let Some(Typed { group: Some(group) }) = db.get(node) {
             if let Some(index) = groups.iter().position(|other| Arc::ptr_eq(&group, other)) {
