@@ -85,9 +85,13 @@ fn convert_feedback(db: &mut Db, item: FeedbackItem) -> serde_json::Value {
     let mut message = String::new();
     (item.write)(db, &mut message);
 
+    let mask = [item.location.0.clone()]
+        .into_iter()
+        .chain(item.location.1.iter().cloned());
+
     let graph = item
         .show_graph
-        .then(|| db.filtered_graph([item.location.0.clone()]).serialize(db));
+        .then(|| db.filtered_graph(mask).serialize(db));
 
     json!({
         "locations": locations,

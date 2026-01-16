@@ -2,7 +2,6 @@ use crate::{
     feedback::{FeedbackCtx, FeedbackRank, RegisteredFeedback},
     queries,
 };
-use std::collections::BTreeSet;
 
 pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(
@@ -10,8 +9,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
             "placeholder",
             FeedbackRank::Placeholders,
             queries::placeholder,
-            |(node, _)| (node.clone(), BTreeSet::new()),
-            |writer, (_, ty)| {
+            |(node, others, _)| (node.clone(), others.iter().cloned().collect()),
+            |writer, (_, _, ty)| {
                 if let Some(ty) = ty {
                     writer.write_string("Found a placeholder of type ");
                     writer.write_type(ty.clone());

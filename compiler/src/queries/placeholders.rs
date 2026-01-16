@@ -5,16 +5,30 @@ use crate::{
     typecheck::{ConstructedType, Typed},
 };
 
-pub fn placeholder(ctx: &QueryCtx<'_>, f: &mut dyn FnMut((NodeRef, Option<ConstructedType>))) {
+pub fn placeholder(
+    ctx: &QueryCtx<'_>,
+    f: &mut dyn FnMut((NodeRef, Vec<NodeRef>, Option<ConstructedType>)),
+) {
     if !ctx.db.contains::<IsPlaceholder>(&ctx.node) {
         return;
     }
 
-    let ty = ctx
+    let Some(group) = ctx
         .db
         .get::<Typed>(&ctx.node)
         .and_then(|Typed { group }| group)
-        .and_then(|group| group.types.first().cloned());
+    else {
+        return;
+    };
 
-    f((ctx.node.clone(), ty));
+    let nodes = group
+        .nodes
+        .iter()
+        .filter(|&node| *node != ctx.node)
+        .cloned()
+        .collect::<Vec<_>>();
+
+    let ty = group.types.first().cloned();
+
+    f((ctx.node.clone(), nodes, ty));
 }

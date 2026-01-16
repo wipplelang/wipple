@@ -1,8 +1,5 @@
 use crate::database::{Db, NodeRef};
-use petgraph::{
-    prelude::{DiGraphMap, UnGraphMap},
-    visit::Bfs,
-};
+use petgraph::{prelude::DiGraphMap, visit::Bfs};
 use serde::Serialize;
 use serde_json::json;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -99,22 +96,17 @@ impl Graph {
 
         // Keep groups containing nodes reachable from a node in the mask
 
-        let reachable_from_mask = {
-            let edges_undirected =
-                UnGraphMap::<usize, &'static str>::from_edges(self.edges.all_edges());
-
-            move |key: usize| {
-                let mut found = false;
-                let mut bfs = Bfs::new(&edges_undirected, key);
-                while let Some(other) = bfs.next(&edges_undirected) {
-                    if self.mask.contains(&other) {
-                        found = true;
-                        break;
-                    }
+        let reachable_from_mask = move |key: usize| {
+            let mut found = false;
+            let mut bfs = Bfs::new(&self.edges, key);
+            while let Some(other) = bfs.next(&self.edges) {
+                if self.mask.contains(&other) {
+                    found = true;
+                    break;
                 }
-
-                found
             }
+
+            found
         };
 
         let mut reachable_keys = HashSet::new();
