@@ -1,0 +1,9 @@
+-- wipple run $FILE --lib library/src/foundation
+
+f :: value -> value
+f : x -> x
+
+g :: value -> value
+g : x -> f x
+
+_ : g 42

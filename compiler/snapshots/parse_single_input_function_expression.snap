@@ -1,0 +1,15 @@
+---
+source: compiler/src/syntax/mod.rs
+description: x -> y
+expression: result
+---
+FunctionExpressionNode {
+    inputs: [
+        VariablePatternNode {
+            variable: "x",
+        },
+    ],
+    output: VariableExpressionNode {
+        variable: "y",
+    },
+}

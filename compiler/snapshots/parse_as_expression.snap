@@ -1,0 +1,14 @@
+---
+source: compiler/src/syntax/mod.rs
+description: x as T
+expression: result
+---
+AsExpressionNode {
+    left: VariableExpressionNode {
+        variable: "x",
+    },
+    right: NamedTypeNode {
+        name: "T",
+        parameters: [],
+    },
+}

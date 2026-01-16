@@ -1,0 +1,62 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling library/src/foundation... done
+Compiling repeat-errors.wipple... done
+Error: compilation failed with 8 feedback item(s)
+
+stdout:
+
+Feedback:
+
+`with-control-flow` (compiler/tests/repeat-errors.wipple:3:1-3:18) (not-a-function):
+
+  `with-control-flow` (compiler/tests/repeat-errors.wipple:3:1-3:18) is not a function.
+
+  Double-check your parentheses.
+
+`with-control-flow` (compiler/tests/repeat-errors.wipple:3:1-3:18) (conflicting-types):
+
+  `with-control-flow` (compiler/tests/repeat-errors.wipple:3:1-3:18) is a `{()} -> _` (compiler/tests/repeat-errors.wipple:3:1-3:18) or a `With-Control-Flow _` (library/src/foundation/repeat.wipple:11:22-11:46), but it can only be one of these.
+
+  -  `with-control-flow` (compiler/tests/repeat-errors.wipple:3:1-3:18) is a _ -> _.
+
+`while {⋯}` (compiler/tests/repeat-errors.wipple:4:2-4:14) (not-a-function):
+
+  `while {⋯}` (compiler/tests/repeat-errors.wipple:4:2-4:14) is not a function.
+
+  Double-check your parentheses.
+
+`while {⋯}` (compiler/tests/repeat-errors.wipple:4:2-4:14) (conflicting-types):
+
+  `while {⋯}` (compiler/tests/repeat-errors.wipple:4:2-4:14) is a `{()} -> _` (compiler/tests/repeat-errors.wipple:4:2-4:14) or a `While` (library/src/foundation/repeat.wipple:22:23-22:28), but it can only be one of these.
+
+  -  `while {⋯}` (compiler/tests/repeat-errors.wipple:4:2-4:14) is a _ -> _.
+
+`forever` (compiler/tests/repeat-errors.wipple:5:1-5:8) (not-a-function):
+
+  `forever` (compiler/tests/repeat-errors.wipple:5:1-5:8) is not a function.
+
+  Double-check your parentheses.
+
+`forever` (compiler/tests/repeat-errors.wipple:5:1-5:8) (conflicting-types):
+
+  `forever` (compiler/tests/repeat-errors.wipple:5:1-5:8) is a `{()} -> _` (compiler/tests/repeat-errors.wipple:5:1-5:8) or a `Forever` (library/src/foundation/repeat.wipple:30:12-30:19), but it can only be one of these.
+
+  -  `forever` (compiler/tests/repeat-errors.wipple:5:1-5:8) is a _ -> _.
+
+`4 times` (compiler/tests/repeat-errors.wipple:6:2-6:9) (not-a-function):
+
+  `4 times` (compiler/tests/repeat-errors.wipple:6:2-6:9) is not a function.
+
+  Double-check your parentheses.
+
+`4 times` (compiler/tests/repeat-errors.wipple:6:2-6:9) (conflicting-types):
+
+  `4 times` (compiler/tests/repeat-errors.wipple:6:2-6:9) is a `{()} -> _` (compiler/tests/repeat-errors.wipple:6:2-6:9) or a `Times` (library/src/foundation/repeat.wipple:47:27-47:32), but it can only be one of these.
+
+  -  `4 times` (compiler/tests/repeat-errors.wipple:6:2-6:9) is a _ -> _.

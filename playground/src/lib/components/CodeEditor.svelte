@@ -424,8 +424,6 @@
 
     // MARK: - Display diagnostic
 
-    let diagnosticWidgetIsExpanded = $state(false);
-
     const diagnosticLine = $derived.by(() => {
         if (!diagnostic) {
             return undefined;
@@ -445,7 +443,6 @@
         start: number;
         end: number;
         group: number;
-        full: boolean;
         primary: boolean;
     }) => {
         const id = nanoid();
@@ -454,12 +451,10 @@
             return [];
         }
 
-        const attributes = options.full
-            ? {
-                  "data-diagnostic-decoration-id": id,
-                  "data-diagnostic-group-label": (options.group + 1).toString(),
-              }
-            : {};
+        const attributes = {
+            "data-diagnostic-decoration-id": id,
+            "data-diagnostic-group-label": (options.group + 1).toString(),
+        };
 
         const decorations = [
             markRange(options.start, options.end, () =>
@@ -471,7 +466,7 @@
             ),
         ];
 
-        if (options.full && options.group !== -1) {
+        if (options.group !== -1) {
             requestAnimationFrame(() => {
                 const element = document.querySelector(
                     `[data-diagnostic-decoration-id="${id}"]`,
@@ -529,10 +524,8 @@
             return [];
         }
 
-        const full = hideWidget || diagnosticWidgetIsExpanded;
-
         return (value.locations as any[]).flatMap(({ start, end, group }, index) => {
-            if (start === end || (index > 0 && !full)) {
+            if (start === end) {
                 return [];
             }
 
@@ -541,7 +534,6 @@
                     start,
                     end,
                     group,
-                    full,
                     primary: index === 0 && !hideWidget,
                 }),
             ];
@@ -568,7 +560,6 @@
                           start: 0,
                           end: editorView.state.doc.length,
                           group: highlightGroup,
-                          full: true,
                           primary: false,
                       })
                     : [],
@@ -591,13 +582,7 @@
             diagnostic: value,
             stale,
             animate,
-            ontoggleshowextra: (visible: boolean) => {
-                diagnosticWidgetIsExpanded = visible;
-            },
-            onclose: () => {
-                onclose?.();
-                diagnosticWidgetIsExpanded = false;
-            },
+            onclose,
         });
 
         let pos: number;

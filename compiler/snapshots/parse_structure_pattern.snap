@@ -1,0 +1,16 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "Foo {x : y}"
+expression: result
+---
+StructurePatternNode {
+    name: "Foo",
+    fields: [
+        StructurePatternField {
+            name: "x",
+            pattern: VariablePatternNode {
+                variable: "y",
+            },
+        },
+    ],
+}

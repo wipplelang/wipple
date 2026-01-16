@@ -1,0 +1,15 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 0
+
+stderr:
+Compiling library/src/foundation... done
+Compiling divisible-by.wipple... done
+
+stdout:
+True
+False
+False
+True

@@ -1,0 +1,184 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling nested-bounds.wipple... done
+Error: compilation failed with 1 feedback item(s)
+
+stdout:
+Facts:
+TypeDefinitionNode `Number` (compiler/tests/nested-bounds.wipple:1:1-3:26)
+  at compiler/tests/nested-bounds.wipple:1:1-3:26
+  has definition constraints
+  has type Number
+  is a definition
+TypeDefinitionNode `String` (compiler/tests/nested-bounds.wipple:4:1-4:26)
+  at compiler/tests/nested-bounds.wipple:4:1-4:26
+  has definition constraints
+  has type String
+  is a definition
+TypeParameterNode `value` (compiler/tests/nested-bounds.wipple:6:5-6:10)
+  at compiler/tests/nested-bounds.wipple:6:5-6:10
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/nested-bounds.wipple:6:5-6:10)
+TypeParameterNode `value` (compiler/tests/nested-bounds.wipple:6:21-6:26)
+  at compiler/tests/nested-bounds.wipple:6:21-6:26
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/nested-bounds.wipple:6:5-6:10)
+UnitTypeNode `()` (compiler/tests/nested-bounds.wipple:6:30-6:32)
+  at compiler/tests/nested-bounds.wipple:6:30-6:32
+  has type ()
+  is a type
+FunctionTypeNode `value -> ()` (compiler/tests/nested-bounds.wipple:6:21-6:32)
+  at compiler/tests/nested-bounds.wipple:6:21-6:32
+  has type value -> ()
+  is a type
+TraitDefinitionNode `A : value => trait (value -> ())` (compiler/tests/nested-bounds.wipple:6:1-6:33)
+  at compiler/tests/nested-bounds.wipple:6:1-6:33
+  has definition constraints
+  has instances
+  has type parameters
+  has type value -> ()
+  is a definition
+NamedTypeNode `Number` (compiler/tests/nested-bounds.wipple:7:13-7:19)
+  at compiler/tests/nested-bounds.wipple:7:13-7:19
+  has type Number
+  is a type
+  resolved to 1 definition(s): `Number` (compiler/tests/nested-bounds.wipple:1:1-3:26)
+BoundConstraintNode `A Number` (compiler/tests/nested-bounds.wipple:7:10-7:20)
+  at compiler/tests/nested-bounds.wipple:7:10-7:20
+PlaceholderExpressionNode `_` (compiler/tests/nested-bounds.wipple:7:23-7:24)
+  at compiler/tests/nested-bounds.wipple:7:23-7:24
+  has type Number -> ()
+  is an expression
+InstanceDefinitionNode `instance (A Number)` (compiler/tests/nested-bounds.wipple:7:1-7:24)
+  at compiler/tests/nested-bounds.wipple:7:1-7:24
+  has definition constraints
+  has type Number -> ()
+  is a definition
+  resolved to 1 definition(s): `A : value => trait (value -> ())` (compiler/tests/nested-bounds.wipple:6:1-6:33)
+NamedTypeNode `String` (compiler/tests/nested-bounds.wipple:8:13-8:19)
+  at compiler/tests/nested-bounds.wipple:8:13-8:19
+  has type String
+  is a type
+  resolved to 1 definition(s): `String` (compiler/tests/nested-bounds.wipple:4:1-4:26)
+BoundConstraintNode `A String` (compiler/tests/nested-bounds.wipple:8:10-8:20)
+  at compiler/tests/nested-bounds.wipple:8:10-8:20
+PlaceholderExpressionNode `_` (compiler/tests/nested-bounds.wipple:8:23-8:24)
+  at compiler/tests/nested-bounds.wipple:8:23-8:24
+  has type String -> ()
+  is an expression
+InstanceDefinitionNode `instance (A String)` (compiler/tests/nested-bounds.wipple:8:1-8:24)
+  at compiler/tests/nested-bounds.wipple:8:1-8:24
+  has definition constraints
+  has type String -> ()
+  is a definition
+  resolved to 1 definition(s): `A : value => trait (value -> ())` (compiler/tests/nested-bounds.wipple:6:1-6:33)
+TypeParameterNode `value` (compiler/tests/nested-bounds.wipple:10:5-10:10)
+  at compiler/tests/nested-bounds.wipple:10:5-10:10
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/nested-bounds.wipple:10:5-10:10)
+TypeParameterNode `value` (compiler/tests/nested-bounds.wipple:10:21-10:26)
+  at compiler/tests/nested-bounds.wipple:10:21-10:26
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/nested-bounds.wipple:10:5-10:10)
+UnitTypeNode `()` (compiler/tests/nested-bounds.wipple:10:30-10:32)
+  at compiler/tests/nested-bounds.wipple:10:30-10:32
+  has type ()
+  is a type
+FunctionTypeNode `value -> ()` (compiler/tests/nested-bounds.wipple:10:21-10:32)
+  at compiler/tests/nested-bounds.wipple:10:21-10:32
+  has type value -> ()
+  is a type
+TraitDefinitionNode `B : value => trait (value -> ())` (compiler/tests/nested-bounds.wipple:10:1-10:33)
+  at compiler/tests/nested-bounds.wipple:10:1-10:33
+  has definition constraints
+  has instances
+  has type parameters
+  has type value -> ()
+  is a definition
+TypeParameterNode `value` (compiler/tests/nested-bounds.wipple:11:13-11:18)
+  at compiler/tests/nested-bounds.wipple:11:13-11:18
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/nested-bounds.wipple:11:13-11:18)
+BoundConstraintNode `B value` (compiler/tests/nested-bounds.wipple:11:10-11:19)
+  at compiler/tests/nested-bounds.wipple:11:10-11:19
+TypeParameterNode `value` (compiler/tests/nested-bounds.wipple:11:29-11:34)
+  at compiler/tests/nested-bounds.wipple:11:29-11:34
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/nested-bounds.wipple:11:13-11:18)
+BoundConstraintNode `A value` (compiler/tests/nested-bounds.wipple:11:26-11:35)
+  at compiler/tests/nested-bounds.wipple:11:26-11:35
+  is a constraint
+  resolved to 1 definition(s): `A : value => trait (value -> ())` (compiler/tests/nested-bounds.wipple:6:1-6:33)
+PlaceholderExpressionNode `_` (compiler/tests/nested-bounds.wipple:11:38-11:39)
+  at compiler/tests/nested-bounds.wipple:11:38-11:39
+  has type value -> ()
+  is an expression
+InstanceDefinitionNode `instance (B value)` (compiler/tests/nested-bounds.wipple:11:1-11:39)
+  at compiler/tests/nested-bounds.wipple:11:1-11:39
+  has definition constraints
+  has type parameters
+  has type value -> ()
+  is a definition
+  resolved to 1 definition(s): `B : value => trait (value -> ())` (compiler/tests/nested-bounds.wipple:10:1-10:33)
+ConstructorExpressionNode `B` (compiler/tests/nested-bounds.wipple:13:1-13:2)
+  at compiler/tests/nested-bounds.wipple:13:1-13:2
+  has bound(s) B Number (`instance (B value)` (compiler/tests/nested-bounds.wipple:11:1-11:39)), A Number (`instance (A Number)` (compiler/tests/nested-bounds.wipple:7:1-7:24))
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `B : value => trait (value -> ())` (compiler/tests/nested-bounds.wipple:10:1-10:33)
+NumberExpressionNode `123` (compiler/tests/nested-bounds.wipple:13:3-13:6)
+  at compiler/tests/nested-bounds.wipple:13:3-13:6
+  has type Number
+  is an expression
+CallExpressionNode `B 123` (compiler/tests/nested-bounds.wipple:13:1-13:6)
+  at compiler/tests/nested-bounds.wipple:13:1-13:6
+  has type ()
+  is an expression
+ConstructorExpressionNode `B` (compiler/tests/nested-bounds.wipple:14:1-14:2)
+  at compiler/tests/nested-bounds.wipple:14:1-14:2
+  has bound(s) B String (`instance (B value)` (compiler/tests/nested-bounds.wipple:11:1-11:39)), A String (`instance (A String)` (compiler/tests/nested-bounds.wipple:8:1-8:24))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `B : value => trait (value -> ())` (compiler/tests/nested-bounds.wipple:10:1-10:33)
+StringExpressionNode `"abc"` (compiler/tests/nested-bounds.wipple:14:3-14:8)
+  at compiler/tests/nested-bounds.wipple:14:3-14:8
+  has type String
+  is an expression
+CallExpressionNode `B "abc"` (compiler/tests/nested-bounds.wipple:14:1-14:8)
+  at compiler/tests/nested-bounds.wipple:14:1-14:8
+  has type ()
+  is an expression
+ConstructorExpressionNode `B` (compiler/tests/nested-bounds.wipple:15:1-15:2)
+  at compiler/tests/nested-bounds.wipple:15:1-15:2
+  has bound(s) B () (`instance (B value)` (compiler/tests/nested-bounds.wipple:11:1-11:39)), A () (unresolved)
+  has type () -> ()
+  is an expression
+  resolved to 1 definition(s): `B : value => trait (value -> ())` (compiler/tests/nested-bounds.wipple:10:1-10:33)
+UnitExpressionNode `()` (compiler/tests/nested-bounds.wipple:15:3-15:5)
+  at compiler/tests/nested-bounds.wipple:15:3-15:5
+  has type ()
+  is an expression
+CallExpressionNode `B ()` (compiler/tests/nested-bounds.wipple:15:1-15:5)
+  at compiler/tests/nested-bounds.wipple:15:1-15:5
+  has type ()
+  is an expression
+
+
+Feedback:
+
+`B` (compiler/tests/nested-bounds.wipple:15:1-15:2) (unresolved-bound):
+
+  `B` (compiler/tests/nested-bounds.wipple:15:1-15:2) requires the instance A (), but this instance isn't defined.
+
+  Double-check that these types are correct.

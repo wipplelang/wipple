@@ -1,0 +1,14 @@
+---
+source: compiler/src/syntax/mod.rs
+description: x is None
+expression: result
+---
+IsExpressionNode {
+    left: VariableExpressionNode {
+        variable: "x",
+    },
+    right: ConstructorPatternNode {
+        constructor: "None",
+        elements: [],
+    },
+}

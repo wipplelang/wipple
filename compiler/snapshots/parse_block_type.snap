@@ -1,0 +1,11 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "{Number}"
+expression: result
+---
+BlockTypeNode {
+    output: NamedTypeNode {
+        name: "Number",
+        parameters: [],
+    },
+}

@@ -1,43 +1,15 @@
 {
+    "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Compiler",
-            "type": "go",
+            "name": "Debug",
+            "type": "lldb",
             "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/compiler",
-            "args": ["compile", "test.wipple", "-o", "out.js"],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "name": "Debug Compiler + Library",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/compiler",
-            "args": ["compile", "test.wipple", "--lib", "library/src/foundation", "-o", "out.js"],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "name": "Debug Server",
-            "type": "go",
-            "request": "launch",
-            "mode": "auto",
-            "program": "${workspaceFolder}/compiler",
-            "args": ["server"],
-            "cwd": "${workspaceFolder}",
-            "env": {
-                "PORT": "3000",
-                "LIBRARY_URL": "http://localhost:3001"
-            }
-        },
-        {
-            "name": "Debug Current File",
-            "type": "node",
-            "request": "launch",
-            "program": "${file}",
-            "cwd": "${workspaceFolder}",
-            "skipFiles": ["**", "!${file}"]
+            "cargo": {
+                "args": ["run"]
+            },
+            "args": [],
+            "console": "internalConsole"
         }
     ]
 }

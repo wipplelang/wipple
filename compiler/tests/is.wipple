@@ -1,0 +1,4 @@
+-- wipple run $FILE --lib library/src/foundation
+
+show (Some 42 is Some _)
+show (Some 42 is None)

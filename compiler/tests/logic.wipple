@@ -1,0 +1,4 @@
+-- wipple run $FILE --lib library/src/foundation
+
+show (if (True and False) {"a"} {"b"})
+show (if (True or False) {"a"} {"b"})

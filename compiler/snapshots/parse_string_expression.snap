@@ -1,0 +1,8 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "\"abc\""
+expression: result
+---
+StringExpressionNode {
+    value: "abc",
+}

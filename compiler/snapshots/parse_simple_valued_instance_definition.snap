@@ -1,0 +1,24 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "instance (Foo Number) : 3.14"
+expression: result
+---
+InstanceDefinitionNode {
+    comments: [],
+    attributes: [],
+    bound: BoundConstraintNode {
+        trait_name: "Foo",
+        parameters: [
+            NamedTypeNode {
+                name: "Number",
+                parameters: [],
+            },
+        ],
+    },
+    constraints: [],
+    value: Some(
+        NumberExpressionNode {
+            value: "3.14",
+        },
+    ),
+}

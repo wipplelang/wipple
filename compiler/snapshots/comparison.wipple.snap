@@ -1,0 +1,23 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 0
+
+stderr:
+Compiling library/src/foundation... done
+Compiling comparison.wipple... done
+
+stdout:
+True
+True
+True
+True
+True
+True
+True
+False
+True
+True
+False
+True

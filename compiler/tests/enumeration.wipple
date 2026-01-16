@@ -1,0 +1,11 @@
+-- wipple run $FILE --lib library/src/foundation
+
+Grade : type {
+  A
+  B
+  C
+  D
+  F
+}
+
+_ : A

@@ -1,0 +1,28 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "\n            when x {\n                a -> b\n                c -> d\n            }\n        "
+expression: result
+---
+WhenExpressionNode {
+    input: VariableExpressionNode {
+        variable: "x",
+    },
+    arms: [
+        WhenArm {
+            pattern: VariablePatternNode {
+                variable: "a",
+            },
+            value: VariableExpressionNode {
+                variable: "b",
+            },
+        },
+        WhenArm {
+            pattern: VariablePatternNode {
+                variable: "c",
+            },
+            value: VariableExpressionNode {
+                variable: "d",
+            },
+        },
+    ],
+}

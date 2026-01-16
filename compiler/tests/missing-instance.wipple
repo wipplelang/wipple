@@ -1,0 +1,4 @@
+-- wipple run $FILE --lib library/src/foundation
+
+Foo : type
+show Foo

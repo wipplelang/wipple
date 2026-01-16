@@ -1,0 +1,4 @@
+-- wipple run $FILE --lib library/src/foundation
+
+average : numbers -> sum numbers / count numbers
+show (average (1, 2, 3, 4, 5))

@@ -1,0 +1,14 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 0
+
+stderr:
+Compiling library/src/foundation... done
+Compiling replicate.wipple... done
+
+stdout:
+abc
+abc
+abc

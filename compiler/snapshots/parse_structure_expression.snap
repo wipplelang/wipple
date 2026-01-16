@@ -1,0 +1,22 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "\n            Foo {\n                a : b\n                c : d\n            }\n        "
+expression: result
+---
+StructureExpressionNode {
+    name: "Foo",
+    fields: [
+        StructureExpressionField {
+            name: "a",
+            value: VariableExpressionNode {
+                variable: "b",
+            },
+        },
+        StructureExpressionField {
+            name: "c",
+            value: VariableExpressionNode {
+                variable: "d",
+            },
+        },
+    ],
+}

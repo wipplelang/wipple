@@ -1,0 +1,9 @@
+-- wipple run $FILE --lib library/src/foundation
+
+Do-Something : value => trait (value -> ())
+
+[default] instance (Do-Something value) : _ -> show "using default instance"
+instance (Do-Something String) : text -> show ("using specific instance: _" text)
+
+Do-Something 42
+Do-Something "Hello, world!"

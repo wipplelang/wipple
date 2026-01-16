@@ -1,0 +1,20 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling library/src/foundation... done
+Compiling type-span.wipple... done
+Error: compilation failed with 1 feedback item(s)
+
+stdout:
+
+Feedback:
+
+`Show` (compiler/tests/type-span.wipple:4:1-4:5) (unresolved):
+
+  Can't find `Show`.
+
+  Double-check your spelling.

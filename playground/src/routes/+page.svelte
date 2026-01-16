@@ -16,7 +16,6 @@
     import { context } from "$lib/context.svelte";
     import Output, { type RunState } from "$lib/components/Output.svelte";
     import PrintButton from "$lib/components/PrintButton.svelte";
-    import ShareButton from "$lib/components/ShareButton.svelte";
     import { onMount } from "svelte";
     import Footer from "$lib/components/Footer.svelte";
 
@@ -58,9 +57,7 @@
         }
     };
 
-    const tryLoadSharedPlayground = async () => {
-        const params = new URLSearchParams(window.location.search);
-
+    const tryLoadFromUrl = async () => {
         const confirmOverwrite = async () => {
             // Wait for the page to load so the current playground is visible
             await new Promise((resolve) => setTimeout(resolve, 200));
@@ -74,47 +71,27 @@
             );
         };
 
-        const inlineCode = params.get("code");
-        if (inlineCode) {
+        const params = new URLSearchParams(window.location.search);
+
+        const code = params.get("code");
+        if (code) {
             if (!(await confirmOverwrite())) {
                 return;
             }
 
             playground = {
                 runtime: "foundation",
-                code: inlineCode,
+                code,
             };
 
             window.location.search = "";
 
             return;
         }
-
-        const shareId = params.get("share");
-        if (shareId) {
-            if (!(await confirmOverwrite())) {
-                return;
-            }
-
-            try {
-                const response = await api.getShared({ id: shareId });
-                playground = {
-                    runtime: response.runtime,
-                    code: response.code,
-                };
-            } catch (e) {
-                console.error(e);
-                alert(
-                    "Couldn't open this shared playground. Please verify the link and try again.",
-                );
-            } finally {
-                window.location.search = "";
-            }
-        }
     };
 
     onMount(() => {
-        tryLoadSharedPlayground();
+        tryLoadFromUrl();
     });
 
     const runtime = $derived(playground && runtimes[playground.runtime]);
@@ -316,8 +293,6 @@
                     {#if runtime?.printEnabled}
                         <PrintButton />
                     {/if}
-
-                    <ShareButton />
                 </div>
 
                 <Output

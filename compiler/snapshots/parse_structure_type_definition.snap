@@ -1,0 +1,34 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "\n            Foo : type {\n                a :: A\n                b :: B\n            }\n        "
+expression: result
+---
+TypeDefinitionNode {
+    comments: [],
+    attributes: [],
+    name: "Foo",
+    parameters: [],
+    representation: Structure(
+        StructureTypeRepresentation {
+            fields: [
+                FieldDefinition {
+                    name: "a",
+                    ty: NamedTypeNode {
+                        name: "A",
+                        parameters: [],
+                    },
+                    span: test:3:17-3:23,
+                },
+                FieldDefinition {
+                    name: "b",
+                    ty: NamedTypeNode {
+                        name: "B",
+                        parameters: [],
+                    },
+                    span: test:4:17-4:23,
+                },
+            ],
+            span: test:2:19-5:14,
+        },
+    ),
+}

@@ -1,0 +1,3 @@
+-- wipple run $FILE --lib library/src/foundation
+
+"abc" . replicate 3 . each show

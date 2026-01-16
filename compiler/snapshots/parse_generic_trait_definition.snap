@@ -1,0 +1,31 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "Foo : value => trait (value -> Number)"
+expression: result
+---
+TraitDefinitionNode {
+    comments: [],
+    attributes: [],
+    name: "Foo",
+    parameters: [
+        TypeParameterNode {
+            name: "value",
+            infer: false,
+            value: None,
+        },
+    ],
+    ty: FunctionTypeNode {
+        inputs: [
+            TypeParameterNode {
+                name: "value",
+                infer: false,
+                value: None,
+            },
+        ],
+        output: NamedTypeNode {
+            name: "Number",
+            parameters: [],
+        },
+    },
+    constraints: [],
+}

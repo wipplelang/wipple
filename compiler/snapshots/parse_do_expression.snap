@@ -1,0 +1,10 @@
+---
+source: compiler/src/syntax/mod.rs
+description: do foo
+expression: result
+---
+DoExpressionNode {
+    input: VariableExpressionNode {
+        variable: "foo",
+    },
+}

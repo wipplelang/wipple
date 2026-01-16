@@ -1,0 +1,3 @@
+-- wipple run $FILE --lib library/src/foundation
+
+show 1 2 3

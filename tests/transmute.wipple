@@ -1,2 +1,0 @@
-transmute :: a -> b
-transmute : x -> x

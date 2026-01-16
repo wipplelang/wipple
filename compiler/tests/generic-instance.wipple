@@ -1,0 +1,9 @@
+-- wipple run $FILE --lib library/src/foundation
+
+Box : value => type {value :: value}
+
+Foo : a b => trait (a -> b)
+
+instance (Foo (Box value) value) : (Box {value : value}) -> value
+
+show (Foo (Box {value : "Hello, world!"}))

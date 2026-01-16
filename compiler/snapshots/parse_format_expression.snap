@@ -1,0 +1,13 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "\"Hello, _!\" name"
+expression: result
+---
+FormatExpressionNode {
+    string: "Hello, _!",
+    inputs: [
+        VariableExpressionNode {
+            variable: "name",
+        },
+    ],
+}

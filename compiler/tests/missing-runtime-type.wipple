@@ -1,0 +1,10 @@
+-- wipple run $FILE --lib library/src/foundation
+
+T1 : a b => trait (a -> b)
+instance (T1 () ()) : () -> ()
+
+T2 : a => trait (a -> ())
+instance (T2 a) where (T1 a b) : x -> do {_ : T1 x}
+T2 () -- shouldn't crash; `B` should be inferred as `()`
+
+show "done"

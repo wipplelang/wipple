@@ -1,0 +1,8 @@
+---
+source: compiler/src/syntax/mod.rs
+description: x
+expression: result
+---
+VariablePatternNode {
+    variable: "x",
+}

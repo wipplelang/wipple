@@ -1,0 +1,4 @@
+-- wipple compile $FILE --facts
+
+transmute :: a -> b
+transmute : x -> x

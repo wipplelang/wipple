@@ -1,0 +1,6 @@
+-- wipple run $FILE --lib library/src/foundation
+
+show (when True {
+  True -> 42
+  False -> "hi"
+})

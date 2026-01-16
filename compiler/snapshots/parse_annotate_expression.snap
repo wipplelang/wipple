@@ -1,0 +1,14 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "(3.14 :: Number)"
+expression: result
+---
+AnnotateExpressionNode {
+    expression: NumberExpressionNode {
+        value: "3.14",
+    },
+    ty: NamedTypeNode {
+        name: "Number",
+        parameters: [],
+    },
+}

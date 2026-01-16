@@ -1,0 +1,17 @@
+-- wipple run $FILE --lib library/src/foundation
+
+X : type
+Y : type
+
+T : value => trait value
+instance (T X) : X
+instance (T Y) : Y
+
+instance (Describe X) : _ -> "X"
+instance (Describe Y) : _ -> "Y"
+
+foo :: value where (value :: X) (T value)
+foo : T
+
+show foo
+show (foo :: Y)

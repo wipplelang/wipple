@@ -18,11 +18,10 @@
     interface Props {
         stale: boolean;
         animate: boolean;
-        ontoggleshowextra: (value: boolean) => void;
-        onclose: () => void;
+        onclose?: () => void;
     }
 
-    let { stale, animate, ontoggleshowextra, onclose }: Props = $props();
+    let { stale, animate, onclose }: Props = $props();
 
     const [title, ...extra] = context.diagnostic.message.split("\n\n");
 
@@ -98,7 +97,7 @@
     >
         <div class="scroll flex flex-col gap-[2px]">
             <div class="font-semibold">
-                <Markdown content={title} highlightGroups={showExtra === "diagnostic"} />
+                <Markdown content={title} highlightGroups />
             </div>
 
             {#if extra.length === 1}
@@ -113,10 +112,8 @@
                         onclick={() => {
                             if (showExtra === kind) {
                                 showExtra = undefined;
-                                ontoggleshowextra(false);
                             } else {
                                 showExtra = kind;
-                                ontoggleshowextra(true);
                             }
                         }}
                     >

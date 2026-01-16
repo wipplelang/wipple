@@ -1,0 +1,3 @@
+-- wipple run $FILE --lib library/src/foundation
+
+show "Hello, world!"

@@ -1,0 +1,11 @@
+-- wipple run $FILE --lib library/src/foundation
+
+E : type {
+  A
+  B
+}
+
+show (when (A; B) {
+  (A; A) -> 1
+  (x; y) -> 2
+})

@@ -1,0 +1,21 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling library/src/foundation... done
+Compiling missing-instance.wipple... done
+Error: compilation failed with 1 feedback item(s)
+
+stdout:
+
+Feedback:
+
+`show` (compiler/tests/missing-instance.wipple:4:1-4:5) (error-instance):
+
+  Can't describe   `Foo` (compiler/tests/missing-instance.wipple:4:6-4:9).
+
+ You can't display   `Foo` (compiler/tests/missing-instance.wipple:4:6-4:9) on the screen or use it in placeholders because
+ it can't be converted into a string.

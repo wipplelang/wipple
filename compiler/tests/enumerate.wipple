@@ -1,0 +1,4 @@
+-- wipple run $FILE --lib library/src/foundation
+
+list : "a", "b", "c"
+list . enumerate . each ((n; c) -> show ("_: _" n c))

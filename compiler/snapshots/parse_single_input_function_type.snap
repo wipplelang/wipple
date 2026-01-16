@@ -1,0 +1,14 @@
+---
+source: compiler/src/syntax/mod.rs
+description: Number -> ()
+expression: result
+---
+FunctionTypeNode {
+    inputs: [
+        NamedTypeNode {
+            name: "Number",
+            parameters: [],
+        },
+    ],
+    output: UnitTypeNode,
+}

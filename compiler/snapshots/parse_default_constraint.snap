@@ -1,0 +1,16 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "(value :: Number)"
+expression: result
+---
+DefaultConstraintNode {
+    parameter: TypeParameterNode {
+        name: "value",
+        infer: false,
+        value: None,
+    },
+    value: NamedTypeNode {
+        name: "Number",
+        parameters: [],
+    },
+}

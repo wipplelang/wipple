@@ -1,0 +1,14 @@
+---
+source: compiler/src/syntax/mod.rs
+description: Maybe Number
+expression: result
+---
+NamedTypeNode {
+    name: "Maybe",
+    parameters: [
+        NamedTypeNode {
+            name: "Number",
+            parameters: [],
+        },
+    ],
+}

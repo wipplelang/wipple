@@ -1,0 +1,20 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling library/src/foundation... done
+Compiling bounds-are-one-way.wipple... done
+Error: compilation failed with 1 feedback item(s)
+
+stdout:
+
+Feedback:
+
+`T` (compiler/tests/bounds-are-one-way.wipple:6:5-6:6) (unresolved-bound):
+
+  `T` (compiler/tests/bounds-are-one-way.wipple:6:5-6:6) requires the instance T Number, but this instance isn't defined.
+
+  Double-check that these types are correct.

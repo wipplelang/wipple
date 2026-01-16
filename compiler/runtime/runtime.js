@@ -42,6 +42,8 @@ const __wipple_trait = async (instances, types, substitutions) => {
         }
     }
 
+    console.log({ instances, types, substitutions });
+
     throw new Error(`no instance found for types ${JSON.stringify(types)}`);
 };
 

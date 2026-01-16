@@ -1,0 +1,18 @@
+---
+source: compiler/src/syntax/mod.rs
+description: x is Some 3.14
+expression: result
+---
+IsExpressionNode {
+    left: VariableExpressionNode {
+        variable: "x",
+    },
+    right: ConstructorPatternNode {
+        constructor: "Some",
+        elements: [
+            NumberPatternNode {
+                value: "3.14",
+            },
+        ],
+    },
+}

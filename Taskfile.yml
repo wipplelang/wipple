@@ -3,17 +3,13 @@ version: "3"
 tasks:
   compiler:
     cmds:
-      - go run ./compiler {{.CLI_ARGS}}
+      - cargo run --bin=wipple {{.CLI_ARGS}}
   test:
     cmds:
-      - go test work {{.CLI_ARGS}}
-  test:coverage:
-    cmds:
-      - go test work -coverpkg=work -coverprofile=coverage.out {{.CLI_ARGS}}
-      - go tool cover -html coverage.out -o coverage.html
+      - cargo insta test --release {{.CLI_ARGS}}
   install:
     cmds:
-      - go install ./compiler
+      - cargo install --path=compiler --bin=wipple
   vscode:
     dir: vscode
     cmds:
@@ -59,14 +55,10 @@ tasks:
     cmds:
       - node build.js
   serve:server:
-    dir: compiler
     cmds:
-      - if [[ ! -v NO_SERVER ]]; then go run github.com/air-verse/air@latest -- server; fi
+      - if [[ ! -v NO_SERVER ]]; then cargo lambda watch --bin=wipple-server; fi
     env:
-      PORT: "3000"
       LIBRARY_URL: "http://localhost:3001"
-      MONGO_URI: "mongodb://localhost:27017"
-      MONGO_DB_NAME: "wipple-share"
 
   build:
     deps:
@@ -91,4 +83,5 @@ tasks:
     dir: .
     cmds:
       - rm -rf netlify/functions && mkdir -p netlify/functions
-      - GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o netlify/functions/api ./compiler
+      - cargo lambda build --bin=wipple-server --release
+      - cp target/lambda/wipple-server/bootstrap netlify/functions/api

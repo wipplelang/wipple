@@ -1,0 +1,9 @@
+---
+source: compiler/src/syntax/mod.rs
+description: None
+expression: result
+---
+ConstructorPatternNode {
+    constructor: "None",
+    elements: [],
+}

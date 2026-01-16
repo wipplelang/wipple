@@ -1,0 +1,18 @@
+-- wipple run $FILE --lib library/src/foundation
+
+Person : type {name :: String}
+
+alice : Person {name : "Alice"}
+Person {name : name} : alice
+show name
+
+get-name :: Person -> String
+get-name : (Person {name : name}) -> name
+
+bob : Person {name : "Bob"}
+show (get-name bob)
+
+instance (Describe Person) : (Person {name : name}) -> name
+
+charlie : Person {name : "Charlie"}
+show charlie

@@ -1,0 +1,8 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "3.14"
+expression: result
+---
+NumberExpressionNode {
+    value: "3.14",
+}

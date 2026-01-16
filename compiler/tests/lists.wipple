@@ -1,0 +1,9 @@
+-- wipple run $FILE --lib library/src/foundation
+
+my-list : 1, 2, 3
+
+show (my-list . first)
+show (my-list . last)
+show ((my-list . initial) or unreachable . last)
+show ((my-list . tail) or unreachable . first)
+show (my-list . nth 1)

@@ -1,0 +1,10 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "123"
+expression: result
+---
+ExpressionStatementNode {
+    expression: NumberExpressionNode {
+        value: "123",
+    },
+}

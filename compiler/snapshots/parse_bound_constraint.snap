@@ -1,0 +1,15 @@
+---
+source: compiler/src/syntax/mod.rs
+description: (Foo value)
+expression: result
+---
+BoundConstraintNode {
+    trait_name: "Foo",
+    parameters: [
+        TypeParameterNode {
+            name: "value",
+            infer: false,
+            value: None,
+        },
+    ],
+}

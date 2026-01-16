@@ -1,0 +1,41 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "instance (Foo (Maybe value)) where (Foo value) : 3.14"
+expression: result
+---
+InstanceDefinitionNode {
+    comments: [],
+    attributes: [],
+    bound: BoundConstraintNode {
+        trait_name: "Foo",
+        parameters: [
+            NamedTypeNode {
+                name: "Maybe",
+                parameters: [
+                    TypeParameterNode {
+                        name: "value",
+                        infer: false,
+                        value: None,
+                    },
+                ],
+            },
+        ],
+    },
+    constraints: [
+        BoundConstraintNode {
+            trait_name: "Foo",
+            parameters: [
+                TypeParameterNode {
+                    name: "value",
+                    infer: false,
+                    value: None,
+                },
+            ],
+        },
+    ],
+    value: Some(
+        NumberExpressionNode {
+            value: "3.14",
+        },
+    ),
+}

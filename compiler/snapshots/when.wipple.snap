@@ -1,0 +1,12 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 0
+
+stderr:
+Compiling library/src/foundation... done
+Compiling when.wipple... done
+
+stdout:
+Yay!

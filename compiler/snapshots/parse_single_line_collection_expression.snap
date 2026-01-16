@@ -1,0 +1,18 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "a, b, c"
+expression: result
+---
+CollectionExpressionNode {
+    elements: [
+        VariableExpressionNode {
+            variable: "a",
+        },
+        VariableExpressionNode {
+            variable: "b",
+        },
+        VariableExpressionNode {
+            variable: "c",
+        },
+    ],
+}

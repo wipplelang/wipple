@@ -1,0 +1,35 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "show :: value -> Unit where (Show value)"
+expression: result
+---
+ConstantDefinitionNode {
+    comments: [],
+    attributes: [],
+    name: "show",
+    ty: FunctionTypeNode {
+        inputs: [
+            TypeParameterNode {
+                name: "value",
+                infer: false,
+                value: None,
+            },
+        ],
+        output: NamedTypeNode {
+            name: "Unit",
+            parameters: [],
+        },
+    },
+    constraints: [
+        BoundConstraintNode {
+            trait_name: "Show",
+            parameters: [
+                TypeParameterNode {
+                    name: "value",
+                    infer: false,
+                    value: None,
+                },
+            ],
+        },
+    ],
+}

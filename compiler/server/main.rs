@@ -1,0 +1,113 @@
+mod compile;
+mod documentation;
+mod format;
+mod ide_info;
+mod libraries;
+
+use crate::libraries::fetch_library;
+use dashmap::{DashMap, Entry};
+use lambda_http::RequestPayloadExt;
+use serde::Deserialize;
+use std::{env, sync::LazyLock};
+use wipple::{
+    database::{Db, NodeRef},
+    driver::{self},
+    syntax::parse,
+};
+
+#[tokio::main]
+async fn main() {
+    if env::var("LAMBDA_TASK_ROOT").is_ok() {
+        lambda_runtime::run(lambda_runtime::service_fn(server)).await
+    } else {
+        lambda_http::run(lambda_http::service_fn(server)).await
+    }
+    .expect("failed to start Lambda service")
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+enum Request {
+    Compile(compile::Request),
+    Documentation(documentation::Request),
+    Format(format::Request),
+    IdeInfo(ide_info::Request),
+}
+
+impl TryFrom<lambda_http::Request> for Request {
+    type Error = anyhow::Error;
+
+    fn try_from(event: lambda_http::Request) -> Result<Self, Self::Error> {
+        event
+            .payload()?
+            .ok_or_else(|| anyhow::format_err!("missing request body"))
+    }
+}
+
+impl TryFrom<lambda_runtime::LambdaEvent<Request>> for Request {
+    type Error = anyhow::Error;
+
+    fn try_from(event: lambda_runtime::LambdaEvent<Request>) -> Result<Self, Self::Error> {
+        Ok(event.payload)
+    }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct InputMetadata {
+    library: Option<String>,
+}
+
+async fn server<T>(event: T) -> anyhow::Result<serde_json::Value>
+where
+    Request: TryFrom<T>,
+    anyhow::Error: From<<Request as TryFrom<T>>::Error>,
+{
+    match Request::try_from(event)? {
+        Request::Compile(request) => compile::handle(request).await,
+        Request::Documentation(request) => documentation::handle(request).await,
+        Request::Format(request) => format::handle(request).await,
+        Request::IdeInfo(request) => ide_info::handle(request).await,
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct File {
+    path: String,
+    code: String,
+}
+
+async fn compile(files: &[File], library_name: Option<&str>) -> anyhow::Result<(Db, Vec<NodeRef>)> {
+    let mut db = match library_name {
+        Some(library_name) => compile_library(library_name).await?,
+        None => Db::new(),
+    };
+
+    let files = files
+        .iter()
+        .map(|file| parse(&mut db, &file.path, &file.code))
+        .collect::<Vec<_>>();
+
+    driver::compile(&mut db, &files);
+
+    Ok((db, files))
+}
+
+static LIBRARY_CACHE: LazyLock<DashMap<String, Db>> = LazyLock::new(Default::default);
+
+async fn compile_library(name: &str) -> anyhow::Result<Db> {
+    let entry = LIBRARY_CACHE.entry(name.to_string());
+
+    match entry {
+        Entry::Occupied(entry) => Ok(entry.get().clone()),
+        Entry::Vacant(entry) => {
+            let library = fetch_library(name).await?;
+
+            let (db, _) =
+                Box::pin(compile(&library.files, library.metadata.library.as_deref())).await?;
+
+            Ok(entry.insert(db).clone())
+        }
+    }
+}

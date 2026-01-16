@@ -1,0 +1,17 @@
+-- wipple run $FILE --lib library/src/foundation
+
+Linked-List : value => type {
+  Nil
+  Cons value (Linked-List value)
+}
+
+reduce-linked-list :: (value result -> result) result (Linked-List value) -> result
+reduce-linked-list : f result l -> when l {
+  Nil -> result
+  (Cons x rest) -> reduce-linked-list f (f x result) rest
+}
+
+list : Cons 1 (Cons 2 (Cons 3 Nil))
+
+sum : reduce-linked-list Add 0 list
+show sum

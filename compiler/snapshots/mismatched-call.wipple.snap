@@ -1,0 +1,22 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling library/src/foundation... done
+Compiling mismatched-call.wipple... done
+Error: compilation failed with 1 feedback item(s)
+
+stdout:
+
+Feedback:
+
+`Add 1 2` (compiler/tests/mismatched-call.wipple:8:15-8:22) (conflicting-types):
+
+  `Add 1 2` (compiler/tests/mismatched-call.wipple:8:15-8:22) is a `Number` (library/src/foundation/math.wipple:8:29-8:35) or a `String` (compiler/tests/mismatched-call.wipple:3:17-3:23), but it can only be one of these.
+
+  `Add 1 2` (compiler/tests/mismatched-call.wipple:8:15-8:22) must be the same type as `Number` (library/src/foundation/math.wipple:8:29-8:35), `infer sum` (library/src/foundation/math.wipple:7:18-7:29), `sum` (library/src/foundation/math.wipple:7:54-7:57), and 4 others; double-check these.
+
+  -  `infer sum` (library/src/foundation/math.wipple:7:18-7:29) must have the same type everywhere in this use of `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58).

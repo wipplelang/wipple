@@ -1,0 +1,56 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling transmute.wipple... done
+Error: compilation failed with 1 feedback item(s)
+
+stdout:
+Facts:
+TypeParameterNode `a` (compiler/tests/transmute.wipple:3:14-3:15)
+  at compiler/tests/transmute.wipple:3:14-3:15
+  has type a or b
+  is a type
+  resolved to 1 definition(s): `a` (compiler/tests/transmute.wipple:3:14-3:15)
+TypeParameterNode `b` (compiler/tests/transmute.wipple:3:19-3:20)
+  at compiler/tests/transmute.wipple:3:19-3:20
+  has type a or b
+  is a type
+  resolved to 1 definition(s): `b` (compiler/tests/transmute.wipple:3:19-3:20)
+FunctionTypeNode `a -> b` (compiler/tests/transmute.wipple:3:14-3:20)
+  at compiler/tests/transmute.wipple:3:14-3:20
+  has type a -> a
+  is a type
+ConstantDefinitionNode `transmute :: a -> b` (compiler/tests/transmute.wipple:1:1-3:20)
+  at compiler/tests/transmute.wipple:1:1-3:20
+  has definition constraints
+  has type a -> a
+  has type parameters
+  is a definition
+VariablePatternNode `transmute` (compiler/tests/transmute.wipple:4:1-4:10)
+  at compiler/tests/transmute.wipple:4:1-4:10
+VariablePatternNode `x` (compiler/tests/transmute.wipple:4:13-4:14)
+  at compiler/tests/transmute.wipple:4:13-4:14
+  has type a or b
+  is a pattern
+VariableExpressionNode `x` (compiler/tests/transmute.wipple:4:18-4:19)
+  at compiler/tests/transmute.wipple:4:18-4:19
+  has type a or b
+  is an expression
+  resolved to 1 definition(s): `x` (compiler/tests/transmute.wipple:4:13-4:14)
+FunctionExpressionNode `x -> x` (compiler/tests/transmute.wipple:4:13-4:19)
+  at compiler/tests/transmute.wipple:4:13-4:19
+  has type a -> a
+  is an expression
+
+
+Feedback:
+
+`x` (compiler/tests/transmute.wipple:4:13-4:14) (conflicting-types):
+
+  `x` (compiler/tests/transmute.wipple:4:13-4:14) is a `a` (compiler/tests/transmute.wipple:3:14-3:15) or a `b` (compiler/tests/transmute.wipple:3:19-3:20), but it can only be one of these.
+
+  `x` (compiler/tests/transmute.wipple:4:13-4:14) must be the same type as `x` (compiler/tests/transmute.wipple:4:18-4:19), `a` (compiler/tests/transmute.wipple:3:14-3:15), and `b` (compiler/tests/transmute.wipple:3:19-3:20); double-check these.

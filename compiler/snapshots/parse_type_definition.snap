@@ -1,0 +1,23 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "\n            -- Documentation comment\n            [foo]\n            Foo : type\n        "
+expression: result
+---
+TypeDefinitionNode {
+    comments: [
+        " Documentation comment",
+    ],
+    attributes: [
+        AttributeNode {
+            name: "foo",
+            value: None,
+        },
+    ],
+    name: "Foo",
+    parameters: [],
+    representation: Marker(
+        MarkerTypeRepresentation {
+            span: test:4:19-4:23,
+        },
+    ),
+}

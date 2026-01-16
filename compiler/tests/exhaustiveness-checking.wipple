@@ -1,0 +1,16 @@
+-- wipple run $FILE --lib library/src/foundation
+
+Grade : type {
+  A
+  B
+  C
+  D
+  F
+}
+
+report-card :: Grade -> String
+report-card : grade -> when grade {
+  A -> "top of the class"
+  B -> "good job"
+  C -> "need to study"
+}

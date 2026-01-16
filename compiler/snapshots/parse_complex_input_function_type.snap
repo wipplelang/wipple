@@ -1,0 +1,23 @@
+---
+source: compiler/src/syntax/mod.rs
+description: (Maybe Number) Number -> ()
+expression: result
+---
+FunctionTypeNode {
+    inputs: [
+        NamedTypeNode {
+            name: "Maybe",
+            parameters: [
+                NamedTypeNode {
+                    name: "Number",
+                    parameters: [],
+                },
+            ],
+        },
+        NamedTypeNode {
+            name: "Number",
+            parameters: [],
+        },
+    ],
+    output: UnitTypeNode,
+}

@@ -1,0 +1,9 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "intrinsic \"message\""
+expression: result
+---
+IntrinsicExpressionNode {
+    name: "message",
+    inputs: [],
+}

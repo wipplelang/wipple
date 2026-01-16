@@ -1,0 +1,13 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "x : 123"
+expression: result
+---
+AssignmentNode {
+    pattern: VariablePatternNode {
+        variable: "x",
+    },
+    value: NumberExpressionNode {
+        value: "123",
+    },
+}

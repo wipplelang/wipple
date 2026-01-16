@@ -1,0 +1,5 @@
+-- wipple run $FILE --lib library/src/foundation
+
+repeat (4 times) {
+  show "Hello, world!"
+}

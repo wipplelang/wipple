@@ -1,0 +1,26 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling library/src/foundation... done
+Compiling bounds-dont-influence-other-bounds.wipple... done
+Error: compilation failed with 2 feedback item(s)
+
+stdout:
+
+Feedback:
+
+`f` (compiler/tests/bounds-dont-influence-other-bounds.wipple:12:2-12:3) (incomplete-type):
+
+  Missing information for the type of `f` (compiler/tests/bounds-dont-influence-other-bounds.wipple:12:2-12:3).
+
+  Wipple determined this code is `(Number; _)` (compiler/tests/bounds-dont-influence-other-bounds.wipple:12:8-12:17), but it needs some more information for the `_` placeholders.
+
+`_` (compiler/tests/bounds-dont-influence-other-bounds.wipple:12:16-12:17) (unknown-type):
+
+  Could not determine the type of `_` (compiler/tests/bounds-dont-influence-other-bounds.wipple:12:16-12:17).
+
+  Wipple needs to know the type of this code before running it. Try using a function or assigning it to a variable.

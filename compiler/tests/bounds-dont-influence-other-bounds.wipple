@@ -1,0 +1,12 @@
+-- wipple run $FILE --lib library/src/foundation
+
+T : value => trait (value -> ())
+
+instance (T Number) : _ -> ()
+instance (T String) : _ -> ()
+
+f :: (a; b) where (T a) (T b)
+f : todo
+
+-- `B` should not be inferred to be `Number`
+(f :: (Number; _))

@@ -1,0 +1,12 @@
+-- wipple compile $FILE --facts
+
+A : type
+B : type
+
+T : value => trait (value -> ())
+U : value => trait (value -> ())
+
+instance (T value) where (U value) : _
+
+t :: value -> () where (U value)
+t : T

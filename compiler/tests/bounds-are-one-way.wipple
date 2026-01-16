@@ -1,0 +1,6 @@
+-- wipple run $FILE --lib library/src/foundation
+
+T : value => trait value
+
+f :: Number where (T value)
+f : T

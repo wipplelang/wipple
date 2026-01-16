@@ -1,0 +1,19 @@
+---
+source: compiler/src/syntax/mod.rs
+description: Some x y z
+expression: result
+---
+ConstructorPatternNode {
+    constructor: "Some",
+    elements: [
+        VariablePatternNode {
+            variable: "x",
+        },
+        VariablePatternNode {
+            variable: "y",
+        },
+        VariablePatternNode {
+            variable: "z",
+        },
+    ],
+}

@@ -1,0 +1,35 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling library/src/foundation... done
+Compiling list-mismatched-elements.wipple... done
+Error: compilation failed with 3 feedback item(s)
+
+stdout:
+
+Feedback:
+
+`()` (compiler/tests/list-mismatched-elements.wipple:3:20-3:22) (error-instance):
+
+  Can't create   `my-list` (compiler/tests/list-mismatched-elements.wipple:3:1-3:8) from items that are   `()` (compiler/tests/list-mismatched-elements.wipple:3:20-3:22).
+
+ Creating   `my-list` (compiler/tests/list-mismatched-elements.wipple:3:1-3:8) from these items isn't supported. Double-check that
+ you're providing the right kinds of items here.
+
+`each` (compiler/tests/list-mismatched-elements.wipple:4:11-4:15) (error-instance):
+
+  Can't make a sequence from   `my-list` (compiler/tests/list-mismatched-elements.wipple:3:1-3:8).
+
+ You can't use   `my-list` (compiler/tests/list-mismatched-elements.wipple:3:1-3:8) as a sequence. Try using a list instead.
+
+  
+
+`each` (compiler/tests/list-mismatched-elements.wipple:4:11-4:15) (error-instance):
+
+  Can't make a sequence from   `my-list` (compiler/tests/list-mismatched-elements.wipple:3:1-3:8).
+
+ You can't use   `my-list` (compiler/tests/list-mismatched-elements.wipple:3:1-3:8) as a sequence. Try using a list instead.

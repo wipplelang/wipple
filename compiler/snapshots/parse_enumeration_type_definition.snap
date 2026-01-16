@@ -1,0 +1,33 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "\n            Foo : type {\n                Some Number\n                None\n            }\n        "
+expression: result
+---
+TypeDefinitionNode {
+    comments: [],
+    attributes: [],
+    name: "Foo",
+    parameters: [],
+    representation: Enumeration(
+        EnumerationTypeRepresentation {
+            variants: [
+                VariantDefinition {
+                    name: "Some",
+                    elements: [
+                        NamedTypeNode {
+                            name: "Number",
+                            parameters: [],
+                        },
+                    ],
+                    span: test:3:17-3:28,
+                },
+                VariantDefinition {
+                    name: "None",
+                    elements: [],
+                    span: test:4:17-4:21,
+                },
+            ],
+            span: test:2:19-5:14,
+        },
+    ),
+}

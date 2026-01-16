@@ -1,0 +1,20 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling library/src/foundation... done
+Compiling mismatched-inferred-params.wipple... done
+Error: compilation failed with 1 feedback item(s)
+
+stdout:
+
+Feedback:
+
+`transform` (compiler/tests/mismatched-inferred-params.wipple:3:13-3:22) (error-instance):
+
+  Can't make a sequence from   `1, 2, 3` (compiler/tests/mismatched-inferred-params.wipple:3:2-3:9).
+
+ You can't use   `1, 2, 3` (compiler/tests/mismatched-inferred-params.wipple:3:2-3:9) as a sequence. Try using a list instead.

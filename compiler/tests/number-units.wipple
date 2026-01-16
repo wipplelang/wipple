@@ -1,0 +1,10 @@
+-- wipple run $FILE --lib library/src/foundation
+
+Elephants : type {count :: Number}
+
+instance (Equal Elephants) : (Elephants {count : a}) (Elephants {count : b}) -> a = b
+
+[unit] elephants :: Number -> Elephants
+elephants : count -> Elephants {count : count}
+
+show (42 elephants = elephants 42)

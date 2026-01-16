@@ -1,0 +1,20 @@
+---
+source: compiler/src/syntax/mod.rs
+description: (X y) -> z
+expression: result
+---
+FunctionExpressionNode {
+    inputs: [
+        ConstructorPatternNode {
+            constructor: "X",
+            elements: [
+                VariablePatternNode {
+                    variable: "y",
+                },
+            ],
+        },
+    ],
+    output: VariableExpressionNode {
+        variable: "z",
+    },
+}

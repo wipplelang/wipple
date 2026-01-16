@@ -1,0 +1,13 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "[a : \"b\"]"
+expression: result
+---
+AttributeNode {
+    name: "a",
+    value: Some(
+        StringAttributeValueNode {
+            value: "b",
+        },
+    ),
+}

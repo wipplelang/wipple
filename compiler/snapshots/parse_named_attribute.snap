@@ -1,0 +1,9 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "[foo]"
+expression: result
+---
+AttributeNode {
+    name: "foo",
+    value: None,
+}

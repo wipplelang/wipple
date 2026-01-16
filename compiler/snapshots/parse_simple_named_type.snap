@@ -1,0 +1,9 @@
+---
+source: compiler/src/syntax/mod.rs
+description: Number
+expression: result
+---
+NamedTypeNode {
+    name: "Number",
+    parameters: [],
+}

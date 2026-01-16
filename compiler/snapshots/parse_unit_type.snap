@@ -1,0 +1,6 @@
+---
+source: compiler/src/syntax/mod.rs
+description: ()
+expression: result
+---
+UnitTypeNode

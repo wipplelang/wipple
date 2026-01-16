@@ -1,0 +1,143 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling implied-instance.wipple... done
+Error: compilation failed with 1 feedback item(s)
+
+stdout:
+Facts:
+TypeDefinitionNode `A` (compiler/tests/implied-instance.wipple:1:1-3:9)
+  at compiler/tests/implied-instance.wipple:1:1-3:9
+  has definition constraints
+  has type A
+  is a definition
+TypeDefinitionNode `B` (compiler/tests/implied-instance.wipple:4:1-4:9)
+  at compiler/tests/implied-instance.wipple:4:1-4:9
+  has definition constraints
+  has type B
+  is a definition
+TypeParameterNode `value` (compiler/tests/implied-instance.wipple:6:5-6:10)
+  at compiler/tests/implied-instance.wipple:6:5-6:10
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/implied-instance.wipple:6:5-6:10)
+TypeParameterNode `value` (compiler/tests/implied-instance.wipple:6:21-6:26)
+  at compiler/tests/implied-instance.wipple:6:21-6:26
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/implied-instance.wipple:6:5-6:10)
+UnitTypeNode `()` (compiler/tests/implied-instance.wipple:6:30-6:32)
+  at compiler/tests/implied-instance.wipple:6:30-6:32
+  has type ()
+  is a type
+FunctionTypeNode `value -> ()` (compiler/tests/implied-instance.wipple:6:21-6:32)
+  at compiler/tests/implied-instance.wipple:6:21-6:32
+  has type value -> ()
+  is a type
+TraitDefinitionNode `T : value => trait (value -> ())` (compiler/tests/implied-instance.wipple:6:1-6:33)
+  at compiler/tests/implied-instance.wipple:6:1-6:33
+  has definition constraints
+  has instances
+  has type parameters
+  has type value -> ()
+  is a definition
+TypeParameterNode `value` (compiler/tests/implied-instance.wipple:7:5-7:10)
+  at compiler/tests/implied-instance.wipple:7:5-7:10
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/implied-instance.wipple:7:5-7:10)
+TypeParameterNode `value` (compiler/tests/implied-instance.wipple:7:21-7:26)
+  at compiler/tests/implied-instance.wipple:7:21-7:26
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/implied-instance.wipple:7:5-7:10)
+UnitTypeNode `()` (compiler/tests/implied-instance.wipple:7:30-7:32)
+  at compiler/tests/implied-instance.wipple:7:30-7:32
+  has type ()
+  is a type
+FunctionTypeNode `value -> ()` (compiler/tests/implied-instance.wipple:7:21-7:32)
+  at compiler/tests/implied-instance.wipple:7:21-7:32
+  has type value -> ()
+  is a type
+TraitDefinitionNode `U : value => trait (value -> ())` (compiler/tests/implied-instance.wipple:7:1-7:33)
+  at compiler/tests/implied-instance.wipple:7:1-7:33
+  has definition constraints
+  has type parameters
+  has type value -> ()
+  is a definition
+TypeParameterNode `value` (compiler/tests/implied-instance.wipple:9:13-9:18)
+  at compiler/tests/implied-instance.wipple:9:13-9:18
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/implied-instance.wipple:9:13-9:18)
+BoundConstraintNode `T value` (compiler/tests/implied-instance.wipple:9:10-9:19)
+  at compiler/tests/implied-instance.wipple:9:10-9:19
+TypeParameterNode `value` (compiler/tests/implied-instance.wipple:9:29-9:34)
+  at compiler/tests/implied-instance.wipple:9:29-9:34
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/implied-instance.wipple:9:13-9:18)
+BoundConstraintNode `U value` (compiler/tests/implied-instance.wipple:9:26-9:35)
+  at compiler/tests/implied-instance.wipple:9:26-9:35
+  is a constraint
+  resolved to 1 definition(s): `U : value => trait (value -> ())` (compiler/tests/implied-instance.wipple:7:1-7:33)
+PlaceholderExpressionNode `_` (compiler/tests/implied-instance.wipple:9:38-9:39)
+  at compiler/tests/implied-instance.wipple:9:38-9:39
+  has type value -> ()
+  is an expression
+InstanceDefinitionNode `instance (T value)` (compiler/tests/implied-instance.wipple:9:1-9:39)
+  at compiler/tests/implied-instance.wipple:9:1-9:39
+  has definition constraints
+  has type parameters
+  has type value -> ()
+  is a definition
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (compiler/tests/implied-instance.wipple:6:1-6:33)
+TypeParameterNode `value` (compiler/tests/implied-instance.wipple:11:6-11:11)
+  at compiler/tests/implied-instance.wipple:11:6-11:11
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/implied-instance.wipple:11:6-11:11)
+UnitTypeNode `()` (compiler/tests/implied-instance.wipple:11:15-11:17)
+  at compiler/tests/implied-instance.wipple:11:15-11:17
+  has type ()
+  is a type
+FunctionTypeNode `value -> ()` (compiler/tests/implied-instance.wipple:11:6-11:17)
+  at compiler/tests/implied-instance.wipple:11:6-11:17
+  has type value -> ()
+  is a type
+TypeParameterNode `value` (compiler/tests/implied-instance.wipple:11:27-11:32)
+  at compiler/tests/implied-instance.wipple:11:27-11:32
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (compiler/tests/implied-instance.wipple:11:6-11:11)
+BoundConstraintNode `U value` (compiler/tests/implied-instance.wipple:11:24-11:33)
+  at compiler/tests/implied-instance.wipple:11:24-11:33
+  is a constraint
+  resolved to 1 definition(s): `U : value => trait (value -> ())` (compiler/tests/implied-instance.wipple:7:1-7:33)
+ConstantDefinitionNode `t` (compiler/tests/implied-instance.wipple:11:1-11:33)
+  at compiler/tests/implied-instance.wipple:11:1-11:33
+  has definition constraints
+  has type parameters
+  has type value -> ()
+  is a definition
+VariablePatternNode `t` (compiler/tests/implied-instance.wipple:12:1-12:2)
+  at compiler/tests/implied-instance.wipple:12:1-12:2
+ConstructorExpressionNode `T` (compiler/tests/implied-instance.wipple:12:5-12:6)
+  at compiler/tests/implied-instance.wipple:12:5-12:6
+  has bound(s) T value (`instance (T value)` (compiler/tests/implied-instance.wipple:9:1-9:39))
+  has type value -> ()
+  is an expression
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (compiler/tests/implied-instance.wipple:6:1-6:33)
+
+
+Feedback:
+
+`_` (compiler/tests/implied-instance.wipple:9:38-9:39) (placeholder):
+
+  Found a placeholder of type `value -> ()` (compiler/tests/implied-instance.wipple:6:21-6:32).
+
+  Add a `value -> ()` (compiler/tests/implied-instance.wipple:6:21-6:32) value here before running your program.

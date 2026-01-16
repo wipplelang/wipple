@@ -1,0 +1,21 @@
+-- wipple run $FILE --lib library/src/foundation
+
+-- Greet is a trait that can be defined with a function returning text
+Greet : value => trait (value -> String)
+
+-- For any value where Greet is defined, return a greeting
+greet :: value -> String where (Greet value)
+greet : x -> "Hello, _!" (Greet x)
+
+Person : type {name :: String}
+
+-- Greet for Person values is defined as the person's name
+instance (Greet Person) : (Person {name : name}) -> name
+
+Earth : type
+
+-- Greet for Earth values is defined as "world"
+instance (Greet Earth) : _ -> "world"
+
+show (greet (Person {name : "Bob"})) -- Hello, Bob!
+show (greet Earth) -- Hello, world!

@@ -1,0 +1,16 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "Foo : trait Number"
+expression: result
+---
+TraitDefinitionNode {
+    comments: [],
+    attributes: [],
+    name: "Foo",
+    parameters: [],
+    ty: NamedTypeNode {
+        name: "Number",
+        parameters: [],
+    },
+    constraints: [],
+}

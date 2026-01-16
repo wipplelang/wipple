@@ -1,0 +1,8 @@
+-- wipple run $FILE --lib library/src/foundation
+
+accepts-text :: String -> ()
+accepts-text : todo
+
+-- should display 'expected `String`, found `Number`' rather than
+-- 'cannot find instance `Add Number Number String`'
+accepts-text (Add 1 2)

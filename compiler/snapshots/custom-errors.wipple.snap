@@ -1,0 +1,266 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 1
+
+stderr:
+Compiling custom-errors.wipple... done
+Error: compilation failed with 2 feedback item(s)
+
+stdout:
+Facts:
+TypeDefinitionNode `Number` (compiler/tests/custom-errors.wipple:1:1-3:26)
+  at compiler/tests/custom-errors.wipple:1:1-3:26
+  has definition constraints
+  has type Number
+  is a definition
+TypeDefinitionNode `String` (compiler/tests/custom-errors.wipple:4:1-4:26)
+  at compiler/tests/custom-errors.wipple:4:1-4:26
+  has definition constraints
+  has type String
+  is a definition
+TypeParameterNode `left` (compiler/tests/custom-errors.wipple:6:7-6:11)
+  at compiler/tests/custom-errors.wipple:6:7-6:11
+  has type left
+  is a type
+  resolved to 1 definition(s): `left` (compiler/tests/custom-errors.wipple:6:7-6:11)
+TypeParameterNode `right` (compiler/tests/custom-errors.wipple:6:12-6:17)
+  at compiler/tests/custom-errors.wipple:6:12-6:17
+  has type right
+  is a type
+  resolved to 1 definition(s): `right` (compiler/tests/custom-errors.wipple:6:12-6:17)
+TypeParameterNode `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29)
+  at compiler/tests/custom-errors.wipple:6:18-6:29
+  has type sum
+  is a type
+  is inferred type parameter
+  resolved to 1 definition(s): `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29)
+TypeParameterNode `left` (compiler/tests/custom-errors.wipple:6:40-6:44)
+  at compiler/tests/custom-errors.wipple:6:40-6:44
+  has type left
+  is a type
+  resolved to 1 definition(s): `left` (compiler/tests/custom-errors.wipple:6:7-6:11)
+TypeParameterNode `right` (compiler/tests/custom-errors.wipple:6:45-6:50)
+  at compiler/tests/custom-errors.wipple:6:45-6:50
+  has type right
+  is a type
+  resolved to 1 definition(s): `right` (compiler/tests/custom-errors.wipple:6:12-6:17)
+TypeParameterNode `sum` (compiler/tests/custom-errors.wipple:6:54-6:57)
+  at compiler/tests/custom-errors.wipple:6:54-6:57
+  has type sum
+  is a type
+  resolved to 1 definition(s): `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29)
+FunctionTypeNode `left right -> sum` (compiler/tests/custom-errors.wipple:6:40-6:57)
+  at compiler/tests/custom-errors.wipple:6:40-6:57
+  has type left right -> sum
+  is a type
+TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (compiler/tests/custom-errors.wipple:6:1-6:58)
+  at compiler/tests/custom-errors.wipple:6:1-6:58
+  has definition constraints
+  has instances
+  has type left right -> sum
+  has type parameters
+  is a definition
+NamedTypeNode `Number` (compiler/tests/custom-errors.wipple:7:15-7:21)
+  at compiler/tests/custom-errors.wipple:7:15-7:21
+  has type Number
+  is a type
+  resolved to 1 definition(s): `Number` (compiler/tests/custom-errors.wipple:1:1-3:26)
+NamedTypeNode `Number` (compiler/tests/custom-errors.wipple:7:22-7:28)
+  at compiler/tests/custom-errors.wipple:7:22-7:28
+  has type Number
+  is a type
+  resolved to 1 definition(s): `Number` (compiler/tests/custom-errors.wipple:1:1-3:26)
+NamedTypeNode `Number` (compiler/tests/custom-errors.wipple:7:29-7:35)
+  at compiler/tests/custom-errors.wipple:7:29-7:35
+  has type Number
+  is a type
+  resolved to 1 definition(s): `Number` (compiler/tests/custom-errors.wipple:1:1-3:26)
+BoundConstraintNode `Add Number Number Number` (compiler/tests/custom-errors.wipple:7:10-7:36)
+  at compiler/tests/custom-errors.wipple:7:10-7:36
+PlaceholderExpressionNode `_` (compiler/tests/custom-errors.wipple:7:39-7:40)
+  at compiler/tests/custom-errors.wipple:7:39-7:40
+  has type Number Number -> Number
+  is an expression
+InstanceDefinitionNode `instance (Add Number Number Number)` (compiler/tests/custom-errors.wipple:7:1-7:40)
+  at compiler/tests/custom-errors.wipple:7:1-7:40
+  has definition constraints
+  has type Number Number -> Number
+  is a definition
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (compiler/tests/custom-errors.wipple:6:1-6:58)
+NamedTypeNode `String` (compiler/tests/custom-errors.wipple:8:15-8:21)
+  at compiler/tests/custom-errors.wipple:8:15-8:21
+  has type String
+  is a type
+  resolved to 1 definition(s): `String` (compiler/tests/custom-errors.wipple:4:1-4:26)
+NamedTypeNode `String` (compiler/tests/custom-errors.wipple:8:22-8:28)
+  at compiler/tests/custom-errors.wipple:8:22-8:28
+  has type String
+  is a type
+  resolved to 1 definition(s): `String` (compiler/tests/custom-errors.wipple:4:1-4:26)
+NamedTypeNode `String` (compiler/tests/custom-errors.wipple:8:29-8:35)
+  at compiler/tests/custom-errors.wipple:8:29-8:35
+  has type String
+  is a type
+  resolved to 1 definition(s): `String` (compiler/tests/custom-errors.wipple:4:1-4:26)
+BoundConstraintNode `Add String String String` (compiler/tests/custom-errors.wipple:8:10-8:36)
+  at compiler/tests/custom-errors.wipple:8:10-8:36
+PlaceholderExpressionNode `_` (compiler/tests/custom-errors.wipple:8:39-8:40)
+  at compiler/tests/custom-errors.wipple:8:39-8:40
+  has type String String -> String
+  is an expression
+InstanceDefinitionNode `instance (Add String String String)` (compiler/tests/custom-errors.wipple:8:1-8:40)
+  at compiler/tests/custom-errors.wipple:8:1-8:40
+  has definition constraints
+  has type String String -> String
+  is a definition
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (compiler/tests/custom-errors.wipple:6:1-6:58)
+UnitTypeNode `()` (compiler/tests/custom-errors.wipple:11:23-11:25)
+  at compiler/tests/custom-errors.wipple:11:23-11:25
+  has type ()
+  is a type
+TypeParameterNode `right` (compiler/tests/custom-errors.wipple:11:26-11:31)
+  at compiler/tests/custom-errors.wipple:11:26-11:31
+  has type right
+  is a type
+  resolved to 1 definition(s): `right` (compiler/tests/custom-errors.wipple:11:26-11:31)
+TypeParameterNode `sum` (compiler/tests/custom-errors.wipple:11:32-11:35)
+  at compiler/tests/custom-errors.wipple:11:32-11:35
+  has type sum
+  is a type
+  resolved to 1 definition(s): `sum` (compiler/tests/custom-errors.wipple:11:32-11:35)
+BoundConstraintNode `Add () right sum` (compiler/tests/custom-errors.wipple:11:18-11:36)
+  at compiler/tests/custom-errors.wipple:11:18-11:36
+InstanceDefinitionNode `instance (Add () right sum)` (compiler/tests/custom-errors.wipple:10:1-11:36)
+  at compiler/tests/custom-errors.wipple:10:1-11:36
+  has definition constraints
+  has type () right -> sum
+  has type parameters
+  is a definition
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (compiler/tests/custom-errors.wipple:6:1-6:58)
+TypeParameterNode `left` (compiler/tests/custom-errors.wipple:14:33-14:37)
+  at compiler/tests/custom-errors.wipple:14:33-14:37
+  has type left
+  is a type
+  resolved to 1 definition(s): `left` (compiler/tests/custom-errors.wipple:14:33-14:37)
+TypeParameterNode `right` (compiler/tests/custom-errors.wipple:14:38-14:43)
+  at compiler/tests/custom-errors.wipple:14:38-14:43
+  has type right
+  is a type
+  resolved to 1 definition(s): `right` (compiler/tests/custom-errors.wipple:14:38-14:43)
+TypeParameterNode `sum` (compiler/tests/custom-errors.wipple:14:44-14:47)
+  at compiler/tests/custom-errors.wipple:14:44-14:47
+  has type sum
+  is a type
+  resolved to 1 definition(s): `sum` (compiler/tests/custom-errors.wipple:14:44-14:47)
+BoundConstraintNode `Add left right sum` (compiler/tests/custom-errors.wipple:14:28-14:48)
+  at compiler/tests/custom-errors.wipple:14:28-14:48
+InstanceDefinitionNode `instance (Add left right sum)` (compiler/tests/custom-errors.wipple:13:1-14:48)
+  at compiler/tests/custom-errors.wipple:13:1-14:48
+  has definition constraints
+  has type left right -> sum
+  has type parameters
+  is a definition
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (compiler/tests/custom-errors.wipple:6:1-6:58)
+WildcardPatternNode `_` (compiler/tests/custom-errors.wipple:16:1-16:2)
+  at compiler/tests/custom-errors.wipple:16:1-16:2
+  has type Number
+  is a pattern
+ConstructorExpressionNode `Add` (compiler/tests/custom-errors.wipple:16:5-16:8)
+  at compiler/tests/custom-errors.wipple:16:5-16:8
+  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (compiler/tests/custom-errors.wipple:7:1-7:40))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (compiler/tests/custom-errors.wipple:6:1-6:58)
+NumberExpressionNode `1` (compiler/tests/custom-errors.wipple:16:9-16:10)
+  at compiler/tests/custom-errors.wipple:16:9-16:10
+  has type Number
+  is an expression
+NumberExpressionNode `2` (compiler/tests/custom-errors.wipple:16:11-16:12)
+  at compiler/tests/custom-errors.wipple:16:11-16:12
+  has type Number
+  is an expression
+CallExpressionNode `Add 1 2` (compiler/tests/custom-errors.wipple:16:5-16:12)
+  at compiler/tests/custom-errors.wipple:16:5-16:12
+  has type Number
+  is an expression
+WildcardPatternNode `_` (compiler/tests/custom-errors.wipple:17:1-17:2)
+  at compiler/tests/custom-errors.wipple:17:1-17:2
+  has type String
+  is a pattern
+ConstructorExpressionNode `Add` (compiler/tests/custom-errors.wipple:17:5-17:8)
+  at compiler/tests/custom-errors.wipple:17:5-17:8
+  has bound(s) Add String String String (`instance (Add String String String)` (compiler/tests/custom-errors.wipple:8:1-8:40))
+  has type String String -> String
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (compiler/tests/custom-errors.wipple:6:1-6:58)
+StringExpressionNode `"a"` (compiler/tests/custom-errors.wipple:17:9-17:12)
+  at compiler/tests/custom-errors.wipple:17:9-17:12
+  has type String
+  is an expression
+StringExpressionNode `"b"` (compiler/tests/custom-errors.wipple:17:13-17:16)
+  at compiler/tests/custom-errors.wipple:17:13-17:16
+  has type String
+  is an expression
+CallExpressionNode `Add "a" "b"` (compiler/tests/custom-errors.wipple:17:5-17:16)
+  at compiler/tests/custom-errors.wipple:17:5-17:16
+  has type String
+  is an expression
+WildcardPatternNode `_` (compiler/tests/custom-errors.wipple:18:1-18:2)
+  at compiler/tests/custom-errors.wipple:18:1-18:2
+  is a pattern
+  missing type (group: `_` (compiler/tests/custom-errors.wipple:18:1-18:2), `Add 1 "a"` (compiler/tests/custom-errors.wipple:18:5-18:14), `sum` (compiler/tests/custom-errors.wipple:14:44-14:47), `sum` (compiler/tests/custom-errors.wipple:14:44-14:47), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `sum` (compiler/tests/custom-errors.wipple:6:54-6:57), `_` (compiler/tests/custom-errors.wipple:18:1-18:14), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `sum` (compiler/tests/custom-errors.wipple:6:54-6:57))
+ConstructorExpressionNode `Add` (compiler/tests/custom-errors.wipple:18:5-18:8)
+  at compiler/tests/custom-errors.wipple:18:5-18:8
+  has bound(s) Add Number String _ (`instance (Add left right sum)` (compiler/tests/custom-errors.wipple:13:1-14:48))
+  has type Number String -> _
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (compiler/tests/custom-errors.wipple:6:1-6:58)
+NumberExpressionNode `1` (compiler/tests/custom-errors.wipple:18:9-18:10)
+  at compiler/tests/custom-errors.wipple:18:9-18:10
+  has type Number
+  is an expression
+StringExpressionNode `"a"` (compiler/tests/custom-errors.wipple:18:11-18:14)
+  at compiler/tests/custom-errors.wipple:18:11-18:14
+  has type String
+  is an expression
+CallExpressionNode `Add 1 "a"` (compiler/tests/custom-errors.wipple:18:5-18:14)
+  at compiler/tests/custom-errors.wipple:18:5-18:14
+  is an expression
+  missing type (group: `_` (compiler/tests/custom-errors.wipple:18:1-18:2), `Add 1 "a"` (compiler/tests/custom-errors.wipple:18:5-18:14), `sum` (compiler/tests/custom-errors.wipple:14:44-14:47), `sum` (compiler/tests/custom-errors.wipple:14:44-14:47), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `sum` (compiler/tests/custom-errors.wipple:6:54-6:57), `_` (compiler/tests/custom-errors.wipple:18:1-18:14), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `sum` (compiler/tests/custom-errors.wipple:6:54-6:57))
+WildcardPatternNode `_` (compiler/tests/custom-errors.wipple:19:1-19:2)
+  at compiler/tests/custom-errors.wipple:19:1-19:2
+  is a pattern
+  missing type (group: `_` (compiler/tests/custom-errors.wipple:19:1-19:2), `Add () 2` (compiler/tests/custom-errors.wipple:19:5-19:13), `sum` (compiler/tests/custom-errors.wipple:11:32-11:35), `sum` (compiler/tests/custom-errors.wipple:11:32-11:35), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `sum` (compiler/tests/custom-errors.wipple:6:54-6:57), `_` (compiler/tests/custom-errors.wipple:19:1-19:13), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `sum` (compiler/tests/custom-errors.wipple:6:54-6:57))
+ConstructorExpressionNode `Add` (compiler/tests/custom-errors.wipple:19:5-19:8)
+  at compiler/tests/custom-errors.wipple:19:5-19:8
+  has bound(s) Add () Number _ (`instance (Add () right sum)` (compiler/tests/custom-errors.wipple:10:1-11:36))
+  has type () Number -> _
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (compiler/tests/custom-errors.wipple:6:1-6:58)
+UnitExpressionNode `()` (compiler/tests/custom-errors.wipple:19:9-19:11)
+  at compiler/tests/custom-errors.wipple:19:9-19:11
+  has type ()
+  is an expression
+NumberExpressionNode `2` (compiler/tests/custom-errors.wipple:19:12-19:13)
+  at compiler/tests/custom-errors.wipple:19:12-19:13
+  has type Number
+  is an expression
+CallExpressionNode `Add () 2` (compiler/tests/custom-errors.wipple:19:5-19:13)
+  at compiler/tests/custom-errors.wipple:19:5-19:13
+  is an expression
+  missing type (group: `_` (compiler/tests/custom-errors.wipple:19:1-19:2), `Add () 2` (compiler/tests/custom-errors.wipple:19:5-19:13), `sum` (compiler/tests/custom-errors.wipple:11:32-11:35), `sum` (compiler/tests/custom-errors.wipple:11:32-11:35), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `sum` (compiler/tests/custom-errors.wipple:6:54-6:57), `_` (compiler/tests/custom-errors.wipple:19:1-19:13), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `infer sum` (compiler/tests/custom-errors.wipple:6:18-6:29), `sum` (compiler/tests/custom-errors.wipple:6:54-6:57))
+
+
+Feedback:
+
+`Add` (compiler/tests/custom-errors.wipple:18:5-18:8) (error-instance):
+
+  Cannot add   `1` (compiler/tests/custom-errors.wipple:18:9-18:10) and   `"a"` (compiler/tests/custom-errors.wipple:18:11-18:14).
+
+  
+
+`Add` (compiler/tests/custom-errors.wipple:19:5-19:8) (error-instance):
+
+  Missing parentheses around the inputs to `+`.

@@ -1,0 +1,16 @@
+---
+source: compiler/test.rs
+expression: output
+---
+status: 0
+
+stderr:
+Compiling library/src/foundation... done
+Compiling undefined-math-ops.wipple... done
+
+stdout:
+NaN
+Infinity
+NaN
+NaN
+Infinity

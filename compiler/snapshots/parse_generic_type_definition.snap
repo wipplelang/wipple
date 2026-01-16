@@ -1,0 +1,22 @@
+---
+source: compiler/src/syntax/mod.rs
+description: "Foo : value => type"
+expression: result
+---
+TypeDefinitionNode {
+    comments: [],
+    attributes: [],
+    name: "Foo",
+    parameters: [
+        TypeParameterNode {
+            name: "value",
+            infer: false,
+            value: None,
+        },
+    ],
+    representation: Marker(
+        MarkerTypeRepresentation {
+            span: test:1:16-1:20,
+        },
+    ),
+}
