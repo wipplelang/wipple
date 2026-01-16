@@ -7,7 +7,8 @@ mod libraries;
 use crate::libraries::fetch_library;
 use dashmap::{DashMap, Entry};
 use lambda_http::{
-    LambdaEvent, RequestPayloadExt, aws_lambda_events::apigw::ApiGatewayProxyRequest,
+    RequestPayloadExt,
+    aws_lambda_events::apigw::{ApiGatewayProxyRequest, ApiGatewayProxyResponse},
 };
 use serde::Deserialize;
 use std::{env, sync::LazyLock};
@@ -20,16 +21,23 @@ use wipple::{
 #[tokio::main]
 async fn main() {
     if env::var("LAMBDA_TASK_ROOT").is_ok() {
-        lambda_runtime::run(lambda_runtime::service_fn(
-            async |event: LambdaEvent<ApiGatewayProxyRequest>| {
+        lambda_runtime::run(
+            #[allow(deprecated)]
+            lambda_runtime::handler_fn(async |event: ApiGatewayProxyRequest, _ctx| {
                 let body = event
-                    .payload
                     .body
                     .ok_or_else(|| anyhow::format_err!("missing request body"))?;
 
-                serde_json::from_str::<Request>(&body)?.handle().await
-            },
-        ))
+                let response = serde_json::from_str::<Request>(&body)?.handle().await?;
+
+                let mut proxy_response = ApiGatewayProxyResponse::default();
+
+                proxy_response.body =
+                    Some(lambda_http::Body::Text(serde_json::to_string(&response)?));
+
+                Ok::<_, lambda_runtime::Error>(proxy_response)
+            }),
+        )
         .await
     } else {
         lambda_http::run(lambda_http::service_fn(
