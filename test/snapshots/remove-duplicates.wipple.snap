@@ -1,0 +1,313 @@
+Facts:
+TypeParameterNode `element` (test/tests/remove-duplicates.wipple:3:28-3:35)
+  at test/tests/remove-duplicates.wipple:3:28-3:35
+  has type element
+  is a type
+  resolved to 1 definition(s): `element` (test/tests/remove-duplicates.wipple:3:28-3:35)
+NamedTypeNode `List element` (test/tests/remove-duplicates.wipple:3:23-3:35)
+  at test/tests/remove-duplicates.wipple:3:23-3:35
+  has type List element
+  is a type
+  resolved to 1 definition(s): `List` (library/src/foundation/list.wipple:1:1-1:35)
+TypeParameterNode `element` (test/tests/remove-duplicates.wipple:3:49-3:56)
+  at test/tests/remove-duplicates.wipple:3:49-3:56
+  has type element
+  is a type
+  resolved to 1 definition(s): `element` (test/tests/remove-duplicates.wipple:3:28-3:35)
+NamedTypeNode `Sequence element` (test/tests/remove-duplicates.wipple:3:40-3:56)
+  at test/tests/remove-duplicates.wipple:3:40-3:56
+  has type Sequence element
+  is a type
+  resolved to 1 definition(s): `Sequence : element => type {⋯}` (library/src/foundation/sequence.wipple:1:1-2:53)
+FunctionTypeNode `(List element) -> Sequence element` (test/tests/remove-duplicates.wipple:3:22-3:56)
+  at test/tests/remove-duplicates.wipple:3:22-3:56
+  has type (List element) -> Sequence element
+  is a type
+TypeParameterNode `element` (test/tests/remove-duplicates.wipple:3:73-3:80)
+  at test/tests/remove-duplicates.wipple:3:73-3:80
+  has type element
+  is a type
+  resolved to 1 definition(s): `element` (test/tests/remove-duplicates.wipple:3:28-3:35)
+BoundConstraintNode `Describe element` (test/tests/remove-duplicates.wipple:3:63-3:81)
+  at test/tests/remove-duplicates.wipple:3:63-3:81
+  is a constraint
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:1:1-2:44)
+TypeParameterNode `element` (test/tests/remove-duplicates.wipple:3:89-3:96)
+  at test/tests/remove-duplicates.wipple:3:89-3:96
+  has type element
+  is a type
+  resolved to 1 definition(s): `element` (test/tests/remove-duplicates.wipple:3:28-3:35)
+BoundConstraintNode `Equal element` (test/tests/remove-duplicates.wipple:3:82-3:97)
+  at test/tests/remove-duplicates.wipple:3:82-3:97
+  is a constraint
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+TypeParameterNode `element` (test/tests/remove-duplicates.wipple:3:104-3:111)
+  at test/tests/remove-duplicates.wipple:3:104-3:111
+  has type element
+  is a type
+  resolved to 1 definition(s): `element` (test/tests/remove-duplicates.wipple:3:28-3:35)
+BoundConstraintNode `Hash element` (test/tests/remove-duplicates.wipple:3:98-3:112)
+  at test/tests/remove-duplicates.wipple:3:98-3:112
+  is a constraint
+  resolved to 1 definition(s): `Hash : value => trait (value -> Number)` (library/src/foundation/dictionary.wipple:1:1-3:40)
+ConstantDefinitionNode `remove-duplicates` (test/tests/remove-duplicates.wipple:1:1-3:112)
+  at test/tests/remove-duplicates.wipple:1:1-3:112
+  has definition constraints
+  has type (List element) -> Sequence element
+  has type parameters
+  is a definition
+VariablePatternNode `remove-duplicates` (test/tests/remove-duplicates.wipple:4:1-4:18)
+  at test/tests/remove-duplicates.wipple:4:1-4:18
+VariablePatternNode `seen` (test/tests/remove-duplicates.wipple:5:3-5:7)
+  at test/tests/remove-duplicates.wipple:5:3-5:7
+  has type Set element
+  is a pattern
+CollectionExpressionNode `,` (test/tests/remove-duplicates.wipple:5:11-5:12)
+  at test/tests/remove-duplicates.wipple:5:11-5:12
+  has type Set element
+  is an expression
+VariablePatternNode `item` (test/tests/remove-duplicates.wipple:6:11-6:15)
+  at test/tests/remove-duplicates.wipple:6:11-6:15
+  has type element
+  is a pattern
+VariableExpressionNode `filter` (test/tests/remove-duplicates.wipple:6:3-6:9)
+  at test/tests/remove-duplicates.wipple:6:3-6:9
+  has bound(s) As-Sequence (List element) element (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has type (element -> Boolean) -> (List element) -> Sequence element
+  is an expression
+  resolved to 1 definition(s): `filter` (library/src/foundation/sequence.wipple:78:1-79:102)
+VariableExpressionNode `seen` (test/tests/remove-duplicates.wipple:6:20-6:24)
+  at test/tests/remove-duplicates.wipple:6:20-6:24
+  has type Set element
+  is an expression
+  resolved to 1 definition(s): `seen` (test/tests/remove-duplicates.wipple:5:3-5:7)
+VariableExpressionNode `not` (test/tests/remove-duplicates.wipple:6:28-6:31)
+  at test/tests/remove-duplicates.wipple:6:28-6:31
+  has bound(s) Not (element -> (Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not (element -> (Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not (element -> (Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not (element -> (Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not ((Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not ((Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not ((Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not ((Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:16:1-16:62)), Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:16:1-16:62)), Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:16:1-16:62)), Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:16:1-16:62))
+  has type (element -> (Set element) -> Boolean) -> element -> (Set element) -> Boolean
+  is an expression
+  resolved to 1 definition(s): `not` (library/src/foundation/logic.wipple:19:1-21:59)
+VariableExpressionNode `contains?` (test/tests/remove-duplicates.wipple:6:32-6:41)
+  at test/tests/remove-duplicates.wipple:6:32-6:41
+  has bound(s) Container (Set element) element (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Container (Set element) element (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Container (Set element) element (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Container (Set element) element (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
+  has type element -> (Set element) -> Boolean
+  is an expression
+  resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:397:1-398:83)
+CallExpressionNode `not contains?` (test/tests/remove-duplicates.wipple:6:28-6:41)
+  at test/tests/remove-duplicates.wipple:6:28-6:41
+  has type element -> (Set element) -> Boolean
+  is an expression
+VariableExpressionNode `item` (test/tests/remove-duplicates.wipple:6:43-6:47)
+  at test/tests/remove-duplicates.wipple:6:43-6:47
+  has type element
+  is an expression
+  resolved to 1 definition(s): `item` (test/tests/remove-duplicates.wipple:6:11-6:15)
+CallExpressionNode `(not contains?) item` (test/tests/remove-duplicates.wipple:6:27-6:47)
+  at test/tests/remove-duplicates.wipple:6:27-6:47
+  has type (Set element) -> Boolean
+  is an expression
+OperatorExpressionNode `seen . (not contains?) item` (test/tests/remove-duplicates.wipple:6:20-6:47)
+  at test/tests/remove-duplicates.wipple:6:20-6:47
+  has type Boolean
+  is an expression
+SetPatternNode `set seen` (test/tests/remove-duplicates.wipple:7:5-7:13)
+  at test/tests/remove-duplicates.wipple:7:5-7:13
+  has type Set element
+  is a pattern
+  resolved to 1 definition(s): `seen` (test/tests/remove-duplicates.wipple:5:3-5:7)
+VariableExpressionNode `seen` (test/tests/remove-duplicates.wipple:7:16-7:20)
+  at test/tests/remove-duplicates.wipple:7:16-7:20
+  has type Set element
+  is an expression
+  resolved to 1 definition(s): `seen` (test/tests/remove-duplicates.wipple:5:3-5:7)
+VariableExpressionNode `insert` (test/tests/remove-duplicates.wipple:7:23-7:29)
+  at test/tests/remove-duplicates.wipple:7:23-7:29
+  has type element -> (Set element) -> Set element
+  is an expression
+  resolved to 1 definition(s): `insert` (library/src/foundation/dictionary.wipple:139:1-140:87)
+VariableExpressionNode `item` (test/tests/remove-duplicates.wipple:7:30-7:34)
+  at test/tests/remove-duplicates.wipple:7:30-7:34
+  has type element
+  is an expression
+  resolved to 1 definition(s): `item` (test/tests/remove-duplicates.wipple:6:11-6:15)
+CallExpressionNode `insert item` (test/tests/remove-duplicates.wipple:7:23-7:34)
+  at test/tests/remove-duplicates.wipple:7:23-7:34
+  has type (Set element) -> Set element
+  is an expression
+OperatorExpressionNode `seen . insert item` (test/tests/remove-duplicates.wipple:7:16-7:34)
+  at test/tests/remove-duplicates.wipple:7:16-7:34
+  has type Set element
+  is an expression
+ConstructorExpressionNode `True` (test/tests/remove-duplicates.wipple:8:5-8:9)
+  at test/tests/remove-duplicates.wipple:8:5-8:9
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+BlockExpressionNode `{⋯` (test/tests/remove-duplicates.wipple:6:57-9:4)
+  at test/tests/remove-duplicates.wipple:6:57-9:4
+  has type {Boolean}
+  is an expression
+DoExpressionNode `do {⋯` (test/tests/remove-duplicates.wipple:6:54-9:4)
+  at test/tests/remove-duplicates.wipple:6:54-9:4
+  has type Boolean
+  is an expression
+OperatorExpressionNode `seen . (not contains?) item) and (do {⋯` (test/tests/remove-duplicates.wipple:6:20-9:4)
+  at test/tests/remove-duplicates.wipple:6:20-9:4
+  has type Boolean
+  is an expression
+FunctionExpressionNode `item -> (seen . (not contains?) item) and (do {⋯` (test/tests/remove-duplicates.wipple:6:11-9:5)
+  at test/tests/remove-duplicates.wipple:6:11-9:5
+  has type element -> Boolean
+  is an expression
+CallExpressionNode `filter (item -> (seen . (not contains?) item) and (do {⋯` (test/tests/remove-duplicates.wipple:6:3-9:6)
+  at test/tests/remove-duplicates.wipple:6:3-9:6
+  has type (List element) -> Sequence element
+  is an expression
+BlockExpressionNode `{⋯` (test/tests/remove-duplicates.wipple:4:24-10:2)
+  at test/tests/remove-duplicates.wipple:4:24-10:2
+  has type {(List element) -> Sequence element}
+  is an expression
+DoExpressionNode `do {⋯` (test/tests/remove-duplicates.wipple:4:21-10:2)
+  at test/tests/remove-duplicates.wipple:4:21-10:2
+  has type (List element) -> Sequence element
+  is an expression
+VariablePatternNode `numbers` (test/tests/remove-duplicates.wipple:12:1-12:8)
+  at test/tests/remove-duplicates.wipple:12:1-12:8
+  has type List Number
+  is a pattern
+NumberExpressionNode `5` (test/tests/remove-duplicates.wipple:12:11-12:12)
+  at test/tests/remove-duplicates.wipple:12:11-12:12
+  has type Number
+  is an expression
+NumberExpressionNode `5` (test/tests/remove-duplicates.wipple:12:14-12:15)
+  at test/tests/remove-duplicates.wipple:12:14-12:15
+  has type Number
+  is an expression
+NumberExpressionNode `4` (test/tests/remove-duplicates.wipple:12:17-12:18)
+  at test/tests/remove-duplicates.wipple:12:17-12:18
+  has type Number
+  is an expression
+NumberExpressionNode `3` (test/tests/remove-duplicates.wipple:12:20-12:21)
+  at test/tests/remove-duplicates.wipple:12:20-12:21
+  has type Number
+  is an expression
+NumberExpressionNode `3` (test/tests/remove-duplicates.wipple:12:23-12:24)
+  at test/tests/remove-duplicates.wipple:12:23-12:24
+  has type Number
+  is an expression
+NumberExpressionNode `3` (test/tests/remove-duplicates.wipple:12:26-12:27)
+  at test/tests/remove-duplicates.wipple:12:26-12:27
+  has type Number
+  is an expression
+NumberExpressionNode `2` (test/tests/remove-duplicates.wipple:12:29-12:30)
+  at test/tests/remove-duplicates.wipple:12:29-12:30
+  has type Number
+  is an expression
+NumberExpressionNode `1` (test/tests/remove-duplicates.wipple:12:32-12:33)
+  at test/tests/remove-duplicates.wipple:12:32-12:33
+  has type Number
+  is an expression
+NumberExpressionNode `2` (test/tests/remove-duplicates.wipple:12:35-12:36)
+  at test/tests/remove-duplicates.wipple:12:35-12:36
+  has type Number
+  is an expression
+NumberExpressionNode `3` (test/tests/remove-duplicates.wipple:12:38-12:39)
+  at test/tests/remove-duplicates.wipple:12:38-12:39
+  has type Number
+  is an expression
+NumberExpressionNode `4` (test/tests/remove-duplicates.wipple:12:41-12:42)
+  at test/tests/remove-duplicates.wipple:12:41-12:42
+  has type Number
+  is an expression
+NumberExpressionNode `5` (test/tests/remove-duplicates.wipple:12:44-12:45)
+  at test/tests/remove-duplicates.wipple:12:44-12:45
+  has type Number
+  is an expression
+CollectionExpressionNode `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (test/tests/remove-duplicates.wipple:12:11-12:45)
+  at test/tests/remove-duplicates.wipple:12:11-12:45
+  has type List Number
+  is an expression
+VariableExpressionNode `numbers` (test/tests/remove-duplicates.wipple:13:1-13:8)
+  at test/tests/remove-duplicates.wipple:13:1-13:8
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `numbers` (test/tests/remove-duplicates.wipple:12:1-12:8)
+VariableExpressionNode `remove-duplicates` (test/tests/remove-duplicates.wipple:13:11-13:28)
+  at test/tests/remove-duplicates.wipple:13:11-13:28
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65)), Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65)), Hash Number (`instance (Hash Number)` (library/src/foundation/dictionary.wipple:4:1-4:42)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65)), Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65)), Hash Number (`instance (Hash Number)` (library/src/foundation/dictionary.wipple:4:1-4:42)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65)), Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65)), Hash Number (`instance (Hash Number)` (library/src/foundation/dictionary.wipple:4:1-4:42)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65)), Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65)), Hash Number (`instance (Hash Number)` (library/src/foundation/dictionary.wipple:4:1-4:42))
+  has type (List Number) -> Sequence Number
+  is an expression
+  resolved to 1 definition(s): `remove-duplicates` (test/tests/remove-duplicates.wipple:1:1-3:112)
+VariableExpressionNode `each` (test/tests/remove-duplicates.wipple:13:31-13:35)
+  at test/tests/remove-duplicates.wipple:13:31-13:35
+  has bound(s) As-Sequence (Sequence Number) Number (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73)), As-Sequence (Sequence Number) Number (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
+  has type (Number -> ()) -> (Sequence Number) -> ()
+  is an expression
+  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
+VariableExpressionNode `show` (test/tests/remove-duplicates.wipple:13:36-13:40)
+  at test/tests/remove-duplicates.wipple:13:36-13:40
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+CallExpressionNode `each show` (test/tests/remove-duplicates.wipple:13:31-13:40)
+  at test/tests/remove-duplicates.wipple:13:31-13:40
+  has type (Sequence Number) -> ()
+  is an expression
+OperatorExpressionNode `numbers . remove-duplicates` (test/tests/remove-duplicates.wipple:13:1-13:28)
+  at test/tests/remove-duplicates.wipple:13:1-13:28
+  has type Sequence Number
+  is an expression
+OperatorExpressionNode `numbers . remove-duplicates . each show` (test/tests/remove-duplicates.wipple:13:1-13:40)
+  at test/tests/remove-duplicates.wipple:13:1-13:40
+  has type ()
+  is an expression
+CallExpressionNode `.` (test/tests/remove-duplicates.wipple:13:9-13:10)
+  at test/tests/remove-duplicates.wipple:13:9-13:10
+  has type Sequence Number
+  is an expression
+CallExpressionNode `.` (test/tests/remove-duplicates.wipple:13:29-13:30)
+  at test/tests/remove-duplicates.wipple:13:29-13:30
+  has type ()
+  is an expression
+CallExpressionNode `.` (test/tests/remove-duplicates.wipple:13:9-13:10)
+  at test/tests/remove-duplicates.wipple:13:9-13:10
+  has type Sequence Number
+  is an expression
+CallExpressionNode `.` (test/tests/remove-duplicates.wipple:6:25-6:26)
+  at test/tests/remove-duplicates.wipple:6:25-6:26
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `and` (test/tests/remove-duplicates.wipple:6:49-6:52)
+  at test/tests/remove-duplicates.wipple:6:49-6:52
+  has bound(s) And Boolean Boolean Boolean (`instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:26:1-26:63))
+  has type Boolean {Boolean} -> Boolean
+  is an expression
+  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:24:1-25:74)
+BlockExpressionNode `do {⋯` (test/tests/remove-duplicates.wipple:6:54-9:4)
+  at test/tests/remove-duplicates.wipple:6:54-9:4
+  has type {Boolean}
+  is an expression
+CallExpressionNode `seen . (not contains?) item) and (do {⋯` (test/tests/remove-duplicates.wipple:6:20-9:4)
+  at test/tests/remove-duplicates.wipple:6:20-9:4
+  has type Boolean
+  is an expression
+CallExpressionNode `.` (test/tests/remove-duplicates.wipple:6:25-6:26)
+  at test/tests/remove-duplicates.wipple:6:25-6:26
+  has type Boolean
+  is an expression
+CallExpressionNode `.` (test/tests/remove-duplicates.wipple:7:21-7:22)
+  at test/tests/remove-duplicates.wipple:7:21-7:22
+  has type Set element
+  is an expression
+CallExpressionNode `.` (test/tests/remove-duplicates.wipple:7:21-7:22)
+  at test/tests/remove-duplicates.wipple:7:21-7:22
+  has type Set element
+  is an expression
+
+Output:
+5
+4
+3
+2
+1

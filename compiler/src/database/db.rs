@@ -145,54 +145,66 @@ impl Db {
     pub fn render<'a>(&'a self, value: &'a dyn Render) -> impl Display + 'a {
         self.render.wrap(self, value)
     }
+
+    pub fn display(&self, filter: impl Fn(&NodeRef) -> bool) -> impl Display {
+        struct Display<'a, F> {
+            db: &'a Db,
+            filter: F,
+        }
+
+        impl<'a, F> std::fmt::Display for Display<'a, F>
+        where
+            F: Fn(&NodeRef) -> bool,
+        {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                let mut nodes = BTreeMap::<NodeRef, Vec<_>>::new();
+                for facts in self.db.facts.values() {
+                    for (node, fact) in facts {
+                        let Some(node) = node.upgrade() else {
+                            continue;
+                        };
+
+                        if node.is_hidden() || !(self.filter)(&node) {
+                            continue;
+                        }
+
+                        nodes.entry(node.clone()).or_default().push(fact.as_ref());
+                    }
+                }
+
+                for (node, facts) in nodes {
+                    writeln!(f, "{} {}", node.type_name(), self.db.render(&node))?;
+
+                    let mut facts = facts
+                        .into_iter()
+                        .filter_map(|fact| {
+                            let mut buf = String::new();
+                            Render::write(fact, &mut buf, self.db).ok();
+                            (!buf.is_empty()).then_some(buf)
+                        })
+                        .collect::<Vec<_>>();
+
+                    facts.sort();
+
+                    if facts.is_empty() {
+                        writeln!(f, "  (no facts)")?;
+                    } else {
+                        for entry in facts {
+                            writeln!(f, "  {entry}")?;
+                        }
+                    }
+                }
+
+                Ok(())
+            }
+        }
+
+        Display { db: self, filter }
+    }
 }
 
 impl Debug for Db {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Db").finish_non_exhaustive()
-    }
-}
-
-impl Display for Db {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut nodes = BTreeMap::<NodeRef, Vec<_>>::new();
-        for facts in self.facts.values() {
-            for (node, fact) in facts {
-                let Some(node) = node.upgrade() else {
-                    continue;
-                };
-
-                if node.is_hidden() {
-                    continue;
-                }
-
-                nodes.entry(node.clone()).or_default().push(fact.as_ref());
-            }
-        }
-
-        for (node, facts) in nodes {
-            writeln!(f, "{} {}", node.type_name(), self.render(&node))?;
-
-            let mut facts = facts
-                .into_iter()
-                .filter_map(|fact| {
-                    let mut buf = String::new();
-                    Render::write(fact, &mut buf, self).ok();
-                    (!buf.is_empty()).then_some(buf)
-                })
-                .collect::<Vec<_>>();
-
-            facts.sort();
-
-            if facts.is_empty() {
-                writeln!(f, "  (no facts)")?;
-            } else {
-                for entry in facts {
-                    writeln!(f, "  {entry}")?;
-                }
-            }
-        }
-
-        Ok(())
     }
 }

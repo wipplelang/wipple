@@ -1,0 +1,42 @@
+Facts:
+TypeDefinitionNode `Grade : type {⋯}` (test/tests/enumeration.wipple:1:1-9:2)
+  at test/tests/enumeration.wipple:1:1-9:2
+  has definition constraints
+  has type Grade
+  is a definition
+WildcardPatternNode `_` (test/tests/enumeration.wipple:11:1-11:2)
+  at test/tests/enumeration.wipple:11:1-11:2
+  has type Grade
+  is a pattern
+ConstructorExpressionNode `A` (test/tests/enumeration.wipple:11:5-11:6)
+  at test/tests/enumeration.wipple:11:5-11:6
+  has type Grade
+  is an expression
+  resolved to 1 definition(s): `A` (test/tests/enumeration.wipple:4:3-4:4)
+VariantNode `A` (test/tests/enumeration.wipple:4:3-4:4)
+  at test/tests/enumeration.wipple:4:3-4:4
+  has definition constraints
+  has type Grade
+  is a definition
+VariantNode `B` (test/tests/enumeration.wipple:5:3-5:4)
+  at test/tests/enumeration.wipple:5:3-5:4
+  has definition constraints
+  has type Grade
+  is a definition
+VariantNode `C` (test/tests/enumeration.wipple:6:3-6:4)
+  at test/tests/enumeration.wipple:6:3-6:4
+  has definition constraints
+  has type Grade
+  is a definition
+VariantNode `D` (test/tests/enumeration.wipple:7:3-7:4)
+  at test/tests/enumeration.wipple:7:3-7:4
+  has definition constraints
+  has type Grade
+  is a definition
+VariantNode `F` (test/tests/enumeration.wipple:8:3-8:4)
+  at test/tests/enumeration.wipple:8:3-8:4
+  has definition constraints
+  has type Grade
+  is a definition
+
+Output:

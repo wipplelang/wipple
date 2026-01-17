@@ -1,0 +1,268 @@
+Facts:
+TypeParameterNode `value` (test/tests/linked-list.wipple:3:15-3:20)
+  at test/tests/linked-list.wipple:3:15-3:20
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/linked-list.wipple:3:15-3:20)
+TypeParameterNode `value` (test/tests/linked-list.wipple:5:8-5:13)
+  at test/tests/linked-list.wipple:5:8-5:13
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/linked-list.wipple:3:15-3:20)
+TypeParameterNode `value` (test/tests/linked-list.wipple:5:27-5:32)
+  at test/tests/linked-list.wipple:5:27-5:32
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/linked-list.wipple:3:15-3:20)
+NamedTypeNode `Linked-List value` (test/tests/linked-list.wipple:5:15-5:32)
+  at test/tests/linked-list.wipple:5:15-5:32
+  has type Linked-List value
+  is a type
+  resolved to 1 definition(s): `Linked-List : value => type {⋯}` (test/tests/linked-list.wipple:1:1-6:2)
+TypeDefinitionNode `Linked-List : value => type {⋯}` (test/tests/linked-list.wipple:1:1-6:2)
+  at test/tests/linked-list.wipple:1:1-6:2
+  has definition constraints
+  has type Linked-List value
+  has type parameters
+  is a definition
+TypeParameterNode `value` (test/tests/linked-list.wipple:8:24-8:29)
+  at test/tests/linked-list.wipple:8:24-8:29
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/linked-list.wipple:8:24-8:29)
+TypeParameterNode `result` (test/tests/linked-list.wipple:8:30-8:36)
+  at test/tests/linked-list.wipple:8:30-8:36
+  has type result
+  is a type
+  resolved to 1 definition(s): `result` (test/tests/linked-list.wipple:8:30-8:36)
+TypeParameterNode `result` (test/tests/linked-list.wipple:8:40-8:46)
+  at test/tests/linked-list.wipple:8:40-8:46
+  has type result
+  is a type
+  resolved to 1 definition(s): `result` (test/tests/linked-list.wipple:8:30-8:36)
+FunctionTypeNode `value result -> result` (test/tests/linked-list.wipple:8:24-8:46)
+  at test/tests/linked-list.wipple:8:24-8:46
+  has type value result -> result
+  is a type
+TypeParameterNode `result` (test/tests/linked-list.wipple:8:48-8:54)
+  at test/tests/linked-list.wipple:8:48-8:54
+  has type result
+  is a type
+  resolved to 1 definition(s): `result` (test/tests/linked-list.wipple:8:30-8:36)
+TypeParameterNode `value` (test/tests/linked-list.wipple:8:68-8:73)
+  at test/tests/linked-list.wipple:8:68-8:73
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/linked-list.wipple:8:24-8:29)
+NamedTypeNode `Linked-List value` (test/tests/linked-list.wipple:8:56-8:73)
+  at test/tests/linked-list.wipple:8:56-8:73
+  has type Linked-List value
+  is a type
+  resolved to 1 definition(s): `Linked-List : value => type {⋯}` (test/tests/linked-list.wipple:1:1-6:2)
+TypeParameterNode `result` (test/tests/linked-list.wipple:8:78-8:84)
+  at test/tests/linked-list.wipple:8:78-8:84
+  has type result
+  is a type
+  resolved to 1 definition(s): `result` (test/tests/linked-list.wipple:8:30-8:36)
+FunctionTypeNode `(value result -> result) result (Linked-List value) -> result` (test/tests/linked-list.wipple:8:23-8:84)
+  at test/tests/linked-list.wipple:8:23-8:84
+  has type (value result -> result) result (Linked-List value) -> result
+  is a type
+ConstantDefinitionNode `reduce-linked-list` (test/tests/linked-list.wipple:8:1-8:84)
+  at test/tests/linked-list.wipple:8:1-8:84
+  has definition constraints
+  has type (value result -> result) result (Linked-List value) -> result
+  has type parameters
+  is a definition
+VariablePatternNode `reduce-linked-list` (test/tests/linked-list.wipple:9:1-9:19)
+  at test/tests/linked-list.wipple:9:1-9:19
+VariablePatternNode `f` (test/tests/linked-list.wipple:9:22-9:23)
+  at test/tests/linked-list.wipple:9:22-9:23
+  has type value result -> result
+  is a pattern
+VariablePatternNode `result` (test/tests/linked-list.wipple:9:24-9:30)
+  at test/tests/linked-list.wipple:9:24-9:30
+  has type result
+  is a pattern
+VariablePatternNode `l` (test/tests/linked-list.wipple:9:31-9:32)
+  at test/tests/linked-list.wipple:9:31-9:32
+  has type Linked-List value
+  is a pattern
+VariableExpressionNode `l` (test/tests/linked-list.wipple:9:41-9:42)
+  at test/tests/linked-list.wipple:9:41-9:42
+  has type Linked-List value
+  is an expression
+  resolved to 1 definition(s): `l` (test/tests/linked-list.wipple:9:31-9:32)
+ConstructorPatternNode `Nil` (test/tests/linked-list.wipple:10:3-10:6)
+  at test/tests/linked-list.wipple:10:3-10:6
+  has type Linked-List value
+  is a pattern
+  resolved to 1 definition(s): `Nil` (test/tests/linked-list.wipple:4:3-4:6)
+VariableExpressionNode `result` (test/tests/linked-list.wipple:10:10-10:16)
+  at test/tests/linked-list.wipple:10:10-10:16
+  has type result
+  is an expression
+  resolved to 1 definition(s): `result` (test/tests/linked-list.wipple:9:24-9:30)
+VariablePatternNode `x` (test/tests/linked-list.wipple:11:9-11:10)
+  at test/tests/linked-list.wipple:11:9-11:10
+  has type value
+  is a pattern
+VariablePatternNode `rest` (test/tests/linked-list.wipple:11:11-11:15)
+  at test/tests/linked-list.wipple:11:11-11:15
+  has type Linked-List value
+  is a pattern
+ConstructorPatternNode `Cons x rest` (test/tests/linked-list.wipple:11:4-11:15)
+  at test/tests/linked-list.wipple:11:4-11:15
+  has type Linked-List value
+  is a pattern
+  resolved to 1 definition(s): `Cons value (Linked-List value)` (test/tests/linked-list.wipple:5:3-5:33)
+VariableExpressionNode `reduce-linked-list` (test/tests/linked-list.wipple:11:20-11:38)
+  at test/tests/linked-list.wipple:11:20-11:38
+  has type (value result -> result) result (Linked-List value) -> result
+  is an expression
+  resolved to 1 definition(s): `reduce-linked-list` (test/tests/linked-list.wipple:8:1-8:84)
+VariableExpressionNode `f` (test/tests/linked-list.wipple:11:39-11:40)
+  at test/tests/linked-list.wipple:11:39-11:40
+  has type value result -> result
+  is an expression
+  resolved to 1 definition(s): `f` (test/tests/linked-list.wipple:9:22-9:23)
+VariableExpressionNode `f` (test/tests/linked-list.wipple:11:42-11:43)
+  at test/tests/linked-list.wipple:11:42-11:43
+  has type value result -> result
+  is an expression
+  resolved to 1 definition(s): `f` (test/tests/linked-list.wipple:9:22-9:23)
+VariableExpressionNode `x` (test/tests/linked-list.wipple:11:44-11:45)
+  at test/tests/linked-list.wipple:11:44-11:45
+  has type value
+  is an expression
+  resolved to 1 definition(s): `x` (test/tests/linked-list.wipple:11:9-11:10)
+VariableExpressionNode `result` (test/tests/linked-list.wipple:11:46-11:52)
+  at test/tests/linked-list.wipple:11:46-11:52
+  has type result
+  is an expression
+  resolved to 1 definition(s): `result` (test/tests/linked-list.wipple:9:24-9:30)
+CallExpressionNode `f x result` (test/tests/linked-list.wipple:11:42-11:52)
+  at test/tests/linked-list.wipple:11:42-11:52
+  has type result
+  is an expression
+VariableExpressionNode `rest` (test/tests/linked-list.wipple:11:54-11:58)
+  at test/tests/linked-list.wipple:11:54-11:58
+  has type Linked-List value
+  is an expression
+  resolved to 1 definition(s): `rest` (test/tests/linked-list.wipple:11:11-11:15)
+CallExpressionNode `reduce-linked-list f (f x result) rest` (test/tests/linked-list.wipple:11:20-11:58)
+  at test/tests/linked-list.wipple:11:20-11:58
+  has type result
+  is an expression
+WhenExpressionNode `when l {⋯}` (test/tests/linked-list.wipple:9:36-12:2)
+  at test/tests/linked-list.wipple:9:36-12:2
+  has type result
+  is an expression
+FunctionExpressionNode `f result l -> when l {⋯}` (test/tests/linked-list.wipple:9:22-12:2)
+  at test/tests/linked-list.wipple:9:22-12:2
+  has type (value result -> result) result (Linked-List value) -> result
+  is an expression
+VariablePatternNode `list` (test/tests/linked-list.wipple:14:1-14:5)
+  at test/tests/linked-list.wipple:14:1-14:5
+  has type Linked-List Number
+  is a pattern
+ConstructorExpressionNode `Cons` (test/tests/linked-list.wipple:14:8-14:12)
+  at test/tests/linked-list.wipple:14:8-14:12
+  has type Number (Linked-List Number) -> Linked-List Number
+  is an expression
+  resolved to 1 definition(s): `Cons value (Linked-List value)` (test/tests/linked-list.wipple:5:3-5:33)
+NumberExpressionNode `1` (test/tests/linked-list.wipple:14:13-14:14)
+  at test/tests/linked-list.wipple:14:13-14:14
+  has type Number
+  is an expression
+ConstructorExpressionNode `Cons` (test/tests/linked-list.wipple:14:16-14:20)
+  at test/tests/linked-list.wipple:14:16-14:20
+  has type Number (Linked-List Number) -> Linked-List Number
+  is an expression
+  resolved to 1 definition(s): `Cons value (Linked-List value)` (test/tests/linked-list.wipple:5:3-5:33)
+NumberExpressionNode `2` (test/tests/linked-list.wipple:14:21-14:22)
+  at test/tests/linked-list.wipple:14:21-14:22
+  has type Number
+  is an expression
+ConstructorExpressionNode `Cons` (test/tests/linked-list.wipple:14:24-14:28)
+  at test/tests/linked-list.wipple:14:24-14:28
+  has type Number (Linked-List Number) -> Linked-List Number
+  is an expression
+  resolved to 1 definition(s): `Cons value (Linked-List value)` (test/tests/linked-list.wipple:5:3-5:33)
+NumberExpressionNode `3` (test/tests/linked-list.wipple:14:29-14:30)
+  at test/tests/linked-list.wipple:14:29-14:30
+  has type Number
+  is an expression
+ConstructorExpressionNode `Nil` (test/tests/linked-list.wipple:14:31-14:34)
+  at test/tests/linked-list.wipple:14:31-14:34
+  has type Linked-List Number
+  is an expression
+  resolved to 1 definition(s): `Nil` (test/tests/linked-list.wipple:4:3-4:6)
+CallExpressionNode `Cons 3 Nil` (test/tests/linked-list.wipple:14:24-14:34)
+  at test/tests/linked-list.wipple:14:24-14:34
+  has type Linked-List Number
+  is an expression
+CallExpressionNode `Cons 2 (Cons 3 Nil)` (test/tests/linked-list.wipple:14:16-14:35)
+  at test/tests/linked-list.wipple:14:16-14:35
+  has type Linked-List Number
+  is an expression
+CallExpressionNode `Cons 1 (Cons 2 (Cons 3 Nil))` (test/tests/linked-list.wipple:14:8-14:36)
+  at test/tests/linked-list.wipple:14:8-14:36
+  has type Linked-List Number
+  is an expression
+VariablePatternNode `sum` (test/tests/linked-list.wipple:16:1-16:4)
+  at test/tests/linked-list.wipple:16:1-16:4
+  has type Number
+  is a pattern
+VariableExpressionNode `reduce-linked-list` (test/tests/linked-list.wipple:16:7-16:25)
+  at test/tests/linked-list.wipple:16:7-16:25
+  has type (Number Number -> Number) Number (Linked-List Number) -> Number
+  is an expression
+  resolved to 1 definition(s): `reduce-linked-list` (test/tests/linked-list.wipple:8:1-8:84)
+ConstructorExpressionNode `Add` (test/tests/linked-list.wipple:16:26-16:29)
+  at test/tests/linked-list.wipple:16:26-16:29
+  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58)
+NumberExpressionNode `0` (test/tests/linked-list.wipple:16:30-16:31)
+  at test/tests/linked-list.wipple:16:30-16:31
+  has type Number
+  is an expression
+VariableExpressionNode `list` (test/tests/linked-list.wipple:16:32-16:36)
+  at test/tests/linked-list.wipple:16:32-16:36
+  has type Linked-List Number
+  is an expression
+  resolved to 1 definition(s): `list` (test/tests/linked-list.wipple:14:1-14:5)
+CallExpressionNode `reduce-linked-list Add 0 list` (test/tests/linked-list.wipple:16:7-16:36)
+  at test/tests/linked-list.wipple:16:7-16:36
+  has type Number
+  is an expression
+VariableExpressionNode `show` (test/tests/linked-list.wipple:17:1-17:5)
+  at test/tests/linked-list.wipple:17:1-17:5
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `sum` (test/tests/linked-list.wipple:17:6-17:9)
+  at test/tests/linked-list.wipple:17:6-17:9
+  has type Number
+  is an expression
+  resolved to 1 definition(s): `sum` (test/tests/linked-list.wipple:16:1-16:4)
+CallExpressionNode `show sum` (test/tests/linked-list.wipple:17:1-17:9)
+  at test/tests/linked-list.wipple:17:1-17:9
+  has type ()
+  is an expression
+VariantNode `Nil` (test/tests/linked-list.wipple:4:3-4:6)
+  at test/tests/linked-list.wipple:4:3-4:6
+  has definition constraints
+  has type Linked-List value
+  is a definition
+VariantNode `Cons value (Linked-List value)` (test/tests/linked-list.wipple:5:3-5:33)
+  at test/tests/linked-list.wipple:5:3-5:33
+  has definition constraints
+  has type value (Linked-List value) -> Linked-List value
+  is a definition
+
+Output:
+6

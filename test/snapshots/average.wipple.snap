@@ -1,0 +1,103 @@
+Facts:
+VariablePatternNode `average` (test/tests/average.wipple:3:1-3:8)
+  at test/tests/average.wipple:3:1-3:8
+  has type (List Number) -> Number
+  is a pattern
+VariablePatternNode `numbers` (test/tests/average.wipple:3:11-3:18)
+  at test/tests/average.wipple:3:11-3:18
+  has type List Number
+  is a pattern
+VariableExpressionNode `sum` (test/tests/average.wipple:3:22-3:25)
+  at test/tests/average.wipple:3:22-3:25
+  has bound(s) Initial Number (`instance (Initial Number)` (library/src/foundation/language.wipple:39:1-39:30)), Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87)), Initial Number (`instance (Initial Number)` (library/src/foundation/language.wipple:39:1-39:30)), Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87)), As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has type (List Number) -> Number
+  is an expression
+  resolved to 1 definition(s): `sum` (library/src/foundation/sequence.wipple:165:1-166:78)
+VariableExpressionNode `numbers` (test/tests/average.wipple:3:26-3:33)
+  at test/tests/average.wipple:3:26-3:33
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `numbers` (test/tests/average.wipple:3:11-3:18)
+CallExpressionNode `sum numbers` (test/tests/average.wipple:3:22-3:33)
+  at test/tests/average.wipple:3:22-3:33
+  has type Number
+  is an expression
+VariableExpressionNode `count` (test/tests/average.wipple:3:36-3:41)
+  at test/tests/average.wipple:3:36-3:41
+  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has type (List Number) -> Number
+  is an expression
+  resolved to 1 definition(s): `count` (library/src/foundation/sequence.wipple:260:1-261:69)
+VariableExpressionNode `numbers` (test/tests/average.wipple:3:42-3:49)
+  at test/tests/average.wipple:3:42-3:49
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `numbers` (test/tests/average.wipple:3:11-3:18)
+CallExpressionNode `count numbers` (test/tests/average.wipple:3:36-3:49)
+  at test/tests/average.wipple:3:36-3:49
+  has type Number
+  is an expression
+OperatorExpressionNode `sum numbers / count numbers` (test/tests/average.wipple:3:22-3:49)
+  at test/tests/average.wipple:3:22-3:49
+  has type Number
+  is an expression
+FunctionExpressionNode `numbers -> sum numbers / count numbers` (test/tests/average.wipple:3:11-3:49)
+  at test/tests/average.wipple:3:11-3:49
+  has type (List Number) -> Number
+  is an expression
+VariableExpressionNode `show` (test/tests/average.wipple:4:1-4:5)
+  at test/tests/average.wipple:4:1-4:5
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `average` (test/tests/average.wipple:4:7-4:14)
+  at test/tests/average.wipple:4:7-4:14
+  has type (List Number) -> Number
+  is an expression
+  resolved to 1 definition(s): `average` (test/tests/average.wipple:3:1-3:8)
+NumberExpressionNode `1` (test/tests/average.wipple:4:16-4:17)
+  at test/tests/average.wipple:4:16-4:17
+  has type Number
+  is an expression
+NumberExpressionNode `2` (test/tests/average.wipple:4:19-4:20)
+  at test/tests/average.wipple:4:19-4:20
+  has type Number
+  is an expression
+NumberExpressionNode `3` (test/tests/average.wipple:4:22-4:23)
+  at test/tests/average.wipple:4:22-4:23
+  has type Number
+  is an expression
+NumberExpressionNode `4` (test/tests/average.wipple:4:25-4:26)
+  at test/tests/average.wipple:4:25-4:26
+  has type Number
+  is an expression
+NumberExpressionNode `5` (test/tests/average.wipple:4:28-4:29)
+  at test/tests/average.wipple:4:28-4:29
+  has type Number
+  is an expression
+CollectionExpressionNode `1, 2, 3, 4, 5` (test/tests/average.wipple:4:16-4:29)
+  at test/tests/average.wipple:4:16-4:29
+  has type List Number
+  is an expression
+CallExpressionNode `average (1, 2, 3, 4, 5)` (test/tests/average.wipple:4:7-4:30)
+  at test/tests/average.wipple:4:7-4:30
+  has type Number
+  is an expression
+CallExpressionNode `show (average (1, 2, 3, 4, 5))` (test/tests/average.wipple:4:1-4:31)
+  at test/tests/average.wipple:4:1-4:31
+  has type ()
+  is an expression
+ConstructorExpressionNode `/` (test/tests/average.wipple:3:34-3:35)
+  at test/tests/average.wipple:3:34-3:35
+  has bound(s) Divide Number Number Number (`instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:93))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:51:1-52:71)
+CallExpressionNode `sum numbers / count numbers` (test/tests/average.wipple:3:22-3:49)
+  at test/tests/average.wipple:3:22-3:49
+  has type Number
+  is an expression
+
+Output:
+3

@@ -1,0 +1,48 @@
+Facts:
+VariableExpressionNode `repeat` (test/tests/repeat.wipple:3:1-3:7)
+  at test/tests/repeat.wipple:3:1-3:7
+  has bound(s) Repeat-Predicate Times () () (`instance (Repeat-Predicate Times body ())` (library/src/foundation/repeat.wipple:44:1-44:139))
+  has type Times {()} -> ()
+  is an expression
+  resolved to 1 definition(s): `repeat` (library/src/foundation/repeat.wipple:50:1-51:76)
+NumberExpressionNode `4` (test/tests/repeat.wipple:3:9-3:10)
+  at test/tests/repeat.wipple:3:9-3:10
+  has type Number
+  is an expression
+VariableExpressionNode `times` (test/tests/repeat.wipple:3:11-3:16)
+  at test/tests/repeat.wipple:3:11-3:16
+  has type Number -> Times
+  is an expression
+  resolved to 1 definition(s): `times :: Number -> Times` (library/src/foundation/repeat.wipple:46:1-47:32)
+CallExpressionNode `4 times` (test/tests/repeat.wipple:3:9-3:16)
+  at test/tests/repeat.wipple:3:9-3:16
+  has type Times
+  is an expression
+VariableExpressionNode `show` (test/tests/repeat.wipple:4:3-4:7)
+  at test/tests/repeat.wipple:4:3-4:7
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+StringExpressionNode `"Hello, world!"` (test/tests/repeat.wipple:4:8-4:23)
+  at test/tests/repeat.wipple:4:8-4:23
+  has type String
+  is an expression
+CallExpressionNode `show "Hello, world!"` (test/tests/repeat.wipple:4:3-4:23)
+  at test/tests/repeat.wipple:4:3-4:23
+  has type ()
+  is an expression
+BlockExpressionNode `{⋯}` (test/tests/repeat.wipple:3:18-5:2)
+  at test/tests/repeat.wipple:3:18-5:2
+  has type {()}
+  is an expression
+CallExpressionNode `repeat (4 times) {⋯}` (test/tests/repeat.wipple:3:1-5:2)
+  at test/tests/repeat.wipple:3:1-5:2
+  has type ()
+  is an expression
+
+Output:
+Hello, world!
+Hello, world!
+Hello, world!
+Hello, world!

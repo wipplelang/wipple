@@ -14,11 +14,6 @@ path = "cli/main.rs"
 name = "wipple-server"
 path = "server/main.rs"
 
-[[test]]
-name = "wipple-test"
-path = "test.rs"
-harness = false
-
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
@@ -34,6 +29,7 @@ lambda_runtime = { version = "1", features = ["anyhow"] }
 line-index = "0.1"
 logos = "0.16"
 petgraph = "0.8"
+rayon = "1"
 regex = "1"
 reqwest = { version = "0.13", features = ["json", "rustls"] }
 serde = { version = "1", features = ["derive"] }

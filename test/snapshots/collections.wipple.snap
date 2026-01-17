@@ -1,0 +1,36 @@
+Facts:
+NamedTypeNode `Number` (test/tests/collections.wipple:3:17-3:23)
+  at test/tests/collections.wipple:3:17-3:23
+  has type Number
+  is a type
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+NamedTypeNode `List Number` (test/tests/collections.wipple:3:12-3:23)
+  at test/tests/collections.wipple:3:12-3:23
+  has type List Number
+  is a type
+  resolved to 1 definition(s): `List` (library/src/foundation/list.wipple:1:1-1:35)
+ConstantDefinitionNode `my-list :: List Number` (test/tests/collections.wipple:1:1-3:23)
+  at test/tests/collections.wipple:1:1-3:23
+  has definition constraints
+  has type List Number
+  is a definition
+VariablePatternNode `my-list` (test/tests/collections.wipple:4:1-4:8)
+  at test/tests/collections.wipple:4:1-4:8
+NumberExpressionNode `1` (test/tests/collections.wipple:4:11-4:12)
+  at test/tests/collections.wipple:4:11-4:12
+  has type Number
+  is an expression
+NumberExpressionNode `2` (test/tests/collections.wipple:4:14-4:15)
+  at test/tests/collections.wipple:4:14-4:15
+  has type Number
+  is an expression
+NumberExpressionNode `3` (test/tests/collections.wipple:4:17-4:18)
+  at test/tests/collections.wipple:4:17-4:18
+  has type Number
+  is an expression
+CollectionExpressionNode `1, 2, 3` (test/tests/collections.wipple:4:11-4:18)
+  at test/tests/collections.wipple:4:11-4:18
+  has type List Number
+  is an expression
+
+Output:

@@ -1,0 +1,220 @@
+Facts:
+VariableExpressionNode `show` (test/tests/trig.wipple:3:1-3:5)
+  at test/tests/trig.wipple:3:1-3:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `sin` (test/tests/trig.wipple:3:7-3:10)
+  at test/tests/trig.wipple:3:7-3:10
+  has type Angle -> Number
+  is an expression
+  resolved to 1 definition(s): `sin :: Angle -> Number` (library/src/foundation/math.wipple:115:1-116:23)
+NumberExpressionNode `0` (test/tests/trig.wipple:3:12-3:13)
+  at test/tests/trig.wipple:3:12-3:13
+  has type Number
+  is an expression
+VariableExpressionNode `degrees` (test/tests/trig.wipple:3:14-3:21)
+  at test/tests/trig.wipple:3:14-3:21
+  has type Number -> Angle
+  is an expression
+  resolved to 1 definition(s): `degrees :: Number -> Angle` (library/src/foundation/math.wipple:111:1-112:34)
+CallExpressionNode `0 degrees` (test/tests/trig.wipple:3:12-3:21)
+  at test/tests/trig.wipple:3:12-3:21
+  has type Angle
+  is an expression
+CallExpressionNode `sin (0 degrees)` (test/tests/trig.wipple:3:7-3:22)
+  at test/tests/trig.wipple:3:7-3:22
+  has type Number
+  is an expression
+NumberExpressionNode `0` (test/tests/trig.wipple:3:25-3:26)
+  at test/tests/trig.wipple:3:25-3:26
+  has type Number
+  is an expression
+OperatorExpressionNode `sin (0 degrees) = 0` (test/tests/trig.wipple:3:7-3:26)
+  at test/tests/trig.wipple:3:7-3:26
+  has type Boolean
+  is an expression
+CallExpressionNode `show (sin (0 degrees) = 0)` (test/tests/trig.wipple:3:1-3:27)
+  at test/tests/trig.wipple:3:1-3:27
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/trig.wipple:4:1-4:5)
+  at test/tests/trig.wipple:4:1-4:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `cos` (test/tests/trig.wipple:4:7-4:10)
+  at test/tests/trig.wipple:4:7-4:10
+  has type Angle -> Number
+  is an expression
+  resolved to 1 definition(s): `cos :: Angle -> Number` (library/src/foundation/math.wipple:119:1-120:23)
+NumberExpressionNode `0` (test/tests/trig.wipple:4:12-4:13)
+  at test/tests/trig.wipple:4:12-4:13
+  has type Number
+  is an expression
+VariableExpressionNode `degrees` (test/tests/trig.wipple:4:14-4:21)
+  at test/tests/trig.wipple:4:14-4:21
+  has type Number -> Angle
+  is an expression
+  resolved to 1 definition(s): `degrees :: Number -> Angle` (library/src/foundation/math.wipple:111:1-112:34)
+CallExpressionNode `0 degrees` (test/tests/trig.wipple:4:12-4:21)
+  at test/tests/trig.wipple:4:12-4:21
+  has type Angle
+  is an expression
+CallExpressionNode `cos (0 degrees)` (test/tests/trig.wipple:4:7-4:22)
+  at test/tests/trig.wipple:4:7-4:22
+  has type Number
+  is an expression
+NumberExpressionNode `1` (test/tests/trig.wipple:4:25-4:26)
+  at test/tests/trig.wipple:4:25-4:26
+  has type Number
+  is an expression
+OperatorExpressionNode `cos (0 degrees) = 1` (test/tests/trig.wipple:4:7-4:26)
+  at test/tests/trig.wipple:4:7-4:26
+  has type Boolean
+  is an expression
+CallExpressionNode `show (cos (0 degrees) = 1)` (test/tests/trig.wipple:4:1-4:27)
+  at test/tests/trig.wipple:4:1-4:27
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/trig.wipple:5:1-5:5)
+  at test/tests/trig.wipple:5:1-5:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `sin` (test/tests/trig.wipple:5:7-5:10)
+  at test/tests/trig.wipple:5:7-5:10
+  has type Angle -> Number
+  is an expression
+  resolved to 1 definition(s): `sin :: Angle -> Number` (library/src/foundation/math.wipple:115:1-116:23)
+NumberExpressionNode `45` (test/tests/trig.wipple:5:12-5:14)
+  at test/tests/trig.wipple:5:12-5:14
+  has type Number
+  is an expression
+VariableExpressionNode `degrees` (test/tests/trig.wipple:5:15-5:22)
+  at test/tests/trig.wipple:5:15-5:22
+  has type Number -> Angle
+  is an expression
+  resolved to 1 definition(s): `degrees :: Number -> Angle` (library/src/foundation/math.wipple:111:1-112:34)
+CallExpressionNode `45 degrees` (test/tests/trig.wipple:5:12-5:22)
+  at test/tests/trig.wipple:5:12-5:22
+  has type Angle
+  is an expression
+CallExpressionNode `sin (45 degrees)` (test/tests/trig.wipple:5:7-5:23)
+  at test/tests/trig.wipple:5:7-5:23
+  has type Number
+  is an expression
+VariableExpressionNode `cos` (test/tests/trig.wipple:5:26-5:29)
+  at test/tests/trig.wipple:5:26-5:29
+  has type Angle -> Number
+  is an expression
+  resolved to 1 definition(s): `cos :: Angle -> Number` (library/src/foundation/math.wipple:119:1-120:23)
+NumberExpressionNode `45` (test/tests/trig.wipple:5:31-5:33)
+  at test/tests/trig.wipple:5:31-5:33
+  has type Number
+  is an expression
+VariableExpressionNode `degrees` (test/tests/trig.wipple:5:34-5:41)
+  at test/tests/trig.wipple:5:34-5:41
+  has type Number -> Angle
+  is an expression
+  resolved to 1 definition(s): `degrees :: Number -> Angle` (library/src/foundation/math.wipple:111:1-112:34)
+CallExpressionNode `45 degrees` (test/tests/trig.wipple:5:31-5:41)
+  at test/tests/trig.wipple:5:31-5:41
+  has type Angle
+  is an expression
+CallExpressionNode `cos (45 degrees)` (test/tests/trig.wipple:5:26-5:42)
+  at test/tests/trig.wipple:5:26-5:42
+  has type Number
+  is an expression
+VariableExpressionNode `tan` (test/tests/trig.wipple:5:45-5:48)
+  at test/tests/trig.wipple:5:45-5:48
+  has type Angle -> Number
+  is an expression
+  resolved to 1 definition(s): `tan :: Angle -> Number` (library/src/foundation/math.wipple:123:1-124:23)
+NumberExpressionNode `45` (test/tests/trig.wipple:5:50-5:52)
+  at test/tests/trig.wipple:5:50-5:52
+  has type Number
+  is an expression
+VariableExpressionNode `degrees` (test/tests/trig.wipple:5:53-5:60)
+  at test/tests/trig.wipple:5:53-5:60
+  has type Number -> Angle
+  is an expression
+  resolved to 1 definition(s): `degrees :: Number -> Angle` (library/src/foundation/math.wipple:111:1-112:34)
+CallExpressionNode `45 degrees` (test/tests/trig.wipple:5:50-5:60)
+  at test/tests/trig.wipple:5:50-5:60
+  has type Angle
+  is an expression
+CallExpressionNode `tan (45 degrees)` (test/tests/trig.wipple:5:45-5:61)
+  at test/tests/trig.wipple:5:45-5:61
+  has type Number
+  is an expression
+OperatorExpressionNode `sin (45 degrees) / cos (45 degrees)` (test/tests/trig.wipple:5:7-5:42)
+  at test/tests/trig.wipple:5:7-5:42
+  has type Number
+  is an expression
+OperatorExpressionNode `sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (test/tests/trig.wipple:5:7-5:61)
+  at test/tests/trig.wipple:5:7-5:61
+  has type Boolean
+  is an expression
+CallExpressionNode `show (sin (45 degrees) / cos (45 degrees) = tan (45 degrees))` (test/tests/trig.wipple:5:1-5:62)
+  at test/tests/trig.wipple:5:1-5:62
+  has type ()
+  is an expression
+ConstructorExpressionNode `=` (test/tests/trig.wipple:3:23-3:24)
+  at test/tests/trig.wipple:3:23-3:24
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `sin (0 degrees) = 0` (test/tests/trig.wipple:3:7-3:26)
+  at test/tests/trig.wipple:3:7-3:26
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `=` (test/tests/trig.wipple:4:23-4:24)
+  at test/tests/trig.wipple:4:23-4:24
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `cos (0 degrees) = 1` (test/tests/trig.wipple:4:7-4:26)
+  at test/tests/trig.wipple:4:7-4:26
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `/` (test/tests/trig.wipple:5:24-5:25)
+  at test/tests/trig.wipple:5:24-5:25
+  has bound(s) Divide Number Number Number (`instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:93))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:51:1-52:71)
+CallExpressionNode `sin (45 degrees) / cos (45 degrees)` (test/tests/trig.wipple:5:7-5:42)
+  at test/tests/trig.wipple:5:7-5:42
+  has type Number
+  is an expression
+ConstructorExpressionNode `=` (test/tests/trig.wipple:5:43-5:44)
+  at test/tests/trig.wipple:5:43-5:44
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (test/tests/trig.wipple:5:7-5:61)
+  at test/tests/trig.wipple:5:7-5:61
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `/` (test/tests/trig.wipple:5:24-5:25)
+  at test/tests/trig.wipple:5:24-5:25
+  has bound(s) Divide Number Number Number (`instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:93))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:51:1-52:71)
+CallExpressionNode `sin (45 degrees) / cos (45 degrees)` (test/tests/trig.wipple:5:7-5:42)
+  at test/tests/trig.wipple:5:7-5:42
+  has type Number
+  is an expression
+
+Output:
+True
+True
+True

@@ -1,0 +1,300 @@
+Facts:
+VariablePatternNode `my-list` (test/tests/lists.wipple:3:1-3:8)
+  at test/tests/lists.wipple:3:1-3:8
+  has type List Number
+  is a pattern
+NumberExpressionNode `1` (test/tests/lists.wipple:3:11-3:12)
+  at test/tests/lists.wipple:3:11-3:12
+  has type Number
+  is an expression
+NumberExpressionNode `2` (test/tests/lists.wipple:3:14-3:15)
+  at test/tests/lists.wipple:3:14-3:15
+  has type Number
+  is an expression
+NumberExpressionNode `3` (test/tests/lists.wipple:3:17-3:18)
+  at test/tests/lists.wipple:3:17-3:18
+  has type Number
+  is an expression
+CollectionExpressionNode `1, 2, 3` (test/tests/lists.wipple:3:11-3:18)
+  at test/tests/lists.wipple:3:11-3:18
+  has type List Number
+  is an expression
+VariableExpressionNode `show` (test/tests/lists.wipple:5:1-5:5)
+  at test/tests/lists.wipple:5:1-5:5
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type (Maybe Number) -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `my-list` (test/tests/lists.wipple:5:7-5:14)
+  at test/tests/lists.wipple:5:7-5:14
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `my-list` (test/tests/lists.wipple:3:1-3:8)
+VariableExpressionNode `first` (test/tests/lists.wipple:5:17-5:22)
+  at test/tests/lists.wipple:5:17-5:22
+  has type (List Number) -> Maybe Number
+  is an expression
+  resolved to 1 definition(s): `first` (library/src/foundation/list.wipple:5:1-6:41)
+OperatorExpressionNode `my-list . first` (test/tests/lists.wipple:5:7-5:22)
+  at test/tests/lists.wipple:5:7-5:22
+  has type Maybe Number
+  is an expression
+CallExpressionNode `show (my-list . first)` (test/tests/lists.wipple:5:1-5:23)
+  at test/tests/lists.wipple:5:1-5:23
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/lists.wipple:6:1-6:5)
+  at test/tests/lists.wipple:6:1-6:5
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type (Maybe Number) -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `my-list` (test/tests/lists.wipple:6:7-6:14)
+  at test/tests/lists.wipple:6:7-6:14
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `my-list` (test/tests/lists.wipple:3:1-3:8)
+VariableExpressionNode `last` (test/tests/lists.wipple:6:17-6:21)
+  at test/tests/lists.wipple:6:17-6:21
+  has type (List Number) -> Maybe Number
+  is an expression
+  resolved to 1 definition(s): `last` (library/src/foundation/list.wipple:9:1-10:40)
+OperatorExpressionNode `my-list . last` (test/tests/lists.wipple:6:7-6:21)
+  at test/tests/lists.wipple:6:7-6:21
+  has type Maybe Number
+  is an expression
+CallExpressionNode `show (my-list . last)` (test/tests/lists.wipple:6:1-6:22)
+  at test/tests/lists.wipple:6:1-6:22
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/lists.wipple:7:1-7:5)
+  at test/tests/lists.wipple:7:1-7:5
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type (Maybe Number) -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `my-list` (test/tests/lists.wipple:7:8-7:15)
+  at test/tests/lists.wipple:7:8-7:15
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `my-list` (test/tests/lists.wipple:3:1-3:8)
+VariableExpressionNode `initial` (test/tests/lists.wipple:7:18-7:25)
+  at test/tests/lists.wipple:7:18-7:25
+  has type (List Number) -> Maybe (List Number)
+  is an expression
+  resolved to 1 definition(s): `initial` (library/src/foundation/list.wipple:13:1-14:50)
+OperatorExpressionNode `my-list . initial` (test/tests/lists.wipple:7:8-7:25)
+  at test/tests/lists.wipple:7:8-7:25
+  has type Maybe (List Number)
+  is an expression
+VariableExpressionNode `unreachable` (test/tests/lists.wipple:7:30-7:41)
+  at test/tests/lists.wipple:7:30-7:41
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:27:1-27:21)
+VariableExpressionNode `last` (test/tests/lists.wipple:7:44-7:48)
+  at test/tests/lists.wipple:7:44-7:48
+  has type (List Number) -> Maybe Number
+  is an expression
+  resolved to 1 definition(s): `last` (library/src/foundation/list.wipple:9:1-10:40)
+OperatorExpressionNode `my-list . initial) or unreachable` (test/tests/lists.wipple:7:8-7:41)
+  at test/tests/lists.wipple:7:8-7:41
+  has type List Number
+  is an expression
+OperatorExpressionNode `my-list . initial) or unreachable . last` (test/tests/lists.wipple:7:8-7:48)
+  at test/tests/lists.wipple:7:8-7:48
+  has type Maybe Number
+  is an expression
+CallExpressionNode `show ((my-list . initial) or unreachable . last)` (test/tests/lists.wipple:7:1-7:49)
+  at test/tests/lists.wipple:7:1-7:49
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/lists.wipple:8:1-8:5)
+  at test/tests/lists.wipple:8:1-8:5
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type (Maybe Number) -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `my-list` (test/tests/lists.wipple:8:8-8:15)
+  at test/tests/lists.wipple:8:8-8:15
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `my-list` (test/tests/lists.wipple:3:1-3:8)
+VariableExpressionNode `tail` (test/tests/lists.wipple:8:18-8:22)
+  at test/tests/lists.wipple:8:18-8:22
+  has type (List Number) -> Maybe (List Number)
+  is an expression
+  resolved to 1 definition(s): `tail` (library/src/foundation/list.wipple:17:1-18:47)
+OperatorExpressionNode `my-list . tail` (test/tests/lists.wipple:8:8-8:22)
+  at test/tests/lists.wipple:8:8-8:22
+  has type Maybe (List Number)
+  is an expression
+VariableExpressionNode `unreachable` (test/tests/lists.wipple:8:27-8:38)
+  at test/tests/lists.wipple:8:27-8:38
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:27:1-27:21)
+VariableExpressionNode `first` (test/tests/lists.wipple:8:41-8:46)
+  at test/tests/lists.wipple:8:41-8:46
+  has type (List Number) -> Maybe Number
+  is an expression
+  resolved to 1 definition(s): `first` (library/src/foundation/list.wipple:5:1-6:41)
+OperatorExpressionNode `my-list . tail) or unreachable` (test/tests/lists.wipple:8:8-8:38)
+  at test/tests/lists.wipple:8:8-8:38
+  has type List Number
+  is an expression
+OperatorExpressionNode `my-list . tail) or unreachable . first` (test/tests/lists.wipple:8:8-8:46)
+  at test/tests/lists.wipple:8:8-8:46
+  has type Maybe Number
+  is an expression
+CallExpressionNode `show ((my-list . tail) or unreachable . first)` (test/tests/lists.wipple:8:1-8:47)
+  at test/tests/lists.wipple:8:1-8:47
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/lists.wipple:9:1-9:5)
+  at test/tests/lists.wipple:9:1-9:5
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type (Maybe Number) -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `my-list` (test/tests/lists.wipple:9:7-9:14)
+  at test/tests/lists.wipple:9:7-9:14
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `my-list` (test/tests/lists.wipple:3:1-3:8)
+VariableExpressionNode `nth` (test/tests/lists.wipple:9:17-9:20)
+  at test/tests/lists.wipple:9:17-9:20
+  has type Number -> (List Number) -> Maybe Number
+  is an expression
+  resolved to 1 definition(s): `nth` (library/src/foundation/list.wipple:21:1-22:49)
+NumberExpressionNode `1` (test/tests/lists.wipple:9:21-9:22)
+  at test/tests/lists.wipple:9:21-9:22
+  has type Number
+  is an expression
+CallExpressionNode `nth 1` (test/tests/lists.wipple:9:17-9:22)
+  at test/tests/lists.wipple:9:17-9:22
+  has type (List Number) -> Maybe Number
+  is an expression
+OperatorExpressionNode `my-list . nth 1` (test/tests/lists.wipple:9:7-9:22)
+  at test/tests/lists.wipple:9:7-9:22
+  has type Maybe Number
+  is an expression
+CallExpressionNode `show (my-list . nth 1)` (test/tests/lists.wipple:9:1-9:23)
+  at test/tests/lists.wipple:9:1-9:23
+  has type ()
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:5:15-5:16)
+  at test/tests/lists.wipple:5:15-5:16
+  has type Maybe Number
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:6:15-6:16)
+  at test/tests/lists.wipple:6:15-6:16
+  has type Maybe Number
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:7:16-7:17)
+  at test/tests/lists.wipple:7:16-7:17
+  has type Maybe (List Number)
+  is an expression
+ConstructorExpressionNode `or` (test/tests/lists.wipple:7:27-7:29)
+  at test/tests/lists.wipple:7:27-7:29
+  has bound(s) Or (Maybe (List Number)) (List Number) (List Number) (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:31:1-34:2))
+  has type (Maybe (List Number)) {List Number} -> List Number
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:28:1-29:73)
+BlockExpressionNode `unreachable` (test/tests/lists.wipple:7:30-7:41)
+  at test/tests/lists.wipple:7:30-7:41
+  has type {List Number}
+  is an expression
+CallExpressionNode `my-list . initial) or unreachable` (test/tests/lists.wipple:7:8-7:41)
+  at test/tests/lists.wipple:7:8-7:41
+  has type List Number
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:7:16-7:17)
+  at test/tests/lists.wipple:7:16-7:17
+  has type Maybe (List Number)
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:7:42-7:43)
+  at test/tests/lists.wipple:7:42-7:43
+  has type Maybe Number
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:7:16-7:17)
+  at test/tests/lists.wipple:7:16-7:17
+  has type Maybe (List Number)
+  is an expression
+ConstructorExpressionNode `or` (test/tests/lists.wipple:7:27-7:29)
+  at test/tests/lists.wipple:7:27-7:29
+  has bound(s) Or (Maybe (List Number)) (List Number) (List Number) (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:31:1-34:2))
+  has type (Maybe (List Number)) {List Number} -> List Number
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:28:1-29:73)
+BlockExpressionNode `unreachable` (test/tests/lists.wipple:7:30-7:41)
+  at test/tests/lists.wipple:7:30-7:41
+  has type {List Number}
+  is an expression
+CallExpressionNode `my-list . initial) or unreachable` (test/tests/lists.wipple:7:8-7:41)
+  at test/tests/lists.wipple:7:8-7:41
+  has type List Number
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:7:16-7:17)
+  at test/tests/lists.wipple:7:16-7:17
+  has type Maybe (List Number)
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:8:16-8:17)
+  at test/tests/lists.wipple:8:16-8:17
+  has type Maybe (List Number)
+  is an expression
+ConstructorExpressionNode `or` (test/tests/lists.wipple:8:24-8:26)
+  at test/tests/lists.wipple:8:24-8:26
+  has bound(s) Or (Maybe (List Number)) (List Number) (List Number) (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:31:1-34:2))
+  has type (Maybe (List Number)) {List Number} -> List Number
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:28:1-29:73)
+BlockExpressionNode `unreachable` (test/tests/lists.wipple:8:27-8:38)
+  at test/tests/lists.wipple:8:27-8:38
+  has type {List Number}
+  is an expression
+CallExpressionNode `my-list . tail) or unreachable` (test/tests/lists.wipple:8:8-8:38)
+  at test/tests/lists.wipple:8:8-8:38
+  has type List Number
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:8:16-8:17)
+  at test/tests/lists.wipple:8:16-8:17
+  has type Maybe (List Number)
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:8:39-8:40)
+  at test/tests/lists.wipple:8:39-8:40
+  has type Maybe Number
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:8:16-8:17)
+  at test/tests/lists.wipple:8:16-8:17
+  has type Maybe (List Number)
+  is an expression
+ConstructorExpressionNode `or` (test/tests/lists.wipple:8:24-8:26)
+  at test/tests/lists.wipple:8:24-8:26
+  has bound(s) Or (Maybe (List Number)) (List Number) (List Number) (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:31:1-34:2))
+  has type (Maybe (List Number)) {List Number} -> List Number
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:28:1-29:73)
+BlockExpressionNode `unreachable` (test/tests/lists.wipple:8:27-8:38)
+  at test/tests/lists.wipple:8:27-8:38
+  has type {List Number}
+  is an expression
+CallExpressionNode `my-list . tail) or unreachable` (test/tests/lists.wipple:8:8-8:38)
+  at test/tests/lists.wipple:8:8-8:38
+  has type List Number
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:8:16-8:17)
+  at test/tests/lists.wipple:8:16-8:17
+  has type Maybe (List Number)
+  is an expression
+CallExpressionNode `.` (test/tests/lists.wipple:9:15-9:16)
+  at test/tests/lists.wipple:9:15-9:16
+  has type Maybe Number
+  is an expression
+
+Output:
+Some 1
+Some 3
+Some 2
+Some 2
+Some 2

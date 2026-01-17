@@ -1,0 +1,36 @@
+Facts:
+VariableExpressionNode `show` (test/tests/recursive-instance.wipple:3:1-3:5)
+  at test/tests/recursive-instance.wipple:3:1-3:5
+  has bound(s) Describe (Maybe (Maybe Number)) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type (Maybe (Maybe Number)) -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+ConstructorExpressionNode `Some` (test/tests/recursive-instance.wipple:3:7-3:11)
+  at test/tests/recursive-instance.wipple:3:7-3:11
+  has type (Maybe Number) -> Maybe (Maybe Number)
+  is an expression
+  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:3-6:13)
+ConstructorExpressionNode `Some` (test/tests/recursive-instance.wipple:3:13-3:17)
+  at test/tests/recursive-instance.wipple:3:13-3:17
+  has type Number -> Maybe Number
+  is an expression
+  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:3-6:13)
+NumberExpressionNode `42` (test/tests/recursive-instance.wipple:3:18-3:20)
+  at test/tests/recursive-instance.wipple:3:18-3:20
+  has type Number
+  is an expression
+CallExpressionNode `Some 42` (test/tests/recursive-instance.wipple:3:13-3:20)
+  at test/tests/recursive-instance.wipple:3:13-3:20
+  has type Maybe Number
+  is an expression
+CallExpressionNode `Some (Some 42)` (test/tests/recursive-instance.wipple:3:7-3:21)
+  at test/tests/recursive-instance.wipple:3:7-3:21
+  has type Maybe (Maybe Number)
+  is an expression
+CallExpressionNode `show (Some (Some 42))` (test/tests/recursive-instance.wipple:3:1-3:22)
+  at test/tests/recursive-instance.wipple:3:1-3:22
+  has type ()
+  is an expression
+
+Output:
+Some Some 42

@@ -1,0 +1,493 @@
+Facts:
+VariableExpressionNode `show` (test/tests/comparison.wipple:3:1-3:5)
+  at test/tests/comparison.wipple:3:1-3:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `1` (test/tests/comparison.wipple:3:7-3:8)
+  at test/tests/comparison.wipple:3:7-3:8
+  has type Number
+  is an expression
+NumberExpressionNode `2` (test/tests/comparison.wipple:3:11-3:12)
+  at test/tests/comparison.wipple:3:11-3:12
+  has type Number
+  is an expression
+NumberExpressionNode `3` (test/tests/comparison.wipple:3:15-3:16)
+  at test/tests/comparison.wipple:3:15-3:16
+  has type Number
+  is an expression
+OperatorExpressionNode `1 + 2` (test/tests/comparison.wipple:3:7-3:12)
+  at test/tests/comparison.wipple:3:7-3:12
+  has type Number
+  is an expression
+OperatorExpressionNode `1 + 2 = 3` (test/tests/comparison.wipple:3:7-3:16)
+  at test/tests/comparison.wipple:3:7-3:16
+  has type Boolean
+  is an expression
+CallExpressionNode `show (1 + 2 = 3)` (test/tests/comparison.wipple:3:1-3:17)
+  at test/tests/comparison.wipple:3:1-3:17
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:4:1-4:5)
+  at test/tests/comparison.wipple:4:1-4:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `1` (test/tests/comparison.wipple:4:7-4:8)
+  at test/tests/comparison.wipple:4:7-4:8
+  has type Number
+  is an expression
+NumberExpressionNode `2` (test/tests/comparison.wipple:4:11-4:12)
+  at test/tests/comparison.wipple:4:11-4:12
+  has type Number
+  is an expression
+NumberExpressionNode `1` (test/tests/comparison.wipple:4:16-4:17)
+  at test/tests/comparison.wipple:4:16-4:17
+  has type Number
+  is an expression
+NumberExpressionNode `1` (test/tests/comparison.wipple:4:20-4:21)
+  at test/tests/comparison.wipple:4:20-4:21
+  has type Number
+  is an expression
+OperatorExpressionNode `1 = 2` (test/tests/comparison.wipple:4:7-4:12)
+  at test/tests/comparison.wipple:4:7-4:12
+  has type Boolean
+  is an expression
+OperatorExpressionNode `1 = 1` (test/tests/comparison.wipple:4:16-4:21)
+  at test/tests/comparison.wipple:4:16-4:21
+  has type Boolean
+  is an expression
+OperatorExpressionNode `1 = 2 or 1 = 1` (test/tests/comparison.wipple:4:7-4:21)
+  at test/tests/comparison.wipple:4:7-4:21
+  has type Boolean
+  is an expression
+CallExpressionNode `show (1 = 2 or 1 = 1)` (test/tests/comparison.wipple:4:1-4:22)
+  at test/tests/comparison.wipple:4:1-4:22
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:5:1-5:5)
+  at test/tests/comparison.wipple:5:1-5:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `2` (test/tests/comparison.wipple:5:7-5:8)
+  at test/tests/comparison.wipple:5:7-5:8
+  has type Number
+  is an expression
+NumberExpressionNode `3` (test/tests/comparison.wipple:5:12-5:13)
+  at test/tests/comparison.wipple:5:12-5:13
+  has type Number
+  is an expression
+OperatorExpressionNode `2 /= 3` (test/tests/comparison.wipple:5:7-5:13)
+  at test/tests/comparison.wipple:5:7-5:13
+  has type Boolean
+  is an expression
+CallExpressionNode `show (2 /= 3)` (test/tests/comparison.wipple:5:1-5:14)
+  at test/tests/comparison.wipple:5:1-5:14
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:6:1-6:5)
+  at test/tests/comparison.wipple:6:1-6:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+StringExpressionNode `"hello"` (test/tests/comparison.wipple:6:7-6:14)
+  at test/tests/comparison.wipple:6:7-6:14
+  has type String
+  is an expression
+StringExpressionNode `"hello"` (test/tests/comparison.wipple:6:17-6:24)
+  at test/tests/comparison.wipple:6:17-6:24
+  has type String
+  is an expression
+OperatorExpressionNode `"hello" = "hello"` (test/tests/comparison.wipple:6:7-6:24)
+  at test/tests/comparison.wipple:6:7-6:24
+  has type Boolean
+  is an expression
+CallExpressionNode `show ("hello" = "hello")` (test/tests/comparison.wipple:6:1-6:25)
+  at test/tests/comparison.wipple:6:1-6:25
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:7:1-7:5)
+  at test/tests/comparison.wipple:7:1-7:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+UnitExpressionNode `()` (test/tests/comparison.wipple:7:7-7:9)
+  at test/tests/comparison.wipple:7:7-7:9
+  has type ()
+  is an expression
+UnitExpressionNode `()` (test/tests/comparison.wipple:7:12-7:14)
+  at test/tests/comparison.wipple:7:12-7:14
+  has type ()
+  is an expression
+OperatorExpressionNode `) = (` (test/tests/comparison.wipple:7:7-7:14)
+  at test/tests/comparison.wipple:7:7-7:14
+  has type Boolean
+  is an expression
+CallExpressionNode `show (() = ())` (test/tests/comparison.wipple:7:1-7:15)
+  at test/tests/comparison.wipple:7:1-7:15
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:8:1-8:5)
+  at test/tests/comparison.wipple:8:1-8:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+ConstructorExpressionNode `True` (test/tests/comparison.wipple:8:7-8:11)
+  at test/tests/comparison.wipple:8:7-8:11
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+ConstructorExpressionNode `True` (test/tests/comparison.wipple:8:14-8:18)
+  at test/tests/comparison.wipple:8:14-8:18
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+OperatorExpressionNode `True = True` (test/tests/comparison.wipple:8:7-8:18)
+  at test/tests/comparison.wipple:8:7-8:18
+  has type Boolean
+  is an expression
+CallExpressionNode `show (True = True)` (test/tests/comparison.wipple:8:1-8:19)
+  at test/tests/comparison.wipple:8:1-8:19
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:9:1-9:5)
+  at test/tests/comparison.wipple:9:1-9:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+ConstructorExpressionNode `False` (test/tests/comparison.wipple:9:7-9:12)
+  at test/tests/comparison.wipple:9:7-9:12
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
+ConstructorExpressionNode `False` (test/tests/comparison.wipple:9:15-9:20)
+  at test/tests/comparison.wipple:9:15-9:20
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
+OperatorExpressionNode `False = False` (test/tests/comparison.wipple:9:7-9:20)
+  at test/tests/comparison.wipple:9:7-9:20
+  has type Boolean
+  is an expression
+CallExpressionNode `show (False = False)` (test/tests/comparison.wipple:9:1-9:21)
+  at test/tests/comparison.wipple:9:1-9:21
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:10:1-10:5)
+  at test/tests/comparison.wipple:10:1-10:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+ConstructorExpressionNode `True` (test/tests/comparison.wipple:10:7-10:11)
+  at test/tests/comparison.wipple:10:7-10:11
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+ConstructorExpressionNode `False` (test/tests/comparison.wipple:10:14-10:19)
+  at test/tests/comparison.wipple:10:14-10:19
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
+OperatorExpressionNode `True = False` (test/tests/comparison.wipple:10:7-10:19)
+  at test/tests/comparison.wipple:10:7-10:19
+  has type Boolean
+  is an expression
+CallExpressionNode `show (True = False)` (test/tests/comparison.wipple:10:1-10:20)
+  at test/tests/comparison.wipple:10:1-10:20
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:11:1-11:5)
+  at test/tests/comparison.wipple:11:1-11:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `2` (test/tests/comparison.wipple:11:7-11:8)
+  at test/tests/comparison.wipple:11:7-11:8
+  has type Number
+  is an expression
+NumberExpressionNode `1` (test/tests/comparison.wipple:11:11-11:12)
+  at test/tests/comparison.wipple:11:11-11:12
+  has type Number
+  is an expression
+OperatorExpressionNode `2 > 1` (test/tests/comparison.wipple:11:7-11:12)
+  at test/tests/comparison.wipple:11:7-11:12
+  has type Boolean
+  is an expression
+CallExpressionNode `show (2 > 1)` (test/tests/comparison.wipple:11:1-11:13)
+  at test/tests/comparison.wipple:11:1-11:13
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:12:1-12:5)
+  at test/tests/comparison.wipple:12:1-12:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `1` (test/tests/comparison.wipple:12:7-12:8)
+  at test/tests/comparison.wipple:12:7-12:8
+  has type Number
+  is an expression
+NumberExpressionNode `1` (test/tests/comparison.wipple:12:12-12:13)
+  at test/tests/comparison.wipple:12:12-12:13
+  has type Number
+  is an expression
+OperatorExpressionNode `1 >= 1` (test/tests/comparison.wipple:12:7-12:13)
+  at test/tests/comparison.wipple:12:7-12:13
+  has type Boolean
+  is an expression
+CallExpressionNode `show (1 >= 1)` (test/tests/comparison.wipple:12:1-12:14)
+  at test/tests/comparison.wipple:12:1-12:14
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:13:1-13:5)
+  at test/tests/comparison.wipple:13:1-13:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `4` (test/tests/comparison.wipple:13:7-13:8)
+  at test/tests/comparison.wipple:13:7-13:8
+  has type Number
+  is an expression
+NumberExpressionNode `3` (test/tests/comparison.wipple:13:11-13:12)
+  at test/tests/comparison.wipple:13:11-13:12
+  has type Number
+  is an expression
+OperatorExpressionNode `4 < 3` (test/tests/comparison.wipple:13:7-13:12)
+  at test/tests/comparison.wipple:13:7-13:12
+  has type Boolean
+  is an expression
+CallExpressionNode `show (4 < 3)` (test/tests/comparison.wipple:13:1-13:13)
+  at test/tests/comparison.wipple:13:1-13:13
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/comparison.wipple:14:1-14:5)
+  at test/tests/comparison.wipple:14:1-14:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `5` (test/tests/comparison.wipple:14:7-14:8)
+  at test/tests/comparison.wipple:14:7-14:8
+  has type Number
+  is an expression
+NumberExpressionNode `6` (test/tests/comparison.wipple:14:12-14:13)
+  at test/tests/comparison.wipple:14:12-14:13
+  has type Number
+  is an expression
+OperatorExpressionNode `5 <= 6` (test/tests/comparison.wipple:14:7-14:13)
+  at test/tests/comparison.wipple:14:7-14:13
+  has type Boolean
+  is an expression
+CallExpressionNode `show (5 <= 6)` (test/tests/comparison.wipple:14:1-14:14)
+  at test/tests/comparison.wipple:14:1-14:14
+  has type ()
+  is an expression
+ConstructorExpressionNode `+` (test/tests/comparison.wipple:3:9-3:10)
+  at test/tests/comparison.wipple:3:9-3:10
+  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58)
+CallExpressionNode `1 + 2` (test/tests/comparison.wipple:3:7-3:12)
+  at test/tests/comparison.wipple:3:7-3:12
+  has type Number
+  is an expression
+ConstructorExpressionNode `=` (test/tests/comparison.wipple:3:13-3:14)
+  at test/tests/comparison.wipple:3:13-3:14
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `1 + 2 = 3` (test/tests/comparison.wipple:3:7-3:16)
+  at test/tests/comparison.wipple:3:7-3:16
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `+` (test/tests/comparison.wipple:3:9-3:10)
+  at test/tests/comparison.wipple:3:9-3:10
+  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58)
+CallExpressionNode `1 + 2` (test/tests/comparison.wipple:3:7-3:12)
+  at test/tests/comparison.wipple:3:7-3:12
+  has type Number
+  is an expression
+ConstructorExpressionNode `=` (test/tests/comparison.wipple:4:9-4:10)
+  at test/tests/comparison.wipple:4:9-4:10
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `1 = 2` (test/tests/comparison.wipple:4:7-4:12)
+  at test/tests/comparison.wipple:4:7-4:12
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `=` (test/tests/comparison.wipple:4:18-4:19)
+  at test/tests/comparison.wipple:4:18-4:19
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `1 = 1` (test/tests/comparison.wipple:4:16-4:21)
+  at test/tests/comparison.wipple:4:16-4:21
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `or` (test/tests/comparison.wipple:4:13-4:15)
+  at test/tests/comparison.wipple:4:13-4:15
+  has bound(s) Or Boolean Boolean Boolean (`instance (Or Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:61))
+  has type Boolean {Boolean} -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:28:1-29:73)
+BlockExpressionNode `1 = 1` (test/tests/comparison.wipple:4:16-4:21)
+  at test/tests/comparison.wipple:4:16-4:21
+  has type {Boolean}
+  is an expression
+CallExpressionNode `1 = 2 or 1 = 1` (test/tests/comparison.wipple:4:7-4:21)
+  at test/tests/comparison.wipple:4:7-4:21
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `=` (test/tests/comparison.wipple:4:9-4:10)
+  at test/tests/comparison.wipple:4:9-4:10
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `1 = 2` (test/tests/comparison.wipple:4:7-4:12)
+  at test/tests/comparison.wipple:4:7-4:12
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `/=` (test/tests/comparison.wipple:5:9-5:11)
+  at test/tests/comparison.wipple:5:9-5:11
+  has bound(s) Not-Equal Number (`instance (Not-Equal value)` (library/src/foundation/logic.wipple:76:1-76:72)), Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Not-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:74:1-75:52)
+CallExpressionNode `2 /= 3` (test/tests/comparison.wipple:5:7-5:13)
+  at test/tests/comparison.wipple:5:7-5:13
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `=` (test/tests/comparison.wipple:6:15-6:16)
+  at test/tests/comparison.wipple:6:15-6:16
+  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65))
+  has type String String -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `"hello" = "hello"` (test/tests/comparison.wipple:6:7-6:24)
+  at test/tests/comparison.wipple:6:7-6:24
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `=` (test/tests/comparison.wipple:7:10-7:11)
+  at test/tests/comparison.wipple:7:10-7:11
+  has bound(s) Equal () (`instance (Equal ())` (library/src/foundation/logic.wipple:71:1-71:36))
+  has type () () -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `) = (` (test/tests/comparison.wipple:7:7-7:14)
+  at test/tests/comparison.wipple:7:7-7:14
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `=` (test/tests/comparison.wipple:8:12-8:13)
+  at test/tests/comparison.wipple:8:12-8:13
+  has bound(s) Equal Boolean (`instance (Equal Boolean)` (library/src/foundation/logic.wipple:72:1-72:51))
+  has type Boolean Boolean -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `True = True` (test/tests/comparison.wipple:8:7-8:18)
+  at test/tests/comparison.wipple:8:7-8:18
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `=` (test/tests/comparison.wipple:9:13-9:14)
+  at test/tests/comparison.wipple:9:13-9:14
+  has bound(s) Equal Boolean (`instance (Equal Boolean)` (library/src/foundation/logic.wipple:72:1-72:51))
+  has type Boolean Boolean -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `False = False` (test/tests/comparison.wipple:9:7-9:20)
+  at test/tests/comparison.wipple:9:7-9:20
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `=` (test/tests/comparison.wipple:10:12-10:13)
+  at test/tests/comparison.wipple:10:12-10:13
+  has bound(s) Equal Boolean (`instance (Equal Boolean)` (library/src/foundation/logic.wipple:72:1-72:51))
+  has type Boolean Boolean -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `True = False` (test/tests/comparison.wipple:10:7-10:19)
+  at test/tests/comparison.wipple:10:7-10:19
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `>` (test/tests/comparison.wipple:11:9-11:10)
+  at test/tests/comparison.wipple:11:9-11:10
+  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:59:1-60:55)
+CallExpressionNode `2 > 1` (test/tests/comparison.wipple:11:7-11:12)
+  at test/tests/comparison.wipple:11:7-11:12
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `>=` (test/tests/comparison.wipple:12:9-12:11)
+  at test/tests/comparison.wipple:12:9-12:11
+  has bound(s) Greater-Than-Or-Equal Number (`instance (Greater-Than-Or-Equal value)` (library/src/foundation/logic.wipple:65:1-65:116)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Greater-Than-Or-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:63:1-64:64)
+CallExpressionNode `1 >= 1` (test/tests/comparison.wipple:12:7-12:13)
+  at test/tests/comparison.wipple:12:7-12:13
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `<` (test/tests/comparison.wipple:13:9-13:10)
+  at test/tests/comparison.wipple:13:9-13:10
+  has bound(s) Less-Than Number (`instance (Less-Than value)` (library/src/foundation/logic.wipple:53:1-53:84)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:51:1-52:52)
+CallExpressionNode `4 < 3` (test/tests/comparison.wipple:13:7-13:12)
+  at test/tests/comparison.wipple:13:7-13:12
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `<=` (test/tests/comparison.wipple:14:9-14:11)
+  at test/tests/comparison.wipple:14:9-14:11
+  has bound(s) Less-Than-Or-Equal Number (`instance (Less-Than-Or-Equal value)` (library/src/foundation/logic.wipple:57:1-57:110)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Less-Than-Or-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:55:1-56:61)
+CallExpressionNode `5 <= 6` (test/tests/comparison.wipple:14:7-14:13)
+  at test/tests/comparison.wipple:14:7-14:13
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `=` (test/tests/comparison.wipple:4:18-4:19)
+  at test/tests/comparison.wipple:4:18-4:19
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `1 = 1` (test/tests/comparison.wipple:4:16-4:21)
+  at test/tests/comparison.wipple:4:16-4:21
+  has type Boolean
+  is an expression
+
+Output:
+True
+True
+True
+True
+True
+True
+True
+False
+True
+True
+False
+True

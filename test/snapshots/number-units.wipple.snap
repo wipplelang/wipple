@@ -1,0 +1,162 @@
+Facts:
+NamedTypeNode `Number` (test/tests/number-units.wipple:3:28-3:34)
+  at test/tests/number-units.wipple:3:28-3:34
+  has type Number
+  is a type
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+TypeDefinitionNode `Elephants : type {⋯}` (test/tests/number-units.wipple:1:1-3:35)
+  at test/tests/number-units.wipple:1:1-3:35
+  has definition constraints
+  has type Elephants
+  is a definition
+NamedTypeNode `Elephants` (test/tests/number-units.wipple:5:17-5:26)
+  at test/tests/number-units.wipple:5:17-5:26
+  has type Elephants
+  is a type
+  resolved to 1 definition(s): `Elephants : type {⋯}` (test/tests/number-units.wipple:1:1-3:35)
+BoundConstraintNode `Equal Elephants` (test/tests/number-units.wipple:5:10-5:27)
+  at test/tests/number-units.wipple:5:10-5:27
+VariablePatternNode `a` (test/tests/number-units.wipple:5:50-5:51)
+  at test/tests/number-units.wipple:5:50-5:51
+  has type Number
+  is a pattern
+StructurePatternNode `Elephants {count` (test/tests/number-units.wipple:5:31-5:52)
+  at test/tests/number-units.wipple:5:31-5:52
+  has type Elephants
+  is a pattern
+  resolved to 1 definition(s): `Elephants : type {⋯}` (test/tests/number-units.wipple:1:1-3:35)
+VariablePatternNode `b` (test/tests/number-units.wipple:5:74-5:75)
+  at test/tests/number-units.wipple:5:74-5:75
+  has type Number
+  is a pattern
+StructurePatternNode `Elephants {count` (test/tests/number-units.wipple:5:55-5:76)
+  at test/tests/number-units.wipple:5:55-5:76
+  has type Elephants
+  is a pattern
+  resolved to 1 definition(s): `Elephants : type {⋯}` (test/tests/number-units.wipple:1:1-3:35)
+VariableExpressionNode `a` (test/tests/number-units.wipple:5:81-5:82)
+  at test/tests/number-units.wipple:5:81-5:82
+  has type Number
+  is an expression
+  resolved to 1 definition(s): `a` (test/tests/number-units.wipple:5:50-5:51)
+VariableExpressionNode `b` (test/tests/number-units.wipple:5:85-5:86)
+  at test/tests/number-units.wipple:5:85-5:86
+  has type Number
+  is an expression
+  resolved to 1 definition(s): `b` (test/tests/number-units.wipple:5:74-5:75)
+OperatorExpressionNode `a = b` (test/tests/number-units.wipple:5:81-5:86)
+  at test/tests/number-units.wipple:5:81-5:86
+  has type Boolean
+  is an expression
+FunctionExpressionNode `(Elephants {count` (test/tests/number-units.wipple:5:30-5:86)
+  at test/tests/number-units.wipple:5:30-5:86
+  has type Elephants Elephants -> Boolean
+  is an expression
+InstanceDefinitionNode `instance (Equal Elephants)` (test/tests/number-units.wipple:5:1-5:86)
+  at test/tests/number-units.wipple:5:1-5:86
+  has definition constraints
+  has type Elephants Elephants -> Boolean
+  is a definition
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+NamedTypeNode `Number` (test/tests/number-units.wipple:7:21-7:27)
+  at test/tests/number-units.wipple:7:21-7:27
+  has type Number
+  is a type
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+NamedTypeNode `Elephants` (test/tests/number-units.wipple:7:31-7:40)
+  at test/tests/number-units.wipple:7:31-7:40
+  has type Elephants
+  is a type
+  resolved to 1 definition(s): `Elephants : type {⋯}` (test/tests/number-units.wipple:1:1-3:35)
+FunctionTypeNode `Number -> Elephants` (test/tests/number-units.wipple:7:21-7:40)
+  at test/tests/number-units.wipple:7:21-7:40
+  has type Number -> Elephants
+  is a type
+ConstantDefinitionNode `elephants :: Number -> Elephants` (test/tests/number-units.wipple:7:1-7:40)
+  at test/tests/number-units.wipple:7:1-7:40
+  has definition constraints
+  has type Number -> Elephants
+  is a definition
+VariablePatternNode `elephants` (test/tests/number-units.wipple:8:1-8:10)
+  at test/tests/number-units.wipple:8:1-8:10
+VariablePatternNode `count` (test/tests/number-units.wipple:8:13-8:18)
+  at test/tests/number-units.wipple:8:13-8:18
+  has type Number
+  is a pattern
+VariableExpressionNode `count` (test/tests/number-units.wipple:8:41-8:46)
+  at test/tests/number-units.wipple:8:41-8:46
+  has type Number
+  is an expression
+  resolved to 1 definition(s): `count` (test/tests/number-units.wipple:8:13-8:18)
+StructureExpressionNode `Elephants {count` (test/tests/number-units.wipple:8:22-8:47)
+  at test/tests/number-units.wipple:8:22-8:47
+  has type Elephants
+  is an expression
+  resolved to 1 definition(s): `Elephants : type {⋯}` (test/tests/number-units.wipple:1:1-3:35)
+FunctionExpressionNode `count -> Elephants {count` (test/tests/number-units.wipple:8:13-8:47)
+  at test/tests/number-units.wipple:8:13-8:47
+  has type Number -> Elephants
+  is an expression
+VariableExpressionNode `show` (test/tests/number-units.wipple:10:1-10:5)
+  at test/tests/number-units.wipple:10:1-10:5
+  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
+  has type Boolean -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `42` (test/tests/number-units.wipple:10:7-10:9)
+  at test/tests/number-units.wipple:10:7-10:9
+  has type Number
+  is an expression
+VariableExpressionNode `elephants` (test/tests/number-units.wipple:10:10-10:19)
+  at test/tests/number-units.wipple:10:10-10:19
+  has type Number -> Elephants
+  is an expression
+  resolved to 1 definition(s): `elephants :: Number -> Elephants` (test/tests/number-units.wipple:7:1-7:40)
+CallExpressionNode `42 elephants` (test/tests/number-units.wipple:10:7-10:19)
+  at test/tests/number-units.wipple:10:7-10:19
+  has type Elephants
+  is an expression
+VariableExpressionNode `elephants` (test/tests/number-units.wipple:10:22-10:31)
+  at test/tests/number-units.wipple:10:22-10:31
+  has type Number -> Elephants
+  is an expression
+  resolved to 1 definition(s): `elephants :: Number -> Elephants` (test/tests/number-units.wipple:7:1-7:40)
+NumberExpressionNode `42` (test/tests/number-units.wipple:10:32-10:34)
+  at test/tests/number-units.wipple:10:32-10:34
+  has type Number
+  is an expression
+CallExpressionNode `elephants 42` (test/tests/number-units.wipple:10:22-10:34)
+  at test/tests/number-units.wipple:10:22-10:34
+  has type Elephants
+  is an expression
+OperatorExpressionNode `42 elephants = elephants 42` (test/tests/number-units.wipple:10:7-10:34)
+  at test/tests/number-units.wipple:10:7-10:34
+  has type Boolean
+  is an expression
+CallExpressionNode `show (42 elephants = elephants 42)` (test/tests/number-units.wipple:10:1-10:35)
+  at test/tests/number-units.wipple:10:1-10:35
+  has type ()
+  is an expression
+ConstructorExpressionNode `=` (test/tests/number-units.wipple:5:83-5:84)
+  at test/tests/number-units.wipple:5:83-5:84
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has type Number Number -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `a = b` (test/tests/number-units.wipple:5:81-5:86)
+  at test/tests/number-units.wipple:5:81-5:86
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `=` (test/tests/number-units.wipple:10:20-10:21)
+  at test/tests/number-units.wipple:10:20-10:21
+  has bound(s) Equal Elephants (`instance (Equal Elephants)` (test/tests/number-units.wipple:5:1-5:86))
+  has type Elephants Elephants -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+CallExpressionNode `42 elephants = elephants 42` (test/tests/number-units.wipple:10:7-10:34)
+  at test/tests/number-units.wipple:10:7-10:34
+  has type Boolean
+  is an expression
+
+Output:
+True

@@ -1,0 +1,75 @@
+Facts:
+VariablePatternNode `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8)
+  at test/tests/list-mismatched-elements.wipple:3:1-3:8
+  has type List Number
+  is a pattern
+NumberExpressionNode `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12)
+  at test/tests/list-mismatched-elements.wipple:3:11-3:12
+  has type Number or String
+  is an expression
+StringExpressionNode `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18)
+  at test/tests/list-mismatched-elements.wipple:3:14-3:18
+  has type Number or String
+  is an expression
+UnitExpressionNode `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22)
+  at test/tests/list-mismatched-elements.wipple:3:20-3:22
+  has type ()
+  is an expression
+CollectionExpressionNode `1, "hi", ()` (test/tests/list-mismatched-elements.wipple:3:11-3:22)
+  at test/tests/list-mismatched-elements.wipple:3:11-3:22
+  has type List Number
+  is an expression
+VariableExpressionNode `my-list` (test/tests/list-mismatched-elements.wipple:4:1-4:8)
+  at test/tests/list-mismatched-elements.wipple:4:1-4:8
+  has type List Number
+  is an expression
+  resolved to 1 definition(s): `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8)
+VariableExpressionNode `each` (test/tests/list-mismatched-elements.wipple:4:11-4:15)
+  at test/tests/list-mismatched-elements.wipple:4:11-4:15
+  has bound(s) As-Sequence (List Number) _ (`instance (As-Sequence container element)` (library/src/foundation/sequence.wipple:49:1-52:59)), As-Sequence (List Number) _ (`instance (As-Sequence container element)` (library/src/foundation/sequence.wipple:49:1-52:59))
+  has type (_ -> ()) -> (List Number) -> ()
+  is an expression
+  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
+VariableExpressionNode `show` (test/tests/list-mismatched-elements.wipple:4:16-4:20)
+  at test/tests/list-mismatched-elements.wipple:4:16-4:20
+  has type _ -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+CallExpressionNode `each show` (test/tests/list-mismatched-elements.wipple:4:11-4:20)
+  at test/tests/list-mismatched-elements.wipple:4:11-4:20
+  has type (List Number) -> ()
+  is an expression
+OperatorExpressionNode `my-list . each show` (test/tests/list-mismatched-elements.wipple:4:1-4:20)
+  at test/tests/list-mismatched-elements.wipple:4:1-4:20
+  has type ()
+  is an expression
+CallExpressionNode `.` (test/tests/list-mismatched-elements.wipple:4:9-4:10)
+  at test/tests/list-mismatched-elements.wipple:4:9-4:10
+  has type ()
+  is an expression
+
+
+Feedback:
+
+`()` (test/tests/list-mismatched-elements.wipple:3:20-3:22) (error-instance):
+
+  Can't create   `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8) from items that are   `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22).
+
+ Creating   `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8) from these items isn't supported. Double-check that
+ you're providing the right kinds of items here.
+
+`each` (test/tests/list-mismatched-elements.wipple:4:11-4:15) (error-instance):
+
+  Can't make a sequence from   `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8).
+
+ You can't use   `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8) as a sequence. Try using a list instead.
+
+  
+
+`each` (test/tests/list-mismatched-elements.wipple:4:11-4:15) (error-instance):
+
+  Can't make a sequence from   `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8).
+
+ You can't use   `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8) as a sequence. Try using a list instead.
+
+  

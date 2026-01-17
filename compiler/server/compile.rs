@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{collections::BTreeSet, sync::Arc};
 use wipple::{
-    codegen::{self, CodegenCtx},
+    codegen::{self, codegen},
     database::{Db, NodeRef, RenderConfig},
     feedback::{FeedbackItem, collect_feedback},
     nodes::FileNode,
@@ -42,18 +42,14 @@ pub async fn handle(request: Request) -> anyhow::Result<serde_json::Value> {
         }));
     }
 
-    let codegen = CodegenCtx::new(
+    let script = codegen(
         &mut db,
-        "index.js",
+        &files,
         codegen::Options {
             prelude: PRELUDE,
             module: true,
         },
-    );
-
-    colored::control::set_override(false);
-    let script = codegen.to_string(&files)?;
-    colored::control::unset_override();
+    )?;
 
     Ok(json!({ "executable": script }))
 }

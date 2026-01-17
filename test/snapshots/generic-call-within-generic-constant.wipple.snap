@@ -1,0 +1,99 @@
+Facts:
+TypeParameterNode `value` (test/tests/generic-call-within-generic-constant.wipple:3:6-3:11)
+  at test/tests/generic-call-within-generic-constant.wipple:3:6-3:11
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/generic-call-within-generic-constant.wipple:3:6-3:11)
+TypeParameterNode `value` (test/tests/generic-call-within-generic-constant.wipple:3:15-3:20)
+  at test/tests/generic-call-within-generic-constant.wipple:3:15-3:20
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/generic-call-within-generic-constant.wipple:3:6-3:11)
+FunctionTypeNode `value -> value` (test/tests/generic-call-within-generic-constant.wipple:3:6-3:20)
+  at test/tests/generic-call-within-generic-constant.wipple:3:6-3:20
+  has type value -> value
+  is a type
+ConstantDefinitionNode `f :: value -> value` (test/tests/generic-call-within-generic-constant.wipple:1:1-3:20)
+  at test/tests/generic-call-within-generic-constant.wipple:1:1-3:20
+  has definition constraints
+  has type parameters
+  has type value -> value
+  is a definition
+VariablePatternNode `f` (test/tests/generic-call-within-generic-constant.wipple:4:1-4:2)
+  at test/tests/generic-call-within-generic-constant.wipple:4:1-4:2
+VariablePatternNode `x` (test/tests/generic-call-within-generic-constant.wipple:4:5-4:6)
+  at test/tests/generic-call-within-generic-constant.wipple:4:5-4:6
+  has type value
+  is a pattern
+VariableExpressionNode `x` (test/tests/generic-call-within-generic-constant.wipple:4:10-4:11)
+  at test/tests/generic-call-within-generic-constant.wipple:4:10-4:11
+  has type value
+  is an expression
+  resolved to 1 definition(s): `x` (test/tests/generic-call-within-generic-constant.wipple:4:5-4:6)
+FunctionExpressionNode `x -> x` (test/tests/generic-call-within-generic-constant.wipple:4:5-4:11)
+  at test/tests/generic-call-within-generic-constant.wipple:4:5-4:11
+  has type value -> value
+  is an expression
+TypeParameterNode `value` (test/tests/generic-call-within-generic-constant.wipple:6:6-6:11)
+  at test/tests/generic-call-within-generic-constant.wipple:6:6-6:11
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/generic-call-within-generic-constant.wipple:6:6-6:11)
+TypeParameterNode `value` (test/tests/generic-call-within-generic-constant.wipple:6:15-6:20)
+  at test/tests/generic-call-within-generic-constant.wipple:6:15-6:20
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/generic-call-within-generic-constant.wipple:6:6-6:11)
+FunctionTypeNode `value -> value` (test/tests/generic-call-within-generic-constant.wipple:6:6-6:20)
+  at test/tests/generic-call-within-generic-constant.wipple:6:6-6:20
+  has type value -> value
+  is a type
+ConstantDefinitionNode `g :: value -> value` (test/tests/generic-call-within-generic-constant.wipple:6:1-6:20)
+  at test/tests/generic-call-within-generic-constant.wipple:6:1-6:20
+  has definition constraints
+  has type parameters
+  has type value -> value
+  is a definition
+VariablePatternNode `g` (test/tests/generic-call-within-generic-constant.wipple:7:1-7:2)
+  at test/tests/generic-call-within-generic-constant.wipple:7:1-7:2
+VariablePatternNode `x` (test/tests/generic-call-within-generic-constant.wipple:7:5-7:6)
+  at test/tests/generic-call-within-generic-constant.wipple:7:5-7:6
+  has type value
+  is a pattern
+VariableExpressionNode `f` (test/tests/generic-call-within-generic-constant.wipple:7:10-7:11)
+  at test/tests/generic-call-within-generic-constant.wipple:7:10-7:11
+  has type value -> value
+  is an expression
+  resolved to 1 definition(s): `f :: value -> value` (test/tests/generic-call-within-generic-constant.wipple:1:1-3:20)
+VariableExpressionNode `x` (test/tests/generic-call-within-generic-constant.wipple:7:12-7:13)
+  at test/tests/generic-call-within-generic-constant.wipple:7:12-7:13
+  has type value
+  is an expression
+  resolved to 1 definition(s): `x` (test/tests/generic-call-within-generic-constant.wipple:7:5-7:6)
+CallExpressionNode `f x` (test/tests/generic-call-within-generic-constant.wipple:7:10-7:13)
+  at test/tests/generic-call-within-generic-constant.wipple:7:10-7:13
+  has type value
+  is an expression
+FunctionExpressionNode `x -> f x` (test/tests/generic-call-within-generic-constant.wipple:7:5-7:13)
+  at test/tests/generic-call-within-generic-constant.wipple:7:5-7:13
+  has type value -> value
+  is an expression
+WildcardPatternNode `_` (test/tests/generic-call-within-generic-constant.wipple:9:1-9:2)
+  at test/tests/generic-call-within-generic-constant.wipple:9:1-9:2
+  has type Number
+  is a pattern
+VariableExpressionNode `g` (test/tests/generic-call-within-generic-constant.wipple:9:5-9:6)
+  at test/tests/generic-call-within-generic-constant.wipple:9:5-9:6
+  has type Number -> Number
+  is an expression
+  resolved to 1 definition(s): `g :: value -> value` (test/tests/generic-call-within-generic-constant.wipple:6:1-6:20)
+NumberExpressionNode `42` (test/tests/generic-call-within-generic-constant.wipple:9:7-9:9)
+  at test/tests/generic-call-within-generic-constant.wipple:9:7-9:9
+  has type Number
+  is an expression
+CallExpressionNode `g 42` (test/tests/generic-call-within-generic-constant.wipple:9:5-9:9)
+  at test/tests/generic-call-within-generic-constant.wipple:9:5-9:9
+  has type Number
+  is an expression
+
+Output:

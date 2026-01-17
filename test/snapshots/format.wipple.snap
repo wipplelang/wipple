@@ -1,0 +1,77 @@
+Facts:
+NamedTypeNode `String` (test/tests/format.wipple:3:24-3:30)
+  at test/tests/format.wipple:3:24-3:30
+  has type String
+  is a type
+  resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
+TypeDefinitionNode `Person : type {⋯}` (test/tests/format.wipple:1:1-3:31)
+  at test/tests/format.wipple:1:1-3:31
+  has definition constraints
+  has type Person
+  is a definition
+NamedTypeNode `Person` (test/tests/format.wipple:5:20-5:26)
+  at test/tests/format.wipple:5:20-5:26
+  has type Person
+  is a type
+  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/format.wipple:1:1-3:31)
+BoundConstraintNode `Describe Person` (test/tests/format.wipple:5:10-5:27)
+  at test/tests/format.wipple:5:10-5:27
+VariablePatternNode `name` (test/tests/format.wipple:5:46-5:50)
+  at test/tests/format.wipple:5:46-5:50
+  has type String
+  is a pattern
+StructurePatternNode `Person {name` (test/tests/format.wipple:5:31-5:51)
+  at test/tests/format.wipple:5:31-5:51
+  has type Person
+  is a pattern
+  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/format.wipple:1:1-3:31)
+VariableExpressionNode `name` (test/tests/format.wipple:5:56-5:60)
+  at test/tests/format.wipple:5:56-5:60
+  has type String
+  is an expression
+  resolved to 1 definition(s): `name` (test/tests/format.wipple:5:46-5:50)
+FunctionExpressionNode `(Person {name` (test/tests/format.wipple:5:30-5:60)
+  at test/tests/format.wipple:5:30-5:60
+  has type Person -> String
+  is an expression
+InstanceDefinitionNode `instance (Describe Person)` (test/tests/format.wipple:5:1-5:60)
+  at test/tests/format.wipple:5:1-5:60
+  has definition constraints
+  has type Person -> String
+  is a definition
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:1:1-2:44)
+VariablePatternNode `bob` (test/tests/format.wipple:7:1-7:4)
+  at test/tests/format.wipple:7:1-7:4
+  has type Person
+  is a pattern
+StringExpressionNode `"Bob"` (test/tests/format.wipple:7:22-7:27)
+  at test/tests/format.wipple:7:22-7:27
+  has type String
+  is an expression
+StructureExpressionNode `Person {name` (test/tests/format.wipple:7:7-7:28)
+  at test/tests/format.wipple:7:7-7:28
+  has type Person
+  is an expression
+  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/format.wipple:1:1-3:31)
+VariableExpressionNode `show` (test/tests/format.wipple:8:1-8:5)
+  at test/tests/format.wipple:8:1-8:5
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `bob` (test/tests/format.wipple:8:19-8:22)
+  at test/tests/format.wipple:8:19-8:22
+  has type Person
+  is an expression
+  resolved to 1 definition(s): `bob` (test/tests/format.wipple:7:1-7:4)
+FormatExpressionNode `"Hello, _!" bob` (test/tests/format.wipple:8:7-8:22)
+  at test/tests/format.wipple:8:7-8:22
+  has type String
+  is an expression
+CallExpressionNode `show ("Hello, _!" bob)` (test/tests/format.wipple:8:1-8:23)
+  at test/tests/format.wipple:8:1-8:23
+  has type ()
+  is an expression
+
+Output:
+Hello, Bob!

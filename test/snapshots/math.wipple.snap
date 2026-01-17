@@ -1,0 +1,135 @@
+Facts:
+VariableExpressionNode `show` (test/tests/math.wipple:3:1-3:5)
+  at test/tests/math.wipple:3:1-3:5
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `1` (test/tests/math.wipple:3:7-3:8)
+  at test/tests/math.wipple:3:7-3:8
+  has type Number
+  is an expression
+NumberExpressionNode `2` (test/tests/math.wipple:3:11-3:12)
+  at test/tests/math.wipple:3:11-3:12
+  has type Number
+  is an expression
+OperatorExpressionNode `1 + 2` (test/tests/math.wipple:3:7-3:12)
+  at test/tests/math.wipple:3:7-3:12
+  has type Number
+  is an expression
+CallExpressionNode `show (1 + 2)` (test/tests/math.wipple:3:1-3:13)
+  at test/tests/math.wipple:3:1-3:13
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/math.wipple:4:1-4:5)
+  at test/tests/math.wipple:4:1-4:5
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `4` (test/tests/math.wipple:4:7-4:8)
+  at test/tests/math.wipple:4:7-4:8
+  has type Number
+  is an expression
+NumberExpressionNode `1` (test/tests/math.wipple:4:11-4:12)
+  at test/tests/math.wipple:4:11-4:12
+  has type Number
+  is an expression
+OperatorExpressionNode `4 - 1` (test/tests/math.wipple:4:7-4:12)
+  at test/tests/math.wipple:4:7-4:12
+  has type Number
+  is an expression
+CallExpressionNode `show (4 - 1)` (test/tests/math.wipple:4:1-4:13)
+  at test/tests/math.wipple:4:1-4:13
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/math.wipple:5:1-5:5)
+  at test/tests/math.wipple:5:1-5:5
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `3` (test/tests/math.wipple:5:7-5:8)
+  at test/tests/math.wipple:5:7-5:8
+  has type Number
+  is an expression
+NumberExpressionNode `5` (test/tests/math.wipple:5:11-5:12)
+  at test/tests/math.wipple:5:11-5:12
+  has type Number
+  is an expression
+OperatorExpressionNode `3 * 5` (test/tests/math.wipple:5:7-5:12)
+  at test/tests/math.wipple:5:7-5:12
+  has type Number
+  is an expression
+CallExpressionNode `show (3 * 5)` (test/tests/math.wipple:5:1-5:13)
+  at test/tests/math.wipple:5:1-5:13
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/math.wipple:6:1-6:5)
+  at test/tests/math.wipple:6:1-6:5
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+NumberExpressionNode `10` (test/tests/math.wipple:6:7-6:9)
+  at test/tests/math.wipple:6:7-6:9
+  has type Number
+  is an expression
+NumberExpressionNode `4` (test/tests/math.wipple:6:12-6:13)
+  at test/tests/math.wipple:6:12-6:13
+  has type Number
+  is an expression
+OperatorExpressionNode `10 / 4` (test/tests/math.wipple:6:7-6:13)
+  at test/tests/math.wipple:6:7-6:13
+  has type Number
+  is an expression
+CallExpressionNode `show (10 / 4)` (test/tests/math.wipple:6:1-6:14)
+  at test/tests/math.wipple:6:1-6:14
+  has type ()
+  is an expression
+ConstructorExpressionNode `+` (test/tests/math.wipple:3:9-3:10)
+  at test/tests/math.wipple:3:9-3:10
+  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58)
+CallExpressionNode `1 + 2` (test/tests/math.wipple:3:7-3:12)
+  at test/tests/math.wipple:3:7-3:12
+  has type Number
+  is an expression
+ConstructorExpressionNode `-` (test/tests/math.wipple:4:9-4:10)
+  at test/tests/math.wipple:4:9-4:10
+  has bound(s) Subtract Number Number Number (`instance (Subtract Number Number Number)` (library/src/foundation/math.wipple:23:1-23:97))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)` (library/src/foundation/math.wipple:21:1-22:77)
+CallExpressionNode `4 - 1` (test/tests/math.wipple:4:7-4:12)
+  at test/tests/math.wipple:4:7-4:12
+  has type Number
+  is an expression
+ConstructorExpressionNode `*` (test/tests/math.wipple:5:9-5:10)
+  at test/tests/math.wipple:5:9-5:10
+  has bound(s) Multiply Number Number Number (`instance (Multiply Number Number Number)` (library/src/foundation/math.wipple:38:1-38:97))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Multiply : left right (infer product) => trait (left right -> product)` (library/src/foundation/math.wipple:36:1-37:71)
+CallExpressionNode `3 * 5` (test/tests/math.wipple:5:7-5:12)
+  at test/tests/math.wipple:5:7-5:12
+  has type Number
+  is an expression
+ConstructorExpressionNode `/` (test/tests/math.wipple:6:10-6:11)
+  at test/tests/math.wipple:6:10-6:11
+  has bound(s) Divide Number Number Number (`instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:93))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:51:1-52:71)
+CallExpressionNode `10 / 4` (test/tests/math.wipple:6:7-6:13)
+  at test/tests/math.wipple:6:7-6:13
+  has type Number
+  is an expression
+
+Output:
+3
+3
+15
+2.5

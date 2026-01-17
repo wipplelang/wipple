@@ -6,7 +6,9 @@ tasks:
       - cargo run --bin=wipple {{.CLI_ARGS}}
   test:
     cmds:
-      - cargo insta test --release {{.CLI_ARGS}}
+      - cargo build --bin=wipple
+      - cargo insta test
+      - node test
   install:
     cmds:
       - cargo install --path=compiler --bin=wipple

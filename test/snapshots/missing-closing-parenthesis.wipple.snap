@@ -1,0 +1,13 @@
+Facts:
+ParseErrorNode `(` (test/tests/missing-closing-parenthesis.wipple:3:6-3:7)
+  Unexpected `(`
+  at test/tests/missing-closing-parenthesis.wipple:3:6-3:7
+
+
+Feedback:
+
+`(` (test/tests/missing-closing-parenthesis.wipple:3:6-3:7) (syntax-error):
+
+  Unexpected `(`.
+
+  Check your spelling.

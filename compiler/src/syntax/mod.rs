@@ -48,7 +48,7 @@ pub fn test_parse(name: &str, f: fn(&mut Parser<'_>) -> Result<NodeRef, ParseErr
     .expect("failed to parse");
 
     insta::with_settings!({
-        snapshot_path => format!("{}/snapshots", env!("CARGO_MANIFEST_DIR")),
+        // snapshot_path => format!("{}/../test/snapshots", env!("CARGO_MANIFEST_DIR")),
         prepend_module_to_snapshot => false,
         description => source,
     }, {

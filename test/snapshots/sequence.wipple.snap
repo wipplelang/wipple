@@ -1,0 +1,274 @@
+Facts:
+TypeDefinitionNode `Number` (test/tests/sequence.wipple:1:1-3:26)
+  at test/tests/sequence.wipple:1:1-3:26
+  has definition constraints
+  has type Number
+  is a definition
+TypeDefinitionNode `String` (test/tests/sequence.wipple:4:1-4:26)
+  at test/tests/sequence.wipple:4:1-4:26
+  has definition constraints
+  has type String
+  is a definition
+TypeDefinitionNode `Boolean : type {⋯}` (test/tests/sequence.wipple:6:1-9:2)
+  at test/tests/sequence.wipple:6:1-9:2
+  has definition constraints
+  has type Boolean
+  is a definition
+TypeParameterNode `element` (test/tests/sequence.wipple:11:12-11:19)
+  at test/tests/sequence.wipple:11:12-11:19
+  has type element
+  is a type
+  resolved to 1 definition(s): `element` (test/tests/sequence.wipple:11:12-11:19)
+TypeParameterNode `element` (test/tests/sequence.wipple:12:12-12:19)
+  at test/tests/sequence.wipple:12:12-12:19
+  has type element
+  is a type
+  resolved to 1 definition(s): `element` (test/tests/sequence.wipple:11:12-11:19)
+BlockTypeNode `{⋯}` (test/tests/sequence.wipple:12:11-12:20)
+  at test/tests/sequence.wipple:12:11-12:20
+  has type {element}
+  is a type
+TypeDefinitionNode `Sequence : element => type {⋯}` (test/tests/sequence.wipple:11:1-13:2)
+  at test/tests/sequence.wipple:11:1-13:2
+  has definition constraints
+  has type Sequence element
+  has type parameters
+  is a definition
+TypeParameterNode `value` (test/tests/sequence.wipple:15:7-15:12)
+  at test/tests/sequence.wipple:15:7-15:12
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/sequence.wipple:15:7-15:12)
+TypeParameterNode `value` (test/tests/sequence.wipple:16:12-16:17)
+  at test/tests/sequence.wipple:16:12-16:17
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/sequence.wipple:15:7-15:12)
+TypeDefinitionNode `Box : value => type {⋯}` (test/tests/sequence.wipple:15:1-17:2)
+  at test/tests/sequence.wipple:15:1-17:2
+  has definition constraints
+  has type Box value
+  has type parameters
+  is a definition
+TypeParameterNode `collection` (test/tests/sequence.wipple:19:15-19:25)
+  at test/tests/sequence.wipple:19:15-19:25
+  has type collection
+  is a type
+  resolved to 1 definition(s): `collection` (test/tests/sequence.wipple:19:15-19:25)
+TypeParameterNode `infer element` (test/tests/sequence.wipple:19:26-19:41)
+  at test/tests/sequence.wipple:19:26-19:41
+  has type element
+  is a type
+  is inferred type parameter
+  resolved to 1 definition(s): `infer element` (test/tests/sequence.wipple:19:26-19:41)
+TypeParameterNode `collection` (test/tests/sequence.wipple:19:52-19:62)
+  at test/tests/sequence.wipple:19:52-19:62
+  has type collection
+  is a type
+  resolved to 1 definition(s): `collection` (test/tests/sequence.wipple:19:15-19:25)
+TypeParameterNode `element` (test/tests/sequence.wipple:19:75-19:82)
+  at test/tests/sequence.wipple:19:75-19:82
+  has type element
+  is a type
+  resolved to 1 definition(s): `infer element` (test/tests/sequence.wipple:19:26-19:41)
+NamedTypeNode `Sequence element` (test/tests/sequence.wipple:19:66-19:82)
+  at test/tests/sequence.wipple:19:66-19:82
+  has type Sequence element
+  is a type
+  resolved to 1 definition(s): `Sequence : element => type {⋯}` (test/tests/sequence.wipple:11:1-13:2)
+FunctionTypeNode `collection -> Sequence element` (test/tests/sequence.wipple:19:52-19:82)
+  at test/tests/sequence.wipple:19:52-19:82
+  has type collection -> Sequence element
+  is a type
+TraitDefinitionNode `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (test/tests/sequence.wipple:19:1-19:83)
+  at test/tests/sequence.wipple:19:1-19:83
+  has definition constraints
+  has instances
+  has type collection -> Sequence element
+  has type parameters
+  is a definition
+TypeParameterNode `value` (test/tests/sequence.wipple:20:28-20:33)
+  at test/tests/sequence.wipple:20:28-20:33
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/sequence.wipple:20:28-20:33)
+NamedTypeNode `Box value` (test/tests/sequence.wipple:20:24-20:33)
+  at test/tests/sequence.wipple:20:24-20:33
+  has type Box value
+  is a type
+  resolved to 1 definition(s): `Box : value => type {⋯}` (test/tests/sequence.wipple:15:1-17:2)
+TypeParameterNode `value` (test/tests/sequence.wipple:20:35-20:40)
+  at test/tests/sequence.wipple:20:35-20:40
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/sequence.wipple:20:28-20:33)
+BoundConstraintNode `As-Sequence (Box value) value` (test/tests/sequence.wipple:20:10-20:41)
+  at test/tests/sequence.wipple:20:10-20:41
+PlaceholderExpressionNode `_` (test/tests/sequence.wipple:20:44-20:45)
+  at test/tests/sequence.wipple:20:44-20:45
+  has type (Box value) -> Sequence value
+  is an expression
+InstanceDefinitionNode `instance (As-Sequence (Box value) value)` (test/tests/sequence.wipple:20:1-20:45)
+  at test/tests/sequence.wipple:20:1-20:45
+  has definition constraints
+  has type (Box value) -> Sequence value
+  has type parameters
+  is a definition
+  resolved to 1 definition(s): `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (test/tests/sequence.wipple:19:1-19:83)
+TypeParameterNode `item` (test/tests/sequence.wipple:22:12-22:16)
+  at test/tests/sequence.wipple:22:12-22:16
+  has type item
+  is a type
+  resolved to 1 definition(s): `item` (test/tests/sequence.wipple:22:12-22:16)
+NamedTypeNode `Boolean` (test/tests/sequence.wipple:22:20-22:27)
+  at test/tests/sequence.wipple:22:20-22:27
+  has type Boolean
+  is a type
+  resolved to 1 definition(s): `Boolean : type {⋯}` (test/tests/sequence.wipple:6:1-9:2)
+FunctionTypeNode `item -> Boolean` (test/tests/sequence.wipple:22:12-22:27)
+  at test/tests/sequence.wipple:22:12-22:27
+  has type item -> Boolean
+  is a type
+TypeParameterNode `collection` (test/tests/sequence.wipple:22:32-22:42)
+  at test/tests/sequence.wipple:22:32-22:42
+  has type collection
+  is a type
+  resolved to 1 definition(s): `collection` (test/tests/sequence.wipple:22:32-22:42)
+TypeParameterNode `item` (test/tests/sequence.wipple:22:55-22:59)
+  at test/tests/sequence.wipple:22:55-22:59
+  has type item
+  is a type
+  resolved to 1 definition(s): `item` (test/tests/sequence.wipple:22:12-22:16)
+NamedTypeNode `Sequence item` (test/tests/sequence.wipple:22:46-22:59)
+  at test/tests/sequence.wipple:22:46-22:59
+  has type Sequence item
+  is a type
+  resolved to 1 definition(s): `Sequence : element => type {⋯}` (test/tests/sequence.wipple:11:1-13:2)
+FunctionTypeNode `collection -> Sequence item` (test/tests/sequence.wipple:22:32-22:59)
+  at test/tests/sequence.wipple:22:32-22:59
+  has type collection -> Sequence item
+  is a type
+FunctionTypeNode `(item -> Boolean) -> collection -> Sequence item` (test/tests/sequence.wipple:22:11-22:59)
+  at test/tests/sequence.wipple:22:11-22:59
+  has type (item -> Boolean) -> collection -> Sequence item
+  is a type
+TypeParameterNode `collection` (test/tests/sequence.wipple:22:79-22:89)
+  at test/tests/sequence.wipple:22:79-22:89
+  has type collection
+  is a type
+  resolved to 1 definition(s): `collection` (test/tests/sequence.wipple:22:32-22:42)
+TypeParameterNode `item` (test/tests/sequence.wipple:22:90-22:94)
+  at test/tests/sequence.wipple:22:90-22:94
+  has type item
+  is a type
+  resolved to 1 definition(s): `item` (test/tests/sequence.wipple:22:12-22:16)
+BoundConstraintNode `As-Sequence collection item` (test/tests/sequence.wipple:22:66-22:95)
+  at test/tests/sequence.wipple:22:66-22:95
+  is a constraint
+  resolved to 1 definition(s): `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (test/tests/sequence.wipple:19:1-19:83)
+ConstantDefinitionNode `filter` (test/tests/sequence.wipple:22:1-22:95)
+  at test/tests/sequence.wipple:22:1-22:95
+  has definition constraints
+  has type (item -> Boolean) -> collection -> Sequence item
+  has type parameters
+  is a definition
+VariablePatternNode `filter` (test/tests/sequence.wipple:23:1-23:7)
+  at test/tests/sequence.wipple:23:1-23:7
+PlaceholderExpressionNode `_` (test/tests/sequence.wipple:23:10-23:11)
+  at test/tests/sequence.wipple:23:10-23:11
+  has type (item -> Boolean) -> collection -> Sequence item
+  is an expression
+VariablePatternNode `box` (test/tests/sequence.wipple:25:1-25:4)
+  at test/tests/sequence.wipple:25:1-25:4
+  has type Box String
+  is a pattern
+NamedTypeNode `String` (test/tests/sequence.wipple:25:17-25:23)
+  at test/tests/sequence.wipple:25:17-25:23
+  has type String or Number
+  is a type
+  resolved to 1 definition(s): `String` (test/tests/sequence.wipple:4:1-4:26)
+NamedTypeNode `Box String` (test/tests/sequence.wipple:25:13-25:23)
+  at test/tests/sequence.wipple:25:13-25:23
+  has type Box String
+  is a type
+  resolved to 1 definition(s): `Box : value => type {⋯}` (test/tests/sequence.wipple:15:1-17:2)
+PlaceholderExpressionNode `_` (test/tests/sequence.wipple:25:8-25:9)
+  at test/tests/sequence.wipple:25:8-25:9
+  has type Box String
+  is an expression
+AnnotateExpressionNode `_ :: Box String` (test/tests/sequence.wipple:25:8-25:23)
+  at test/tests/sequence.wipple:25:8-25:23
+  has type Box String
+  is an expression
+VariablePatternNode `positive?` (test/tests/sequence.wipple:26:1-26:10)
+  at test/tests/sequence.wipple:26:1-26:10
+  has type String -> Boolean
+  is a pattern
+WildcardPatternNode `_` (test/tests/sequence.wipple:26:14-26:15)
+  at test/tests/sequence.wipple:26:14-26:15
+  has type String or Number
+  is a pattern
+NamedTypeNode `Number` (test/tests/sequence.wipple:26:19-26:25)
+  at test/tests/sequence.wipple:26:19-26:25
+  has type String or Number
+  is a type
+  resolved to 1 definition(s): `Number` (test/tests/sequence.wipple:1:1-3:26)
+AnnotatePatternNode `_ :: Number` (test/tests/sequence.wipple:26:14-26:25)
+  at test/tests/sequence.wipple:26:14-26:25
+  has type String or Number
+  is a pattern
+PlaceholderExpressionNode `_` (test/tests/sequence.wipple:26:30-26:31)
+  at test/tests/sequence.wipple:26:30-26:31
+  has type Boolean
+  is an expression
+FunctionExpressionNode `(_ :: Number) -> _` (test/tests/sequence.wipple:26:13-26:31)
+  at test/tests/sequence.wipple:26:13-26:31
+  has type String -> Boolean
+  is an expression
+VariableExpressionNode `filter` (test/tests/sequence.wipple:27:2-27:8)
+  at test/tests/sequence.wipple:27:2-27:8
+  has bound(s) As-Sequence (Box String) String (`instance (As-Sequence (Box value) value)` (test/tests/sequence.wipple:20:1-20:45))
+  has type (String -> Boolean) -> (Box String) -> Sequence String
+  is an expression
+  resolved to 1 definition(s): `filter` (test/tests/sequence.wipple:22:1-22:95)
+VariableExpressionNode `positive?` (test/tests/sequence.wipple:27:9-27:18)
+  at test/tests/sequence.wipple:27:9-27:18
+  has type String -> Boolean
+  is an expression
+  resolved to 1 definition(s): `positive?` (test/tests/sequence.wipple:26:1-26:10)
+CallExpressionNode `filter positive?` (test/tests/sequence.wipple:27:2-27:18)
+  at test/tests/sequence.wipple:27:2-27:18
+  has type (Box String) -> Sequence String
+  is an expression
+VariableExpressionNode `box` (test/tests/sequence.wipple:27:20-27:23)
+  at test/tests/sequence.wipple:27:20-27:23
+  has type Box String
+  is an expression
+  resolved to 1 definition(s): `box` (test/tests/sequence.wipple:25:1-25:4)
+CallExpressionNode `(filter positive?) box` (test/tests/sequence.wipple:27:1-27:23)
+  at test/tests/sequence.wipple:27:1-27:23
+  has type Sequence String
+  is an expression
+VariantNode `True` (test/tests/sequence.wipple:7:3-7:7)
+  at test/tests/sequence.wipple:7:3-7:7
+  has definition constraints
+  has type Boolean
+  is a definition
+VariantNode `False` (test/tests/sequence.wipple:8:3-8:8)
+  at test/tests/sequence.wipple:8:3-8:8
+  has definition constraints
+  has type Boolean
+  is a definition
+
+
+Feedback:
+
+`_ :: Number` (test/tests/sequence.wipple:26:14-26:25) (conflicting-types):
+
+  `_ :: Number` (test/tests/sequence.wipple:26:14-26:25) is a `String` (test/tests/sequence.wipple:25:17-25:23) or a `Number` (test/tests/sequence.wipple:26:19-26:25), but it can only be one of these.
+
+  `_ :: Number` (test/tests/sequence.wipple:26:14-26:25) must be the same type as `_` (test/tests/sequence.wipple:26:14-26:15), `String` (test/tests/sequence.wipple:25:17-25:23), `Number` (test/tests/sequence.wipple:26:19-26:25), and 17 others; double-check these.
+
+  -  `item` (test/tests/sequence.wipple:22:12-22:16) must have the same type everywhere in this use of `filter` (test/tests/sequence.wipple:22:1-22:95).
+
+  -  `value` (test/tests/sequence.wipple:20:28-20:33) must have the same type everywhere in this use of `instance (As-Sequence (Box value) value)` (test/tests/sequence.wipple:20:1-20:45).

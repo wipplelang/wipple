@@ -1,0 +1,66 @@
+Facts:
+NumberExpressionNode `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3)
+  at test/tests/mismatched-inferred-params.wipple:3:2-3:3
+  has type Number or String
+  is an expression
+NumberExpressionNode `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6)
+  at test/tests/mismatched-inferred-params.wipple:3:5-3:6
+  has type Number or String
+  is an expression
+NumberExpressionNode `3` (test/tests/mismatched-inferred-params.wipple:3:8-3:9)
+  at test/tests/mismatched-inferred-params.wipple:3:8-3:9
+  has type Number or String
+  is an expression
+CollectionExpressionNode `1, 2, 3` (test/tests/mismatched-inferred-params.wipple:3:2-3:9)
+  at test/tests/mismatched-inferred-params.wipple:3:2-3:9
+  has type List Number
+  is an expression
+VariableExpressionNode `transform` (test/tests/mismatched-inferred-params.wipple:3:13-3:22)
+  at test/tests/mismatched-inferred-params.wipple:3:13-3:22
+  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List Number) Number (`instance (As-Sequence container element)` (library/src/foundation/sequence.wipple:49:1-52:59))
+  has type (Number -> Number) -> (List Number) -> Sequence Number
+  is an expression
+  resolved to 1 definition(s): `transform` (library/src/foundation/sequence.wipple:66:1-66:99)
+VariablePatternNode `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26)
+  at test/tests/mismatched-inferred-params.wipple:3:25-3:26
+  has type Number or String
+  is a pattern
+NamedTypeNode `String` (test/tests/mismatched-inferred-params.wipple:3:30-3:36)
+  at test/tests/mismatched-inferred-params.wipple:3:30-3:36
+  has type Number or String
+  is a type
+  resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
+AnnotatePatternNode `x :: String` (test/tests/mismatched-inferred-params.wipple:3:25-3:36)
+  at test/tests/mismatched-inferred-params.wipple:3:25-3:36
+  has type Number or String
+  is a pattern
+VariableExpressionNode `x` (test/tests/mismatched-inferred-params.wipple:3:41-3:42)
+  at test/tests/mismatched-inferred-params.wipple:3:41-3:42
+  has type Number or String
+  is an expression
+  resolved to 1 definition(s): `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26)
+FunctionExpressionNode `(x :: String) -> x` (test/tests/mismatched-inferred-params.wipple:3:24-3:42)
+  at test/tests/mismatched-inferred-params.wipple:3:24-3:42
+  has type Number -> Number
+  is an expression
+CallExpressionNode `transform ((x :: String) -> x)` (test/tests/mismatched-inferred-params.wipple:3:13-3:43)
+  at test/tests/mismatched-inferred-params.wipple:3:13-3:43
+  has type (List Number) -> Sequence Number
+  is an expression
+OperatorExpressionNode `1, 2, 3) . transform ((x :: String) -> x)` (test/tests/mismatched-inferred-params.wipple:3:2-3:43)
+  at test/tests/mismatched-inferred-params.wipple:3:2-3:43
+  has type Sequence Number
+  is an expression
+CallExpressionNode `.` (test/tests/mismatched-inferred-params.wipple:3:11-3:12)
+  at test/tests/mismatched-inferred-params.wipple:3:11-3:12
+  has type Sequence Number
+  is an expression
+
+
+Feedback:
+
+`transform` (test/tests/mismatched-inferred-params.wipple:3:13-3:22) (error-instance):
+
+  Can't make a sequence from   `1, 2, 3` (test/tests/mismatched-inferred-params.wipple:3:2-3:9).
+
+ You can't use   `1, 2, 3` (test/tests/mismatched-inferred-params.wipple:3:2-3:9) as a sequence. Try using a list instead.

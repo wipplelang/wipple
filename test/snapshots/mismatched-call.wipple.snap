@@ -1,0 +1,64 @@
+Facts:
+NamedTypeNode `String` (test/tests/mismatched-call.wipple:3:17-3:23)
+  at test/tests/mismatched-call.wipple:3:17-3:23
+  has type String
+  is a type
+  resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
+UnitTypeNode `()` (test/tests/mismatched-call.wipple:3:27-3:29)
+  at test/tests/mismatched-call.wipple:3:27-3:29
+  has type ()
+  is a type
+FunctionTypeNode `String -> ()` (test/tests/mismatched-call.wipple:3:17-3:29)
+  at test/tests/mismatched-call.wipple:3:17-3:29
+  has type String -> ()
+  is a type
+ConstantDefinitionNode `accepts-text` (test/tests/mismatched-call.wipple:1:1-3:29)
+  at test/tests/mismatched-call.wipple:1:1-3:29
+  has definition constraints
+  has type String -> ()
+  is a definition
+VariablePatternNode `accepts-text` (test/tests/mismatched-call.wipple:4:1-4:13)
+  at test/tests/mismatched-call.wipple:4:1-4:13
+VariableExpressionNode `todo` (test/tests/mismatched-call.wipple:4:16-4:20)
+  at test/tests/mismatched-call.wipple:4:16-4:20
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:21:1-21:14)
+VariableExpressionNode `accepts-text` (test/tests/mismatched-call.wipple:8:1-8:13)
+  at test/tests/mismatched-call.wipple:8:1-8:13
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `accepts-text` (test/tests/mismatched-call.wipple:1:1-3:29)
+ConstructorExpressionNode `Add` (test/tests/mismatched-call.wipple:8:15-8:18)
+  at test/tests/mismatched-call.wipple:8:15-8:18
+  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58)
+NumberExpressionNode `1` (test/tests/mismatched-call.wipple:8:19-8:20)
+  at test/tests/mismatched-call.wipple:8:19-8:20
+  has type Number
+  is an expression
+NumberExpressionNode `2` (test/tests/mismatched-call.wipple:8:21-8:22)
+  at test/tests/mismatched-call.wipple:8:21-8:22
+  has type Number
+  is an expression
+CallExpressionNode `Add 1 2` (test/tests/mismatched-call.wipple:8:15-8:22)
+  at test/tests/mismatched-call.wipple:8:15-8:22
+  has type Number or String
+  is an expression
+CallExpressionNode `accepts-text (Add 1 2)` (test/tests/mismatched-call.wipple:8:1-8:23)
+  at test/tests/mismatched-call.wipple:8:1-8:23
+  has type ()
+  is an expression
+
+
+Feedback:
+
+`Add 1 2` (test/tests/mismatched-call.wipple:8:15-8:22) (conflicting-types):
+
+  `Add 1 2` (test/tests/mismatched-call.wipple:8:15-8:22) is a `Number` (library/src/foundation/math.wipple:8:29-8:35) or a `String` (test/tests/mismatched-call.wipple:3:17-3:23), but it can only be one of these.
+
+  `Add 1 2` (test/tests/mismatched-call.wipple:8:15-8:22) must be the same type as `Number` (library/src/foundation/math.wipple:8:29-8:35), `infer sum` (library/src/foundation/math.wipple:7:18-7:29), `sum` (library/src/foundation/math.wipple:7:54-7:57), and 4 others; double-check these.
+
+  -  `infer sum` (library/src/foundation/math.wipple:7:18-7:29) must have the same type everywhere in this use of `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58).

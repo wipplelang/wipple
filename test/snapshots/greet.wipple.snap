@@ -1,0 +1,213 @@
+Facts:
+TypeParameterNode `value` (test/tests/greet.wipple:4:9-4:14)
+  at test/tests/greet.wipple:4:9-4:14
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/greet.wipple:4:9-4:14)
+TypeParameterNode `value` (test/tests/greet.wipple:4:25-4:30)
+  at test/tests/greet.wipple:4:25-4:30
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/greet.wipple:4:9-4:14)
+NamedTypeNode `String` (test/tests/greet.wipple:4:34-4:40)
+  at test/tests/greet.wipple:4:34-4:40
+  has type String
+  is a type
+  resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
+FunctionTypeNode `value -> String` (test/tests/greet.wipple:4:25-4:40)
+  at test/tests/greet.wipple:4:25-4:40
+  has type value -> String
+  is a type
+TraitDefinitionNode `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
+  at test/tests/greet.wipple:1:1-4:41
+  has definition constraints
+  has instances
+  has type parameters
+  has type value -> String
+  is a definition
+TypeParameterNode `value` (test/tests/greet.wipple:7:10-7:15)
+  at test/tests/greet.wipple:7:10-7:15
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/greet.wipple:7:10-7:15)
+NamedTypeNode `String` (test/tests/greet.wipple:7:19-7:25)
+  at test/tests/greet.wipple:7:19-7:25
+  has type String
+  is a type
+  resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
+FunctionTypeNode `value -> String` (test/tests/greet.wipple:7:10-7:25)
+  at test/tests/greet.wipple:7:10-7:25
+  has type value -> String
+  is a type
+TypeParameterNode `value` (test/tests/greet.wipple:7:39-7:44)
+  at test/tests/greet.wipple:7:39-7:44
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/greet.wipple:7:10-7:15)
+BoundConstraintNode `Greet value` (test/tests/greet.wipple:7:32-7:45)
+  at test/tests/greet.wipple:7:32-7:45
+  is a constraint
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
+ConstantDefinitionNode `greet` (test/tests/greet.wipple:6:1-7:45)
+  at test/tests/greet.wipple:6:1-7:45
+  has definition constraints
+  has type parameters
+  has type value -> String
+  is a definition
+VariablePatternNode `greet` (test/tests/greet.wipple:8:1-8:6)
+  at test/tests/greet.wipple:8:1-8:6
+VariablePatternNode `x` (test/tests/greet.wipple:8:9-8:10)
+  at test/tests/greet.wipple:8:9-8:10
+  has type value
+  is a pattern
+ConstructorExpressionNode `Greet` (test/tests/greet.wipple:8:27-8:32)
+  at test/tests/greet.wipple:8:27-8:32
+  has type value -> String
+  is an expression
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
+VariableExpressionNode `x` (test/tests/greet.wipple:8:33-8:34)
+  at test/tests/greet.wipple:8:33-8:34
+  has type value
+  is an expression
+  resolved to 1 definition(s): `x` (test/tests/greet.wipple:8:9-8:10)
+CallExpressionNode `Greet x` (test/tests/greet.wipple:8:27-8:34)
+  at test/tests/greet.wipple:8:27-8:34
+  has type String
+  is an expression
+FormatExpressionNode `"Hello, _!" (Greet x)` (test/tests/greet.wipple:8:14-8:35)
+  at test/tests/greet.wipple:8:14-8:35
+  has type String
+  is an expression
+FunctionExpressionNode `x -> "Hello, _!" (Greet x)` (test/tests/greet.wipple:8:9-8:35)
+  at test/tests/greet.wipple:8:9-8:35
+  has type value -> String
+  is an expression
+NamedTypeNode `String` (test/tests/greet.wipple:10:24-10:30)
+  at test/tests/greet.wipple:10:24-10:30
+  has type String
+  is a type
+  resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
+TypeDefinitionNode `Person : type {⋯}` (test/tests/greet.wipple:10:1-10:31)
+  at test/tests/greet.wipple:10:1-10:31
+  has definition constraints
+  has type Person
+  is a definition
+NamedTypeNode `Person` (test/tests/greet.wipple:13:17-13:23)
+  at test/tests/greet.wipple:13:17-13:23
+  has type Person
+  is a type
+  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/greet.wipple:10:1-10:31)
+BoundConstraintNode `Greet Person` (test/tests/greet.wipple:13:10-13:24)
+  at test/tests/greet.wipple:13:10-13:24
+VariablePatternNode `name` (test/tests/greet.wipple:13:43-13:47)
+  at test/tests/greet.wipple:13:43-13:47
+  has type String
+  is a pattern
+StructurePatternNode `Person {name` (test/tests/greet.wipple:13:28-13:48)
+  at test/tests/greet.wipple:13:28-13:48
+  has type Person
+  is a pattern
+  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/greet.wipple:10:1-10:31)
+VariableExpressionNode `name` (test/tests/greet.wipple:13:53-13:57)
+  at test/tests/greet.wipple:13:53-13:57
+  has type String
+  is an expression
+  resolved to 1 definition(s): `name` (test/tests/greet.wipple:13:43-13:47)
+FunctionExpressionNode `(Person {name` (test/tests/greet.wipple:13:27-13:57)
+  at test/tests/greet.wipple:13:27-13:57
+  has type Person -> String
+  is an expression
+InstanceDefinitionNode `instance (Greet Person)` (test/tests/greet.wipple:12:1-13:57)
+  at test/tests/greet.wipple:12:1-13:57
+  has definition constraints
+  has type Person -> String
+  is a definition
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
+TypeDefinitionNode `Earth` (test/tests/greet.wipple:15:1-15:13)
+  at test/tests/greet.wipple:15:1-15:13
+  has definition constraints
+  has type Earth
+  is a definition
+NamedTypeNode `Earth` (test/tests/greet.wipple:18:17-18:22)
+  at test/tests/greet.wipple:18:17-18:22
+  has type Earth
+  is a type
+  resolved to 1 definition(s): `Earth` (test/tests/greet.wipple:15:1-15:13)
+BoundConstraintNode `Greet Earth` (test/tests/greet.wipple:18:10-18:23)
+  at test/tests/greet.wipple:18:10-18:23
+WildcardPatternNode `_` (test/tests/greet.wipple:18:26-18:27)
+  at test/tests/greet.wipple:18:26-18:27
+  has type Earth
+  is a pattern
+StringExpressionNode `"world"` (test/tests/greet.wipple:18:31-18:38)
+  at test/tests/greet.wipple:18:31-18:38
+  has type String
+  is an expression
+FunctionExpressionNode `_ -> "world"` (test/tests/greet.wipple:18:26-18:38)
+  at test/tests/greet.wipple:18:26-18:38
+  has type Earth -> String
+  is an expression
+InstanceDefinitionNode `instance (Greet Earth)` (test/tests/greet.wipple:17:1-18:38)
+  at test/tests/greet.wipple:17:1-18:38
+  has definition constraints
+  has type Earth -> String
+  is a definition
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
+VariableExpressionNode `show` (test/tests/greet.wipple:20:1-20:5)
+  at test/tests/greet.wipple:20:1-20:5
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `greet` (test/tests/greet.wipple:20:7-20:12)
+  at test/tests/greet.wipple:20:7-20:12
+  has bound(s) Greet Person (`instance (Greet Person)` (test/tests/greet.wipple:12:1-13:57))
+  has type Person -> String
+  is an expression
+  resolved to 1 definition(s): `greet` (test/tests/greet.wipple:6:1-7:45)
+StringExpressionNode `"Bob"` (test/tests/greet.wipple:20:29-20:34)
+  at test/tests/greet.wipple:20:29-20:34
+  has type String
+  is an expression
+StructureExpressionNode `Person {name` (test/tests/greet.wipple:20:14-20:35)
+  at test/tests/greet.wipple:20:14-20:35
+  has type Person
+  is an expression
+  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/greet.wipple:10:1-10:31)
+CallExpressionNode `greet (Person {name` (test/tests/greet.wipple:20:7-20:36)
+  at test/tests/greet.wipple:20:7-20:36
+  has type String
+  is an expression
+CallExpressionNode `show (greet (Person {name` (test/tests/greet.wipple:20:1-20:37)
+  at test/tests/greet.wipple:20:1-20:37
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/greet.wipple:21:1-21:5)
+  at test/tests/greet.wipple:21:1-21:5
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `greet` (test/tests/greet.wipple:21:7-21:12)
+  at test/tests/greet.wipple:21:7-21:12
+  has bound(s) Greet Earth (`instance (Greet Earth)` (test/tests/greet.wipple:17:1-18:38))
+  has type Earth -> String
+  is an expression
+  resolved to 1 definition(s): `greet` (test/tests/greet.wipple:6:1-7:45)
+ConstructorExpressionNode `Earth` (test/tests/greet.wipple:21:13-21:18)
+  at test/tests/greet.wipple:21:13-21:18
+  has type Earth
+  is an expression
+  resolved to 1 definition(s): `Earth` (test/tests/greet.wipple:15:1-15:13)
+CallExpressionNode `greet Earth` (test/tests/greet.wipple:21:7-21:18)
+  at test/tests/greet.wipple:21:7-21:18
+  has type String
+  is an expression
+CallExpressionNode `show (greet Earth)` (test/tests/greet.wipple:21:1-21:19)
+  at test/tests/greet.wipple:21:1-21:19
+  has type ()
+  is an expression
+
+Output:
+Hello, Bob!
+Hello, world!

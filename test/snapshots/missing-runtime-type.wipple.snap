@@ -1,0 +1,178 @@
+Facts:
+TypeParameterNode `a` (test/tests/missing-runtime-type.wipple:3:6-3:7)
+  at test/tests/missing-runtime-type.wipple:3:6-3:7
+  has type a
+  is a type
+  resolved to 1 definition(s): `a` (test/tests/missing-runtime-type.wipple:3:6-3:7)
+TypeParameterNode `b` (test/tests/missing-runtime-type.wipple:3:8-3:9)
+  at test/tests/missing-runtime-type.wipple:3:8-3:9
+  has type b
+  is a type
+  resolved to 1 definition(s): `b` (test/tests/missing-runtime-type.wipple:3:8-3:9)
+TypeParameterNode `a` (test/tests/missing-runtime-type.wipple:3:20-3:21)
+  at test/tests/missing-runtime-type.wipple:3:20-3:21
+  has type a
+  is a type
+  resolved to 1 definition(s): `a` (test/tests/missing-runtime-type.wipple:3:6-3:7)
+TypeParameterNode `b` (test/tests/missing-runtime-type.wipple:3:25-3:26)
+  at test/tests/missing-runtime-type.wipple:3:25-3:26
+  has type b
+  is a type
+  resolved to 1 definition(s): `b` (test/tests/missing-runtime-type.wipple:3:8-3:9)
+FunctionTypeNode `a -> b` (test/tests/missing-runtime-type.wipple:3:20-3:26)
+  at test/tests/missing-runtime-type.wipple:3:20-3:26
+  has type a -> b
+  is a type
+TraitDefinitionNode `T1 : a b => trait (a -> b)` (test/tests/missing-runtime-type.wipple:1:1-3:27)
+  at test/tests/missing-runtime-type.wipple:1:1-3:27
+  has definition constraints
+  has instances
+  has type a -> b
+  has type parameters
+  is a definition
+UnitTypeNode `()` (test/tests/missing-runtime-type.wipple:4:14-4:16)
+  at test/tests/missing-runtime-type.wipple:4:14-4:16
+  has type ()
+  is a type
+UnitTypeNode `()` (test/tests/missing-runtime-type.wipple:4:17-4:19)
+  at test/tests/missing-runtime-type.wipple:4:17-4:19
+  has type ()
+  is a type
+BoundConstraintNode `T1 () ()` (test/tests/missing-runtime-type.wipple:4:10-4:20)
+  at test/tests/missing-runtime-type.wipple:4:10-4:20
+UnitPatternNode `()` (test/tests/missing-runtime-type.wipple:4:23-4:25)
+  at test/tests/missing-runtime-type.wipple:4:23-4:25
+  has type ()
+  is a pattern
+UnitExpressionNode `()` (test/tests/missing-runtime-type.wipple:4:29-4:31)
+  at test/tests/missing-runtime-type.wipple:4:29-4:31
+  has type ()
+  is an expression
+FunctionExpressionNode `) -> (` (test/tests/missing-runtime-type.wipple:4:23-4:31)
+  at test/tests/missing-runtime-type.wipple:4:23-4:31
+  has type () -> ()
+  is an expression
+InstanceDefinitionNode `instance (T1 () ())` (test/tests/missing-runtime-type.wipple:4:1-4:31)
+  at test/tests/missing-runtime-type.wipple:4:1-4:31
+  has definition constraints
+  has type () -> ()
+  is a definition
+  resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (test/tests/missing-runtime-type.wipple:1:1-3:27)
+TypeParameterNode `a` (test/tests/missing-runtime-type.wipple:6:6-6:7)
+  at test/tests/missing-runtime-type.wipple:6:6-6:7
+  has type a
+  is a type
+  resolved to 1 definition(s): `a` (test/tests/missing-runtime-type.wipple:6:6-6:7)
+TypeParameterNode `a` (test/tests/missing-runtime-type.wipple:6:18-6:19)
+  at test/tests/missing-runtime-type.wipple:6:18-6:19
+  has type a
+  is a type
+  resolved to 1 definition(s): `a` (test/tests/missing-runtime-type.wipple:6:6-6:7)
+UnitTypeNode `()` (test/tests/missing-runtime-type.wipple:6:23-6:25)
+  at test/tests/missing-runtime-type.wipple:6:23-6:25
+  has type ()
+  is a type
+FunctionTypeNode `a -> ()` (test/tests/missing-runtime-type.wipple:6:18-6:25)
+  at test/tests/missing-runtime-type.wipple:6:18-6:25
+  has type a -> ()
+  is a type
+TraitDefinitionNode `T2 : a => trait (a -> ())` (test/tests/missing-runtime-type.wipple:6:1-6:26)
+  at test/tests/missing-runtime-type.wipple:6:1-6:26
+  has definition constraints
+  has instances
+  has type a -> ()
+  has type parameters
+  is a definition
+TypeParameterNode `a` (test/tests/missing-runtime-type.wipple:7:14-7:15)
+  at test/tests/missing-runtime-type.wipple:7:14-7:15
+  has type a
+  is a type
+  resolved to 1 definition(s): `a` (test/tests/missing-runtime-type.wipple:7:14-7:15)
+BoundConstraintNode `T2 a` (test/tests/missing-runtime-type.wipple:7:10-7:16)
+  at test/tests/missing-runtime-type.wipple:7:10-7:16
+TypeParameterNode `a` (test/tests/missing-runtime-type.wipple:7:27-7:28)
+  at test/tests/missing-runtime-type.wipple:7:27-7:28
+  has type a
+  is a type
+  resolved to 1 definition(s): `a` (test/tests/missing-runtime-type.wipple:7:14-7:15)
+TypeParameterNode `b` (test/tests/missing-runtime-type.wipple:7:29-7:30)
+  at test/tests/missing-runtime-type.wipple:7:29-7:30
+  has type b
+  is a type
+  resolved to 1 definition(s): `b` (test/tests/missing-runtime-type.wipple:7:29-7:30)
+BoundConstraintNode `T1 a b` (test/tests/missing-runtime-type.wipple:7:23-7:31)
+  at test/tests/missing-runtime-type.wipple:7:23-7:31
+  is a constraint
+  resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (test/tests/missing-runtime-type.wipple:1:1-3:27)
+VariablePatternNode `x` (test/tests/missing-runtime-type.wipple:7:34-7:35)
+  at test/tests/missing-runtime-type.wipple:7:34-7:35
+  has type a
+  is a pattern
+WildcardPatternNode `_` (test/tests/missing-runtime-type.wipple:7:43-7:44)
+  at test/tests/missing-runtime-type.wipple:7:43-7:44
+  has type b
+  is a pattern
+ConstructorExpressionNode `T1` (test/tests/missing-runtime-type.wipple:7:47-7:49)
+  at test/tests/missing-runtime-type.wipple:7:47-7:49
+  has type a -> b
+  is an expression
+  resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (test/tests/missing-runtime-type.wipple:1:1-3:27)
+VariableExpressionNode `x` (test/tests/missing-runtime-type.wipple:7:50-7:51)
+  at test/tests/missing-runtime-type.wipple:7:50-7:51
+  has type a
+  is an expression
+  resolved to 1 definition(s): `x` (test/tests/missing-runtime-type.wipple:7:34-7:35)
+CallExpressionNode `T1 x` (test/tests/missing-runtime-type.wipple:7:47-7:51)
+  at test/tests/missing-runtime-type.wipple:7:47-7:51
+  has type b
+  is an expression
+BlockExpressionNode `{_` (test/tests/missing-runtime-type.wipple:7:42-7:52)
+  at test/tests/missing-runtime-type.wipple:7:42-7:52
+  has type {()}
+  is an expression
+DoExpressionNode `do {_` (test/tests/missing-runtime-type.wipple:7:39-7:52)
+  at test/tests/missing-runtime-type.wipple:7:39-7:52
+  has type ()
+  is an expression
+FunctionExpressionNode `x -> do {_` (test/tests/missing-runtime-type.wipple:7:34-7:52)
+  at test/tests/missing-runtime-type.wipple:7:34-7:52
+  has type a -> ()
+  is an expression
+InstanceDefinitionNode `instance (T2 a)` (test/tests/missing-runtime-type.wipple:7:1-7:52)
+  at test/tests/missing-runtime-type.wipple:7:1-7:52
+  has definition constraints
+  has type a -> ()
+  has type parameters
+  is a definition
+  resolved to 1 definition(s): `T2 : a => trait (a -> ())` (test/tests/missing-runtime-type.wipple:6:1-6:26)
+ConstructorExpressionNode `T2` (test/tests/missing-runtime-type.wipple:8:1-8:3)
+  at test/tests/missing-runtime-type.wipple:8:1-8:3
+  has bound(s) T2 () (`instance (T2 a)` (test/tests/missing-runtime-type.wipple:7:1-7:52)), T1 () () (`instance (T1 () ())` (test/tests/missing-runtime-type.wipple:4:1-4:31))
+  has type () -> ()
+  is an expression
+  resolved to 1 definition(s): `T2 : a => trait (a -> ())` (test/tests/missing-runtime-type.wipple:6:1-6:26)
+UnitExpressionNode `()` (test/tests/missing-runtime-type.wipple:8:4-8:6)
+  at test/tests/missing-runtime-type.wipple:8:4-8:6
+  has type ()
+  is an expression
+CallExpressionNode `T2 ()` (test/tests/missing-runtime-type.wipple:8:1-8:6)
+  at test/tests/missing-runtime-type.wipple:8:1-8:6
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/missing-runtime-type.wipple:10:1-10:5)
+  at test/tests/missing-runtime-type.wipple:10:1-10:5
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+StringExpressionNode `"done"` (test/tests/missing-runtime-type.wipple:10:6-10:12)
+  at test/tests/missing-runtime-type.wipple:10:6-10:12
+  has type String
+  is an expression
+CallExpressionNode `show "done"` (test/tests/missing-runtime-type.wipple:10:1-10:12)
+  at test/tests/missing-runtime-type.wipple:10:1-10:12
+  has type ()
+  is an expression
+
+Output:
+done

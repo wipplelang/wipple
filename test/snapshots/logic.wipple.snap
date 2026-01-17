@@ -1,0 +1,131 @@
+Facts:
+VariableExpressionNode `show` (test/tests/logic.wipple:3:1-3:5)
+  at test/tests/logic.wipple:3:1-3:5
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `if` (test/tests/logic.wipple:3:7-3:9)
+  at test/tests/logic.wipple:3:7-3:9
+  has type Boolean {String} {String} -> String
+  is an expression
+  resolved to 1 definition(s): `if :: Boolean {⋯} -> value` (library/src/foundation/logic.wipple:7:1-8:39)
+ConstructorExpressionNode `True` (test/tests/logic.wipple:3:11-3:15)
+  at test/tests/logic.wipple:3:11-3:15
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+ConstructorExpressionNode `False` (test/tests/logic.wipple:3:20-3:25)
+  at test/tests/logic.wipple:3:20-3:25
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
+OperatorExpressionNode `True and False` (test/tests/logic.wipple:3:11-3:25)
+  at test/tests/logic.wipple:3:11-3:25
+  has type Boolean
+  is an expression
+StringExpressionNode `"a"` (test/tests/logic.wipple:3:28-3:31)
+  at test/tests/logic.wipple:3:28-3:31
+  has type String
+  is an expression
+BlockExpressionNode `{⋯}` (test/tests/logic.wipple:3:27-3:32)
+  at test/tests/logic.wipple:3:27-3:32
+  has type {String}
+  is an expression
+StringExpressionNode `"b"` (test/tests/logic.wipple:3:34-3:37)
+  at test/tests/logic.wipple:3:34-3:37
+  has type String
+  is an expression
+BlockExpressionNode `{⋯}` (test/tests/logic.wipple:3:33-3:38)
+  at test/tests/logic.wipple:3:33-3:38
+  has type {String}
+  is an expression
+CallExpressionNode `if (True and False) {⋯}` (test/tests/logic.wipple:3:7-3:38)
+  at test/tests/logic.wipple:3:7-3:38
+  has type String
+  is an expression
+CallExpressionNode `show (if (True and False) {⋯})` (test/tests/logic.wipple:3:1-3:39)
+  at test/tests/logic.wipple:3:1-3:39
+  has type ()
+  is an expression
+VariableExpressionNode `show` (test/tests/logic.wipple:4:1-4:5)
+  at test/tests/logic.wipple:4:1-4:5
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+VariableExpressionNode `if` (test/tests/logic.wipple:4:7-4:9)
+  at test/tests/logic.wipple:4:7-4:9
+  has type Boolean {String} {String} -> String
+  is an expression
+  resolved to 1 definition(s): `if :: Boolean {⋯} -> value` (library/src/foundation/logic.wipple:7:1-8:39)
+ConstructorExpressionNode `True` (test/tests/logic.wipple:4:11-4:15)
+  at test/tests/logic.wipple:4:11-4:15
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+ConstructorExpressionNode `False` (test/tests/logic.wipple:4:19-4:24)
+  at test/tests/logic.wipple:4:19-4:24
+  has type Boolean
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
+OperatorExpressionNode `True or False` (test/tests/logic.wipple:4:11-4:24)
+  at test/tests/logic.wipple:4:11-4:24
+  has type Boolean
+  is an expression
+StringExpressionNode `"a"` (test/tests/logic.wipple:4:27-4:30)
+  at test/tests/logic.wipple:4:27-4:30
+  has type String
+  is an expression
+BlockExpressionNode `{⋯}` (test/tests/logic.wipple:4:26-4:31)
+  at test/tests/logic.wipple:4:26-4:31
+  has type {String}
+  is an expression
+StringExpressionNode `"b"` (test/tests/logic.wipple:4:33-4:36)
+  at test/tests/logic.wipple:4:33-4:36
+  has type String
+  is an expression
+BlockExpressionNode `{⋯}` (test/tests/logic.wipple:4:32-4:37)
+  at test/tests/logic.wipple:4:32-4:37
+  has type {String}
+  is an expression
+CallExpressionNode `if (True or False) {⋯}` (test/tests/logic.wipple:4:7-4:37)
+  at test/tests/logic.wipple:4:7-4:37
+  has type String
+  is an expression
+CallExpressionNode `show (if (True or False) {⋯})` (test/tests/logic.wipple:4:1-4:38)
+  at test/tests/logic.wipple:4:1-4:38
+  has type ()
+  is an expression
+ConstructorExpressionNode `and` (test/tests/logic.wipple:3:16-3:19)
+  at test/tests/logic.wipple:3:16-3:19
+  has bound(s) And Boolean Boolean Boolean (`instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:26:1-26:63))
+  has type Boolean {Boolean} -> Boolean
+  is an expression
+  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:24:1-25:74)
+BlockExpressionNode `False` (test/tests/logic.wipple:3:20-3:25)
+  at test/tests/logic.wipple:3:20-3:25
+  has type {Boolean}
+  is an expression
+CallExpressionNode `True and False` (test/tests/logic.wipple:3:11-3:25)
+  at test/tests/logic.wipple:3:11-3:25
+  has type Boolean
+  is an expression
+ConstructorExpressionNode `or` (test/tests/logic.wipple:4:16-4:18)
+  at test/tests/logic.wipple:4:16-4:18
+  has bound(s) Or Boolean Boolean Boolean (`instance (Or Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:61))
+  has type Boolean {Boolean} -> Boolean
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:28:1-29:73)
+BlockExpressionNode `False` (test/tests/logic.wipple:4:19-4:24)
+  at test/tests/logic.wipple:4:19-4:24
+  has type {Boolean}
+  is an expression
+CallExpressionNode `True or False` (test/tests/logic.wipple:4:11-4:24)
+  at test/tests/logic.wipple:4:11-4:24
+  has type Boolean
+  is an expression
+
+Output:
+b
+a

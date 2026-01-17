@@ -44,7 +44,6 @@ struct WrittenType {
 
 pub struct CodegenCtx<'a> {
     pub db: &'a mut Db,
-    _output_path: String,
     options: Options<'a>,
     output: String,
     line: usize,
@@ -57,11 +56,18 @@ pub struct CodegenCtx<'a> {
 const START_LINE: usize = 1;
 const START_COLUMN: usize = 0;
 
+pub fn codegen(
+    db: &mut Db,
+    files: &[NodeRef],
+    options: Options<'_>,
+) -> Result<String, CodegenError> {
+    CodegenCtx::new(db, options).to_string(files)
+}
+
 impl<'a> CodegenCtx<'a> {
-    pub fn new(db: &'a mut Db, output_path: impl Into<String>, options: Options<'a>) -> Self {
+    fn new(db: &'a mut Db, options: Options<'a>) -> Self {
         CodegenCtx {
             db,
-            _output_path: output_path.into(),
             options,
             output: String::new(),
             line: START_LINE,
@@ -248,6 +254,8 @@ impl<'a> CodegenCtx<'a> {
     }
 
     pub fn to_string(mut self, files: &[NodeRef]) -> Result<String, CodegenError> {
+        colored::control::set_override(false);
+
         if self.options.module {
             self.write_string("let __wipple_env, __wipple_proxy;");
             self.write_line();
@@ -285,6 +293,8 @@ impl<'a> CodegenCtx<'a> {
         let prelude = format!("{}{}", self.options.prelude, type_cache);
 
         let script = format!("{}{}", prelude, self.output);
+
+        colored::control::unset_override();
 
         Ok(script)
     }

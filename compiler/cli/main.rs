@@ -4,15 +4,17 @@ mod lsp;
 
 use clap::Parser;
 use colored::Colorize;
+use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
-    env, fs,
+    fmt::Write as _,
+    fs,
     io::{self, Read, Write},
     path::{Path, PathBuf},
     process, time,
 };
 use wipple::{
-    codegen::{self, CodegenCtx},
-    database::{Db, RenderConfig},
+    codegen::{self, codegen},
+    database::{Db, NodeRef, RenderConfig},
     driver,
     syntax::format,
 };
@@ -22,6 +24,11 @@ const PRELUDE: &str = concat!(
     include_str!("../runtime/runtime.js")
 );
 
+const CODEGEN_OPTIONS: codegen::Options<'static> = codegen::Options {
+    prelude: PRELUDE,
+    module: false,
+};
+
 #[derive(Debug, clap::Parser)]
 enum Command {
     Compile {
@@ -30,6 +37,11 @@ enum Command {
     },
 
     Run {
+        #[clap(flatten)]
+        options: CompileOptions,
+    },
+
+    Test {
         #[clap(flatten)]
         options: CompileOptions,
     },
@@ -70,34 +82,11 @@ fn main() -> anyhow::Result<()> {
         }
         Command::Run { options } => {
             let script = compile(&options)?;
-
-            enum OutputPath<'a> {
-                FromOptions(&'a Path),
-                Temp(tempfile::NamedTempFile),
-            }
-
-            impl AsRef<Path> for OutputPath<'_> {
-                fn as_ref(&self) -> &Path {
-                    match self {
-                        OutputPath::FromOptions(path) => path,
-                        OutputPath::Temp(file) => file.path(),
-                    }
-                }
-            }
-
-            let output_path = match &options.output {
-                Some(path) => OutputPath::FromOptions(path),
-                None => {
-                    let mut file = tempfile::Builder::new().suffix(".js").tempfile()?;
-                    file.write_all(script.as_bytes())?;
-                    OutputPath::Temp(file)
-                }
-            };
-
-            process::Command::new("/usr/bin/env")
-                .args(["node".as_ref(), output_path.as_ref()])
-                .spawn()?
-                .wait()?;
+            run(options.output.as_deref(), script, |cmd| cmd)?;
+        }
+        Command::Test { options } => {
+            let outputs = test(&options)?;
+            println!("{}", serde_json::to_string(&outputs)?);
         }
         Command::Format {} => {
             let mut source = String::new();
@@ -119,29 +108,130 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn compile(options: &CompileOptions) -> anyhow::Result<String> {
-    let mut db = Db::new();
-
-    let mut layers = options
-        .lib
-        .iter()
-        .map(|path| driver::read_layer(&mut db, path))
-        .collect::<anyhow::Result<Vec<_>>>()?;
+    let mut db = setup(options, true)?;
 
     let files = options
         .paths
         .iter()
-        .map(|path| Ok(driver::read_file(&mut db, path)?))
+        .map(|path| {
+            let file = driver::read_file(&mut db, path)?;
+            Ok((path.to_string_lossy(), file))
+        })
         .collect::<anyhow::Result<Vec<_>>>()?;
 
-    layers.push(driver::Layer {
-        name: options
-            .paths
-            .iter()
-            .map(|path| Ok(path.file_name().unwrap_or_default().to_string_lossy()))
-            .collect::<anyhow::Result<Vec<_>>>()?
-            .join(", "),
+    let (paths, files): (Vec<_>, Vec<_>) = files.iter().cloned().unzip();
+
+    let layer = driver::Layer {
+        name: paths.join(", "),
         files: files.clone(),
-    });
+    };
+
+    let (feedback_count, feedback) = compile_layer(options, &mut db, &layer, true);
+
+    if feedback_count == 0 {
+        println!();
+    } else {
+        print!("{feedback}");
+
+        return Err(anyhow::format_err!(
+            "could not compile {}: {} feedback item(s)",
+            layer.name,
+            feedback_count
+        ));
+    }
+
+    let script = codegen(&mut db, &files, CODEGEN_OPTIONS)?;
+
+    if let Some(path) = &options.output {
+        fs::write(path, &script)?;
+    }
+
+    Ok(script)
+}
+
+fn run(
+    path: Option<&Path>,
+    script: String,
+    setup: impl FnOnce(&mut process::Command) -> &mut process::Command,
+) -> Result<Vec<u8>, anyhow::Error> {
+    enum OutputPath<'a> {
+        FromOptions(&'a Path),
+        Temp(tempfile::NamedTempFile),
+    }
+
+    impl AsRef<Path> for OutputPath<'_> {
+        fn as_ref(&self) -> &Path {
+            match self {
+                OutputPath::FromOptions(path) => path,
+                OutputPath::Temp(file) => file.path(),
+            }
+        }
+    }
+
+    let output_path = match path {
+        Some(path) => OutputPath::FromOptions(path),
+        None => {
+            let mut file = tempfile::Builder::new().suffix(".js").tempfile()?;
+            file.write_all(script.as_bytes())?;
+            OutputPath::Temp(file)
+        }
+    };
+
+    let output =
+        setup(process::Command::new("/usr/bin/env").args(["node".as_ref(), output_path.as_ref()]))
+            .spawn()?
+            .wait_with_output()?;
+
+    if !output.status.success() {
+        return Err(anyhow::format_err!(
+            "script exited with status {}",
+            output.status
+        ));
+    }
+
+    Ok(output.stdout)
+}
+
+fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
+    let db = setup(options, false)?;
+
+    let layers = options
+        .paths
+        .iter()
+        .map(|path| {
+            let mut db = db.clone();
+
+            let layer = driver::Layer {
+                name: file_name(path),
+                files: vec![driver::read_file(&mut db, path)?],
+            };
+
+            Ok((db, layer))
+        })
+        .collect::<anyhow::Result<Vec<_>>>()?;
+
+    layers
+        .into_par_iter()
+        .map(|(mut db, layer)| {
+            let (feedback_count, mut output) = compile_layer(options, &mut db, &layer, false);
+
+            if feedback_count == 0 {
+                let script = codegen(&mut db, &layer.files, CODEGEN_OPTIONS)?;
+                let buf = run(None, script, |cmd| cmd.stdout(process::Stdio::piped()))?;
+                writeln!(&mut output, "Output:").unwrap();
+                output.push_str(str::from_utf8(&buf).unwrap());
+            }
+
+            Ok(serde_json::json!({
+                "file": layer.name,
+                "output": output,
+            }))
+        })
+        .collect()
+}
+
+fn setup(options: &CompileOptions, time: bool) -> anyhow::Result<Db> {
+    let mut db = Db::new();
 
     db.render_with(RenderConfig::new(|db, value, f| {
         if let Some(node) = value.link() {
@@ -164,61 +254,73 @@ fn compile(options: &CompileOptions) -> anyhow::Result<String> {
         Ok(())
     }));
 
-    let feedback_filter = move |id: &str| {
+    let lib_layers = options
+        .lib
+        .iter()
+        .map(|path| driver::read_layer(&mut db, path))
+        .collect::<anyhow::Result<Vec<_>>>()?;
+
+    for layer in lib_layers {
+        compile_layer(options, &mut db, &layer, time);
+    }
+
+    Ok(db)
+}
+
+fn compile_layer(
+    options: &CompileOptions,
+    db: &mut Db,
+    layer: &driver::Layer,
+    time: bool,
+) -> (usize, String) {
+    if time {
+        eprint!("Compiling {}...", layer.name);
+    } else {
+        eprintln!("Compiling {}", layer.name);
+    }
+
+    let start = time::Instant::now();
+
+    driver::compile(db, &layer.files);
+
+    if time {
+        let duration = time::Instant::now().duration_since(start);
+        eprintln!(" done ({duration:.0?})");
+    }
+
+    let mut output = String::new();
+
+    if options.facts {
+        let file_spans = layer
+            .files
+            .iter()
+            .map(|file| db.span(file))
+            .collect::<Vec<_>>();
+
+        let node_is_in_layer = |node: &NodeRef| {
+            let span = db.span(node);
+            file_spans.iter().any(|file_span| span.is_inside(file_span))
+        };
+
+        writeln!(&mut output, "Facts:\n{}", db.display(node_is_in_layer)).unwrap();
+    }
+
+    let feedback_filter = |id: &str| {
         options.filter_feedback.is_empty() || options.filter_feedback.iter().any(|s| s == id)
     };
 
-    for layer in layers {
-        eprint!("Compiling {}...", layer.name);
-
-        let start = time::Instant::now();
-
-        driver::compile(&mut db, &layer.files);
-        eprint!(" done");
-
-        if env::var("CI").is_err() {
-            let duration = time::Instant::now().duration_since(start);
-            eprintln!(" ({duration:.0?})");
-        } else {
-            eprintln!();
-        }
-    }
-
-    if options.facts {
-        println!("Facts:");
-        println!("{db}");
-    }
-
-    let mut feedback = String::new();
-    let feedback_count = driver::write_feedback(&mut feedback, &db, feedback_filter);
-    print!("{feedback}");
+    let feedback_count = driver::write_feedback(&mut output, db, feedback_filter);
 
     if feedback_count > 0 {
-        return Err(anyhow::format_err!(
-            "compilation failed with {feedback_count} feedback item(s)"
-        ));
+        writeln!(&mut output).unwrap();
     }
 
-    let codegen = CodegenCtx::new(
-        &mut db,
-        options
-            .output
-            .as_deref()
-            .unwrap_or_else(|| Path::new("index.js"))
-            .to_string_lossy(),
-        codegen::Options {
-            prelude: PRELUDE,
-            module: false,
-        },
-    );
+    (feedback_count, output)
+}
 
-    colored::control::set_override(false);
-    let script = codegen.to_string(&files)?;
-    colored::control::unset_override();
-
-    if let Some(path) = &options.output {
-        fs::write(path, &script)?;
-    }
-
-    Ok(script)
+fn file_name(path: &Path) -> String {
+    path.file_name()
+        .unwrap_or_default()
+        .to_string_lossy()
+        .to_string()
 }

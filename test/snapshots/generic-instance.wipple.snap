@@ -1,0 +1,122 @@
+Facts:
+TypeParameterNode `value` (test/tests/generic-instance.wipple:3:7-3:12)
+  at test/tests/generic-instance.wipple:3:7-3:12
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/generic-instance.wipple:3:7-3:12)
+TypeParameterNode `value` (test/tests/generic-instance.wipple:3:31-3:36)
+  at test/tests/generic-instance.wipple:3:31-3:36
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/generic-instance.wipple:3:7-3:12)
+TypeDefinitionNode `Box : value => type {⋯}` (test/tests/generic-instance.wipple:1:1-3:37)
+  at test/tests/generic-instance.wipple:1:1-3:37
+  has definition constraints
+  has type Box value
+  has type parameters
+  is a definition
+TypeParameterNode `a` (test/tests/generic-instance.wipple:5:7-5:8)
+  at test/tests/generic-instance.wipple:5:7-5:8
+  has type a
+  is a type
+  resolved to 1 definition(s): `a` (test/tests/generic-instance.wipple:5:7-5:8)
+TypeParameterNode `b` (test/tests/generic-instance.wipple:5:9-5:10)
+  at test/tests/generic-instance.wipple:5:9-5:10
+  has type b
+  is a type
+  resolved to 1 definition(s): `b` (test/tests/generic-instance.wipple:5:9-5:10)
+TypeParameterNode `a` (test/tests/generic-instance.wipple:5:21-5:22)
+  at test/tests/generic-instance.wipple:5:21-5:22
+  has type a
+  is a type
+  resolved to 1 definition(s): `a` (test/tests/generic-instance.wipple:5:7-5:8)
+TypeParameterNode `b` (test/tests/generic-instance.wipple:5:26-5:27)
+  at test/tests/generic-instance.wipple:5:26-5:27
+  has type b
+  is a type
+  resolved to 1 definition(s): `b` (test/tests/generic-instance.wipple:5:9-5:10)
+FunctionTypeNode `a -> b` (test/tests/generic-instance.wipple:5:21-5:27)
+  at test/tests/generic-instance.wipple:5:21-5:27
+  has type a -> b
+  is a type
+TraitDefinitionNode `Foo : a b => trait (a -> b)` (test/tests/generic-instance.wipple:5:1-5:28)
+  at test/tests/generic-instance.wipple:5:1-5:28
+  has definition constraints
+  has instances
+  has type a -> b
+  has type parameters
+  is a definition
+TypeParameterNode `value` (test/tests/generic-instance.wipple:7:20-7:25)
+  at test/tests/generic-instance.wipple:7:20-7:25
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/generic-instance.wipple:7:20-7:25)
+NamedTypeNode `Box value` (test/tests/generic-instance.wipple:7:16-7:25)
+  at test/tests/generic-instance.wipple:7:16-7:25
+  has type Box value
+  is a type
+  resolved to 1 definition(s): `Box : value => type {⋯}` (test/tests/generic-instance.wipple:1:1-3:37)
+TypeParameterNode `value` (test/tests/generic-instance.wipple:7:27-7:32)
+  at test/tests/generic-instance.wipple:7:27-7:32
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/generic-instance.wipple:7:20-7:25)
+BoundConstraintNode `Foo (Box value) value` (test/tests/generic-instance.wipple:7:10-7:33)
+  at test/tests/generic-instance.wipple:7:10-7:33
+VariablePatternNode `value` (test/tests/generic-instance.wipple:7:50-7:55)
+  at test/tests/generic-instance.wipple:7:50-7:55
+  has type value
+  is a pattern
+StructurePatternNode `Box {value` (test/tests/generic-instance.wipple:7:37-7:56)
+  at test/tests/generic-instance.wipple:7:37-7:56
+  has type Box value
+  is a pattern
+  resolved to 1 definition(s): `Box : value => type {⋯}` (test/tests/generic-instance.wipple:1:1-3:37)
+VariableExpressionNode `value` (test/tests/generic-instance.wipple:7:61-7:66)
+  at test/tests/generic-instance.wipple:7:61-7:66
+  has type value
+  is an expression
+  resolved to 1 definition(s): `value` (test/tests/generic-instance.wipple:7:50-7:55)
+FunctionExpressionNode `(Box {value` (test/tests/generic-instance.wipple:7:36-7:66)
+  at test/tests/generic-instance.wipple:7:36-7:66
+  has type (Box value) -> value
+  is an expression
+InstanceDefinitionNode `instance (Foo (Box value) value)` (test/tests/generic-instance.wipple:7:1-7:66)
+  at test/tests/generic-instance.wipple:7:1-7:66
+  has definition constraints
+  has type (Box value) -> value
+  has type parameters
+  is a definition
+  resolved to 1 definition(s): `Foo : a b => trait (a -> b)` (test/tests/generic-instance.wipple:5:1-5:28)
+VariableExpressionNode `show` (test/tests/generic-instance.wipple:9:1-9:5)
+  at test/tests/generic-instance.wipple:9:1-9:5
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+ConstructorExpressionNode `Foo` (test/tests/generic-instance.wipple:9:7-9:10)
+  at test/tests/generic-instance.wipple:9:7-9:10
+  has bound(s) Foo (Box String) String (`instance (Foo (Box value) value)` (test/tests/generic-instance.wipple:7:1-7:66))
+  has type (Box String) -> String
+  is an expression
+  resolved to 1 definition(s): `Foo : a b => trait (a -> b)` (test/tests/generic-instance.wipple:5:1-5:28)
+StringExpressionNode `"Hello, world!"` (test/tests/generic-instance.wipple:9:25-9:40)
+  at test/tests/generic-instance.wipple:9:25-9:40
+  has type String
+  is an expression
+StructureExpressionNode `Box {value` (test/tests/generic-instance.wipple:9:12-9:41)
+  at test/tests/generic-instance.wipple:9:12-9:41
+  has type Box String
+  is an expression
+  resolved to 1 definition(s): `Box : value => type {⋯}` (test/tests/generic-instance.wipple:1:1-3:37)
+CallExpressionNode `Foo (Box {value` (test/tests/generic-instance.wipple:9:7-9:42)
+  at test/tests/generic-instance.wipple:9:7-9:42
+  has type String
+  is an expression
+CallExpressionNode `show (Foo (Box {value` (test/tests/generic-instance.wipple:9:1-9:43)
+  at test/tests/generic-instance.wipple:9:1-9:43
+  has type ()
+  is an expression
+
+Output:
+Hello, world!

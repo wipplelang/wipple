@@ -4,7 +4,7 @@ use crate::{
 };
 use std::{fs, io, path::Path};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Layer {
     pub name: String,
     pub files: Vec<NodeRef>,

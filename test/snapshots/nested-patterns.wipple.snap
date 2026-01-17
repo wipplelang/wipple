@@ -1,0 +1,81 @@
+Facts:
+TypeDefinitionNode `E : type {⋯}` (test/tests/nested-patterns.wipple:1:1-6:2)
+  at test/tests/nested-patterns.wipple:1:1-6:2
+  has definition constraints
+  has type E
+  is a definition
+VariableExpressionNode `show` (test/tests/nested-patterns.wipple:8:1-8:5)
+  at test/tests/nested-patterns.wipple:8:1-8:5
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+ConstructorExpressionNode `A` (test/tests/nested-patterns.wipple:8:13-8:14)
+  at test/tests/nested-patterns.wipple:8:13-8:14
+  has type E
+  is an expression
+  resolved to 1 definition(s): `A` (test/tests/nested-patterns.wipple:4:3-4:4)
+ConstructorExpressionNode `B` (test/tests/nested-patterns.wipple:8:16-8:17)
+  at test/tests/nested-patterns.wipple:8:16-8:17
+  has type E
+  is an expression
+  resolved to 1 definition(s): `B` (test/tests/nested-patterns.wipple:5:3-5:4)
+TupleExpressionNode `A; B` (test/tests/nested-patterns.wipple:8:13-8:17)
+  at test/tests/nested-patterns.wipple:8:13-8:17
+  has type (E; E)
+  is an expression
+ConstructorPatternNode `A` (test/tests/nested-patterns.wipple:9:4-9:5)
+  at test/tests/nested-patterns.wipple:9:4-9:5
+  has type E
+  is a pattern
+  resolved to 1 definition(s): `A` (test/tests/nested-patterns.wipple:4:3-4:4)
+ConstructorPatternNode `A` (test/tests/nested-patterns.wipple:9:7-9:8)
+  at test/tests/nested-patterns.wipple:9:7-9:8
+  has type E
+  is a pattern
+  resolved to 1 definition(s): `A` (test/tests/nested-patterns.wipple:4:3-4:4)
+TuplePatternNode `A; A` (test/tests/nested-patterns.wipple:9:4-9:8)
+  at test/tests/nested-patterns.wipple:9:4-9:8
+  has type (E; E)
+  is a pattern
+NumberExpressionNode `1` (test/tests/nested-patterns.wipple:9:13-9:14)
+  at test/tests/nested-patterns.wipple:9:13-9:14
+  has type Number
+  is an expression
+VariablePatternNode `x` (test/tests/nested-patterns.wipple:10:4-10:5)
+  at test/tests/nested-patterns.wipple:10:4-10:5
+  has type E
+  is a pattern
+VariablePatternNode `y` (test/tests/nested-patterns.wipple:10:7-10:8)
+  at test/tests/nested-patterns.wipple:10:7-10:8
+  has type E
+  is a pattern
+TuplePatternNode `x; y` (test/tests/nested-patterns.wipple:10:4-10:8)
+  at test/tests/nested-patterns.wipple:10:4-10:8
+  has type (E; E)
+  is a pattern
+NumberExpressionNode `2` (test/tests/nested-patterns.wipple:10:13-10:14)
+  at test/tests/nested-patterns.wipple:10:13-10:14
+  has type Number
+  is an expression
+WhenExpressionNode `when (A; B) {⋯}` (test/tests/nested-patterns.wipple:8:7-11:2)
+  at test/tests/nested-patterns.wipple:8:7-11:2
+  has type Number
+  is an expression
+CallExpressionNode `show (when (A; B) {⋯})` (test/tests/nested-patterns.wipple:8:1-11:3)
+  at test/tests/nested-patterns.wipple:8:1-11:3
+  has type ()
+  is an expression
+VariantNode `A` (test/tests/nested-patterns.wipple:4:3-4:4)
+  at test/tests/nested-patterns.wipple:4:3-4:4
+  has definition constraints
+  has type E
+  is a definition
+VariantNode `B` (test/tests/nested-patterns.wipple:5:3-5:4)
+  at test/tests/nested-patterns.wipple:5:3-5:4
+  has definition constraints
+  has type E
+  is a definition
+
+Output:
+2
