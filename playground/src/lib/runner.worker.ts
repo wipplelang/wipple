@@ -16,7 +16,11 @@ const worker = {
             }
         };
 
-        await module.default(env, proxy);
+        try {
+            await module.default(env, proxy);
+        } catch (e) {
+            console.error(e);
+        }
     },
 };
 

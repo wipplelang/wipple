@@ -93,10 +93,13 @@ struct File {
     code: String,
 }
 
-async fn compile(files: &[File], library_name: Option<&str>) -> anyhow::Result<(Db, Vec<NodeRef>)> {
-    let mut db = match library_name {
+async fn compile(
+    files: &[File],
+    library_name: Option<&str>,
+) -> anyhow::Result<(Db, Vec<NodeRef>, Vec<NodeRef>)> {
+    let (mut db, lib_files) = match library_name {
         Some(library_name) => compile_library(library_name).await?,
-        None => Db::new(),
+        None => (Db::new(), Vec::new()),
     };
 
     let files = files
@@ -106,12 +109,13 @@ async fn compile(files: &[File], library_name: Option<&str>) -> anyhow::Result<(
 
     driver::compile(&mut db, &files);
 
-    Ok((db, files))
+    Ok((db, files, lib_files))
 }
 
-static LIBRARY_CACHE: LazyLock<DashMap<String, Db>> = LazyLock::new(Default::default);
+static LIBRARY_CACHE: LazyLock<DashMap<String, (Db, Vec<NodeRef>)>> =
+    LazyLock::new(Default::default);
 
-async fn compile_library(name: &str) -> anyhow::Result<Db> {
+async fn compile_library(name: &str) -> anyhow::Result<(Db, Vec<NodeRef>)> {
     let entry = LIBRARY_CACHE.entry(name.to_string());
 
     match entry {
@@ -119,10 +123,12 @@ async fn compile_library(name: &str) -> anyhow::Result<Db> {
         Entry::Vacant(entry) => {
             let library = fetch_library(name).await?;
 
-            let (db, _) =
+            let (db, mut files, lib_files) =
                 Box::pin(compile(&library.files, library.metadata.library.as_deref())).await?;
 
-            Ok(entry.insert(db).clone())
+            files.extend(lib_files);
+
+            Ok(entry.insert((db, files)).clone())
         }
     }
 }

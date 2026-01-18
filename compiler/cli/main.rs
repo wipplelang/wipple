@@ -27,6 +27,7 @@ const PRELUDE: &str = concat!(
 const CODEGEN_OPTIONS: codegen::Options<'static> = codegen::Options {
     prelude: PRELUDE,
     module: false,
+    sourcemap: true,
 };
 
 #[derive(Debug, clap::Parser)]
@@ -108,7 +109,7 @@ fn main() -> anyhow::Result<()> {
 }
 
 fn compile(options: &CompileOptions) -> anyhow::Result<String> {
-    let mut db = setup(options, true)?;
+    let (mut db, lib_files) = setup(options, true)?;
 
     let files = options
         .paths
@@ -140,7 +141,7 @@ fn compile(options: &CompileOptions) -> anyhow::Result<String> {
         ));
     }
 
-    let script = codegen(&mut db, &files, CODEGEN_OPTIONS)?;
+    let script = codegen(&mut db, &files, &lib_files, CODEGEN_OPTIONS)?;
 
     if let Some(path) = &options.output {
         fs::write(path, &script)?;
@@ -177,10 +178,13 @@ fn run(
         }
     };
 
-    let output =
-        setup(process::Command::new("/usr/bin/env").args(["node".as_ref(), output_path.as_ref()]))
-            .spawn()?
-            .wait_with_output()?;
+    let output = setup(process::Command::new("/usr/bin/env").args([
+        "node".as_ref(),
+        "--enable-source-maps".as_ref(),
+        output_path.as_ref(),
+    ]))
+    .spawn()?
+    .wait_with_output()?;
 
     if !output.status.success() {
         return Err(anyhow::format_err!(
@@ -193,7 +197,7 @@ fn run(
 }
 
 fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
-    let db = setup(options, false)?;
+    let (db, lib_files) = setup(options, false)?;
 
     let layers = options
         .paths
@@ -216,7 +220,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
             let (feedback_count, mut output) = compile_layer(options, &mut db, &layer, false);
 
             if feedback_count == 0 {
-                let script = codegen(&mut db, &layer.files, CODEGEN_OPTIONS)?;
+                let script = codegen(&mut db, &layer.files, &lib_files, CODEGEN_OPTIONS)?;
                 let buf = run(None, script, |cmd| cmd.stdout(process::Stdio::piped()))?;
                 writeln!(&mut output, "Output:").unwrap();
                 output.push_str(str::from_utf8(&buf).unwrap());
@@ -230,7 +234,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
         .collect()
 }
 
-fn setup(options: &CompileOptions, time: bool) -> anyhow::Result<Db> {
+fn setup(options: &CompileOptions, time: bool) -> anyhow::Result<(Db, Vec<NodeRef>)> {
     let mut db = Db::new();
 
     db.render_with(RenderConfig::new(|db, value, f| {
@@ -260,11 +264,13 @@ fn setup(options: &CompileOptions, time: bool) -> anyhow::Result<Db> {
         .map(|path| driver::read_layer(&mut db, path))
         .collect::<anyhow::Result<Vec<_>>>()?;
 
+    let mut lib_files = Vec::new();
     for layer in lib_layers {
         compile_layer(options, &mut db, &layer, time);
+        lib_files.extend(layer.files);
     }
 
-    Ok(db)
+    Ok((db, lib_files))
 }
 
 fn compile_layer(

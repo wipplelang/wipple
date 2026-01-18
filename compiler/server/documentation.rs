@@ -17,10 +17,10 @@ pub async fn handle(request: Request) -> anyhow::Result<serde_json::Value> {
         .library
         .ok_or_else(|| anyhow::format_err!("missing library"))?;
 
-    let db = compile_library(&library_name).await?;
+    let (db, _) = compile_library(&library_name).await?;
 
     let Some(data) = queries::find(&db, queries::documentation, |data| {
-        data.name.as_deref() == Some(&request.name)
+        data.name.as_ref() == Some(&request.name)
     }) else {
         return Ok(json!({ "documentation": null }));
     };

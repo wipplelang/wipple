@@ -22,7 +22,7 @@ pub struct Request {
 }
 
 pub async fn handle(request: Request) -> anyhow::Result<serde_json::Value> {
-    let (mut db, files) = compile(
+    let (mut db, files, _) = compile(
         &[File {
             path: String::from(INPUT_PATH),
             code: request.code,
@@ -45,9 +45,11 @@ pub async fn handle(request: Request) -> anyhow::Result<serde_json::Value> {
     let script = codegen(
         &mut db,
         &files,
+        &[],
         codegen::Options {
             prelude: PRELUDE,
             module: true,
+            sourcemap: true,
         },
     )?;
 

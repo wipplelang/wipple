@@ -3,9 +3,10 @@ use crate::{
     typecheck::{Bounds, Instances, Type, Typed, group_instances},
     visit::{Defined, Definition},
 };
+use parcel_sourcemap::SourceMap;
 use std::{
     collections::{BTreeSet, HashMap},
-    fmt::Display,
+    fmt::{Display, Write as _},
 };
 
 #[derive(Debug, Clone)]
@@ -37,6 +38,7 @@ pub trait Codegen {
 pub struct Options<'a> {
     pub prelude: &'a str,
     pub module: bool,
+    pub sourcemap: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -51,33 +53,46 @@ pub struct CodegenCtx<'a> {
     output: String,
     line: usize,
     column: usize,
+    sourcemap: Option<CodegenSourcemap>,
     node: Option<NodeRef>,
     identifier: Option<String>,
     reachable: BTreeSet<NodeRef>,
     written_types: HashMap<String, WrittenType>,
 }
 
-const START_LINE: usize = 1;
-const START_COLUMN: usize = 0;
+#[derive(Debug)]
+struct CodegenSourcemap {
+    map: SourceMap,
+}
 
 pub fn codegen(
     db: &mut Db,
     files: &[NodeRef],
+    lib_files: &[NodeRef],
     options: Options<'_>,
 ) -> Result<String, CodegenError> {
-    CodegenCtx::new(db, options).to_string(files)
+    CodegenCtx::new(db, options).to_string(files, lib_files)
 }
 
 impl<'a> CodegenCtx<'a> {
     fn new(db: &'a mut Db, options: Options<'a>) -> Self {
+        let output = options.prelude.to_string();
+
+        let line = output.lines().count();
+
+        let sourcemap = options.sourcemap.then(|| CodegenSourcemap {
+            map: SourceMap::new(""),
+        });
+
         CodegenCtx {
             db,
             options,
-            output: String::new(),
-            line: START_LINE,
-            column: START_COLUMN,
-            identifier: None,
-            node: None,
+            output,
+            line,
+            column: 0,
+            sourcemap,
+            identifier: Default::default(),
+            node: Default::default(),
             reachable: Default::default(),
             written_types: Default::default(),
         }
@@ -118,6 +133,41 @@ impl<'a> CodegenCtx<'a> {
 
     pub fn write_string(&mut self, s: impl AsRef<str>) {
         let s = s.as_ref();
+
+        if let Some(node) = &self.node
+            && let Some(sourcemap) = &mut self.sourcemap
+        {
+            let span = self.db.span(node);
+
+            let source = sourcemap
+                .map
+                .get_sources()
+                .iter()
+                .position(|p| p == &span.path)
+                .map_or_else(
+                    || sourcemap.map.add_source(&span.path),
+                    |index| index as u32,
+                );
+
+            let name = self.identifier.as_deref().map(|identifier| {
+                sourcemap
+                    .map
+                    .get_name_index(identifier)
+                    .unwrap_or_else(|| sourcemap.map.add_name(identifier))
+            });
+
+            sourcemap.map.add_mapping(
+                self.line as u32,
+                self.column as u32,
+                Some(parcel_sourcemap::OriginalLocation {
+                    original_line: span.start.line as u32 - 1,
+                    original_column: span.start.column as u32 - 1,
+                    source,
+                    name,
+                }),
+            );
+        }
+
         self.output.push_str(s);
         self.column += s.len();
     }
@@ -138,7 +188,7 @@ impl<'a> CodegenCtx<'a> {
                 .clone()
         })?;
 
-        self.write_string(format!("__wipple_typeCache[{}]", written_type.index));
+        self.write_string(format!("__wipple_typeCache({})", written_type.index));
 
         Ok(())
     }
@@ -302,7 +352,11 @@ impl<'a> CodegenCtx<'a> {
         Ok(())
     }
 
-    pub fn to_string(mut self, files: &[NodeRef]) -> Result<String, CodegenError> {
+    pub fn to_string(
+        mut self,
+        files: &[NodeRef],
+        lib_files: &[NodeRef],
+    ) -> Result<String, CodegenError> {
         colored::control::set_override(false);
 
         if self.options.module {
@@ -326,9 +380,22 @@ impl<'a> CodegenCtx<'a> {
             self.write(file)?;
         }
 
-        self.write_string("};\n");
+        self.write_string("};");
+        self.write_line();
 
         self.write_definitions()?;
+
+        let mut type_cache = vec![""; self.written_types.len()];
+        for written_type in self.written_types.values() {
+            type_cache[written_type.index] = &written_type.type_string;
+        }
+
+        writeln!(
+            &mut self.output,
+            "function __wipple_typeCache(i) {{ return [\n{}][i] }};",
+            type_cache.join(",\n")
+        )
+        .unwrap();
 
         if self.options.module {
             self.write_string("export default __wipple_main;");
@@ -338,22 +405,47 @@ impl<'a> CodegenCtx<'a> {
             self.write_line();
         }
 
-        let mut type_cache = vec![String::new(); self.written_types.len()];
-        for written_type in self.written_types.into_values() {
-            type_cache[written_type.index] = written_type.type_string;
+        if let Some(mut sourcemap) = self.sourcemap {
+            for file in files.iter().chain(lib_files) {
+                let span = self.db.span(file);
+
+                if let Some(source_index) = sourcemap
+                    .map
+                    .get_sources()
+                    .iter()
+                    .position(|path| path == &span.path)
+                {
+                    sourcemap
+                        .map
+                        .set_source_content(source_index, &span.source)
+                        .unwrap();
+                }
+            }
+
+            let mut vlq = Vec::new();
+            sourcemap.map.write_vlq(&mut vlq).unwrap();
+            let vlq = String::from_utf8(vlq).unwrap();
+
+            let json = serde_json::json!({
+                "version": 3,
+                "sources": sourcemap.map.get_sources(),
+                "sourcesContent": sourcemap.map.get_sources_content(),
+                "names": sourcemap.map.get_names(),
+                "mappings": vlq,
+            });
+
+            let base64 =
+                base64::Engine::encode(&base64::prelude::BASE64_STANDARD, json.to_string());
+
+            write!(
+                &mut self.output,
+                "\n//# sourceMappingURL=data:application/json;base64,{base64}"
+            )
+            .unwrap();
         }
-
-        let type_cache = format!(
-            "const __wipple_typeCache = [\n{}];\n",
-            type_cache.join(",\n")
-        );
-
-        let prelude = format!("{}{}", self.options.prelude, type_cache);
-
-        let script = format!("{}{}", prelude, self.output);
 
         colored::control::unset_override();
 
-        Ok(script)
+        Ok(self.output)
     }
 }
