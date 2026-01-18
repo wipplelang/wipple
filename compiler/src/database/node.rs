@@ -192,3 +192,10 @@ pub struct Parent(pub NodeRef);
 impl Fact for Parent {}
 
 impl Render for Parent {}
+
+#[derive(Debug, Clone, Default)]
+pub struct Children(pub Vec<NodeRef>);
+
+impl Fact for Children {}
+
+impl Render for Children {}

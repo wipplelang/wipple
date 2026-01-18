@@ -102,6 +102,8 @@ impl Codegen for VariableExpressionNode {
                 node,
                 substitutions,
             } => {
+                ctx.mark_reachable(&node);
+
                 let mut parameters = substitutions.keys();
 
                 parameters.sort_by_key(|parameter| ctx.db.span(parameter));

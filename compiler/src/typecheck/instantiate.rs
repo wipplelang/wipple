@@ -1,5 +1,5 @@
 use crate::{
-    database::{Db, Fact, HiddenNode, NodeRef, Parent, Render},
+    database::{Db, Fact, HiddenNode, NodeRef, Render},
     typecheck::{Replacements, Substitutions, Type, Typed},
 };
 
@@ -27,10 +27,6 @@ impl InstantiateContext<'_> {
         self.replacements.get_or_insert_with(node, || {
             let span = self.db.span(node);
             let instantiated = self.db.node(span, HiddenNode(None));
-
-            if let Some(parent) = self.db.get::<Parent>(node) {
-                self.db.insert(&instantiated, parent);
-            }
 
             self.db.insert(&instantiated, Typed::default());
 
@@ -60,10 +56,6 @@ impl InstantiateContext<'_> {
                 self.substitutions.get_or_insert_with(parameter, || {
                     let span = self.db.span(parameter);
                     let substitution = self.db.node(span, HiddenNode(None));
-
-                    if let Some(parent) = self.db.get::<Parent>(parameter) {
-                        self.db.insert(&substitution, parent);
-                    }
 
                     self.db.insert(&substitution, Typed::default());
 

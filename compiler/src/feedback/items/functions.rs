@@ -1,5 +1,5 @@
 use crate::{
-    database::{NodeRef, Parent},
+    database::NodeRef,
     feedback::{FeedbackCtx, FeedbackRank, RegisteredFeedback},
     nodes::CallExpressionNode,
     queries,
@@ -217,7 +217,7 @@ fn with_call<'a, T>(
     f: impl FnOnce(&CallExpressionNode) -> T,
 ) -> Option<T> {
     for node in nodes {
-        if let Some(Parent(parent)) = ctx.db.get(node)
+        if let Some(parent) = ctx.db.parent(node)
             && let Some(call) = parent.downcast_ref::<CallExpressionNode>()
         {
             return Some(f(call));

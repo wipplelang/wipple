@@ -1,9 +1,12 @@
 use crate::{
     database::{Db, NodeRef},
-    typecheck::{Instances, Type, Typed, group_instances},
+    typecheck::{Bounds, Instances, Type, Typed, group_instances},
     visit::{Defined, Definition},
 };
-use std::{collections::HashMap, fmt::Display};
+use std::{
+    collections::{BTreeSet, HashMap},
+    fmt::Display,
+};
 
 #[derive(Debug, Clone)]
 pub struct CodegenError(String);
@@ -50,6 +53,7 @@ pub struct CodegenCtx<'a> {
     column: usize,
     node: Option<NodeRef>,
     identifier: Option<String>,
+    reachable: BTreeSet<NodeRef>,
     written_types: HashMap<String, WrittenType>,
 }
 
@@ -74,6 +78,7 @@ impl<'a> CodegenCtx<'a> {
             column: START_COLUMN,
             identifier: None,
             node: None,
+            reachable: Default::default(),
             written_types: Default::default(),
         }
     }
@@ -84,6 +89,20 @@ impl<'a> CodegenCtx<'a> {
 
     pub fn node(&mut self, node: &NodeRef) -> String {
         format!("_{}", node.id())
+    }
+
+    pub fn mark_reachable(&mut self, definition: &NodeRef) {
+        self.reachable.insert(definition.clone());
+
+        if let Some(Bounds(items)) = self.db.get(self.current_node()) {
+            for item in items {
+                self.reachable.insert(item.bound.trait_node);
+
+                if let Some(instance) = item.instance {
+                    self.reachable.insert(instance.node);
+                }
+            }
+        }
     }
 
     pub fn write_node(&mut self, node: &NodeRef) {
@@ -176,37 +195,67 @@ impl<'a> CodegenCtx<'a> {
     }
 
     fn write_definitions(&mut self) -> Result<(), CodegenError> {
-        for (node, Defined(definition)) in self.db.iter::<Defined>().collect::<Vec<_>>() {
-            let body = match definition {
-                Definition::Trait(definition) => {
-                    self.write_instances(&definition.node)?;
+        let definitions = self
+            .db
+            .iter()
+            .map(|(_, Defined(definition))| definition)
+            .collect::<Vec<_>>();
+
+        let mut written = BTreeSet::new();
+        loop {
+            let mut progress = false;
+
+            for definition in &definitions {
+                let node = definition.node();
+
+                if written.contains(&node) || !self.reachable.contains(&node) {
                     continue;
                 }
-                Definition::Constant(definition) => {
-                    if !definition.assigned {
-                        continue;
+
+                written.insert(node.clone());
+                progress = true;
+
+                let body = match definition {
+                    Definition::Constant(definition) => {
+                        if !definition.assigned {
+                            continue;
+                        }
+
+                        &definition.value
                     }
+                    Definition::Instance(definition) => match &definition.value {
+                        Some(value) => value,
+                        None => continue,
+                    },
+                    _ => continue,
+                };
 
-                    definition.value
+                self.write_string(format!("/**! {} */ ", self.db.span(&node)));
+                self.write_string("async function ");
+                self.write_node(&node);
+                self.write_string("(__wipple_types) {");
+                self.write_line();
+                self.write_string("return ");
+                self.write(body)?;
+                self.write_string(";");
+                self.write_line();
+                self.write_string("}");
+                self.write_line();
+            }
+
+            if !progress {
+                break;
+            }
+        }
+
+        for definition in definitions {
+            if let Definition::Trait(definition) = definition {
+                if !self.reachable.contains(&definition.node) {
+                    continue;
                 }
-                Definition::Instance(definition) => match definition.value {
-                    Some(value) => value,
-                    None => continue,
-                },
-                _ => continue,
-            };
 
-            self.write_string(format!("/**! {} */ ", self.db.span(&node)));
-            self.write_string("async function ");
-            self.write_node(&node);
-            self.write_string("(__wipple_types) {");
-            self.write_line();
-            self.write_string("return ");
-            self.write(&body)?;
-            self.write_string(";");
-            self.write_line();
-            self.write_string("}");
-            self.write_line();
+                self.write_instances(&definition.node)?;
+            }
         }
 
         Ok(())
@@ -221,7 +270,7 @@ impl<'a> CodegenCtx<'a> {
         self.write_line();
 
         for instance in group_instances(instances).flat_map(|(instances, _)| instances) {
-            if instance.error {
+            if instance.error || !self.reachable.contains(&instance.node) {
                 continue;
             }
 
@@ -259,15 +308,16 @@ impl<'a> CodegenCtx<'a> {
         if self.options.module {
             self.write_string("let __wipple_env, __wipple_proxy;");
             self.write_line();
-            self.write_string("export default async function(env, proxy) {");
+            self.write_string("async function __wipple_main(env, proxy) {");
             self.write_line();
             self.write_string("__wipple_env = env;");
             self.write_line();
             self.write_string("__wipple_proxy = proxy;");
             self.write_line();
+        } else {
+            self.write_string("async function __wipple_main() {");
+            self.write_line();
         }
-
-        self.write_definitions()?;
 
         self.write_string("const __wipple_types = {};");
         self.write_line();
@@ -276,8 +326,16 @@ impl<'a> CodegenCtx<'a> {
             self.write(file)?;
         }
 
+        self.write_string("};\n");
+
+        self.write_definitions()?;
+
         if self.options.module {
-            self.write_string("};\n");
+            self.write_string("export default __wipple_main;");
+            self.write_line();
+        } else {
+            self.write_string("__wipple_main();");
+            self.write_line();
         }
 
         let mut type_cache = vec![String::new(); self.written_types.len()];

@@ -6,9 +6,9 @@
             "type": "lldb",
             "request": "launch",
             "cargo": {
-                "args": ["run"]
+                "args": ["run", "--bin", "wipple"]
             },
-            "args": [],
+            "args": ["compile", "test.wipple"],
             "console": "internalConsole"
         }
     ]

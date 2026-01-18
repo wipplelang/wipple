@@ -1,5 +1,5 @@
 use crate::{
-    database::{Db, Fact, HiddenNode, NodeRef, Parent, Render},
+    database::{Children, Db, Fact, HiddenNode, NodeRef, Parent, Render},
     typecheck::Constraint,
     visit::{Defined, Definition},
 };
@@ -148,6 +148,10 @@ impl<'db> Visitor<'db> {
 
         if let Some(parent) = &parent {
             self.insert(node, Parent(parent.clone()));
+
+            self.with_fact(parent, |Children(children)| {
+                children.push(node.clone());
+            });
         }
 
         node.visit(node, self);

@@ -1,4 +1,4 @@
-use crate::database::{Graph, Node, NodeRef, Render, RenderConfig, Span, WeakNodeRef};
+use crate::database::{Graph, Node, NodeRef, Parent, Render, RenderConfig, Span, WeakNodeRef};
 use dyn_clone::DynClone;
 use std::{
     any::{Any, TypeId},
@@ -134,6 +134,10 @@ impl Db {
 
     pub fn span(&self, node: &NodeRef) -> Span {
         self.get::<Span>(node).unwrap()
+    }
+
+    pub fn parent(&self, node: &NodeRef) -> Option<NodeRef> {
+        self.get::<Parent>(node).map(|Parent(parent)| parent)
     }
 
     pub fn filtered_graph(&self, nodes: impl IntoIterator<Item = NodeRef>) -> Graph {
