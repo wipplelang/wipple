@@ -11,7 +11,13 @@ use wipple::{
 };
 
 const INPUT_PATH: &str = "input";
-const PRELUDE: &str = include_str!("../runtime/runtime.js");
+
+const CODEGEN_OPTIONS: codegen::Options<'static> = codegen::Options {
+    core: include_str!("../runtime/core.js"),
+    runtime: include_str!("../runtime/runtime.js"),
+    module: true,
+    sourcemap: true,
+};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -42,16 +48,7 @@ pub async fn handle(request: Request) -> anyhow::Result<serde_json::Value> {
         }));
     }
 
-    let script = codegen(
-        &mut db,
-        &files,
-        &[],
-        codegen::Options {
-            prelude: PRELUDE,
-            module: true,
-            sourcemap: true,
-        },
-    )?;
+    let script = codegen(&mut db, &files, &[], CODEGEN_OPTIONS)?;
 
     Ok(json!({ "executable": script }))
 }

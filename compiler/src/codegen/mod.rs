@@ -5,7 +5,7 @@ use crate::{
 };
 use parcel_sourcemap::SourceMap;
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::{BTreeSet, HashMap, HashSet},
     fmt::{Display, Write as _},
 };
 
@@ -36,7 +36,8 @@ pub trait Codegen {
 
 #[derive(Debug, Clone)]
 pub struct Options<'a> {
-    pub prelude: &'a str,
+    pub core: &'a str,
+    pub runtime: &'a str,
     pub module: bool,
     pub sourcemap: bool,
 }
@@ -57,6 +58,7 @@ pub struct CodegenCtx<'a> {
     node: Option<NodeRef>,
     identifier: Option<String>,
     reachable: BTreeSet<NodeRef>,
+    reachable_intrinsics: HashSet<String>,
     written_types: HashMap<String, WrittenType>,
 }
 
@@ -76,10 +78,6 @@ pub fn codegen(
 
 impl<'a> CodegenCtx<'a> {
     fn new(db: &'a mut Db, options: Options<'a>) -> Self {
-        let output = options.prelude.to_string();
-
-        let line = output.lines().count();
-
         let sourcemap = options.sourcemap.then(|| CodegenSourcemap {
             map: SourceMap::new(""),
         });
@@ -87,13 +85,14 @@ impl<'a> CodegenCtx<'a> {
         CodegenCtx {
             db,
             options,
-            output,
-            line,
+            output: String::new(),
+            line: 0,
             column: 0,
             sourcemap,
             identifier: Default::default(),
             node: Default::default(),
             reachable: Default::default(),
+            reachable_intrinsics: Default::default(),
             written_types: Default::default(),
         }
     }
@@ -118,6 +117,10 @@ impl<'a> CodegenCtx<'a> {
                 }
             }
         }
+    }
+
+    pub fn mark_reachable_intrinsic(&mut self, name: &str) {
+        self.reachable_intrinsics.insert(name.to_string());
     }
 
     pub fn write_node(&mut self, node: &NodeRef) {
@@ -352,6 +355,33 @@ impl<'a> CodegenCtx<'a> {
         Ok(())
     }
 
+    fn write_intrinsics(&mut self, runtime: &str) -> Result<(), CodegenError> {
+        let prefix = "const __wipple_runtime_";
+
+        let mut indices = runtime.match_indices(prefix).peekable();
+        while let Some(start) = indices.next() {
+            let end = indices.peek();
+
+            let function = match end {
+                Some(end) => &runtime[start.0..end.0],
+                None => &runtime[start.0..],
+            };
+
+            let function = function.strip_prefix(prefix).unwrap();
+
+            if self
+                .reachable_intrinsics
+                .iter()
+                .any(|f| function.starts_with(f))
+            {
+                self.write_string(prefix);
+                self.write_string(function);
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn to_string(
         mut self,
         files: &[NodeRef],
@@ -396,6 +426,9 @@ impl<'a> CodegenCtx<'a> {
             type_cache.join(",\n")
         )
         .unwrap();
+
+        self.output.push_str(self.options.core);
+        self.write_intrinsics(self.options.runtime)?;
 
         if self.options.module {
             self.write_string("export default __wipple_main;");

@@ -19,13 +19,12 @@ use wipple::{
     syntax::format,
 };
 
-const PRELUDE: &str = concat!(
-    include_str!("../runtime/node-prelude.js"),
-    include_str!("../runtime/runtime.js")
-);
-
 const CODEGEN_OPTIONS: codegen::Options<'static> = codegen::Options {
-    prelude: PRELUDE,
+    core: concat!(
+        include_str!("../runtime/node.js"),
+        include_str!("../runtime/core.js"),
+    ),
+    runtime: include_str!("../runtime/runtime.js"),
     module: false,
     sourcemap: true,
 };

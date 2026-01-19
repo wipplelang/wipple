@@ -48,6 +48,8 @@ impl Codegen for IntrinsicExpressionNode {
     fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
         let name = self.name.replace('-', "_");
 
+        ctx.mark_reachable_intrinsic(&name);
+
         ctx.write_string(format!("await __wipple_runtime_{}(", name));
 
         for input in &self.inputs {
