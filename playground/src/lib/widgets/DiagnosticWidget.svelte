@@ -16,12 +16,11 @@
     import { PUBLIC_VISUALIZER_URL } from "$env/static/public";
 
     interface Props {
-        stale: boolean;
         animate: boolean;
         onclose?: () => void;
     }
 
-    let { stale, animate, onclose }: Props = $props();
+    let { animate, onclose }: Props = $props();
 
     const [title, ...extra] = context.diagnostic.message.split("\n\n");
 
@@ -91,10 +90,7 @@
     class="relative flex h-full w-full items-stretch justify-stretch pb-[10px]"
     in:transition={{ start: 0.95, opacity: 0.5 }}
 >
-    <Box
-        data-stale={stale || undefined}
-        class="not-[[data-stale]]:border-blue-500 not-[[data-stale]]:shadow-md flex flex-1 flex-col px-[10px] py-[8px] font-sans shadow-blue-500/10 transition data-[stale]:opacity-60"
-    >
+    <Box class="flex flex-1 flex-col px-[10px] py-[8px] font-sans shadow-blue-500/10 transition">
         <div class="scroll flex flex-col gap-[2px]">
             <div class="font-semibold">
                 <Markdown content={title} highlightGroups />

@@ -146,11 +146,10 @@
     };
 
     let runState = $state<RunState>();
-    let diagnosticIsStale = $state(false);
 
     $effect(() => {
         playground?.code;
-        diagnosticIsStale = true;
+        context.diagnostic = undefined;
     });
 </script>
 
@@ -237,7 +236,6 @@
                             diagnostic={dragInfo == null && context.diagnostic != null
                                 ? {
                                       value: context.diagnostic,
-                                      stale: diagnosticIsStale,
                                       onclose: () => (context.diagnostic = undefined),
                                   }
                                 : undefined}
@@ -267,15 +265,13 @@
                     class="printing:hidden h-(--toolbar-height) flex shrink-0 flex-row justify-center gap-[10px]"
                 >
                     <ToolbarButton
-                        prominent={runState !== undefined ||
-                            context.diagnostic == null ||
-                            diagnosticIsStale}
+                        prominent={runState !== undefined || context.diagnostic == null}
                         onclick={() => output?.run()}
                         data-state={runState}
                         class="data-[state='error']:border-standard data-[state='error']:bg-background w-[200px] transition data-[prominent]:data-[state='compiling']:bg-sky-500 data-[prominent]:data-[state='running']:bg-sky-500 data-[state='error']:opacity-75"
                     >
                         {#if runState === undefined}
-                            {#if context.diagnostic == null || diagnosticIsStale}
+                            {#if context.diagnostic == null}
                                 <Icon fill>play_arrow</Icon>
                                 Run
                             {:else}
@@ -300,7 +296,6 @@
                     bind:runState
                     ondiagnostics={(diagnostics) => {
                         context.diagnostic = diagnostics[0];
-                        diagnosticIsStale = false;
                     }}
                 />
             </div>

@@ -34,7 +34,6 @@
         diagnostic?: {
             value: any;
             hideWidget?: boolean;
-            stale?: boolean;
             onclose?: () => void;
         };
         padding?: string;
@@ -519,11 +518,7 @@
         return decorations;
     };
 
-    const createMarkDiagnostic = ({ value, stale, hideWidget }: NonNullable<typeof diagnostic>) => {
-        if (stale) {
-            return [];
-        }
-
+    const createMarkDiagnostic = ({ value, hideWidget }: NonNullable<typeof diagnostic>) => {
         return (value.locations as any[]).flatMap(({ start, end, group }, index) => {
             if (start === end) {
                 return [];
@@ -570,7 +565,7 @@
     const diagnosticWidget = new Compartment();
 
     const createDiagnosticWidget = (
-        { value, stale, hideWidget, onclose }: NonNullable<typeof diagnostic>,
+        { value, hideWidget, onclose }: NonNullable<typeof diagnostic>,
         animate: boolean,
     ) => {
         if (hideWidget) {
@@ -580,7 +575,6 @@
         const diagnosticWidget = new DiagnosticWidget.element!();
         Object.assign(diagnosticWidget, {
             diagnostic: value,
-            stale,
             animate,
             onclose,
         });
