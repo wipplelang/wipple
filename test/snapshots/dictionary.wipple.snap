@@ -30,7 +30,7 @@ VariableExpressionNode `sports` (test/tests/dictionary.wipple:4:11-4:17)
   resolved to 1 definition(s): `sports` (test/tests/dictionary.wipple:3:1-3:7)
 VariableExpressionNode `reduce` (test/tests/dictionary.wipple:4:20-4:26)
   at test/tests/dictionary.wipple:4:20-4:26
-  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (Dictionary String Number) (String -> (Dictionary String Number) -> Dictionary String Number) -> (List String) -> Dictionary String Number
   is an expression
   resolved to 1 definition(s): `reduce` (library/src/foundation/sequence.wipple:155:1-156:108)
@@ -44,7 +44,7 @@ VariablePatternNode `sport` (test/tests/dictionary.wipple:4:32-4:37)
   is a pattern
 VariableExpressionNode `insert-entry` (test/tests/dictionary.wipple:4:41-4:53)
   at test/tests/dictionary.wipple:4:41-4:53
-  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
+  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
   has type String Number -> (Dictionary String Number) -> Dictionary String Number
   is an expression
   resolved to 1 definition(s): `insert-entry` (library/src/foundation/dictionary.wipple:38:1-39:105)
@@ -55,7 +55,7 @@ VariableExpressionNode `sport` (test/tests/dictionary.wipple:4:54-4:59)
   resolved to 1 definition(s): `sport` (test/tests/dictionary.wipple:4:32-4:37)
 VariableExpressionNode `count` (test/tests/dictionary.wipple:4:61-4:66)
   at test/tests/dictionary.wipple:4:61-4:66
-  has bound(s) As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:414:1-415:68)), As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:414:1-415:68))
+  has bound(s) As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:414:1-415:68))
   has type String -> Number
   is an expression
   resolved to 1 definition(s): `count` (library/src/foundation/sequence.wipple:260:1-261:69)
@@ -91,7 +91,7 @@ VariableExpressionNode `sports` (test/tests/dictionary.wipple:6:1-6:7)
   resolved to 1 definition(s): `sports` (test/tests/dictionary.wipple:3:1-3:7)
 VariableExpressionNode `each` (test/tests/dictionary.wipple:6:10-6:14)
   at test/tests/dictionary.wipple:6:10-6:14
-  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (String -> ()) -> (List String) -> ()
   is an expression
   resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
@@ -101,7 +101,7 @@ VariablePatternNode `sport` (test/tests/dictionary.wipple:6:16-6:21)
   is a pattern
 VariableExpressionNode `show` (test/tests/dictionary.wipple:6:25-6:29)
   at test/tests/dictionary.wipple:6:25-6:29
-  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46)), Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
   has type String -> ()
   is an expression
   resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
@@ -117,7 +117,7 @@ VariableExpressionNode `lengths` (test/tests/dictionary.wipple:6:57-6:64)
   resolved to 1 definition(s): `lengths` (test/tests/dictionary.wipple:4:1-4:8)
 VariableExpressionNode `entry` (test/tests/dictionary.wipple:6:67-6:72)
   at test/tests/dictionary.wipple:6:67-6:72
-  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
+  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
   has type String -> (Dictionary String Number) -> Maybe Number
   is an expression
   resolved to 1 definition(s): `entry` (library/src/foundation/dictionary.wipple:19:1-20:83)
@@ -167,35 +167,9 @@ CallExpressionNode `.` (test/tests/dictionary.wipple:4:18-4:19)
   at test/tests/dictionary.wipple:4:18-4:19
   has type Dictionary String Number
   is an expression
-CallExpressionNode `.` (test/tests/dictionary.wipple:6:65-6:66)
-  at test/tests/dictionary.wipple:6:65-6:66
-  has type Maybe Number
-  is an expression
-ConstructorExpressionNode `or` (test/tests/dictionary.wipple:6:80-6:82)
-  at test/tests/dictionary.wipple:6:80-6:82
-  has bound(s) Or (Maybe Number) Number Number (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:31:1-34:2))
-  has type (Maybe Number) {Number} -> Number
-  is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:28:1-29:73)
-BlockExpressionNode `unreachable` (test/tests/dictionary.wipple:6:83-6:94)
-  at test/tests/dictionary.wipple:6:83-6:94
-  has type {Number}
-  is an expression
-CallExpressionNode `lengths . entry sport) or unreachable` (test/tests/dictionary.wipple:6:57-6:94)
-  at test/tests/dictionary.wipple:6:57-6:94
-  has type Number
-  is an expression
-CallExpressionNode `.` (test/tests/dictionary.wipple:6:65-6:66)
-  at test/tests/dictionary.wipple:6:65-6:66
-  has type Maybe Number
-  is an expression
 CallExpressionNode `.` (test/tests/dictionary.wipple:6:8-6:9)
   at test/tests/dictionary.wipple:6:8-6:9
   has type ()
-  is an expression
-CallExpressionNode `.` (test/tests/dictionary.wipple:6:65-6:66)
-  at test/tests/dictionary.wipple:6:65-6:66
-  has type Maybe Number
   is an expression
 ConstructorExpressionNode `or` (test/tests/dictionary.wipple:6:80-6:82)
   at test/tests/dictionary.wipple:6:80-6:82

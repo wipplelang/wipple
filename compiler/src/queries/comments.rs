@@ -19,19 +19,21 @@ pub fn error_instance(ctx: &QueryCtx<'_>, f: &mut dyn FnMut(QueriedErrorInstance
         return;
     };
 
-    for item in bounds {
+    for (_, item) in bounds {
         if let Some(instance) = item.instance
             && instance.error
         {
-            let Some(instance_definition) = instance.node.downcast_ref::<InstanceDefinitionNode>()
+            let Some(instance_definition) = instance
+                .instance_node
+                .downcast_ref::<InstanceDefinitionNode>()
             else {
                 continue;
             };
 
             let mut comments = QueriedComments {
-                nodes: vec![instance.node.clone()],
+                nodes: vec![instance.instance_node.clone()],
                 comments: instance_definition.comments.clone(),
-                links: get_links(ctx, &instance.node),
+                links: get_links(ctx, &instance.instance_node, &instance.resolved_node),
             };
 
             let trace = item
@@ -84,7 +86,7 @@ pub fn comments(ctx: &QueryCtx<'_>, f: &mut dyn FnMut(QueriedComments)) {
     f(QueriedComments {
         nodes: vec![definition.node()],
         comments: definition.comments().to_vec(),
-        links: get_links(ctx, &definition.node()),
+        links: get_links(ctx, &definition.node(), &ctx.node),
     })
 }
 
@@ -98,6 +100,7 @@ pub struct QueriedCommentsLink {
 fn get_links(
     ctx: &QueryCtx<'_>,
     definition_node: &NodeRef,
+    source_node: &NodeRef,
 ) -> HashMap<String, QueriedCommentsLink> {
     let mut links = HashMap::new();
 
@@ -114,7 +117,8 @@ fn get_links(
             .db
             .iter::<Instantiated>()
             .find_map(|(node, instantiated)| {
-                (instantiated.from == type_parameter_node && instantiated.source_node == ctx.node)
+                (instantiated.from == type_parameter_node
+                    && instantiated.source_node == *source_node)
                     .then_some(node)
             })
         else {

@@ -1,11 +1,11 @@
 use crate::{
     database::{Db, NodeRef},
-    typecheck::{Bounds, Instances, Type, Typed, group_instances},
+    typecheck::Bounds,
     visit::{Defined, Definition},
 };
 use parcel_sourcemap::SourceMap;
 use std::{
-    collections::{BTreeSet, HashMap, HashSet},
+    collections::{BTreeSet, HashSet},
     fmt::{Display, Write as _},
 };
 
@@ -42,12 +42,6 @@ pub struct Options<'a> {
     pub sourcemap: bool,
 }
 
-#[derive(Debug, Clone)]
-struct WrittenType {
-    index: usize,
-    type_string: String,
-}
-
 pub struct CodegenCtx<'a> {
     pub db: &'a mut Db,
     options: Options<'a>,
@@ -59,7 +53,6 @@ pub struct CodegenCtx<'a> {
     identifier: Option<String>,
     reachable: BTreeSet<NodeRef>,
     reachable_intrinsics: HashSet<String>,
-    written_types: HashMap<String, WrittenType>,
 }
 
 #[derive(Debug)]
@@ -93,7 +86,6 @@ impl<'a> CodegenCtx<'a> {
             node: Default::default(),
             reachable: Default::default(),
             reachable_intrinsics: Default::default(),
-            written_types: Default::default(),
         }
     }
 
@@ -109,11 +101,11 @@ impl<'a> CodegenCtx<'a> {
         self.reachable.insert(definition.clone());
 
         if let Some(Bounds(items)) = self.db.get(self.current_node()) {
-            for item in items {
+            for (_, item) in items {
                 self.reachable.insert(item.bound.trait_node);
 
                 if let Some(instance) = item.instance {
-                    self.reachable.insert(instance.node);
+                    self.reachable.insert(instance.instance_node);
                 }
             }
         }
@@ -175,27 +167,6 @@ impl<'a> CodegenCtx<'a> {
         self.column += s.len();
     }
 
-    pub fn write_type(&mut self, ty: &Type) -> Result<(), CodegenError> {
-        let written_type = self.ty(ty, &|codegen, json| {
-            let type_code = serde_json::to_string(&json).unwrap();
-
-            let index = codegen.written_types.len();
-
-            codegen
-                .written_types
-                .entry(type_code.clone())
-                .or_insert(WrittenType {
-                    index,
-                    type_string: type_code,
-                })
-                .clone()
-        })?;
-
-        self.write_string(format!("__wipple_typeCache({})", written_type.index));
-
-        Ok(())
-    }
-
     pub fn write(&mut self, node: &NodeRef) -> Result<(), CodegenError> {
         let prev_node = self.node.clone();
         let prev_identifier = self.identifier.clone();
@@ -212,39 +183,6 @@ impl<'a> CodegenCtx<'a> {
 
     pub fn error(&self) -> CodegenError {
         CodegenError::new(format!("cannot codegen {:?}", self.node))
-    }
-
-    fn ty<T>(
-        &mut self,
-        ty: &Type,
-        write: &dyn Fn(&mut Self, serde_json::Value) -> T,
-    ) -> Result<T, CodegenError> {
-        // Get the latest type
-        let ty = if let Type::Node(node) = ty
-            && let Some(Typed { group: Some(group) }) = self.db.get(node)
-            && let Some(latest) = group.types.first()
-        {
-            Type::Constructed(latest.clone())
-        } else {
-            ty.clone()
-        };
-
-        let constructed = match ty {
-            Type::Constructed(ty) => ty,
-            Type::Node(node) => {
-                return Err(CodegenError::new(format!("unresolved type: {:?}", node)));
-            }
-        };
-
-        let children = constructed
-            .children
-            .into_iter()
-            .map(|child| self.ty(&child, &|_, json| json))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let type_json = (constructed.info.serialize)(children, &mut |node| self.node(&node));
-
-        Ok(write(self, type_json))
     }
 
     fn write_definitions(&mut self) -> Result<(), CodegenError> {
@@ -286,7 +224,7 @@ impl<'a> CodegenCtx<'a> {
                 self.write_string(format!("/**! {} */ ", self.db.span(&node)));
                 self.write_string("async function ");
                 self.write_node(&node);
-                self.write_string("(__wipple_types) {");
+                self.write_string("(__wipple_bounds) {");
                 self.write_line();
                 self.write_string("return ");
                 self.write(body)?;
@@ -300,57 +238,6 @@ impl<'a> CodegenCtx<'a> {
                 break;
             }
         }
-
-        for definition in definitions {
-            if let Definition::Trait(definition) = definition {
-                if !self.reachable.contains(&definition.node) {
-                    continue;
-                }
-
-                self.write_instances(&definition.node)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn write_instances(&mut self, trait_node: &NodeRef) -> Result<(), CodegenError> {
-        let Instances(instances) = self.db.get::<Instances>(trait_node).unwrap_or_default();
-
-        self.write_string("const ");
-        self.write_node(trait_node);
-        self.write_string(" = [");
-        self.write_line();
-
-        for instance in group_instances(instances).flat_map(|(instances, _)| instances) {
-            if instance.error || !self.reachable.contains(&instance.node) {
-                continue;
-            }
-
-            let mut parameters = instance.substitutions.keys();
-            parameters.sort_by_key(|parameter| self.db.span(parameter));
-
-            self.write_string("[");
-            self.write_node(&instance.node);
-            self.write_string(", {");
-            for parameter in parameters {
-                let substitution = instance
-                    .substitutions
-                    .get(&parameter)
-                    .expect("missing substitution");
-
-                self.write_node(&parameter);
-                self.write_string(": ");
-                self.write_type(&substitution)?;
-                self.write_string(", ");
-            }
-
-            self.write_string("}],");
-            self.write_line();
-        }
-
-        self.write_string("];");
-        self.write_line();
 
         Ok(())
     }
@@ -403,9 +290,6 @@ impl<'a> CodegenCtx<'a> {
             self.write_line();
         }
 
-        self.write_string("const __wipple_types = {};");
-        self.write_line();
-
         for file in files {
             self.write(file)?;
         }
@@ -414,18 +298,6 @@ impl<'a> CodegenCtx<'a> {
         self.write_line();
 
         self.write_definitions()?;
-
-        let mut type_cache = vec![""; self.written_types.len()];
-        for written_type in self.written_types.values() {
-            type_cache[written_type.index] = &written_type.type_string;
-        }
-
-        writeln!(
-            &mut self.output,
-            "function __wipple_typeCache(i) {{ return [\n{}][i] }};",
-            type_cache.join(",\n")
-        )
-        .unwrap();
 
         self.output.push_str(self.options.core);
         self.write_intrinsics(self.options.runtime)?;

@@ -38,7 +38,7 @@ VariableExpressionNode `languages` (test/tests/infer.wipple:5:15-5:24)
   resolved to 1 definition(s): `languages` (test/tests/infer.wipple:3:1-3:10)
 VariableExpressionNode `filter` (test/tests/infer.wipple:5:27-5:33)
   at test/tests/infer.wipple:5:27-5:33
-  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (String -> Boolean) -> (List String) -> Sequence String
   is an expression
   resolved to 1 definition(s): `filter` (library/src/foundation/sequence.wipple:78:1-79:102)
@@ -48,7 +48,7 @@ VariablePatternNode `name` (test/tests/infer.wipple:5:35-5:39)
   is a pattern
 VariableExpressionNode `count` (test/tests/infer.wipple:5:43-5:48)
   at test/tests/infer.wipple:5:43-5:48
-  has bound(s) As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:414:1-415:68)), As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:414:1-415:68)), As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:414:1-415:68)), As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:414:1-415:68))
+  has bound(s) As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:414:1-415:68))
   has type String -> Number
   is an expression
   resolved to 1 definition(s): `count` (library/src/foundation/sequence.wipple:260:1-261:69)
@@ -88,13 +88,13 @@ VariableExpressionNode `short-names` (test/tests/infer.wipple:6:1-6:12)
   resolved to 1 definition(s): `short-names` (test/tests/infer.wipple:5:1-5:12)
 VariableExpressionNode `each` (test/tests/infer.wipple:6:15-6:19)
   at test/tests/infer.wipple:6:15-6:19
-  has bound(s) As-Sequence (Sequence _) _ (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73)), As-Sequence (Sequence _) _ (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
+  has bound(s) As-Sequence (Sequence _) _ (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
   has type (String -> ()) -> (Sequence String) -> ()
   is an expression
   resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
 VariableExpressionNode `show` (test/tests/infer.wipple:6:20-6:24)
   at test/tests/infer.wipple:6:20-6:24
-  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46)), Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
   has type String -> ()
   is an expression
   resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
@@ -106,23 +106,13 @@ OperatorExpressionNode `short-names . each show` (test/tests/infer.wipple:6:1-6:
   at test/tests/infer.wipple:6:1-6:24
   has type ()
   is an expression
-ConstructorExpressionNode `<` (test/tests/infer.wipple:5:54-5:55)
-  at test/tests/infer.wipple:5:54-5:55
-  has bound(s) Less-Than Number (`instance (Less-Than value)` (library/src/foundation/logic.wipple:53:1-53:84)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
-  has type Number Number -> Boolean
-  is an expression
-  resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:51:1-52:52)
-CallExpressionNode `count name < 5` (test/tests/infer.wipple:5:43-5:57)
-  at test/tests/infer.wipple:5:43-5:57
-  has type Boolean
-  is an expression
 CallExpressionNode `.` (test/tests/infer.wipple:5:25-5:26)
   at test/tests/infer.wipple:5:25-5:26
   has type Sequence String
   is an expression
 ConstructorExpressionNode `<` (test/tests/infer.wipple:5:54-5:55)
   at test/tests/infer.wipple:5:54-5:55
-  has bound(s) Less-Than Number (`instance (Less-Than value)` (library/src/foundation/logic.wipple:53:1-53:84)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has bound(s) Less-Than Number (`instance (Less-Than value)` (library/src/foundation/logic.wipple:53:1-53:84))
   has type Number Number -> Boolean
   is an expression
   resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:51:1-52:52)

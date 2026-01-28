@@ -76,6 +76,7 @@ impl Visit for BoundConstraintNode {
             node.clone(),
             Bound {
                 source_node: node.clone(),
+                bound_node: node.clone(),
                 trait_node: trait_definition.node.clone(),
                 substitutions,
                 optional: false,

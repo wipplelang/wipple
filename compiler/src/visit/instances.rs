@@ -28,7 +28,7 @@ impl Db {
     ) {
         let mut solver = Solver::new();
         let instance_groups = group_instances(instances)
-            .map(|(instances, _)| {
+            .map(|instances| {
                 instances
                     .into_iter()
                     .map(|mut instance| {
@@ -125,6 +125,7 @@ impl Db {
                         node.clone(),
                         Bound {
                             source_node: node.clone(),
+                            bound_node: node.clone(),
                             trait_node: trait_definition.node.clone(),
                             substitutions,
                             optional: true,

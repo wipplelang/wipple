@@ -6,6 +6,7 @@ use clap::Parser;
 use colored::Colorize;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use std::{
+    env,
     fmt::Write as _,
     fs,
     io::{self, Read, Write},
@@ -126,13 +127,13 @@ fn compile(options: &CompileOptions) -> anyhow::Result<String> {
         files: files.clone(),
     };
 
-    let (feedback_count, feedback) = compile_layer(options, &mut db, &layer, true);
+    let (feedback_count, output) = compile_layer(options, &mut db, &layer, true);
+
+    eprint!("{output}");
 
     if feedback_count == 0 {
-        println!();
+        eprintln!();
     } else {
-        print!("{feedback}");
-
         return Err(anyhow::format_err!(
             "could not compile {}: {} feedback item(s)",
             layer.name,
@@ -296,15 +297,14 @@ fn compile_layer(
     let mut output = String::new();
 
     if options.facts {
-        let file_spans = layer
+        let file_paths = layer
             .files
             .iter()
-            .map(|file| db.span(file))
+            .map(|file| db.span(file).path)
             .collect::<Vec<_>>();
 
         let node_is_in_layer = |node: &NodeRef| {
-            let span = db.span(node);
-            file_spans.iter().any(|file_span| span.is_inside(file_span))
+            env::var("WIPPLE_DEBUG").is_ok() || file_paths.contains(&db.span(node).path)
         };
 
         writeln!(&mut output, "Facts:\n{}", db.display(node_is_in_layer)).unwrap();

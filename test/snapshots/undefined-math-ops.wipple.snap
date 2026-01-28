@@ -139,36 +139,6 @@ CallExpressionNode `0 / 0` (test/tests/undefined-math-ops.wipple:5:7-5:12)
   at test/tests/undefined-math-ops.wipple:5:7-5:12
   has type Number
   is an expression
-ConstructorExpressionNode `^` (test/tests/undefined-math-ops.wipple:7:17-7:18)
-  at test/tests/undefined-math-ops.wipple:7:17-7:18
-  has bound(s) Power Number Number Number (`instance (Power Number Number Number)` (library/src/foundation/math.wipple:83:1-83:91))
-  has type Number Number -> Number
-  is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (library/src/foundation/math.wipple:81:1-82:64)
-CallExpressionNode `2 ^ 2 ^ 2 ^ 2048` (test/tests/undefined-math-ops.wipple:7:7-7:23)
-  at test/tests/undefined-math-ops.wipple:7:7-7:23
-  has type Number
-  is an expression
-ConstructorExpressionNode `^` (test/tests/undefined-math-ops.wipple:7:13-7:14)
-  at test/tests/undefined-math-ops.wipple:7:13-7:14
-  has bound(s) Power Number Number Number (`instance (Power Number Number Number)` (library/src/foundation/math.wipple:83:1-83:91))
-  has type Number Number -> Number
-  is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (library/src/foundation/math.wipple:81:1-82:64)
-CallExpressionNode `2 ^ 2 ^ 2` (test/tests/undefined-math-ops.wipple:7:7-7:16)
-  at test/tests/undefined-math-ops.wipple:7:7-7:16
-  has type Number
-  is an expression
-ConstructorExpressionNode `^` (test/tests/undefined-math-ops.wipple:7:17-7:18)
-  at test/tests/undefined-math-ops.wipple:7:17-7:18
-  has bound(s) Power Number Number Number (`instance (Power Number Number Number)` (library/src/foundation/math.wipple:83:1-83:91))
-  has type Number Number -> Number
-  is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (library/src/foundation/math.wipple:81:1-82:64)
-CallExpressionNode `2 ^ 2 ^ 2 ^ 2048` (test/tests/undefined-math-ops.wipple:7:7-7:23)
-  at test/tests/undefined-math-ops.wipple:7:7-7:23
-  has type Number
-  is an expression
 ConstructorExpressionNode `^` (test/tests/undefined-math-ops.wipple:7:9-7:10)
   at test/tests/undefined-math-ops.wipple:7:9-7:10
   has bound(s) Power Number Number Number (`instance (Power Number Number Number)` (library/src/foundation/math.wipple:83:1-83:91))
@@ -177,16 +147,6 @@ ConstructorExpressionNode `^` (test/tests/undefined-math-ops.wipple:7:9-7:10)
   resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (library/src/foundation/math.wipple:81:1-82:64)
 CallExpressionNode `2 ^ 2` (test/tests/undefined-math-ops.wipple:7:7-7:12)
   at test/tests/undefined-math-ops.wipple:7:7-7:12
-  has type Number
-  is an expression
-ConstructorExpressionNode `^` (test/tests/undefined-math-ops.wipple:7:17-7:18)
-  at test/tests/undefined-math-ops.wipple:7:17-7:18
-  has bound(s) Power Number Number Number (`instance (Power Number Number Number)` (library/src/foundation/math.wipple:83:1-83:91))
-  has type Number Number -> Number
-  is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (library/src/foundation/math.wipple:81:1-82:64)
-CallExpressionNode `2 ^ 2 ^ 2 ^ 2048` (test/tests/undefined-math-ops.wipple:7:7-7:23)
-  at test/tests/undefined-math-ops.wipple:7:7-7:23
   has type Number
   is an expression
 ConstructorExpressionNode `^` (test/tests/undefined-math-ops.wipple:7:13-7:14)

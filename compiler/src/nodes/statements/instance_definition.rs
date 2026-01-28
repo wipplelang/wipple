@@ -155,6 +155,7 @@ impl Visit for InstanceDefinitionNode {
                                 trait_definition.node.clone(),
                                 node.clone(),
                             )]),
+
                         }));
                     });
                 }
@@ -207,6 +208,7 @@ impl Visit for InstanceDefinitionNode {
                             node,
                             trait_node,
                             substitutions,
+                            from_bound: false,
                             default: attributes.default,
                             error: attributes.error,
                         });

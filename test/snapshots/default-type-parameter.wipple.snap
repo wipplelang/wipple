@@ -137,6 +137,7 @@ TypeParameterNode `value` (test/tests/default-type-parameter.wipple:13:36-13:41)
   resolved to 1 definition(s): `value` (test/tests/default-type-parameter.wipple:13:8-13:13)
 BoundConstraintNode `T value` (test/tests/default-type-parameter.wipple:13:33-13:42)
   at test/tests/default-type-parameter.wipple:13:33-13:42
+  has bound(s) T value (`T value` (test/tests/default-type-parameter.wipple:13:33-13:42))
   is a constraint
   resolved to 1 definition(s): `T : value => trait value` (test/tests/default-type-parameter.wipple:6:1-6:25)
 ConstantDefinitionNode `foo` (test/tests/default-type-parameter.wipple:13:1-13:42)
@@ -149,6 +150,7 @@ VariablePatternNode `foo` (test/tests/default-type-parameter.wipple:14:1-14:4)
   at test/tests/default-type-parameter.wipple:14:1-14:4
 ConstructorExpressionNode `T` (test/tests/default-type-parameter.wipple:14:7-14:8)
   at test/tests/default-type-parameter.wipple:14:7-14:8
+  has bound(s) T value (`T value` (test/tests/default-type-parameter.wipple:13:33-13:42))
   has type value
   is an expression
   resolved to 1 definition(s): `T : value => trait value` (test/tests/default-type-parameter.wipple:6:1-6:25)

@@ -164,6 +164,7 @@ TypeParameterNode `item` (test/tests/sequence.wipple:22:90-22:94)
   resolved to 1 definition(s): `item` (test/tests/sequence.wipple:22:12-22:16)
 BoundConstraintNode `As-Sequence collection item` (test/tests/sequence.wipple:22:66-22:95)
   at test/tests/sequence.wipple:22:66-22:95
+  has bound(s) As-Sequence collection item (`As-Sequence collection item` (test/tests/sequence.wipple:22:66-22:95))
   is a constraint
   resolved to 1 definition(s): `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (test/tests/sequence.wipple:19:1-19:83)
 ConstantDefinitionNode `filter` (test/tests/sequence.wipple:22:1-22:95)

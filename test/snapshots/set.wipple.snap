@@ -45,7 +45,7 @@ VariableExpressionNode `sports` (test/tests/set.wipple:5:7-5:13)
   resolved to 1 definition(s): `sports` (test/tests/set.wipple:3:1-3:7)
 VariableExpressionNode `contains?` (test/tests/set.wipple:5:16-5:25)
   at test/tests/set.wipple:5:16-5:25
-  has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
+  has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
   has type String -> (Set String) -> Boolean
   is an expression
   resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:397:1-398:83)
@@ -78,7 +78,7 @@ VariableExpressionNode `sports` (test/tests/set.wipple:6:7-6:13)
   resolved to 1 definition(s): `sports` (test/tests/set.wipple:3:1-3:7)
 VariableExpressionNode `contains?` (test/tests/set.wipple:6:16-6:25)
   at test/tests/set.wipple:6:16-6:25
-  has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
+  has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
   has type String -> (Set String) -> Boolean
   is an expression
   resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:397:1-398:83)
@@ -111,7 +111,7 @@ VariableExpressionNode `sports` (test/tests/set.wipple:7:7-7:13)
   resolved to 1 definition(s): `sports` (test/tests/set.wipple:3:1-3:7)
 VariableExpressionNode `contains?` (test/tests/set.wipple:7:16-7:25)
   at test/tests/set.wipple:7:16-7:25
-  has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
+  has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
   has type String -> (Set String) -> Boolean
   is an expression
   resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:397:1-398:83)
@@ -144,7 +144,7 @@ VariableExpressionNode `sports` (test/tests/set.wipple:8:7-8:13)
   resolved to 1 definition(s): `sports` (test/tests/set.wipple:3:1-3:7)
 VariableExpressionNode `contains?` (test/tests/set.wipple:8:16-8:25)
   at test/tests/set.wipple:8:16-8:25
-  has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66)), Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
+  has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
   has type String -> (Set String) -> Boolean
   is an expression
   resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:397:1-398:83)

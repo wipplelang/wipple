@@ -102,6 +102,7 @@ TypeParameterNode `a` (test/tests/colliding-instances.wipple:12:25-12:26)
   resolved to 1 definition(s): `a` (test/tests/colliding-instances.wipple:12:13-12:14)
 BoundConstraintNode `U a` (test/tests/colliding-instances.wipple:12:22-12:27)
   at test/tests/colliding-instances.wipple:12:22-12:27
+  has bound(s) U a (`U a` (test/tests/colliding-instances.wipple:12:22-12:27))
   is a constraint
   resolved to 1 definition(s): `U : value => trait ()` (test/tests/colliding-instances.wipple:11:1-11:22)
 UnitExpressionNode `()` (test/tests/colliding-instances.wipple:12:30-12:32)

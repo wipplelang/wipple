@@ -8,7 +8,10 @@ tasks:
     cmds:
       - cargo build --bin=wipple
       - cargo insta test
-      - node test
+      - node {{.CLI_ARGS}} test
+  test:update:
+    cmds:
+      - INSTA_UPDATE=1 task test -- --test-update-snapshots
   install:
     cmds:
       - cargo install --path=compiler --bin=wipple
@@ -58,7 +61,7 @@ tasks:
       - node build.js
   serve:server:
     cmds:
-      - if [[ ! -v NO_SERVER ]]; then cargo lambda watch --bin=wipple-server; fi
+      - if [[ ! -v NO_SERVER ]]; then cargo lambda watch --bin=wipple-server --features=lambda; fi
     env:
       LIBRARY_URL: "http://localhost:3001"
 
@@ -85,5 +88,5 @@ tasks:
     dir: .
     cmds:
       - rm -rf netlify/functions && mkdir -p netlify/functions
-      - cargo lambda build --bin=wipple-server --target=x86_64-unknown-linux-musl --release
+      - cargo lambda build --bin=wipple-server --target=x86_64-unknown-linux-musl --features=lambda --release
       - cp target/lambda/wipple-server/bootstrap netlify/functions/api

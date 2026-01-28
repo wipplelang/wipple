@@ -9,9 +9,9 @@ pub fn resolved_bound(ctx: &QueryCtx<'_>, f: &mut dyn FnMut((Bound, NodeRef))) {
         return;
     };
 
-    for item in bounds {
+    for (_, item) in bounds {
         if let Some(instance) = item.instance {
-            f((item.bound, instance.node));
+            f((item.bound, instance.instance_node));
         }
     }
 }
@@ -21,7 +21,7 @@ pub fn unresolved_bound(ctx: &QueryCtx<'_>, f: &mut dyn FnMut(Bound)) {
         return;
     };
 
-    for item in bounds {
+    for (_, item) in bounds {
         if item.instance.is_none() {
             f(item.bound);
         }

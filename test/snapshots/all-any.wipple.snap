@@ -23,7 +23,7 @@ CollectionExpressionNode `1, 2, 3` (test/tests/all-any.wipple:3:8-3:15)
   is an expression
 VariableExpressionNode `all?` (test/tests/all-any.wipple:3:19-3:23)
   at test/tests/all-any.wipple:3:19-3:23
-  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (Number -> Boolean) -> (List Number) -> Boolean
   is an expression
   resolved to 1 definition(s): `all?` (library/src/foundation/sequence.wipple:329:1-330:93)
@@ -84,7 +84,7 @@ CollectionExpressionNode `1, -2, 3` (test/tests/all-any.wipple:4:8-4:16)
   is an expression
 VariableExpressionNode `all?` (test/tests/all-any.wipple:4:20-4:24)
   at test/tests/all-any.wipple:4:20-4:24
-  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (Number -> Boolean) -> (List Number) -> Boolean
   is an expression
   resolved to 1 definition(s): `all?` (library/src/foundation/sequence.wipple:329:1-330:93)
@@ -145,7 +145,7 @@ CollectionExpressionNode `1, -2, 3` (test/tests/all-any.wipple:5:8-5:16)
   is an expression
 VariableExpressionNode `any?` (test/tests/all-any.wipple:5:20-5:24)
   at test/tests/all-any.wipple:5:20-5:24
-  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (Number -> Boolean) -> (List Number) -> Boolean
   is an expression
   resolved to 1 definition(s): `any?` (library/src/foundation/sequence.wipple:339:1-340:93)
@@ -206,7 +206,7 @@ CollectionExpressionNode `-1, -2, -3` (test/tests/all-any.wipple:6:8-6:18)
   is an expression
 VariableExpressionNode `any?` (test/tests/all-any.wipple:6:22-6:26)
   at test/tests/all-any.wipple:6:22-6:26
-  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (Number -> Boolean) -> (List Number) -> Boolean
   is an expression
   resolved to 1 definition(s): `any?` (library/src/foundation/sequence.wipple:339:1-340:93)
@@ -243,38 +243,18 @@ CallExpressionNode `show ((-1, -2, -3) . any? (n -> n > 0))` (test/tests/all-any
   at test/tests/all-any.wipple:6:1-6:40
   has type ()
   is an expression
-ConstructorExpressionNode `>` (test/tests/all-any.wipple:3:32-3:33)
-  at test/tests/all-any.wipple:3:32-3:33
-  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
-  has type Number Number -> Boolean
-  is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:59:1-60:55)
-CallExpressionNode `n > 0` (test/tests/all-any.wipple:3:30-3:35)
-  at test/tests/all-any.wipple:3:30-3:35
-  has type Boolean
-  is an expression
 CallExpressionNode `.` (test/tests/all-any.wipple:3:17-3:18)
   at test/tests/all-any.wipple:3:17-3:18
   has type Boolean
   is an expression
 ConstructorExpressionNode `>` (test/tests/all-any.wipple:3:32-3:33)
   at test/tests/all-any.wipple:3:32-3:33
-  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90))
   has type Number Number -> Boolean
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:59:1-60:55)
 CallExpressionNode `n > 0` (test/tests/all-any.wipple:3:30-3:35)
   at test/tests/all-any.wipple:3:30-3:35
-  has type Boolean
-  is an expression
-ConstructorExpressionNode `>` (test/tests/all-any.wipple:4:33-4:34)
-  at test/tests/all-any.wipple:4:33-4:34
-  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
-  has type Number Number -> Boolean
-  is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:59:1-60:55)
-CallExpressionNode `n > 0` (test/tests/all-any.wipple:4:31-4:36)
-  at test/tests/all-any.wipple:4:31-4:36
   has type Boolean
   is an expression
 CallExpressionNode `.` (test/tests/all-any.wipple:4:18-4:19)
@@ -283,22 +263,12 @@ CallExpressionNode `.` (test/tests/all-any.wipple:4:18-4:19)
   is an expression
 ConstructorExpressionNode `>` (test/tests/all-any.wipple:4:33-4:34)
   at test/tests/all-any.wipple:4:33-4:34
-  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90))
   has type Number Number -> Boolean
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:59:1-60:55)
 CallExpressionNode `n > 0` (test/tests/all-any.wipple:4:31-4:36)
   at test/tests/all-any.wipple:4:31-4:36
-  has type Boolean
-  is an expression
-ConstructorExpressionNode `>` (test/tests/all-any.wipple:5:33-5:34)
-  at test/tests/all-any.wipple:5:33-5:34
-  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
-  has type Number Number -> Boolean
-  is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:59:1-60:55)
-CallExpressionNode `n > 0` (test/tests/all-any.wipple:5:31-5:36)
-  at test/tests/all-any.wipple:5:31-5:36
   has type Boolean
   is an expression
 CallExpressionNode `.` (test/tests/all-any.wipple:5:18-5:19)
@@ -307,22 +277,12 @@ CallExpressionNode `.` (test/tests/all-any.wipple:5:18-5:19)
   is an expression
 ConstructorExpressionNode `>` (test/tests/all-any.wipple:5:33-5:34)
   at test/tests/all-any.wipple:5:33-5:34
-  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90))
   has type Number Number -> Boolean
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:59:1-60:55)
 CallExpressionNode `n > 0` (test/tests/all-any.wipple:5:31-5:36)
   at test/tests/all-any.wipple:5:31-5:36
-  has type Boolean
-  is an expression
-ConstructorExpressionNode `>` (test/tests/all-any.wipple:6:35-6:36)
-  at test/tests/all-any.wipple:6:35-6:36
-  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
-  has type Number Number -> Boolean
-  is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:59:1-60:55)
-CallExpressionNode `n > 0` (test/tests/all-any.wipple:6:33-6:38)
-  at test/tests/all-any.wipple:6:33-6:38
   has type Boolean
   is an expression
 CallExpressionNode `.` (test/tests/all-any.wipple:6:20-6:21)
@@ -331,7 +291,7 @@ CallExpressionNode `.` (test/tests/all-any.wipple:6:20-6:21)
   is an expression
 ConstructorExpressionNode `>` (test/tests/all-any.wipple:6:35-6:36)
   at test/tests/all-any.wipple:6:35-6:36
-  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90))
   has type Number Number -> Boolean
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:59:1-60:55)

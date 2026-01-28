@@ -53,7 +53,7 @@ CollectionExpressionNode `1; "a"), (2; "b"), (3; "c"` (test/tests/unzip.wipple:3
   is an expression
 VariableExpressionNode `unzip` (test/tests/unzip.wipple:3:49-3:54)
   at test/tests/unzip.wipple:3:49-3:54
-  has bound(s) Initial (List _) (`instance (Initial (List element))` (library/src/foundation/list.wipple:3:1-3:64)), Initial (List _) (`instance (Initial (List element))` (library/src/foundation/list.wipple:3:1-3:64)), Extend (List _) _ (`instance (Extend (List element) element)` (library/src/foundation/sequence.wipple:370:1-370:93)), Extend (List _) _ (`instance (Extend (List element) element)` (library/src/foundation/sequence.wipple:370:1-370:93)), Initial (List _) (`instance (Initial (List element))` (library/src/foundation/list.wipple:3:1-3:64)), Initial (List _) (`instance (Initial (List element))` (library/src/foundation/list.wipple:3:1-3:64)), Extend (List _) _ (`instance (Extend (List element) element)` (library/src/foundation/sequence.wipple:370:1-370:93)), Extend (List _) _ (`instance (Extend (List element) element)` (library/src/foundation/sequence.wipple:370:1-370:93)), As-Sequence (List (Number; String)) (Number; String) (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List (Number; String)) (Number; String) (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) Initial (List _) (`instance (Initial (List element))` (library/src/foundation/list.wipple:3:1-3:64)), Initial (List _) (`instance (Initial (List element))` (library/src/foundation/list.wipple:3:1-3:64)), As-Sequence (List (Number; String)) (Number; String) (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), Extend (List _) _ (`instance (Extend (List element) element)` (library/src/foundation/sequence.wipple:370:1-370:93)), Extend (List _) _ (`instance (Extend (List element) element)` (library/src/foundation/sequence.wipple:370:1-370:93))
   has type (List (Number; String)) -> (List Number; List String)
   is an expression
   resolved to 1 definition(s): `unzip` (library/src/foundation/sequence.wipple:391:1-392:185)
@@ -108,13 +108,13 @@ VariableExpressionNode `left` (test/tests/unzip.wipple:6:1-6:5)
   resolved to 1 definition(s): `left` (test/tests/unzip.wipple:3:1-3:5)
 VariableExpressionNode `each` (test/tests/unzip.wipple:6:8-6:12)
   at test/tests/unzip.wipple:6:8-6:12
-  has bound(s) As-Sequence (List _) _ (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List _) _ (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List _) _ (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (Number -> ()) -> (List Number) -> ()
   is an expression
   resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
 VariableExpressionNode `show` (test/tests/unzip.wipple:6:13-6:17)
   at test/tests/unzip.wipple:6:13-6:17
-  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
   has type Number -> ()
   is an expression
   resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
@@ -147,13 +147,13 @@ VariableExpressionNode `right` (test/tests/unzip.wipple:9:1-9:6)
   resolved to 1 definition(s): `right` (test/tests/unzip.wipple:3:7-3:12)
 VariableExpressionNode `each` (test/tests/unzip.wipple:9:9-9:13)
   at test/tests/unzip.wipple:9:9-9:13
-  has bound(s) As-Sequence (List _) _ (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List _) _ (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List _) _ (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (String -> ()) -> (List String) -> ()
   is an expression
   resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
 VariableExpressionNode `show` (test/tests/unzip.wipple:9:14-9:18)
   at test/tests/unzip.wipple:9:14-9:18
-  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46)), Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
   has type String -> ()
   is an expression
   resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)

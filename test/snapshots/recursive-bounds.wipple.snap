@@ -82,6 +82,7 @@ TypeParameterNode `value` (test/tests/recursive-bounds.wipple:9:51-9:56)
   resolved to 1 definition(s): `value` (test/tests/recursive-bounds.wipple:9:27-9:32)
 BoundConstraintNode `Describe value` (test/tests/recursive-bounds.wipple:9:41-9:57)
   at test/tests/recursive-bounds.wipple:9:41-9:57
+  has bound(s) Describe value (`Describe value` (test/tests/recursive-bounds.wipple:9:41-9:57))
   is a constraint
   resolved to 1 definition(s): `Describe : value => trait (value -> String)` (test/tests/recursive-bounds.wipple:7:1-7:44)
 PlaceholderExpressionNode `_` (test/tests/recursive-bounds.wipple:9:60-9:61)
@@ -107,7 +108,7 @@ NamedTypeNode `Maybe String` (test/tests/recursive-bounds.wipple:11:16-11:28)
   resolved to 1 definition(s): `Maybe` (test/tests/recursive-bounds.wipple:5:1-5:34)
 ConstructorExpressionNode `Describe` (test/tests/recursive-bounds.wipple:11:1-11:9)
   at test/tests/recursive-bounds.wipple:11:1-11:9
-  has bound(s) Describe (Maybe String) (`instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61)), Describe String (`instance (Describe String)` (test/tests/recursive-bounds.wipple:8:1-8:31))
+  has bound(s) Describe (Maybe String) (`instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61))
   has type (Maybe String) -> String
   is an expression
   resolved to 1 definition(s): `Describe : value => trait (value -> String)` (test/tests/recursive-bounds.wipple:7:1-7:44)
@@ -135,7 +136,7 @@ NamedTypeNode `Maybe Number` (test/tests/recursive-bounds.wipple:12:16-12:28)
   resolved to 1 definition(s): `Maybe` (test/tests/recursive-bounds.wipple:5:1-5:34)
 ConstructorExpressionNode `Describe` (test/tests/recursive-bounds.wipple:12:1-12:9)
   at test/tests/recursive-bounds.wipple:12:1-12:9
-  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61)), Describe Number (unresolved)
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61))
   has type (Maybe Number) -> String
   is an expression
   resolved to 1 definition(s): `Describe : value => trait (value -> String)` (test/tests/recursive-bounds.wipple:7:1-7:44)

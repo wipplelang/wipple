@@ -17,7 +17,7 @@ CollectionExpressionNode `1, 2, 3` (test/tests/mismatched-inferred-params.wipple
   is an expression
 VariableExpressionNode `transform` (test/tests/mismatched-inferred-params.wipple:3:13-3:22)
   at test/tests/mismatched-inferred-params.wipple:3:13-3:22
-  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List Number) Number (`instance (As-Sequence container element)` (library/src/foundation/sequence.wipple:49:1-52:59))
+  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (Number -> Number) -> (List Number) -> Sequence Number
   is an expression
   resolved to 1 definition(s): `transform` (library/src/foundation/sequence.wipple:66:1-66:99)
@@ -59,8 +59,20 @@ CallExpressionNode `.` (test/tests/mismatched-inferred-params.wipple:3:11-3:12)
 
 Feedback:
 
-`transform` (test/tests/mismatched-inferred-params.wipple:3:13-3:22) (error-instance):
+`x :: String` (test/tests/mismatched-inferred-params.wipple:3:25-3:36) (conflicting-types):
 
-  Can't make a sequence from   `1, 2, 3` (test/tests/mismatched-inferred-params.wipple:3:2-3:9).
+  `x :: String` (test/tests/mismatched-inferred-params.wipple:3:25-3:36) is a `Number` (test/tests/mismatched-inferred-params.wipple:3:2-3:3) or a `String` (test/tests/mismatched-inferred-params.wipple:3:30-3:36), but it can only be one of these.
 
- You can't use   `1, 2, 3` (test/tests/mismatched-inferred-params.wipple:3:2-3:9) as a sequence. Try using a list instead.
+  `x :: String` (test/tests/mismatched-inferred-params.wipple:3:25-3:36) must be the same type as `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26), `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3), `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6), and 69 others; double-check these.
+
+  -  `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3) is a Number.
+
+  -  `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6) is a Number.
+
+  -  `3` (test/tests/mismatched-inferred-params.wipple:3:8-3:9) is a Number.
+
+  -  `element` (library/src/foundation/sequence.wipple:196:29-196:36) must have the same type everywhere in this use of `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2).
+
+  -  `input` (library/src/foundation/sequence.wipple:66:15-66:20) must have the same type everywhere in this use of `transform` (library/src/foundation/sequence.wipple:66:1-66:99).
+
+  -  `output` (library/src/foundation/sequence.wipple:66:24-66:30) must have the same type everywhere in this use of `transform` (library/src/foundation/sequence.wipple:66:1-66:99).

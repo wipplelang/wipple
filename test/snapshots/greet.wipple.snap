@@ -46,6 +46,7 @@ TypeParameterNode `value` (test/tests/greet.wipple:7:39-7:44)
   resolved to 1 definition(s): `value` (test/tests/greet.wipple:7:10-7:15)
 BoundConstraintNode `Greet value` (test/tests/greet.wipple:7:32-7:45)
   at test/tests/greet.wipple:7:32-7:45
+  has bound(s) Greet value (`Greet value` (test/tests/greet.wipple:7:32-7:45))
   is a constraint
   resolved to 1 definition(s): `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
 ConstantDefinitionNode `greet` (test/tests/greet.wipple:6:1-7:45)
@@ -62,6 +63,7 @@ VariablePatternNode `x` (test/tests/greet.wipple:8:9-8:10)
   is a pattern
 ConstructorExpressionNode `Greet` (test/tests/greet.wipple:8:27-8:32)
   at test/tests/greet.wipple:8:27-8:32
+  has bound(s) Greet value (`Greet value` (test/tests/greet.wipple:7:32-7:45))
   has type value -> String
   is an expression
   resolved to 1 definition(s): `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)

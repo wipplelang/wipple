@@ -3,12 +3,14 @@ use crate::{
     nodes::TraitDefinitionNode,
     typecheck::Substitutions,
 };
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
 pub struct Instance {
     pub node: NodeRef,
     pub trait_node: NodeRef,
     pub substitutions: Substitutions,
+    pub from_bound: bool,
     pub default: bool,
     pub error: bool,
 }
@@ -25,7 +27,7 @@ impl Render for Instances {
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct Bounds(pub Vec<BoundsItem>);
+pub struct Bounds(pub BTreeMap<NodeRef, BoundsItem>);
 
 impl Fact for Bounds {}
 
@@ -37,7 +39,7 @@ impl Render for Bounds {
 
         write!(w, "has bound(s) ")?;
 
-        for (index, item) in self.0.iter().enumerate() {
+        for (index, (_, item)) in self.0.iter().enumerate() {
             if index > 0 {
                 write!(w, ", ")?;
             }
@@ -46,7 +48,7 @@ impl Render for Bounds {
 
             write!(w, " (")?;
             if let Some(instance) = &item.instance {
-                write!(w, "{}", db.render(&instance.node))?;
+                write!(w, "{}", db.render(&instance.instance_node))?;
             } else {
                 write!(w, "unresolved")?;
             }
@@ -65,24 +67,28 @@ pub struct BoundsItem {
 
 #[derive(Debug, Clone)]
 pub struct BoundsItemInstance {
-    pub node: NodeRef,
+    pub instance_node: NodeRef,
+    pub resolved_node: NodeRef,
+    pub from_bound: bool,
     pub error: bool,
 }
 
 #[derive(Debug, Clone)]
 pub struct Bound {
     pub source_node: NodeRef,
+    pub bound_node: NodeRef,
     pub trait_node: NodeRef,
     pub substitutions: Substitutions,
     pub optional: bool,
 }
 
 impl Bound {
-    pub fn to_instance(&self) -> Instance {
+    pub fn to_instance(&self, node: NodeRef) -> Instance {
         Instance {
-            node: self.source_node.clone(),
+            node,
             trait_node: self.trait_node.clone(),
             substitutions: self.substitutions.clone(),
+            from_bound: true,
             default: false,
             error: false,
         }

@@ -84,6 +84,7 @@ impl Visit for StructurePatternNode {
             definition: definition_node,
             substitutions: Substitutions::new(),
             replacements,
+
         }));
 
         visitor.insert(

@@ -293,16 +293,6 @@ CallExpressionNode `show (5 <= 6)` (test/tests/comparison.wipple:14:1-14:14)
   at test/tests/comparison.wipple:14:1-14:14
   has type ()
   is an expression
-ConstructorExpressionNode `+` (test/tests/comparison.wipple:3:9-3:10)
-  at test/tests/comparison.wipple:3:9-3:10
-  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87))
-  has type Number Number -> Number
-  is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58)
-CallExpressionNode `1 + 2` (test/tests/comparison.wipple:3:7-3:12)
-  at test/tests/comparison.wipple:3:7-3:12
-  has type Number
-  is an expression
 ConstructorExpressionNode `=` (test/tests/comparison.wipple:3:13-3:14)
   at test/tests/comparison.wipple:3:13-3:14
   has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
@@ -322,26 +312,6 @@ ConstructorExpressionNode `+` (test/tests/comparison.wipple:3:9-3:10)
 CallExpressionNode `1 + 2` (test/tests/comparison.wipple:3:7-3:12)
   at test/tests/comparison.wipple:3:7-3:12
   has type Number
-  is an expression
-ConstructorExpressionNode `=` (test/tests/comparison.wipple:4:9-4:10)
-  at test/tests/comparison.wipple:4:9-4:10
-  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
-  has type Number Number -> Boolean
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
-CallExpressionNode `1 = 2` (test/tests/comparison.wipple:4:7-4:12)
-  at test/tests/comparison.wipple:4:7-4:12
-  has type Boolean
-  is an expression
-ConstructorExpressionNode `=` (test/tests/comparison.wipple:4:18-4:19)
-  at test/tests/comparison.wipple:4:18-4:19
-  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
-  has type Number Number -> Boolean
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
-CallExpressionNode `1 = 1` (test/tests/comparison.wipple:4:16-4:21)
-  at test/tests/comparison.wipple:4:16-4:21
-  has type Boolean
   is an expression
 ConstructorExpressionNode `or` (test/tests/comparison.wipple:4:13-4:15)
   at test/tests/comparison.wipple:4:13-4:15
@@ -369,7 +339,7 @@ CallExpressionNode `1 = 2` (test/tests/comparison.wipple:4:7-4:12)
   is an expression
 ConstructorExpressionNode `/=` (test/tests/comparison.wipple:5:9-5:11)
   at test/tests/comparison.wipple:5:9-5:11
-  has bound(s) Not-Equal Number (`instance (Not-Equal value)` (library/src/foundation/logic.wipple:76:1-76:72)), Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has bound(s) Not-Equal Number (`instance (Not-Equal value)` (library/src/foundation/logic.wipple:76:1-76:72))
   has type Number Number -> Boolean
   is an expression
   resolved to 1 definition(s): `Not-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:74:1-75:52)
@@ -429,7 +399,7 @@ CallExpressionNode `True = False` (test/tests/comparison.wipple:10:7-10:19)
   is an expression
 ConstructorExpressionNode `>` (test/tests/comparison.wipple:11:9-11:10)
   at test/tests/comparison.wipple:11:9-11:10
-  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has bound(s) Greater-Than Number (`instance (Greater-Than value)` (library/src/foundation/logic.wipple:61:1-61:90))
   has type Number Number -> Boolean
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:59:1-60:55)
@@ -439,7 +409,7 @@ CallExpressionNode `2 > 1` (test/tests/comparison.wipple:11:7-11:12)
   is an expression
 ConstructorExpressionNode `>=` (test/tests/comparison.wipple:12:9-12:11)
   at test/tests/comparison.wipple:12:9-12:11
-  has bound(s) Greater-Than-Or-Equal Number (`instance (Greater-Than-Or-Equal value)` (library/src/foundation/logic.wipple:65:1-65:116)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has bound(s) Greater-Than-Or-Equal Number (`instance (Greater-Than-Or-Equal value)` (library/src/foundation/logic.wipple:65:1-65:116))
   has type Number Number -> Boolean
   is an expression
   resolved to 1 definition(s): `Greater-Than-Or-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:63:1-64:64)
@@ -449,7 +419,7 @@ CallExpressionNode `1 >= 1` (test/tests/comparison.wipple:12:7-12:13)
   is an expression
 ConstructorExpressionNode `<` (test/tests/comparison.wipple:13:9-13:10)
   at test/tests/comparison.wipple:13:9-13:10
-  has bound(s) Less-Than Number (`instance (Less-Than value)` (library/src/foundation/logic.wipple:53:1-53:84)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has bound(s) Less-Than Number (`instance (Less-Than value)` (library/src/foundation/logic.wipple:53:1-53:84))
   has type Number Number -> Boolean
   is an expression
   resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:51:1-52:52)
@@ -459,7 +429,7 @@ CallExpressionNode `4 < 3` (test/tests/comparison.wipple:13:7-13:12)
   is an expression
 ConstructorExpressionNode `<=` (test/tests/comparison.wipple:14:9-14:11)
   at test/tests/comparison.wipple:14:9-14:11
-  has bound(s) Less-Than-Or-Equal Number (`instance (Less-Than-Or-Equal value)` (library/src/foundation/logic.wipple:57:1-57:110)), Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-49:65))
+  has bound(s) Less-Than-Or-Equal Number (`instance (Less-Than-Or-Equal value)` (library/src/foundation/logic.wipple:57:1-57:110))
   has type Number Number -> Boolean
   is an expression
   resolved to 1 definition(s): `Less-Than-Or-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:55:1-56:61)

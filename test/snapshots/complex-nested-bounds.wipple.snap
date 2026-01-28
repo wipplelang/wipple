@@ -71,6 +71,7 @@ TypeParameterNode `b` (test/tests/complex-nested-bounds.wipple:7:36-7:37)
   resolved to 1 definition(s): `b` (test/tests/complex-nested-bounds.wipple:7:21-7:22)
 BoundConstraintNode `Not b` (test/tests/complex-nested-bounds.wipple:7:31-7:38)
   at test/tests/complex-nested-bounds.wipple:7:31-7:38
+  has bound(s) Not b (`Not b` (test/tests/complex-nested-bounds.wipple:7:31-7:38))
   is a constraint
   resolved to 1 definition(s): `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
 VariablePatternNode `f` (test/tests/complex-nested-bounds.wipple:7:41-7:42)
@@ -83,6 +84,7 @@ VariablePatternNode `x` (test/tests/complex-nested-bounds.wipple:7:46-7:47)
   is a pattern
 VariableExpressionNode `not` (test/tests/complex-nested-bounds.wipple:7:51-7:54)
   at test/tests/complex-nested-bounds.wipple:7:51-7:54
+  has bound(s) Not b (`Not b` (test/tests/complex-nested-bounds.wipple:7:31-7:38))
   has type b -> b
   is an expression
   resolved to 1 definition(s): `not` (test/tests/complex-nested-bounds.wipple:9:1-9:40)
@@ -140,6 +142,7 @@ TypeParameterNode `value` (test/tests/complex-nested-bounds.wipple:9:34-9:39)
   resolved to 1 definition(s): `value` (test/tests/complex-nested-bounds.wipple:9:8-9:13)
 BoundConstraintNode `Not value` (test/tests/complex-nested-bounds.wipple:9:29-9:40)
   at test/tests/complex-nested-bounds.wipple:9:29-9:40
+  has bound(s) Not value (`Not value` (test/tests/complex-nested-bounds.wipple:9:29-9:40))
   is a constraint
   resolved to 1 definition(s): `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
 ConstantDefinitionNode `not` (test/tests/complex-nested-bounds.wipple:9:1-9:40)
@@ -152,6 +155,7 @@ VariablePatternNode `not` (test/tests/complex-nested-bounds.wipple:10:1-10:4)
   at test/tests/complex-nested-bounds.wipple:10:1-10:4
 ConstructorExpressionNode `Not` (test/tests/complex-nested-bounds.wipple:10:7-10:10)
   at test/tests/complex-nested-bounds.wipple:10:7-10:10
+  has bound(s) Not value (`Not value` (test/tests/complex-nested-bounds.wipple:9:29-9:40))
   has type value -> value
   is an expression
   resolved to 1 definition(s): `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)

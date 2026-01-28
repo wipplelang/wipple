@@ -27,6 +27,7 @@ TypeParameterNode `value` (test/tests/bounds-are-one-way.wipple:5:22-5:27)
   resolved to 1 definition(s): `value` (test/tests/bounds-are-one-way.wipple:5:22-5:27)
 BoundConstraintNode `T value` (test/tests/bounds-are-one-way.wipple:5:19-5:28)
   at test/tests/bounds-are-one-way.wipple:5:19-5:28
+  has bound(s) T value (`T value` (test/tests/bounds-are-one-way.wipple:5:19-5:28))
   is a constraint
   resolved to 1 definition(s): `T : value => trait value` (test/tests/bounds-are-one-way.wipple:1:1-3:25)
 ConstantDefinitionNode `f` (test/tests/bounds-are-one-way.wipple:5:1-5:28)

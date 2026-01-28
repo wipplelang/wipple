@@ -202,9 +202,6 @@ impl Visit for OperatorExpressionNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
         visit_expression(node, visitor);
 
-        visitor.visit(&self.left);
-        visitor.visit(&self.right);
-
         let operator_node = match self.operator.as_str() {
             "to" => trait_operator(
                 visitor,

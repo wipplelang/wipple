@@ -140,6 +140,7 @@ TypeParameterNode `sum` (test/tests/infer-constraint.wipple:10:48-10:51)
   resolved to 1 definition(s): `sum` (test/tests/infer-constraint.wipple:10:22-10:25)
 BoundConstraintNode `Add left right sum` (test/tests/infer-constraint.wipple:10:32-10:52)
   at test/tests/infer-constraint.wipple:10:32-10:52
+  has bound(s) Add left right sum (`Add left right sum` (test/tests/infer-constraint.wipple:10:32-10:52))
   is a constraint
   resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)` (test/tests/infer-constraint.wipple:6:1-6:50)
 ConstantDefinitionNode `add` (test/tests/infer-constraint.wipple:10:1-10:52)
@@ -317,6 +318,7 @@ TypeParameterNode `sum` (test/tests/infer-constraint.wipple:19:60-19:63)
   resolved to 1 definition(s): `sum` (test/tests/infer-constraint.wipple:19:28-19:31)
 BoundConstraintNode `Add-Infer left right sum` (test/tests/infer-constraint.wipple:19:38-19:64)
   at test/tests/infer-constraint.wipple:19:38-19:64
+  has bound(s) Add-Infer left right sum (`Add-Infer left right sum` (test/tests/infer-constraint.wipple:19:38-19:64))
   is a constraint
   resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)` (test/tests/infer-constraint.wipple:15:1-15:64)
 ConstantDefinitionNode `add-infer` (test/tests/infer-constraint.wipple:19:1-19:64)

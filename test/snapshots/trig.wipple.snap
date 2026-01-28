@@ -183,16 +183,6 @@ CallExpressionNode `cos (0 degrees) = 1` (test/tests/trig.wipple:4:7-4:26)
   at test/tests/trig.wipple:4:7-4:26
   has type Boolean
   is an expression
-ConstructorExpressionNode `/` (test/tests/trig.wipple:5:24-5:25)
-  at test/tests/trig.wipple:5:24-5:25
-  has bound(s) Divide Number Number Number (`instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:93))
-  has type Number Number -> Number
-  is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:51:1-52:71)
-CallExpressionNode `sin (45 degrees) / cos (45 degrees)` (test/tests/trig.wipple:5:7-5:42)
-  at test/tests/trig.wipple:5:7-5:42
-  has type Number
-  is an expression
 ConstructorExpressionNode `=` (test/tests/trig.wipple:5:43-5:44)
   at test/tests/trig.wipple:5:43-5:44
   has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))

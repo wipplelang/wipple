@@ -162,6 +162,7 @@ TypeParameterNode `output` (test/tests/default-constraint.wipple:13:78-13:84)
   resolved to 1 definition(s): `output` (test/tests/default-constraint.wipple:13:23-13:29)
 BoundConstraintNode `Collect element output` (test/tests/default-constraint.wipple:13:61-13:85)
   at test/tests/default-constraint.wipple:13:61-13:85
+  has bound(s) Collect element output (`Collect element output` (test/tests/default-constraint.wipple:13:61-13:85))
   is a constraint
   resolved to 1 definition(s): `Collect : element collection => trait (element -> collection)` (test/tests/default-constraint.wipple:8:1-8:62)
 ConstantDefinitionNode `collect` (test/tests/default-constraint.wipple:12:1-13:85)

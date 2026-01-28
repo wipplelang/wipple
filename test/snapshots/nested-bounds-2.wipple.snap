@@ -76,6 +76,7 @@ TypeParameterNode `value` (test/tests/nested-bounds-2.wipple:8:29-8:34)
   resolved to 1 definition(s): `value` (test/tests/nested-bounds-2.wipple:8:13-8:18)
 BoundConstraintNode `U value` (test/tests/nested-bounds-2.wipple:8:26-8:35)
   at test/tests/nested-bounds-2.wipple:8:26-8:35
+  has bound(s) U value (`U value` (test/tests/nested-bounds-2.wipple:8:26-8:35))
   is a constraint
   resolved to 1 definition(s): `U : value => trait ()` (test/tests/nested-bounds-2.wipple:4:1-4:22)
 UnitExpressionNode `()` (test/tests/nested-bounds-2.wipple:8:38-8:40)
@@ -103,6 +104,7 @@ TypeParameterNode `value` (test/tests/nested-bounds-2.wipple:9:29-9:34)
   resolved to 1 definition(s): `value` (test/tests/nested-bounds-2.wipple:9:13-9:18)
 BoundConstraintNode `V value` (test/tests/nested-bounds-2.wipple:9:26-9:35)
   at test/tests/nested-bounds-2.wipple:9:26-9:35
+  has bound(s) V value (`V value` (test/tests/nested-bounds-2.wipple:9:26-9:35))
   is a constraint
   resolved to 1 definition(s): `V : value => trait ()` (test/tests/nested-bounds-2.wipple:5:1-5:22)
 UnitExpressionNode `()` (test/tests/nested-bounds-2.wipple:9:38-9:40)
@@ -130,6 +132,7 @@ TypeParameterNode `value` (test/tests/nested-bounds-2.wipple:10:29-10:34)
   resolved to 1 definition(s): `value` (test/tests/nested-bounds-2.wipple:10:13-10:18)
 BoundConstraintNode `W value` (test/tests/nested-bounds-2.wipple:10:26-10:35)
   at test/tests/nested-bounds-2.wipple:10:26-10:35
+  has bound(s) W value (`W value` (test/tests/nested-bounds-2.wipple:10:26-10:35))
   is a constraint
   resolved to 1 definition(s): `W : value => trait ()` (test/tests/nested-bounds-2.wipple:6:1-6:22)
 UnitExpressionNode `()` (test/tests/nested-bounds-2.wipple:10:38-10:40)
@@ -145,7 +148,7 @@ InstanceDefinitionNode `instance (V value)` (test/tests/nested-bounds-2.wipple:1
   resolved to 1 definition(s): `V : value => trait ()` (test/tests/nested-bounds-2.wipple:5:1-5:22)
 ConstructorExpressionNode `T` (test/tests/nested-bounds-2.wipple:12:1-12:2)
   at test/tests/nested-bounds-2.wipple:12:1-12:2
-  has bound(s) T _ (`instance (T value)` (test/tests/nested-bounds-2.wipple:8:1-8:40)), U _ (`instance (U value)` (test/tests/nested-bounds-2.wipple:9:1-9:40)), V _ (`instance (V value)` (test/tests/nested-bounds-2.wipple:10:1-10:40))
+  has bound(s) T _ (`instance (T value)` (test/tests/nested-bounds-2.wipple:8:1-8:40))
   has type ()
   is an expression
   resolved to 1 definition(s): `T : value => trait ()` (test/tests/nested-bounds-2.wipple:1:1-3:22)

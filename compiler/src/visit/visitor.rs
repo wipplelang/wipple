@@ -5,7 +5,7 @@ use crate::{
 };
 use std::{
     cell::{Ref, RefCell, RefMut},
-    collections::{HashMap, VecDeque},
+    collections::{BTreeSet, HashMap, VecDeque},
     ops::{Deref, DerefMut},
     rc::Rc,
 };
@@ -67,6 +67,7 @@ pub trait Visit {
 pub struct Visitor<'db> {
     pub db: &'db mut Db,
     pub scopes: Vec<Rc<RefCell<Scope<Rc<RefCell<Definition>>>>>>,
+    visited: BTreeSet<NodeRef>,
     current_node: Option<NodeRef>,
     current_definition: Option<CurrentDefinition>,
     current_match: Option<CurrentMatch>,
@@ -131,6 +132,7 @@ impl<'db> Visitor<'db> {
                     ))
                 })
                 .collect(),
+            visited: Default::default(),
             current_node: Default::default(),
             current_definition: Default::default(),
             current_match: Default::default(),
@@ -144,6 +146,10 @@ impl<'db> Visitor<'db> {
     }
 
     pub fn visit(&mut self, node: &NodeRef) {
+        if !self.visited.insert(node.clone()) {
+            panic!("node {:?} already visited", node);
+        }
+
         let parent = self.current_node.replace(node.clone());
 
         if let Some(parent) = &parent {

@@ -1,5 +1,5 @@
 use crate::{
-    database::NodeRef,
+    database::{HiddenNode, NodeRef},
     typecheck::{
         Bound, Bounds, BoundsItem, BoundsItemInstance, Constraint, ConstraintCtx, ConstraintInfo,
         ConstraintResult, InferredParameter, Instance, Instances, Instantation,
@@ -17,7 +17,7 @@ pub struct BoundConstraint {
 impl BoundConstraint {
     pub fn new(node: NodeRef, bound: Bound) -> Box<dyn Constraint> {
         Box::new(BoundConstraint {
-            info: ConstraintInfo::new(node).instance(bound.to_instance()),
+            info: ConstraintInfo::new(node.clone()).instance(bound.to_instance(node)),
             bound,
         })
     }
@@ -34,8 +34,9 @@ impl Constraint for BoundConstraint {
 
     fn instantiate(&self, ctx: &mut InstantiateContext<'_>) -> Box<dyn Constraint> {
         Box::new(BoundConstraint {
-            info: ConstraintInfo::new(self.info.node.clone()),
+            info: ConstraintInfo::new(ctx.instantiate_node(&self.info.node)),
             bound: Bound {
+                bound_node: self.info.node.clone(),
                 source_node: ctx.source_node.clone(),
                 trait_node: self.bound.trait_node.clone(),
                 substitutions: ctx.instantiate_substitutions(&self.bound.substitutions),
@@ -63,10 +64,14 @@ impl Constraint for BoundConstraint {
 
         let instance_groups = [(ctx.implied_instances.to_vec(), true)]
             .into_iter()
-            .chain(group_instances(instances))
+            .chain(group_instances(instances).map(|instances| (instances, false)))
             .collect::<Vec<_>>();
 
         let instance_groups_count = instance_groups.len();
+
+        let resolved_node = ctx
+            .db
+            .node(ctx.db.span(&self.bound.source_node), HiddenNode::default());
 
         let mut candidates = Vec::new();
         for (index, (instances, keep_generic)) in instance_groups.into_iter().enumerate() {
@@ -85,8 +90,9 @@ impl Constraint for BoundConstraint {
                 // parameters like with the bound
                 let replacements = Replacements::new();
                 let substitutions = Substitutions::new();
+
                 copy.insert_constraint(InstantiateConstraint::new(Instantation {
-                    source_node: self.bound.source_node.clone(),
+                    source_node: resolved_node.clone(),
                     definition: instance.node.clone(),
                     replacements: replacements.clone(),
                     substitutions: substitutions.clone(),
@@ -103,7 +109,7 @@ impl Constraint for BoundConstraint {
                         let mut ctx = InstantiateContext {
                             db: ctx.db,
                             definition: instance.node.clone(),
-                            source_node: self.info.node.clone(),
+                            source_node: resolved_node.clone(),
                             replacements: replacements.clone(),
                             substitutions: substitutions.clone(),
                         };
@@ -131,7 +137,12 @@ impl Constraint for BoundConstraint {
                         &bound_inferred,
                     );
 
-                    candidates.push((copy, instance.node, instance.error));
+                    candidates.push((
+                        copy,
+                        instance.node.clone(),
+                        instance.from_bound,
+                        instance.error,
+                    ));
                 }
             }
 
@@ -154,26 +165,26 @@ impl Constraint for BoundConstraint {
             };
 
             if has_candidate {
-                let (copy, node, error) = candidates.into_iter().next().unwrap();
+                let (copy, instance_node, from_bound, is_error) =
+                    candidates.into_iter().next().unwrap();
+
                 *ctx.groups = copy.groups.clone();
 
-                // Don't indicate a resolved instance if this instance is implied
-                // (suppresses custom `[error]` messages)
-                let is_implied_instance = ctx
-                    .implied_instances
-                    .iter()
-                    .any(|existing| existing.node == node);
+                ctx.apply_substitutions(&resolved_bound.substitutions);
 
-                if !is_implied_instance && !keep_generic {
-                    ctx.apply_substitutions(&resolved_bound.substitutions);
-
-                    ctx.db.with_fact(&self.bound.source_node, |Bounds(bounds)| {
-                        bounds.push(BoundsItem {
+                ctx.db.with_fact(&self.bound.source_node, |Bounds(bounds)| {
+                    bounds
+                        .entry(self.bound.bound_node.clone())
+                        .or_insert_with(|| BoundsItem {
                             bound: resolved_bound,
-                            instance: Some(BoundsItemInstance { node, error }),
+                            instance: Some(BoundsItemInstance {
+                                instance_node,
+                                resolved_node,
+                                from_bound,
+                                error: is_error,
+                            }),
                         });
-                    });
-                }
+                });
 
                 return ConstraintResult::Enqueue(copy.into_constraints().collect());
             } else if candidates.len() > 1 {
@@ -184,10 +195,12 @@ impl Constraint for BoundConstraint {
                 ctx.apply_substitutions(&resolved_bound.substitutions);
 
                 ctx.db.with_fact(&self.bound.source_node, |Bounds(bounds)| {
-                    bounds.push(BoundsItem {
-                        bound: resolved_bound,
-                        instance: None,
-                    });
+                    bounds
+                        .entry(self.bound.bound_node.clone())
+                        .or_insert_with(|| BoundsItem {
+                            bound: resolved_bound,
+                            instance: None,
+                        });
                 });
             }
         }
@@ -198,7 +211,7 @@ impl Constraint for BoundConstraint {
 
 pub fn group_instances(
     instances: impl IntoIterator<Item = Instance>,
-) -> impl Iterator<Item = (Vec<Instance>, bool)> {
+) -> impl Iterator<Item = Vec<Instance>> {
     let mut regular_instances = Vec::new();
     let mut error_instances = Vec::new();
     let mut default_instances = Vec::new();
@@ -213,10 +226,10 @@ pub fn group_instances(
     }
 
     [
-        (regular_instances, false),
-        (error_instances, false),
-        (default_instances, false),
-        (default_error_instances, false),
+        regular_instances,
+        error_instances,
+        default_instances,
+        default_error_instances,
     ]
     .into_iter()
 }

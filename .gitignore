@@ -1,5 +1,6 @@
 test*.wipple
 out.js
+out.txt
 .task/
 netlify/
 .netlify/

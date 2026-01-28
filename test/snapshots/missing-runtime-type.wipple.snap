@@ -102,6 +102,7 @@ TypeParameterNode `b` (test/tests/missing-runtime-type.wipple:7:29-7:30)
   resolved to 1 definition(s): `b` (test/tests/missing-runtime-type.wipple:7:29-7:30)
 BoundConstraintNode `T1 a b` (test/tests/missing-runtime-type.wipple:7:23-7:31)
   at test/tests/missing-runtime-type.wipple:7:23-7:31
+  has bound(s) T1 a b (`T1 a b` (test/tests/missing-runtime-type.wipple:7:23-7:31))
   is a constraint
   resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (test/tests/missing-runtime-type.wipple:1:1-3:27)
 VariablePatternNode `x` (test/tests/missing-runtime-type.wipple:7:34-7:35)
@@ -114,6 +115,7 @@ WildcardPatternNode `_` (test/tests/missing-runtime-type.wipple:7:43-7:44)
   is a pattern
 ConstructorExpressionNode `T1` (test/tests/missing-runtime-type.wipple:7:47-7:49)
   at test/tests/missing-runtime-type.wipple:7:47-7:49
+  has bound(s) T1 a b (`T1 a b` (test/tests/missing-runtime-type.wipple:7:23-7:31))
   has type a -> b
   is an expression
   resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (test/tests/missing-runtime-type.wipple:1:1-3:27)
@@ -147,7 +149,7 @@ InstanceDefinitionNode `instance (T2 a)` (test/tests/missing-runtime-type.wipple
   resolved to 1 definition(s): `T2 : a => trait (a -> ())` (test/tests/missing-runtime-type.wipple:6:1-6:26)
 ConstructorExpressionNode `T2` (test/tests/missing-runtime-type.wipple:8:1-8:3)
   at test/tests/missing-runtime-type.wipple:8:1-8:3
-  has bound(s) T2 () (`instance (T2 a)` (test/tests/missing-runtime-type.wipple:7:1-7:52)), T1 () () (`instance (T1 () ())` (test/tests/missing-runtime-type.wipple:4:1-4:31))
+  has bound(s) T2 () (`instance (T2 a)` (test/tests/missing-runtime-type.wipple:7:1-7:52))
   has type () -> ()
   is an expression
   resolved to 1 definition(s): `T2 : a => trait (a -> ())` (test/tests/missing-runtime-type.wipple:6:1-6:26)

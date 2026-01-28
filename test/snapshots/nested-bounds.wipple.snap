@@ -107,6 +107,7 @@ TypeParameterNode `value` (test/tests/nested-bounds.wipple:11:29-11:34)
   resolved to 1 definition(s): `value` (test/tests/nested-bounds.wipple:11:13-11:18)
 BoundConstraintNode `A value` (test/tests/nested-bounds.wipple:11:26-11:35)
   at test/tests/nested-bounds.wipple:11:26-11:35
+  has bound(s) A value (`A value` (test/tests/nested-bounds.wipple:11:26-11:35))
   is a constraint
   resolved to 1 definition(s): `A : value => trait (value -> ())` (test/tests/nested-bounds.wipple:6:1-6:33)
 PlaceholderExpressionNode `_` (test/tests/nested-bounds.wipple:11:38-11:39)
@@ -122,7 +123,7 @@ InstanceDefinitionNode `instance (B value)` (test/tests/nested-bounds.wipple:11:
   resolved to 1 definition(s): `B : value => trait (value -> ())` (test/tests/nested-bounds.wipple:10:1-10:33)
 ConstructorExpressionNode `B` (test/tests/nested-bounds.wipple:13:1-13:2)
   at test/tests/nested-bounds.wipple:13:1-13:2
-  has bound(s) B Number (`instance (B value)` (test/tests/nested-bounds.wipple:11:1-11:39)), A Number (`instance (A Number)` (test/tests/nested-bounds.wipple:7:1-7:24))
+  has bound(s) B Number (`instance (B value)` (test/tests/nested-bounds.wipple:11:1-11:39))
   has type Number -> ()
   is an expression
   resolved to 1 definition(s): `B : value => trait (value -> ())` (test/tests/nested-bounds.wipple:10:1-10:33)
@@ -136,7 +137,7 @@ CallExpressionNode `B 123` (test/tests/nested-bounds.wipple:13:1-13:6)
   is an expression
 ConstructorExpressionNode `B` (test/tests/nested-bounds.wipple:14:1-14:2)
   at test/tests/nested-bounds.wipple:14:1-14:2
-  has bound(s) B String (`instance (B value)` (test/tests/nested-bounds.wipple:11:1-11:39)), A String (`instance (A String)` (test/tests/nested-bounds.wipple:8:1-8:24))
+  has bound(s) B String (`instance (B value)` (test/tests/nested-bounds.wipple:11:1-11:39))
   has type String -> ()
   is an expression
   resolved to 1 definition(s): `B : value => trait (value -> ())` (test/tests/nested-bounds.wipple:10:1-10:33)
@@ -150,7 +151,7 @@ CallExpressionNode `B "abc"` (test/tests/nested-bounds.wipple:14:1-14:8)
   is an expression
 ConstructorExpressionNode `B` (test/tests/nested-bounds.wipple:15:1-15:2)
   at test/tests/nested-bounds.wipple:15:1-15:2
-  has bound(s) B () (`instance (B value)` (test/tests/nested-bounds.wipple:11:1-11:39)), A () (unresolved)
+  has bound(s) B () (`instance (B value)` (test/tests/nested-bounds.wipple:11:1-11:39))
   has type () -> ()
   is an expression
   resolved to 1 definition(s): `B : value => trait (value -> ())` (test/tests/nested-bounds.wipple:10:1-10:33)

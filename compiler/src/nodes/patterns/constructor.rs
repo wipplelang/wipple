@@ -111,6 +111,7 @@ impl Visit for ConstructorPatternNode {
                     definition: definition.node.clone(),
                     substitutions: Substitutions::new(),
                     replacements: Replacements::from_iter([(definition.node, node.clone())]),
+
                 }));
 
                 visitor.insert(node, ConstructorMatch::Marker);
@@ -132,6 +133,7 @@ impl Visit for ConstructorPatternNode {
                         definition: definition.node.clone(),
                         substitutions: Substitutions::new(),
                         replacements: Replacements::from_iter([(definition.node, node.clone())]),
+
                     }));
                 } else {
                     let span = visitor.span(node);
@@ -146,6 +148,7 @@ impl Visit for ConstructorPatternNode {
                             definition.node,
                             constructor_node.clone(),
                         )]),
+
                     }));
 
                     visitor.constraint(TypeConstraint::new(

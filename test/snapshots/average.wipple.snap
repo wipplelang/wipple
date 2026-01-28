@@ -9,7 +9,7 @@ VariablePatternNode `numbers` (test/tests/average.wipple:3:11-3:18)
   is a pattern
 VariableExpressionNode `sum` (test/tests/average.wipple:3:22-3:25)
   at test/tests/average.wipple:3:22-3:25
-  has bound(s) Initial Number (`instance (Initial Number)` (library/src/foundation/language.wipple:39:1-39:30)), Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87)), Initial Number (`instance (Initial Number)` (library/src/foundation/language.wipple:39:1-39:30)), Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87)), As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), Initial Number (`instance (Initial Number)` (library/src/foundation/language.wipple:39:1-39:30)), Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87))
   has type (List Number) -> Number
   is an expression
   resolved to 1 definition(s): `sum` (library/src/foundation/sequence.wipple:165:1-166:78)
@@ -24,7 +24,7 @@ CallExpressionNode `sum numbers` (test/tests/average.wipple:3:22-3:33)
   is an expression
 VariableExpressionNode `count` (test/tests/average.wipple:3:36-3:41)
   at test/tests/average.wipple:3:36-3:41
-  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2)), As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
   has type (List Number) -> Number
   is an expression
   resolved to 1 definition(s): `count` (library/src/foundation/sequence.wipple:260:1-261:69)

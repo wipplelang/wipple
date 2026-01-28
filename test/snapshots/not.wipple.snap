@@ -40,7 +40,7 @@ VariableExpressionNode `show` (test/tests/not.wipple:5:1-5:5)
   resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
 VariableExpressionNode `not` (test/tests/not.wipple:5:8-5:11)
   at test/tests/not.wipple:5:8-5:11
-  has bound(s) Not (Number -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not (Number -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:16:1-16:62)), Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:16:1-16:62))
+  has bound(s) Not (Number -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75))
   has type (Number -> Boolean) -> Number -> Boolean
   is an expression
   resolved to 1 definition(s): `not` (library/src/foundation/logic.wipple:19:1-21:59)
@@ -64,7 +64,7 @@ CallExpressionNode `(not is-42?) input` (test/tests/not.wipple:5:7-5:25)
   is an expression
 VariableExpressionNode `not` (test/tests/not.wipple:5:28-5:31)
   at test/tests/not.wipple:5:28-5:31
-  has bound(s) Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:16:1-16:62)), Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:16:1-16:62))
+  has bound(s) Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:16:1-16:62))
   has type Boolean -> Boolean
   is an expression
   resolved to 1 definition(s): `not` (library/src/foundation/logic.wipple:19:1-21:59)

@@ -4,7 +4,8 @@ use crate::{
     nodes::visit_expression,
     syntax::{ParseError, Parser, parse_variable_name},
     typecheck::{
-        GroupConstraint, Instantation, InstantiateConstraint, Replacements, Substitutions,
+        Bounds, BoundsItemInstance, GroupConstraint, Instantation, InstantiateConstraint,
+        Replacements, Substitutions,
     },
     visit::{Definition, Visit, Visitor},
 };
@@ -12,10 +13,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum ResolvedVariable {
     Variable(NodeRef),
-    Constant {
-        node: NodeRef,
-        substitutions: Substitutions,
-    },
+    Constant(NodeRef),
 }
 
 impl Fact for ResolvedVariable {}
@@ -61,25 +59,17 @@ impl Visit for VariableExpressionNode {
                 visitor.insert(node, ResolvedVariable::Variable(resolved_node));
             }
             Definition::Constant(definition) => {
-                let substitutions = Substitutions::new();
-
                 visitor.constraint(InstantiateConstraint::new(Instantation {
                     source_node: node.clone(),
                     definition: definition.node.clone(),
-                    substitutions: substitutions.clone(),
+                    substitutions: Substitutions::new(),
                     replacements: Replacements::from_iter([(
                         definition.node.clone(),
                         node.clone(),
                     )]),
                 }));
 
-                visitor.insert(
-                    node,
-                    ResolvedVariable::Constant {
-                        node: definition.node,
-                        substitutions,
-                    },
-                );
+                visitor.insert(node, ResolvedVariable::Constant(definition.node));
             }
             _ => {}
         }
@@ -94,41 +84,64 @@ impl Codegen for VariableExpressionNode {
             .ok_or_else(|| ctx.error())?;
 
         match resolution {
-            ResolvedVariable::Variable(node) => {
-                ctx.write_node(&node);
-                Ok(())
-            }
-            ResolvedVariable::Constant {
-                node,
-                substitutions,
-            } => {
-                ctx.mark_reachable(&node);
+            ResolvedVariable::Variable(node) => ctx.write_node(&node),
+            ResolvedVariable::Constant(node) => {
+                let bounds = ctx.db.get::<Bounds>(ctx.current_node()).unwrap_or_default();
 
-                let mut parameters = substitutions.keys();
-
-                parameters.sort_by_key(|parameter| ctx.db.span(parameter));
-
-                ctx.write_string("await __wipple_constant(");
-                ctx.write_node(&node);
-                ctx.write_string(", __wipple_types, {");
-
-                for parameter in parameters {
-                    let substitution = substitutions.get(&parameter).ok_or_else(|| ctx.error())?;
-
-                    ctx.write_node(&parameter);
-                    ctx.write_string(": ");
-                    ctx.write_type(&substitution)?;
-                    ctx.write_string(", ");
-                }
-
-                ctx.write_string("})");
-
-                Ok(())
+                codegen_constant(ctx, &node, bounds, |ctx| ctx.write_node(&node))?;
             }
         }
+
+        Ok(())
     }
 
     fn identifier(&self) -> Option<String> {
         Some(self.variable.clone())
+    }
+}
+
+pub fn codegen_constant(
+    ctx: &mut CodegenCtx<'_>,
+    node: &NodeRef,
+    bounds: Bounds,
+    write_node: impl FnOnce(&mut CodegenCtx<'_>),
+) -> Result<(), CodegenError> {
+    ctx.mark_reachable(node);
+
+    ctx.write_string("await ");
+    write_node(ctx);
+    ctx.write_string("({ ");
+    for (bound_node, item) in bounds.0 {
+        let instance = item.instance.as_ref().ok_or_else(|| ctx.error())?;
+
+        ctx.write_node(&bound_node);
+        ctx.write_string(": ");
+        codegen_instance(ctx, instance)?;
+
+        ctx.write_string(", ");
+    }
+
+    ctx.write_string(" })");
+
+    Ok(())
+}
+
+pub fn codegen_instance(
+    ctx: &mut CodegenCtx<'_>,
+    instance: &BoundsItemInstance,
+) -> Result<(), CodegenError> {
+    if instance.from_bound {
+        ctx.write_string("__wipple_bounds.");
+        ctx.write_node(&instance.instance_node);
+        Ok(())
+    } else {
+        let bounds = ctx
+            .db
+            .get::<Bounds>(&instance.resolved_node)
+            .unwrap_or_default();
+
+        codegen_constant(ctx, &instance.instance_node, bounds, |ctx| {
+            ctx.write_node(&instance.instance_node)
+        })
     }
 }
