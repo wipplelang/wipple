@@ -345,13 +345,16 @@ impl<'db> Visitor<'db> {
     pub fn finish(mut self) -> Result {
         while let Some(entry) = self.queue.dequeue() {
             let previous_scopes = self.scopes.clone();
+            let previous_node = self.current_node.clone();
             let previous_definition = self.current_definition.clone();
             self.scopes = entry.scopes;
+            self.current_node = entry.current_node;
             self.current_definition = entry.current_definition;
 
             (entry.f)(&mut self);
 
             self.scopes = previous_scopes;
+            self.current_node = previous_node;
             self.current_definition = previous_definition;
         }
 
@@ -447,6 +450,7 @@ pub struct CurrentMatch {
 struct QueuedVisit<'db> {
     f: Box<dyn FnOnce(&mut Visitor<'db>)>,
     scopes: Vec<Rc<RefCell<Scope<Rc<RefCell<Definition>>>>>>,
+    current_node: Option<NodeRef>,
     current_definition: Option<CurrentDefinition>,
 }
 
@@ -466,6 +470,7 @@ impl<'db> Visitor<'db> {
         let visit = QueuedVisit {
             f: Box::new(f),
             scopes: self.scopes.clone(),
+            current_node: self.current_node.clone(),
             current_definition: self.current_definition.clone(),
         };
 

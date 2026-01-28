@@ -78,7 +78,6 @@ impl Visit for NamedTypeNode {
             definition: type_definition.node.clone(),
             substitutions,
             replacements: Replacements::from_iter([(type_definition.node, node.clone())]),
-
         }));
     }
 }

@@ -1,7 +1,11 @@
 use crate::{File, InputMetadata, compile};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::{collections::BTreeSet, sync::Arc};
+use std::{
+    collections::BTreeSet,
+    mem,
+    sync::{Arc, Mutex},
+};
 use wipple::{
     codegen::{self, codegen},
     database::{Db, NodeRef, RenderConfig},
@@ -58,31 +62,35 @@ fn convert_feedback(db: &mut Db, item: FeedbackItem) -> serde_json::Value {
 
     let group_count = groups.len();
 
-    db.render_with(RenderConfig::new(move |db, value, f| {
-        if let Some(node) = value.link()
-            && let Some(Typed { group: Some(group) }) = db.get(node)
-            && let Some(index) = groups.iter().position(|other| Arc::ptr_eq(&group, other))
-        {
-            write!(f, "<code data-group=\"{}\">", index)?;
+    let mask: Arc<Mutex<BTreeSet<NodeRef>>> = Default::default();
+    db.render_with(RenderConfig::new({
+        let mask = mask.clone();
+        move |db, value, f| {
+            if let Some(node) = value.link()
+                && let Some(Typed { group: Some(group) }) = db.get(node)
+                && let Some(index) = groups.iter().position(|other| Arc::ptr_eq(&group, other))
+            {
+                write!(f, "<code data-group=\"{}\">", index)?;
+                value.write(f, db)?;
+                write!(f, "</code>")?;
+
+                mask.lock().unwrap().insert(node.clone());
+
+                return Ok(());
+            }
+
+            write!(f, "`")?;
             value.write(f, db)?;
-            write!(f, "</code>")?;
+            write!(f, "`")?;
 
-            return Ok(());
+            Ok(())
         }
-
-        write!(f, "`")?;
-        value.write(f, db)?;
-        write!(f, "`")?;
-
-        Ok(())
     }));
 
     let mut message = String::new();
     (item.write)(db, &mut message);
 
-    let mask = [item.location.0.clone()]
-        .into_iter()
-        .chain(item.location.1.iter().cloned());
+    let mask = mem::take(&mut *mask.lock().unwrap());
 
     let graph = item
         .show_graph

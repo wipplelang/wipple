@@ -155,7 +155,6 @@ impl Visit for InstanceDefinitionNode {
                                 trait_definition.node.clone(),
                                 node.clone(),
                             )]),
-
                         }));
                     });
                 }

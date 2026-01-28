@@ -1,17 +1,18 @@
-use crate::database::{Db, NodeRef};
-use petgraph::{prelude::DiGraphMap, visit::Bfs};
+use crate::{
+    database::{Db, NodeRef},
+    nodes::{InstanceDefinitionNode, ResolvedConstantAssignment},
+};
+use petgraph::prelude::DiGraphMap;
 use serde::Serialize;
 use serde_json::json;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone, Default)]
 pub struct Graph {
-    mask: HashSet<usize>,
-    nodes: BTreeMap<NodeRef, usize>,
-    keys: HashMap<usize, NodeRef>,
-    edges: DiGraphMap<usize, &'static str>,
-    groups: im::Vector<Group>,
+    mask: im::OrdSet<NodeRef>,
     replacements: im::OrdMap<NodeRef, NodeRef>,
+    edges: im::Vector<(NodeRef, NodeRef, &'static str)>,
+    groups: im::Vector<Group>,
 }
 
 #[derive(Debug, Clone)]
@@ -29,48 +30,15 @@ pub struct Group {
 
 impl Graph {
     pub fn set_mask(&mut self, nodes: impl IntoIterator<Item = NodeRef>) {
-        self.mask = nodes
-            .into_iter()
-            .filter_map(|node| self.key(&node))
-            .collect();
+        self.mask = im::OrdSet::from_iter(nodes);
     }
 
     pub fn replace(&mut self, from: &NodeRef, to: &NodeRef) {
         self.replacements.insert(from.clone(), to.clone());
     }
 
-    fn key(&mut self, node: &NodeRef) -> Option<usize> {
-        let node = self.replacements.get(node).unwrap_or(node);
-        if node.is_hidden() {
-            return None;
-        }
-
-        let next = self.nodes.len();
-        let key = *self.nodes.entry(node.clone()).or_insert(next);
-        self.keys.insert(key, node.clone());
-        Some(key)
-    }
-
-    fn try_key(&self, node: &NodeRef) -> Option<usize> {
-        let node = self.replacements.get(node).unwrap_or(node);
-
-        if node.is_hidden() {
-            return None;
-        }
-
-        self.nodes.get(node).copied()
-    }
-
     pub fn edge(&mut self, from: &NodeRef, to: &NodeRef, label: &'static str) {
-        let Some(from) = self.key(from) else {
-            return;
-        };
-
-        let Some(to) = self.key(to) else {
-            return;
-        };
-
-        self.edges.add_edge(from, to, label);
+        self.edges.push_back((from.clone(), to.clone(), label));
     }
 
     pub fn group(
@@ -85,7 +53,7 @@ impl Graph {
     }
 
     pub fn serialize(&self, db: &Db) -> impl Serialize + use<> {
-        #[derive(Default, Serialize)]
+        #[derive(Debug, Default, Serialize)]
         struct Result {
             groups: Vec<serde_json::Value>,
             nodes: Vec<serde_json::Value>,
@@ -96,87 +64,119 @@ impl Graph {
 
         // Keep groups containing nodes reachable from a node in the mask
 
-        let reachable_from_mask = move |key: usize| {
-            let mut found = false;
-            let mut bfs = Bfs::new(&self.edges, key);
-            while let Some(other) = bfs.next(&self.edges) {
-                if self.mask.contains(&other) {
-                    found = true;
-                    break;
+        let mut reachable_nodes = BTreeSet::new();
+        let mut in_group = BTreeSet::new();
+        let mut visited_groups = BTreeSet::new();
+        let mut groups = Vec::<(BTreeSet<NodeRef>, Vec<String>)>::new();
+        let mut graph = DiGraphMap::<usize, &str>::new();
+        loop {
+            let mut progress = false;
+
+            for (index, group) in self.groups.iter().enumerate() {
+                if visited_groups.contains(&index) {
+                    continue;
                 }
-            }
 
-            found
-        };
-
-        let mut reachable_keys = HashSet::new();
-        let groups = self
-            .groups
-            .iter()
-            .filter_map(|group| {
-                let keys = group
+                let nodes = group
                     .nodes
                     .iter()
-                    .filter_map(|node| self.try_key(node))
-                    .collect::<HashSet<_>>();
+                    .map(|node| self.replacements.get(node).unwrap_or(node))
+                    .filter(|node| displayable(db, node))
+                    .cloned()
+                    .collect::<BTreeSet<_>>();
 
-                let reachable = keys.iter().copied().any(&reachable_from_mask);
+                if let Some((existing_nodes, existing_labels)) =
+                    groups.iter_mut().find(|(existing_nodes, _)| {
+                        existing_nodes.intersection(&nodes).next().is_some()
+                    })
+                {
+                    existing_nodes.extend(nodes.iter().cloned());
 
-                if reachable {
-                    reachable_keys.extend(keys.iter().copied());
-                    Some((keys, group.labels.clone()))
+                    for label in &group.labels {
+                        if !existing_labels.contains(label) {
+                            existing_labels.push(label.clone());
+                        }
+                    }
+                } else if nodes
+                    .iter()
+                    .any(|node| self.mask.contains(node) || reachable_nodes.contains(node))
+                {
+                    groups.push((nodes.clone(), group.labels.clone()));
                 } else {
-                    None
+                    continue;
                 }
-            })
-            .collect::<Vec<_>>();
 
-        let mut graph = DiGraphMap::<usize, &'static str>::new();
-        for (from, to, label) in self.edges.all_edges() {
-            if !reachable_keys.contains(&from) && !reachable_keys.contains(&to) {
-                continue;
+                in_group.extend(nodes.iter().map(|node| node.id()));
+                reachable_nodes.extend(nodes);
+                visited_groups.insert(index);
+                progress = true;
             }
 
-            let from_node = self.keys.get(&from).unwrap();
-            let to_node = self.keys.get(&to).unwrap();
+            for (from, to, label) in &self.edges {
+                let from = self.replacements.get(from).unwrap_or(from);
+                let to = self.replacements.get(to).unwrap_or(to);
 
-            // Don't add edges between hidden and non-hidden nodes
-            if from_node.is_hidden() && !to_node.is_hidden() {
-                continue;
+                if !reachable_nodes.contains(from) && !reachable_nodes.contains(to) {
+                    continue;
+                }
+
+                if !displayable(db, from) || !displayable(db, to) {
+                    continue;
+                }
+
+                reachable_nodes.insert(from.clone());
+                reachable_nodes.insert(to.clone());
+
+                if graph.add_edge(from.id(), to.id(), *label).is_none() {
+                    progress = true;
+                }
             }
 
-            let Some(from) = self.try_key(from_node) else {
-                continue;
-            };
-
-            let Some(to) = self.try_key(to_node) else {
-                continue;
-            };
-
-            graph.add_edge(from, to, *label);
+            if !progress {
+                break;
+            }
         }
 
-        for key in &reachable_keys {
-            let node = self.keys.get(key).unwrap();
+        let replaced = self
+            .replacements
+            .keys()
+            .map(|node| node.id())
+            .collect::<BTreeSet<_>>();
+
+        // Remove replaced nodes
+        in_group.retain(|node| !replaced.contains(node));
+
+        // Remove unconnected nodes
+        in_group.retain(|node| {
+            graph
+                .all_edges()
+                .any(|(from, to, _)| from == *node || to == *node)
+        });
+
+        for node in reachable_nodes {
+            if !in_group.contains(&node.id()) {
+                continue;
+            }
 
             result.nodes.push(json!({
-                "id": format!("node{key}"),
-                "span": db.span(node),
+                "id": format!("node{}", node.id()),
+                "span": db.span(&node),
             }));
         }
 
-        for (keys, labels) in groups {
+        for (nodes, labels) in groups {
             result.groups.push(json!({
-                "nodes": keys
+                "nodes": nodes
                     .into_iter()
-                    .map(|key| format!("node{key}"))
+                    .filter(|node| in_group.contains(&node.id()))
+                    .map(|node| format!("node{}", node.id()))
                     .collect::<Vec<_>>(),
                 "labels": labels,
             }));
         }
 
         for (from, to, label) in graph.all_edges() {
-            if !reachable_keys.contains(&from) || !reachable_keys.contains(&to) {
+            if !in_group.contains(&from) || !in_group.contains(&to) {
                 continue;
             }
 
@@ -189,4 +189,20 @@ impl Graph {
 
         result
     }
+}
+
+fn displayable(db: &Db, node: &NodeRef) -> bool {
+    if node.is_hidden() {
+        return false;
+    }
+
+    // Hide constant/instance values
+    if db.parent(node).is_some_and(|parent| {
+        db.contains::<ResolvedConstantAssignment>(&parent)
+            || parent.downcast_ref::<InstanceDefinitionNode>().is_some()
+    }) {
+        return false;
+    }
+
+    true
 }

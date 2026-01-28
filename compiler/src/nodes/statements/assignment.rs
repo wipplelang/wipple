@@ -9,13 +9,20 @@ use crate::{
 use std::mem;
 
 #[derive(Debug, Clone)]
-pub struct ResolvedAssignment {
+pub struct ResolvedConstantAssignment;
+
+impl Fact for ResolvedConstantAssignment {}
+
+impl Render for ResolvedConstantAssignment {}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedVariableAssignment {
     pub temporary: NodeRef,
 }
 
-impl Fact for ResolvedAssignment {}
+impl Fact for ResolvedVariableAssignment {}
 
-impl Render for ResolvedAssignment {}
+impl Render for ResolvedVariableAssignment {}
 
 #[derive(Debug)]
 pub struct AssignmentNode {
@@ -70,13 +77,13 @@ impl Visit for AssignmentNode {
                     visitor.defining(&definition_node, |visitor| {
                         visitor.within_constant_value(|visitor| {
                             visitor.visit(&value);
-                            visitor.edge(&value, &definition_node, "value");
-
                             visitor.constraint(GroupConstraint::new(value.clone(), ty));
                         });
 
                         definition.clone()
                     });
+
+                    visitor.insert(&node, ResolvedConstantAssignment);
 
                     Some(definition.into())
                 });
@@ -98,16 +105,16 @@ impl Visit for AssignmentNode {
 
             visitor.constraint(GroupConstraint::new(pattern, value));
 
-            visitor.insert(&node, ResolvedAssignment { temporary });
+            visitor.insert(&node, ResolvedVariableAssignment { temporary });
         });
     }
 }
 
 impl Codegen for AssignmentNode {
     fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let Some(ResolvedAssignment {
+        let Some(ResolvedVariableAssignment {
             temporary: assignment_temporary,
-        }) = ctx.db.get::<ResolvedAssignment>(ctx.current_node())
+        }) = ctx.db.get::<ResolvedVariableAssignment>(ctx.current_node())
         else {
             return Ok(()); // assigned to constant
         };
