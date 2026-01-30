@@ -61,6 +61,8 @@ impl Graph {
     }
 
     pub fn serialize(&self, db: &Db) -> impl Serialize + use<> {
+        const MAX_ITERATIONS: usize = 4;
+
         #[derive(Debug, Default, Serialize)]
         struct Result {
             groups: Vec<serde_json::Value>,
@@ -79,7 +81,7 @@ impl Graph {
         let mut finished_groups = BTreeSet::new();
         let mut groups = BTreeMap::<usize, (BTreeSet<NodeRef>, Vec<ConstructedType>)>::new();
         let mut graph = DiGraphMap::<usize, &str>::new();
-        loop {
+        for _ in 0..MAX_ITERATIONS {
             let mut progress = false;
 
             for node in reachable_nodes.keys() {
