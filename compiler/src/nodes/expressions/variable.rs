@@ -53,12 +53,13 @@ impl Visit for VariableExpressionNode {
 
         match definition {
             Definition::Variable(definition) => {
-                visitor.graph.replace(&resolved_node, node);
+                visitor.graph.replace(node, &definition.node);
                 visitor.constraint(GroupConstraint::new(node.clone(), definition.node));
-
                 visitor.insert(node, ResolvedVariable::Variable(resolved_node));
             }
             Definition::Constant(definition) => {
+                visitor.graph.instantiate(node, &definition.node, node);
+
                 visitor.constraint(InstantiateConstraint::new(Instantation {
                     source_node: node.clone(),
                     definition: definition.node.clone(),

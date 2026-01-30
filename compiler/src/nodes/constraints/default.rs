@@ -34,7 +34,6 @@ impl Visit for DefaultConstraintNode {
         visit_constraint(node, visitor);
 
         visitor.visit(&self.parameter);
-        visitor.edge(&self.parameter, node, "parameter");
 
         visitor.visit(&self.value);
         visitor.edge(&self.value, node, "value");

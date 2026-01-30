@@ -67,34 +67,36 @@ impl Visit for ConstantDefinitionNode {
         visitor.defining(node, |visitor| {
             visitor.push_scope();
 
-            let ty = self.ty.clone();
-            let constraints = self.constraints.clone();
-            let node_for_closure = node.clone();
+            visitor.after_type_definitions({
+                let ty = self.ty.clone();
+                let constraints = self.constraints.clone();
+                let node = node.clone();
+                move |visitor| {
+                    visitor.with_implicit_type_parameters(|visitor| {
+                        visitor.visit(&ty);
+                        visitor.edge(&ty, &node, "type");
 
-            visitor.after_type_definitions(move |visitor| {
-                let node = node_for_closure.clone();
-                visitor.with_implicit_type_parameters(|visitor| {
-                    visitor.visit(&ty);
-                    visitor.edge(&ty, &node, "type");
+                        for constraint in &constraints {
+                            visitor.visit(constraint);
+                            visitor.edge(constraint, &node, "constraint");
+                        }
+                    });
 
-                    for constraint in &constraints {
-                        visitor.visit(constraint);
-                        visitor.edge(constraint, &node, "constraint");
-                    }
-                });
-
-                visitor.constraint(GroupConstraint::new(node, ty));
+                    visitor.constraint(GroupConstraint::new(node, ty));
+                }
             });
 
             visitor.pop_scope();
+
+            visitor.edge(&self.ty, node, "type");
+            visitor.constraint(GroupConstraint::new(node.clone(), self.ty.clone()));
 
             let definition = ConstantDefinition {
                 name: self.name.clone(),
                 node: node.clone(),
                 comments: self.comments.clone(),
                 attributes: ConstantAttributes::from_attributes(visitor.db, &self.attributes),
-                assigned: false,
-                value: self.ty.clone(),
+                value: None,
             };
 
             visitor.define(&definition.name, definition.clone());
@@ -106,7 +108,7 @@ impl Visit for ConstantDefinitionNode {
                 };
 
                 if let Definition::Constant(definition) = definition
-                    && !definition.assigned
+                    && definition.value.is_none()
                 {
                     visitor.db.insert(&node, MissingConstantValue);
                 }

@@ -6,7 +6,6 @@ use crate::{
     typecheck::GroupConstraint,
     visit::{Definition, Visit, Visitor},
 };
-use std::mem;
 
 #[derive(Debug, Clone)]
 pub struct ResolvedConstantAssignment;
@@ -64,20 +63,21 @@ impl Visit for AssignmentNode {
                         return None;
                     };
 
-                    if definition.assigned {
+                    if definition.value.is_some() {
                         return None;
                     }
 
                     let mut definition = definition.clone();
-
-                    let ty = mem::replace(&mut definition.value, value.clone());
-                    definition.assigned = true;
+                    definition.value = Some(value.clone());
 
                     let definition_node = definition.node.clone();
                     visitor.defining(&definition_node, |visitor| {
                         visitor.within_constant_value(|visitor| {
                             visitor.visit(&value);
-                            visitor.constraint(GroupConstraint::new(value.clone(), ty));
+                            visitor.constraint(GroupConstraint::new(
+                                value.clone(),
+                                definition_node.clone(),
+                            ));
                         });
 
                         definition.clone()

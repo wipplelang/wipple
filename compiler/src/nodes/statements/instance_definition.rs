@@ -118,7 +118,6 @@ impl Visit for InstanceDefinitionNode {
                     visitor.with_implicit_type_parameters(|visitor| {
                         for parameter in &bound.parameters {
                             visitor.visit(parameter);
-                            visitor.edge(parameter, &node, "parameter");
                         }
 
                         let mut definition_parameters = trait_definition.parameters.iter().cloned();

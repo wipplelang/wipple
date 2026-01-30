@@ -67,24 +67,23 @@ impl Visit for TraitDefinitionNode {
             visitor.with_implicit_type_parameters(|visitor| {
                 for parameter in &self.parameters {
                     visitor.visit(parameter);
-                    visitor.edge(parameter, node, "parameter");
                 }
             });
 
-            let ty = self.ty.clone();
-            let constraints = self.constraints.clone();
-            let node_for_closure = node.clone();
+            visitor.after_all_definitions({
+                let ty = self.ty.clone();
+                let constraints = self.constraints.clone();
+                let node = node.clone();
+                move |visitor| {
+                    visitor.visit(&ty);
+                    visitor.edge(&ty, &node, "type");
 
-            visitor.after_all_definitions(move |visitor| {
-                let node = node_for_closure.clone();
-                visitor.visit(&ty);
-                visitor.edge(&ty, &node, "type");
+                    visitor.constraint(GroupConstraint::new(node.clone(), ty.clone()));
 
-                visitor.constraint(GroupConstraint::new(node.clone(), ty.clone()));
-
-                for constraint in &constraints {
-                    visitor.visit(constraint);
-                    visitor.edge(constraint, &node, "constraint");
+                    for constraint in &constraints {
+                        visitor.visit(constraint);
+                        visitor.edge(constraint, &node, "constraint");
+                    }
                 }
             });
 

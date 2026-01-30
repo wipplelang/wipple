@@ -49,7 +49,6 @@ impl Visit for BoundConstraintNode {
 
         for parameter in &self.parameters {
             visitor.visit(parameter);
-            visitor.edge(parameter, node, "parameter");
         }
 
         let mut definition_parameters = trait_definition.parameters.iter().cloned();

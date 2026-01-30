@@ -207,18 +207,13 @@ impl<'a> CodegenCtx<'a> {
                 progress = true;
 
                 let body = match definition {
-                    Definition::Constant(definition) => {
-                        if !definition.assigned {
-                            continue;
-                        }
-
-                        &definition.value
-                    }
-                    Definition::Instance(definition) => match &definition.value {
-                        Some(value) => value,
-                        None => continue,
-                    },
+                    Definition::Constant(definition) => definition.value.as_ref(),
+                    Definition::Instance(definition) => definition.value.as_ref(),
                     _ => continue,
+                };
+
+                let Some(body) = body else {
+                    continue;
                 };
 
                 self.write_string(format!("/**! {} */ ", self.db.span(&node)));

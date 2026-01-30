@@ -26,12 +26,12 @@ impl InstantiateContext<'_> {
     pub fn instantiate_node(&mut self, node: &NodeRef) -> NodeRef {
         self.replacements.get_or_insert_with(node, || {
             let span = self.db.span(node);
-            let instantiated = self.db.node(span, HiddenNode(None));
+            let replacement = self.db.node(span, HiddenNode(None));
 
-            self.db.insert(&instantiated, Typed::default());
+            self.db.insert(&replacement, Typed::default());
 
             self.db.insert(
-                &instantiated,
+                &replacement,
                 Instantiated {
                     definition: self.definition.clone(),
                     from: node.clone(),
@@ -39,9 +39,11 @@ impl InstantiateContext<'_> {
                 },
             );
 
-            self.db.graph.replace(&instantiated, node);
+            self.db
+                .graph
+                .instantiate(&self.source_node, node, &replacement);
 
-            instantiated
+            replacement
         })
     }
 

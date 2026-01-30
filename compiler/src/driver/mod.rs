@@ -9,7 +9,7 @@ use crate::{
     database::{Db, Fact, NodeRef, Render},
     driver::order::GroupOrder,
     nodes::BoundConstraintNode,
-    typecheck::{Instances, Instantiated, Solver, Type, Typed},
+    typecheck::{Instances, Instantiated, Solver, Typed},
     visit::{Defined, Definition, DefinitionConstraints, Scope, Visitor},
 };
 use std::sync::Arc;
@@ -147,17 +147,7 @@ fn set_groups(db: &mut Db, solver: Solver, filter: impl Fn(&mut Db, &NodeRef) ->
         }
 
         if !nodes.is_empty() {
-            let mut labels = group
-                .types
-                .iter()
-                .map(|ty| Type::Constructed(ty.clone()).to_string(db, true))
-                .collect::<Vec<_>>();
-
-            if labels.is_empty() {
-                labels.push(String::from("_"));
-            }
-
-            db.graph.group(nodes, labels);
+            db.graph.group(nodes, group.types.clone());
         }
     }
 }

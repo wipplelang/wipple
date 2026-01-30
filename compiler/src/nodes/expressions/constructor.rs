@@ -55,6 +55,8 @@ impl Visit for ConstructorExpressionNode {
             return;
         };
 
+        visitor.graph.instantiate(node, &definition.node(), node);
+
         let substitutions = Substitutions::new();
 
         let definition_node = definition.node();

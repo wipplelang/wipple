@@ -88,9 +88,12 @@ fn convert_feedback(db: &mut Db, item: FeedbackItem) -> serde_json::Value {
     }));
 
     let mut message = String::new();
-    (item.write)(db, &mut message);
+    let nodes = (item.write)(db, &mut message);
 
-    let mask = mem::take(&mut *mask.lock().unwrap());
+    let mut mask = mem::take(&mut *mask.lock().unwrap());
+    mask.insert(item.location.0.clone());
+    mask.extend(item.location.1.iter().cloned());
+    mask.extend(nodes);
 
     let graph = item
         .show_graph

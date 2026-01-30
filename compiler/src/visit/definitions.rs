@@ -38,8 +38,7 @@ pub struct ConstantDefinition {
     pub node: NodeRef,
     pub comments: Vec<String>,
     pub attributes: ConstantAttributes,
-    pub assigned: bool,
-    pub value: NodeRef,
+    pub value: Option<NodeRef>,
 }
 
 #[derive(Debug, Clone)]

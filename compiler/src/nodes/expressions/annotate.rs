@@ -34,8 +34,8 @@ impl Visit for AnnotateExpressionNode {
         visitor.visit(&self.expression);
         visitor.visit(&self.ty);
 
-        visitor.graph.replace(&self.expression, node);
-        visitor.graph.replace(&self.ty, node);
+        visitor.graph.edge(&self.expression, node, "annotated");
+        visitor.graph.edge(&self.ty, node, "type");
 
         visitor.constraint(GroupConstraint::new(
             self.expression.clone(),

@@ -221,7 +221,6 @@ impl Visit for TypeDefinitionNode {
             visitor.with_implicit_type_parameters(|visitor| {
                 for parameter in &self.parameters {
                     visitor.visit(parameter);
-                    visitor.edge(parameter, node, "parameter");
                 }
             });
 
