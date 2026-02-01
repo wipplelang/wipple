@@ -40,6 +40,7 @@ pub struct Options<'a> {
     pub runtime: &'a str,
     pub module: bool,
     pub sourcemap: bool,
+    pub trace: &'a [&'a str],
 }
 
 pub struct CodegenCtx<'a> {
@@ -179,6 +180,19 @@ impl<'a> CodegenCtx<'a> {
         self.node = prev_node;
 
         result
+    }
+
+    pub fn write_trace(&mut self, node: &NodeRef) {
+        let span = self.db.span(node);
+
+        if self.options.trace.contains(&span.path.as_str()) {
+            self.write_string(format!(
+                "__wipple_env.trace({});",
+                serde_json::json!(span.start)
+            ));
+
+            self.write_line();
+        }
     }
 
     pub fn error(&self) -> CodegenError {

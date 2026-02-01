@@ -11,7 +11,7 @@
 </script>
 
 <div
-    class="flex aspect-square flex-1 cursor-pointer select-none items-center justify-center text-[smaller] text-white"
+    class="flex aspect-square flex-1 cursor-pointer items-center justify-center text-[smaller] text-white select-none"
     style="background-color: {color ?? colors['gray 2']}"
 >
     <Icon>{icon}</Icon>

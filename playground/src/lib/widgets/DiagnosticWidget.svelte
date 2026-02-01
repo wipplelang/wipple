@@ -70,7 +70,7 @@
 </script>
 
 {#snippet lines(lines: any[])}
-    <div class="mb-[5px] mt-[15px] flex flex-col gap-[10px]">
+    <div class="mt-[15px] mb-[5px] flex flex-col gap-[10px]">
         {#each lines as line}
             <div class="rounded-xl border-[1.5px] border-black/5 dark:bg-gray-800">
                 <CodeEditor
@@ -160,7 +160,7 @@
         </div>
     </Box>
 
-    <div class="absolute right-[10px] top-[10px]">
+    <div class="absolute top-[10px] right-[10px]">
         <ToolbarButton onclick={onclose} square>
             <Icon fill>close</Icon>
         </ToolbarButton>

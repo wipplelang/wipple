@@ -137,4 +137,8 @@
             );
         }
     }
+
+    .running-line {
+        @apply bg-blue-500/7.5;
+    }
 }

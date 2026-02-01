@@ -17,9 +17,10 @@
     interface Props {
         runState: RunState | undefined;
         ondiagnostics: (diagnostics: any[]) => void;
+        onchangeline: (line: number | undefined) => void;
     }
 
-    let { runState = $bindable(), ondiagnostics }: Props = $props();
+    let { runState = $bindable(), ondiagnostics, onchangeline }: Props = $props();
 
     let runnerWorker: InstanceType<typeof RunnerWorker> | undefined = undefined;
     let runnerWorkerLink: Comlink.Remote<RunnerWorkerType> | undefined = undefined;
@@ -56,6 +57,7 @@
         }
 
         runState = "compiling";
+        onchangeline(undefined);
 
         // Needed for runtimes that perform setup within a user event
         await runtimeOutput?._initializeOnClick?.();
@@ -94,6 +96,9 @@
             await runtimeOutput?._initialize?.();
 
             const env: RunnerEnv = {
+                trace: async ({ line }) => {
+                    onchangeline(line);
+                },
                 display: async (message: string) => {
                     output.push({
                         type: "display",
@@ -139,11 +144,13 @@
         runnerWorker = undefined;
 
         await runtimeOutput?._cleanup?.(force);
+
+        onchangeline(undefined);
     };
 </script>
 
 {#if runtime?.Output == null && output.length === 0}
-    <div class="text-current/40 flex flex-1 flex-col items-center justify-center p-[14px]">
+    <div class="flex flex-1 flex-col items-center justify-center p-[14px] text-current/40">
         <p>No output</p>
         <p>
             <small>

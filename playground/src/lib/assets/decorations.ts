@@ -16,6 +16,11 @@ export const markDecoration = (className: string, style?: string, attributes = {
         inclusive: true,
     });
 
+export const lineDecoration = (className: string) =>
+    Decoration.line({
+        attributes: { class: className },
+    });
+
 export const elementDecoration = (element: HTMLElement) =>
     Decoration.replace({
         widget: new (class extends WidgetType {
@@ -94,7 +99,7 @@ export const markRegex = (
 };
 
 export const markRange = (from: number, to: number, decoration: () => Decoration) =>
-    Prec.lowest(
+    Prec.highest(
         ViewPlugin.fromClass(class {}, {
             decorations: () => RangeSet.of([decoration().range(from, to)]),
         }),

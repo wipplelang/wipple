@@ -30,7 +30,7 @@
                         <div class="relative flex-1 p-2.5 hover:bg-gray-50 dark:hover:bg-gray-800">
                             <div
                                 class={[
-                                    "mask-t-from-50% mask-t-to-black/75 absolute inset-0 z-0 opacity-50 transition-opacity hover:opacity-100",
+                                    "absolute inset-0 z-0 mask-t-from-50% mask-t-to-black/75 opacity-50 transition-opacity hover:opacity-100",
                                     preset.backgroundClassName,
                                 ]}
                             ></div>

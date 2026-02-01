@@ -168,7 +168,7 @@
             transition:scale={{ duration: 150, start: 0.95 }}
         >
             <code
-                class="bg-background-button float-right inline-block text-nowrap rounded-lg p-[2px] text-xs text-white/60 shadow-md"
+                class="bg-background-button float-right inline-block rounded-lg p-[2px] text-xs text-nowrap text-white/60 shadow-md"
             >
                 (<span class="text-white">{hoverPosition.x}</span> pixels) (<span
                     class="text-white"

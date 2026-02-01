@@ -44,7 +44,7 @@
         <div class="flex flex-col-reverse">
             {#each notes[music.type] as note}
                 <div
-                    class="h-(--note-height) flex w-full flex-row *:border-y-[1px] *:border-r-[1.5px] *:border-neutral-500/10"
+                    class="flex h-(--note-height) w-full flex-row *:border-y-[1px] *:border-r-[1.5px] *:border-neutral-500/10"
                 >
                     {@render key(note)}
 

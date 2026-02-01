@@ -174,7 +174,7 @@
 
             <div class="flex min-w-[350px] flex-1 shrink-0 flex-col gap-[10px]">
                 <div
-                    class="printing:hidden h-(--toolbar-height) flex shrink-0 flex-row justify-between gap-[10px]"
+                    class="printing:hidden flex h-(--toolbar-height) shrink-0 flex-row justify-between gap-[10px]"
                 >
                     <ToolbarButton onclick={newPlayground}>
                         <Icon>add</Icon>
@@ -239,6 +239,7 @@
                                       onclose: () => (context.diagnostic = undefined),
                                   }
                                 : undefined}
+                            runningLine={context.runningLine}
                             padding="14px"
                         />
 
@@ -262,13 +263,13 @@
 
             <div class="flex max-w-[450px] flex-1 flex-col gap-[10px] overflow-auto">
                 <div
-                    class="printing:hidden h-(--toolbar-height) flex shrink-0 flex-row justify-center gap-[10px]"
+                    class="printing:hidden flex h-(--toolbar-height) shrink-0 flex-row justify-center gap-[10px]"
                 >
                     <ToolbarButton
                         prominent={runState !== undefined || context.diagnostic == null}
                         onclick={() => output?.run()}
                         data-state={runState}
-                        class="data-[state='error']:border-standard data-[state='error']:bg-background w-[200px] transition data-[prominent]:data-[state='compiling']:bg-sky-500 data-[prominent]:data-[state='running']:bg-sky-500 data-[state='error']:opacity-75"
+                        class="data-[state='error']:border-standard data-[state='error']:bg-background w-[200px] transition data-[prominent]:data-[state='compiling']:bg-sky-500 data-[state='error']:opacity-75 data-[prominent]:data-[state='running']:bg-sky-500"
                     >
                         {#if runState === undefined}
                             {#if context.diagnostic == null}
@@ -294,6 +295,9 @@
                 <Output
                     bind:this={output}
                     bind:runState
+                    onchangeline={(line) => {
+                        context.runningLine = line;
+                    }}
                     ondiagnostics={(diagnostics) => {
                         context.diagnostic = diagnostics[0];
                     }}

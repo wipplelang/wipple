@@ -64,6 +64,8 @@ impl Codegen for BlockExpressionNode {
             .is_none();
 
         for (index, statement) in self.statements.iter().enumerate() {
+            ctx.write_trace(statement);
+
             if !should_append_unit && index + 1 == self.statements.len() {
                 ctx.write_string("return ");
             }

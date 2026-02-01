@@ -49,6 +49,7 @@ impl Visit for FileNode {
 impl Codegen for FileNode {
     fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
         for statement in &self.statements {
+            ctx.write_trace(statement);
             ctx.write(statement)?;
         }
 

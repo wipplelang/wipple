@@ -14,7 +14,7 @@
     {...props}
     data-scale-on-hover={scaleOnHover || undefined}
     class={[
-        "bg-placeholder border-standard data-[scale-on-hover]:hover:scale-120 size-(--code-editor-line-height) inline-flex overflow-clip rounded-[7px] transition-transform",
+        "bg-placeholder border-standard inline-flex size-(--code-editor-line-height) overflow-clip rounded-[7px] transition-transform data-[scale-on-hover]:hover:scale-120",
         props.class,
     ]}
 >

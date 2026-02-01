@@ -16,7 +16,7 @@
     data-prominent={props.prominent || undefined}
     data-square={props.square || undefined}
     class={[
-        "hover-highlight-secondary bg-background-secondary data-[prominent]:bg-background-button data-[prominent]:hover-highlight-button h-(--toolbar-height) data-[square]:w-(--toolbar-height) cursor-pointer rounded-[8px] px-2 data-[prominent]:text-white",
+        "hover-highlight-secondary bg-background-secondary data-[prominent]:bg-background-button data-[prominent]:hover-highlight-button h-(--toolbar-height) cursor-pointer rounded-[8px] px-2 data-[prominent]:text-white data-[square]:w-(--toolbar-height)",
         "flex flex-row items-center justify-center gap-[4px]",
         props.class,
     ]}

@@ -21,6 +21,7 @@ const CODEGEN_OPTIONS: codegen::Options<'static> = codegen::Options {
     runtime: include_str!("../runtime/runtime.js"),
     module: true,
     sourcemap: true,
+    trace: &[INPUT_PATH],
 };
 
 #[derive(Debug, Deserialize)]

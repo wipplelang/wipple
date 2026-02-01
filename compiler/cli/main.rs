@@ -28,6 +28,7 @@ const CODEGEN_OPTIONS: codegen::Options<'static> = codegen::Options {
     runtime: include_str!("../runtime/runtime.js"),
     module: false,
     sourcemap: true,
+    trace: &[],
 };
 
 #[derive(Debug, clap::Parser)]

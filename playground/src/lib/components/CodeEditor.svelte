@@ -6,6 +6,7 @@
         accessoryDecoration,
         markRange,
         blockDecoration,
+        lineDecoration,
     } from "$lib/assets/decorations";
     import tokens, {
         enableHighlightingBefore,
@@ -36,6 +37,7 @@
             hideWidget?: boolean;
             onclose?: () => void;
         };
+        runningLine?: number;
         padding?: string;
     }
 
@@ -44,6 +46,7 @@
         code = $bindable(),
         highlightGroup,
         diagnostic,
+        runningLine,
         padding,
     }: Props = $props();
 
@@ -70,6 +73,7 @@
                 markNumbers.of([]),
                 markAssets,
                 markNames.of([]),
+                markRunningLine.of([]),
                 markDiagnostic.of([]),
                 diagnosticWidget.of([]),
                 placeholder("Type or drag your code here..."),
@@ -418,6 +422,28 @@
     $effect(() => {
         editorView.dispatch({
             effects: markNames.reconfigure(createMarkNames(highlights)),
+        });
+    });
+
+    // MARK: - Highlight running line
+
+    const markRunningLine = new Compartment();
+
+    const createMarkRunningLine = (line: number | undefined) => {
+        console.log({ line });
+
+        if (line == null) {
+            return [];
+        }
+
+        const { from } = editorView.state.doc.line(line);
+
+        return [markRange(from, from, () => lineDecoration("running-line"))];
+    };
+
+    $effect(() => {
+        editorView.dispatch({
+            effects: markRunningLine.reconfigure(createMarkRunningLine(runningLine)),
         });
     });
 
