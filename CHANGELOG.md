@@ -2,9 +2,15 @@
 
 ## Unreleased
 
--   Updated the instance resolution order: (1) regular instances, (2) `[error]` instances, (3) `[default]` instances, and (4) instances with both attributes.
+## Wipple 2026.1 (2026-02-02)
 
--   Added an `-O` flag to the compiler to enable optimization using [esbuild](https://esbuild.github.io).
+-   Removed runtime type information and unused definitions from the JavaScript output, so it's significantly smaller.
+
+-   Added visualizations for diagnostics involving type inference, powered by [Type Circuits](https://app.typecircuits.org).
+
+-   The playground now highlights each line of code as it runs.
+
+-   Updated the instance resolution order: (1) regular instances, (2) `[error]` instances, (3) `[default]` instances, and (4) instances with both attributes.
 
 ## Wipple 2025.3 (2025-12-17)
 
