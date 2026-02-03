@@ -116,7 +116,7 @@ pub fn codegen_constant(
         let instance = item.instance.as_ref().ok_or_else(|| ctx.error())?;
 
         ctx.write_node(&bound_node);
-        ctx.write_string(": ");
+        ctx.write_string(": async () => ");
         codegen_instance(ctx, instance)?;
 
         ctx.write_string(", ");
@@ -132,8 +132,9 @@ pub fn codegen_instance(
     instance: &BoundsItemInstance,
 ) -> Result<(), CodegenError> {
     if instance.from_bound {
-        ctx.write_string("__wipple_bounds.");
+        ctx.write_string("await __wipple_bounds.");
         ctx.write_node(&instance.instance_node);
+        ctx.write_string("()");
         Ok(())
     } else {
         let bounds = ctx

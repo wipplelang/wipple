@@ -1,0 +1,16 @@
+-- wipple run $FILE --lib library/src/foundation
+
+T : value => trait (value -> ())
+
+instance (T Number) : do {
+  show "should appear second"
+  _ -> ()
+}
+
+f :: value -> () where (T value)
+f : value -> do {
+  show "should appear first"
+  T value
+}
+
+f 123

@@ -1,0 +1,167 @@
+Facts:
+TypeParameterNode `value` (test/tests/bounds-are-lazy.wipple:3:5-3:10)
+  at test/tests/bounds-are-lazy.wipple:3:5-3:10
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/bounds-are-lazy.wipple:3:5-3:10)
+TypeParameterNode `value` (test/tests/bounds-are-lazy.wipple:3:21-3:26)
+  at test/tests/bounds-are-lazy.wipple:3:21-3:26
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/bounds-are-lazy.wipple:3:5-3:10)
+UnitTypeNode `()` (test/tests/bounds-are-lazy.wipple:3:30-3:32)
+  at test/tests/bounds-are-lazy.wipple:3:30-3:32
+  has type ()
+  is a type
+FunctionTypeNode `value -> ()` (test/tests/bounds-are-lazy.wipple:3:21-3:32)
+  at test/tests/bounds-are-lazy.wipple:3:21-3:32
+  has type value -> ()
+  is a type
+TraitDefinitionNode `T : value => trait (value -> ())` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
+  at test/tests/bounds-are-lazy.wipple:1:1-3:33
+  has definition constraints
+  has instances
+  has type parameters
+  has type value -> ()
+  is a definition
+NamedTypeNode `Number` (test/tests/bounds-are-lazy.wipple:5:13-5:19)
+  at test/tests/bounds-are-lazy.wipple:5:13-5:19
+  has type Number
+  is a type
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+BoundConstraintNode `T Number` (test/tests/bounds-are-lazy.wipple:5:10-5:20)
+  at test/tests/bounds-are-lazy.wipple:5:10-5:20
+VariableExpressionNode `show` (test/tests/bounds-are-lazy.wipple:6:3-6:7)
+  at test/tests/bounds-are-lazy.wipple:6:3-6:7
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+StringExpressionNode `"should appear second"` (test/tests/bounds-are-lazy.wipple:6:8-6:30)
+  at test/tests/bounds-are-lazy.wipple:6:8-6:30
+  has type String
+  is an expression
+CallExpressionNode `show "should appear second"` (test/tests/bounds-are-lazy.wipple:6:3-6:30)
+  at test/tests/bounds-are-lazy.wipple:6:3-6:30
+  has type ()
+  is an expression
+WildcardPatternNode `_` (test/tests/bounds-are-lazy.wipple:7:3-7:4)
+  at test/tests/bounds-are-lazy.wipple:7:3-7:4
+  has type Number
+  is a pattern
+UnitExpressionNode `()` (test/tests/bounds-are-lazy.wipple:7:8-7:10)
+  at test/tests/bounds-are-lazy.wipple:7:8-7:10
+  has type ()
+  is an expression
+FunctionExpressionNode `_ -> ()` (test/tests/bounds-are-lazy.wipple:7:3-7:10)
+  at test/tests/bounds-are-lazy.wipple:7:3-7:10
+  has type Number -> ()
+  is an expression
+BlockExpressionNode `{⋯}` (test/tests/bounds-are-lazy.wipple:5:26-8:2)
+  at test/tests/bounds-are-lazy.wipple:5:26-8:2
+  has type {Number -> ()}
+  is an expression
+DoExpressionNode `do {⋯}` (test/tests/bounds-are-lazy.wipple:5:23-8:2)
+  at test/tests/bounds-are-lazy.wipple:5:23-8:2
+  has type Number -> ()
+  is an expression
+InstanceDefinitionNode `instance (T Number)` (test/tests/bounds-are-lazy.wipple:5:1-8:2)
+  at test/tests/bounds-are-lazy.wipple:5:1-8:2
+  has definition constraints
+  has type Number -> ()
+  is a definition
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
+TypeParameterNode `value` (test/tests/bounds-are-lazy.wipple:10:6-10:11)
+  at test/tests/bounds-are-lazy.wipple:10:6-10:11
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/bounds-are-lazy.wipple:10:6-10:11)
+UnitTypeNode `()` (test/tests/bounds-are-lazy.wipple:10:15-10:17)
+  at test/tests/bounds-are-lazy.wipple:10:15-10:17
+  has type ()
+  is a type
+FunctionTypeNode `value -> ()` (test/tests/bounds-are-lazy.wipple:10:6-10:17)
+  at test/tests/bounds-are-lazy.wipple:10:6-10:17
+  has type value -> ()
+  is a type
+TypeParameterNode `value` (test/tests/bounds-are-lazy.wipple:10:27-10:32)
+  at test/tests/bounds-are-lazy.wipple:10:27-10:32
+  has type value
+  is a type
+  resolved to 1 definition(s): `value` (test/tests/bounds-are-lazy.wipple:10:6-10:11)
+BoundConstraintNode `T value` (test/tests/bounds-are-lazy.wipple:10:24-10:33)
+  at test/tests/bounds-are-lazy.wipple:10:24-10:33
+  has bound(s) T value (`T value` (test/tests/bounds-are-lazy.wipple:10:24-10:33))
+  is a constraint
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
+ConstantDefinitionNode `f` (test/tests/bounds-are-lazy.wipple:10:1-10:33)
+  at test/tests/bounds-are-lazy.wipple:10:1-10:33
+  has definition constraints
+  has type parameters
+  has type value -> ()
+  is a definition
+VariablePatternNode `f` (test/tests/bounds-are-lazy.wipple:11:1-11:2)
+  at test/tests/bounds-are-lazy.wipple:11:1-11:2
+VariablePatternNode `value` (test/tests/bounds-are-lazy.wipple:11:5-11:10)
+  at test/tests/bounds-are-lazy.wipple:11:5-11:10
+  has type value
+  is a pattern
+VariableExpressionNode `show` (test/tests/bounds-are-lazy.wipple:12:3-12:7)
+  at test/tests/bounds-are-lazy.wipple:12:3-12:7
+  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
+  has type String -> ()
+  is an expression
+  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
+StringExpressionNode `"should appear first"` (test/tests/bounds-are-lazy.wipple:12:8-12:29)
+  at test/tests/bounds-are-lazy.wipple:12:8-12:29
+  has type String
+  is an expression
+CallExpressionNode `show "should appear first"` (test/tests/bounds-are-lazy.wipple:12:3-12:29)
+  at test/tests/bounds-are-lazy.wipple:12:3-12:29
+  has type ()
+  is an expression
+ConstructorExpressionNode `T` (test/tests/bounds-are-lazy.wipple:13:3-13:4)
+  at test/tests/bounds-are-lazy.wipple:13:3-13:4
+  has bound(s) T value (`T value` (test/tests/bounds-are-lazy.wipple:10:24-10:33))
+  has type value -> ()
+  is an expression
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
+VariableExpressionNode `value` (test/tests/bounds-are-lazy.wipple:13:5-13:10)
+  at test/tests/bounds-are-lazy.wipple:13:5-13:10
+  has type value
+  is an expression
+  resolved to 1 definition(s): `value` (test/tests/bounds-are-lazy.wipple:11:5-11:10)
+CallExpressionNode `T value` (test/tests/bounds-are-lazy.wipple:13:3-13:10)
+  at test/tests/bounds-are-lazy.wipple:13:3-13:10
+  has type ()
+  is an expression
+BlockExpressionNode `{⋯}` (test/tests/bounds-are-lazy.wipple:11:17-14:2)
+  at test/tests/bounds-are-lazy.wipple:11:17-14:2
+  has type {()}
+  is an expression
+DoExpressionNode `do {⋯}` (test/tests/bounds-are-lazy.wipple:11:14-14:2)
+  at test/tests/bounds-are-lazy.wipple:11:14-14:2
+  has type ()
+  is an expression
+FunctionExpressionNode `value -> do {⋯}` (test/tests/bounds-are-lazy.wipple:11:5-14:2)
+  at test/tests/bounds-are-lazy.wipple:11:5-14:2
+  has type value -> ()
+  is an expression
+VariableExpressionNode `f` (test/tests/bounds-are-lazy.wipple:16:1-16:2)
+  at test/tests/bounds-are-lazy.wipple:16:1-16:2
+  has bound(s) T Number (`instance (T Number)` (test/tests/bounds-are-lazy.wipple:5:1-8:2))
+  has type Number -> ()
+  is an expression
+  resolved to 1 definition(s): `f` (test/tests/bounds-are-lazy.wipple:10:1-10:33)
+NumberExpressionNode `123` (test/tests/bounds-are-lazy.wipple:16:3-16:6)
+  at test/tests/bounds-are-lazy.wipple:16:3-16:6
+  has type Number
+  is an expression
+CallExpressionNode `f 123` (test/tests/bounds-are-lazy.wipple:16:1-16:6)
+  at test/tests/bounds-are-lazy.wipple:16:1-16:6
+  has type ()
+  is an expression
+
+Output:
+should appear first
+should appear second
