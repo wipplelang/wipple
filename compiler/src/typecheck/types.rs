@@ -7,7 +7,8 @@ pub struct ConstructedType {
     pub tag: ConstructedTypeTag,
     pub instantiate: Option<NodeRef>,
     pub children: Vec<Type>,
-    pub info: ConstructedTypeInfo,
+    pub display:
+        Arc<dyn Fn(&Db, Vec<Box<dyn Fn(bool) -> String + '_>>, bool) -> String + Send + Sync>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -20,13 +21,20 @@ pub enum ConstructedTypeTag {
 }
 
 impl ConstructedType {
-    pub fn new(id: ConstructedTypeTag, children: Vec<Type>, info: ConstructedTypeInfo) -> Self {
+    pub fn new(
+        id: ConstructedTypeTag,
+        children: Vec<Type>,
+        display: impl Fn(&Db, Vec<Box<dyn Fn(bool) -> String + '_>>, bool) -> String
+        + Send
+        + Sync
+        + 'static,
+    ) -> Self {
         ConstructedType {
             representative: None,
             tag: id,
             instantiate: None,
             children,
-            info,
+            display: Arc::new(display),
         }
     }
 
@@ -56,17 +64,6 @@ impl PartialEq for ConstructedType {
 }
 
 impl Eq for ConstructedType {}
-
-#[derive(Clone)]
-pub struct ConstructedTypeInfo {
-    pub display:
-        Arc<dyn Fn(&Db, Vec<Box<dyn Fn(bool) -> String + '_>>, bool) -> String + Send + Sync>,
-    pub serialize: Arc<
-        dyn Fn(Vec<serde_json::Value>, &mut dyn FnMut(NodeRef) -> String) -> serde_json::Value
-            + Send
-            + Sync,
-    >,
-}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
@@ -127,7 +124,7 @@ impl Type {
                     })
                     .collect::<Vec<_>>();
 
-                (ty.info.display)(db, children, root)
+                (ty.display)(db, children, root)
             }
         }
     }
