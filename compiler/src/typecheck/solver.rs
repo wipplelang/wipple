@@ -21,10 +21,6 @@ impl Solver {
         Default::default()
     }
 
-    pub fn insert_group(&mut self, group: Group) {
-        self.as_unify_ctx().insert_group(group);
-    }
-
     pub fn into_sorted_groups<K: Ord>(
         mut self,
         key: impl FnMut(&NodeRef) -> K,

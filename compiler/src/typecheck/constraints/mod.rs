@@ -46,14 +46,8 @@ impl<'a, 'db> DerefMut for ConstraintCtx<'a, 'db> {
 pub trait Constraint: Any + Debug + DynClone + Send + Sync + 'static {
     fn info(&self) -> &ConstraintInfo;
     fn info_mut(&mut self) -> &mut ConstraintInfo;
-
     fn instantiate(&self, ctx: &mut InstantiateContext<'_>) -> Box<dyn Constraint>;
-
     fn run(&mut self, ctx: &mut ConstraintCtx<'_, '_>) -> ConstraintResult;
-
-    fn type_name(&self) -> &'static str {
-        std::any::type_name::<Self>()
-    }
 }
 
 dyn_clone::clone_trait_object!(Constraint);

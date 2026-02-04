@@ -10,18 +10,6 @@ pub struct UnifyCtx<'a> {
 }
 
 impl UnifyCtx<'_> {
-    pub fn insert_group(&mut self, group: Group) {
-        self.groups.insert(group, |groups, left, right| {
-            let mut ctx = UnifyCtx {
-                groups,
-                progress: self.progress,
-                error: self.error,
-            };
-
-            ctx.unify_constructed_types(left, right, &[])
-        });
-    }
-
     pub fn unify(
         &mut self,
         trace: Option<Box<dyn Constraint>>,

@@ -97,10 +97,6 @@ impl Group {
 pub struct Groups(im::Vector<Option<Group>>);
 
 impl Groups {
-    pub fn new() -> Self {
-        Default::default()
-    }
-
     pub fn index_of(&self, node: &NodeRef) -> Option<usize> {
         self.0
             .iter()
@@ -127,43 +123,6 @@ impl Groups {
 
     pub fn remove_existing(&mut self, index: usize) -> Group {
         self.0[index].take().expect("group being replaced")
-    }
-
-    pub fn insert(
-        &mut self,
-        group: Group,
-        mut unify: impl FnMut(&mut Self, &ConstructedType, &ConstructedType) -> bool,
-    ) {
-        let mut add = false;
-        let mut groups_to_unify = Vec::new();
-
-        for node in &group.nodes {
-            if let Some(index) = self.index_of(node) {
-                groups_to_unify.push((node.clone(), index));
-            } else {
-                add = true;
-            }
-        }
-
-        // Delay unifying until after adding the group below
-        let unify = (!groups_to_unify.is_empty()).then(|| {
-            let types = group.types.clone();
-            move |groups: &mut Self| {
-                for (node, index) in groups_to_unify {
-                    let mut group = groups.remove_existing(index);
-                    group.unify_with_types(groups, Some(&node), types.clone(), &mut unify);
-                    groups.insert_existing(index, group);
-                }
-            }
-        });
-
-        if add {
-            self.add(group);
-        }
-
-        if let Some(unify) = unify {
-            unify(self);
-        }
     }
 
     pub fn add(&mut self, group: Group) -> usize {
