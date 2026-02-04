@@ -12,6 +12,8 @@ tasks:
   test:update:
     cmds:
       - INSTA_UPDATE=1 task test -- --test-update-snapshots
+  test:coverage:
+    cmd: bash -e coverage.sh
   install:
     cmds:
       - cargo install --path=compiler --bin=wipple

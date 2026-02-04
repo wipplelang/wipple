@@ -15,4 +15,9 @@ jobs:
             - uses: go-task/setup-task@v1
             - uses: actions-rust-lang/setup-rust-toolchain@v1
             - run: curl -LsSf https://insta.rs/install.sh | sh
-            - run: task test
+            - run: task test:coverage
+            - uses: codecov/codecov-action@v3
+              with:
+                  fail_ci_if_error: true
+                  files: ./lcov.info
+                  token: ${{ secrets.CODECOV_TOKEN }}
