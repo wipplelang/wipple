@@ -413,10 +413,18 @@ fn get_hover(db: &Db, uri: &Uri, position: Position) -> Option<Hover> {
         }));
     });
 
-    queries::resolved_bound(&ctx, &mut |(_, node)| {
+    queries::resolved_bound(&ctx, &mut |(_, resolved)| {
+        let value = db.span(&resolved.instance_node).as_definition_source();
+
+        let value = if resolved.from_bound {
+            format!("instance ({value})")
+        } else {
+            value
+        };
+
         contents.push(MarkedString::LanguageString(LanguageString {
             language: String::from("wipple"),
-            value: db.span(&node).as_definition_source(),
+            value,
         }))
     });
 

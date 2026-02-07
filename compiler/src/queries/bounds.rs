@@ -1,17 +1,16 @@
 use crate::{
-    database::NodeRef,
     queries::QueryCtx,
-    typecheck::{Bound, Bounds},
+    typecheck::{Bound, Bounds, BoundsItemInstance},
 };
 
-pub fn resolved_bound(ctx: &QueryCtx<'_>, f: &mut dyn FnMut((Bound, NodeRef))) {
+pub fn resolved_bound(ctx: &QueryCtx<'_>, f: &mut dyn FnMut((Bound, BoundsItemInstance))) {
     let Some(Bounds(bounds)) = ctx.db.get(&ctx.node) else {
         return;
     };
 
     for (_, item) in bounds {
         if let Some(instance) = item.instance {
-            f((item.bound, instance.instance_node));
+            f((item.bound, instance));
         }
     }
 }
