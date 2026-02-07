@@ -11,7 +11,9 @@ use std::{
     fs,
     io::{self, Read, Write},
     path::{Path, PathBuf},
-    process, time,
+    process,
+    sync::atomic::{self, AtomicUsize},
+    time,
 };
 use wipple::{
     codegen::{self, codegen},
@@ -128,7 +130,8 @@ fn compile(options: &CompileOptions) -> anyhow::Result<String> {
         files: files.clone(),
     };
 
-    let (feedback_count, output) = compile_layer(options, &mut db, &layer, true);
+    let (feedback_count, output) =
+        compile_layer("Compiling ", options, &mut db, &layer, true, None);
 
     eprint!("{output}");
 
@@ -215,10 +218,16 @@ fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
 
+    let index = AtomicUsize::new(0);
+    let num_layers = layers.len();
     layers
         .into_par_iter()
         .map(|(mut db, layer)| {
-            let (feedback_count, mut output) = compile_layer(options, &mut db, &layer, false);
+            let index = index.fetch_add(1, atomic::Ordering::SeqCst);
+            let progress = Some((index, num_layers));
+
+            let (feedback_count, mut output) =
+                compile_layer("", options, &mut db, &layer, false, progress);
 
             if feedback_count == 0 {
                 let script = codegen(&mut db, &layer.files, &lib_files, CODEGEN_OPTIONS)?;
@@ -267,7 +276,7 @@ fn setup(options: &CompileOptions, time: bool) -> anyhow::Result<(Db, Vec<NodeRe
 
     let mut lib_files = Vec::new();
     for layer in lib_layers {
-        compile_layer(options, &mut db, &layer, time);
+        compile_layer("Compiling ", options, &mut db, &layer, time, None);
         lib_files.extend(layer.files);
     }
 
@@ -275,15 +284,21 @@ fn setup(options: &CompileOptions, time: bool) -> anyhow::Result<(Db, Vec<NodeRe
 }
 
 fn compile_layer(
+    prefix: &str,
     options: &CompileOptions,
     db: &mut Db,
     layer: &driver::Layer,
     time: bool,
+    progress: Option<(usize, usize)>,
 ) -> (usize, String) {
+    if let Some((index, total)) = progress {
+        eprint!("({}/{}) ", index + 1, total);
+    }
+
     if time {
-        eprint!("Compiling {}...", layer.name);
+        eprint!("{}{}...", prefix, layer.name);
     } else {
-        eprintln!("Compiling {}", layer.name);
+        eprintln!("{}{}", prefix, layer.name);
     }
 
     let start = time::Instant::now();
