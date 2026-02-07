@@ -20,7 +20,6 @@ use std::{
     collections::{HashMap, VecDeque},
     fmt::Debug,
     ops::{Deref, DerefMut},
-    sync::LazyLock,
 };
 
 pub struct ConstraintCtx<'a, 'db> {
@@ -89,14 +88,12 @@ impl ConstraintInfo {
     }
 }
 
-static CONSTRAINT_ORDER: LazyLock<Vec<TypeId>> = LazyLock::new(|| {
-    vec![
-        TypeId::of::<GroupConstraint>(),
-        TypeId::of::<TypeConstraint>(),
-        TypeId::of::<InstantiateConstraint>(),
-        TypeId::of::<BoundConstraint>(),
-    ]
-});
+static CONSTRAINT_ORDER: &[TypeId] = &[
+    TypeId::of::<GroupConstraint>(),
+    TypeId::of::<TypeConstraint>(),
+    TypeId::of::<InstantiateConstraint>(),
+    TypeId::of::<BoundConstraint>(),
+];
 
 #[derive(Debug, Default)]
 pub struct Constraints {
