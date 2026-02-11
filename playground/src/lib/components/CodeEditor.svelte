@@ -430,8 +430,6 @@
     const markRunningLine = new Compartment();
 
     const createMarkRunningLine = (line: number | undefined) => {
-        console.log({ line });
-
         if (line == null) {
             return [];
         }
@@ -496,6 +494,8 @@
                 const element = document.querySelector(
                     `[data-diagnostic-decoration-id="${id}"]`,
                 ) as HTMLElement;
+
+                if (element == null) return;
 
                 const allDecorations = () =>
                     [...document.querySelectorAll("[data-diagnostic-decoration-id]")]
