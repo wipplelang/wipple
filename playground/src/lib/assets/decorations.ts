@@ -99,7 +99,7 @@ export const markRegex = (
 };
 
 export const markRange = (from: number, to: number, decoration: () => Decoration) =>
-    Prec.highest(
+    Prec.lowest(
         ViewPlugin.fromClass(class {}, {
             decorations: () => RangeSet.of([decoration().range(from, to)]),
         }),
