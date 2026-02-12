@@ -90,5 +90,5 @@ tasks:
     dir: .
     cmds:
       - rm -rf netlify/functions && mkdir -p netlify/functions
-      - cargo lambda build --bin=wipple-server --target=x86_64-unknown-linux-musl --features=lambda --release
+      - cargo lambda build --locked --bin=wipple-server --target=x86_64-unknown-linux-musl --features=lambda --release
       - cp target/lambda/wipple-server/bootstrap netlify/functions/api
