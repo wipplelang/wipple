@@ -430,7 +430,7 @@
     const markRunningLine = new Compartment();
 
     const createMarkRunningLine = (line: number | undefined) => {
-        if (line == null) {
+        if (line == null || line > editorView.state.doc.lines) {
             return [];
         }
 
