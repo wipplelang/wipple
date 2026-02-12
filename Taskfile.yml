@@ -6,7 +6,7 @@ tasks:
       - cargo run --bin=wipple {{.CLI_ARGS}}
   test:
     cmds:
-      - cargo build --bin=wipple
+      - cargo build --locked --bin=wipple
       - cargo insta test
       - node {{.CLI_ARGS}} test
   test:update:
