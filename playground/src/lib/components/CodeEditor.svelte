@@ -546,7 +546,11 @@
 
     const createMarkDiagnostic = ({ value, hideWidget }: NonNullable<typeof diagnostic>) => {
         return (value.locations as any[]).flatMap(({ start, end, group }, index) => {
-            if (start === end) {
+            if (
+                start === end ||
+                start > editorView.state.doc.length ||
+                end > editorView.state.doc.length
+            ) {
                 return [];
             }
 
