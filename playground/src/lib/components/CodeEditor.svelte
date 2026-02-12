@@ -548,8 +548,8 @@
         return (value.locations as any[]).flatMap(({ start, end, group }, index) => {
             if (
                 start === end ||
-                start > editorView.state.doc.length ||
-                end > editorView.state.doc.length
+                start >= editorView.state.doc.length ||
+                end >= editorView.state.doc.length
             ) {
                 return [];
             }
