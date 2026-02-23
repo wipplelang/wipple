@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+-   `when` and related pattern-matching expressions are now checked for exhaustiveness.
+
 ## Wipple 2026.1 (2026-02-02)
 
 -   Removed runtime type information and unused definitions from the JavaScript output, so it's significantly smaller.
