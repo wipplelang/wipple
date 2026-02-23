@@ -176,12 +176,12 @@ impl Db {
         }
 
         for (value, groups) in values {
-            let paths = groups
+            let actual = groups
                 .into_values()
                 .filter(|group| !group.is_empty())
                 .collect::<Vec<_>>();
 
-            let max = paths
+            let max = actual
                 .iter()
                 .filter_map(|group| group.iter().map(|path| path.0.len()).max())
                 .max()
@@ -195,7 +195,7 @@ impl Db {
             let missing = expected
                 .into_iter()
                 .filter(|expected| {
-                    !paths
+                    !actual
                         .iter()
                         .any(|actual| matches_coverage(actual, expected))
                 })
@@ -241,8 +241,11 @@ impl Db {
 
         match ty.tag {
             ConstructedTypeTag::Named(definition) => {
-                let Some(Defined(Definition::Type(TypeDefinition { parameters, .. }))) =
-                    self.get(&definition)
+                let Some(Defined(Definition::Type(TypeDefinition {
+                    attributes,
+                    parameters,
+                    ..
+                }))) = self.get(&definition)
                 else {
                     return Vec::new();
                 };
@@ -251,7 +254,12 @@ impl Db {
                     substitutions.insert(parameter, ty);
                 }
 
-                if let Some(StructureFields(fields)) = self.get(&definition) {
+                if attributes.intrinsic {
+                    let mut prefix = prefix.to_vec();
+                    prefix.push(MatchPathSegment::NoMatch);
+
+                    vec![vec![MatchPath(prefix)]]
+                } else if let Some(StructureFields(fields)) = self.get(&definition) {
                     fields
                         .into_iter()
                         .map(|field| {
@@ -351,30 +359,30 @@ fn matches_coverage(actual: &[MatchPath], expected: &[MatchPath]) -> bool {
     expected.iter().all(|expected| {
         actual.iter().any(|actual| {
             for (segment, other) in actual.0.iter().zip(&expected.0) {
-                let matches = match (segment, other) {
+                match (segment, other) {
                     (MatchPathSegment::Match, _) => {
                         return true; // short-circuit
                     }
-                    (MatchPathSegment::Field(field), MatchPathSegment::Field(other_field)) => {
-                        field == other_field
+                    (MatchPathSegment::Field(field), MatchPathSegment::Field(other_field))
+                        if field != other_field =>
+                    {
+                        return true; // allow omitted fields
                     }
+                    (MatchPathSegment::Field(field), MatchPathSegment::Field(other_field))
+                        if field == other_field => {}
                     (
                         MatchPathSegment::TupleElement(index, len),
                         MatchPathSegment::TupleElement(other_index, other_len),
-                    ) => index == other_index && len == other_len,
+                    ) if index == other_index && len == other_len => {}
                     (
                         MatchPathSegment::Variant(variant),
                         MatchPathSegment::Variant(other_variant),
-                    ) => variant == other_variant,
+                    ) if variant == other_variant => {}
                     (
                         MatchPathSegment::VariantElement(variant, index, len),
                         MatchPathSegment::VariantElement(other_variant, other_index, other_len),
-                    ) => variant == other_variant && index == other_index && len == other_len,
-                    _ => false,
-                };
-
-                if !matches {
-                    return false;
+                    ) if variant == other_variant && index == other_index && len == other_len => {}
+                    _ => return false,
                 }
             }
 

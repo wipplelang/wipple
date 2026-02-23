@@ -2,7 +2,7 @@ use crate::{
     feedback::{FeedbackCtx, FeedbackRank, RegisteredFeedback},
     nodes::{ExtraElement, InvalidOrPattern, InvalidSetPattern},
     queries,
-    visit::MissingPatterns,
+    visit::{MatchTree, MissingPatterns},
 };
 use std::collections::BTreeSet;
 
@@ -60,24 +60,34 @@ pub fn register(ctx: &mut FeedbackCtx) {
         queries::fact::<MissingPatterns>,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, MissingPatterns(missing))| {
-            w.write_node(node);
-            w.write_string(" could be ");
+            if missing.as_slice() == [MatchTree::Wildcard] {
+                w.write_node(node);
+                w.write_string(" could be a different possible value that isn't covered here.");
+                w.write_break();
+                w.write_string("Try assigning it to a variable or ");
+                w.write_code("_");
+                w.write_string(".");
+            } else {
+                w.write_node(node);
+                w.write_string(" could be ");
 
-            w.write_list("or", 3, |list| {
-                for tree in missing {
-                    list.add(|w| {
-                        w.write_match_tree(tree);
-                    });
-                }
-            });
+                w.write_list("or", 3, |list| {
+                    for tree in missing {
+                        list.add(|w| {
+                            w.write_match_tree(tree);
+                        });
+                    }
+                });
 
-            w.write_string(", but these patterns are missing.");
-            w.write_break();
-            w.write_string("Try adding patterns to cover these cases using ");
-            w.write_code("or");
-            w.write_string(", ");
-            w.write_code("when");
-            w.write_string(", or a variable.");
+                w.write_string(", but these patterns are missing.");
+
+                w.write_break();
+                w.write_string("Try adding patterns to cover these cases using ");
+                w.write_code("or");
+                w.write_string(", ");
+                w.write_code("when");
+                w.write_string(", or a variable.");
+            }
         },
     ));
 }
