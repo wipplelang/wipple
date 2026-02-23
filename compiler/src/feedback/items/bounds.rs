@@ -11,13 +11,13 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Bounds,
         queries::unresolved_bound,
         |bound| (bound.source_node.clone(), BTreeSet::new()),
-        |writer, bound| {
-            writer.write_node(&bound.source_node);
-            writer.write_string(" requires the instance ");
-            writer.write_bound(bound);
-            writer.write_string(", but this instance isn't defined.");
-            writer.write_break();
-            writer.write_string("Double-check that these types are correct.");
+        |w, bound| {
+            w.write_node(&bound.source_node);
+            w.write_string(" requires the instance ");
+            w.write_bound(bound);
+            w.write_string(", but this instance isn't defined.");
+            w.write_break();
+            w.write_string("Double-check that these types are correct.");
         },
     ));
 
@@ -62,13 +62,13 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
                 (primary, related)
             },
-            |writer, data| {
-                writer.write_comments(&data.comments);
+            |w, data| {
+                w.write_comments(&data.comments);
 
                 if !data.trace.is_empty() {
-                    writer.write_break();
+                    w.write_break();
                     for constraint in &data.trace {
-                        writer.write_constraint("\n\n  -  ", constraint.as_ref());
+                        w.write_constraint("\n\n  -  ", constraint.as_ref());
                     }
                 }
             },

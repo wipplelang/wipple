@@ -64,6 +64,7 @@ impl Visit for AssignmentNode {
                     };
 
                     if definition.value.is_some() {
+                        // TODO: Already assigned
                         return None;
                     }
 
@@ -99,7 +100,9 @@ impl Visit for AssignmentNode {
             let span = visitor.db.span(&node);
             let temporary = visitor.db.node(span, HiddenNode(None));
 
-            visitor.matching(temporary.clone(), true, |visitor| {
+            visitor.matching(&temporary, false, true, |visitor| {
+                visitor.current_match().root = Some(value.clone());
+                visitor.current_match().arm = Some(pattern.clone());
                 visitor.visit(&pattern);
             });
 

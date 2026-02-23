@@ -27,7 +27,7 @@ pub fn parse_annotate_pattern(parser: &mut Parser<'_>) -> Result<AnnotatePattern
 
 impl Visit for AnnotatePatternNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
-        visit_pattern(node, visitor);
+        visit_pattern(node, visitor, None);
 
         visitor.visit(&self.pattern);
         visitor.edge(&self.pattern, node, "pattern");

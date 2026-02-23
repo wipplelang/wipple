@@ -53,4 +53,5 @@ instance (As-Sequence (Stride Number) Number) : (Stride {
       Some n
     }
   }
+  (False; _) -> error "unbounded range"
 }

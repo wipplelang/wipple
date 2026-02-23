@@ -4,7 +4,7 @@ use crate::{
     nodes::{HasTemporaries, Matching, visit_pattern},
     syntax::{ParseError, Parser, TokenKind, parse_variable_name},
     typecheck::GroupConstraint,
-    visit::{Definition, Resolved, Visit, Visitor},
+    visit::{Definition, MatchPathSegment, Resolved, Visit, Visitor},
 };
 
 #[derive(Debug, Clone)]
@@ -35,7 +35,11 @@ pub fn parse_set_pattern(parser: &mut Parser<'_>) -> Result<SetPatternNode, Pars
 
 impl Visit for SetPatternNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
-        visit_pattern(node, visitor);
+        visit_pattern(node, visitor, Some(MatchPathSegment::Match));
+
+        if !visitor.current_match().allow_set {
+            visitor.insert(node, InvalidSetPattern);
+        }
 
         let Some(variable_definition) =
             visitor.resolve(&self.variable, node, |definition| match definition {
@@ -53,10 +57,6 @@ impl Visit for SetPatternNode {
 
         visitor.graph.replace(node, &variable_definition.node);
 
-        if !visitor.current_match().allow_set {
-            visitor.insert(node, InvalidSetPattern);
-        }
-
         // Do NOT include `self.matching_variable`, that would shadow it!
         visitor.insert(node, HasTemporaries(Vec::new()));
     }
@@ -71,10 +71,7 @@ impl Codegen for SetPatternNode {
 
         let matching_variable = definitions.into_iter().next().ok_or_else(|| ctx.error())?;
 
-        let Matching(matching) = ctx
-            .db
-            .get::<Matching>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+        let Matching(matching) = ctx.db.get(ctx.current_node()).ok_or_else(|| ctx.error())?;
 
         ctx.write_string(" && ((");
         ctx.write_node(&matching_variable);

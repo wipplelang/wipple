@@ -58,31 +58,31 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
             (data.function.clone(), related)
         },
-        |writer, data| {
-            writer.write_node(&data.function);
-            writer.write_string(" is missing ");
+        |w, data| {
+            w.write_node(&data.function);
+            w.write_string(" is missing ");
 
-            writer.write_list("and", 0, |list| {
+            w.write_list("and", 0, |list| {
                 for input in &data.inputs {
-                    list.add(move |writer| match input {
-                        Type::Node(_) => writer.write_string("an input"),
+                    list.add(move |w| match input {
+                        Type::Node(_) => w.write_string("an input"),
                         Type::Constructed(_) => {
-                            writer.write_string("a ");
-                            writer.write_type(input.clone());
+                            w.write_string("a ");
+                            w.write_type(input.clone());
                         }
                     });
                 }
             });
-            writer.write_string(".");
+            w.write_string(".");
 
-            writer.write_break();
-            writer.write_string("Try adding ");
+            w.write_break();
+            w.write_string("Try adding ");
             if data.inputs.len() == 1 {
-                writer.write_string("this input");
+                w.write_string("this input");
             } else {
-                writer.write_string("these inputs");
+                w.write_string("these inputs");
             }
-            writer.write_string(", or double-check your parentheses.");
+            w.write_string(", or double-check your parentheses.");
         },
     ));
 
@@ -139,23 +139,23 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
             (data.function.clone(), related)
         },
-        |writer, data| {
-            writer.write_node(&data.function);
-            writer.write_string(" only needs ");
-            writer.write_number(data.expected, "input", "inputs");
-            writer.write_string(".");
+        |w, data| {
+            w.write_node(&data.function);
+            w.write_string(" only needs ");
+            w.write_number(data.expected, "input", "inputs");
+            w.write_string(".");
 
-            writer.write_break();
-            writer.write_string("Try removing ");
+            w.write_break();
+            w.write_string("Try removing ");
 
             let extra = data.actual.saturating_sub(data.expected);
             if extra == 1 {
-                writer.write_string("the extra input");
+                w.write_string("the extra input");
             } else {
-                writer.write_string(&format!("{extra} extra inputs"));
+                w.write_string(&format!("{extra} extra inputs"));
             }
 
-            writer.write_string(" here.");
+            w.write_string(" here.");
         },
     ));
 
@@ -201,12 +201,12 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
             (data.function.clone(), related)
         },
-        |writer, data| {
-            writer.write_node(&data.function);
-            writer.write_string(" is not a function.");
+        |w, data| {
+            w.write_node(&data.function);
+            w.write_string(" is not a function.");
 
-            writer.write_break();
-            writer.write_string("Double-check your parentheses.");
+            w.write_break();
+            w.write_string("Double-check your parentheses.");
         },
     ));
 }

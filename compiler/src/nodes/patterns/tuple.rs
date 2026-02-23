@@ -4,7 +4,7 @@ use crate::{
     nodes::{HasTemporaries, InheritTemporaries, Matching, parse_pattern_element, visit_pattern},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::TypeConstraint,
-    visit::{Visit, Visitor},
+    visit::{MatchPathSegment, Visit, Visitor},
 };
 
 #[derive(Debug)]
@@ -39,14 +39,20 @@ pub fn parse_tuple_pattern(parser: &mut Parser<'_>) -> Result<TuplePatternNode, 
 
 impl Visit for TuplePatternNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
-        visit_pattern(node, visitor);
+        visit_pattern(node, visitor, None);
 
         let element_temporaries = self
             .elements
             .iter()
-            .map(|element| {
-                let temporary = visitor.visit_matching(element);
+            .enumerate()
+            .map(|(index, element)| {
+                let temporary = visitor.visit_matching(
+                    element,
+                    Some(MatchPathSegment::TupleElement(index, self.elements.len())),
+                );
+
                 visitor.edge(element, node, "element");
+
                 temporary
             })
             .collect::<Vec<_>>();
@@ -69,10 +75,7 @@ impl Codegen for TuplePatternNode {
             .get::<HasTemporaries>(ctx.current_node())
             .ok_or_else(|| ctx.error())?;
 
-        let Matching(matching) = ctx
-            .db
-            .get::<Matching>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+        let Matching(matching) = ctx.db.get(ctx.current_node()).ok_or_else(|| ctx.error())?;
 
         for (index, (element, temporary)) in
             self.elements.iter().zip(element_temporaries).enumerate()

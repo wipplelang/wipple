@@ -2,6 +2,7 @@ use crate::{
     database::{Db, NodeRef},
     queries::QueriedComments,
     typecheck::{Bound, BoundConstraint, Constraint, Instantiated, Type, TypeConstraint, Typed},
+    visit::MatchTree,
 };
 use regex::Regex;
 use std::{
@@ -81,6 +82,10 @@ impl<'a> FeedbackWriter<'a> {
     pub fn write_bound(&mut self, bound: &Bound) {
         write!(self.output, "{}", self.db.render(bound)).unwrap()
     }
+
+    pub fn write_match_tree(&mut self, tree: &MatchTree) {
+        write!(self.output, "{}", self.db.render(tree)).unwrap()
+    }
 }
 
 impl FeedbackWriter<'_> {
@@ -94,26 +99,23 @@ impl FeedbackWriter<'_> {
             .flat_map(
                 |(name, link)| -> [(String, Box<dyn Fn(&mut FeedbackWriter<'_>)>); _] {
                     [
-                        (
-                            name.clone(),
-                            Box::new(move |writer| writer.write_node(&link.node)),
-                        ),
+                        (name.clone(), Box::new(move |w| w.write_node(&link.node))),
                         (
                             format!("{name}@related"),
-                            Box::new(move |writer| {
-                                writer.write_list("and", 3, |list| {
+                            Box::new(move |w| {
+                                w.write_list("and", 3, |list| {
                                     for node in &link.related {
-                                        list.add(move |writer| writer.write_node(node));
+                                        list.add(move |w| w.write_node(node));
                                     }
                                 });
                             }),
                         ),
                         (
                             format!("{name}@type"),
-                            Box::new(move |writer| {
-                                writer.write_list("or", 3, |list| {
+                            Box::new(move |w| {
+                                w.write_list("or", 3, |list| {
                                     for ty in &link.types {
-                                        list.add(move |writer| writer.write_type(ty.clone()));
+                                        list.add(move |w| w.write_type(ty.clone()));
                                     }
                                 });
                             }),
@@ -128,11 +130,11 @@ impl FeedbackWriter<'_> {
         let replaced = LINK_REGEX.replace_all(&comments_string, |c: &regex::Captures<'_>| {
             let mut buf = String::new();
 
-            let mut writer = FeedbackWriter::new(self.db, &mut buf);
+            let mut w = FeedbackWriter::new(self.db, &mut buf);
             let (_, [link]) = c.extract();
             match links.get(link) {
-                Some(link) => link(&mut writer),
-                None => writer.write_code("_"),
+                Some(link) => link(&mut w),
+                None => w.write_code("_"),
             }
 
             buf

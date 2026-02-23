@@ -1,6 +1,6 @@
 use crate::{
     codegen::{Codegen, CodegenCtx, CodegenError},
-    database::{Fact, Node, NodeRef, Render},
+    database::{Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{parse_atomic_pattern, parse_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::TypeConstraint,
@@ -57,7 +57,15 @@ impl Visit for FunctionExpressionNode {
             .inputs
             .iter()
             .map(|pattern| {
-                let temporary = visitor.visit_matching(pattern);
+                let span = visitor.db.span(pattern);
+                let temporary = visitor.db.node(span, HiddenNode(None));
+
+                visitor.matching(&temporary, false, false, |visitor| {
+                    visitor.current_match().root = Some(temporary.clone());
+                    visitor.current_match().arm = Some(pattern.clone());
+                    visitor.visit(pattern);
+                });
+
                 visitor.edge(pattern, node, "input");
                 temporary
             })

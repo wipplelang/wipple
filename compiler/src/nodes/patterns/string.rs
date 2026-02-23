@@ -4,7 +4,7 @@ use crate::{
     nodes::{Matching, NamedTypeNode, visit_pattern},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::GroupConstraint,
-    visit::{Visit, Visitor},
+    visit::{MatchPathSegment, Visit, Visitor},
 };
 
 #[derive(Debug)]
@@ -22,7 +22,7 @@ pub fn parse_string_pattern(parser: &mut Parser<'_>) -> Result<StringPatternNode
 
 impl Visit for StringPatternNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
-        visit_pattern(node, visitor);
+        visit_pattern(node, visitor, Some(MatchPathSegment::NoMatch));
 
         let span = visitor.span(node);
         let string_type = visitor.node(
@@ -40,10 +40,7 @@ impl Visit for StringPatternNode {
 
 impl Codegen for StringPatternNode {
     fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let Matching(matching) = ctx
-            .db
-            .get::<Matching>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+        let Matching(matching) = ctx.db.get(ctx.current_node()).ok_or_else(|| ctx.error())?;
 
         ctx.write_string(" && (");
         ctx.write_node(&matching);

@@ -17,10 +17,17 @@ use wipple::{
 pub async fn lsp(lib: Option<PathBuf>) -> anyhow::Result<()> {
     let mut db = Db::new();
 
-    db.render_with(RenderConfig::new(|db, value, f| {
-        write!(f, "`")?;
+    db.render_with(RenderConfig::new(|db, value, root, f| {
+        if root {
+            write!(f, "`")?;
+        }
+
         value.write(f, db)?;
-        write!(f, "`")?;
+
+        if root {
+            write!(f, "`")?;
+        }
+
         Ok(())
     }));
 

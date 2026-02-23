@@ -147,7 +147,11 @@ impl Db {
     }
 
     pub fn render<'a>(&'a self, value: &'a dyn Render) -> impl Display + 'a {
-        self.render.wrap(self, value)
+        self.render.wrap(self, value, true)
+    }
+
+    pub fn render_nested<'a>(&'a self, value: &'a dyn Render) -> impl Display + 'a {
+        self.render.wrap(self, value, false)
     }
 
     pub fn display(&self, filter: impl Fn(&NodeRef) -> bool) -> impl Display {

@@ -66,7 +66,7 @@ fn convert_feedback(db: &mut Db, item: FeedbackItem) -> serde_json::Value {
     let mask: Arc<Mutex<BTreeSet<NodeRef>>> = Default::default();
     db.render_with(RenderConfig::new({
         let mask = mask.clone();
-        move |db, value, f| {
+        move |db, value, root, f| {
             if let Some(node) = value.link()
                 && let Some(Typed { group: Some(group) }) = db.get(node)
                 && let Some(index) = groups.iter().position(|other| Arc::ptr_eq(&group, other))
@@ -80,9 +80,14 @@ fn convert_feedback(db: &mut Db, item: FeedbackItem) -> serde_json::Value {
                 return Ok(());
             }
 
-            write!(f, "`")?;
+            if root {
+                write!(f, "`")?;
+            }
             value.write(f, db)?;
-            write!(f, "`")?;
+
+            if root {
+                write!(f, "`")?;
+            }
 
             Ok(())
         }

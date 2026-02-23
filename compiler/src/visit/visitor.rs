@@ -1,7 +1,7 @@
 use crate::{
     database::{Children, Db, Fact, HiddenNode, NodeRef, Parent, Render},
     typecheck::Constraint,
-    visit::{Defined, Definition},
+    visit::{Defined, Definition, MatchPath, MatchPathSegment, Matches},
 };
 use std::{
     cell::{Ref, RefCell, RefMut},
@@ -307,21 +307,33 @@ impl<'db> Visitor<'db> {
         result
     }
 
-    pub fn current_match(&self) -> &CurrentMatch {
-        self.current_match.as_ref().unwrap()
+    pub fn current_match(&mut self) -> &mut CurrentMatch {
+        self.current_match.as_mut().unwrap()
     }
 
     pub fn matching<T>(
         &mut self,
-        temporary: NodeRef,
+        value: &NodeRef,
+        allow_or: bool,
         allow_set: bool,
         f: impl FnOnce(&mut Visitor<'_>) -> T,
     ) -> T {
         let existing_match = self.current_match.take();
 
         self.current_match = Some(CurrentMatch {
-            node: temporary,
+            root: existing_match
+                .as_ref()
+                .and_then(|existing| existing.root.clone()),
+            value: value.clone(),
+            allow_or,
             allow_set,
+            path: existing_match
+                .as_ref()
+                .map(|existing| existing.path.clone())
+                .unwrap_or_default(),
+            arm: existing_match
+                .as_ref()
+                .and_then(|existing| existing.arm.clone()),
         });
 
         let result = f(self);
@@ -331,15 +343,50 @@ impl<'db> Visitor<'db> {
         result
     }
 
-    pub fn visit_matching(&mut self, pattern: &NodeRef) -> NodeRef {
+    pub fn visit_matching(
+        &mut self,
+        pattern: &NodeRef,
+        segment: Option<MatchPathSegment>,
+    ) -> NodeRef {
         let span = self.db.span(pattern);
         let temporary = self.db.node(span, HiddenNode(None));
 
-        self.matching(temporary.clone(), false, |visitor| {
+        self.matching(&temporary, true, false, |visitor| {
+            visitor
+                .current_match()
+                .root
+                .get_or_insert_with(|| temporary.clone());
+
+            if let Some(segment) = segment {
+                visitor.current_match().path.0.push(segment);
+            }
+
             visitor.visit(pattern);
         });
 
         temporary
+    }
+
+    pub fn set_matches(&mut self, terminal: Option<MatchPathSegment>) -> NodeRef {
+        let node = self.current_node.as_ref().unwrap().clone();
+        let current_match = self.current_match.as_ref().unwrap().clone();
+
+        let root = current_match.root.expect("no match root value set");
+        let arm = current_match.arm.clone();
+        self.insert(
+            &node,
+            Matches {
+                value: root,
+                arm,
+                path: terminal.map(|segment| {
+                    let mut path = current_match.path.clone();
+                    path.0.push(segment);
+                    path
+                }),
+            },
+        );
+
+        current_match.value
     }
 
     pub fn finish(mut self) -> Result {
@@ -440,10 +487,14 @@ impl CurrentDefinition {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct CurrentMatch {
-    pub node: NodeRef,
+    pub root: Option<NodeRef>,
+    pub arm: Option<NodeRef>, // opt into exhaustiveness checking
+    pub value: NodeRef,
+    pub allow_or: bool,
     pub allow_set: bool,
+    pub path: MatchPath,
 }
 
 // Needed so definitions are resolved before nodes that reference them

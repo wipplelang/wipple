@@ -11,15 +11,15 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Syntax,
         queries::fact::<MissingField>,
         |(node, _)| (node.clone(), BTreeSet::new()),
-        |writer, (node, MissingField(field))| {
-            writer.write_node(node);
-            writer.write_string(" is missing a pattern for the field ");
-            writer.write_code(field);
-            writer.write_string(".");
-            writer.write_break();
-            writer.write_string("Try adding a pattern for this field using ");
-            writer.write_code(":");
-            writer.write_string(".");
+        |w, (node, MissingField(field))| {
+            w.write_node(node);
+            w.write_string(" is missing a pattern for the field ");
+            w.write_code(field);
+            w.write_string(".");
+            w.write_break();
+            w.write_string("Try adding a pattern for this field using ");
+            w.write_code(":");
+            w.write_string(".");
         },
     ));
 
@@ -28,11 +28,11 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Syntax,
         queries::fact::<ExtraField>,
         |(node, _)| (node.clone(), BTreeSet::new()),
-        |writer, (_, ExtraField(field))| {
-            writer.write_code(field);
-            writer.write_string(" isn't a field on this structure.");
-            writer.write_break();
-            writer.write_string("Double-check your spelling.");
+        |w, (_, ExtraField(field))| {
+            w.write_code(field);
+            w.write_string(" isn't a field on this structure.");
+            w.write_break();
+            w.write_string("Double-check your spelling.");
         },
     ));
 
@@ -41,11 +41,11 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Syntax,
         queries::fact::<DuplicateField>,
         |(node, _)| (node.clone(), BTreeSet::new()),
-        |writer, (node, _)| {
-            writer.write_node(node);
-            writer.write_string(" is defined more than once.");
-            writer.write_break();
-            writer.write_string("Try removing this field.");
+        |w, (node, _)| {
+            w.write_node(node);
+            w.write_string(" is defined more than once.");
+            w.write_break();
+            w.write_string("Try removing this field.");
         },
     ));
 }

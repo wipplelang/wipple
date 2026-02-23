@@ -92,7 +92,7 @@
 >
     <Box class="flex flex-1 flex-col px-[10px] py-[8px] font-sans shadow-blue-500/10 transition">
         <div class="scroll flex flex-col gap-[2px]">
-            <div class="font-semibold">
+            <div class="mr-(--toolbar-height) font-semibold">
                 <Markdown content={title} highlightGroups />
             </div>
 

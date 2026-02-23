@@ -97,9 +97,9 @@ impl FeedbackCtx {
                 let write: Rc<dyn Fn(&Db, &mut dyn fmt::Write) -> _> = Rc::new({
                     let write = entry.write.clone();
                     move |db, w| {
-                        let mut writer = FeedbackWriter::new(db, w);
-                        (write)(&mut writer, &data);
-                        writer.finish()
+                        let mut w = FeedbackWriter::new(db, w);
+                        (write)(&mut w, &data);
+                        w.finish()
                     }
                 });
 

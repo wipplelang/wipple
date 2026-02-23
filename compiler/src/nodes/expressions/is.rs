@@ -50,7 +50,8 @@ impl Visit for IsExpressionNode {
         let input_span = visitor.span(&self.left);
         let input_temporary = visitor.node(input_span, HiddenNode(None));
 
-        visitor.matching(input_temporary.clone(), false, |visitor| {
+        visitor.matching(&input_temporary, true, false, |visitor| {
+            visitor.current_match().root = Some(input_temporary.clone());
             visitor.visit(&self.right);
             visitor.edge(&self.right, node, "right");
         });

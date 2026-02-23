@@ -4,7 +4,7 @@ use crate::{
     nodes::visit_pattern,
     syntax::{ParseError, Parser, TokenKind},
     typecheck::TypeConstraint,
-    visit::{Visit, Visitor},
+    visit::{MatchPathSegment, Visit, Visitor},
 };
 
 #[derive(Debug)]
@@ -21,7 +21,7 @@ pub fn parse_unit_pattern(parser: &mut Parser<'_>) -> Result<UnitPatternNode, Pa
 
 impl Visit for UnitPatternNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
-        visit_pattern(node, visitor);
+        visit_pattern(node, visitor, Some(MatchPathSegment::Match));
 
         visitor.constraint(TypeConstraint::new(node.clone(), visitor.unit_type()));
     }

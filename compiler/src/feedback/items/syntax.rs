@@ -11,23 +11,23 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Syntax,
         queries::fact::<ParseError>,
         |(node, _)| (node.clone(), BTreeSet::new()),
-        |writer, (_, error)| {
-            writer.write_string(&error.message);
+        |w, (_, error)| {
+            w.write_string(&error.message);
 
             if let Some(committed) = &error.committed {
-                writer.write_string(" ");
-                writer.write_string(committed);
+                w.write_string(" ");
+                w.write_string(committed);
             }
 
-            writer.write_string(".");
+            w.write_string(".");
 
             if let Some(reason) = &error.reason {
-                writer.write_break();
-                writer.write_string(reason);
+                w.write_break();
+                w.write_string(reason);
             }
 
-            writer.write_break();
-            writer.write_string("Check your spelling.");
+            w.write_break();
+            w.write_string("Check your spelling.");
         },
     ));
 }

@@ -54,6 +54,10 @@ impl NodeRef {
 impl Debug for NodeRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if f.alternate() {
+            if env::var("WIPPLE_DEBUG").is_ok() {
+                write!(f, "({}) ", self.id())?;
+            }
+
             self.1.fmt(f)
         } else {
             write!(f, "({}) {}", self.id(), self.1.type_name())

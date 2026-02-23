@@ -26,7 +26,7 @@ use crate::{
     database::{Db, Fact, NodeRef, Render},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::{GroupConstraint, Typed},
-    visit::Visitor,
+    visit::{MatchPathSegment, Visitor},
 };
 use std::collections::BTreeSet;
 
@@ -130,11 +130,15 @@ pub fn parse_parenthesized_pattern(parser: &mut Parser<'_>) -> Result<NodeRef, P
     Ok(value)
 }
 
-pub fn visit_pattern(node: &NodeRef, visitor: &mut Visitor<'_>) {
+pub fn visit_pattern(
+    node: &NodeRef,
+    visitor: &mut Visitor<'_>,
+    terminal: Option<MatchPathSegment>,
+) {
     visitor.insert(node, IsPattern);
     visitor.insert(node, Typed::default());
 
-    let matching = visitor.current_match().node.clone();
+    let matching = visitor.set_matches(terminal);
     visitor.insert(node, Matching(matching.clone()));
     visitor.edge(&matching, node, "value");
     visitor.constraint(GroupConstraint::new(node.clone(), matching));

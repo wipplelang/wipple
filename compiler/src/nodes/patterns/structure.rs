@@ -4,7 +4,7 @@ use crate::{
     nodes::{HasTemporaries, InheritTemporaries, Matching, parse_pattern, visit_pattern},
     syntax::{ParseError, Parser, TokenKind, parse_type_name, parse_variable_name},
     typecheck::{Instantation, InstantiateConstraint, Replacements, Substitutions},
-    visit::{Definition, Visit, Visitor},
+    visit::{Definition, MatchPathSegment, Visit, Visitor},
 };
 
 #[derive(Debug)]
@@ -50,7 +50,7 @@ pub fn parse_structure_pattern_field(
 
 impl Visit for StructurePatternNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
-        visit_pattern(node, visitor);
+        visit_pattern(node, visitor, None);
 
         let Some(definition) = visitor.resolve(&self.name, node, |definition| match definition {
             Definition::StructureConstructor(definition) => Some(definition.clone()),
@@ -61,8 +61,17 @@ impl Visit for StructurePatternNode {
 
         let mut field_temporaries = Vec::new();
         for field in &self.fields {
-            let temporary = visitor.visit_matching(&field.pattern);
+            let temporary = visitor.visit_matching(
+                &field.pattern,
+                definition
+                    .fields
+                    .get(&field.name)
+                    .cloned()
+                    .map(MatchPathSegment::Field),
+            );
+
             visitor.edge(&field.pattern, node, "field");
+
             field_temporaries.push((field.name.as_str(), temporary));
         }
 
@@ -115,10 +124,7 @@ impl Codegen for StructurePatternNode {
             .get::<HasTemporaries>(ctx.current_node())
             .ok_or_else(|| ctx.error())?;
 
-        let Matching(matching) = ctx
-            .db
-            .get::<Matching>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+        let Matching(matching) = ctx.db.get(ctx.current_node()).ok_or_else(|| ctx.error())?;
 
         for (field, temporary) in self.fields.iter().zip(field_temporaries) {
             ctx.write_string(" && ((");

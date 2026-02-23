@@ -7,6 +7,7 @@ pub enum FeedbackRank {
     Custom,
     Conflicts,
     Bounds,
+    Exhaustiveness,
     Unknown,
     Placeholders,
 }

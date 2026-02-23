@@ -3,7 +3,7 @@ use crate::{
     database::{Node, NodeRef},
     nodes::{HasTemporaries, Matching, visit_pattern},
     syntax::{ParseError, Parser, parse_variable_name},
-    visit::{VariableDefinition, Visit, Visitor},
+    visit::{MatchPathSegment, VariableDefinition, Visit, Visitor},
 };
 
 #[derive(Debug)]
@@ -21,14 +21,16 @@ pub fn parse_variable_pattern(parser: &mut Parser<'_>) -> Result<VariablePattern
 
 impl Visit for VariablePatternNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
-        visit_pattern(node, visitor);
+        visit_pattern(node, visitor, Some(MatchPathSegment::Match));
+
+        let value = visitor.current_match().value.clone();
 
         visitor.define(
             &self.variable,
             VariableDefinition {
                 name: self.variable.clone(),
                 node: node.clone(),
-                value: visitor.current_match().node.clone(),
+                value,
             },
         );
 
@@ -38,10 +40,7 @@ impl Visit for VariablePatternNode {
 
 impl Codegen for VariablePatternNode {
     fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let Matching(matching) = ctx
-            .db
-            .get::<Matching>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+        let Matching(matching) = ctx.db.get(ctx.current_node()).ok_or_else(|| ctx.error())?;
 
         ctx.write_string(" && ((");
         ctx.write_node(&ctx.current_node().clone());

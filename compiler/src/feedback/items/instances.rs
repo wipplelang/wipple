@@ -11,13 +11,13 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Syntax,
         queries::fact::<MissingInstanceValue>,
         |(node, _)| (node.clone(), BTreeSet::new()),
-        |writer, (node, _)| {
-            writer.write_node(node);
-            writer.write_string(" is missing a value.");
-            writer.write_break();
-            writer.write_string("Try adding a value for this instance using ");
-            writer.write_code(":");
-            writer.write_string(".");
+        |w, (node, _)| {
+            w.write_node(node);
+            w.write_string(" is missing a value.");
+            w.write_break();
+            w.write_string("Try adding a value for this instance using ");
+            w.write_code(":");
+            w.write_string(".");
         },
     ));
 
@@ -26,12 +26,12 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Syntax,
         queries::fact::<ExtraInstanceValue>,
         |(node, _)| (node.clone(), BTreeSet::new()),
-        |writer, _| {
-            writer.write_string("This instance doesn't need a value because it is marked with ");
-            writer.write_code("[error]");
-            writer.write_string(".");
-            writer.write_break();
-            writer.write_string("Remove this code.");
+        |w, _| {
+            w.write_string("This instance doesn't need a value because it is marked with ");
+            w.write_code("[error]");
+            w.write_string(".");
+            w.write_break();
+            w.write_string("Remove this code.");
         },
     ));
 }

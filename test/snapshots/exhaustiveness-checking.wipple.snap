@@ -33,6 +33,7 @@ VariableExpressionNode `grade` (test/tests/exhaustiveness-checking.wipple:12:29-
   at test/tests/exhaustiveness-checking.wipple:12:29-12:34
   has type Grade
   is an expression
+  is missing patterns
   resolved to 1 definition(s): `grade` (test/tests/exhaustiveness-checking.wipple:12:15-12:20)
 ConstructorPatternNode `A` (test/tests/exhaustiveness-checking.wipple:13:3-13:4)
   at test/tests/exhaustiveness-checking.wipple:13:3-13:4
@@ -95,4 +96,11 @@ VariantNode `F` (test/tests/exhaustiveness-checking.wipple:8:3-8:4)
   has type Grade
   is a definition
 
-Output:
+
+Feedback:
+
+`grade` (test/tests/exhaustiveness-checking.wipple:12:29-12:34) (missing-patterns):
+
+  `grade` (test/tests/exhaustiveness-checking.wipple:12:29-12:34) could be ``D` (test/tests/exhaustiveness-checking.wipple:7:3-7:4)` (test/tests/exhaustiveness-checking.wipple:7:3-7:4) or ``F` (test/tests/exhaustiveness-checking.wipple:8:3-8:4)` (test/tests/exhaustiveness-checking.wipple:8:3-8:4), but these patterns are missing.
+
+  Try adding patterns to cover these cases using `or`, `when`, or a variable.

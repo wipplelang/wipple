@@ -12,12 +12,12 @@ pub fn register(ctx: &mut FeedbackCtx) {
             queries::unresolved(ctx, &mut |name| f((ctx.node.clone(), name)));
         },
         |(node, _)| (node.clone(), BTreeSet::new()),
-        |writer, (_, name)| {
-            writer.write_string("Can't find ");
-            writer.write_code(name);
-            writer.write_string(".");
-            writer.write_break();
-            writer.write_string("Double-check your spelling.");
+        |w, (_, name)| {
+            w.write_string("Can't find ");
+            w.write_code(name);
+            w.write_string(".");
+            w.write_break();
+            w.write_string("Double-check your spelling.");
         },
     ));
 
@@ -26,21 +26,21 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Names,
         queries::ambiguous,
         |(node, _, _)| (node.clone(), BTreeSet::new()),
-        |writer, (_, name, definitions)| {
-            writer.write_code(name);
-            writer.write_string(" could refer to ");
+        |w, (_, name, definitions)| {
+            w.write_code(name);
+            w.write_string(" could refer to ");
 
             if !definitions.is_empty() {
-                writer.write_list("or", 3, |list| {
+                w.write_list("or", 3, |list| {
                     for node in definitions {
-                        list.add(|writer| writer.write_node(node));
+                        list.add(|w| w.write_node(node));
                     }
                 });
             }
 
-            writer.write_string(".");
-            writer.write_break();
-            writer.write_string("Rename the extra definitions.");
+            w.write_string(".");
+            w.write_break();
+            w.write_string("Rename the extra definitions.");
         },
     ));
 }

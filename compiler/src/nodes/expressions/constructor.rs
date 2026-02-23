@@ -83,7 +83,7 @@ impl Visit for ConstructorExpressionNode {
                 visitor.insert(node, ResolvedConstructor::Trait);
             }
             Definition::VariantConstructor(definition) => {
-                visitor.insert(node, ResolvedConstructor::Variant(definition.node));
+                visitor.insert(node, ResolvedConstructor::Variant(definition.variant));
             }
             Definition::MarkerConstructor(_) => {
                 visitor.insert(node, ResolvedConstructor::Marker);

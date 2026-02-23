@@ -11,13 +11,13 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Syntax,
         queries::fact::<MissingFormatInputs>,
         |(node, _)| (node.clone(), BTreeSet::new()),
-        |writer, (node, MissingFormatInputs(count))| {
-            writer.write_node(node);
-            writer.write_string(" needs ");
-            writer.write_number(*count, "more input", "more inputs");
-            writer.write_string(".");
-            writer.write_break();
-            writer.write_string("Try adding code after the string.");
+        |w, (node, MissingFormatInputs(count))| {
+            w.write_node(node);
+            w.write_string(" needs ");
+            w.write_number(*count, "more input", "more inputs");
+            w.write_string(".");
+            w.write_break();
+            w.write_string("Try adding code after the string.");
         },
     ));
 
@@ -26,13 +26,13 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Syntax,
         queries::fact::<ExtraFormatInput>,
         |(node, _)| (node.clone(), BTreeSet::new()),
-        |writer, (node, _)| {
-            writer.write_node(node);
-            writer.write_string(" isn't used in the format string.");
-            writer.write_break();
-            writer.write_string("Try removing this input or add another ");
-            writer.write_code("_");
-            writer.write_string(" placeholder.");
+        |w, (node, _)| {
+            w.write_node(node);
+            w.write_string(" isn't used in the format string.");
+            w.write_break();
+            w.write_string("Try removing this input or add another ");
+            w.write_code("_");
+            w.write_string(" placeholder.");
         },
     ));
 }

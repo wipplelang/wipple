@@ -75,8 +75,11 @@ impl Visit for WhenExpressionNode {
             self.input.clone(),
         ));
 
-        visitor.matching(input_temporary.clone(), false, |visitor| {
-            for arm in &self.arms {
+        for arm in &self.arms {
+            visitor.matching(&input_temporary, true, false, |visitor| {
+                visitor.current_match().root = Some(self.input.clone());
+                visitor.current_match().arm = Some(arm.pattern.clone());
+
                 visitor.push_scope();
                 visitor.visit(&arm.pattern);
                 visitor.edge(&arm.pattern, node, "pattern");
@@ -85,8 +88,8 @@ impl Visit for WhenExpressionNode {
                 visitor.pop_scope();
 
                 visitor.constraint(GroupConstraint::new(arm.value.clone(), node.clone()));
-            }
-        });
+            });
+        }
 
         visitor.insert(node, ResolvedWhen { input_temporary });
     }

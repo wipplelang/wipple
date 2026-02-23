@@ -136,8 +136,10 @@ pub struct StructureConstructorDefinition {
 #[derive(Debug, Clone)]
 pub struct VariantConstructorDefinition {
     pub name: String,
-    pub node: NodeRef,
+    pub type_definition: NodeRef,
+    pub variant: NodeRef,
     pub index: usize,
+    pub elements: Vec<NodeRef>,
 }
 
 impl Definition {
@@ -165,7 +167,7 @@ impl Definition {
             Definition::TypeParameter(definition) => definition.node.clone(),
             Definition::MarkerConstructor(definition) => definition.node.clone(),
             Definition::StructureConstructor(definition) => definition.node.clone(),
-            Definition::VariantConstructor(definition) => definition.node.clone(),
+            Definition::VariantConstructor(definition) => definition.variant.clone(),
         }
     }
 

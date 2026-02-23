@@ -247,7 +247,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
 fn setup(options: &CompileOptions, time: bool) -> anyhow::Result<(Db, Vec<NodeRef>)> {
     let mut db = Db::new();
 
-    db.render_with(RenderConfig::new(|db, value, f| {
+    db.render_with(RenderConfig::new(|db, value, root, f| {
         if let Some(node) = value.link() {
             let value = value.to_string(db);
 
@@ -259,7 +259,17 @@ fn setup(options: &CompileOptions, time: bool) -> anyhow::Result<(Db, Vec<NodeRe
                     format!("({})", db.span(node)).dimmed()
                 )?;
             } else {
-                write!(f, "`{}` ({})", value, db.span(node))?;
+                if root {
+                    write!(f, "`")?;
+                }
+
+                write!(f, "{value}")?;
+
+                if root {
+                    write!(f, "`")?;
+                }
+
+                write!(f, " ({})", db.span(node))?;
             }
         } else {
             value.write(f, db)?;

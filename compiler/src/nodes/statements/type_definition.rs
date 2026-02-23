@@ -37,6 +37,20 @@ impl Render for DuplicateVariantDefinition {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct StructureFields(pub Vec<NodeRef>);
+
+impl Fact for StructureFields {}
+
+impl Render for StructureFields {}
+
+#[derive(Debug, Clone, Default)]
+pub struct EnumerationVariants(pub Vec<(NodeRef, Vec<NodeRef>)>);
+
+impl Fact for EnumerationVariants {}
+
+impl Render for EnumerationVariants {}
+
 #[derive(Debug, Clone)]
 pub enum TypeRepresentation {
     Structure(StructureTypeRepresentation),
@@ -273,6 +287,9 @@ impl Visit for TypeDefinitionNode {
 
                             visitor.pop_scope();
 
+                            visitor
+                                .insert(&node, StructureFields(fields.values().cloned().collect()));
+
                             visitor.define(
                                 &definition.name,
                                 StructureConstructorDefinition {
@@ -330,8 +347,10 @@ impl Visit for TypeDefinitionNode {
 
                                         VariantConstructorDefinition {
                                             name: variant.name.clone(),
-                                            node: variant_node,
+                                            type_definition: node.clone(),
+                                            variant: variant_node,
                                             index,
+                                            elements: variant.elements.clone(),
                                         }
                                     });
 
@@ -342,6 +361,13 @@ impl Visit for TypeDefinitionNode {
                             visitor.pop_scope();
 
                             for (name, constructor_definition) in variant_definitions {
+                                visitor.with_fact(&node, |EnumerationVariants(variants)| {
+                                    variants.push((
+                                        constructor_definition.variant.clone(),
+                                        constructor_definition.elements.clone(),
+                                    ));
+                                });
+
                                 visitor.define(&name, constructor_definition);
                             }
                         }

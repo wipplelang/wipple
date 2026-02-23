@@ -102,6 +102,9 @@ pub fn compile(db: &mut Db, files: &[NodeRef]) {
 
     set_groups(db, solver, node_is_from_files);
 
+    // Check for exhaustiveness
+    db.check_exhaustiveness();
+
     // Check for overlapping instances
     for (trait_node, Instances(instances)) in db.iter::<Instances>().collect::<Vec<_>>() {
         db.check_for_overlapping_instances(&trait_node, instances);

@@ -7,7 +7,8 @@ use crate::{
         Instantation, InstantiateConstraint, Replacements, Substitutions, TypeConstraint, Typed,
     },
     visit::{
-        Definition, MarkerConstructorDefinition, VariantConstructorDefinition, Visit, Visitor,
+        Definition, MarkerConstructorDefinition, MatchPathSegment, VariantConstructorDefinition,
+        Visit, Visitor,
     },
 };
 
@@ -82,8 +83,6 @@ enum ConstructorDefinition {
 
 impl Visit for ConstructorPatternNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
-        visit_pattern(node, visitor);
-
         let Some(definition) =
             visitor.resolve(&self.constructor, node, |definition| match definition {
                 Definition::MarkerConstructor(definition) => {
@@ -95,13 +94,16 @@ impl Visit for ConstructorPatternNode {
                 _ => None,
             })
         else {
+            visit_pattern(node, visitor, None);
             return;
         };
 
         match definition {
             ConstructorDefinition::Marker(definition) => {
+                visit_pattern(node, visitor, Some(MatchPathSegment::Match));
+
                 for element in &self.elements {
-                    visitor.visit_matching(element);
+                    visitor.visit_matching(element, None);
                     visitor.edge(element, node, "element");
                     visitor.insert(element, ExtraElement);
                 }
@@ -116,12 +118,30 @@ impl Visit for ConstructorPatternNode {
                 visitor.insert(node, ConstructorMatch::Marker);
             }
             ConstructorDefinition::Variant(definition) => {
+                visit_pattern(
+                    node,
+                    visitor,
+                    self.elements
+                        .is_empty()
+                        .then(|| MatchPathSegment::Variant(definition.variant.clone())),
+                );
+
                 let element_temporaries = self
                     .elements
                     .iter()
-                    .map(|element| {
-                        let temporary = visitor.visit_matching(element);
+                    .enumerate()
+                    .map(|(index, element)| {
+                        let temporary = visitor.visit_matching(
+                            element,
+                            Some(MatchPathSegment::VariantElement(
+                                definition.variant.clone(),
+                                index,
+                                self.elements.len(),
+                            )),
+                        );
+
                         visitor.edge(element, node, "element");
+
                         temporary
                     })
                     .collect::<Vec<_>>();
@@ -129,9 +149,12 @@ impl Visit for ConstructorPatternNode {
                 if self.elements.is_empty() {
                     visitor.constraint(InstantiateConstraint::new(Instantation {
                         source_node: node.clone(),
-                        definition: definition.node.clone(),
+                        definition: definition.variant.clone(),
                         substitutions: Substitutions::new(),
-                        replacements: Replacements::from_iter([(definition.node, node.clone())]),
+                        replacements: Replacements::from_iter([(
+                            definition.variant.clone(),
+                            node.clone(),
+                        )]),
                     }));
                 } else {
                     let span = visitor.span(node);
@@ -140,10 +163,10 @@ impl Visit for ConstructorPatternNode {
 
                     visitor.constraint(InstantiateConstraint::new(Instantation {
                         source_node: node.clone(),
-                        definition: definition.node.clone(),
+                        definition: definition.variant.clone(),
                         substitutions: Substitutions::new(),
                         replacements: Replacements::from_iter([(
-                            definition.node,
+                            definition.variant.clone(),
                             constructor_node.clone(),
                         )]),
                     }));
@@ -171,10 +194,7 @@ impl Visit for ConstructorPatternNode {
 
 impl Codegen for ConstructorPatternNode {
     fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let Matching(matching) = ctx
-            .db
-            .get::<Matching>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+        let Matching(matching) = ctx.db.get(ctx.current_node()).ok_or_else(|| ctx.error())?;
 
         let constructor_match = ctx
             .db

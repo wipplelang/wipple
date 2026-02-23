@@ -3,7 +3,7 @@ use crate::{
     database::{Node, NodeRef},
     nodes::visit_pattern,
     syntax::{ParseError, Parser, TokenKind},
-    visit::{Visit, Visitor},
+    visit::{MatchPathSegment, Visit, Visitor},
 };
 
 #[derive(Debug)]
@@ -20,7 +20,7 @@ pub fn parse_wildcard_pattern(parser: &mut Parser<'_>) -> Result<WildcardPattern
 
 impl Visit for WildcardPatternNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
-        visit_pattern(node, visitor);
+        visit_pattern(node, visitor, Some(MatchPathSegment::Match));
     }
 }
 
