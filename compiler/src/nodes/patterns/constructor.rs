@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{HasTemporaries, InheritTemporaries, Matching, parse_atomic_pattern, visit_pattern},
     syntax::{ParseError, Parser, parse_constructor_name},
@@ -193,44 +193,48 @@ impl Visit for ConstructorPatternNode {
 }
 
 impl Codegen for ConstructorPatternNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let Matching(matching) = ctx.db.get(ctx.current_node()).ok_or_else(|| ctx.error())?;
-
-        let constructor_match = ctx
-            .db
-            .get::<ConstructorMatch>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let Matching(matching) = ctx.get(node)?;
+        let constructor_match = ctx.get::<ConstructorMatch>(node)?;
 
         match constructor_match {
-            ConstructorMatch::Marker => {
-                // No code needed
-                Ok(())
-            }
+            ConstructorMatch::Marker => ir::Expression::And(Vec::new()).at(node, ctx),
             ConstructorMatch::Variant {
                 index,
                 element_temporaries,
             } => {
-                ctx.write_string(" && (");
-                ctx.write_node(&matching);
-                ctx.write_string("[__wipple_variant] === ");
-                ctx.write_string(index.to_string());
-                ctx.write_string(")");
+                let mut expressions = vec![
+                    ir::Expression::EqualToVariant(
+                        Box::new(ir::Expression::Identifier(matching.clone()).at(node, ctx)?),
+                        index.to_string(),
+                    )
+                    .at(node, ctx)?,
+                ];
 
                 for (index, (element, temporary)) in
                     self.elements.iter().zip(element_temporaries).enumerate()
                 {
-                    ctx.write_string(" && ((");
-                    ctx.write_node(&temporary);
-                    ctx.write_string(" = ");
-                    ctx.write_node(&matching);
-                    ctx.write_string("[");
-                    ctx.write_string(index.to_string());
-                    ctx.write_string("]) || true)");
+                    expressions.push(
+                        ir::Expression::AssignTo(
+                            Box::new(
+                                ir::Expression::Index(
+                                    Box::new(
+                                        ir::Expression::Identifier(matching.clone())
+                                            .at(node, ctx)?,
+                                    ),
+                                    index,
+                                )
+                                .at(node, ctx)?,
+                            ),
+                            temporary,
+                        )
+                        .at(node, ctx)?,
+                    );
 
-                    ctx.write(element)?;
+                    expressions.push(ctx.codegen(element)?);
                 }
 
-                Ok(())
+                ir::Expression::And(expressions).at(node, ctx)
             }
         }
     }

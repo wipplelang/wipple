@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, Render},
     visit::{Visit, Visitor},
 };
@@ -181,12 +181,8 @@ impl Visit for HiddenNode {
 }
 
 impl Codegen for HiddenNode {
-    fn codegen(&self, codegen: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        if let Some(inner) = &self.0 {
-            inner.codegen(codegen)
-        } else {
-            Err(codegen.error())
-        }
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        self.0.as_ref()?.codegen(node, ctx)
     }
 }
 

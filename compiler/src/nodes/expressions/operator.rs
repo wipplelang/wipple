@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Fact, Node, NodeRef, Render, Span},
     nodes::{
         BlockExpressionNode, CallExpressionNode, ConstructorExpressionNode,
@@ -342,13 +342,9 @@ impl Visit for OperatorExpressionNode {
 }
 
 impl Codegen for OperatorExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let ResolvedOperator(node) = ctx
-            .db
-            .get::<ResolvedOperator>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
-
-        ctx.write(&node)
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let ResolvedOperator(operator_node) = ctx.get::<ResolvedOperator>(node)?;
+        ctx.codegen(&operator_node)
     }
 }
 

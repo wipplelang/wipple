@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
     nodes::{parse_named_type_parameter, parse_type, visit_constraint},
     syntax::{ParseError, Parser, TokenKind},
@@ -46,7 +46,7 @@ impl Visit for DefaultConstraintNode {
 }
 
 impl Codegen for DefaultConstraintNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        Err(ctx.error())
+    fn codegen(&self, _node: &NodeRef, _ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        None
     }
 }

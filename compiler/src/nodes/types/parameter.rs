@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
     nodes::{parse_type, visit_type},
     syntax::{ParseError, Parser, TokenKind, parse_type_parameter_name},
@@ -150,7 +150,7 @@ impl Visit for TypeParameterNode {
 }
 
 impl Codegen for TypeParameterNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        Err(ctx.error())
+    fn codegen(&self, _node: &NodeRef, _ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        None
     }
 }

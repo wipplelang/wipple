@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Fact, Node, NodeRef, Render},
     nodes::visit_expression,
     syntax::{ParseError, Parser, parse_variable_name},
@@ -78,22 +78,18 @@ impl Visit for VariableExpressionNode {
 }
 
 impl Codegen for VariableExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let resolution = ctx
-            .db
-            .get::<ResolvedVariable>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let resolution = ctx.get::<ResolvedVariable>(node)?;
 
         match resolution {
-            ResolvedVariable::Variable(node) => ctx.write_node(&node),
-            ResolvedVariable::Constant(node) => {
-                let bounds = ctx.db.get::<Bounds>(ctx.current_node()).unwrap_or_default();
-
-                codegen_constant(ctx, &node, bounds, |ctx| ctx.write_node(&node))?;
+            ResolvedVariable::Variable(resolved) => {
+                ir::Expression::Identifier(resolved).at(node, ctx)
+            }
+            ResolvedVariable::Constant(definition) => {
+                let bounds = ctx.get::<Bounds>(node).unwrap_or_default();
+                codegen_constant(ctx, node, &definition, bounds)
             }
         }
-
-        Ok(())
     }
 
     fn identifier(&self) -> Option<String> {
@@ -103,47 +99,53 @@ impl Codegen for VariableExpressionNode {
 
 pub fn codegen_constant(
     ctx: &mut CodegenCtx<'_>,
-    node: &NodeRef,
+    source: &NodeRef,
+    definition: &NodeRef,
     bounds: Bounds,
-    write_node: impl FnOnce(&mut CodegenCtx<'_>),
-) -> Result<(), CodegenError> {
-    ctx.mark_reachable(node);
+) -> Option<ir::SpannedExpression> {
+    ctx.mark_reachable(source, definition);
 
-    ctx.write_string("await ");
-    write_node(ctx);
-    ctx.write_string("({ ");
-    for (bound_node, item) in bounds.0 {
-        let instance = item.instance.as_ref().ok_or_else(|| ctx.error())?;
+    let bounds = bounds
+        .0
+        .iter()
+        .map(|(bound_node, item)| {
+            let instance = item.instance.as_ref()?;
 
-        ctx.write_node(&bound_node);
-        ctx.write_string(": async () => ");
-        codegen_instance(ctx, instance)?;
+            Some((
+                format!("_{}", bound_node.id()),
+                ir::Expression::Function(
+                    Vec::new(),
+                    Box::new(
+                        ir::Expression::Return(Some(Box::new(codegen_instance(
+                            ctx, source, instance,
+                        )?)))
+                        .at(source, ctx)?,
+                    ),
+                )
+                .at(source, ctx)?,
+            ))
+        })
+        .collect::<Option<Vec<_>>>()?;
 
-        ctx.write_string(", ");
-    }
-
-    ctx.write_string(" })");
-
-    Ok(())
+    ir::Expression::Call(
+        Box::new(ir::Expression::Identifier(definition.clone()).at(source, ctx)?),
+        vec![ir::Expression::Structure(bounds).at(source, ctx)?],
+    )
+    .at(source, ctx)
 }
 
 pub fn codegen_instance(
     ctx: &mut CodegenCtx<'_>,
+    source: &NodeRef,
     instance: &BoundsItemInstance,
-) -> Result<(), CodegenError> {
+) -> Option<ir::SpannedExpression> {
     if instance.from_bound {
-        ctx.write_string("await __wipple_bounds.");
-        ctx.write_node(&instance.instance_node);
-        ctx.write_string("()");
-        Ok(())
+        ir::Expression::Bound(instance.instance_node.clone()).at(source, ctx)
     } else {
         let bounds = ctx
-            .db
             .get::<Bounds>(&instance.resolved_node)
             .unwrap_or_default();
 
-        codegen_constant(ctx, &instance.instance_node, bounds, |ctx| {
-            ctx.write_node(&instance.instance_node)
-        })
+        codegen_constant(ctx, source, &instance.instance_node, bounds)
     }
 }

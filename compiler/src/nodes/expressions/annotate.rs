@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
     nodes::{parse_operator_expression, parse_type_element, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
@@ -46,7 +46,7 @@ impl Visit for AnnotateExpressionNode {
 }
 
 impl Codegen for AnnotateExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        ctx.write(&self.expression)
+    fn codegen(&self, _node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        ctx.codegen(&self.expression)
     }
 }

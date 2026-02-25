@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
     nodes::{InheritTemporaries, parse_pattern_element, parse_type_element, visit_pattern},
     syntax::{ParseError, Parser, TokenKind},
@@ -43,8 +43,7 @@ impl Visit for AnnotatePatternNode {
 }
 
 impl Codegen for AnnotatePatternNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        ctx.write(&self.pattern)?;
-        Ok(())
+    fn codegen(&self, _node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        ctx.codegen(&self.pattern)
     }
 }

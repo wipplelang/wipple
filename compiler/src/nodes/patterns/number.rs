@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{HiddenNode, Node, NodeRef},
     nodes::{Matching, NamedTypeNode, visit_pattern},
     syntax::{ParseError, Parser, TokenKind},
@@ -39,15 +39,13 @@ impl Visit for NumberPatternNode {
 }
 
 impl Codegen for NumberPatternNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let Matching(matching) = ctx.db.get(ctx.current_node()).ok_or_else(|| ctx.error())?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let Matching(matching) = ctx.get(node)?;
 
-        ctx.write_string(" && (");
-        ctx.write_node(&matching);
-        ctx.write_string(" === ");
-        ctx.write_string(&self.value);
-        ctx.write_string(")");
-
-        Ok(())
+        ir::Expression::EqualToNumber(
+            Box::new(ir::Expression::Identifier(matching).at(node, ctx)?),
+            self.value.clone(),
+        )
+        .at(node, ctx)
     }
 }

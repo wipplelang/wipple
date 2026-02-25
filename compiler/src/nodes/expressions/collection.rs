@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{
         CallExpressionNode, ConstructorExpressionNode, parse_expression_element, visit_expression,
@@ -105,12 +105,8 @@ impl Visit for CollectionExpressionNode {
 }
 
 impl Codegen for CollectionExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let ResolvedCollection(collection_node) = ctx
-            .db
-            .get::<ResolvedCollection>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
-
-        ctx.write(&collection_node)
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let ResolvedCollection(collection_node) = ctx.get::<ResolvedCollection>(node)?;
+        ctx.codegen(&collection_node)
     }
 }

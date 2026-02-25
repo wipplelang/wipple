@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
     nodes::{ExpressionStatementNode, parse_comments, parse_statements, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
@@ -53,35 +53,40 @@ impl Visit for BlockExpressionNode {
 }
 
 impl Codegen for BlockExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        ctx.write_string("(async () => {");
-        ctx.write_line();
-
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
         let should_append_unit = self
             .statements
             .last()
             .and_then(|statement| statement.downcast_ref::<ExpressionStatementNode>())
             .is_none();
 
+        let mut body = Vec::new();
         for (index, statement) in self.statements.iter().enumerate() {
-            ctx.write_trace(statement);
+            body.push(ir::Expression::Trace.at(statement, ctx)?);
 
             if !should_append_unit && index + 1 == self.statements.len() {
-                ctx.write_string("return ");
+                body.push(
+                    ir::Expression::Return(Some(Box::new(ctx.codegen(statement)?)))
+                        .at(statement, ctx)?,
+                );
+            } else {
+                body.push(ctx.codegen(statement)?);
             }
-
-            ctx.write(statement)?;
-            ctx.write_string(";");
-            ctx.write_line();
         }
 
         if should_append_unit {
-            ctx.write_string("return [];");
-            ctx.write_line();
+            body.push(
+                ir::Expression::Return(Some(Box::new(
+                    ir::Expression::List(Vec::new()).at(node, ctx)?,
+                )))
+                .at(node, ctx)?,
+            );
         }
 
-        ctx.write_string("})");
-
-        Ok(())
+        ir::Expression::Function(
+            Vec::new(),
+            Box::new(ir::Expression::Sequence(body).at(node, ctx)?),
+        )
+        .at(node, ctx)
     }
 }

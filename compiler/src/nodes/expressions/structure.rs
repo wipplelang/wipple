@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, Node, NodeRef, Render},
     nodes::{parse_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind, parse_type_name, parse_variable_name},
@@ -137,16 +137,12 @@ impl Visit for StructureExpressionNode {
 }
 
 impl Codegen for StructureExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        ctx.write_string("{");
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let mut fields = Vec::new();
         for field in &self.fields {
-            ctx.write_string(serde_json::to_string(&field.name).unwrap());
-            ctx.write_string(": ");
-            ctx.write(&field.value)?;
-            ctx.write_string(", ");
+            fields.push((field.name.clone(), ctx.codegen(&field.value)?));
         }
-        ctx.write_string("}");
 
-        Ok(())
+        ir::Expression::Structure(fields).at(node, ctx)
     }
 }

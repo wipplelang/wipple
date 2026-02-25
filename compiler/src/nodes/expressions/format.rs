@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{ConstructorExpressionNode, NamedTypeNode, parse_atomic_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
@@ -140,30 +140,23 @@ impl Visit for FormatExpressionNode {
 }
 
 impl Codegen for FormatExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let FormatSegments { segments, trailing } = ctx
-            .db
-            .get::<FormatSegments>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let FormatSegments { segments, trailing } = ctx.get::<FormatSegments>(node)?;
 
-        ctx.write_string("(\"\"");
-
+        let mut expressions = vec![ir::Expression::String(String::new()).at(node, ctx)?];
         for segment in segments {
-            ctx.write_string(" + ");
-            ctx.write_string(serde_json::to_string(&segment.string).unwrap());
-            ctx.write_string(" + ");
-
-            ctx.write_string("await (");
-            ctx.write(&segment.describe_node)?;
-            ctx.write_string(")(");
-            ctx.write(&segment.input)?;
-            ctx.write_string(")");
+            expressions.push(ir::Expression::String(segment.string).at(node, ctx)?);
+            expressions.push(
+                ir::Expression::Call(
+                    Box::new(ctx.codegen(&segment.describe_node)?),
+                    vec![ctx.codegen(&segment.input)?],
+                )
+                .at(&segment.input, ctx)?,
+            );
         }
 
-        ctx.write_string(" + ");
-        ctx.write_string(serde_json::to_string(&trailing).unwrap());
-        ctx.write_string(")");
+        expressions.push(ir::Expression::String(trailing).at(node, ctx)?);
 
-        Ok(())
+        ir::Expression::Concat(expressions).at(node, ctx)
     }
 }

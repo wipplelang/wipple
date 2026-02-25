@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, Node, NodeRef, Render},
     nodes::{parse_attributes, parse_comments, parse_constraints, parse_type},
     syntax::{ParseError, Parser, TokenKind, parse_variable_name},
@@ -120,7 +120,7 @@ impl Visit for ConstantDefinitionNode {
 }
 
 impl Codegen for ConstantDefinitionNode {
-    fn codegen(&self, _codegen: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        Ok(())
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        ir::Expression::NoOp.at(node, ctx)
     }
 }

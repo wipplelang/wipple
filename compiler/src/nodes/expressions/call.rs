@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Fact, Node, NodeRef, Render},
     nodes::{VariableExpressionNode, parse_atomic_expression, visit_expression},
     syntax::{ParseError, Parser},
@@ -88,28 +88,22 @@ impl Visit for CallExpressionNode {
 }
 
 impl Codegen for CallExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let is_unit = ctx.db.contains::<IsUnitCall>(ctx.current_node());
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let is_unit = ctx.contains::<IsUnitCall>(node);
 
         if is_unit {
-            ctx.write_string("await (");
-            ctx.write(&self.inputs[0])?;
-            ctx.write_string(")(");
-            ctx.write(&self.function)?;
-            ctx.write_string(")");
+            ir::Expression::Call(
+                Box::new(ctx.codegen(&self.inputs[0])?),
+                vec![ctx.codegen(&self.function)?],
+            )
+            .at(node, ctx)
         } else {
-            ctx.write_string("await (");
-            ctx.write(&self.function)?;
-            ctx.write_string(")(");
-
+            let mut inputs = Vec::new();
             for input in &self.inputs {
-                ctx.write(input)?;
-                ctx.write_string(", ");
+                inputs.push(ctx.codegen(input)?);
             }
 
-            ctx.write_string(")");
+            ir::Expression::Call(Box::new(ctx.codegen(&self.function)?), inputs).at(node, ctx)
         }
-
-        Ok(())
     }
 }

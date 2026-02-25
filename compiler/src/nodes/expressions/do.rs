@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
     nodes::{parse_atomic_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
@@ -38,11 +38,7 @@ impl Visit for DoExpressionNode {
 }
 
 impl Codegen for DoExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        ctx.write_string("await (");
-        ctx.write(&self.input)?;
-        ctx.write_string(")()");
-
-        Ok(())
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        ir::Expression::Call(Box::new(ctx.codegen(&self.input)?), Vec::new()).at(node, ctx)
     }
 }

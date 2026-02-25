@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, Node, NodeRef, Render, Span},
     visit::{Visit, Visitor},
 };
@@ -53,7 +53,7 @@ impl Visit for ParseErrorNode {
 }
 
 impl Codegen for ParseErrorNode {
-    fn codegen(&self, codegen: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        Err(codegen.error())
+    fn codegen(&self, _node: &NodeRef, _ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        None
     }
 }

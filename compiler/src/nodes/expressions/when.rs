@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{parse_atomic_expression, parse_atomic_pattern, parse_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
@@ -96,16 +96,10 @@ impl Visit for WhenExpressionNode {
 }
 
 impl Codegen for WhenExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let ResolvedWhen { input_temporary } = ctx
-            .db
-            .get::<ResolvedWhen>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let ResolvedWhen { input_temporary } = ctx.get::<ResolvedWhen>(node)?;
 
-        ctx.write_string("await (async (");
-        ctx.write_node(&input_temporary);
-        ctx.write_string(") => {");
-        ctx.write_line();
+        let mut body = Vec::new();
 
         for temporary in self
             .arms
@@ -117,32 +111,29 @@ impl Codegen for WhenExpressionNode {
                 continue;
             }
 
-            ctx.write_string("var ");
-            ctx.write_node(&temporary);
-            ctx.write_string(";");
-            ctx.write_line();
+            body.push(ir::Expression::Declare(temporary).at(node, ctx)?);
         }
 
+        let mut arms = Vec::new();
         for arm in &self.arms {
-            ctx.write_string("if (true");
-            ctx.write(&arm.pattern)?;
-            ctx.write_string(") {");
-            ctx.write_line();
-            ctx.write_string("return ");
-            ctx.write(&arm.value)?;
-            ctx.write_string(";");
-            ctx.write_line();
-            ctx.write_string("}");
-            ctx.write_line();
+            arms.push((
+                ctx.codegen(&arm.pattern)?,
+                Some(Box::new(ctx.codegen(&arm.value)?)),
+            ));
         }
 
-        ctx.write_string("throw new Error(\"unreachable\");");
-        ctx.write_line();
+        body.push(ir::Expression::If(arms, None).at(node, ctx)?);
 
-        ctx.write_string("})(");
-        ctx.write(&self.input)?;
-        ctx.write_string(")");
-
-        Ok(())
+        ir::Expression::Call(
+            Box::new(
+                ir::Expression::Function(
+                    vec![input_temporary],
+                    Box::new(ir::Expression::Sequence(body).at(node, ctx)?),
+                )
+                .at(node, ctx)?,
+            ),
+            vec![ctx.codegen(&self.input)?],
+        )
+        .at(node, ctx)
     }
 }

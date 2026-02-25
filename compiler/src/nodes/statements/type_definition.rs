@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, HiddenNode, Node, NodeRef, Render, Span},
     nodes::{
         parse_atomic_type, parse_attributes, parse_comments, parse_type, parse_type_parameters,
@@ -385,9 +385,8 @@ impl Visit for TypeDefinitionNode {
 }
 
 impl Codegen for TypeDefinitionNode {
-    fn codegen(&self, _codegen: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        // Handled specially in `Codegen`
-        Ok(())
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        ir::Expression::NoOp.at(node, ctx)
     }
 }
 
@@ -404,39 +403,35 @@ impl Visit for VariantNode {
 }
 
 impl Codegen for VariantNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
         let element_temporaries = self
             .variant
             .elements
             .iter()
             .map(|element| {
-                let span = ctx.db.span(element);
-                ctx.db.node(span, HiddenNode(None))
+                let span = ctx.span(element);
+                ctx.node(span, HiddenNode(None))
             })
             .collect::<Vec<_>>();
 
         if element_temporaries.is_empty() {
-            ctx.write_string(format!("__wipple_variant({}, [])", self.index));
+            ir::Expression::Variant(self.index.to_string(), Vec::new()).at(node, ctx)
         } else {
-            ctx.write_string("(async (");
-            for temporary in &element_temporaries {
-                ctx.write_node(temporary);
-                ctx.write_string(", ");
+            let mut elements = Vec::new();
+            for temporary in element_temporaries.clone() {
+                elements.push(ir::Expression::Identifier(temporary).at(node, ctx)?);
             }
-            ctx.write_string(") => {");
-            ctx.write_line();
 
-            ctx.write_string(format!("return __wipple_variant({}, [", self.index));
-            for temporary in &element_temporaries {
-                ctx.write_node(temporary);
-                ctx.write_string(", ");
-            }
-            ctx.write_string("]);");
-            ctx.write_line();
-
-            ctx.write_string("})");
+            ir::Expression::Function(
+                element_temporaries,
+                Box::new(
+                    ir::Expression::Return(Some(Box::new(
+                        ir::Expression::Variant(self.index.to_string(), elements).at(node, ctx)?,
+                    )))
+                    .at(node, ctx)?,
+                ),
+            )
+            .at(node, ctx)
         }
-
-        Ok(())
     }
 }

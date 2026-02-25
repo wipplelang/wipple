@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, Node, NodeRef, Render},
     nodes::{HasTemporaries, Matching, visit_pattern},
     syntax::{ParseError, Parser, TokenKind, parse_variable_name},
@@ -63,22 +63,15 @@ impl Visit for SetPatternNode {
 }
 
 impl Codegen for SetPatternNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let Resolved { definitions, .. } = ctx
-            .db
-            .get::<Resolved>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let Resolved { definitions, .. } = ctx.get::<Resolved>(node)?;
+        let matching_variable = definitions.into_iter().next()?;
+        let Matching(matching) = ctx.get(node)?;
 
-        let matching_variable = definitions.into_iter().next().ok_or_else(|| ctx.error())?;
-
-        let Matching(matching) = ctx.db.get(ctx.current_node()).ok_or_else(|| ctx.error())?;
-
-        ctx.write_string(" && ((");
-        ctx.write_node(&matching_variable);
-        ctx.write_string(" = ");
-        ctx.write_node(&matching);
-        ctx.write_string(") || true)");
-
-        Ok(())
+        ir::Expression::AssignTo(
+            Box::new(ir::Expression::Identifier(matching).at(node, ctx)?),
+            matching_variable,
+        )
+        .at(node, ctx)
     }
 }

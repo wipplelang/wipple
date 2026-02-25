@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, Node, NodeRef, Render},
     nodes::{InheritTemporaries, parse_pattern_element, visit_pattern},
     syntax::{ParseError, Parser, TokenKind},
@@ -70,17 +70,12 @@ impl Visit for OrPatternNode {
 }
 
 impl Codegen for OrPatternNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        ctx.write_string(" && (false");
-
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let mut patterns = Vec::new();
         for pattern in &self.patterns {
-            ctx.write_string(" || (true");
-            ctx.write(pattern)?;
-            ctx.write_string(")");
+            patterns.push(ctx.codegen(pattern)?);
         }
 
-        ctx.write_string(")");
-
-        Ok(())
+        ir::Expression::Or(patterns).at(node, ctx)
     }
 }

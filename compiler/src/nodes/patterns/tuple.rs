@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
     nodes::{HasTemporaries, InheritTemporaries, Matching, parse_pattern_element, visit_pattern},
     syntax::{ParseError, Parser, TokenKind},
@@ -69,28 +69,30 @@ impl Visit for TuplePatternNode {
 }
 
 impl Codegen for TuplePatternNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let HasTemporaries(element_temporaries) = ctx
-            .db
-            .get::<HasTemporaries>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let HasTemporaries(element_temporaries) = ctx.get::<HasTemporaries>(node)?;
+        let Matching(matching) = ctx.get(node)?;
 
-        let Matching(matching) = ctx.db.get(ctx.current_node()).ok_or_else(|| ctx.error())?;
-
+        let mut expressions = Vec::new();
         for (index, (element, temporary)) in
             self.elements.iter().zip(element_temporaries).enumerate()
         {
-            ctx.write_string(" && ((");
-            ctx.write_node(&temporary);
-            ctx.write_string(" = ");
-            ctx.write_node(&matching);
-            ctx.write_string("[");
-            ctx.write_string(index.to_string());
-            ctx.write_string("]) || true)");
-
-            ctx.write(element)?;
+            expressions.push(
+                ir::Expression::AssignTo(
+                    Box::new(
+                        ir::Expression::Index(
+                            Box::new(ir::Expression::Identifier(matching.clone()).at(node, ctx)?),
+                            index,
+                        )
+                        .at(node, ctx)?,
+                    ),
+                    temporary,
+                )
+                .at(node, ctx)?,
+            );
+            expressions.push(ctx.codegen(element)?);
         }
 
-        Ok(())
+        ir::Expression::And(expressions).at(node, ctx)
     }
 }

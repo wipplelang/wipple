@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Fact, Node, NodeRef, Render},
     nodes::{codegen_instance, visit_expression},
     syntax::{ParseError, Parser, parse_constructor_name},
@@ -94,35 +94,22 @@ impl Visit for ConstructorExpressionNode {
 }
 
 impl Codegen for ConstructorExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let constructor = ctx
-            .db
-            .get::<ResolvedConstructor>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let constructor = ctx.get::<ResolvedConstructor>(node)?;
 
         match constructor {
-            ResolvedConstructor::Marker => {
-                ctx.write_string("null");
-                Ok(())
-            }
+            ResolvedConstructor::Marker => ir::Expression::Marker.at(node, ctx),
             ResolvedConstructor::Trait => {
-                let bounds = ctx.db.get::<Bounds>(ctx.current_node()).unwrap_or_default();
+                let bounds = ctx.get::<Bounds>(node).unwrap_or_default();
 
                 let instance = bounds
                     .0
-                    .get(ctx.current_node())
-                    .and_then(|bound| bound.instance.as_ref())
-                    .ok_or_else(|| ctx.error())?
-                    .clone();
+                    .get(node)
+                    .and_then(|bound| bound.instance.as_ref())?;
 
-                codegen_instance(ctx, &instance)?;
-
-                Ok(())
+                codegen_instance(ctx, node, instance)
             }
-            ResolvedConstructor::Variant(node) => {
-                ctx.write(&node)?;
-                Ok(())
-            }
+            ResolvedConstructor::Variant(node) => ctx.codegen(&node),
         }
     }
 }

@@ -220,28 +220,31 @@ fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
 
     let index = AtomicUsize::new(0);
     let num_layers = layers.len();
-    layers
-        .into_par_iter()
-        .map(|(mut db, layer)| {
-            let index = index.fetch_add(1, atomic::Ordering::SeqCst);
-            let progress = Some((index, num_layers));
+    let run = |(mut db, layer)| {
+        let index = index.fetch_add(1, atomic::Ordering::SeqCst);
+        let progress = Some((index, num_layers));
 
-            let (feedback_count, mut output) =
-                compile_layer("", options, &mut db, &layer, false, progress);
+        let (feedback_count, mut output) =
+            compile_layer("", options, &mut db, &layer, false, progress);
 
-            if feedback_count == 0 {
-                let script = codegen(&mut db, &layer.files, &lib_files, CODEGEN_OPTIONS)?;
-                let buf = run(None, script, |cmd| cmd.stdout(process::Stdio::piped()))?;
-                writeln!(&mut output, "Output:").unwrap();
-                output.push_str(str::from_utf8(&buf).unwrap());
-            }
+        if feedback_count == 0 {
+            let script = codegen(&mut db, &layer.files, &lib_files, CODEGEN_OPTIONS)?;
+            let buf = run(None, script, |cmd| cmd.stdout(process::Stdio::piped()))?;
+            writeln!(&mut output, "Output:").unwrap();
+            output.push_str(str::from_utf8(&buf).unwrap());
+        }
 
-            Ok(serde_json::json!({
-                "file": layer.name,
-                "output": output,
-            }))
-        })
-        .collect()
+        Ok(serde_json::json!({
+            "file": layer.name,
+            "output": output,
+        }))
+    };
+
+    if env::var("WIPPLE_TEST_SEQUENTIAL").is_ok() {
+        layers.into_iter().map(run).collect()
+    } else {
+        layers.into_par_iter().map(run).collect()
+    }
 }
 
 fn setup(options: &CompileOptions, time: bool) -> anyhow::Result<(Db, Vec<NodeRef>)> {

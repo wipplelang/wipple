@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Fact, Node, NodeRef, Render},
     nodes::{
         ConstructorExpressionNode, parse_expression_element, parse_type_element, visit_expression,
@@ -64,18 +64,13 @@ impl Visit for AsExpressionNode {
 }
 
 impl Codegen for AsExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let AsFunction(as_function) = ctx
-            .db
-            .get::<AsFunction>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let AsFunction(as_function) = ctx.get::<AsFunction>(node)?;
 
-        ctx.write_string("await (");
-        ctx.write(&as_function)?;
-        ctx.write_string(")(");
-        ctx.write(&self.left)?;
-        ctx.write_string(")");
-
-        Ok(())
+        ir::Expression::Call(
+            Box::new(ctx.codegen(&as_function)?),
+            vec![ctx.codegen(&self.left)?],
+        )
+        .at(node, ctx)
     }
 }

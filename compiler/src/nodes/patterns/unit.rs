@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
     nodes::visit_pattern,
     syntax::{ParseError, Parser, TokenKind},
@@ -28,8 +28,7 @@ impl Visit for UnitPatternNode {
 }
 
 impl Codegen for UnitPatternNode {
-    fn codegen(&self, _codegen: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        // No code needed
-        Ok(())
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        ir::Expression::And(Vec::new()).at(node, ctx)
     }
 }

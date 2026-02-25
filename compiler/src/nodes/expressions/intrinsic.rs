@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
     nodes::{parse_atomic_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
@@ -45,20 +45,14 @@ impl Visit for IntrinsicExpressionNode {
 }
 
 impl Codegen for IntrinsicExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let name = self.name.replace('-', "_");
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        ctx.mark_reachable_intrinsic(&self.name);
 
-        ctx.mark_reachable_intrinsic(&name);
-
-        ctx.write_string(format!("await __wipple_runtime_{}(", name));
-
+        let mut inputs = Vec::new();
         for input in &self.inputs {
-            ctx.write(input)?;
-            ctx.write_string(", ");
+            inputs.push(ctx.codegen(input)?);
         }
 
-        ctx.write_string(")");
-
-        Ok(())
+        ir::Expression::Runtime(self.name.clone(), inputs).at(node, ctx)
     }
 }

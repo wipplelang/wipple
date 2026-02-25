@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{parse_atomic_pattern, parse_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
@@ -86,42 +86,31 @@ impl Visit for FunctionExpressionNode {
 }
 
 impl Codegen for FunctionExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        let InputTemporaries(input_temporaries) = ctx
-            .db
-            .get::<InputTemporaries>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let InputTemporaries(mut inputs) = ctx.get::<InputTemporaries>(node)?;
 
-        ctx.write_string("(async (");
-        for temporary in &input_temporaries {
-            ctx.write_node(temporary);
-            ctx.write_string(", ");
-        }
-        ctx.write_string(") => {");
-        ctx.write_line();
+        inputs.extend(
+            self.inputs
+                .iter()
+                .flat_map(|pattern| ctx.db.temporaries(pattern)),
+        );
 
+        let mut body = Vec::new();
         for pattern in &self.inputs {
-            for temporary in ctx.db.temporaries(pattern) {
-                ctx.write_string("var ");
-                ctx.write_node(&temporary);
-                ctx.write_string(";");
-                ctx.write_line();
-            }
+            body.push(
+                ir::Expression::If(vec![(ctx.codegen(pattern)?, None)], None).at(pattern, ctx)?,
+            );
         }
 
-        for pattern in &self.inputs {
-            ctx.write_string("if (true");
-            ctx.write(pattern)?;
-            ctx.write_string(") {} else { throw new Error(\"unreachable\"); }");
-            ctx.write_line();
-        }
+        body.push(
+            ir::Expression::Return(Some(Box::new(ctx.codegen(&self.output)?)))
+                .at(&self.output, ctx)?,
+        );
 
-        ctx.write_string("return ");
-        ctx.write(&self.output)?;
-        ctx.write_string(";");
-        ctx.write_line();
-        ctx.write_string("})");
-
-        Ok(())
+        ir::Expression::Function(
+            inputs,
+            Box::new(ir::Expression::Sequence(body).at(node, ctx)?),
+        )
+        .at(node, ctx)
     }
 }

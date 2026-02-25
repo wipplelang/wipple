@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
     nodes::{
         parse_atomic_type, parse_attributes, parse_comments, parse_constraints,
@@ -105,7 +105,7 @@ impl Visit for TraitDefinitionNode {
 }
 
 impl Codegen for TraitDefinitionNode {
-    fn codegen(&self, _codegen: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        Ok(())
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        ir::Expression::NoOp.at(node, ctx)
     }
 }

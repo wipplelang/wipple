@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{
         ConstructorExpressionNode, ResolvedWhen, WhenArm, WhenExpressionNode, WildcardPatternNode,
@@ -93,21 +93,18 @@ impl Visit for IsExpressionNode {
 }
 
 impl Codegen for IsExpressionNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
         let ResolvedIs {
             input_temporary,
             true_variant,
             false_variant,
-        } = ctx
-            .db
-            .get::<ResolvedIs>(ctx.current_node())
-            .ok_or_else(|| ctx.error())?;
+        } = ctx.get::<ResolvedIs>(node)?;
 
-        let span = ctx.db.span(ctx.current_node());
+        let span = ctx.span(node);
 
-        let wildcard_node = ctx.db.node(span.clone(), WildcardPatternNode);
+        let wildcard_node = ctx.node(span.clone(), WildcardPatternNode);
 
-        let when_expression = ctx.db.node(
+        let when_expression = ctx.node(
             span,
             WhenExpressionNode {
                 input: self.left.clone(),
@@ -124,11 +121,8 @@ impl Codegen for IsExpressionNode {
             },
         );
 
-        ctx.db
-            .insert(&when_expression, ResolvedWhen { input_temporary });
+        ctx.insert(&when_expression, ResolvedWhen { input_temporary });
 
-        ctx.write(&when_expression)?;
-
-        Ok(())
+        ctx.codegen(&when_expression)
     }
 }

@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{VariablePatternNode, parse_comments, parse_expression, parse_pattern},
     syntax::{ParseError, Parser, TokenKind},
@@ -114,41 +114,32 @@ impl Visit for AssignmentNode {
 }
 
 impl Codegen for AssignmentNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
         let Some(ResolvedVariableAssignment {
             temporary: assignment_temporary,
-        }) = ctx.db.get::<ResolvedVariableAssignment>(ctx.current_node())
+        }) = ctx.get::<ResolvedVariableAssignment>(node)
         else {
-            return Ok(()); // assigned to constant
+            return ir::Expression::NoOp.at(node, ctx); // assigned to constant
         };
 
-        ctx.write_string("var ");
-        ctx.write_node(&assignment_temporary);
-        ctx.write_string(";");
-        ctx.write_line();
+        let mut statements = Vec::new();
+
+        statements.push(ir::Expression::Declare(assignment_temporary.clone()).at(node, ctx)?);
 
         for temporary in ctx.db.temporaries(&self.pattern) {
             if temporary == assignment_temporary {
                 continue;
             }
 
-            ctx.write_string("var ");
-            ctx.write_node(&temporary);
-            ctx.write_string(";");
-            ctx.write_line();
+            statements.push(ir::Expression::Declare(temporary.clone()).at(node, ctx)?);
         }
 
-        ctx.write_node(&assignment_temporary);
-        ctx.write_string(" = ");
-        ctx.write(&self.value)?;
-        ctx.write_string(";");
-        ctx.write_line();
+        statements.extend([
+            ir::Expression::AssignTo(Box::new(ctx.codegen(&self.value)?), assignment_temporary)
+                .at(node, ctx)?,
+            ir::Expression::If(vec![(ctx.codegen(&self.pattern)?, None)], None).at(node, ctx)?,
+        ]);
 
-        ctx.write_string("if (true");
-        ctx.write(&self.pattern)?;
-        ctx.write_string(") {} else { throw new Error(\"unreachable\"); }");
-        ctx.write_line();
-
-        Ok(())
+        ir::Expression::Sequence(statements).at(node, ctx)
     }
 }

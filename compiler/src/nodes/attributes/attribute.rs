@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, CodegenError},
+    codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, Node, NodeRef, Render},
     nodes::{StringAttributeValueNode, parse_attribute_value},
     syntax::{ParseError, Parser, TokenKind, parse_attribute_name},
@@ -156,7 +156,7 @@ impl Visit for AttributeNode {
 }
 
 impl Codegen for AttributeNode {
-    fn codegen(&self, ctx: &mut CodegenCtx<'_>) -> Result<(), CodegenError> {
-        Err(ctx.error())
+    fn codegen(&self, _node: &NodeRef, _ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        None
     }
 }
