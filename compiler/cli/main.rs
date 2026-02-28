@@ -22,7 +22,7 @@ use wipple::{
     syntax::format,
 };
 
-const CODEGEN_OPTIONS: codegen::Options<'static> = codegen::Options {
+const CODEGEN_OPTIONS: codegen::js::Options<'static> = codegen::js::Options {
     core: concat!(
         include_str!("../runtime/node.js"),
         include_str!("../runtime/core.js"),
@@ -145,7 +145,10 @@ fn compile(options: &CompileOptions) -> anyhow::Result<String> {
         ));
     }
 
-    let script = codegen(&mut db, &files, &lib_files, CODEGEN_OPTIONS)?;
+    let program = codegen(&mut db, &files, &lib_files)
+        .ok_or_else(|| anyhow::format_err!("codegen failed"))?;
+
+    let script = codegen::js::write_to_string(&program, CODEGEN_OPTIONS);
 
     if let Some(path) = &options.output {
         fs::write(path, &script)?;
@@ -228,7 +231,11 @@ fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
             compile_layer("", options, &mut db, &layer, false, progress);
 
         if feedback_count == 0 {
-            let script = codegen(&mut db, &layer.files, &lib_files, CODEGEN_OPTIONS)?;
+            let program = codegen(&mut db, &layer.files, &lib_files)
+                .ok_or_else(|| anyhow::format_err!("codegen failed"))?;
+
+            let script = codegen::js::write_to_string(&program, CODEGEN_OPTIONS);
+
             let buf = run(None, script, |cmd| cmd.stdout(process::Stdio::piped()))?;
             writeln!(&mut output, "Output:").unwrap();
             output.push_str(str::from_utf8(&buf).unwrap());

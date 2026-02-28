@@ -16,7 +16,7 @@ use wipple::{
 
 const INPUT_PATH: &str = "input";
 
-const CODEGEN_OPTIONS: codegen::Options<'static> = codegen::Options {
+const CODEGEN_OPTIONS: codegen::js::Options<'static> = codegen::js::Options {
     core: include_str!("../runtime/core.js"),
     runtime: include_str!("../runtime/runtime.js"),
     module: true,
@@ -53,7 +53,10 @@ pub async fn handle(request: Request) -> anyhow::Result<serde_json::Value> {
         }));
     }
 
-    let script = codegen(&mut db, &files, &[], CODEGEN_OPTIONS)?;
+    let program =
+        codegen(&mut db, &files, &[]).ok_or_else(|| anyhow::format_err!("codegen failed"))?;
+
+    let script = codegen::js::write_to_string(&program, CODEGEN_OPTIONS);
 
     Ok(json!({ "executable": script }))
 }

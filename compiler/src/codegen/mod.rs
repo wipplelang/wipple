@@ -1,5 +1,5 @@
 pub mod ir;
-mod js;
+pub mod js;
 
 use crate::{
     database::{Db, NodeRef},
@@ -19,18 +19,8 @@ pub trait Codegen {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Options<'a> {
-    pub core: &'a str,
-    pub runtime: &'a str,
-    pub module: bool,
-    pub sourcemap: bool,
-    pub trace: &'a [&'a str],
-}
-
 pub struct CodegenCtx<'a> {
     pub db: &'a mut Db,
-    options: Options<'a>,
     reachable: BTreeSet<NodeRef>,
     reachable_intrinsics: HashSet<String>,
 }
@@ -50,10 +40,9 @@ impl DerefMut for CodegenCtx<'_> {
 }
 
 impl<'a> CodegenCtx<'a> {
-    fn new(db: &'a mut Db, options: Options<'a>) -> Self {
+    fn new(db: &'a mut Db) -> Self {
         CodegenCtx {
             db,
-            options,
             reachable: Default::default(),
             reachable_intrinsics: Default::default(),
         }
@@ -82,21 +71,13 @@ impl<'a> CodegenCtx<'a> {
     }
 }
 
-pub fn codegen(
-    db: &mut Db,
-    files: &[NodeRef],
-    lib_files: &[NodeRef],
-    options: Options<'_>,
-) -> Result<String, anyhow::Error> {
-    let mut ctx = CodegenCtx::new(db, options);
+pub fn codegen(db: &mut Db, files: &[NodeRef], lib_files: &[NodeRef]) -> Option<ir::Program> {
+    let mut ctx = CodegenCtx::new(db);
 
     let mut program = ir::Program::default();
 
     for file in files.iter().chain(lib_files) {
-        program.files.push(
-            ctx.codegen(file)
-                .ok_or_else(|| anyhow::format_err!("codegen failed"))?,
-        );
+        program.files.push(ctx.codegen(file)?);
     }
 
     let definitions = ctx
@@ -125,11 +106,7 @@ pub fn codegen(
                 continue;
             };
 
-            program.definitions.insert(
-                node.clone(),
-                ctx.codegen(body)
-                    .ok_or_else(|| anyhow::format_err!("codegen failed"))?,
-            );
+            program.definitions.insert(node.clone(), ctx.codegen(body)?);
 
             progress = true;
         }
@@ -141,9 +118,5 @@ pub fn codegen(
 
     program.intrinsics = ctx.reachable_intrinsics;
 
-    let mut output = String::new();
-    let mut js = js::JsBackend::new(&ctx.options, &mut output);
-    js.write_program(&program)?;
-
-    Ok(output)
+    Some(program)
 }

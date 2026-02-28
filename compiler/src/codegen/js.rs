@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Options, ir},
+    codegen::ir,
     database::{NodeRef, Span},
 };
 use parcel_sourcemap::SourceMap;
@@ -8,55 +8,76 @@ use std::{
     fmt::{self, Write as _},
 };
 
-pub struct JsBackend<'a> {
-    options: &'a Options<'a>,
-    writer: &'a mut (dyn fmt::Write + 'a),
+#[derive(Debug, Clone)]
+pub struct Options<'a> {
+    pub core: &'a str,
+    pub runtime: &'a str,
+    pub module: bool,
+    pub sourcemap: bool,
+    pub trace: &'a [&'a str],
+}
+
+pub fn write_to_string(program: &ir::Program, options: Options<'_>) -> String {
+    let mut script = String::new();
+    Backend::new(&mut script, options).write(program).unwrap();
+    script
+}
+
+pub struct Backend<'a> {
+    writer: Writer<'a>,
+    options: Options<'a>,
+}
+
+struct Writer<'a> {
+    inner: &'a mut (dyn fmt::Write + 'a),
     line: usize,
     column: usize,
     sourcemap: Option<SourceMap>,
 }
 
-impl<'a> JsBackend<'a> {
-    pub fn new(options: &'a Options<'a>, w: &'a mut (dyn fmt::Write + 'a)) -> Self {
-        JsBackend {
+impl<'a> Backend<'a> {
+    pub fn new(w: &'a mut (dyn fmt::Write + 'a), options: Options<'a>) -> Self {
+        Backend {
+            writer: Writer {
+                inner: w,
+                sourcemap: options.sourcemap.then(|| SourceMap::new("")),
+                line: 0,
+                column: 0,
+            },
             options,
-            writer: w,
-            sourcemap: options.sourcemap.then(|| SourceMap::new("")),
-            line: 0,
-            column: 0,
         }
     }
 
-    pub fn write_program(&mut self, program: &ir::Program) -> fmt::Result {
+    pub fn write(&mut self, program: &ir::Program) -> fmt::Result {
         if self.options.module {
-            writeln!(self, "let __wipple_env, __wipple_proxy;")?;
-            writeln!(self, "async function __wipple_main(env, proxy) {{")?;
-            writeln!(self, "__wipple_env = env;")?;
-            writeln!(self, "__wipple_proxy = proxy;")?;
+            writeln!(self.writer, "let __wipple_env, __wipple_proxy;")?;
+            writeln!(self.writer, "async function __wipple_main(env, proxy) {{")?;
+            writeln!(self.writer, "__wipple_env = env;")?;
+            writeln!(self.writer, "__wipple_proxy = proxy;")?;
         } else {
-            writeln!(self, "async function __wipple_main() {{")?;
+            writeln!(self.writer, "async function __wipple_main() {{")?;
         }
 
         for expression in &program.files {
             self.write_expression(expression)?;
         }
 
-        writeln!(self, "}};")?;
+        writeln!(self.writer, "}};")?;
 
         for (node, body) in &program.definitions {
             self.write_definition(node, body)?;
         }
 
-        write!(self, "{}", self.options.core)?;
+        write!(self.writer, "{}", self.options.core)?;
         self.write_intrinsics(&program.intrinsics)?;
 
         if self.options.module {
-            writeln!(self, "export default __wipple_main;")?;
+            writeln!(self.writer, "export default __wipple_main;")?;
         } else {
-            writeln!(self, "__wipple_main();")?;
+            writeln!(self.writer, "__wipple_main();")?;
         }
 
-        if let Some(sourcemap) = &mut self.sourcemap {
+        if let Some(sourcemap) = &mut self.writer.sourcemap {
             for file in &program.files {
                 let Some(span) = file.span.as_ref() else {
                     continue;
@@ -89,7 +110,7 @@ impl<'a> JsBackend<'a> {
                 base64::Engine::encode(&base64::prelude::BASE64_STANDARD, json.to_string());
 
             write!(
-                self,
+                self.writer,
                 "\n//# sourceMappingURL=data:application/json;base64,{base64}"
             )?;
         }
@@ -105,7 +126,7 @@ impl<'a> JsBackend<'a> {
 
         if !should_map
             && let Some(span) = &expression.span
-            && let Some(sourcemap) = &mut self.sourcemap
+            && let Some(sourcemap) = &mut self.writer.sourcemap
         {
             let source = sourcemap
                 .get_sources()
@@ -120,8 +141,8 @@ impl<'a> JsBackend<'a> {
             });
 
             sourcemap.add_mapping(
-                self.line as u32,
-                self.column as u32,
+                self.writer.line as u32,
+                self.writer.column as u32,
                 Some(parcel_sourcemap::OriginalLocation {
                     original_line: span.start.line as u32 - 1,
                     original_column: span.start.column as u32 - 1,
@@ -133,154 +154,158 @@ impl<'a> JsBackend<'a> {
 
         match &expression.inner {
             ir::Expression::And(expressions) => {
-                write!(self, "(true")?;
+                write!(self.writer, "(true")?;
 
                 for expression in expressions {
-                    write!(self, " && ")?;
+                    write!(self.writer, " && ")?;
                     self.write_expression(expression)?;
                 }
 
-                write!(self, ")")?;
+                write!(self.writer, ")")?;
             }
             ir::Expression::AssignTo(value, variable) => {
-                write!(self, "((")?;
+                write!(self.writer, "((")?;
                 self.write_node(variable)?;
-                write!(self, " = ")?;
+                write!(self.writer, " = ")?;
                 self.write_expression(value)?;
-                write!(self, ") || true)")?;
+                write!(self.writer, ") || true)")?;
             }
             ir::Expression::Bound(bound) => {
-                write!(self, "await __wipple_bounds.")?;
+                write!(self.writer, "await __wipple_bounds.")?;
                 self.write_node(bound)?;
-                write!(self, "()")?;
+                write!(self.writer, "()")?;
             }
             ir::Expression::Call(function, inputs) => {
-                write!(self, "await (")?;
+                write!(self.writer, "await (")?;
                 self.write_expression(function)?;
-                write!(self, ")(")?;
+                write!(self.writer, ")(")?;
 
                 for input in inputs {
                     self.write_expression(input)?;
-                    write!(self, ", ")?;
+                    write!(self.writer, ", ")?;
                 }
 
-                write!(self, ")")?;
+                write!(self.writer, ")")?;
             }
             ir::Expression::Concat(expressions) => {
-                write!(self, "(\"\"")?;
+                write!(self.writer, "(\"\"")?;
 
                 for expression in expressions {
-                    write!(self, " + ")?;
+                    write!(self.writer, " + ")?;
                     self.write_expression(expression)?;
                 }
 
-                write!(self, ")")?;
+                write!(self.writer, ")")?;
             }
             ir::Expression::If(arms, last) => {
                 for (pattern, value) in arms {
-                    write!(self, "if (")?;
+                    write!(self.writer, "if (")?;
                     self.write_expression(pattern)?;
-                    write!(self, ") {{")?;
+                    write!(self.writer, ") {{")?;
                     if let Some(value) = value {
-                        write!(self, "return ")?;
+                        write!(self.writer, "return ")?;
                         self.write_expression(value)?;
-                        write!(self, ";")?;
+                        write!(self.writer, ";")?;
                     }
-                    write!(self, "}}")?;
+                    write!(self.writer, "}}")?;
                 }
 
-                write!(self, "else {{ ")?;
+                write!(self.writer, "else {{ ")?;
                 if let Some(last) = last {
-                    write!(self, "return ")?;
+                    write!(self.writer, "return ")?;
                     self.write_expression(last)?;
                 } else {
-                    write!(self, "throw new Error(\"unreachable\")")?;
+                    write!(self.writer, "throw new Error(\"unreachable\")")?;
                 }
-                write!(self, "; }}")?;
+                write!(self.writer, "; }}")?;
             }
             ir::Expression::Declare(variable) => {
-                write!(self, "var ")?;
+                write!(self.writer, "var ")?;
                 self.write_node(variable)?;
             }
             ir::Expression::EqualToNumber(value, expected) => {
-                write!(self, "(")?;
+                write!(self.writer, "(")?;
                 self.write_expression(value)?;
-                write!(self, " === {})", expected)?;
+                write!(self.writer, " === {})", expected)?;
             }
             ir::Expression::EqualToString(value, expected) => {
-                write!(self, "(")?;
+                write!(self.writer, "(")?;
                 self.write_expression(value)?;
-                write!(self, " === {})", serde_json::json!(expected))?;
+                write!(self.writer, " === {})", serde_json::json!(expected))?;
             }
             ir::Expression::EqualToVariant(value, expected) => {
-                write!(self, "(")?;
+                write!(self.writer, "(")?;
                 self.write_expression(value)?;
-                write!(self, "[__wipple_variant] === {})", expected)?;
+                write!(self.writer, "[__wipple_variant] === {})", expected)?;
             }
             ir::Expression::Field(value, field) => {
                 self.write_expression(value)?;
-                write!(self, "[{}]", serde_json::json!(field))?;
+                write!(self.writer, "[{}]", serde_json::json!(field))?;
             }
             ir::Expression::Function(inputs, output) => {
-                write!(self, "(async (")?;
+                write!(self.writer, "(async (")?;
                 for input in inputs {
                     self.write_node(input)?;
-                    write!(self, ", ")?;
+                    write!(self.writer, ", ")?;
                 }
-                writeln!(self, ") => {{")?;
+                writeln!(self.writer, ") => {{")?;
                 self.write_expression(output)?;
-                write!(self, "}})")?;
+                write!(self.writer, "}})")?;
             }
             ir::Expression::Identifier(node) => {
                 self.write_node(node)?;
             }
             ir::Expression::Index(value, index) => {
                 self.write_expression(value)?;
-                write!(self, "[{}]", index)?;
+                write!(self.writer, "[{}]", index)?;
             }
             ir::Expression::List(elements) => {
-                write!(self, "[")?;
+                write!(self.writer, "[")?;
                 for element in elements {
                     self.write_expression(element)?;
-                    write!(self, ", ")?;
+                    write!(self.writer, ", ")?;
                 }
-                write!(self, "]")?;
+                write!(self.writer, "]")?;
             }
             ir::Expression::Marker => {
-                write!(self, "null")?;
+                write!(self.writer, "null")?;
             }
             ir::Expression::Number(number) => {
-                write!(self, "{}", number)?;
+                write!(self.writer, "{}", number)?;
             }
             ir::Expression::NoOp => panic!("NoOp should be filtered out"),
             ir::Expression::Or(patterns) => {
-                write!(self, "(false")?;
+                write!(self.writer, "(false")?;
 
                 for pattern in patterns {
-                    write!(self, " || (")?;
+                    write!(self.writer, " || (")?;
                     self.write_expression(pattern)?;
-                    write!(self, ")")?;
+                    write!(self.writer, ")")?;
                 }
 
-                write!(self, ")")?;
+                write!(self.writer, ")")?;
             }
             ir::Expression::Return(value) => {
-                write!(self, "return")?;
+                write!(self.writer, "return")?;
 
                 if let Some(value) = value {
-                    write!(self, " ")?;
+                    write!(self.writer, " ")?;
                     self.write_expression(value)?;
                 }
             }
             ir::Expression::Runtime(name, inputs) => {
-                write!(self, "await __wipple_runtime_{}(", name.replace('-', "_"))?;
+                write!(
+                    self.writer,
+                    "await __wipple_runtime_{}(",
+                    name.replace('-', "_")
+                )?;
 
                 for input in inputs {
                     self.write_expression(input)?;
-                    write!(self, ", ")?;
+                    write!(self.writer, ", ")?;
                 }
 
-                write!(self, ")")?;
+                write!(self.writer, ")")?;
             }
             ir::Expression::Sequence(statements) => {
                 for statement in statements {
@@ -298,39 +323,39 @@ impl<'a> JsBackend<'a> {
                     }
 
                     self.write_expression(statement)?;
-                    writeln!(self, ";")?;
+                    writeln!(self.writer, ";")?;
                 }
             }
             ir::Expression::String(string) => {
-                write!(self, "{}", serde_json::json!(string))?;
+                write!(self.writer, "{}", serde_json::json!(string))?;
             }
             ir::Expression::Structure(fields) => {
-                write!(self, "{{")?;
+                write!(self.writer, "{{")?;
                 for (name, value) in fields {
-                    write!(self, "{}: ", serde_json::json!(name))?;
+                    write!(self.writer, "{}: ", serde_json::json!(name))?;
                     self.write_expression(value)?;
-                    write!(self, ", ")?;
+                    write!(self.writer, ", ")?;
                 }
-                write!(self, "}}")?;
+                write!(self.writer, "}}")?;
             }
             ir::Expression::Trace => {
                 if let Some(span) = &expression.span
                     && self.can_trace(span)
                 {
                     write!(
-                        self,
+                        self.writer,
                         "__wipple_env.trace({})",
                         serde_json::json!(span.start)
                     )?;
                 }
             }
             ir::Expression::Variant(index, elements) => {
-                write!(self, "__wipple_variant({}, [", index)?;
+                write!(self.writer, "__wipple_variant({}, [", index)?;
                 for element in elements {
                     self.write_expression(element)?;
-                    write!(self, ", ")?;
+                    write!(self.writer, ", ")?;
                 }
-                write!(self, "])")?;
+                write!(self.writer, "])")?;
             }
         }
 
@@ -342,19 +367,19 @@ impl<'a> JsBackend<'a> {
         node: &NodeRef,
         body: &ir::SpannedExpression,
     ) -> fmt::Result {
-        write!(self, "async function ")?;
+        write!(self.writer, "async function ")?;
         self.write_node(node)?;
-        writeln!(self, "(__wipple_bounds) {{")?;
-        write!(self, "return ")?;
+        writeln!(self.writer, "(__wipple_bounds) {{")?;
+        write!(self.writer, "return ")?;
         self.write_expression(body)?;
-        writeln!(self, ";")?;
-        writeln!(self, "}}")?;
+        writeln!(self.writer, ";")?;
+        writeln!(self.writer, "}}")?;
 
         Ok(())
     }
 
     fn write_node(&mut self, node: &NodeRef) -> fmt::Result {
-        write!(self, "_{}", node.id())
+        write!(self.writer, "_{}", node.id())
     }
 
     fn write_intrinsics<'s>(
@@ -380,7 +405,7 @@ impl<'a> JsBackend<'a> {
             let function = function.strip_prefix(prefix).unwrap();
 
             if reachable.iter().any(|f| function.starts_with(f)) {
-                write!(self, "{}{}", prefix, function)?;
+                write!(self.writer, "{}{}", prefix, function)?;
             }
         }
 
@@ -392,7 +417,7 @@ impl<'a> JsBackend<'a> {
     }
 }
 
-impl fmt::Write for JsBackend<'_> {
+impl fmt::Write for Writer<'_> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for c in s.chars() {
             if c == '\n' {
@@ -403,6 +428,6 @@ impl fmt::Write for JsBackend<'_> {
             }
         }
 
-        self.writer.write_str(s)
+        self.inner.write_str(s)
     }
 }
