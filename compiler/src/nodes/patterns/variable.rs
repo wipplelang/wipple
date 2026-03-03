@@ -43,7 +43,7 @@ impl Codegen for VariablePatternNode {
         let Matching(matching) = ctx.get(node)?;
 
         ir::Expression::AssignTo(
-            Box::new(ir::Expression::Identifier(matching).at(node, ctx)?),
+            Box::new(ir::Expression::Variable(matching).at(node, ctx)?),
             node.clone(),
         )
         .at(node, ctx)

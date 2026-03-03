@@ -69,11 +69,14 @@ struct CompileOptions {
     #[clap(long)]
     facts: bool,
 
-    #[clap(short, long)]
-    output: Option<PathBuf>,
+    #[clap(long)]
+    no_source_map: bool,
 
     #[clap(long)]
     filter_feedback: Vec<String>,
+
+    #[clap(short, long)]
+    output: Option<PathBuf>,
 
     #[clap(required = true)]
     paths: Vec<PathBuf>,
@@ -148,7 +151,13 @@ fn compile(options: &CompileOptions) -> anyhow::Result<String> {
     let program = codegen(&mut db, &files, &lib_files)
         .ok_or_else(|| anyhow::format_err!("codegen failed"))?;
 
-    let script = codegen::js::write_to_string(&program, CODEGEN_OPTIONS);
+    let script = codegen::js::write_to_string(
+        &program,
+        codegen::js::Options {
+            sourcemap: !options.no_source_map,
+            ..CODEGEN_OPTIONS
+        },
+    );
 
     if let Some(path) = &options.output {
         fs::write(path, &script)?;
@@ -234,7 +243,13 @@ fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
             let program = codegen(&mut db, &layer.files, &lib_files)
                 .ok_or_else(|| anyhow::format_err!("codegen failed"))?;
 
-            let script = codegen::js::write_to_string(&program, CODEGEN_OPTIONS);
+            let script = codegen::js::write_to_string(
+                &program,
+                codegen::js::Options {
+                    sourcemap: !options.no_source_map,
+                    ..CODEGEN_OPTIONS
+                },
+            );
 
             let buf = run(None, script, |cmd| cmd.stdout(process::Stdio::piped()))?;
             writeln!(&mut output, "Output:").unwrap();

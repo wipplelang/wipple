@@ -87,30 +87,23 @@ impl Visit for FunctionExpressionNode {
 
 impl Codegen for FunctionExpressionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let InputTemporaries(mut inputs) = ctx.get::<InputTemporaries>(node)?;
-
-        inputs.extend(
-            self.inputs
-                .iter()
-                .flat_map(|pattern| ctx.db.temporaries(pattern)),
-        );
+        let InputTemporaries(inputs) = ctx.get::<InputTemporaries>(node)?;
 
         let mut body = Vec::new();
         for pattern in &self.inputs {
+            for temporary in ctx.db.temporaries(pattern) {
+                body.push(ir::Expression::Declare(temporary.clone()).at(node, ctx)?);
+            }
+
             body.push(
                 ir::Expression::If(vec![(ctx.codegen(pattern)?, None)], None).at(pattern, ctx)?,
             );
         }
 
         body.push(
-            ir::Expression::Return(Some(Box::new(ctx.codegen(&self.output)?)))
-                .at(&self.output, ctx)?,
+            ir::Expression::Return(Box::new(ctx.codegen(&self.output)?)).at(&self.output, ctx)?,
         );
 
-        ir::Expression::Function(
-            inputs,
-            Box::new(ir::Expression::Sequence(body).at(node, ctx)?),
-        )
-        .at(node, ctx)
+        ir::Expression::Function(inputs, body).at(node, ctx)
     }
 }

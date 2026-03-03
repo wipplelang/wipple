@@ -81,7 +81,7 @@ impl Codegen for TuplePatternNode {
                 ir::Expression::AssignTo(
                     Box::new(
                         ir::Expression::Index(
-                            Box::new(ir::Expression::Identifier(matching.clone()).at(node, ctx)?),
+                            Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)?),
                             index,
                         )
                         .at(node, ctx)?,

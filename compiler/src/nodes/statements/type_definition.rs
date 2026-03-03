@@ -415,21 +415,21 @@ impl Codegen for VariantNode {
             .collect::<Vec<_>>();
 
         if element_temporaries.is_empty() {
-            ir::Expression::Variant(self.index.to_string(), Vec::new()).at(node, ctx)
+            ir::Expression::Variant(self.index, Vec::new()).at(node, ctx)
         } else {
             let mut elements = Vec::new();
             for temporary in element_temporaries.clone() {
-                elements.push(ir::Expression::Identifier(temporary).at(node, ctx)?);
+                elements.push(ir::Expression::Variable(temporary).at(node, ctx)?);
             }
 
             ir::Expression::Function(
                 element_temporaries,
-                Box::new(
-                    ir::Expression::Return(Some(Box::new(
-                        ir::Expression::Variant(self.index.to_string(), elements).at(node, ctx)?,
-                    )))
+                vec![
+                    ir::Expression::Return(Box::new(
+                        ir::Expression::Variant(self.index, elements).at(node, ctx)?,
+                    ))
                     .at(node, ctx)?,
-                ),
+                ],
             )
             .at(node, ctx)
         }

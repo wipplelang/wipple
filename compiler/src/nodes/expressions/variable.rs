@@ -83,7 +83,7 @@ impl Codegen for VariableExpressionNode {
 
         match resolution {
             ResolvedVariable::Variable(resolved) => {
-                ir::Expression::Identifier(resolved).at(node, ctx)
+                ir::Expression::Variable(resolved).at(node, ctx)
             }
             ResolvedVariable::Constant(definition) => {
                 let bounds = ctx.get::<Bounds>(node).unwrap_or_default();
@@ -110,28 +110,11 @@ pub fn codegen_constant(
         .iter()
         .map(|(bound_node, item)| {
             let instance = item.instance.as_ref()?;
-
-            Some((
-                format!("_{}", bound_node.id()),
-                ir::Expression::Function(
-                    Vec::new(),
-                    Box::new(
-                        ir::Expression::Return(Some(Box::new(codegen_instance(
-                            ctx, source, instance,
-                        )?)))
-                        .at(source, ctx)?,
-                    ),
-                )
-                .at(source, ctx)?,
-            ))
+            Some((bound_node.clone(), codegen_instance(ctx, source, instance)?))
         })
         .collect::<Option<Vec<_>>>()?;
 
-    ir::Expression::Call(
-        Box::new(ir::Expression::Identifier(definition.clone()).at(source, ctx)?),
-        vec![ir::Expression::Structure(bounds).at(source, ctx)?],
-    )
-    .at(source, ctx)
+    ir::Expression::Constant(definition.clone(), bounds).at(source, ctx)
 }
 
 pub fn codegen_instance(

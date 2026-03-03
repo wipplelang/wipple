@@ -197,6 +197,18 @@ impl<'a> Backend<'a> {
 
                 write!(self.writer, ")")?;
             }
+            ir::Expression::Constant(definition, bounds) => {
+                write!(self.writer, "await ")?;
+                self.write_node(definition)?;
+                write!(self.writer, "({{")?;
+                for (name, value) in bounds {
+                    self.write_node(name)?;
+                    write!(self.writer, ": async () => ")?;
+                    self.write_expression(value)?;
+                    write!(self.writer, ", ")?;
+                }
+                write!(self.writer, "}})")?;
+            }
             ir::Expression::If(arms, last) => {
                 for (pattern, value) in arms {
                     write!(self.writer, "if (")?;
@@ -242,17 +254,17 @@ impl<'a> Backend<'a> {
                 self.write_expression(value)?;
                 write!(self.writer, "[{}]", serde_json::json!(field))?;
             }
-            ir::Expression::Function(inputs, output) => {
+            ir::Expression::Function(inputs, statements) => {
                 write!(self.writer, "(async (")?;
                 for input in inputs {
                     self.write_node(input)?;
                     write!(self.writer, ", ")?;
                 }
                 writeln!(self.writer, ") => {{")?;
-                self.write_expression(output)?;
+                self.write_statements(statements)?;
                 write!(self.writer, "}})")?;
             }
-            ir::Expression::Identifier(node) => {
+            ir::Expression::Variable(node) => {
                 self.write_node(node)?;
             }
             ir::Expression::Index(value, index) => {
@@ -286,12 +298,8 @@ impl<'a> Backend<'a> {
                 write!(self.writer, ")")?;
             }
             ir::Expression::Return(value) => {
-                write!(self.writer, "return")?;
-
-                if let Some(value) = value {
-                    write!(self.writer, " ")?;
-                    self.write_expression(value)?;
-                }
+                write!(self.writer, "return ")?;
+                self.write_expression(value)?;
             }
             ir::Expression::Runtime(name, inputs) => {
                 write!(
@@ -308,23 +316,7 @@ impl<'a> Backend<'a> {
                 write!(self.writer, ")")?;
             }
             ir::Expression::Sequence(statements) => {
-                for statement in statements {
-                    if let ir::Expression::NoOp = statement.inner {
-                        continue;
-                    }
-
-                    if let ir::Expression::Trace = statement.inner
-                        && statement
-                            .span
-                            .as_ref()
-                            .is_none_or(|span| !self.can_trace(span))
-                    {
-                        continue;
-                    }
-
-                    self.write_expression(statement)?;
-                    writeln!(self.writer, ";")?;
-                }
+                self.write_statements(statements)?;
             }
             ir::Expression::String(string) => {
                 write!(self.writer, "{}", serde_json::json!(string))?;
@@ -357,6 +349,31 @@ impl<'a> Backend<'a> {
                 }
                 write!(self.writer, "])")?;
             }
+        }
+
+        Ok(())
+    }
+
+    fn write_statements<'e>(
+        &mut self,
+        statements: impl IntoIterator<Item = &'e ir::SpannedExpression>,
+    ) -> fmt::Result {
+        for statement in statements {
+            if let ir::Expression::NoOp = statement.inner {
+                continue;
+            }
+
+            if let ir::Expression::Trace = statement.inner
+                && statement
+                    .span
+                    .as_ref()
+                    .is_none_or(|span| !self.can_trace(span))
+            {
+                continue;
+            }
+
+            self.write_expression(statement)?;
+            writeln!(self.writer, ";")?;
         }
 
         Ok(())

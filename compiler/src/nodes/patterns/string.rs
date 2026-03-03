@@ -43,7 +43,7 @@ impl Codegen for StringPatternNode {
         let Matching(matching) = ctx.get(node)?;
 
         ir::Expression::EqualToString(
-            Box::new(ir::Expression::Identifier(matching).at(node, ctx)?),
+            Box::new(ir::Expression::Variable(matching).at(node, ctx)?),
             self.value.clone(),
         )
         .at(node, ctx)

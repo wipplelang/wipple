@@ -125,13 +125,7 @@ impl Codegen for WhenExpressionNode {
         body.push(ir::Expression::If(arms, None).at(node, ctx)?);
 
         ir::Expression::Call(
-            Box::new(
-                ir::Expression::Function(
-                    vec![input_temporary],
-                    Box::new(ir::Expression::Sequence(body).at(node, ctx)?),
-                )
-                .at(node, ctx)?,
-            ),
+            Box::new(ir::Expression::Function(vec![input_temporary], body).at(node, ctx)?),
             vec![ctx.codegen(&self.input)?],
         )
         .at(node, ctx)

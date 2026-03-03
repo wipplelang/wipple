@@ -128,7 +128,7 @@ impl Codegen for StructurePatternNode {
                 ir::Expression::AssignTo(
                     Box::new(
                         ir::Expression::Field(
-                            Box::new(ir::Expression::Identifier(matching.clone()).at(node, ctx)?),
+                            Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)?),
                             field.name.clone(),
                         )
                         .at(node, ctx)?,

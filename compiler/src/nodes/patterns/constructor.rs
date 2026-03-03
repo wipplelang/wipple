@@ -205,8 +205,8 @@ impl Codegen for ConstructorPatternNode {
             } => {
                 let mut expressions = vec![
                     ir::Expression::EqualToVariant(
-                        Box::new(ir::Expression::Identifier(matching.clone()).at(node, ctx)?),
-                        index.to_string(),
+                        Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)?),
+                        index,
                     )
                     .at(node, ctx)?,
                 ];
@@ -219,7 +219,7 @@ impl Codegen for ConstructorPatternNode {
                             Box::new(
                                 ir::Expression::Index(
                                     Box::new(
-                                        ir::Expression::Identifier(matching.clone())
+                                        ir::Expression::Variable(matching.clone())
                                             .at(node, ctx)?,
                                     ),
                                     index,
