@@ -106,7 +106,7 @@ export const getSoundfontInstrument = async (name: string): Promise<Instrument> 
 
             sampler.triggerAttackRelease(
                 Tonal.Note.fromMidi(Tonal.Midi.toMidi(note)!), // normalize
-                (duration ?? defaultNoteDuration) * 1.5,
+                duration ?? defaultNoteDuration,
                 time ?? Tone.getContext().currentTime,
             );
         },

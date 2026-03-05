@@ -9,7 +9,7 @@
         getAudioContext,
     } from "$lib/assets/instruments";
     import Icon from "$lib/components/Icon.svelte";
-    import { defaultTempo, notesInMeasure, type Music } from "$lib/assets/music";
+    import { defaultTempo, notesPerBeat, type Music } from "$lib/assets/music";
 
     let isRunning = $state(false);
     let icon: HTMLDivElement;
@@ -99,17 +99,18 @@
 
         await instrument.init();
 
-        const noteDuration = 60 / (currentTempo * notesInMeasure);
-        const totalDuration = noteDuration * music.notes.length;
+        const beatDuration = 60 / currentTempo;
 
         const startTime = getAudioContext().currentTime;
         let time = startTime;
-        music.notes.forEach((notes, index) => {
+        music.notes.forEach(({ duration, notes }, index) => {
+            const noteDuration = beatDuration * duration;
+
             for (const note of notes) {
                 instrument.play({ note, time, duration: noteDuration });
             }
 
-            const shouldPlayBeatAnimation = index % notesInMeasure == 0;
+            const shouldPlayBeatAnimation = index % notesPerBeat == 0;
             if (shouldPlayBeatAnimation) {
                 setTimeout(
                     () => {
@@ -123,6 +124,8 @@
 
             time += noteDuration;
         });
+
+        const totalDuration = time - startTime;
 
         if (together != null) {
             together = Math.max(together, totalDuration);

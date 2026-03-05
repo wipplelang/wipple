@@ -2,6 +2,7 @@
 @import "@fontsource-variable/inter/wght-italic.css";
 @import "@fontsource-variable/jetbrains-mono/wght.css";
 @import "@fontsource-variable/jetbrains-mono/wght-italic.css";
+@import "@fontsource/noto-music/music.css";
 
 @font-face {
     font-family: "Material Symbols Rounded Variable";
@@ -32,4 +33,8 @@
 
 .material-symbol {
     @apply material-symbol;
+}
+
+.music-symbols {
+    font-family: "Noto Music";
 }

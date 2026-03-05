@@ -15,7 +15,7 @@
     import randomColor from "randomcolor";
     import MenuButton from "./MenuButton.svelte";
     import Menu from "./Menu.svelte";
-    import { defaultTempo, maxNotes, notesInMeasure, type Music } from "$lib/assets/music";
+    import { defaultTempo, maxNotes, type Music } from "$lib/assets/music";
     import PianoRoll from "./PianoRoll.svelte";
 
     interface Props {
@@ -29,6 +29,7 @@
 
     let musicDraft = $state(music);
     let playing = $state<AbortController>();
+    let activeNoteIndex = $state<number>();
 
     const portal: Action = (node) => {
         $effect(() => {
@@ -60,24 +61,27 @@
 
         await instrument.init();
 
-        const noteDuration = 60 / (defaultTempo * notesInMeasure);
+        const noteDuration = 60 / defaultTempo;
 
-        let time = getAudioContext().currentTime;
-        for (const notes of musicDraft.notes) {
+        const startTime = getAudioContext().currentTime;
+        let time = startTime;
+        musicDraft.notes.forEach(({ duration, notes }, index) => {
             for (const note of notes) {
-                instrument.play({ note, time, duration: noteDuration });
+                instrument.play({ note, time, duration: noteDuration * duration });
             }
 
-            time += noteDuration;
-        }
+            setTimeout(() => (activeNoteIndex = index), (time - startTime) * 1000);
 
-        const totalDuration = noteDuration * musicDraft.notes.length * 1000;
+            time += noteDuration * duration;
+        });
+
         await new Promise<void>((resolve) => {
             playing!.signal.addEventListener("abort", () => resolve());
-            setTimeout(resolve, totalDuration);
+            setTimeout(resolve, (time - startTime) * 1000);
         });
 
         playing = undefined;
+        activeNoteIndex = undefined;
     };
 
     const clear = () => {
@@ -86,7 +90,7 @@
         }
 
         for (let i = 0; i < musicDraft.notes.length; i++) {
-            musicDraft.notes[i] = [];
+            musicDraft.notes[i] = { duration: 1, notes: [] };
         }
     };
 
@@ -95,7 +99,7 @@
             musicDraft.notes = musicDraft.notes.slice(0, count);
         } else {
             for (let i = musicDraft.notes.length; i < count; i++) {
-                musicDraft.notes.push([]);
+                musicDraft.notes.push({ duration: 1, notes: [] });
             }
         }
     };
@@ -117,7 +121,7 @@
     transition:fade
 >
     <div transition:fly={{ y: 50 }}>
-        <Box class="flex w-[650px] flex-col gap-[14px] p-[14px]">
+        <Box class="flex w-[800px] flex-col gap-[14px] p-[14px]">
             <div class="flex h-(--toolbar-height) flex-1 flex-row gap-[10px]">
                 <Tooltip content="Change color" onclick={() => (musicDraft.color = randomColor())}>
                     <Box class="size-(--toolbar-height) text-xl">
@@ -166,7 +170,7 @@
                 <ToolbarButton prominent onclick={onsubmit}>Done</ToolbarButton>
             </div>
 
-            <PianoRoll bind:music={musicDraft} {onplaynote} />
+            <PianoRoll bind:music={musicDraft} {activeNoteIndex} {onplaynote} />
         </Box>
     </div>
 </div>
