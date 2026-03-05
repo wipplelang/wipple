@@ -2,7 +2,7 @@ import { soundfontInstrumentNames } from "$lib/assets/instruments";
 import { runtime } from "$lib/models/Runtime";
 import MusicOutput from "./MusicOutput.svelte";
 
-const melody = `melody : (music-widget '{"music":{"type":"melody","color":"#38bdf8","notes":[{"duration":1,"notes":[]},{"duration":2,"notes":[]},{"duration":1,"notes":[]},{"duration":1,"notes":[]}]}}')`;
+const melody = `melody : (music-widget '{"music":{"type":"melody","color":"#38bdf8","notes":[{"duration":1,"notes":[]},{"duration":1,"notes":[]},{"duration":1,"notes":[]},{"duration":1,"notes":[]}]}}')`;
 const rhythm = `rhythm : (music-widget '{"music":{"type":"rhythm","color":"#fb7185","notes":[{"duration":1,"notes":[]},{"duration":1,"notes":[]},{"duration":1,"notes":[]},{"duration":1,"notes":[]}]}}')`;
 
 export default runtime({
