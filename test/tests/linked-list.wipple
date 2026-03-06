@@ -13,5 +13,5 @@ reduce-linked-list : f result l -> when l {
 
 list : Cons 1 (Cons 2 (Cons 3 Nil))
 
-sum : reduce-linked-list Add 0 list
+sum : reduce-linked-list (+) 0 list
 show sum

@@ -88,11 +88,11 @@ impl<'db> Parser<'db> {
     }
 
     pub fn token(&mut self, kind: TokenKind) -> Result<String, ParseError> {
-        self.token_with(kind, None, None)
+        self.token_with_name(kind, kind.name())
     }
 
     pub fn token_with_name(&mut self, kind: TokenKind, name: &str) -> Result<String, ParseError> {
-        self.token_with(kind, Some(name), None)
+        self.token_with(|k| k == kind, name, None)
     }
 
     pub fn token_with_reason(
@@ -100,17 +100,15 @@ impl<'db> Parser<'db> {
         kind: TokenKind,
         reason: &str,
     ) -> Result<String, ParseError> {
-        self.token_with(kind, None, Some(reason))
+        self.token_with(|k| k == kind, kind.name(), Some(reason))
     }
 
     pub fn token_with(
         &mut self,
-        kind: TokenKind,
-        name: Option<&str>,
+        kind: impl FnOnce(TokenKind) -> bool,
+        expected: &str,
         reason: Option<&str>,
     ) -> Result<String, ParseError> {
-        let expected = name.unwrap_or_else(|| kind.name());
-
         let Some(token) = &self.tokens.get(self.index) else {
             return Err(ParseError {
                 message: format!("Expected {}", expected),
@@ -120,7 +118,7 @@ impl<'db> Parser<'db> {
             });
         };
 
-        if token.kind != kind {
+        if !kind(token.kind) {
             return Err(ParseError {
                 message: format!("Expected {}, but found {}", expected, token.kind.name()),
                 reason: reason.map(|s| s.to_string()),

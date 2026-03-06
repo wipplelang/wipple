@@ -33,6 +33,26 @@ pub struct OperatorExpressionNode {
 
 impl Node for OperatorExpressionNode {}
 
+pub fn parse_parenthesized_operator_expression(
+    parser: &mut Parser<'_>,
+) -> Result<ConstructorExpressionNode, ParseError> {
+    parser.token_with_reason(TokenKind::LeftParenthesis, "between these parentheses")?;
+
+    parser.consume_line_breaks();
+    let operator = parser.token_with(|k| k.is_binary_operator(), "an operator", None)?;
+    parser.consume_line_breaks();
+
+    parser.token(TokenKind::RightParenthesis)?;
+
+    let Some(trait_name) = name_for_trait_operator(&operator) else {
+        return Err(parser.error("This operator cannot be used as a function"));
+    };
+
+    Ok(ConstructorExpressionNode {
+        constructor: String::from(trait_name),
+    })
+}
+
 pub fn parse_operator_expression(parser: &mut Parser<'_>) -> Result<NodeRef, ParseError> {
     // From highest precedence to lowest precedence
 
@@ -198,141 +218,60 @@ fn parse_operator(
     Ok(result)
 }
 
+pub fn name_for_trait_operator(operator: &str) -> Option<&'static str> {
+    match operator {
+        "to" => Some("To"),
+        "by" => Some("By"),
+        "^" => Some("Power"),
+        "*" => Some("Multiply"),
+        "/" => Some("Divide"),
+        "%" => Some("Remainder"),
+        "+" => Some("Add"),
+        "-" => Some("Subtract"),
+        "<" => Some("Less-Than"),
+        "<=" => Some("Less-Than-Or-Equal"),
+        ">" => Some("Greater-Than"),
+        ">=" => Some("Greater-Than-Or-Equal"),
+        "=" => Some("Equal"),
+        "/=" => Some("Not-Equal"),
+        _ => None,
+    }
+}
+
 impl Visit for OperatorExpressionNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
         visit_expression(node, visitor);
 
-        let operator_node = match self.operator.as_str() {
-            "to" => trait_operator(
+        let operator_node = if let Some(trait_name) = name_for_trait_operator(&self.operator) {
+            trait_operator(
                 visitor,
                 &self.operator_span,
                 node,
                 &self.left,
                 &self.right,
-                "To",
-            ),
-            "by" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "By",
-            ),
-            "^" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Power",
-            ),
-            "*" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Multiply",
-            ),
-            "/" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Divide",
-            ),
-            "%" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Remainder",
-            ),
-            "+" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Add",
-            ),
-            "-" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Subtract",
-            ),
-            "<" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Less-Than",
-            ),
-            "<=" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Less-Than-Or-Equal",
-            ),
-            ">" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Greater-Than",
-            ),
-            ">=" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Greater-Than-Or-Equal",
-            ),
-            "=" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Equal",
-            ),
-            "/=" => trait_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Not-Equal",
-            ),
-            "and" => short_circuit_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "And",
-            ),
-            "or" => short_circuit_operator(
-                visitor,
-                &self.operator_span,
-                node,
-                &self.left,
-                &self.right,
-                "Or",
-            ),
-            "." => apply_operator(visitor, &self.operator_span, node, &self.left, &self.right),
-            _ => panic!("unknown operator: {}", self.operator),
+                trait_name,
+            )
+        } else {
+            match self.operator.as_str() {
+                "and" => logic_operator(
+                    visitor,
+                    &self.operator_span,
+                    node,
+                    &self.left,
+                    &self.right,
+                    "And",
+                ),
+                "or" => logic_operator(
+                    visitor,
+                    &self.operator_span,
+                    node,
+                    &self.left,
+                    &self.right,
+                    "Or",
+                ),
+                "." => apply_operator(visitor, &self.operator_span, node, &self.left, &self.right),
+                _ => panic!("unknown operator: {}", self.operator),
+            }
         };
 
         visitor.graph.replace(node, &operator_node);
@@ -378,7 +317,7 @@ fn trait_operator(
     )
 }
 
-fn short_circuit_operator(
+fn logic_operator(
     visitor: &mut Visitor<'_>,
     operator_span: &Span,
     node: &NodeRef,

@@ -219,7 +219,7 @@ VariableExpressionNode `reduce-linked-list` (test/tests/linked-list.wipple:16:7-
   has type (Number Number -> Number) Number (Linked-List Number) -> Number
   is an expression
   resolved to 1 definition(s): `reduce-linked-list` (test/tests/linked-list.wipple:8:1-8:84)
-ConstructorExpressionNode `Add` (test/tests/linked-list.wipple:16:26-16:29)
+ConstructorExpressionNode `+` (test/tests/linked-list.wipple:16:26-16:29)
   at test/tests/linked-list.wipple:16:26-16:29
   has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87))
   has type Number Number -> Number
@@ -234,7 +234,7 @@ VariableExpressionNode `list` (test/tests/linked-list.wipple:16:32-16:36)
   has type Linked-List Number
   is an expression
   resolved to 1 definition(s): `list` (test/tests/linked-list.wipple:14:1-14:5)
-CallExpressionNode `reduce-linked-list Add 0 list` (test/tests/linked-list.wipple:16:7-16:36)
+CallExpressionNode `reduce-linked-list (+) 0 list` (test/tests/linked-list.wipple:16:7-16:36)
   at test/tests/linked-list.wipple:16:7-16:36
   has type Number
   is an expression

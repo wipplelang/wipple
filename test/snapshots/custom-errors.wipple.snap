@@ -156,101 +156,117 @@ WildcardPatternNode `_` (test/tests/custom-errors.wipple:16:1-16:2)
   at test/tests/custom-errors.wipple:16:1-16:2
   has type Number
   is a pattern
-ConstructorExpressionNode `Add` (test/tests/custom-errors.wipple:16:5-16:8)
-  at test/tests/custom-errors.wipple:16:5-16:8
-  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (test/tests/custom-errors.wipple:7:1-7:40))
-  has type Number Number -> Number
+NumberExpressionNode `1` (test/tests/custom-errors.wipple:16:5-16:6)
+  at test/tests/custom-errors.wipple:16:5-16:6
+  has type Number
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
-NumberExpressionNode `1` (test/tests/custom-errors.wipple:16:9-16:10)
+NumberExpressionNode `2` (test/tests/custom-errors.wipple:16:9-16:10)
   at test/tests/custom-errors.wipple:16:9-16:10
   has type Number
   is an expression
-NumberExpressionNode `2` (test/tests/custom-errors.wipple:16:11-16:12)
-  at test/tests/custom-errors.wipple:16:11-16:12
-  has type Number
-  is an expression
-CallExpressionNode `Add 1 2` (test/tests/custom-errors.wipple:16:5-16:12)
-  at test/tests/custom-errors.wipple:16:5-16:12
+OperatorExpressionNode `1 + 2` (test/tests/custom-errors.wipple:16:5-16:10)
+  at test/tests/custom-errors.wipple:16:5-16:10
   has type Number
   is an expression
 WildcardPatternNode `_` (test/tests/custom-errors.wipple:17:1-17:2)
   at test/tests/custom-errors.wipple:17:1-17:2
   has type String
   is a pattern
-ConstructorExpressionNode `Add` (test/tests/custom-errors.wipple:17:5-17:8)
+StringExpressionNode `"a"` (test/tests/custom-errors.wipple:17:5-17:8)
   at test/tests/custom-errors.wipple:17:5-17:8
-  has bound(s) Add String String String (`instance (Add String String String)` (test/tests/custom-errors.wipple:8:1-8:40))
-  has type String String -> String
-  is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
-StringExpressionNode `"a"` (test/tests/custom-errors.wipple:17:9-17:12)
-  at test/tests/custom-errors.wipple:17:9-17:12
   has type String
   is an expression
-StringExpressionNode `"b"` (test/tests/custom-errors.wipple:17:13-17:16)
-  at test/tests/custom-errors.wipple:17:13-17:16
+StringExpressionNode `"b"` (test/tests/custom-errors.wipple:17:11-17:14)
+  at test/tests/custom-errors.wipple:17:11-17:14
   has type String
   is an expression
-CallExpressionNode `Add "a" "b"` (test/tests/custom-errors.wipple:17:5-17:16)
-  at test/tests/custom-errors.wipple:17:5-17:16
+OperatorExpressionNode `"a" + "b"` (test/tests/custom-errors.wipple:17:5-17:14)
+  at test/tests/custom-errors.wipple:17:5-17:14
   has type String
   is an expression
 WildcardPatternNode `_` (test/tests/custom-errors.wipple:18:1-18:2)
   at test/tests/custom-errors.wipple:18:1-18:2
   is a pattern
-  missing type (group: `_` (test/tests/custom-errors.wipple:18:1-18:2), `Add 1 "a"` (test/tests/custom-errors.wipple:18:5-18:14), `sum` (test/tests/custom-errors.wipple:14:44-14:47), `sum` (test/tests/custom-errors.wipple:14:44-14:47), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57), `_` (test/tests/custom-errors.wipple:18:1-18:14), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57))
-ConstructorExpressionNode `Add` (test/tests/custom-errors.wipple:18:5-18:8)
-  at test/tests/custom-errors.wipple:18:5-18:8
+  missing type (group: `_` (test/tests/custom-errors.wipple:18:1-18:2), `1 + "a"` (test/tests/custom-errors.wipple:18:5-18:12), `1 + "a"` (test/tests/custom-errors.wipple:18:5-18:12), `sum` (test/tests/custom-errors.wipple:14:44-14:47), `sum` (test/tests/custom-errors.wipple:14:44-14:47), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57), `_` (test/tests/custom-errors.wipple:18:1-18:12), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57))
+NumberExpressionNode `1` (test/tests/custom-errors.wipple:18:5-18:6)
+  at test/tests/custom-errors.wipple:18:5-18:6
+  has type Number
+  is an expression
+StringExpressionNode `"a"` (test/tests/custom-errors.wipple:18:9-18:12)
+  at test/tests/custom-errors.wipple:18:9-18:12
+  has type String
+  is an expression
+OperatorExpressionNode `1 + "a"` (test/tests/custom-errors.wipple:18:5-18:12)
+  at test/tests/custom-errors.wipple:18:5-18:12
+  is an expression
+  missing type (group: `_` (test/tests/custom-errors.wipple:18:1-18:2), `1 + "a"` (test/tests/custom-errors.wipple:18:5-18:12), `1 + "a"` (test/tests/custom-errors.wipple:18:5-18:12), `sum` (test/tests/custom-errors.wipple:14:44-14:47), `sum` (test/tests/custom-errors.wipple:14:44-14:47), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57), `_` (test/tests/custom-errors.wipple:18:1-18:12), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57))
+WildcardPatternNode `_` (test/tests/custom-errors.wipple:19:1-19:2)
+  at test/tests/custom-errors.wipple:19:1-19:2
+  is a pattern
+  missing type (group: `_` (test/tests/custom-errors.wipple:19:1-19:2), `() + 2` (test/tests/custom-errors.wipple:19:5-19:11), `() + 2` (test/tests/custom-errors.wipple:19:5-19:11), `sum` (test/tests/custom-errors.wipple:11:32-11:35), `sum` (test/tests/custom-errors.wipple:11:32-11:35), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57), `_` (test/tests/custom-errors.wipple:19:1-19:11), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57))
+UnitExpressionNode `()` (test/tests/custom-errors.wipple:19:5-19:7)
+  at test/tests/custom-errors.wipple:19:5-19:7
+  has type ()
+  is an expression
+NumberExpressionNode `2` (test/tests/custom-errors.wipple:19:10-19:11)
+  at test/tests/custom-errors.wipple:19:10-19:11
+  has type Number
+  is an expression
+OperatorExpressionNode `() + 2` (test/tests/custom-errors.wipple:19:5-19:11)
+  at test/tests/custom-errors.wipple:19:5-19:11
+  is an expression
+  missing type (group: `_` (test/tests/custom-errors.wipple:19:1-19:2), `() + 2` (test/tests/custom-errors.wipple:19:5-19:11), `() + 2` (test/tests/custom-errors.wipple:19:5-19:11), `sum` (test/tests/custom-errors.wipple:11:32-11:35), `sum` (test/tests/custom-errors.wipple:11:32-11:35), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57), `_` (test/tests/custom-errors.wipple:19:1-19:11), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57))
+ConstructorExpressionNode `+` (test/tests/custom-errors.wipple:16:7-16:8)
+  at test/tests/custom-errors.wipple:16:7-16:8
+  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (test/tests/custom-errors.wipple:7:1-7:40))
+  has type Number Number -> Number
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+CallExpressionNode `1 + 2` (test/tests/custom-errors.wipple:16:5-16:10)
+  at test/tests/custom-errors.wipple:16:5-16:10
+  has type Number
+  is an expression
+ConstructorExpressionNode `+` (test/tests/custom-errors.wipple:17:9-17:10)
+  at test/tests/custom-errors.wipple:17:9-17:10
+  has bound(s) Add String String String (`instance (Add String String String)` (test/tests/custom-errors.wipple:8:1-8:40))
+  has type String String -> String
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+CallExpressionNode `"a" + "b"` (test/tests/custom-errors.wipple:17:5-17:14)
+  at test/tests/custom-errors.wipple:17:5-17:14
+  has type String
+  is an expression
+ConstructorExpressionNode `+` (test/tests/custom-errors.wipple:18:7-18:8)
+  at test/tests/custom-errors.wipple:18:7-18:8
   has bound(s) Add Number String _ (`instance (Add left right sum)` (test/tests/custom-errors.wipple:13:1-14:48))
   has type Number String -> _
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
-NumberExpressionNode `1` (test/tests/custom-errors.wipple:18:9-18:10)
-  at test/tests/custom-errors.wipple:18:9-18:10
-  has type Number
+CallExpressionNode `1 + "a"` (test/tests/custom-errors.wipple:18:5-18:12)
+  at test/tests/custom-errors.wipple:18:5-18:12
   is an expression
-StringExpressionNode `"a"` (test/tests/custom-errors.wipple:18:11-18:14)
-  at test/tests/custom-errors.wipple:18:11-18:14
-  has type String
-  is an expression
-CallExpressionNode `Add 1 "a"` (test/tests/custom-errors.wipple:18:5-18:14)
-  at test/tests/custom-errors.wipple:18:5-18:14
-  is an expression
-  missing type (group: `_` (test/tests/custom-errors.wipple:18:1-18:2), `Add 1 "a"` (test/tests/custom-errors.wipple:18:5-18:14), `sum` (test/tests/custom-errors.wipple:14:44-14:47), `sum` (test/tests/custom-errors.wipple:14:44-14:47), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57), `_` (test/tests/custom-errors.wipple:18:1-18:14), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57))
-WildcardPatternNode `_` (test/tests/custom-errors.wipple:19:1-19:2)
-  at test/tests/custom-errors.wipple:19:1-19:2
-  is a pattern
-  missing type (group: `_` (test/tests/custom-errors.wipple:19:1-19:2), `Add () 2` (test/tests/custom-errors.wipple:19:5-19:13), `sum` (test/tests/custom-errors.wipple:11:32-11:35), `sum` (test/tests/custom-errors.wipple:11:32-11:35), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57), `_` (test/tests/custom-errors.wipple:19:1-19:13), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57))
-ConstructorExpressionNode `Add` (test/tests/custom-errors.wipple:19:5-19:8)
-  at test/tests/custom-errors.wipple:19:5-19:8
+  missing type (group: `_` (test/tests/custom-errors.wipple:18:1-18:2), `1 + "a"` (test/tests/custom-errors.wipple:18:5-18:12), `1 + "a"` (test/tests/custom-errors.wipple:18:5-18:12), `sum` (test/tests/custom-errors.wipple:14:44-14:47), `sum` (test/tests/custom-errors.wipple:14:44-14:47), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57), `_` (test/tests/custom-errors.wipple:18:1-18:12), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57))
+ConstructorExpressionNode `+` (test/tests/custom-errors.wipple:19:8-19:9)
+  at test/tests/custom-errors.wipple:19:8-19:9
   has bound(s) Add () Number _ (`instance (Add () right sum)` (test/tests/custom-errors.wipple:10:1-11:36))
   has type () Number -> _
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
-UnitExpressionNode `()` (test/tests/custom-errors.wipple:19:9-19:11)
-  at test/tests/custom-errors.wipple:19:9-19:11
-  has type ()
+CallExpressionNode `() + 2` (test/tests/custom-errors.wipple:19:5-19:11)
+  at test/tests/custom-errors.wipple:19:5-19:11
   is an expression
-NumberExpressionNode `2` (test/tests/custom-errors.wipple:19:12-19:13)
-  at test/tests/custom-errors.wipple:19:12-19:13
-  has type Number
-  is an expression
-CallExpressionNode `Add () 2` (test/tests/custom-errors.wipple:19:5-19:13)
-  at test/tests/custom-errors.wipple:19:5-19:13
-  is an expression
-  missing type (group: `_` (test/tests/custom-errors.wipple:19:1-19:2), `Add () 2` (test/tests/custom-errors.wipple:19:5-19:13), `sum` (test/tests/custom-errors.wipple:11:32-11:35), `sum` (test/tests/custom-errors.wipple:11:32-11:35), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57), `_` (test/tests/custom-errors.wipple:19:1-19:13), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57))
+  missing type (group: `_` (test/tests/custom-errors.wipple:19:1-19:2), `() + 2` (test/tests/custom-errors.wipple:19:5-19:11), `() + 2` (test/tests/custom-errors.wipple:19:5-19:11), `sum` (test/tests/custom-errors.wipple:11:32-11:35), `sum` (test/tests/custom-errors.wipple:11:32-11:35), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57), `_` (test/tests/custom-errors.wipple:19:1-19:11), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `infer sum` (test/tests/custom-errors.wipple:6:18-6:29), `sum` (test/tests/custom-errors.wipple:6:54-6:57))
 
 
 Feedback:
 
-`Add` (test/tests/custom-errors.wipple:18:5-18:8) (error-instance):
+`+` (test/tests/custom-errors.wipple:18:7-18:8) (error-instance):
 
-  Cannot add   `1` (test/tests/custom-errors.wipple:18:9-18:10) and   `"a"` (test/tests/custom-errors.wipple:18:11-18:14).
+  Cannot add   `1` (test/tests/custom-errors.wipple:18:5-18:6) and   `"a"` (test/tests/custom-errors.wipple:18:9-18:12).
 
   
 
-`Add` (test/tests/custom-errors.wipple:19:5-19:8) (error-instance):
+`+` (test/tests/custom-errors.wipple:19:8-19:9) (error-instance):
 
   Missing parentheses around the inputs to `+`.
 

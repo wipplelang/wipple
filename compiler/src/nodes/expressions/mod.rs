@@ -156,6 +156,10 @@ pub fn parse_atomic_expression(parser: &mut Parser<'_>) -> Result<NodeRef, Parse
             return Ok(node);
         }
 
+        if let Some(node) = parser.try_node(parse_parenthesized_operator_expression)? {
+            return Ok(node);
+        }
+
         if let Some(node) = parser.parse_optional(parse_parenthesized_expression)? {
             return Ok(node);
         }
@@ -374,6 +378,15 @@ mod tests {
             "parse_complex_is_expression",
             parse_expression,
             r#"x is Some 3.14"#,
+        );
+    }
+
+    #[test]
+    fn test_parse_parenthesized_operator_expression() {
+        test_parse(
+            "parse_parenthesized_operator_expression",
+            parse_expression,
+            r#"(+)"#,
         );
     }
 }
