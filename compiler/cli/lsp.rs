@@ -70,7 +70,10 @@ impl Backend {
         let mut db = self.base.clone();
 
         let file = parse(&mut db, uri.as_str(), source);
-        driver::compile(&mut db, &[file]); // TODO: support multiple files
+
+        // NOTE: slice::from_ref avoids copying `file` so it's not dropped until
+        // after diagnostics are collected
+        driver::compile(&mut db, std::slice::from_ref(&file)); // TODO: support multiple files
 
         let diagnostics = get_feedback(&db, node_filter(&db, uri));
 
