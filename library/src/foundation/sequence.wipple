@@ -153,18 +153,18 @@ find-by : f -> collection -> do {
 }
 
 -- Reduce a sequence down to a single item.
-reduce :: result (element -> result -> result) -> container -> result where (As-Sequence container element)
+reduce :: result (result element -> result) -> container -> result where (As-Sequence container element)
 reduce : result f -> container -> As-Sequence container . reduce-helper result f
 
-reduce-helper :: result (element -> result -> result) -> (Sequence element) -> result
+reduce-helper :: result (result element -> result) -> (Sequence element) -> result
 reduce-helper : result f -> sequence -> when (next sequence) {
-  (Some next) -> (reduce-helper (result . f next) f) sequence
+  (Some next) -> (reduce-helper (f result next) f) sequence
   None -> result
 }
 
 -- Find the sum of all the numbers in a sequence.
 sum :: container -> n where (As-Sequence container n) (Initial n) (Add n n n)
-sum : reduce Initial (next -> result -> result + next)
+sum : reduce Initial (+)
 
 From-Sequence : element container => trait ((Sequence element) -> container)
 
@@ -367,7 +367,7 @@ enumerate :: collection -> Sequence (Number; element) where (As-Sequence collect
 enumerate : collection -> zip (0 to nan by 1) collection
 
 Extend : container (infer element) => trait ((Sequence element) -> container -> container)
-instance (Extend (List element) element) : sequence -> list -> sequence . reduce list append
+instance (Extend (List element) element) : sequence -> list -> sequence . reduce list (list element -> list . append element)
 
 -- Append the contents of a sequence to a collection.
 extend :: from -> container -> container where (As-Sequence from element) (Extend container element)
@@ -414,4 +414,4 @@ instance (Add String String String) : a b -> "__" a b
 instance (As-Sequence String String) : string ->
   As-Sequence (intrinsic "string-characters" string :: List String)
 
-instance (From-Sequence String String) : reduce "" (right -> left -> left + right)
+instance (From-Sequence String String) : sum

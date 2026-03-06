@@ -49,7 +49,7 @@ insert-entry : key value -> (Dictionary {
     }
 
     -- Populate the new dictionary with the entries from the old dictionary
-    entries . reduce resized (entry -> dictionary -> when entry {
+    entries . reduce resized (dictionary entry -> when entry {
       (Some (key; value)) -> dictionary . insert-entry key value
       None -> dictionary
     })

@@ -31,57 +31,70 @@ VariableExpressionNode `sports` (test/tests/dictionary.wipple:4:11-4:17)
 VariableExpressionNode `reduce` (test/tests/dictionary.wipple:4:20-4:26)
   at test/tests/dictionary.wipple:4:20-4:26
   has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
-  has type (Dictionary String Number) (String -> (Dictionary String Number) -> Dictionary String Number) -> (List String) -> Dictionary String Number
+  has type (Dictionary String Number) ((Dictionary String Number) String -> Dictionary String Number) -> (List String) -> Dictionary String Number
   is an expression
-  resolved to 1 definition(s): `reduce` (library/src/foundation/sequence.wipple:155:1-156:108)
+  resolved to 1 definition(s): `reduce` (library/src/foundation/sequence.wipple:155:1-156:105)
 CollectionExpressionNode `,` (test/tests/dictionary.wipple:4:28-4:29)
   at test/tests/dictionary.wipple:4:28-4:29
   has type Dictionary String Number
   is an expression
-VariablePatternNode `sport` (test/tests/dictionary.wipple:4:32-4:37)
-  at test/tests/dictionary.wipple:4:32-4:37
+VariablePatternNode `sports` (test/tests/dictionary.wipple:4:32-4:38)
+  at test/tests/dictionary.wipple:4:32-4:38
+  has type Dictionary String Number
+  is a pattern
+VariablePatternNode `sport` (test/tests/dictionary.wipple:4:39-4:44)
+  at test/tests/dictionary.wipple:4:39-4:44
   has type String
   is a pattern
-VariableExpressionNode `insert-entry` (test/tests/dictionary.wipple:4:41-4:53)
-  at test/tests/dictionary.wipple:4:41-4:53
+VariableExpressionNode `sports` (test/tests/dictionary.wipple:4:48-4:54)
+  at test/tests/dictionary.wipple:4:48-4:54
+  has type Dictionary String Number
+  is an expression
+  resolved to 1 definition(s): `sports` (test/tests/dictionary.wipple:4:32-4:38)
+VariableExpressionNode `insert-entry` (test/tests/dictionary.wipple:4:57-4:69)
+  at test/tests/dictionary.wipple:4:57-4:69
   has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
   has type String Number -> (Dictionary String Number) -> Dictionary String Number
   is an expression
   resolved to 1 definition(s): `insert-entry` (library/src/foundation/dictionary.wipple:38:1-39:105)
-VariableExpressionNode `sport` (test/tests/dictionary.wipple:4:54-4:59)
-  at test/tests/dictionary.wipple:4:54-4:59
+VariableExpressionNode `sport` (test/tests/dictionary.wipple:4:70-4:75)
+  at test/tests/dictionary.wipple:4:70-4:75
   has type String
   is an expression
-  resolved to 1 definition(s): `sport` (test/tests/dictionary.wipple:4:32-4:37)
-VariableExpressionNode `count` (test/tests/dictionary.wipple:4:61-4:66)
-  at test/tests/dictionary.wipple:4:61-4:66
+  resolved to 1 definition(s): `sport` (test/tests/dictionary.wipple:4:39-4:44)
+VariableExpressionNode `count` (test/tests/dictionary.wipple:4:77-4:82)
+  at test/tests/dictionary.wipple:4:77-4:82
   has bound(s) As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:414:1-415:68))
   has type String -> Number
   is an expression
   resolved to 1 definition(s): `count` (library/src/foundation/sequence.wipple:260:1-261:69)
-VariableExpressionNode `sport` (test/tests/dictionary.wipple:4:67-4:72)
-  at test/tests/dictionary.wipple:4:67-4:72
+VariableExpressionNode `sport` (test/tests/dictionary.wipple:4:83-4:88)
+  at test/tests/dictionary.wipple:4:83-4:88
   has type String
   is an expression
-  resolved to 1 definition(s): `sport` (test/tests/dictionary.wipple:4:32-4:37)
-CallExpressionNode `count sport` (test/tests/dictionary.wipple:4:61-4:72)
-  at test/tests/dictionary.wipple:4:61-4:72
+  resolved to 1 definition(s): `sport` (test/tests/dictionary.wipple:4:39-4:44)
+CallExpressionNode `count sport` (test/tests/dictionary.wipple:4:77-4:88)
+  at test/tests/dictionary.wipple:4:77-4:88
   has type Number
   is an expression
-CallExpressionNode `insert-entry sport (count sport)` (test/tests/dictionary.wipple:4:41-4:73)
-  at test/tests/dictionary.wipple:4:41-4:73
+CallExpressionNode `insert-entry sport (count sport)` (test/tests/dictionary.wipple:4:57-4:89)
+  at test/tests/dictionary.wipple:4:57-4:89
   has type (Dictionary String Number) -> Dictionary String Number
   is an expression
-FunctionExpressionNode `sport -> insert-entry sport (count sport)` (test/tests/dictionary.wipple:4:32-4:73)
-  at test/tests/dictionary.wipple:4:32-4:73
-  has type String -> (Dictionary String Number) -> Dictionary String Number
+OperatorExpressionNode `sports . insert-entry sport (count sport)` (test/tests/dictionary.wipple:4:48-4:89)
+  at test/tests/dictionary.wipple:4:48-4:89
+  has type Dictionary String Number
   is an expression
-CallExpressionNode `reduce (,) (sport -> insert-entry sport (count sport))` (test/tests/dictionary.wipple:4:20-4:74)
-  at test/tests/dictionary.wipple:4:20-4:74
+FunctionExpressionNode `sports sport -> sports . insert-entry sport (count sport)` (test/tests/dictionary.wipple:4:32-4:89)
+  at test/tests/dictionary.wipple:4:32-4:89
+  has type (Dictionary String Number) String -> Dictionary String Number
+  is an expression
+CallExpressionNode `reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (test/tests/dictionary.wipple:4:20-4:90)
+  at test/tests/dictionary.wipple:4:20-4:90
   has type (List String) -> Dictionary String Number
   is an expression
-OperatorExpressionNode `sports . reduce (,) (sport -> insert-entry sport (count sport))` (test/tests/dictionary.wipple:4:11-4:74)
-  at test/tests/dictionary.wipple:4:11-4:74
+OperatorExpressionNode `sports . reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (test/tests/dictionary.wipple:4:11-4:90)
+  at test/tests/dictionary.wipple:4:11-4:90
   has type Dictionary String Number
   is an expression
 VariableExpressionNode `sports` (test/tests/dictionary.wipple:6:1-6:7)
@@ -165,6 +178,10 @@ OperatorExpressionNode `sports . each (sport -> show ("_ has _ letters" sport ((
   is an expression
 CallExpressionNode `.` (test/tests/dictionary.wipple:4:18-4:19)
   at test/tests/dictionary.wipple:4:18-4:19
+  has type Dictionary String Number
+  is an expression
+CallExpressionNode `.` (test/tests/dictionary.wipple:4:55-4:56)
+  at test/tests/dictionary.wipple:4:55-4:56
   has type Dictionary String Number
   is an expression
 CallExpressionNode `.` (test/tests/dictionary.wipple:6:8-6:9)
