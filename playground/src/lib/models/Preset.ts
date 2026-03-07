@@ -1,9 +1,9 @@
 import type { RuntimeId } from "$lib/runtimes";
 
 export interface Preset {
-    name: string;
     icon: string;
-    backgroundClassName: string;
+    name: string;
+    description: string;
     runtime: RuntimeId;
 }
 
