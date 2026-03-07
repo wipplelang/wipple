@@ -1,7 +1,7 @@
 import { preset } from "./models/Preset";
 import turtlePresetIcon from "./assets/turtle-preset-icon.png";
 import musicPresetIcon from "./assets/music-preset-icon.png";
-// import mathPresetIcon from "./assets/math-preset-icon.png";
+import mathPresetIcon from "./assets/math-preset-icon.png";
 import blankPresetIcon from "./assets/blank-preset-icon.png";
 
 const presets = [
@@ -17,12 +17,12 @@ const presets = [
         description: "Make a composition",
         runtime: "music",
     }),
-    // preset({
-    //     icon: mathPresetIcon,
-    //     name: "Math",
-    //     description: "Graph functions",
-    //     runtime: "math",
-    // }),
+    preset({
+        icon: mathPresetIcon,
+        name: "Math",
+        description: "Graph functions",
+        runtime: "math",
+    }),
     preset({
         icon: blankPresetIcon,
         name: "No template",

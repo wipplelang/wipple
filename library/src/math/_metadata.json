@@ -1,3 +1,39 @@
 {
-    "library": "foundation"
+    "library": "foundation",
+    "ide": {
+        "highlights": {
+            "color": {
+                "color": "purple",
+                "icon": "edit"
+            },
+            "degrees": {
+                "color": "sky",
+                "icon": null
+            },
+            "max-x": {
+                "color": "purple",
+                "icon": "align_horizontal_right"
+            },
+            "max-y": {
+                "color": "purple",
+                "icon": "align_vertical_bottom"
+            },
+            "min-x": {
+                "color": "purple",
+                "icon": "align_horizontal_left"
+            },
+            "min-y": {
+                "color": "purple",
+                "icon": "align_vertical_top"
+            },
+            "plot": {
+                "color": "green",
+                "icon": "function"
+            },
+            "resolution": {
+                "color": "purple",
+                "icon": "grid_on"
+            }
+        }
+    }
 }

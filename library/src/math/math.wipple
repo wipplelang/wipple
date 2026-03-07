@@ -1,28 +1,28 @@
 -- Set the color of the graph.
 color :: Color -> ()
-color : (Color color) -> external "color" color
+color : (Color {color : color}) -> external "setColor" color
 
 -- Set the minimum x-value displayed by the graph.
 min-x :: Number -> ()
-min-x : n -> external "minX" n
+min-x : n -> external "setMinX" n
 
 -- Set the minimum y-value displayed by the graph.
 min-y :: Number -> ()
-min-y : n -> external "minY" n
+min-y : n -> external "setMinY" n
 
 -- Set the maximum x-value displayed by the graph.
 max-x :: Number -> ()
-max-x : n -> external "maxX" n
+max-x : n -> external "setMaxX" n
 
 -- Set the maximum y-value displayed by the graph.
 max-y :: Number -> ()
-max-y : n -> external "maxY" n
+max-y : n -> external "setMaxY" n
 
 -- Set the space between individual points on the graph. A higher resolution
 -- will be more accurate, but will take longer to compute.
 resolution :: Number -> ()
-resolution : n -> external "resolution" n
+resolution : n -> external "setResolution" n
 
 -- Add a function to the graph.
 plot :: (Number -> Number) -> ()
-plot : f -> external "function" f
+plot : f -> external "plot" f
