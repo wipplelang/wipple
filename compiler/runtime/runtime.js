@@ -1,38 +1,38 @@
-const __wipple_runtime_debug = async (value) => {
+const __wipple_runtime_debug = (value) => {
     __wipple_env.debug?.(value);
     return value;
 };
 
-const __wipple_runtime_crash = async (message) => {
+const __wipple_runtime_crash = (message) => {
     throw new Error(message);
 };
 
-const __wipple_runtime_display = async (message) => {
-    await __wipple_env.display(message);
+const __wipple_runtime_display = (message) => {
+    __wipple_env.display(message);
     return [];
 };
 
-const __wipple_runtime_prompt = async (message, validate) => {
-    let input = await __wipple_env.prompt(message);
+const __wipple_runtime_prompt = (message, validate) => {
+    let input = __wipple_env.prompt(message);
 
     let validated;
     do {
-        validated = __wipple_toMaybe(await validate(input));
-        input = await __wipple_env.validatePrompt(validated !== undefined);
+        validated = __wipple_toMaybe(validate(input));
+        input = __wipple_env.validatePrompt(validated !== undefined);
     } while (validated === undefined);
 
     return validated;
 };
 
-const __wipple_runtime_external = async (func, input) => {
-    return await __wipple_env[func](input);
+const __wipple_runtime_external = (func, input) => {
+    return __wipple_env[func](input);
 };
 
-const __wipple_runtime_number_to_string = async (number) => {
+const __wipple_runtime_number_to_string = (number) => {
     return number.toString();
 };
 
-const __wipple_runtime_string_to_number = async (string) => {
+const __wipple_runtime_string_to_number = (string) => {
     if (string.toLowerCase() === "nan") {
         return __wipple_fromMaybe(NaN);
     } else {
@@ -41,67 +41,67 @@ const __wipple_runtime_string_to_number = async (string) => {
     }
 };
 
-const __wipple_runtime_add_numbers = async (left, right) => {
+const __wipple_runtime_add_numbers = (left, right) => {
     return left + right;
 };
 
-const __wipple_runtime_subtract_numbers = async (left, right) => {
+const __wipple_runtime_subtract_numbers = (left, right) => {
     return left - right;
 };
 
-const __wipple_runtime_multiply_numbers = async (left, right) => {
+const __wipple_runtime_multiply_numbers = (left, right) => {
     return left * right;
 };
 
-const __wipple_runtime_divide_numbers = async (left, right) => {
+const __wipple_runtime_divide_numbers = (left, right) => {
     return left / right;
 };
 
-const __wipple_runtime_remainder_numbers = async (left, right) => {
+const __wipple_runtime_remainder_numbers = (left, right) => {
     return left % right;
 };
 
-const __wipple_runtime_power_numbers = async (left, right) => {
+const __wipple_runtime_power_numbers = (left, right) => {
     return Math.pow(left, right);
 };
 
-const __wipple_runtime_floor_number = async (number) => {
+const __wipple_runtime_floor_number = (number) => {
     return Math.floor(number);
 };
 
-const __wipple_runtime_ceiling_number = async (number) => {
+const __wipple_runtime_ceiling_number = (number) => {
     return Math.ceil(number);
 };
 
-const __wipple_runtime_sqrt_number = async (number) => {
+const __wipple_runtime_sqrt_number = (number) => {
     return Math.sqrt(number);
 };
 
-const __wipple_runtime_sin = async (number) => {
+const __wipple_runtime_sin = (number) => {
     return Math.sin(number);
 };
 
-const __wipple_runtime_cos = async (number) => {
+const __wipple_runtime_cos = (number) => {
     return Math.cos(number);
 };
 
-const __wipple_runtime_tan = async (number) => {
+const __wipple_runtime_tan = (number) => {
     return Math.tan(number);
 };
 
-const __wipple_runtime_negate_number = async (number) => {
+const __wipple_runtime_negate_number = (number) => {
     return -number;
 };
 
-const __wipple_runtime_string_equality = async (left, right) => {
+const __wipple_runtime_string_equality = (left, right) => {
     return __wipple_fromBoolean(left === right);
 };
 
-const __wipple_runtime_number_equality = async (left, right) => {
+const __wipple_runtime_number_equality = (left, right) => {
     return __wipple_fromBoolean(left === right);
 };
 
-const __wipple_runtime_string_ordering = async (left, right) => {
+const __wipple_runtime_string_ordering = (left, right) => {
     if (left < right) {
         return __wipple_fromOrdering(-1);
     } else if (left === right) {
@@ -111,7 +111,7 @@ const __wipple_runtime_string_ordering = async (left, right) => {
     }
 };
 
-const __wipple_runtime_number_ordering = async (left, right) => {
+const __wipple_runtime_number_ordering = (left, right) => {
     if (left < right) {
         return __wipple_fromOrdering(-1);
     } else if (left === right) {
@@ -121,39 +121,39 @@ const __wipple_runtime_number_ordering = async (left, right) => {
     }
 };
 
-const __wipple_runtime_make_empty_list = async () => {
+const __wipple_runtime_make_empty_list = () => {
     return [];
 };
 
-const __wipple_runtime_list_first = async (list) => {
+const __wipple_runtime_list_first = (list) => {
     return __wipple_fromMaybe(list[0]);
 };
 
-const __wipple_runtime_list_last = async (list) => {
+const __wipple_runtime_list_last = (list) => {
     return __wipple_fromMaybe(list[list.length - 1]);
 };
 
-const __wipple_runtime_list_initial = async (list) => {
+const __wipple_runtime_list_initial = (list) => {
     return __wipple_fromMaybe(list.length > 0 ? list.slice(0, -1) : undefined);
 };
 
-const __wipple_runtime_list_tail = async (list) => {
+const __wipple_runtime_list_tail = (list) => {
     return __wipple_fromMaybe(list.length > 0 ? list.slice(1) : undefined);
 };
 
-const __wipple_runtime_list_nth = async (list, index) => {
+const __wipple_runtime_list_nth = (list, index) => {
     return __wipple_fromMaybe(__wipple_isValidListIndex(index, list) ? list[index] : undefined);
 };
 
-const __wipple_runtime_list_append = async (list, element) => {
+const __wipple_runtime_list_append = (list, element) => {
     return [...list, element];
 };
 
-const __wipple_runtime_list_prepend = async (element, list) => {
+const __wipple_runtime_list_prepend = (element, list) => {
     return [element, ...list];
 };
 
-const __wipple_runtime_list_insert_at = async (list, index, element) => {
+const __wipple_runtime_list_insert_at = (list, index, element) => {
     return __wipple_fromMaybe(
         __wipple_isValidListIndex(index, list, true)
             ? [...list.slice(0, index), element, ...list.slice(index)]
@@ -161,7 +161,7 @@ const __wipple_runtime_list_insert_at = async (list, index, element) => {
     );
 };
 
-const __wipple_runtime_list_remove_at = async (list, index) => {
+const __wipple_runtime_list_remove_at = (list, index) => {
     return __wipple_fromMaybe(
         __wipple_isValidListIndex(index, list)
             ? [...list.slice(0, index), ...list.slice(index + 1)]
@@ -169,11 +169,11 @@ const __wipple_runtime_list_remove_at = async (list, index) => {
     );
 };
 
-const __wipple_runtime_list_count = async (list) => {
+const __wipple_runtime_list_count = (list) => {
     return list.length;
 };
 
-const __wipple_runtime_list_slice = async (list, start, end) => {
+const __wipple_runtime_list_slice = (list, start, end) => {
     return __wipple_fromMaybe(
         __wipple_isValidListIndex(start, list) &&
             __wipple_isValidListIndex(end, list, true) &&
@@ -183,19 +183,19 @@ const __wipple_runtime_list_slice = async (list, start, end) => {
     );
 };
 
-const __wipple_runtime_string_characters = async (string) => {
+const __wipple_runtime_string_characters = (string) => {
     return string.split("");
 };
 
-const __wipple_runtime_random_number = async (min, max) => {
+const __wipple_runtime_random_number = (min, max) => {
     return Math.random() * (max - min) + min;
 };
 
-const __wipple_runtime_nan = async () => {
+const __wipple_runtime_nan = () => {
     return NaN;
 };
 
-const __wipple_runtime_hash_string = async (string) => {
+const __wipple_runtime_hash_string = (string) => {
     // https://gist.github.com/jlevy/c246006675becc446360a798e2b2d781
     let hash = 0;
     for (const char of string) {
@@ -204,38 +204,38 @@ const __wipple_runtime_hash_string = async (string) => {
     return hash >>> 0;
 };
 
-const __wipple_runtime_number_as_external = async (number) => {
+const __wipple_runtime_number_as_external = (number) => {
     return number;
 };
 
-const __wipple_runtime_string_as_external = async (string) => {
+const __wipple_runtime_string_as_external = (string) => {
     return string;
 };
 
-const __wipple_runtime_unit_as_external = async () => {
-    return null;
+const __wipple_runtime_unit_as_external = () => {
+    return [];
 };
 
-const __wipple_runtime_tuple_2_as_external = async (a, b) => {
+const __wipple_runtime_tuple_2_as_external = (a, b) => {
     return [a, b];
 };
 
-const __wipple_runtime_tuple_3_as_external = async (a, b, c) => {
+const __wipple_runtime_tuple_3_as_external = (a, b, c) => {
     return [a, b, c];
 };
 
-const __wipple_runtime_number_from_external = async (value) => {
+const __wipple_runtime_number_from_external = (value) => {
     return value;
 };
 
-const __wipple_runtime_string_from_external = async (value) => {
+const __wipple_runtime_string_from_external = (value) => {
     return value;
 };
 
-const __wipple_runtime_tuple_2_from_external = async (value) => {
+const __wipple_runtime_tuple_2_from_external = (value) => {
     return value;
 };
 
-const __wipple_runtime_tuple_3_from_external = async (value) => {
+const __wipple_runtime_tuple_3_from_external = (value) => {
     return value;
 };

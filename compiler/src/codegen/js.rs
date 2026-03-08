@@ -51,10 +51,10 @@ impl<'a> Backend<'a> {
     pub fn write(&mut self, program: &ir::Program) -> fmt::Result {
         if self.options.module {
             writeln!(self.writer, "let __wipple_env;")?;
-            writeln!(self.writer, "async function __wipple_main(env) {{")?;
+            writeln!(self.writer, "function __wipple_main(env) {{")?;
             writeln!(self.writer, "__wipple_env = env;")?;
         } else {
-            writeln!(self.writer, "async function __wipple_main() {{")?;
+            writeln!(self.writer, "function __wipple_main() {{")?;
         }
 
         for expression in &program.files {
@@ -170,14 +170,13 @@ impl<'a> Backend<'a> {
                 write!(self.writer, ") || true)")?;
             }
             ir::Expression::Bound(bound) => {
-                write!(self.writer, "await __wipple_bounds.")?;
+                write!(self.writer, "__wipple_bounds.")?;
                 self.write_node(bound)?;
                 write!(self.writer, "()")?;
             }
             ir::Expression::Call(function, inputs) => {
-                write!(self.writer, "await (")?;
                 self.write_expression(function)?;
-                write!(self.writer, ")(")?;
+                write!(self.writer, "(")?;
 
                 for input in inputs {
                     self.write_expression(input)?;
@@ -197,12 +196,11 @@ impl<'a> Backend<'a> {
                 write!(self.writer, ")")?;
             }
             ir::Expression::Constant(definition, bounds) => {
-                write!(self.writer, "await ")?;
                 self.write_node(definition)?;
                 write!(self.writer, "({{")?;
                 for (name, value) in bounds {
                     self.write_node(name)?;
-                    write!(self.writer, ": async () => ")?;
+                    write!(self.writer, ": () => ")?;
                     self.write_expression(value)?;
                     write!(self.writer, ", ")?;
                 }
@@ -254,7 +252,7 @@ impl<'a> Backend<'a> {
                 write!(self.writer, "[{}]", serde_json::json!(field))?;
             }
             ir::Expression::Function(inputs, statements) => {
-                write!(self.writer, "(async (")?;
+                write!(self.writer, "((")?;
                 for input in inputs {
                     self.write_node(input)?;
                     write!(self.writer, ", ")?;
@@ -301,11 +299,7 @@ impl<'a> Backend<'a> {
                 self.write_expression(value)?;
             }
             ir::Expression::Runtime(name, inputs) => {
-                write!(
-                    self.writer,
-                    "await __wipple_runtime_{}(",
-                    name.replace('-', "_")
-                )?;
+                write!(self.writer, "__wipple_runtime_{}(", name.replace('-', "_"))?;
 
                 for input in inputs {
                     self.write_expression(input)?;
@@ -383,7 +377,7 @@ impl<'a> Backend<'a> {
         node: &NodeRef,
         body: &ir::SpannedExpression,
     ) -> fmt::Result {
-        write!(self.writer, "async function ")?;
+        write!(self.writer, "function ")?;
         self.write_node(node)?;
         writeln!(self.writer, "(__wipple_bounds) {{")?;
         write!(self.writer, "return ")?;

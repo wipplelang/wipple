@@ -1,26 +1,72 @@
-import * as Comlink from "comlink";
+import { makeChannel, readMessage, writeMessage, type Channel } from "sync-message";
 
-export type RunnerEnvInput = Record<string, (input: any) => Promise<any>>;
+export type Env = Record<string, (input: any) => Promise<any>>;
 
-export const runnerEnv = (env: RunnerEnvInput) =>
-    Object.fromEntries(
-        Object.entries(env).map(([name, f]) => [name, async (input: any) => await f(input)]),
-    );
+// Message IDs are only used by service workers
+const globalMessageId = "";
 
-const worker = {
-    async run(executable: string, env: RunnerEnvInput) {
-        const module = await import(
-            /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(executable)}`
-        );
+export const init = (worker: Worker, env: Env) => {
+    const channel = makeChannel()!;
 
-        try {
-            await module.default(env);
-        } catch (e) {
-            console.error(e);
-        }
-    },
+    const done = new Promise<void>((resolve) => {
+        worker.onmessage = async (e) => {
+            switch (e.data.type) {
+                case "call": {
+                    const { f, input } = e.data;
+                    const output = await env[f](input);
+                    writeMessage(channel, { output }, globalMessageId);
+                    break;
+                }
+                case "done": {
+                    resolve();
+                    break;
+                }
+            }
+        };
+    });
+
+    return {
+        run: async (executable: string) => {
+            worker.postMessage({ type: "run", channel, executable });
+            await done;
+        },
+    };
 };
 
-export type RunnerWorkerType = typeof worker;
+const run = async (channel: Channel, executable: string) => {
+    const module = await import(
+        /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(executable)}`
+    );
 
-Comlink.expose(worker);
+    const env = new Proxy(
+        {},
+        {
+            get: (_, f) => (input: any) => {
+                postMessage({ type: "call", f, input });
+                const { output } = readMessage(channel, globalMessageId);
+                return output;
+            },
+        },
+    );
+
+    try {
+        await module.default(env);
+    } catch (e) {
+        console.error(e);
+    }
+
+    postMessage({ type: "done" });
+};
+
+if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScope) {
+    onmessage = (e) => {
+        switch (e.data.type) {
+            case "run": {
+                run(e.data.channel, e.data.executable);
+                break;
+            }
+            default:
+                throw new Error(`unsupported message: ${JSON.stringify(e.data)}`);
+        }
+    };
+}

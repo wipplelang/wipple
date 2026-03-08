@@ -3,8 +3,7 @@
     import * as api from "$lib/api";
     import { context } from "$lib/context.svelte";
     import runtimes from "$lib/runtimes";
-    import * as Comlink from "comlink";
-    import { runnerEnv, type RunnerEnvInput, type RunnerWorkerType } from "$lib/runner.worker";
+    import * as runner from "$lib/runner.worker";
     import RunnerWorker from "$lib/runner.worker?worker";
     import type { OutputItem } from "$lib/models/OutputItem";
     import Markdown from "./Markdown.svelte";
@@ -22,16 +21,13 @@
 
     let { runState = $bindable(), ondiagnostics, onchangeline }: Props = $props();
 
-    let runnerWorker: InstanceType<typeof RunnerWorker> | undefined = undefined;
-    let runnerWorkerLink: Comlink.Remote<RunnerWorkerType> | undefined = undefined;
+    let runnerWorker: Worker | undefined = undefined;
 
-    const createRunnerWorker = () => {
+    const createRunnerWorker = (env: runner.Env) => {
         runnerWorker?.terminate();
-
         runnerWorker = new RunnerWorker();
-        runnerWorkerLink = Comlink.wrap<RunnerWorkerType>(runnerWorker);
 
-        return runnerWorkerLink;
+        return runner.init(runnerWorker, env);
     };
 
     const playground = $derived(context.playground);
@@ -97,9 +93,9 @@
 
             let submitPrompt: ((input: string) => void) | undefined;
             let validatePrompt!: (valid: boolean) => void;
-            const env: RunnerEnvInput = {
-                trace: async ({ line }) => {
-                    onchangeline(line);
+            const env: runner.Env = {
+                trace: async (trace) => {
+                    onchangeline(JSON.parse(trace).line);
                 },
                 display: async (message: string) => {
                     output.push({
@@ -136,14 +132,13 @@
                 },
             };
 
-            // Wrap custom functions (which are tied to Svelte components) so
-            // they aren't proxied by Comlink
+            // Wrap runtime functions (which are Svelte proxy objects)
             for (const key in runtimeOutput) {
                 env[key] = (...args) => runtimeOutput[key](...args);
             }
 
-            const worker = createRunnerWorker();
-            await worker.run(response.executable, Comlink.proxy(runnerEnv(env)));
+            const { run } = createRunnerWorker(env);
+            await run(response.executable);
         } finally {
             await stopRunning(false);
             return;

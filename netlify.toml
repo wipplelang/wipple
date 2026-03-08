@@ -7,3 +7,9 @@ framework = "#static"
 
 [build.processing.html]
 pretty_urls = true
+
+[[headers]]
+for = "/playground/*"
+[headers.values]
+Cross-Origin-Opener-Policy = "same-origin"
+Cross-Origin-Embedder-Policy = "require-corp"
