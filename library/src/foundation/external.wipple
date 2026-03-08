@@ -1,0 +1,35 @@
+As-External : value => trait (value -> String)
+
+instance (As-External Number) : n -> intrinsic "number-as-external" n
+
+instance (As-External String) : s -> intrinsic "string-as-external" s
+
+instance (As-External ()) : () -> intrinsic "unit-as-external"
+
+instance (As-External (a; b)) where (As-External a) (As-External b) : (a; b) ->
+  intrinsic "tuple-2-as-external" (As-External a) (As-External b)
+
+instance (As-External (a; b; c)) where (As-External a) (As-External b) (As-External c) : (a; b; c) ->
+  intrinsic "tuple-3-as-external" (As-External a) (As-External b) (As-External c)
+
+From-External : value => trait (String -> value)
+
+instance (From-External Number) : s -> intrinsic "number-from-external" s
+
+instance (From-External String) : s -> intrinsic "string-from-external" s
+
+instance (From-External ()) : _ -> ()
+
+instance (From-External (a; b)) where (From-External a) (From-External b) : s -> do {
+  (a; b) : intrinsic "tuple-2-from-external" s
+  (From-External a; From-External b)
+}
+
+instance (From-External (a; b; c)) where (From-External a) (From-External b) (From-External c) : s -> do {
+  (a; b; c) : intrinsic "tuple-3-from-external" s
+  (From-External a; From-External b; From-External c)
+}
+
+-- Send a message to the runtime.
+external :: String input -> output where (As-External input) (From-External output) (output :: ())
+external : message input -> From-External (intrinsic "external" message (As-External input))

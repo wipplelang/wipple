@@ -4,7 +4,7 @@
     import { context } from "$lib/context.svelte";
     import runtimes from "$lib/runtimes";
     import * as Comlink from "comlink";
-    import type { RunnerEnv, RunnerWorkerType } from "$lib/runner.worker";
+    import { runnerEnv, type RunnerEnvInput, type RunnerWorkerType } from "$lib/runner.worker";
     import RunnerWorker from "$lib/runner.worker?worker";
     import type { OutputItem } from "$lib/models/OutputItem";
     import Markdown from "./Markdown.svelte";
@@ -95,7 +95,9 @@
         try {
             await runtimeOutput?._initialize?.();
 
-            const env: RunnerEnv = {
+            let submitPrompt: ((input: string) => void) | undefined;
+            let validatePrompt!: (valid: boolean) => void;
+            const env: RunnerEnvInput = {
                 trace: async ({ line }) => {
                     onchangeline(line);
                 },
@@ -105,21 +107,32 @@
                         value: message,
                     });
                 },
-                prompt: async (message: string, submit: (value: string) => Promise<boolean>) => {
-                    await new Promise<void>((resolve) => {
+                prompt: (message: string) =>
+                    new Promise<string>((resolve) => {
                         output.push({
                             type: "prompt",
                             prompt: message,
-                            submit: async (value) => {
-                                const valid = await submit(value);
-                                if (valid) {
-                                    resolve();
-                                }
+                            submit: (input) => {
+                                resolve(input);
+                                submitPrompt?.(input);
+                                submitPrompt = undefined;
 
-                                return valid;
+                                return new Promise<boolean>((resolve) => {
+                                    validatePrompt = resolve;
+                                });
                             },
                         });
-                    });
+                    }),
+                validatePrompt: async (valid: boolean) => {
+                    validatePrompt(valid);
+
+                    if (valid) {
+                        validatePrompt = undefined!;
+                    } else {
+                        return await new Promise<string>((resolve) => {
+                            submitPrompt = resolve;
+                        });
+                    }
                 },
             };
 
@@ -130,7 +143,7 @@
             }
 
             const worker = createRunnerWorker();
-            await worker.run(response.executable, Comlink.proxy(env));
+            await worker.run(response.executable, Comlink.proxy(runnerEnv(env)));
         } finally {
             await stopRunning(false);
             return;

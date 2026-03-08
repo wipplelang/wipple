@@ -45,10 +45,6 @@ instance (Initial (Maybe value)) : None
 -- error messages for your types.
 Mismatched : actual expected => trait ()
 
--- Send a message to the runtime.
-external :: String input -> output where (output :: ())
-external : message data -> intrinsic "external" message data
-
 -- Display a dropdown with the provided options.
 Dropdown : type {value :: String}
 

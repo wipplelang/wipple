@@ -50,10 +50,9 @@ impl<'a> Backend<'a> {
 
     pub fn write(&mut self, program: &ir::Program) -> fmt::Result {
         if self.options.module {
-            writeln!(self.writer, "let __wipple_env, __wipple_proxy;")?;
-            writeln!(self.writer, "async function __wipple_main(env, proxy) {{")?;
+            writeln!(self.writer, "let __wipple_env;")?;
+            writeln!(self.writer, "async function __wipple_main(env) {{")?;
             writeln!(self.writer, "__wipple_env = env;")?;
-            writeln!(self.writer, "__wipple_proxy = proxy;")?;
         } else {
             writeln!(self.writer, "async function __wipple_main() {{")?;
         }
@@ -337,7 +336,7 @@ impl<'a> Backend<'a> {
                     write!(
                         self.writer,
                         "__wipple_env.trace({})",
-                        serde_json::json!(span.start)
+                        serde_json::json!(format!("{}", serde_json::json!(span.start)))
                     )?;
                 }
             }

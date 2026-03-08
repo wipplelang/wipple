@@ -83,22 +83,31 @@
         resolution = value;
     };
 
-    export const plot = async (f: (x: number) => Promise<number>) => {
-        const i = data.length;
+    let currentPlot: number | undefined;
+
+    export const beginPlot = async () => {
+        currentPlot = data.length;
 
         data.push({
             type: "scatter",
             mode: "lines",
-            line: { color: colors[i] ?? "black", width: 3 },
+            line: { color: colors[currentPlot] ?? "black", width: 3 },
             x: [],
             y: [],
         });
 
-        for (let x = minX; x <= maxX; x += resolution) {
-            const y = await f(x);
-            (data[i].x as number[]).push(x);
-            (data[i].y as number[]).push(y);
-        }
+        return [minX, maxX, resolution];
+    };
+
+    export const plot = async ([x, y]: [number, number]) => {
+        if (currentPlot == null) return;
+
+        (data[currentPlot].x as number[]).push(x);
+        (data[currentPlot].y as number[]).push(y);
+    };
+
+    export const endPlot = async () => {
+        currentPlot = undefined;
     };
 </script>
 

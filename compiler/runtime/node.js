@@ -1,19 +1,21 @@
+let rl;
+
 const __wipple_env = {
-    display: console.log,
-    prompt: async (message, submit) => {
-        const rl = require("node:readline/promises").createInterface({
+    display: (message) => console.log(message),
+    prompt: async (message) => {
+        rl = require("node:readline/promises").createInterface({
             input: process.stdin,
             output: process.stdout,
         });
 
-        let valid = false;
-        while (!valid) {
-            const input = await rl.question(message + ": ");
-            valid = await submit(input);
+        return await rl.question(message + ": ");
+    },
+    validatePrompt: async (valid) => {
+        if (valid) {
+            rl.close();
+            rl = undefined;
+        } else {
+            return await rl.question("try again: ");
         }
-
-        rl.close();
     },
 };
-
-const __wipple_proxy = (x) => x;

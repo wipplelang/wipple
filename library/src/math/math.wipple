@@ -25,4 +25,8 @@ resolution : n -> external "setResolution" n
 
 -- Add a function to the graph.
 plot :: (Number -> Number) -> ()
-plot : f -> external "plot" f
+plot : f -> do {
+  (min; max; step) : external "beginPlot" ()
+  min to max by step . each (n -> external "plot" (n; f n))
+  external "endPlot" ()
+}

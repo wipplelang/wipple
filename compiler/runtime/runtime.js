@@ -13,25 +13,19 @@ const __wipple_runtime_display = async (message) => {
 };
 
 const __wipple_runtime_prompt = async (message, validate) => {
-    let value;
-    await __wipple_env.prompt(
-        message,
-        __wipple_proxy(async (input) => {
-            const validated = await validate(input);
-            value = __wipple_toMaybe(validated);
-            return value !== undefined;
-        }),
-    );
+    let input = await __wipple_env.prompt(message);
 
-    if (value === undefined) {
-        throw new Error("'prompt' did not validate input");
-    }
+    let validated;
+    do {
+        validated = __wipple_toMaybe(await validate(input));
+        input = await __wipple_env.validatePrompt(validated !== undefined);
+    } while (validated === undefined);
 
-    return value;
+    return validated;
 };
 
 const __wipple_runtime_external = async (func, input) => {
-    return await __wipple_env[func](__wipple_proxy(input));
+    return await __wipple_env[func](input);
 };
 
 const __wipple_runtime_number_to_string = async (number) => {
@@ -208,4 +202,40 @@ const __wipple_runtime_hash_string = async (string) => {
         hash = (hash << 5) - hash + char;
     }
     return hash >>> 0;
+};
+
+const __wipple_runtime_number_as_external = async (number) => {
+    return number;
+};
+
+const __wipple_runtime_string_as_external = async (string) => {
+    return string;
+};
+
+const __wipple_runtime_unit_as_external = async () => {
+    return null;
+};
+
+const __wipple_runtime_tuple_2_as_external = async (a, b) => {
+    return [a, b];
+};
+
+const __wipple_runtime_tuple_3_as_external = async (a, b, c) => {
+    return [a, b, c];
+};
+
+const __wipple_runtime_number_from_external = async (value) => {
+    return value;
+};
+
+const __wipple_runtime_string_from_external = async (value) => {
+    return value;
+};
+
+const __wipple_runtime_tuple_2_from_external = async (value) => {
+    return value;
+};
+
+const __wipple_runtime_tuple_3_from_external = async (value) => {
+    return value;
 };
