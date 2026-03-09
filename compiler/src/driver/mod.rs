@@ -10,16 +10,16 @@ use crate::{
     driver::order::GroupOrder,
     nodes::BoundConstraintNode,
     typecheck::{Instances, Instantiated, Solver, Typed},
-    visit::{Defined, Definition, DefinitionConstraints, Scope, Visitor},
+    visit::{Defined, Definition, DefinitionConstraints, Visitor},
 };
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug, Clone, Default)]
-pub struct TopLevelScopes(Vec<Scope<Definition>>);
+pub struct TopLevelDefinitions(Vec<HashMap<String, Vec<Definition>>>);
 
-impl Fact for TopLevelScopes {}
+impl Fact for TopLevelDefinitions {}
 
-impl Render for TopLevelScopes {}
+impl Render for TopLevelDefinitions {}
 
 pub fn compile(db: &mut Db, files: &[NodeRef]) {
     let node_is_from_files = |db: &mut Db, node: &NodeRef| {
@@ -34,17 +34,17 @@ pub fn compile(db: &mut Db, files: &[NodeRef]) {
 
     // Define/resolve names and collect constraints
 
-    let TopLevelScopes(top_level_scopes) = db.get_global().unwrap_or_default();
+    let TopLevelDefinitions(top_level_definitions) = db.get_global().unwrap_or_default();
 
-    let mut visitor = Visitor::new(db, top_level_scopes);
+    let mut visitor = Visitor::new(db, top_level_definitions);
     for file in files {
         visitor.visit(file);
     }
 
     let visited = visitor.finish();
 
-    db.with_global_fact(|TopLevelScopes(top_level_scopes)| {
-        top_level_scopes.push(visited.scope);
+    db.with_global_fact(|TopLevelDefinitions(top_level_definitions)| {
+        top_level_definitions.push(visited.definitions);
     });
 
     // Solve constraints from each definition, implying all bounds

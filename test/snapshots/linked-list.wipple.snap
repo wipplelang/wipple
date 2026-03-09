@@ -80,10 +80,12 @@ VariablePatternNode `f` (test/tests/linked-list.wipple:9:22-9:23)
   at test/tests/linked-list.wipple:9:22-9:23
   has type value result -> result
   is a pattern
+  is captured
 VariablePatternNode `result` (test/tests/linked-list.wipple:9:24-9:30)
   at test/tests/linked-list.wipple:9:24-9:30
   has type result
   is a pattern
+  is captured
 VariablePatternNode `l` (test/tests/linked-list.wipple:9:31-9:32)
   at test/tests/linked-list.wipple:9:31-9:32
   has type Linked-List value

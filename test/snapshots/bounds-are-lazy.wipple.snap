@@ -106,6 +106,7 @@ VariablePatternNode `value` (test/tests/bounds-are-lazy.wipple:11:5-11:10)
   at test/tests/bounds-are-lazy.wipple:11:5-11:10
   has type value
   is a pattern
+  is captured
 VariableExpressionNode `show` (test/tests/bounds-are-lazy.wipple:12:3-12:7)
   at test/tests/bounds-are-lazy.wipple:12:3-12:7
   has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))

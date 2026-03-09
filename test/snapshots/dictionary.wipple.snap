@@ -23,6 +23,7 @@ VariablePatternNode `lengths` (test/tests/dictionary.wipple:4:1-4:8)
   at test/tests/dictionary.wipple:4:1-4:8
   has type Dictionary String Number
   is a pattern
+  is captured
 VariableExpressionNode `sports` (test/tests/dictionary.wipple:4:11-4:17)
   at test/tests/dictionary.wipple:4:11-4:17
   has type List String

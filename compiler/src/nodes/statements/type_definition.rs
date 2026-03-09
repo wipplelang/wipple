@@ -430,6 +430,7 @@ impl Codegen for VariantNode {
                     ))
                     .at(node, ctx)?,
                 ],
+                Vec::new(),
             )
             .at(node, ctx)
         }

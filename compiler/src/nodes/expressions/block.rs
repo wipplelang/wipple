@@ -4,7 +4,7 @@ use crate::{
     nodes::{ExpressionStatementNode, parse_comments, parse_statements, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::{Type, TypeConstraint},
-    visit::{Visit, Visitor},
+    visit::{Captures, Visit, Visitor},
 };
 
 #[derive(Debug)]
@@ -54,6 +54,8 @@ impl Visit for BlockExpressionNode {
 
 impl Codegen for BlockExpressionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+        let Captures(captures) = ctx.get(node).unwrap_or_default();
+
         let should_append_unit = self
             .statements
             .last()
@@ -80,6 +82,6 @@ impl Codegen for BlockExpressionNode {
             );
         }
 
-        ir::Expression::Function(Vec::new(), body).at(node, ctx)
+        ir::Expression::Function(Vec::new(), body, Vec::from_iter(captures)).at(node, ctx)
     }
 }

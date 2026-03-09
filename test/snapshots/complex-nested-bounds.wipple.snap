@@ -78,6 +78,7 @@ VariablePatternNode `f` (test/tests/complex-nested-bounds.wipple:7:41-7:42)
   at test/tests/complex-nested-bounds.wipple:7:41-7:42
   has type a -> b
   is a pattern
+  is captured
 VariablePatternNode `x` (test/tests/complex-nested-bounds.wipple:7:46-7:47)
   at test/tests/complex-nested-bounds.wipple:7:46-7:47
   has type a

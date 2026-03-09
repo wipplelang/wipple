@@ -65,6 +65,8 @@ VariablePatternNode `seen` (test/tests/remove-duplicates.wipple:5:3-5:7)
   at test/tests/remove-duplicates.wipple:5:3-5:7
   has type Set element
   is a pattern
+  is captured
+  is mutated
 CollectionExpressionNode `,` (test/tests/remove-duplicates.wipple:5:11-5:12)
   at test/tests/remove-duplicates.wipple:5:11-5:12
   has type Set element
@@ -73,6 +75,7 @@ VariablePatternNode `item` (test/tests/remove-duplicates.wipple:6:11-6:15)
   at test/tests/remove-duplicates.wipple:6:11-6:15
   has type element
   is a pattern
+  is captured
 VariableExpressionNode `filter` (test/tests/remove-duplicates.wipple:6:3-6:9)
   at test/tests/remove-duplicates.wipple:6:3-6:9
   has bound(s) As-Sequence (List element) element (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))

@@ -1,7 +1,7 @@
 use crate::{
     codegen::{Codegen, CodegenCtx, ir},
     database::{Node, NodeRef},
-    nodes::{HasTemporaries, Matching, visit_pattern},
+    nodes::{HasTemporaries, IsMutated, Matching, visit_pattern},
     syntax::{ParseError, Parser, parse_variable_name},
     visit::{MatchPathSegment, VariableDefinition, Visit, Visitor},
 };
@@ -41,11 +41,19 @@ impl Visit for VariablePatternNode {
 impl Codegen for VariablePatternNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
         let Matching(matching) = ctx.get(node)?;
+        let is_mutable = ctx.get::<IsMutated>(node).is_some();
 
-        ir::Expression::AssignTo(
-            Box::new(ir::Expression::Variable(matching).at(node, ctx)?),
-            node.clone(),
-        )
+        if is_mutable {
+            ir::Expression::AssignToMutable(
+                Box::new(ir::Expression::Variable(matching).at(node, ctx)?),
+                node.clone(),
+            )
+        } else {
+            ir::Expression::AssignTo(
+                Box::new(ir::Expression::Variable(matching).at(node, ctx)?),
+                node.clone(),
+            )
+        }
         .at(node, ctx)
     }
 

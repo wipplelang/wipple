@@ -1,6 +1,6 @@
 use crate::{
     codegen::{Codegen, CodegenCtx, ir},
-    database::{Fact, Node, NodeRef, Render},
+    database::{Db, Fact, Node, NodeRef, Render},
     nodes::visit_expression,
     syntax::{ParseError, Parser, parse_variable_name},
     typecheck::{
@@ -9,6 +9,28 @@ use crate::{
     },
     visit::{Definition, Visit, Visitor},
 };
+
+#[derive(Debug, Clone)]
+pub struct IsMutated;
+
+impl Fact for IsMutated {}
+
+impl Render for IsMutated {
+    fn write(&self, w: &mut dyn std::fmt::Write, _db: &Db) -> std::fmt::Result {
+        write!(w, "is mutated")
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct IsCaptured;
+
+impl Fact for IsCaptured {}
+
+impl Render for IsCaptured {
+    fn write(&self, w: &mut dyn std::fmt::Write, _db: &Db) -> std::fmt::Result {
+        write!(w, "is captured")
+    }
+}
 
 #[derive(Debug, Clone)]
 pub enum ResolvedVariable {
@@ -53,6 +75,10 @@ impl Visit for VariableExpressionNode {
 
         match definition {
             Definition::Variable(definition) => {
+                if visitor.capture(&definition.node) {
+                    visitor.insert(&definition.node, IsCaptured);
+                }
+
                 visitor.graph.replace(node, &definition.node);
                 visitor.constraint(GroupConstraint::new(node.clone(), definition.node));
                 visitor.insert(node, ResolvedVariable::Variable(resolved_node));
@@ -83,7 +109,13 @@ impl Codegen for VariableExpressionNode {
 
         match resolution {
             ResolvedVariable::Variable(resolved) => {
-                ir::Expression::Variable(resolved).at(node, ctx)
+                let is_mutated = ctx.get::<IsMutated>(&resolved).is_some();
+
+                if is_mutated {
+                    ir::Expression::Mutable(resolved).at(node, ctx)
+                } else {
+                    ir::Expression::Variable(resolved).at(node, ctx)
+                }
             }
             ResolvedVariable::Constant(definition) => {
                 let bounds = ctx.get::<Bounds>(node).unwrap_or_default();

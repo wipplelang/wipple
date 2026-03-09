@@ -4,7 +4,7 @@ use crate::{
     visit::{Defined, Definition, MatchPath, MatchPathSegment, Matches},
 };
 use std::{
-    cell::{Ref, RefCell, RefMut},
+    cell::{RefCell, RefMut},
     collections::{BTreeSet, HashMap, VecDeque},
     ops::{Deref, DerefMut},
     rc::Rc,
@@ -60,13 +60,20 @@ impl Render for TypeParameters {
     }
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct Captures(pub BTreeSet<NodeRef>);
+
+impl Fact for Captures {}
+
+impl Render for Captures {}
+
 pub trait Visit {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>);
 }
 
 pub struct Visitor<'db> {
     pub db: &'db mut Db,
-    pub scopes: Vec<Rc<RefCell<Scope<Rc<RefCell<Definition>>>>>>,
+    scopes: Vec<Rc<RefCell<Scope<Rc<RefCell<Definition>>>>>>,
     visited: BTreeSet<NodeRef>,
     current_node: Option<NodeRef>,
     current_definition: Option<CurrentDefinition>,
@@ -105,19 +112,22 @@ const UTILITIES: &[Utility] = &[Utility {
 #[derive(Debug)]
 pub struct Result {
     pub constraints: Vec<Box<dyn Constraint>>,
-    pub scope: Scope<Definition>,
+    pub definitions: HashMap<String, Vec<Definition>>,
     pub utilities: HashMap<&'static str, NodeRef>,
 }
 
 impl<'db> Visitor<'db> {
-    pub fn new(db: &'db mut Db, scopes: Vec<Scope<Definition>>) -> Self {
+    pub fn new(
+        db: &'db mut Db,
+        definitions: impl IntoIterator<Item = HashMap<String, Vec<Definition>>>,
+    ) -> Self {
         let mut visitor = Visitor {
             db,
-            scopes: scopes
+            scopes: definitions
                 .into_iter()
                 .map(|scope| {
-                    Rc::new(RefCell::new(
-                        scope
+                    Rc::new(RefCell::new(Scope {
+                        names: scope
                             .into_iter()
                             .map(|(name, definitions)| {
                                 (
@@ -129,7 +139,8 @@ impl<'db> Visitor<'db> {
                                 )
                             })
                             .collect(),
-                    ))
+                        ..Default::default()
+                    }))
                 })
                 .collect(),
             visited: Default::default(),
@@ -181,11 +192,7 @@ impl<'db> Visitor<'db> {
         self.scopes.push(Default::default());
     }
 
-    pub fn peek_scope(&self) -> Ref<'_, Scope<Rc<RefCell<Definition>>>> {
-        self.scopes.last().unwrap().borrow()
-    }
-
-    pub fn peek_scope_mut(&mut self) -> RefMut<'_, Scope<Rc<RefCell<Definition>>>> {
+    fn peek_scope_mut(&mut self) -> RefMut<'_, Scope<Rc<RefCell<Definition>>>> {
         self.scopes.last_mut().unwrap().borrow_mut()
     }
 
@@ -225,7 +232,7 @@ impl<'db> Visitor<'db> {
             .iter()
             .rev()
             .find_map(move |scope| {
-                scope.borrow().get(name).map(|scope| {
+                scope.borrow().names.get(name).map(|scope| {
                     scope
                         .iter()
                         .filter_map(|definition| match_definition(&definition.borrow()))
@@ -242,7 +249,7 @@ impl<'db> Visitor<'db> {
         mut f: impl FnMut(&mut Self, &Definition) -> Option<Definition>,
     ) -> bool {
         for scope in self.scopes.iter().rev().cloned().collect::<Vec<_>>() {
-            if let Some(definitions) = scope.borrow().get(name) {
+            if let Some(definitions) = scope.borrow().names.get(name) {
                 for definition in definitions {
                     let result = f(self, &definition.borrow());
                     if let Some(replacement) = result {
@@ -257,10 +264,33 @@ impl<'db> Visitor<'db> {
     }
 
     pub fn define(&mut self, name: &str, definition: impl Into<Definition>) {
-        self.peek_scope_mut()
+        let definition = definition.into();
+
+        let mut scope = self.peek_scope_mut();
+
+        scope.defined.insert(definition.node());
+
+        scope
+            .names
             .entry(name.to_string())
             .or_default()
-            .push(Rc::new(RefCell::new(definition.into())));
+            .push(Rc::new(RefCell::new(definition)));
+    }
+
+    pub fn capture(&mut self, node: &NodeRef) -> bool {
+        let mut captured = false;
+        for scope in self.scopes.iter().rev() {
+            let mut scope = scope.borrow_mut();
+
+            if scope.defined.contains(node) {
+                break;
+            }
+
+            scope.captures.insert(node.clone());
+            captured = true;
+        }
+
+        captured
     }
 
     pub fn defining<T>(&mut self, node: &NodeRef, f: impl FnOnce(&mut Visitor<'_>) -> T) -> T
@@ -409,9 +439,10 @@ impl<'db> Visitor<'db> {
 
         Result {
             constraints: self.constraints,
-            scope: Rc::try_unwrap(self.scopes.pop().unwrap())
+            definitions: Rc::try_unwrap(self.scopes.pop().unwrap())
                 .unwrap()
                 .into_inner()
+                .names
                 .into_iter()
                 .map(|(name, definitions)| {
                     (
@@ -454,7 +485,22 @@ impl<'db> Visitor<'db> {
     }
 }
 
-pub type Scope<T> = HashMap<String, Vec<T>>;
+#[derive(Debug)]
+struct Scope<T> {
+    names: HashMap<String, Vec<T>>,
+    defined: BTreeSet<NodeRef>,
+    captures: BTreeSet<NodeRef>,
+}
+
+impl<T> Default for Scope<T> {
+    fn default() -> Self {
+        Scope {
+            names: Default::default(),
+            defined: Default::default(),
+            captures: Default::default(),
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct CurrentDefinition {

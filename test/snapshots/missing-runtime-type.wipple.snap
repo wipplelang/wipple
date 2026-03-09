@@ -109,6 +109,7 @@ VariablePatternNode `x` (test/tests/missing-runtime-type.wipple:7:34-7:35)
   at test/tests/missing-runtime-type.wipple:7:34-7:35
   has type a
   is a pattern
+  is captured
 WildcardPatternNode `_` (test/tests/missing-runtime-type.wipple:7:43-7:44)
   at test/tests/missing-runtime-type.wipple:7:43-7:44
   has type b

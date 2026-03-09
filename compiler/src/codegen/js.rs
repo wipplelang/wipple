@@ -169,6 +169,13 @@ impl<'a> Backend<'a> {
                 self.write_expression(value)?;
                 write!(self.writer, ") || true)")?;
             }
+            ir::Expression::AssignToMutable(value, variable) => {
+                write!(self.writer, "((")?;
+                self.write_node(variable)?;
+                write!(self.writer, " = {{ __wipple_value: ")?;
+                self.write_expression(value)?;
+                write!(self.writer, " }}) || true)")?;
+            }
             ir::Expression::Bound(bound) => {
                 write!(self.writer, "__wipple_bounds.")?;
                 self.write_node(bound)?;
@@ -206,6 +213,39 @@ impl<'a> Backend<'a> {
                 }
                 write!(self.writer, "}})")?;
             }
+            ir::Expression::Declare(variable) => {
+                write!(self.writer, "let ")?;
+                self.write_node(variable)?;
+            }
+            ir::Expression::EqualToNumber(value, expected) => {
+                write!(self.writer, "(")?;
+                self.write_expression(value)?;
+                write!(self.writer, " === {})", expected)?;
+            }
+            ir::Expression::EqualToString(value, expected) => {
+                write!(self.writer, "(")?;
+                self.write_expression(value)?;
+                write!(self.writer, " === {})", serde_json::json!(expected))?;
+            }
+            ir::Expression::EqualToVariant(value, expected) => {
+                write!(self.writer, "(")?;
+                self.write_expression(value)?;
+                write!(self.writer, "[__wipple_variant] === {})", expected)?;
+            }
+            ir::Expression::Field(value, field) => {
+                self.write_expression(value)?;
+                write!(self.writer, "[{}]", serde_json::json!(field))?;
+            }
+            ir::Expression::Function(inputs, statements, _captures) => {
+                write!(self.writer, "((")?;
+                for input in inputs {
+                    self.write_node(input)?;
+                    write!(self.writer, ", ")?;
+                }
+                writeln!(self.writer, ") => {{")?;
+                self.write_statements(statements)?;
+                write!(self.writer, "}})")?;
+            }
             ir::Expression::If(arms, last) => {
                 for (pattern, value) in arms {
                     write!(self.writer, "if (")?;
@@ -228,42 +268,6 @@ impl<'a> Backend<'a> {
                 }
                 write!(self.writer, "; }}")?;
             }
-            ir::Expression::Declare(variable) => {
-                write!(self.writer, "var ")?;
-                self.write_node(variable)?;
-            }
-            ir::Expression::EqualToNumber(value, expected) => {
-                write!(self.writer, "(")?;
-                self.write_expression(value)?;
-                write!(self.writer, " === {})", expected)?;
-            }
-            ir::Expression::EqualToString(value, expected) => {
-                write!(self.writer, "(")?;
-                self.write_expression(value)?;
-                write!(self.writer, " === {})", serde_json::json!(expected))?;
-            }
-            ir::Expression::EqualToVariant(value, expected) => {
-                write!(self.writer, "(")?;
-                self.write_expression(value)?;
-                write!(self.writer, "[__wipple_variant] === {})", expected)?;
-            }
-            ir::Expression::Field(value, field) => {
-                self.write_expression(value)?;
-                write!(self.writer, "[{}]", serde_json::json!(field))?;
-            }
-            ir::Expression::Function(inputs, statements) => {
-                write!(self.writer, "((")?;
-                for input in inputs {
-                    self.write_node(input)?;
-                    write!(self.writer, ", ")?;
-                }
-                writeln!(self.writer, ") => {{")?;
-                self.write_statements(statements)?;
-                write!(self.writer, "}})")?;
-            }
-            ir::Expression::Variable(node) => {
-                self.write_node(node)?;
-            }
             ir::Expression::Index(value, index) => {
                 self.write_expression(value)?;
                 write!(self.writer, "[{}]", index)?;
@@ -278,6 +282,17 @@ impl<'a> Backend<'a> {
             }
             ir::Expression::Marker => {
                 write!(self.writer, "null")?;
+            }
+            ir::Expression::Mutable(variable) => {
+                self.write_node(variable)?;
+                write!(self.writer, ".__wipple_value")?;
+            }
+            ir::Expression::Mutate(variable, value) => {
+                write!(self.writer, "((")?;
+                self.write_node(variable)?;
+                write!(self.writer, ".__wipple_value = ")?;
+                self.write_node(value)?;
+                write!(self.writer, ") || true)")?;
             }
             ir::Expression::Number(number) => {
                 write!(self.writer, "{}", number)?;
@@ -308,6 +323,11 @@ impl<'a> Backend<'a> {
 
                 write!(self.writer, ")")?;
             }
+            ir::Expression::Scope(statements) => {
+                write!(self.writer, "(() => {{")?;
+                self.write_statements(statements)?;
+                write!(self.writer, "}})()")?;
+            }
             ir::Expression::Sequence(statements) => {
                 self.write_statements(statements)?;
             }
@@ -333,6 +353,9 @@ impl<'a> Backend<'a> {
                         serde_json::json!(format!("{}", serde_json::json!(span.start)))
                     )?;
                 }
+            }
+            ir::Expression::Variable(node) => {
+                self.write_node(node)?;
             }
             ir::Expression::Variant(index, elements) => {
                 write!(self.writer, "__wipple_variant({}, [", index)?;

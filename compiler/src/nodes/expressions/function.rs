@@ -4,7 +4,7 @@ use crate::{
     nodes::{parse_atomic_pattern, parse_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::TypeConstraint,
-    visit::{Visit, Visitor},
+    visit::{Captures, Visit, Visitor},
 };
 
 #[derive(Debug, Clone)]
@@ -88,6 +88,7 @@ impl Visit for FunctionExpressionNode {
 impl Codegen for FunctionExpressionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
         let InputTemporaries(inputs) = ctx.get::<InputTemporaries>(node)?;
+        let Captures(captures) = ctx.get(node).unwrap_or_default();
 
         let mut body = Vec::new();
         for pattern in &self.inputs {
@@ -104,6 +105,6 @@ impl Codegen for FunctionExpressionNode {
             ir::Expression::Return(Box::new(ctx.codegen(&self.output)?)).at(&self.output, ctx)?,
         );
 
-        ir::Expression::Function(inputs, body).at(node, ctx)
+        ir::Expression::Function(inputs, body, Vec::from_iter(captures)).at(node, ctx)
     }
 }

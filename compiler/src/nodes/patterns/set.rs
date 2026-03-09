@@ -1,7 +1,7 @@
 use crate::{
     codegen::{Codegen, CodegenCtx, ir},
     database::{Db, Fact, Node, NodeRef, Render},
-    nodes::{HasTemporaries, Matching, visit_pattern},
+    nodes::{HasTemporaries, IsMutated, Matching, visit_pattern},
     syntax::{ParseError, Parser, TokenKind, parse_variable_name},
     typecheck::GroupConstraint,
     visit::{Definition, MatchPathSegment, Resolved, Visit, Visitor},
@@ -59,6 +59,8 @@ impl Visit for SetPatternNode {
 
         // Do NOT include `self.matching_variable`, that would shadow it!
         visitor.insert(node, HasTemporaries(Vec::new()));
+
+        visitor.insert(&variable_definition.node, IsMutated);
     }
 }
 
@@ -68,10 +70,6 @@ impl Codegen for SetPatternNode {
         let matching_variable = definitions.into_iter().next()?;
         let Matching(matching) = ctx.get(node)?;
 
-        ir::Expression::AssignTo(
-            Box::new(ir::Expression::Variable(matching).at(node, ctx)?),
-            matching_variable,
-        )
-        .at(node, ctx)
+        ir::Expression::Mutate(matching_variable, matching).at(node, ctx)
     }
 }
