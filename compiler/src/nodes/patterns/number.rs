@@ -42,10 +42,12 @@ impl Codegen for NumberPatternNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
         let Matching(matching) = ctx.get(node)?;
 
-        ir::Expression::EqualToNumber(
-            Box::new(ir::Expression::Variable(matching).at(node, ctx)?),
-            self.value.clone(),
+        Some(
+            ir::Expression::EqualToNumber(
+                Box::new(ir::Expression::Variable(matching).at(node, ctx)),
+                self.value.clone(),
+            )
+            .at(node, ctx),
         )
-        .at(node, ctx)
     }
 }

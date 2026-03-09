@@ -67,10 +67,12 @@ impl Codegen for AsExpressionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
         let AsFunction(as_function) = ctx.get::<AsFunction>(node)?;
 
-        ir::Expression::Call(
-            Box::new(ctx.codegen(&as_function)?),
-            vec![ctx.codegen(&self.left)?],
+        Some(
+            ir::Expression::Call(
+                Box::new(ctx.codegen(&as_function)?),
+                vec![ctx.codegen(&self.left)?],
+            )
+            .at(node, ctx),
         )
-        .at(node, ctx)
     }
 }

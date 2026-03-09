@@ -29,6 +29,6 @@ impl Visit for UnitExpressionNode {
 
 impl Codegen for UnitExpressionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        ir::Expression::List(Vec::new()).at(node, ctx)
+        Some(ir::Expression::List(Vec::new()).at(node, ctx))
     }
 }

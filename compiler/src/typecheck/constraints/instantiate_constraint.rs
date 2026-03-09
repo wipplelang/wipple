@@ -13,6 +13,7 @@ pub struct Instantation {
     pub definition: NodeRef,
     pub replacements: Replacements,
     pub substitutions: Substitutions,
+    pub from_expression: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -59,6 +60,7 @@ impl Constraint for InstantiateConstraint {
             definition: self.instantiation.definition.clone(),
             replacements: new_replacements,
             substitutions: new_substitutions,
+            from_expression: self.instantiation.from_expression,
         })
     }
 
@@ -66,6 +68,11 @@ impl Constraint for InstantiateConstraint {
         // NOTE: Types are *not* applied before instantiating; we have access to
         // all related nodes/constraints here, which together will form better
         // groups
+
+        if self.instantiation.from_expression {
+            ctx.substitutions_to_apply
+                .push(self.instantiation.substitutions.clone());
+        }
 
         let DefinitionConstraints(definition_constraints) = ctx
             .db

@@ -101,7 +101,7 @@ impl Codegen for WhenExpressionNode {
 
         let mut body = Vec::new();
 
-        body.push(ir::Expression::Declare(input_temporary.clone()).at(&self.input, ctx)?);
+        body.push(ir::Expression::Declare(input_temporary.clone()).at(&self.input, ctx));
 
         for temporary in self
             .arms
@@ -113,12 +113,12 @@ impl Codegen for WhenExpressionNode {
                 continue;
             }
 
-            body.push(ir::Expression::Declare(temporary).at(node, ctx)?);
+            body.push(ir::Expression::Declare(temporary).at(node, ctx));
         }
 
         body.push(
             ir::Expression::AssignTo(Box::new(ctx.codegen(&self.input)?), input_temporary)
-                .at(&self.input, ctx)?,
+                .at(&self.input, ctx),
         );
 
         let mut arms = Vec::new();
@@ -129,8 +129,8 @@ impl Codegen for WhenExpressionNode {
             ));
         }
 
-        body.push(ir::Expression::If(arms, None).at(node, ctx)?);
+        body.push(ir::Expression::If(arms, None).at(node, ctx));
 
-        ir::Expression::Scope(body).at(node, ctx)
+        Some(ir::Expression::Scope(body).at(node, ctx))
     }
 }

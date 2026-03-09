@@ -13,7 +13,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub enum ResolvedConstructor {
     Marker,
-    Trait,
+    Trait(bool),
     Variant(NodeRef),
 }
 
@@ -65,6 +65,7 @@ impl Visit for ConstructorExpressionNode {
             definition: definition_node.clone(),
             substitutions: substitutions.clone(),
             replacements: Replacements::from_iter([(definition_node, node.clone())]),
+            from_expression: true,
         }));
 
         match definition {
@@ -80,7 +81,9 @@ impl Visit for ConstructorExpressionNode {
                     },
                 ));
 
-                visitor.insert(node, ResolvedConstructor::Trait);
+                let generic = visitor.try_current_definition().is_some();
+
+                visitor.insert(node, ResolvedConstructor::Trait(generic));
             }
             Definition::VariantConstructor(definition) => {
                 visitor.insert(node, ResolvedConstructor::Variant(definition.variant));
@@ -98,8 +101,8 @@ impl Codegen for ConstructorExpressionNode {
         let constructor = ctx.get::<ResolvedConstructor>(node)?;
 
         match constructor {
-            ResolvedConstructor::Marker => ir::Expression::Marker.at(node, ctx),
-            ResolvedConstructor::Trait => {
+            ResolvedConstructor::Marker => Some(ir::Expression::Marker.at(node, ctx)),
+            ResolvedConstructor::Trait(generic) => {
                 let bounds = ctx.get::<Bounds>(node).unwrap_or_default();
 
                 let instance = bounds
@@ -107,9 +110,20 @@ impl Codegen for ConstructorExpressionNode {
                     .get(node)
                     .and_then(|bound| bound.instance.as_ref())?;
 
-                codegen_instance(ctx, node, instance)
+                let instance = codegen_instance(ctx, instance, generic)?;
+
+                match instance {
+                    ir::Instance::Bound(bound) => Some(ir::Expression::Bound(bound).at(node, ctx)),
+                    ir::Instance::Definition(key) => {
+                        Some(ir::Expression::Constant(key).at(node, ctx))
+                    }
+                }
             }
-            ResolvedConstructor::Variant(node) => ctx.codegen(&node),
+            ResolvedConstructor::Variant(variant) => {
+                // Codegen the variant constructor in the context of the current
+                // node so the instantiated type is used
+                variant.codegen(node, ctx)
+            }
         }
     }
 }

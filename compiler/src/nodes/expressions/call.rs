@@ -92,18 +92,20 @@ impl Codegen for CallExpressionNode {
         let is_unit = ctx.contains::<IsUnitCall>(node);
 
         if is_unit {
-            ir::Expression::Call(
-                Box::new(ctx.codegen(&self.inputs[0])?),
-                vec![ctx.codegen(&self.function)?],
+            Some(
+                ir::Expression::Call(
+                    Box::new(ctx.codegen(&self.inputs[0])?),
+                    vec![ctx.codegen(&self.function)?],
+                )
+                .at(node, ctx),
             )
-            .at(node, ctx)
         } else {
             let mut inputs = Vec::new();
             for input in &self.inputs {
                 inputs.push(ctx.codegen(input)?);
             }
 
-            ir::Expression::Call(Box::new(ctx.codegen(&self.function)?), inputs).at(node, ctx)
+            Some(ir::Expression::Call(Box::new(ctx.codegen(&self.function)?), inputs).at(node, ctx))
         }
     }
 }

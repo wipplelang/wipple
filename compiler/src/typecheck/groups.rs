@@ -174,3 +174,17 @@ impl Groups {
         })
     }
 }
+
+impl Db {
+    pub fn get_type(&self, node: &NodeRef) -> Option<ConstructedType> {
+        let Some(Typed { group: Some(group) }) = self.get(node) else {
+            return None;
+        };
+
+        let [ty] = group.types.as_slice() else {
+            return None;
+        };
+
+        Some(ty.clone())
+    }
+}

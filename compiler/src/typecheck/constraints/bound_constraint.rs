@@ -96,6 +96,7 @@ impl Constraint for BoundConstraint {
                     definition: instance.node.clone(),
                     replacements: replacements.clone(),
                     substitutions: substitutions.clone(),
+                    from_expression: true,
                 }));
 
                 // Run the solver (excluding bounds) to populate `replacements`
@@ -142,6 +143,7 @@ impl Constraint for BoundConstraint {
                         instance.node.clone(),
                         instance.from_bound,
                         instance.error,
+                        substitutions,
                     ));
                 }
             }
@@ -152,7 +154,7 @@ impl Constraint for BoundConstraint {
                 .collect::<Substitutions>();
 
             let resolved_bound = Bound {
-                substitutions: resolved_substitutions,
+                substitutions: resolved_substitutions.clone(),
                 ..self.bound.clone()
             };
 
@@ -165,12 +167,12 @@ impl Constraint for BoundConstraint {
             };
 
             if has_candidate {
-                let (copy, instance_node, from_bound, is_error) =
+                let (copy, instance_node, from_bound, is_error, instance_substitutions) =
                     candidates.into_iter().next().unwrap();
 
                 *ctx.groups = copy.groups.clone();
 
-                ctx.apply_substitutions(&resolved_bound.substitutions);
+                ctx.apply_substitutions(&resolved_substitutions);
 
                 ctx.db.with_fact(&self.bound.source_node, |Bounds(bounds)| {
                     bounds
@@ -179,7 +181,9 @@ impl Constraint for BoundConstraint {
                             bound: resolved_bound,
                             instance: Some(BoundsItemInstance {
                                 instance_node,
+                                instance_substitutions,
                                 resolved_node,
+                                resolved_substitutions,
                                 from_bound,
                                 error: is_error,
                             }),
@@ -192,7 +196,7 @@ impl Constraint for BoundConstraint {
             }
 
             if last_instance_set && !self.bound.optional {
-                ctx.apply_substitutions(&resolved_bound.substitutions);
+                ctx.apply_substitutions(&resolved_substitutions);
 
                 ctx.db.with_fact(&self.bound.source_node, |Bounds(bounds)| {
                     bounds

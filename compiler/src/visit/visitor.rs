@@ -314,8 +314,12 @@ impl<'db> Visitor<'db> {
         result_definition
     }
 
+    pub fn try_current_definition(&self) -> Option<&CurrentDefinition> {
+        self.current_definition.as_ref()
+    }
+
     pub fn current_definition(&self) -> &CurrentDefinition {
-        self.current_definition.as_ref().unwrap()
+        self.try_current_definition().unwrap()
     }
 
     pub fn current_definition_mut(&mut self) -> &mut CurrentDefinition {

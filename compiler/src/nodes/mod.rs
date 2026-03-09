@@ -50,10 +50,10 @@ impl Codegen for FileNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
         let mut statements = Vec::new();
         for statement in &self.statements {
-            statements.push(ir::Expression::Trace.at(statement, ctx)?);
+            statements.push(ir::Expression::Trace.at(statement, ctx));
             statements.push(ctx.codegen(statement)?);
         }
 
-        ir::Expression::Sequence(statements).at(node, ctx)
+        Some(ir::Expression::Sequence(statements).at(node, ctx))
     }
 }

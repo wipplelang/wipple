@@ -60,6 +60,6 @@ impl Codegen for TupleExpressionNode {
             elements.push(ctx.codegen(element)?);
         }
 
-        ir::Expression::List(elements).at(node, ctx)
+        Some(ir::Expression::List(elements).at(node, ctx))
     }
 }

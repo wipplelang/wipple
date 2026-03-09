@@ -93,6 +93,7 @@ impl Visit for StructurePatternNode {
             definition: definition_node,
             substitutions: Substitutions::new(),
             replacements,
+            from_expression: true,
         }));
 
         visitor.insert(
@@ -128,19 +129,19 @@ impl Codegen for StructurePatternNode {
                 ir::Expression::AssignTo(
                     Box::new(
                         ir::Expression::Field(
-                            Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)?),
+                            Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)),
                             field.name.clone(),
                         )
-                        .at(node, ctx)?,
+                        .at(node, ctx),
                     ),
                     temporary,
                 )
-                .at(node, ctx)?,
+                .at(node, ctx),
             );
 
             expressions.push(ctx.codegen(&field.pattern)?);
         }
 
-        ir::Expression::And(expressions).at(node, ctx)
+        Some(ir::Expression::And(expressions).at(node, ctx))
     }
 }

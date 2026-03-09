@@ -3,7 +3,7 @@ use crate::{
     database::{Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{VariablePatternNode, parse_comments, parse_expression, parse_pattern},
     syntax::{ParseError, Parser, TokenKind},
-    typecheck::GroupConstraint,
+    typecheck::{GroupConstraint, TypeConstraint},
     visit::{Definition, Visit, Visitor},
 };
 
@@ -51,10 +51,11 @@ pub fn parse_assignment_statement(parser: &mut Parser<'_>) -> Result<AssignmentN
 
 impl Visit for AssignmentNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
+        visitor.constraint(TypeConstraint::new(node.clone(), visitor.unit_type()));
+
         let pattern = self.pattern.clone();
         let value = self.value.clone();
         let node = node.clone();
-
         visitor.after_all_definitions(move |visitor| {
             // Try assigning to an existing constant if possible
             if let Some(pattern_node) = pattern.downcast_ref::<VariablePatternNode>() {
@@ -119,27 +120,27 @@ impl Codegen for AssignmentNode {
             temporary: assignment_temporary,
         }) = ctx.get::<ResolvedVariableAssignment>(node)
         else {
-            return ir::Expression::NoOp.at(node, ctx); // assigned to constant
+            return Some(ir::Expression::NoOp.at(node, ctx)); // assigned to constant
         };
 
         let mut statements = Vec::new();
 
-        statements.push(ir::Expression::Declare(assignment_temporary.clone()).at(node, ctx)?);
+        statements.push(ir::Expression::Declare(assignment_temporary.clone()).at(node, ctx));
 
         for temporary in ctx.db.temporaries(&self.pattern) {
             if temporary == assignment_temporary {
                 continue;
             }
 
-            statements.push(ir::Expression::Declare(temporary.clone()).at(node, ctx)?);
+            statements.push(ir::Expression::Declare(temporary.clone()).at(node, ctx));
         }
 
         statements.extend([
             ir::Expression::AssignTo(Box::new(ctx.codegen(&self.value)?), assignment_temporary)
-                .at(node, ctx)?,
-            ir::Expression::If(vec![(ctx.codegen(&self.pattern)?, None)], None).at(node, ctx)?,
+                .at(node, ctx),
+            ir::Expression::If(vec![(ctx.codegen(&self.pattern)?, None)], None).at(node, ctx),
         ]);
 
-        ir::Expression::Sequence(statements).at(node, ctx)
+        Some(ir::Expression::Sequence(statements).at(node, ctx))
     }
 }

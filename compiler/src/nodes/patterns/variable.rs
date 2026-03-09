@@ -44,17 +44,22 @@ impl Codegen for VariablePatternNode {
         let is_mutable = ctx.get::<IsMutated>(node).is_some();
 
         if is_mutable {
-            ir::Expression::AssignToMutable(
-                Box::new(ir::Expression::Variable(matching).at(node, ctx)?),
-                node.clone(),
+            Some(
+                ir::Expression::AssignToMutable(
+                    Box::new(ir::Expression::Variable(matching).at(node, ctx)),
+                    node.clone(),
+                )
+                .at(node, ctx),
             )
         } else {
-            ir::Expression::AssignTo(
-                Box::new(ir::Expression::Variable(matching).at(node, ctx)?),
-                node.clone(),
+            Some(
+                ir::Expression::AssignTo(
+                    Box::new(ir::Expression::Variable(matching).at(node, ctx)),
+                    node.clone(),
+                )
+                .at(node, ctx),
             )
         }
-        .at(node, ctx)
     }
 
     fn identifier(&self) -> Option<String> {

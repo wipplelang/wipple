@@ -12,7 +12,7 @@ pub use type_constraint::*;
 
 use crate::{
     database::{Db, NodeRef},
-    typecheck::{Instance, InstantiateContext, UnifyCtx},
+    typecheck::{Instance, InstantiateContext, Substitutions, UnifyCtx},
 };
 use dyn_clone::DynClone;
 use std::{
@@ -25,6 +25,7 @@ use std::{
 pub struct ConstraintCtx<'a, 'db> {
     pub db: &'db mut Db,
     pub implied_instances: &'a [Instance],
+    pub substitutions_to_apply: &'a mut Vec<Substitutions>,
     pub unify_ctx: UnifyCtx<'a>,
 }
 
@@ -54,6 +55,10 @@ dyn_clone::clone_trait_object!(Constraint);
 impl dyn Constraint {
     pub fn downcast_ref<T: Constraint>(&self) -> Option<&T> {
         (self as &dyn Any).downcast_ref()
+    }
+
+    pub fn downcast_mut<T: Constraint>(&mut self) -> Option<&mut T> {
+        (self as &mut dyn Any).downcast_mut()
     }
 }
 

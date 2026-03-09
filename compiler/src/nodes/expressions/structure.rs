@@ -132,6 +132,7 @@ impl Visit for StructureExpressionNode {
             definition: definition.node,
             substitutions: Substitutions::new(),
             replacements,
+            from_expression: true,
         }));
     }
 }
@@ -143,6 +144,6 @@ impl Codegen for StructureExpressionNode {
             fields.push((field.name.clone(), ctx.codegen(&field.value)?));
         }
 
-        ir::Expression::Structure(fields).at(node, ctx)
+        Some(ir::Expression::Structure(fields).at(node, ctx))
     }
 }

@@ -53,6 +53,6 @@ impl Codegen for IntrinsicExpressionNode {
             inputs.push(ctx.codegen(input)?);
         }
 
-        ir::Expression::Runtime(self.name.clone(), inputs).at(node, ctx)
+        Some(ir::Expression::Runtime(self.name.clone(), inputs).at(node, ctx))
     }
 }

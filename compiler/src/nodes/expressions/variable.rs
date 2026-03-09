@@ -35,7 +35,7 @@ impl Render for IsCaptured {
 #[derive(Debug, Clone)]
 pub enum ResolvedVariable {
     Variable(NodeRef),
-    Constant(NodeRef),
+    Constant(NodeRef, Substitutions, bool),
 }
 
 impl Fact for ResolvedVariable {}
@@ -86,17 +86,25 @@ impl Visit for VariableExpressionNode {
             Definition::Constant(definition) => {
                 visitor.graph.instantiate(node, &definition.node, node);
 
+                let substitutions = Substitutions::new();
+
                 visitor.constraint(InstantiateConstraint::new(Instantation {
                     source_node: node.clone(),
                     definition: definition.node.clone(),
-                    substitutions: Substitutions::new(),
+                    substitutions: substitutions.clone(),
                     replacements: Replacements::from_iter([(
                         definition.node.clone(),
                         node.clone(),
                     )]),
+                    from_expression: true,
                 }));
 
-                visitor.insert(node, ResolvedVariable::Constant(definition.node));
+                let generic = visitor.try_current_definition().is_some();
+
+                visitor.insert(
+                    node,
+                    ResolvedVariable::Constant(definition.node, substitutions, generic),
+                );
             }
             _ => {}
         }
@@ -112,14 +120,16 @@ impl Codegen for VariableExpressionNode {
                 let is_mutated = ctx.get::<IsMutated>(&resolved).is_some();
 
                 if is_mutated {
-                    ir::Expression::Mutable(resolved).at(node, ctx)
+                    Some(ir::Expression::Mutable(resolved).at(node, ctx))
                 } else {
-                    ir::Expression::Variable(resolved).at(node, ctx)
+                    Some(ir::Expression::Variable(resolved).at(node, ctx))
                 }
             }
-            ResolvedVariable::Constant(definition) => {
+            ResolvedVariable::Constant(definition, substitutions, generic) => {
                 let bounds = ctx.get::<Bounds>(node).unwrap_or_default();
-                codegen_constant(ctx, node, &definition, bounds)
+
+                let key = codegen_constant(ctx, &definition, &substitutions, bounds, generic)?;
+                Some(ir::Expression::Constant(key).at(node, ctx))
             }
         }
     }
@@ -131,36 +141,51 @@ impl Codegen for VariableExpressionNode {
 
 pub fn codegen_constant(
     ctx: &mut CodegenCtx<'_>,
-    source: &NodeRef,
     definition: &NodeRef,
+    substitutions: &Substitutions,
     bounds: Bounds,
-) -> Option<ir::SpannedExpression> {
-    ctx.mark_reachable(source, definition);
-
+    generic: bool,
+) -> Option<ir::DefinitionKey> {
     let bounds = bounds
         .0
         .iter()
         .map(|(bound_node, item)| {
-            let instance = item.instance.as_ref()?;
-            Some((bound_node.clone(), codegen_instance(ctx, source, instance)?))
-        })
-        .collect::<Option<Vec<_>>>()?;
+            let instance = codegen_instance(
+                ctx,
+                item.instance.as_ref()?,
+                true, // don't record keys for bounds
+            )?;
 
-    ir::Expression::Constant(definition.clone(), bounds).at(source, ctx)
+            Some((bound_node.clone(), instance))
+        })
+        .collect::<Option<_>>()?;
+
+    ctx.definition_key(definition, substitutions, bounds, generic)
 }
 
 pub fn codegen_instance(
     ctx: &mut CodegenCtx<'_>,
-    source: &NodeRef,
     instance: &BoundsItemInstance,
-) -> Option<ir::SpannedExpression> {
-    if instance.from_bound {
-        ir::Expression::Bound(instance.instance_node.clone()).at(source, ctx)
+    generic: bool,
+) -> Option<ir::Instance> {
+    let bound = if instance.from_bound {
+        ir::Instance::Bound(instance.instance_node.clone())
     } else {
         let bounds = ctx
             .get::<Bounds>(&instance.resolved_node)
             .unwrap_or_default();
 
-        codegen_constant(ctx, source, &instance.instance_node, bounds)
-    }
+        ir::Instance::Definition(
+            codegen_constant(
+                ctx,
+                &instance.instance_node,
+                &instance.instance_substitutions,
+                bounds,
+                generic,
+            )
+            .unwrap(),
+        )
+    };
+
+    Some(bound)
 }

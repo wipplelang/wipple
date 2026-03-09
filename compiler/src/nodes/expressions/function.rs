@@ -93,18 +93,18 @@ impl Codegen for FunctionExpressionNode {
         let mut body = Vec::new();
         for pattern in &self.inputs {
             for temporary in ctx.db.temporaries(pattern) {
-                body.push(ir::Expression::Declare(temporary.clone()).at(node, ctx)?);
+                body.push(ir::Expression::Declare(temporary.clone()).at(node, ctx));
             }
 
             body.push(
-                ir::Expression::If(vec![(ctx.codegen(pattern)?, None)], None).at(pattern, ctx)?,
+                ir::Expression::If(vec![(ctx.codegen(pattern)?, None)], None).at(pattern, ctx),
             );
         }
 
         body.push(
-            ir::Expression::Return(Box::new(ctx.codegen(&self.output)?)).at(&self.output, ctx)?,
+            ir::Expression::Return(Box::new(ctx.codegen(&self.output)?)).at(&self.output, ctx),
         );
 
-        ir::Expression::Function(inputs, body, Vec::from_iter(captures)).at(node, ctx)
+        Some(ir::Expression::Function(inputs, body, Vec::from_iter(captures)).at(node, ctx))
     }
 }

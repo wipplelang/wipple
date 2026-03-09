@@ -70,6 +70,6 @@ impl Codegen for SetPatternNode {
         let matching_variable = definitions.into_iter().next()?;
         let Matching(matching) = ctx.get(node)?;
 
-        ir::Expression::Mutate(matching_variable, matching).at(node, ctx)
+        Some(ir::Expression::Mutate(matching_variable, matching).at(node, ctx))
     }
 }

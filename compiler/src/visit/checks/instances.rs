@@ -40,6 +40,7 @@ impl Db {
                             definition: instance.node.clone(),
                             replacements: replacements.clone(),
                             substitutions: substitutions.clone(),
+                            from_expression: false,
                         }));
 
                         // Instantiate the substitutions for the *trait*

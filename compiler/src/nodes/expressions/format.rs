@@ -143,20 +143,20 @@ impl Codegen for FormatExpressionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
         let FormatSegments { segments, trailing } = ctx.get::<FormatSegments>(node)?;
 
-        let mut expressions = vec![ir::Expression::String(String::new()).at(node, ctx)?];
+        let mut expressions = vec![ir::Expression::String(String::new()).at(node, ctx)];
         for segment in segments {
-            expressions.push(ir::Expression::String(segment.string).at(node, ctx)?);
+            expressions.push(ir::Expression::String(segment.string).at(node, ctx));
             expressions.push(
                 ir::Expression::Call(
                     Box::new(ctx.codegen(&segment.describe_node)?),
                     vec![ctx.codegen(&segment.input)?],
                 )
-                .at(&segment.input, ctx)?,
+                .at(&segment.input, ctx),
             );
         }
 
-        expressions.push(ir::Expression::String(trailing).at(node, ctx)?);
+        expressions.push(ir::Expression::String(trailing).at(node, ctx));
 
-        ir::Expression::Concat(expressions).at(node, ctx)
+        Some(ir::Expression::Concat(expressions).at(node, ctx))
     }
 }

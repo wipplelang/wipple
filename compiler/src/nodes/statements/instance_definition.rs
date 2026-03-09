@@ -154,6 +154,7 @@ impl Visit for InstanceDefinitionNode {
                                 trait_definition.node.clone(),
                                 node.clone(),
                             )]),
+                            from_expression: false,
                         }));
                     });
                 }
@@ -223,6 +224,6 @@ impl Visit for InstanceDefinitionNode {
 
 impl Codegen for InstanceDefinitionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        ir::Expression::NoOp.at(node, ctx)
+        Some(ir::Expression::NoOp.at(node, ctx))
     }
 }

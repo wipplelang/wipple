@@ -76,6 +76,6 @@ impl Codegen for OrPatternNode {
             patterns.push(ctx.codegen(pattern)?);
         }
 
-        ir::Expression::Or(patterns).at(node, ctx)
+        Some(ir::Expression::Or(patterns).at(node, ctx))
     }
 }

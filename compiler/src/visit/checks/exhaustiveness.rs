@@ -1,7 +1,7 @@
 use crate::{
     database::{Db, Fact, NodeRef, Render},
     nodes::{EnumerationVariants, StructureFields},
-    typecheck::{ConstructedType, ConstructedTypeTag, Substitutions, Type, Typed},
+    typecheck::{ConstructedType, ConstructedTypeTag, Substitutions, Type},
     visit::{Defined, Definition, TypeDefinition},
 };
 use itertools::Itertools;
@@ -340,18 +340,6 @@ impl Db {
                 vec![vec![MatchPath(prefix)]]
             }
         }
-    }
-
-    fn get_type(&self, node: &NodeRef) -> Option<ConstructedType> {
-        let Some(Typed { group: Some(group) }) = self.get(node) else {
-            return None;
-        };
-
-        let [ty] = group.types.as_slice() else {
-            return None;
-        };
-
-        Some(ty.clone())
     }
 }
 

@@ -113,6 +113,7 @@ impl Visit for ConstructorPatternNode {
                     definition: definition.node.clone(),
                     substitutions: Substitutions::new(),
                     replacements: Replacements::from_iter([(definition.node, node.clone())]),
+                    from_expression: true,
                 }));
 
                 visitor.insert(node, ConstructorMatch::Marker);
@@ -155,6 +156,7 @@ impl Visit for ConstructorPatternNode {
                             definition.variant.clone(),
                             node.clone(),
                         )]),
+                        from_expression: true,
                     }));
                 } else {
                     let span = visitor.span(node);
@@ -169,6 +171,7 @@ impl Visit for ConstructorPatternNode {
                             definition.variant.clone(),
                             constructor_node.clone(),
                         )]),
+                        from_expression: true,
                     }));
 
                     visitor.constraint(TypeConstraint::new(
@@ -198,17 +201,17 @@ impl Codegen for ConstructorPatternNode {
         let constructor_match = ctx.get::<ConstructorMatch>(node)?;
 
         match constructor_match {
-            ConstructorMatch::Marker => ir::Expression::And(Vec::new()).at(node, ctx),
+            ConstructorMatch::Marker => Some(ir::Expression::And(Vec::new()).at(node, ctx)),
             ConstructorMatch::Variant {
                 index,
                 element_temporaries,
             } => {
                 let mut expressions = vec![
                     ir::Expression::EqualToVariant(
-                        Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)?),
+                        Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)),
                         index,
                     )
-                    .at(node, ctx)?,
+                    .at(node, ctx),
                 ];
 
                 for (index, (element, temporary)) in
@@ -219,22 +222,21 @@ impl Codegen for ConstructorPatternNode {
                             Box::new(
                                 ir::Expression::Index(
                                     Box::new(
-                                        ir::Expression::Variable(matching.clone())
-                                            .at(node, ctx)?,
+                                        ir::Expression::Variable(matching.clone()).at(node, ctx),
                                     ),
                                     index,
                                 )
-                                .at(node, ctx)?,
+                                .at(node, ctx),
                             ),
                             temporary,
                         )
-                        .at(node, ctx)?,
+                        .at(node, ctx),
                     );
 
                     expressions.push(ctx.codegen(element)?);
                 }
 
-                ir::Expression::And(expressions).at(node, ctx)
+                Some(ir::Expression::And(expressions).at(node, ctx))
             }
         }
     }

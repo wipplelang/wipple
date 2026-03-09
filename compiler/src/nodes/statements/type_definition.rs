@@ -386,7 +386,7 @@ impl Visit for TypeDefinitionNode {
 
 impl Codegen for TypeDefinitionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        ir::Expression::NoOp.at(node, ctx)
+        Some(ir::Expression::NoOp.at(node, ctx))
     }
 }
 
@@ -415,24 +415,26 @@ impl Codegen for VariantNode {
             .collect::<Vec<_>>();
 
         if element_temporaries.is_empty() {
-            ir::Expression::Variant(self.index, Vec::new()).at(node, ctx)
+            Some(ir::Expression::Variant(self.index, Vec::new()).at(node, ctx))
         } else {
             let mut elements = Vec::new();
             for temporary in element_temporaries.clone() {
-                elements.push(ir::Expression::Variable(temporary).at(node, ctx)?);
+                elements.push(ir::Expression::Variable(temporary).at(node, ctx));
             }
 
-            ir::Expression::Function(
-                element_temporaries,
-                vec![
-                    ir::Expression::Return(Box::new(
-                        ir::Expression::Variant(self.index, elements).at(node, ctx)?,
-                    ))
-                    .at(node, ctx)?,
-                ],
-                Vec::new(),
+            Some(
+                ir::Expression::Function(
+                    element_temporaries,
+                    vec![
+                        ir::Expression::Return(Box::new(
+                            ir::Expression::Variant(self.index, elements).at(node, ctx),
+                        ))
+                        .at(node, ctx),
+                    ],
+                    Vec::new(),
+                )
+                .at(node, ctx),
             )
-            .at(node, ctx)
         }
     }
 }

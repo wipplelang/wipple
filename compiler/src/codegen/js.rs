@@ -1,6 +1,6 @@
 use crate::{
-    codegen::ir,
-    database::{NodeRef, Span},
+    codegen::{ir, mangle::Mangle},
+    database::Span,
 };
 use parcel_sourcemap::SourceMap;
 use std::{
@@ -63,8 +63,8 @@ impl<'a> Backend<'a> {
 
         writeln!(self.writer, "}};")?;
 
-        for (node, body) in &program.definitions {
-            self.write_definition(node, body)?;
+        for (key, body) in &program.definitions {
+            self.write_definition(key, body)?;
         }
 
         write!(self.writer, "{}", self.options.core)?;
@@ -151,6 +151,8 @@ impl<'a> Backend<'a> {
             );
         }
 
+        // write!(self.writer, "/* {:?} */", expression.representation)?;
+
         match &expression.inner {
             ir::Expression::And(expressions) => {
                 write!(self.writer, "(true")?;
@@ -164,23 +166,19 @@ impl<'a> Backend<'a> {
             }
             ir::Expression::AssignTo(value, variable) => {
                 write!(self.writer, "((")?;
-                self.write_node(variable)?;
+                self.write_mangled(variable)?;
                 write!(self.writer, " = ")?;
                 self.write_expression(value)?;
                 write!(self.writer, ") || true)")?;
             }
             ir::Expression::AssignToMutable(value, variable) => {
                 write!(self.writer, "((")?;
-                self.write_node(variable)?;
+                self.write_mangled(variable)?;
                 write!(self.writer, " = {{ __wipple_value: ")?;
                 self.write_expression(value)?;
                 write!(self.writer, " }}) || true)")?;
             }
-            ir::Expression::Bound(bound) => {
-                write!(self.writer, "__wipple_bounds.")?;
-                self.write_node(bound)?;
-                write!(self.writer, "()")?;
-            }
+            ir::Expression::Bound(_) => panic!("bounds must be resolved"),
             ir::Expression::Call(function, inputs) => {
                 self.write_expression(function)?;
                 write!(self.writer, "(")?;
@@ -202,20 +200,13 @@ impl<'a> Backend<'a> {
 
                 write!(self.writer, ")")?;
             }
-            ir::Expression::Constant(definition, bounds) => {
-                self.write_node(definition)?;
-                write!(self.writer, "({{")?;
-                for (name, value) in bounds {
-                    self.write_node(name)?;
-                    write!(self.writer, ": () => ")?;
-                    self.write_expression(value)?;
-                    write!(self.writer, ", ")?;
-                }
-                write!(self.writer, "}})")?;
+            ir::Expression::Constant(key) => {
+                self.write_mangled(key)?;
+                write!(self.writer, "()")?;
             }
             ir::Expression::Declare(variable) => {
                 write!(self.writer, "let ")?;
-                self.write_node(variable)?;
+                self.write_mangled(variable)?;
             }
             ir::Expression::EqualToNumber(value, expected) => {
                 write!(self.writer, "(")?;
@@ -239,7 +230,7 @@ impl<'a> Backend<'a> {
             ir::Expression::Function(inputs, statements, _captures) => {
                 write!(self.writer, "((")?;
                 for input in inputs {
-                    self.write_node(input)?;
+                    self.write_mangled(input)?;
                     write!(self.writer, ", ")?;
                 }
                 writeln!(self.writer, ") => {{")?;
@@ -284,14 +275,14 @@ impl<'a> Backend<'a> {
                 write!(self.writer, "null")?;
             }
             ir::Expression::Mutable(variable) => {
-                self.write_node(variable)?;
+                self.write_mangled(variable)?;
                 write!(self.writer, ".__wipple_value")?;
             }
             ir::Expression::Mutate(variable, value) => {
                 write!(self.writer, "((")?;
-                self.write_node(variable)?;
+                self.write_mangled(variable)?;
                 write!(self.writer, ".__wipple_value = ")?;
-                self.write_node(value)?;
+                self.write_mangled(value)?;
                 write!(self.writer, ") || true)")?;
             }
             ir::Expression::Number(number) => {
@@ -355,7 +346,7 @@ impl<'a> Backend<'a> {
                 }
             }
             ir::Expression::Variable(node) => {
-                self.write_node(node)?;
+                self.write_mangled(node)?;
             }
             ir::Expression::Variant(index, elements) => {
                 write!(self.writer, "__wipple_variant({}, [", index)?;
@@ -397,12 +388,12 @@ impl<'a> Backend<'a> {
 
     pub fn write_definition(
         &mut self,
-        node: &NodeRef,
+        key: &ir::DefinitionKey,
         body: &ir::SpannedExpression,
     ) -> fmt::Result {
         write!(self.writer, "function ")?;
-        self.write_node(node)?;
-        writeln!(self.writer, "(__wipple_bounds) {{")?;
+        self.write_mangled(key)?;
+        writeln!(self.writer, "() {{")?;
         write!(self.writer, "return ")?;
         self.write_expression(body)?;
         writeln!(self.writer, ";")?;
@@ -411,8 +402,8 @@ impl<'a> Backend<'a> {
         Ok(())
     }
 
-    fn write_node(&mut self, node: &NodeRef) -> fmt::Result {
-        write!(self.writer, "_{}", node.id())
+    fn write_mangled(&mut self, m: &impl Mangle) -> fmt::Result {
+        write!(self.writer, "{}", m.mangle())
     }
 
     fn write_intrinsics<'s>(

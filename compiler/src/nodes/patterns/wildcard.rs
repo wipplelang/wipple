@@ -26,6 +26,6 @@ impl Visit for WildcardPatternNode {
 
 impl Codegen for WildcardPatternNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        ir::Expression::And(Vec::new()).at(node, ctx)
+        Some(ir::Expression::And(Vec::new()).at(node, ctx))
     }
 }

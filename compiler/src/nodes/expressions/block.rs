@@ -64,11 +64,11 @@ impl Codegen for BlockExpressionNode {
 
         let mut body = Vec::new();
         for (index, statement) in self.statements.iter().enumerate() {
-            body.push(ir::Expression::Trace.at(statement, ctx)?);
+            body.push(ir::Expression::Trace.at(statement, ctx));
 
             if !should_append_unit && index + 1 == self.statements.len() {
                 body.push(
-                    ir::Expression::Return(Box::new(ctx.codegen(statement)?)).at(statement, ctx)?,
+                    ir::Expression::Return(Box::new(ctx.codegen(statement)?)).at(statement, ctx),
                 );
             } else {
                 body.push(ctx.codegen(statement)?);
@@ -77,11 +77,11 @@ impl Codegen for BlockExpressionNode {
 
         if should_append_unit {
             body.push(
-                ir::Expression::Return(Box::new(ir::Expression::List(Vec::new()).at(node, ctx)?))
-                    .at(node, ctx)?,
+                ir::Expression::Return(Box::new(ir::Expression::List(Vec::new()).at(node, ctx)))
+                    .at(node, ctx),
             );
         }
 
-        ir::Expression::Function(Vec::new(), body, Vec::from_iter(captures)).at(node, ctx)
+        Some(ir::Expression::Function(Vec::new(), body, Vec::from_iter(captures)).at(node, ctx))
     }
 }

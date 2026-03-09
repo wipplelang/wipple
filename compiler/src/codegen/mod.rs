@@ -1,13 +1,16 @@
 pub mod ir;
 pub mod js;
+pub mod mangle;
+pub mod monomorphize;
+pub mod types;
 
 use crate::{
+    codegen::monomorphize::MonomorphizeCtx,
     database::{Db, NodeRef},
-    typecheck::Bounds,
-    visit::{Defined, Definition},
+    typecheck::Substitutions,
 };
 use std::{
-    collections::{BTreeSet, HashSet},
+    collections::{BTreeMap, HashSet},
     ops::{Deref, DerefMut},
 };
 
@@ -21,7 +24,7 @@ pub trait Codegen {
 
 pub struct CodegenCtx<'a> {
     pub db: &'a mut Db,
-    reachable: BTreeSet<NodeRef>,
+    monomorphize_ctx: MonomorphizeCtx,
     reachable_intrinsics: HashSet<String>,
 }
 
@@ -43,7 +46,7 @@ impl<'a> CodegenCtx<'a> {
     fn new(db: &'a mut Db) -> Self {
         CodegenCtx {
             db,
-            reachable: Default::default(),
+            monomorphize_ctx: Default::default(),
             reachable_intrinsics: Default::default(),
         }
     }
@@ -52,18 +55,15 @@ impl<'a> CodegenCtx<'a> {
         node.codegen(node, self)
     }
 
-    pub fn mark_reachable(&mut self, source: &NodeRef, definition: &NodeRef) {
-        self.reachable.insert(definition.clone());
-
-        if let Some(Bounds(items)) = self.db.get(source) {
-            for (_, item) in items {
-                self.reachable.insert(item.bound.trait_node);
-
-                if let Some(instance) = item.instance {
-                    self.reachable.insert(instance.instance_node);
-                }
-            }
-        }
+    pub fn definition_key(
+        &mut self,
+        definition: &NodeRef,
+        substitutions: &Substitutions,
+        bounds: BTreeMap<NodeRef, ir::Instance>,
+        generic: bool,
+    ) -> Option<ir::DefinitionKey> {
+        self.monomorphize_ctx
+            .get_or_insert(definition, substitutions, bounds, generic, self.db)
     }
 
     pub fn mark_reachable_intrinsic(&mut self, name: &str) {
@@ -80,41 +80,7 @@ pub fn codegen(db: &mut Db, files: &[NodeRef], lib_files: &[NodeRef]) -> Option<
         program.files.push(ctx.codegen(file)?);
     }
 
-    let definitions = ctx
-        .db
-        .iter()
-        .map(|(_, Defined(definition))| definition)
-        .collect::<Vec<_>>();
-
-    loop {
-        let mut progress = false;
-
-        for definition in &definitions {
-            let node = definition.node();
-
-            if program.definitions.contains_key(&node) || !ctx.reachable.contains(&node) {
-                continue;
-            }
-
-            let body = match definition {
-                Definition::Constant(definition) => definition.value.as_ref(),
-                Definition::Instance(definition) => definition.value.as_ref(),
-                _ => continue,
-            };
-
-            let Some(body) = body else {
-                continue;
-            };
-
-            program.definitions.insert(node.clone(), ctx.codegen(body)?);
-
-            progress = true;
-        }
-
-        if !progress {
-            break;
-        }
-    }
+    program.definitions = ctx.monomorphize_definitions()?.collect();
 
     program.intrinsics = ctx.reachable_intrinsics;
 

@@ -42,6 +42,6 @@ impl Visit for NumberExpressionNode {
 
 impl Codegen for NumberExpressionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        ir::Expression::Number(self.value.clone()).at(node, ctx)
+        Some(ir::Expression::Number(self.value.clone()).at(node, ctx))
     }
 }

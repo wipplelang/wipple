@@ -1,8 +1,10 @@
 use crate::{
     database::{Db, NodeRef},
-    typecheck::{Constraint, ConstraintCtx, Constraints, Group, Groups, Instance, UnifyCtx},
+    typecheck::{
+        Constraint, ConstraintCtx, Constraints, Group, Groups, Instance, Substitutions, UnifyCtx,
+    },
 };
-use std::any::TypeId;
+use std::{any::TypeId, mem};
 
 const ITERATION_LIMIT: usize = 32;
 
@@ -10,6 +12,7 @@ const ITERATION_LIMIT: usize = 32;
 pub struct Solver {
     pub groups: Groups,
     pub implied_instances: Vec<Instance>,
+    pub substitutions_to_apply: Vec<Substitutions>,
     pub progress: bool,
     pub error: bool,
     constraints: Constraints,
@@ -46,6 +49,10 @@ impl Solver {
 
         // Run a final pass
         self.run_pass_until(db, None);
+
+        for substitutions in mem::take(&mut self.substitutions_to_apply) {
+            self.as_unify_ctx().apply_substitutions(&substitutions);
+        }
     }
 
     pub fn run_pass_until(&mut self, db: &mut Db, stop: Option<TypeId>) {
@@ -56,6 +63,7 @@ impl Solver {
         let mut ctx = ConstraintCtx {
             db,
             implied_instances: &mut self.implied_instances,
+            substitutions_to_apply: &mut self.substitutions_to_apply,
             unify_ctx: UnifyCtx {
                 groups: &mut self.groups,
                 progress: &mut self.progress,

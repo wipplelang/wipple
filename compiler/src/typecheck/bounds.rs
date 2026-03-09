@@ -68,7 +68,9 @@ pub struct BoundsItem {
 #[derive(Debug, Clone)]
 pub struct BoundsItemInstance {
     pub instance_node: NodeRef,
+    pub instance_substitutions: Substitutions,
     pub resolved_node: NodeRef,
+    pub resolved_substitutions: Substitutions,
     pub from_bound: bool,
     pub error: bool,
 }

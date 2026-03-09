@@ -106,6 +106,6 @@ impl Visit for TraitDefinitionNode {
 
 impl Codegen for TraitDefinitionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        ir::Expression::NoOp.at(node, ctx)
+        Some(ir::Expression::NoOp.at(node, ctx))
     }
 }

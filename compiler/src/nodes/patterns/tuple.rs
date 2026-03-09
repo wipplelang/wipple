@@ -81,18 +81,18 @@ impl Codegen for TuplePatternNode {
                 ir::Expression::AssignTo(
                     Box::new(
                         ir::Expression::Index(
-                            Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)?),
+                            Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)),
                             index,
                         )
-                        .at(node, ctx)?,
+                        .at(node, ctx),
                     ),
                     temporary,
                 )
-                .at(node, ctx)?,
+                .at(node, ctx),
             );
             expressions.push(ctx.codegen(element)?);
         }
 
-        ir::Expression::And(expressions).at(node, ctx)
+        Some(ir::Expression::And(expressions).at(node, ctx))
     }
 }

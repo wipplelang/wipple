@@ -39,6 +39,6 @@ impl Visit for DoExpressionNode {
 
 impl Codegen for DoExpressionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        ir::Expression::Call(Box::new(ctx.codegen(&self.input)?), Vec::new()).at(node, ctx)
+        Some(ir::Expression::Call(Box::new(ctx.codegen(&self.input)?), Vec::new()).at(node, ctx))
     }
 }
