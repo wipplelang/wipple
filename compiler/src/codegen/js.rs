@@ -3,16 +3,10 @@ use crate::{
     database::Span,
 };
 use parcel_sourcemap::SourceMap;
-use std::{
-    collections::HashSet,
-    fmt::{self, Write as _},
-};
+use std::fmt::{self, Write as _};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct Options<'a> {
-    pub core: &'a str,
-    pub runtime: &'a str,
-    pub module: bool,
     pub sourcemap: bool,
     pub trace: &'a [&'a str],
 }
@@ -49,13 +43,9 @@ impl<'a> Backend<'a> {
     }
 
     pub fn write(&mut self, program: &ir::Program) -> fmt::Result {
-        if self.options.module {
-            writeln!(self.writer, "let __wipple_env;")?;
-            writeln!(self.writer, "function __wipple_main(env) {{")?;
-            writeln!(self.writer, "__wipple_env = env;")?;
-        } else {
-            writeln!(self.writer, "function __wipple_main() {{")?;
-        }
+        writeln!(self.writer, "let runtime;")?;
+        writeln!(self.writer, "export default (r) => {{")?;
+        writeln!(self.writer, "runtime = r;")?;
 
         for expression in &program.files {
             self.write_expression(expression)?;
@@ -65,15 +55,6 @@ impl<'a> Backend<'a> {
 
         for (key, body) in &program.definitions {
             self.write_definition(key, body)?;
-        }
-
-        write!(self.writer, "{}", self.options.core)?;
-        self.write_intrinsics(&program.intrinsics)?;
-
-        if self.options.module {
-            writeln!(self.writer, "export default __wipple_main;")?;
-        } else {
-            writeln!(self.writer, "__wipple_main();")?;
         }
 
         if let Some(sourcemap) = &mut self.writer.sourcemap {
@@ -174,7 +155,7 @@ impl<'a> Backend<'a> {
             ir::Expression::AssignToMutable(value, variable) => {
                 write!(self.writer, "((")?;
                 self.write_mangled(variable)?;
-                write!(self.writer, " = {{ __wipple_value: ")?;
+                write!(self.writer, " = {{ value: ")?;
                 self.write_expression(value)?;
                 write!(self.writer, " }}) || true)")?;
             }
@@ -221,7 +202,7 @@ impl<'a> Backend<'a> {
             ir::Expression::EqualToVariant(value, expected) => {
                 write!(self.writer, "(")?;
                 self.write_expression(value)?;
-                write!(self.writer, "[__wipple_variant] === {})", expected)?;
+                write!(self.writer, "[runtime.variant] === {})", expected)?;
             }
             ir::Expression::Field(value, field) => {
                 self.write_expression(value)?;
@@ -276,12 +257,12 @@ impl<'a> Backend<'a> {
             }
             ir::Expression::Mutable(variable) => {
                 self.write_mangled(variable)?;
-                write!(self.writer, ".__wipple_value")?;
+                write!(self.writer, ".value")?;
             }
             ir::Expression::Mutate(variable, value) => {
                 write!(self.writer, "((")?;
                 self.write_mangled(variable)?;
-                write!(self.writer, ".__wipple_value = ")?;
+                write!(self.writer, ".value = ")?;
                 self.write_mangled(value)?;
                 write!(self.writer, ") || true)")?;
             }
@@ -305,7 +286,11 @@ impl<'a> Backend<'a> {
                 self.write_expression(value)?;
             }
             ir::Expression::Runtime(name, inputs) => {
-                write!(self.writer, "__wipple_runtime_{}(", name.replace('-', "_"))?;
+                write!(
+                    self.writer,
+                    "runtime.{}(",
+                    convert_case::ccase!(kebab -> camel, name)
+                )?;
 
                 for input in inputs {
                     self.write_expression(input)?;
@@ -340,7 +325,7 @@ impl<'a> Backend<'a> {
                 {
                     write!(
                         self.writer,
-                        "__wipple_env.trace({})",
+                        "runtime.trace({})",
                         serde_json::json!(format!("{}", serde_json::json!(span.start)))
                     )?;
                 }
@@ -349,7 +334,7 @@ impl<'a> Backend<'a> {
                 self.write_mangled(node)?;
             }
             ir::Expression::Variant(index, elements) => {
-                write!(self.writer, "__wipple_variant({}, [", index)?;
+                write!(self.writer, "runtime.variant({}, [", index)?;
                 for element in elements {
                     self.write_expression(element)?;
                     write!(self.writer, ", ")?;
@@ -404,36 +389,6 @@ impl<'a> Backend<'a> {
 
     fn write_mangled(&mut self, m: &impl Mangle) -> fmt::Result {
         write!(self.writer, "{}", m.mangle())
-    }
-
-    fn write_intrinsics<'s>(
-        &mut self,
-        reachable: impl IntoIterator<Item = &'s String>,
-    ) -> fmt::Result {
-        let reachable = reachable
-            .into_iter()
-            .map(|s| s.replace('-', "_"))
-            .collect::<HashSet<_>>();
-
-        let prefix = "const __wipple_runtime_";
-
-        let mut indices = self.options.runtime.match_indices(prefix).peekable();
-        while let Some(start) = indices.next() {
-            let end = indices.peek();
-
-            let function = match end {
-                Some(end) => &self.options.runtime[start.0..end.0],
-                None => &self.options.runtime[start.0..],
-            };
-
-            let function = function.strip_prefix(prefix).unwrap();
-
-            if reachable.iter().any(|f| function.starts_with(f)) {
-                write!(self.writer, "{}{}", prefix, function)?;
-            }
-        }
-
-        Ok(())
     }
 
     fn can_trace(&self, span: &Span) -> bool {

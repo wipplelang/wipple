@@ -9,7 +9,7 @@ use std::{
     env,
     fmt::Write as _,
     fs,
-    io::{self, Read, Write},
+    io::{self, Read},
     path::{Path, PathBuf},
     process,
     sync::atomic::{self, AtomicUsize},
@@ -23,24 +23,28 @@ use wipple::{
 };
 
 const CODEGEN_OPTIONS: codegen::js::Options<'static> = codegen::js::Options {
-    core: concat!(
-        include_str!("../runtime/node.js"),
-        include_str!("../runtime/core.js"),
-    ),
-    runtime: include_str!("../runtime/runtime.js"),
-    module: false,
     sourcemap: true,
     trace: &[],
 };
 
+#[derive(rust_embed::Embed)]
+#[folder = "cli/node-runtime"]
+struct NodeRuntime;
+
 #[derive(Debug, clap::Parser)]
 enum Command {
     Compile {
+        #[clap(short)]
+        output: Option<PathBuf>,
+
         #[clap(flatten)]
         options: CompileOptions,
     },
 
     Run {
+        #[clap(short)]
+        output: Option<PathBuf>,
+
         #[clap(flatten)]
         options: CompileOptions,
     },
@@ -75,21 +79,18 @@ struct CompileOptions {
     #[clap(long)]
     filter_feedback: Vec<String>,
 
-    #[clap(short, long)]
-    output: Option<PathBuf>,
-
     #[clap(required = true)]
     paths: Vec<PathBuf>,
 }
 
 fn main() -> anyhow::Result<()> {
     match Command::parse() {
-        Command::Compile { options } => {
-            compile(&options)?;
+        Command::Compile { output, options } => {
+            compile(output.as_deref(), &options)?;
         }
-        Command::Run { options } => {
-            let script = compile(&options)?;
-            run(options.output.as_deref(), script, |cmd| cmd)?;
+        Command::Run { output, options } => {
+            let script = compile(None, &options)?;
+            run(output.as_deref(), script, |cmd| cmd)?;
         }
         Command::Test { options } => {
             let outputs = test(&options)?;
@@ -114,7 +115,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn compile(options: &CompileOptions) -> anyhow::Result<String> {
+fn compile(module_output: Option<&Path>, options: &CompileOptions) -> anyhow::Result<String> {
     let (mut db, lib_files) = setup(options, true)?;
 
     let files = options
@@ -151,19 +152,19 @@ fn compile(options: &CompileOptions) -> anyhow::Result<String> {
     let program = codegen(&mut db, &files, &lib_files)
         .ok_or_else(|| anyhow::format_err!("codegen failed"))?;
 
-    let script = codegen::js::write_to_string(
-        &program,
-        codegen::js::Options {
-            sourcemap: !options.no_source_map,
-            ..CODEGEN_OPTIONS
-        },
-    );
+    let codegen_options = codegen::js::Options {
+        sourcemap: !options.no_source_map,
+        ..CODEGEN_OPTIONS
+    };
 
-    if let Some(path) = &options.output {
-        fs::write(path, &script)?;
+    if let Some(path) = module_output {
+        fs::write(
+            path,
+            codegen::js::write_to_string(&program, codegen_options),
+        )?;
     }
 
-    Ok(script)
+    Ok(codegen::js::write_to_string(&program, codegen_options))
 }
 
 fn run(
@@ -173,26 +174,34 @@ fn run(
 ) -> Result<Vec<u8>, anyhow::Error> {
     enum OutputPath<'a> {
         FromOptions(&'a Path),
-        Temp(tempfile::NamedTempFile),
+        Temp(tempfile::TempDir),
     }
 
     impl AsRef<Path> for OutputPath<'_> {
         fn as_ref(&self) -> &Path {
             match self {
                 OutputPath::FromOptions(path) => path,
-                OutputPath::Temp(file) => file.path(),
+                OutputPath::Temp(temp) => temp.path(),
             }
         }
     }
 
     let output_path = match path {
-        Some(path) => OutputPath::FromOptions(path),
-        None => {
-            let mut file = tempfile::Builder::new().suffix(".js").tempfile()?;
-            file.write_all(script.as_bytes())?;
-            OutputPath::Temp(file)
+        Some(path) => {
+            fs::create_dir_all(path)?;
+            OutputPath::FromOptions(path)
         }
+        None => OutputPath::Temp(tempfile::Builder::new().prefix("wipple").tempdir()?),
     };
+
+    for path in NodeRuntime::iter() {
+        fs::write(
+            output_path.as_ref().join(path.as_ref()),
+            NodeRuntime::get(path.as_ref()).unwrap().data,
+        )?;
+    }
+
+    fs::write(output_path.as_ref().join("main.js"), script)?;
 
     let output = setup(process::Command::new("/usr/bin/env").args([
         "node".as_ref(),

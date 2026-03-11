@@ -1,4 +1,5 @@
 test*.wipple
+out*/
 out*.js
 out*.txt
 .task/

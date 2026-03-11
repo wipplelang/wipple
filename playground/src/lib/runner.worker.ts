@@ -1,3 +1,4 @@
+import { PUBLIC_RUNTIME_URL } from "$env/static/public";
 import { makeChannel, readMessage, writeMessage, type Channel } from "sync-message";
 
 export type Env = Record<string, (input: any) => Promise<any>>;
@@ -34,6 +35,8 @@ export const init = (worker: Worker, env: Env) => {
 };
 
 const run = async (channel: Channel, executable: string) => {
+    const { default: initRuntime } = await import(/* @vite-ignore */ PUBLIC_RUNTIME_URL);
+
     const module = await import(
         /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(executable)}`
     );
@@ -49,8 +52,10 @@ const run = async (channel: Channel, executable: string) => {
         },
     );
 
+    const runtime = initRuntime(env);
+
     try {
-        await module.default(env);
+        await module.default(runtime);
     } catch (e) {
         console.error(e);
     }

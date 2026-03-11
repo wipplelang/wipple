@@ -51,7 +51,7 @@ tasks:
   serve:library:
     dir: library
     cmds:
-      - npx serve & task serve:library:watch
+      - npx serve dist & task serve:library:watch
     env:
       PORT: "3001"
   serve:library:watch:

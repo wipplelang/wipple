@@ -3,7 +3,7 @@ use crate::{
     database::{NodeRef, Span},
     typecheck,
 };
-use std::collections::{BTreeMap, HashSet};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct DefinitionKey {
@@ -30,7 +30,6 @@ pub enum Instance {
 pub struct Program {
     pub files: Vec<SpannedExpression>,
     pub definitions: BTreeMap<DefinitionKey, SpannedExpression>,
-    pub intrinsics: HashSet<String>,
 }
 
 #[derive(Debug, Clone)]

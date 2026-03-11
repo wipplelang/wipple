@@ -9,6 +9,7 @@ fs.mkdirSync("dist", { recursive: true });
 
 for (let dir of fs.readdirSync("src")) {
     if (!fs.statSync(path.join("src", dir)).isDirectory()) {
+        fs.copyFileSync(path.join("src", dir), path.join("dist", dir));
         continue;
     }
 

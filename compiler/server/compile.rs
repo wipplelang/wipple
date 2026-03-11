@@ -17,9 +17,6 @@ use wipple::{
 const INPUT_PATH: &str = "input";
 
 const CODEGEN_OPTIONS: codegen::js::Options<'static> = codegen::js::Options {
-    core: include_str!("../runtime/core.js"),
-    runtime: include_str!("../runtime/runtime.js"),
-    module: true,
     sourcemap: true,
     trace: &[INPUT_PATH],
 };

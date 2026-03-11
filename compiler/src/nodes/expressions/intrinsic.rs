@@ -46,8 +46,6 @@ impl Visit for IntrinsicExpressionNode {
 
 impl Codegen for IntrinsicExpressionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        ctx.mark_reachable_intrinsic(&self.name);
-
         let mut inputs = Vec::new();
         for input in &self.inputs {
             inputs.push(ctx.codegen(input)?);

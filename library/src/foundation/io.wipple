@@ -9,7 +9,7 @@ Describe : value => trait (value -> String)
 
 -- Display a value on the screen.
 show :: value -> () where (Describe value)
-show : value -> intrinsic "display" (Describe value)
+show : value -> external "display" (Describe value)
 
 instance (Describe String) : string -> string
 instance (Describe Number) : n -> intrinsic "number-to-string" n

@@ -10,7 +10,7 @@ use crate::{
     typecheck::Substitutions,
 };
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::BTreeMap,
     ops::{Deref, DerefMut},
 };
 
@@ -25,7 +25,6 @@ pub trait Codegen {
 pub struct CodegenCtx<'a> {
     pub db: &'a mut Db,
     monomorphize_ctx: MonomorphizeCtx,
-    reachable_intrinsics: HashSet<String>,
 }
 
 impl Deref for CodegenCtx<'_> {
@@ -47,7 +46,6 @@ impl<'a> CodegenCtx<'a> {
         CodegenCtx {
             db,
             monomorphize_ctx: Default::default(),
-            reachable_intrinsics: Default::default(),
         }
     }
 
@@ -65,10 +63,6 @@ impl<'a> CodegenCtx<'a> {
         self.monomorphize_ctx
             .get_or_insert(definition, substitutions, bounds, generic, self.db)
     }
-
-    pub fn mark_reachable_intrinsic(&mut self, name: &str) {
-        self.reachable_intrinsics.insert(name.to_string());
-    }
 }
 
 pub fn codegen(db: &mut Db, files: &[NodeRef], lib_files: &[NodeRef]) -> Option<ir::Program> {
@@ -81,8 +75,6 @@ pub fn codegen(db: &mut Db, files: &[NodeRef], lib_files: &[NodeRef]) -> Option<
     }
 
     program.definitions = ctx.monomorphize_definitions()?.collect();
-
-    program.intrinsics = ctx.reachable_intrinsics;
 
     Some(program)
 }
