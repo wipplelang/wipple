@@ -1,7 +1,7 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Db, Fact, HiddenNode, Node, NodeRef, Render},
-    nodes::{HasTemporaries, InheritTemporaries, Matching, parse_atomic_pattern, visit_pattern},
+    nodes::{Matching, Temporaries, parse_atomic_pattern, visit_pattern},
     syntax::{ParseError, Parser, parse_constructor_name},
     typecheck::{
         Instantation, InstantiateConstraint, Replacements, Substitutions, TypeConstraint, Typed,
@@ -188,56 +188,56 @@ impl Visit for ConstructorPatternNode {
                     },
                 );
 
-                visitor.insert(node, HasTemporaries(element_temporaries));
-                visitor.insert(node, InheritTemporaries(self.elements.clone()));
+                visitor.insert(
+                    node,
+                    Temporaries {
+                        has: element_temporaries,
+                        inherit: self.elements.clone(),
+                    },
+                )
             }
         }
     }
 }
 
 impl Codegen for ConstructorPatternNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let Matching(matching) = ctx.get(node)?;
-        let constructor_match = ctx.get::<ConstructorMatch>(node)?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        let Matching(matching) = ctx
+            .get(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
+
+        let constructor_match = ctx
+            .get::<ConstructorMatch>(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
         match constructor_match {
-            ConstructorMatch::Marker => Some(ir::Expression::And(Vec::new()).at(node, ctx)),
+            ConstructorMatch::Marker => {}
             ConstructorMatch::Variant {
                 index,
                 element_temporaries,
             } => {
-                let mut expressions = vec![
-                    ir::Expression::EqualToVariant(
-                        Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)),
-                        index,
-                    )
-                    .at(node, ctx),
-                ];
+                ctx.condition(ir::Condition::EqualToVariant {
+                    input: matching.clone(),
+                    variant: index,
+                });
 
                 for (index, (element, temporary)) in
                     self.elements.iter().zip(element_temporaries).enumerate()
                 {
-                    expressions.push(
-                        ir::Expression::AssignTo(
-                            Box::new(
-                                ir::Expression::Index(
-                                    Box::new(
-                                        ir::Expression::Variable(matching.clone()).at(node, ctx),
-                                    ),
-                                    index,
-                                )
-                                .at(node, ctx),
-                            ),
-                            temporary,
-                        )
-                        .at(node, ctx),
-                    );
+                    ctx.condition(ir::Condition::Initialize {
+                        variable: temporary,
+                        value: ir::Value::VariantElement {
+                            input: matching.clone(),
+                            index,
+                        },
+                        mutable: false,
+                    });
 
-                    expressions.push(ctx.codegen(element)?);
+                    ctx.codegen(element)?;
                 }
-
-                Some(ir::Expression::And(expressions).at(node, ctx))
             }
         }
+
+        Ok(())
     }
 }

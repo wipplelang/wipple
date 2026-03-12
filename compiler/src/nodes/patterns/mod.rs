@@ -144,31 +144,25 @@ pub fn visit_pattern(
     visitor.constraint(GroupConstraint::new(node.clone(), matching));
 }
 
-#[derive(Debug, Clone)]
-pub struct InheritTemporaries(pub Vec<NodeRef>);
+#[derive(Debug, Clone, Default)]
+pub struct Temporaries {
+    pub has: Vec<NodeRef>,
+    pub inherit: Vec<NodeRef>,
+}
 
-impl Fact for InheritTemporaries {}
+impl Fact for Temporaries {}
 
-impl Render for InheritTemporaries {}
-
-#[derive(Debug, Clone)]
-pub struct HasTemporaries(pub Vec<NodeRef>);
-
-impl Fact for HasTemporaries {}
-
-impl Render for HasTemporaries {}
+impl Render for Temporaries {}
 
 impl Db {
     pub fn temporaries(&self, node: &NodeRef) -> BTreeSet<NodeRef> {
-        self.get::<InheritTemporaries>(node)
-            .map(|InheritTemporaries(temporaries)| temporaries)
-            .unwrap_or_default()
-            .into_iter()
-            .flat_map(|node| self.temporaries(&node))
+        let Temporaries { has, inherit } = self.get(node).unwrap_or_default();
+
+        has.into_iter()
             .chain(
-                self.get::<HasTemporaries>(node)
-                    .map(|HasTemporaries(temporaries)| temporaries)
-                    .unwrap_or_default(),
+                inherit
+                    .into_iter()
+                    .flat_map(|child| self.temporaries(&child)),
             )
             .collect()
     }

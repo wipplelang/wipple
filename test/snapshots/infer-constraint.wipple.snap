@@ -372,6 +372,6 @@ Feedback:
 
   `output` (test/tests/infer-constraint.wipple:22:1-22:7) is a `Number` (test/tests/infer-constraint.wipple:16:35-16:41) or a `String` (test/tests/infer-constraint.wipple:22:28-22:34), but it can only be one of these.
 
-  `output` (test/tests/infer-constraint.wipple:22:1-22:7) must be the same type as `add-infer 1 2` (test/tests/infer-constraint.wipple:22:11-22:24), `add-infer 1 2 :: String` (test/tests/infer-constraint.wipple:22:11-22:34), `String` (test/tests/infer-constraint.wipple:22:28-22:34), and 7 others; double-check these.
+  `output` (test/tests/infer-constraint.wipple:22:1-22:7) must be the same type as `add-infer 1 2` (test/tests/infer-constraint.wipple:22:11-22:24), `add-infer 1 2 :: String` (test/tests/infer-constraint.wipple:22:11-22:34), `String` (test/tests/infer-constraint.wipple:22:28-22:34), and 6 others; double-check these.
 
   -  `sum` (test/tests/infer-constraint.wipple:19:28-19:31) must have the same type everywhere in this use of `add-infer` (test/tests/infer-constraint.wipple:19:1-19:64).

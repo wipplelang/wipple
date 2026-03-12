@@ -1,18 +1,11 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
-    database::{Fact, HiddenNode, Node, NodeRef, Render},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
+    database::{Node, NodeRef},
     nodes::{parse_atomic_pattern, parse_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::TypeConstraint,
     visit::{Captures, Visit, Visitor},
 };
-
-#[derive(Debug, Clone)]
-pub struct InputTemporaries(pub Vec<NodeRef>);
-
-impl Fact for InputTemporaries {}
-
-impl Render for InputTemporaries {}
 
 #[derive(Debug)]
 pub struct FunctionExpressionNode {
@@ -53,23 +46,15 @@ impl Visit for FunctionExpressionNode {
 
         visitor.push_scope();
 
-        let input_temporaries = self
-            .inputs
-            .iter()
-            .map(|pattern| {
-                let span = visitor.db.span(pattern);
-                let temporary = visitor.db.node(span, HiddenNode(None));
+        for pattern in &self.inputs {
+            visitor.matching(pattern, false, false, |visitor| {
+                visitor.current_match().root = Some(pattern.clone());
+                visitor.current_match().arm = Some(pattern.clone());
+                visitor.visit(pattern);
+            });
 
-                visitor.matching(&temporary, false, false, |visitor| {
-                    visitor.current_match().root = Some(temporary.clone());
-                    visitor.current_match().arm = Some(pattern.clone());
-                    visitor.visit(pattern);
-                });
-
-                visitor.edge(pattern, node, "input");
-                temporary
-            })
-            .collect::<Vec<_>>();
+            visitor.edge(pattern, node, "input");
+        }
 
         visitor.visit(&self.output);
         visitor.edge(&self.output, node, "output");
@@ -80,31 +65,44 @@ impl Visit for FunctionExpressionNode {
             node.clone(),
             visitor.function_type(self.inputs.iter().cloned(), self.output.clone()),
         ));
-
-        visitor.insert(node, InputTemporaries(input_temporaries));
     }
 }
 
 impl Codegen for FunctionExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let InputTemporaries(inputs) = ctx.get::<InputTemporaries>(node)?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
         let Captures(captures) = ctx.get(node).unwrap_or_default();
 
-        let mut body = Vec::new();
+        ctx.push_instructions();
+
+        ctx.push_conditions();
         for pattern in &self.inputs {
-            for temporary in ctx.db.temporaries(pattern) {
-                body.push(ir::Expression::Declare(temporary.clone()).at(node, ctx));
-            }
-
-            body.push(
-                ir::Expression::If(vec![(ctx.codegen(pattern)?, None)], None).at(pattern, ctx),
-            );
+            ctx.codegen(pattern)?;
         }
+        let conditions = ctx.pop_conditions();
 
-        body.push(
-            ir::Expression::Return(Box::new(ctx.codegen(&self.output)?)).at(&self.output, ctx),
-        );
+        ctx.instruction(ir::Instruction::If {
+            node: None,
+            branches: vec![(conditions, Vec::new(), None)],
+            else_branch: None,
+        });
 
-        Some(ir::Expression::Function(inputs, body, Vec::from_iter(captures)).at(node, ctx))
+        ctx.codegen(&self.output)?;
+
+        ctx.instruction(ir::Instruction::Return {
+            value: self.output.clone(),
+        });
+
+        let instructions = ctx.pop_instructions();
+
+        ctx.instruction(ir::Instruction::Value {
+            node: node.clone(),
+            value: ir::Value::Function {
+                inputs: self.inputs.clone(),
+                captures: Vec::from_iter(captures),
+                instructions,
+            },
+        });
+
+        Ok(())
     }
 }

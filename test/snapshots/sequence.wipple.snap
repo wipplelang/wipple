@@ -264,11 +264,11 @@ VariantNode `False` (test/tests/sequence.wipple:8:3-8:8)
 
 Feedback:
 
-`_ :: Number` (test/tests/sequence.wipple:26:14-26:25) (conflicting-types):
+`_` (test/tests/sequence.wipple:26:14-26:15) (conflicting-types):
 
-  `_ :: Number` (test/tests/sequence.wipple:26:14-26:25) is a `String` (test/tests/sequence.wipple:25:17-25:23) or a `Number` (test/tests/sequence.wipple:26:19-26:25), but it can only be one of these.
+  `_` (test/tests/sequence.wipple:26:14-26:15) is a `String` (test/tests/sequence.wipple:25:17-25:23) or a `Number` (test/tests/sequence.wipple:26:19-26:25), but it can only be one of these.
 
-  `_ :: Number` (test/tests/sequence.wipple:26:14-26:25) must be the same type as `_` (test/tests/sequence.wipple:26:14-26:15), `String` (test/tests/sequence.wipple:25:17-25:23), `Number` (test/tests/sequence.wipple:26:19-26:25), and 17 others; double-check these.
+  `_` (test/tests/sequence.wipple:26:14-26:15) must be the same type as `_ :: Number` (test/tests/sequence.wipple:26:14-26:25), `String` (test/tests/sequence.wipple:25:17-25:23), `Number` (test/tests/sequence.wipple:26:19-26:25), and 17 others; double-check these.
 
   -  `item` (test/tests/sequence.wipple:22:12-22:16) must have the same type everywhere in this use of `filter` (test/tests/sequence.wipple:22:1-22:95).
 

@@ -1,21 +1,11 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
-    database::{Fact, HiddenNode, Node, NodeRef, Render},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
+    database::{Node, NodeRef},
     nodes::{parse_atomic_expression, parse_atomic_pattern, parse_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::GroupConstraint,
     visit::{Visit, Visitor},
 };
-use std::collections::BTreeSet;
-
-#[derive(Debug, Clone)]
-pub struct ResolvedWhen {
-    pub input_temporary: NodeRef,
-}
-
-impl Fact for ResolvedWhen {}
-
-impl Render for ResolvedWhen {}
 
 #[derive(Debug)]
 pub struct WhenExpressionNode {
@@ -67,16 +57,8 @@ impl Visit for WhenExpressionNode {
         visitor.visit(&self.input);
         visitor.edge(&self.input, node, "input");
 
-        let span = visitor.span(&self.input);
-        let input_temporary = visitor.node(span, HiddenNode(None));
-
-        visitor.constraint(GroupConstraint::new(
-            input_temporary.clone(),
-            self.input.clone(),
-        ));
-
         for arm in &self.arms {
-            visitor.matching(&input_temporary, true, false, |visitor| {
+            visitor.matching(&self.input, true, false, |visitor| {
                 visitor.current_match().root = Some(self.input.clone());
                 visitor.current_match().arm = Some(arm.pattern.clone());
 
@@ -90,47 +72,35 @@ impl Visit for WhenExpressionNode {
                 visitor.constraint(GroupConstraint::new(arm.value.clone(), node.clone()));
             });
         }
-
-        visitor.insert(node, ResolvedWhen { input_temporary });
     }
 }
 
 impl Codegen for WhenExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let ResolvedWhen { input_temporary } = ctx.get::<ResolvedWhen>(node)?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        ctx.codegen(&self.input)?;
 
-        let mut body = Vec::new();
-
-        body.push(ir::Expression::Declare(input_temporary.clone()).at(&self.input, ctx));
-
-        for temporary in self
+        let branches = self
             .arms
             .iter()
-            .flat_map(|arm| ctx.db.temporaries(&arm.pattern))
-            .collect::<BTreeSet<_>>()
-        {
-            if temporary == input_temporary {
-                continue;
-            }
+            .map(|arm| {
+                ctx.push_conditions();
+                ctx.codegen(&arm.pattern)?;
+                let conditions = ctx.pop_conditions();
 
-            body.push(ir::Expression::Declare(temporary).at(node, ctx));
-        }
+                ctx.push_instructions();
+                ctx.codegen(&arm.value)?;
+                let instructions = ctx.pop_instructions();
 
-        body.push(
-            ir::Expression::AssignTo(Box::new(ctx.codegen(&self.input)?), input_temporary)
-                .at(&self.input, ctx),
-        );
+                Ok((conditions, instructions, Some(arm.value.clone())))
+            })
+            .collect::<CodegenResult<Vec<_>>>()?;
 
-        let mut arms = Vec::new();
-        for arm in &self.arms {
-            arms.push((
-                ctx.codegen(&arm.pattern)?,
-                Some(Box::new(ctx.codegen(&arm.value)?)),
-            ));
-        }
+        ctx.instruction(ir::Instruction::If {
+            node: Some(node.clone()),
+            branches,
+            else_branch: None,
+        });
 
-        body.push(ir::Expression::If(arms, None).at(node, ctx));
-
-        Some(ir::Expression::Scope(body).at(node, ctx))
+        Ok(())
     }
 }

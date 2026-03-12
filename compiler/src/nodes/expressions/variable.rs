@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Db, Fact, Node, NodeRef, Render},
     nodes::visit_expression,
     syntax::{ParseError, Parser, parse_variable_name},
@@ -112,30 +112,40 @@ impl Visit for VariableExpressionNode {
 }
 
 impl Codegen for VariableExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let resolution = ctx.get::<ResolvedVariable>(node)?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        let resolved = ctx
+            .get::<ResolvedVariable>(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-        match resolution {
+        match resolved {
             ResolvedVariable::Variable(resolved) => {
                 let is_mutated = ctx.get::<IsMutated>(&resolved).is_some();
 
                 if is_mutated {
-                    Some(ir::Expression::Mutable(resolved).at(node, ctx))
+                    ctx.instruction(ir::Instruction::Value {
+                        node: node.clone(),
+                        value: ir::Value::MutableVariable(resolved),
+                    });
                 } else {
-                    Some(ir::Expression::Variable(resolved).at(node, ctx))
+                    ctx.instruction(ir::Instruction::Value {
+                        node: node.clone(),
+                        value: ir::Value::Variable(resolved),
+                    });
                 }
             }
             ResolvedVariable::Constant(definition, substitutions, generic) => {
                 let bounds = ctx.get::<Bounds>(node).unwrap_or_default();
 
                 let key = codegen_constant(ctx, &definition, &substitutions, bounds, generic)?;
-                Some(ir::Expression::Constant(key).at(node, ctx))
+
+                ctx.instruction(ir::Instruction::Value {
+                    node: node.clone(),
+                    value: ir::Value::Constant(key),
+                });
             }
         }
-    }
 
-    fn identifier(&self) -> Option<String> {
-        Some(self.variable.clone())
+        Ok(())
     }
 }
 
@@ -145,20 +155,22 @@ pub fn codegen_constant(
     substitutions: &Substitutions,
     bounds: Bounds,
     generic: bool,
-) -> Option<ir::DefinitionKey> {
+) -> CodegenResult<ir::DefinitionKey> {
     let bounds = bounds
         .0
         .iter()
         .map(|(bound_node, item)| {
             let instance = codegen_instance(
                 ctx,
-                item.instance.as_ref()?,
+                item.instance
+                    .as_ref()
+                    .ok_or_else(|| anyhow::format_err!("unresolved"))?,
                 true, // don't record keys for bounds
             )?;
 
-            Some((bound_node.clone(), instance))
+            Ok((bound_node.clone(), instance))
         })
-        .collect::<Option<_>>()?;
+        .collect::<CodegenResult<_>>()?;
 
     ctx.definition_key(definition, substitutions, bounds, generic)
 }
@@ -167,25 +179,20 @@ pub fn codegen_instance(
     ctx: &mut CodegenCtx<'_>,
     instance: &BoundsItemInstance,
     generic: bool,
-) -> Option<ir::Instance> {
-    let bound = if instance.from_bound {
-        ir::Instance::Bound(instance.instance_node.clone())
+) -> CodegenResult<ir::Instance> {
+    if instance.from_bound {
+        Ok(ir::Instance::Bound(instance.instance_node.clone()))
     } else {
         let bounds = ctx
             .get::<Bounds>(&instance.resolved_node)
             .unwrap_or_default();
 
-        ir::Instance::Definition(
-            codegen_constant(
-                ctx,
-                &instance.instance_node,
-                &instance.instance_substitutions,
-                bounds,
-                generic,
-            )
-            .unwrap(),
-        )
-    };
-
-    Some(bound)
+        Ok(ir::Instance::Definition(codegen_constant(
+            ctx,
+            &instance.instance_node,
+            &instance.instance_substitutions,
+            bounds,
+            generic,
+        )?))
+    }
 }

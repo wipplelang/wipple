@@ -1,7 +1,7 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Db, Fact, Node, NodeRef, Render},
-    nodes::{InheritTemporaries, parse_pattern_element, visit_pattern},
+    nodes::{Temporaries, parse_pattern_element, visit_pattern},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::GroupConstraint,
     visit::{Visit, Visitor},
@@ -65,17 +65,26 @@ impl Visit for OrPatternNode {
 
         visitor.current_match().arm = prev_arm;
 
-        visitor.insert(node, InheritTemporaries(self.patterns.clone()));
+        visitor.insert(
+            node,
+            Temporaries {
+                has: Vec::new(),
+                inherit: self.patterns.clone(),
+            },
+        );
     }
 }
 
 impl Codegen for OrPatternNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let mut patterns = Vec::new();
+    fn codegen(&self, _node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        ctx.push_conditions();
         for pattern in &self.patterns {
-            patterns.push(ctx.codegen(pattern)?);
+            ctx.codegen(pattern)?;
         }
+        let conditions = ctx.pop_conditions();
 
-        Some(ir::Expression::Or(patterns).at(node, ctx))
+        ctx.condition(ir::Condition::Or(conditions));
+
+        Ok(())
     }
 }

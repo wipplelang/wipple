@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{CodegenCtx, ir},
+    codegen::{CodegenCtx, CodegenResult, ir},
     database::{Db, NodeRef},
     typecheck::Substitutions,
     visit::{Defined, Definition},
@@ -22,7 +22,7 @@ impl MonomorphizeCtx {
         bounds: BTreeMap<NodeRef, ir::Instance>,
         generic: bool,
         db: &Db,
-    ) -> Option<ir::DefinitionKey> {
+    ) -> CodegenResult<ir::DefinitionKey> {
         let key = ir::DefinitionKey {
             node: definition.clone(),
             substitutions: convert_substitutions(substitutions, db)?,
@@ -33,7 +33,7 @@ impl MonomorphizeCtx {
             self.insert_monomorphized_key(key.clone());
         }
 
-        Some(key)
+        Ok(key)
     }
 
     pub fn insert_monomorphized_key(&mut self, key: ir::DefinitionKey) {
@@ -44,128 +44,135 @@ impl MonomorphizeCtx {
 fn convert_substitutions(
     substitutions: &Substitutions,
     db: &Db,
-) -> Option<BTreeMap<NodeRef, ir::Type>> {
+) -> CodegenResult<BTreeMap<NodeRef, ir::Type>> {
     substitutions
         .entries()
-        .map(|(parameter, ty)| Some((parameter, ty.key(db)?)))
-        .collect::<Option<_>>()
+        .map(|(parameter, ty)| {
+            Ok((
+                parameter,
+                ty.key(db)
+                    .ok_or_else(|| anyhow::format_err!("cannot codegen type"))?,
+            ))
+        })
+        .collect()
 }
 
-impl CodegenCtx<'_> {
-    #[must_use]
+impl MonomorphizeCtx {
     pub fn monomorphize_definitions(
         &mut self,
-    ) -> Option<impl Iterator<Item = (ir::DefinitionKey, ir::SpannedExpression)> + use<>> {
+        db: &mut Db,
+    ) -> CodegenResult<impl Iterator<Item = (ir::DefinitionKey, Vec<ir::Instruction>)> + use<>>
+    {
         let mut cache = BTreeMap::new();
 
-        for key in mem::take(&mut self.monomorphize_ctx.definitions) {
-            self.monomorphize_definition(&key, &mut cache)?;
+        for key in mem::take(&mut self.definitions) {
+            self.monomorphize_definition(&key, &mut cache, db)?;
         }
 
-        Some(cache.into_iter().map(|(key, body)| (key, body.unwrap())))
+        Ok(cache
+            .into_iter()
+            .map(|(key, instructions)| (key, instructions.unwrap())))
     }
 
-    #[must_use]
     fn monomorphize_definition(
         &mut self,
         key: &ir::DefinitionKey,
-        cache: &mut BTreeMap<ir::DefinitionKey, Option<ir::SpannedExpression>>,
-    ) -> Option<()> {
+        cache: &mut BTreeMap<ir::DefinitionKey, Option<Vec<ir::Instruction>>>,
+        db: &mut Db,
+    ) -> CodegenResult {
         if cache.contains_key(key) {
-            return Some(());
+            return Ok(());
         }
 
         cache.insert(key.clone(), None);
 
-        let Defined(definition) = self.get(&key.node)?;
+        let Defined(definition) = db
+            .get(&key.node)
+            .ok_or_else(|| anyhow::format_err!("no definition for {key:?}"))?;
 
         let body = match definition {
-            Definition::Constant(definition) => definition.value?,
-            Definition::Instance(definition) => definition.value?,
-            _ => return None,
-        };
+            Definition::Constant(definition) => definition.value,
+            Definition::Instance(definition) => definition.value,
+            _ => None,
+        }
+        .ok_or_else(|| anyhow::format_err!("definition has no value"))?;
 
-        let mut expression = self.codegen(&body)?;
-
-        let mut success = true;
-        expression.traverse_mut(&mut |expression| {
-            if !success {
-                return;
-            }
-
-            success = (|| {
-                if let Some(ty) = &mut expression.ty {
-                    self.monomorphize_type(ty, &key.substitutions)?;
-                };
-
-                match &mut expression.inner {
-                    ir::Expression::Constant(constant_key) => {
-                        self.monomorphize_key(
-                            constant_key,
-                            &key.substitutions,
-                            &key.bounds,
-                            cache,
-                        )?;
-                    }
-                    ir::Expression::Bound(bound) => {
-                        let ir::Instance::Definition(mut resolved) = key.bounds.get(bound)?.clone()
-                        else {
-                            return None;
-                        };
-
-                        self.monomorphize_key(
-                            &mut resolved,
-                            &key.substitutions,
-                            &key.bounds,
-                            cache,
-                        )?;
-
-                        expression.inner = ir::Expression::Constant(resolved);
-                    }
-                    _ => {}
-                }
-
-                Some(())
-            })()
-            .is_some();
+        let mut ctx = CodegenCtx::new(db);
+        ctx.codegen(&body)?;
+        ctx.instruction(ir::Instruction::Return {
+            value: body.clone(),
         });
 
-        if !success {
-            return None;
+        let mut instructions = ctx.pop_instructions();
+        for instruction in &mut instructions {
+            instruction.traverse_mut(&mut |instruction| {
+                if let ir::Instruction::Value { value, .. } = instruction {
+                    match value {
+                        ir::Value::Constant(constant_key) => {
+                            self.monomorphize_key(
+                                constant_key,
+                                &key.substitutions,
+                                &key.bounds,
+                                cache,
+                                db,
+                            )?;
+                        }
+                        ir::Value::Bound(bound) => {
+                            let Some(ir::Instance::Definition(mut resolved_key)) =
+                                key.bounds.get(bound).cloned()
+                            else {
+                                return Err(anyhow::format_err!("bound {bound:?} not resolved"));
+                            };
+
+                            self.monomorphize_key(
+                                &mut resolved_key,
+                                &key.substitutions,
+                                &key.bounds,
+                                cache,
+                                db,
+                            )?;
+
+                            *value = ir::Value::Constant(resolved_key);
+                        }
+                        _ => {}
+                    }
+                }
+
+                Ok(())
+            })?;
         }
 
-        cache.get_mut(key).unwrap().replace(expression);
+        cache.get_mut(key).unwrap().replace(instructions);
 
-        Some(())
+        Ok(())
     }
 
-    #[must_use]
     fn monomorphize_key(
         &mut self,
         key: &mut ir::DefinitionKey,
         substitutions: &BTreeMap<NodeRef, ir::Type>,
         bounds: &BTreeMap<NodeRef, ir::Instance>,
-        cache: &mut BTreeMap<ir::DefinitionKey, Option<ir::SpannedExpression>>,
-    ) -> Option<()> {
+        cache: &mut BTreeMap<ir::DefinitionKey, Option<Vec<ir::Instruction>>>,
+        db: &mut Db,
+    ) -> CodegenResult {
         for ty in key.substitutions.values_mut() {
             self.monomorphize_type(ty, substitutions)?;
         }
 
         for instance in key.bounds.values_mut() {
-            self.monomorphize_instance(instance, substitutions, bounds, cache)?;
+            self.monomorphize_instance(instance, substitutions, bounds, cache, db)?;
         }
 
-        self.monomorphize_definition(key, cache)?;
+        self.monomorphize_definition(key, cache, db)?;
 
-        Some(())
+        Ok(())
     }
 
-    #[must_use]
     fn monomorphize_type(
         &mut self,
         ty: &mut ir::Type,
         substitutions: &BTreeMap<NodeRef, ir::Type>,
-    ) -> Option<()> {
+    ) -> CodegenResult {
         let mut success = true;
         ty.traverse_mut(&mut |ty| {
             if !success {
@@ -181,26 +188,33 @@ impl CodegenCtx<'_> {
             }
         });
 
-        success.then_some(())
+        if !success {
+            return Err(anyhow::format_err!("could not monomorphize {ty:?}"))?;
+        }
+
+        Ok(())
     }
 
-    #[must_use]
     fn monomorphize_instance(
         &mut self,
         instance: &mut ir::Instance,
         substitutions: &BTreeMap<NodeRef, ir::Type>,
         bounds: &BTreeMap<NodeRef, ir::Instance>,
-        cache: &mut BTreeMap<ir::DefinitionKey, Option<ir::SpannedExpression>>,
-    ) -> Option<()> {
+        cache: &mut BTreeMap<ir::DefinitionKey, Option<Vec<ir::Instruction>>>,
+        db: &mut Db,
+    ) -> CodegenResult {
         match instance {
             ir::Instance::Bound(bound) => {
-                *instance = bounds.get(bound)?.clone();
+                *instance = bounds
+                    .get(bound)
+                    .ok_or_else(|| anyhow::format_err!("no bound for {bound:?}"))?
+                    .clone();
             }
             ir::Instance::Definition(instance_key) => {
-                self.monomorphize_key(instance_key, substitutions, bounds, cache)?;
+                self.monomorphize_key(instance_key, substitutions, bounds, cache, db)?;
             }
         }
 
-        Some(())
+        Ok(())
     }
 }

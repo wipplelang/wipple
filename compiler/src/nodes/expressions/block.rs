@@ -1,11 +1,20 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
-    database::{Node, NodeRef},
-    nodes::{ExpressionStatementNode, parse_comments, parse_statements, visit_expression},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
+    database::{Fact, HiddenNode, Node, NodeRef, Render},
+    nodes::{parse_comments, parse_statements, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::{Type, TypeConstraint},
     visit::{Captures, Visit, Visitor},
 };
+
+#[derive(Debug, Clone, Default)]
+struct ResolvedBlock {
+    unit_temporary: Option<NodeRef>,
+}
+
+impl Fact for ResolvedBlock {}
+
+impl Render for ResolvedBlock {}
 
 #[derive(Debug)]
 pub struct BlockExpressionNode {
@@ -43,7 +52,19 @@ impl Visit for BlockExpressionNode {
             .last()
             .cloned()
             .map(Type::from)
-            .unwrap_or_else(|| Type::from(visitor.unit_type()));
+            .unwrap_or_else(|| {
+                let span = visitor.span(node);
+                let unit_temporary = visitor.node(span, HiddenNode::default());
+
+                visitor.insert(
+                    node,
+                    ResolvedBlock {
+                        unit_temporary: Some(unit_temporary),
+                    },
+                );
+
+                Type::from(visitor.unit_type())
+            });
 
         visitor.constraint(TypeConstraint::new(
             node.clone(),
@@ -53,35 +74,48 @@ impl Visit for BlockExpressionNode {
 }
 
 impl Codegen for BlockExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        let ResolvedBlock { unit_temporary } = ctx.get(node).unwrap_or_default();
         let Captures(captures) = ctx.get(node).unwrap_or_default();
 
-        let should_append_unit = self
-            .statements
-            .last()
-            .and_then(|statement| statement.downcast_ref::<ExpressionStatementNode>())
-            .is_none();
+        ctx.push_instructions();
 
-        let mut body = Vec::new();
         for (index, statement) in self.statements.iter().enumerate() {
-            body.push(ir::Expression::Trace.at(statement, ctx));
+            ctx.instruction(ir::Instruction::Trace {
+                location: statement.clone(),
+            });
 
-            if !should_append_unit && index + 1 == self.statements.len() {
-                body.push(
-                    ir::Expression::Return(Box::new(ctx.codegen(statement)?)).at(statement, ctx),
-                );
-            } else {
-                body.push(ctx.codegen(statement)?);
+            ctx.codegen(statement)?;
+
+            if unit_temporary.is_none() && index + 1 == self.statements.len() {
+                ctx.instruction(ir::Instruction::Return {
+                    value: statement.clone(),
+                });
             }
         }
 
-        if should_append_unit {
-            body.push(
-                ir::Expression::Return(Box::new(ir::Expression::List(Vec::new()).at(node, ctx)))
-                    .at(node, ctx),
-            );
+        if let Some(unit_temporary) = unit_temporary {
+            ctx.instruction(ir::Instruction::Value {
+                node: unit_temporary.clone(),
+                value: ir::Value::Tuple(Vec::new()),
+            });
+
+            ctx.instruction(ir::Instruction::Return {
+                value: unit_temporary,
+            });
         }
 
-        Some(ir::Expression::Function(Vec::new(), body, Vec::from_iter(captures)).at(node, ctx))
+        let instructions = ctx.pop_instructions();
+
+        ctx.instruction(ir::Instruction::Value {
+            node: node.clone(),
+            value: ir::Value::Function {
+                inputs: Vec::new(),
+                captures: Vec::from_iter(captures),
+                instructions,
+            },
+        });
+
+        Ok(())
     }
 }

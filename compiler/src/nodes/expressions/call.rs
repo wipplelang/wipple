@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Fact, Node, NodeRef, Render},
     nodes::{VariableExpressionNode, parse_atomic_expression, visit_expression},
     syntax::{ParseError, Parser},
@@ -8,11 +8,13 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct IsUnitCall;
+pub struct ResolvedCall {
+    pub is_unit: bool,
+}
 
-impl Fact for IsUnitCall {}
+impl Fact for ResolvedCall {}
 
-impl Render for IsUnitCall {}
+impl Render for ResolvedCall {}
 
 #[derive(Debug)]
 pub struct CallExpressionNode {
@@ -64,7 +66,7 @@ impl Visit for CallExpressionNode {
                 visitor.edge(&self.function, node, "function");
                 visitor.edge(input, node, "input");
 
-                visitor.insert(node, IsUnitCall);
+                visitor.insert(node, ResolvedCall { is_unit: true });
 
                 return;
             }
@@ -84,28 +86,45 @@ impl Visit for CallExpressionNode {
                 .db
                 .function_type(self.inputs.iter().cloned(), node.clone()),
         ));
+
+        visitor.insert(node, ResolvedCall { is_unit: false });
     }
 }
 
 impl Codegen for CallExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let is_unit = ctx.contains::<IsUnitCall>(node);
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        let ResolvedCall { is_unit } = ctx
+            .get(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
         if is_unit {
-            Some(
-                ir::Expression::Call(
-                    Box::new(ctx.codegen(&self.inputs[0])?),
-                    vec![ctx.codegen(&self.function)?],
-                )
-                .at(node, ctx),
-            )
+            ctx.codegen(&self.inputs[0])?;
+
+            ctx.codegen(&self.function)?;
+
+            ctx.instruction(ir::Instruction::Value {
+                node: node.clone(),
+                value: ir::Value::Call {
+                    function: self.inputs[0].clone(),
+                    inputs: vec![self.function.clone()],
+                },
+            });
         } else {
-            let mut inputs = Vec::new();
+            ctx.codegen(&self.function)?;
+
             for input in &self.inputs {
-                inputs.push(ctx.codegen(input)?);
+                ctx.codegen(input)?;
             }
 
-            Some(ir::Expression::Call(Box::new(ctx.codegen(&self.function)?), inputs).at(node, ctx))
+            ctx.instruction(ir::Instruction::Value {
+                node: node.clone(),
+                value: ir::Value::Call {
+                    function: self.function.clone(),
+                    inputs: self.inputs.clone(),
+                },
+            });
         }
+
+        Ok(())
     }
 }

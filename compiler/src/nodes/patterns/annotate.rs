@@ -1,7 +1,7 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult},
     database::{Node, NodeRef},
-    nodes::{InheritTemporaries, parse_pattern_element, parse_type_element, visit_pattern},
+    nodes::{Temporaries, parse_pattern_element, parse_type_element, visit_pattern},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::GroupConstraint,
     visit::{Visit, Visitor},
@@ -38,12 +38,18 @@ impl Visit for AnnotatePatternNode {
         visitor.constraint(GroupConstraint::new(self.pattern.clone(), self.ty.clone()));
         visitor.constraint(GroupConstraint::new(node.clone(), self.pattern.clone()));
 
-        visitor.insert(node, InheritTemporaries(vec![self.pattern.clone()]));
+        visitor.insert(
+            node,
+            Temporaries {
+                has: Vec::new(),
+                inherit: vec![self.pattern.clone()],
+            },
+        );
     }
 }
 
 impl Codegen for AnnotatePatternNode {
-    fn codegen(&self, _node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+    fn codegen(&self, _node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
         ctx.codegen(&self.pattern)
     }
 }

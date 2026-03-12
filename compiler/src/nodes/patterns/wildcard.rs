@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult},
     database::{Node, NodeRef},
     nodes::visit_pattern,
     syntax::{ParseError, Parser, TokenKind},
@@ -25,7 +25,7 @@ impl Visit for WildcardPatternNode {
 }
 
 impl Codegen for WildcardPatternNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        Some(ir::Expression::And(Vec::new()).at(node, ctx))
+    fn codegen(&self, _node: &NodeRef, _ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        Ok(())
     }
 }

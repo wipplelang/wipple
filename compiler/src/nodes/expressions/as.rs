@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Fact, Node, NodeRef, Render},
     nodes::{
         ConstructorExpressionNode, parse_expression_element, parse_type_element, visit_expression,
@@ -64,15 +64,22 @@ impl Visit for AsExpressionNode {
 }
 
 impl Codegen for AsExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let AsFunction(as_function) = ctx.get::<AsFunction>(node)?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        let AsFunction(as_function) = ctx
+            .get::<AsFunction>(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-        Some(
-            ir::Expression::Call(
-                Box::new(ctx.codegen(&as_function)?),
-                vec![ctx.codegen(&self.left)?],
-            )
-            .at(node, ctx),
-        )
+        ctx.codegen(&as_function)?;
+        ctx.codegen(&self.left)?;
+
+        ctx.instruction(ir::Instruction::Value {
+            node: node.clone(),
+            value: ir::Value::Call {
+                function: as_function,
+                inputs: vec![self.left.clone()],
+            },
+        });
+
+        Ok(())
     }
 }

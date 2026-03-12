@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{HiddenNode, Node, NodeRef},
     nodes::{NamedTypeNode, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
@@ -41,7 +41,12 @@ impl Visit for StringExpressionNode {
 }
 
 impl Codegen for StringExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        Some(ir::Expression::String(self.value.clone()).at(node, ctx))
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        ctx.instruction(ir::Instruction::Value {
+            node: node.clone(),
+            value: ir::Value::String(self.value.clone()),
+        });
+
+        Ok(())
     }
 }

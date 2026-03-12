@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::Codegen,
     database::{Node, NodeRef},
     nodes::{ExtraType, MissingTypes, parse_atomic_type, visit_constraint},
     syntax::{ParseError, Parser, TokenKind, parse_type_name},
@@ -84,8 +84,4 @@ impl Visit for BoundConstraintNode {
     }
 }
 
-impl Codegen for BoundConstraintNode {
-    fn codegen(&self, _node: &NodeRef, _ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        None
-    }
-}
+impl Codegen for BoundConstraintNode {}

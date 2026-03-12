@@ -1,7 +1,7 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Node, NodeRef},
-    nodes::{HasTemporaries, IsMutated, Matching, visit_pattern},
+    nodes::{IsMutated, Matching, Temporaries, visit_pattern},
     syntax::{ParseError, Parser, parse_variable_name},
     visit::{MatchPathSegment, VariableDefinition, Visit, Visitor},
 };
@@ -34,32 +34,31 @@ impl Visit for VariablePatternNode {
             },
         );
 
-        visitor.insert(node, HasTemporaries(vec![node.clone()]));
+        visitor.insert(
+            node,
+            Temporaries {
+                has: vec![node.clone()],
+                inherit: Vec::new(),
+            },
+        )
     }
 }
 
 impl Codegen for VariablePatternNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let Matching(matching) = ctx.get(node)?;
-        let is_mutable = ctx.get::<IsMutated>(node).is_some();
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        let Matching(matching) = ctx
+            .get(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-        if is_mutable {
-            Some(
-                ir::Expression::AssignToMutable(
-                    Box::new(ir::Expression::Variable(matching).at(node, ctx)),
-                    node.clone(),
-                )
-                .at(node, ctx),
-            )
-        } else {
-            Some(
-                ir::Expression::AssignTo(
-                    Box::new(ir::Expression::Variable(matching).at(node, ctx)),
-                    node.clone(),
-                )
-                .at(node, ctx),
-            )
-        }
+        let mutable = ctx.get::<IsMutated>(node).is_some();
+
+        ctx.condition(ir::Condition::Initialize {
+            variable: node.clone(),
+            value: ir::Value::Variable(matching),
+            mutable,
+        });
+
+        Ok(())
     }
 
     fn identifier(&self) -> Option<String> {

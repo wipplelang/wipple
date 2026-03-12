@@ -1,13 +1,13 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
-    database::{Db, Fact, HiddenNode, Node, NodeRef, Render, Span},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
+    database::{Db, Fact, Node, NodeRef, Render, Span},
     nodes::{
         parse_atomic_type, parse_attributes, parse_comments, parse_type, parse_type_parameters,
     },
     syntax::{
         ParseError, Parser, TokenKind, parse_constructor_name, parse_type_name, parse_variable_name,
     },
-    typecheck::{GroupConstraint, TypeConstraint, Typed},
+    typecheck::{GroupConstraint, Type, TypeConstraint, Typed},
     visit::{
         MarkerConstructorDefinition, StructureConstructorDefinition, TypeAttributes,
         TypeDefinition, VariantConstructorDefinition, Visit, Visitor,
@@ -385,8 +385,37 @@ impl Visit for TypeDefinitionNode {
 }
 
 impl Codegen for TypeDefinitionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        Some(ir::Expression::NoOp.at(node, ctx))
+    fn codegen(&self, _node: &NodeRef, _ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        Ok(())
+    }
+
+    fn type_representation(
+        &self,
+        node: &NodeRef,
+        ctx: &mut CodegenCtx<'_>,
+    ) -> Option<ir::TypeRepresentation> {
+        if let Some(StructureFields(fields)) = ctx.get(node) {
+            Some(ir::TypeRepresentation::Structure(
+                fields
+                    .into_iter()
+                    .map(|field| Type::Node(field).key(ctx.db))
+                    .collect::<Option<_>>()?,
+            ))
+        } else if let Some(EnumerationVariants(variants)) = ctx.get(node) {
+            Some(ir::TypeRepresentation::Enumeration(
+                variants
+                    .into_iter()
+                    .map(|(_, elements)| {
+                        elements
+                            .into_iter()
+                            .map(|element| Type::Node(element).key(ctx.db))
+                            .collect::<Option<_>>()
+                    })
+                    .collect::<Option<_>>()?,
+            ))
+        } else {
+            Some(ir::TypeRepresentation::Marker)
+        }
     }
 }
 
@@ -403,38 +432,37 @@ impl Visit for VariantNode {
 }
 
 impl Codegen for VariantNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let element_temporaries = self
-            .variant
-            .elements
-            .iter()
-            .map(|element| {
-                let span = ctx.span(element);
-                ctx.node(span, HiddenNode(None))
-            })
-            .collect::<Vec<_>>();
-
-        if element_temporaries.is_empty() {
-            Some(ir::Expression::Variant(self.index, Vec::new()).at(node, ctx))
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        if self.variant.elements.is_empty() {
+            ctx.instruction(ir::Instruction::Value {
+                node: node.clone(),
+                value: ir::Value::Variant {
+                    index: self.index,
+                    elements: Vec::new(),
+                },
+            });
         } else {
-            let mut elements = Vec::new();
-            for temporary in element_temporaries.clone() {
-                elements.push(ir::Expression::Variable(temporary).at(node, ctx));
-            }
-
-            Some(
-                ir::Expression::Function(
-                    element_temporaries,
-                    vec![
-                        ir::Expression::Return(Box::new(
-                            ir::Expression::Variant(self.index, elements).at(node, ctx),
-                        ))
-                        .at(node, ctx),
+            ctx.instruction(ir::Instruction::Value {
+                node: node.clone(),
+                value: ir::Value::Function {
+                    inputs: self.variant.elements.clone(),
+                    captures: Vec::new(),
+                    instructions: vec![
+                        ir::Instruction::Value {
+                            node: node.clone(),
+                            value: ir::Value::Variant {
+                                index: self.index,
+                                elements: self.variant.elements.clone(),
+                            },
+                        },
+                        ir::Instruction::Return {
+                            value: node.clone(),
+                        },
                     ],
-                    Vec::new(),
-                )
-                .at(node, ctx),
-            )
+                },
+            });
         }
+
+        Ok(())
     }
 }

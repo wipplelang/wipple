@@ -65,7 +65,11 @@ pub struct Captures(pub BTreeSet<NodeRef>);
 
 impl Fact for Captures {}
 
-impl Render for Captures {}
+impl Render for Captures {
+    fn write(&self, w: &mut dyn std::fmt::Write, _db: &Db) -> std::fmt::Result {
+        write!(w, "captures {} variables", self.0.len())
+    }
+}
 
 pub trait Visit {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>);
@@ -286,7 +290,7 @@ impl<'db> Visitor<'db> {
                 break;
             }
 
-            scope.captures.insert(node.clone());
+            scope.captured_variables.insert(node.clone());
             captured = true;
         }
 
@@ -493,7 +497,7 @@ impl<'db> Visitor<'db> {
 struct Scope<T> {
     names: HashMap<String, Vec<T>>,
     defined: BTreeSet<NodeRef>,
-    captures: BTreeSet<NodeRef>,
+    captured_variables: BTreeSet<NodeRef>,
 }
 
 impl<T> Default for Scope<T> {
@@ -501,7 +505,7 @@ impl<T> Default for Scope<T> {
         Scope {
             names: Default::default(),
             defined: Default::default(),
-            captures: Default::default(),
+            captured_variables: Default::default(),
         }
     }
 }

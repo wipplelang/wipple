@@ -1,7 +1,7 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
-    database::{Fact, HiddenNode, Node, NodeRef, Render},
-    nodes::{VariablePatternNode, parse_comments, parse_expression, parse_pattern},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
+    database::{Fact, Node, NodeRef, Render},
+    nodes::{Temporaries, VariablePatternNode, parse_comments, parse_expression, parse_pattern},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::{GroupConstraint, TypeConstraint},
     visit::{Definition, Visit, Visitor},
@@ -13,15 +13,6 @@ pub struct ResolvedConstantAssignment;
 impl Fact for ResolvedConstantAssignment {}
 
 impl Render for ResolvedConstantAssignment {}
-
-#[derive(Debug, Clone)]
-pub struct ResolvedVariableAssignment {
-    pub temporary: NodeRef,
-}
-
-impl Fact for ResolvedVariableAssignment {}
-
-impl Render for ResolvedVariableAssignment {}
 
 #[derive(Debug)]
 pub struct AssignmentNode {
@@ -85,6 +76,14 @@ impl Visit for AssignmentNode {
                         definition.clone()
                     });
 
+                    visitor.insert(
+                        &node,
+                        Temporaries {
+                            has: Vec::new(),
+                            inherit: Vec::new(),
+                        },
+                    );
+
                     visitor.insert(&node, ResolvedConstantAssignment);
 
                     Some(definition.into())
@@ -98,49 +97,40 @@ impl Visit for AssignmentNode {
             visitor.visit(&value);
             visitor.edge(&value, &pattern, "value");
 
-            let span = visitor.db.span(&node);
-            let temporary = visitor.db.node(span, HiddenNode(None));
-
-            visitor.matching(&temporary, false, true, |visitor| {
+            visitor.matching(&value, false, true, |visitor| {
                 visitor.current_match().root = Some(value.clone());
                 visitor.current_match().arm = Some(pattern.clone());
                 visitor.visit(&pattern);
             });
 
-            visitor.constraint(GroupConstraint::new(pattern, value));
-
-            visitor.insert(&node, ResolvedVariableAssignment { temporary });
+            visitor.constraint(GroupConstraint::new(pattern.clone(), value.clone()));
         });
     }
 }
 
 impl Codegen for AssignmentNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let Some(ResolvedVariableAssignment {
-            temporary: assignment_temporary,
-        }) = ctx.get::<ResolvedVariableAssignment>(node)
-        else {
-            return Some(ir::Expression::NoOp.at(node, ctx)); // assigned to constant
-        };
-
-        let mut statements = Vec::new();
-
-        statements.push(ir::Expression::Declare(assignment_temporary.clone()).at(node, ctx));
-
-        for temporary in ctx.db.temporaries(&self.pattern) {
-            if temporary == assignment_temporary {
-                continue;
-            }
-
-            statements.push(ir::Expression::Declare(temporary.clone()).at(node, ctx));
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        if ctx.get::<ResolvedConstantAssignment>(node).is_some() {
+            return Ok(());
         }
 
-        statements.extend([
-            ir::Expression::AssignTo(Box::new(ctx.codegen(&self.value)?), assignment_temporary)
-                .at(node, ctx),
-            ir::Expression::If(vec![(ctx.codegen(&self.pattern)?, None)], None).at(node, ctx),
-        ]);
+        ctx.codegen(&self.value)?;
 
-        Some(ir::Expression::Sequence(statements).at(node, ctx))
+        ctx.push_conditions();
+        ctx.codegen(&self.pattern)?;
+        let conditions = ctx.pop_conditions();
+
+        ctx.instruction(ir::Instruction::If {
+            node: None,
+            branches: vec![(conditions, Vec::new(), None)],
+            else_branch: None,
+        });
+
+        ctx.instruction(ir::Instruction::Value {
+            node: node.clone(),
+            value: ir::Value::Tuple(Vec::new()),
+        });
+
+        Ok(())
     }
 }

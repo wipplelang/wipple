@@ -1,7 +1,7 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Node, NodeRef},
-    nodes::{HasTemporaries, InheritTemporaries, Matching, parse_pattern_element, visit_pattern},
+    nodes::{Matching, Temporaries, parse_pattern_element, visit_pattern},
     syntax::{ParseError, Parser, TokenKind},
     typecheck::TypeConstraint,
     visit::{MatchPathSegment, Visit, Visitor},
@@ -57,42 +57,49 @@ impl Visit for TuplePatternNode {
             })
             .collect::<Vec<_>>();
 
-        visitor.insert(node, HasTemporaries(element_temporaries.clone()));
-
         visitor.constraint(TypeConstraint::new(
             node.clone(),
-            visitor.tuple_type(element_temporaries),
+            visitor.tuple_type(element_temporaries.clone()),
         ));
 
-        visitor.insert(node, InheritTemporaries(self.elements.clone()));
+        visitor.insert(
+            node,
+            Temporaries {
+                has: element_temporaries,
+                inherit: self.elements.clone(),
+            },
+        )
     }
 }
 
 impl Codegen for TuplePatternNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let HasTemporaries(element_temporaries) = ctx.get::<HasTemporaries>(node)?;
-        let Matching(matching) = ctx.get(node)?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        let Temporaries {
+            has: element_temporaries,
+            ..
+        } = ctx
+            .get(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-        let mut expressions = Vec::new();
+        let Matching(matching) = ctx
+            .get(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
+
         for (index, (element, temporary)) in
             self.elements.iter().zip(element_temporaries).enumerate()
         {
-            expressions.push(
-                ir::Expression::AssignTo(
-                    Box::new(
-                        ir::Expression::Index(
-                            Box::new(ir::Expression::Variable(matching.clone()).at(node, ctx)),
-                            index,
-                        )
-                        .at(node, ctx),
-                    ),
-                    temporary,
-                )
-                .at(node, ctx),
-            );
-            expressions.push(ctx.codegen(element)?);
+            ctx.condition(ir::Condition::Initialize {
+                variable: temporary,
+                value: ir::Value::TupleElement {
+                    input: matching.clone(),
+                    index,
+                },
+                mutable: false,
+            });
+
+            ctx.codegen(element)?;
         }
 
-        Some(ir::Expression::And(expressions).at(node, ctx))
+        Ok(())
     }
 }

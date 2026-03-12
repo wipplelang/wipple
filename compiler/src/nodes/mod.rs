@@ -13,7 +13,7 @@ pub use statements::*;
 pub use types::*;
 
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Node, NodeRef},
     syntax::{ParseError, Parser},
     visit::{Visit, Visitor},
@@ -47,13 +47,15 @@ impl Visit for FileNode {
 }
 
 impl Codegen for FileNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let mut statements = Vec::new();
+    fn codegen(&self, _node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
         for statement in &self.statements {
-            statements.push(ir::Expression::Trace.at(statement, ctx));
-            statements.push(ctx.codegen(statement)?);
+            ctx.instruction(ir::Instruction::Trace {
+                location: statement.clone(),
+            });
+
+            ctx.codegen(statement)?;
         }
 
-        Some(ir::Expression::Sequence(statements).at(node, ctx))
+        Ok(())
     }
 }

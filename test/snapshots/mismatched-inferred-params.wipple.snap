@@ -59,11 +59,11 @@ CallExpressionNode `.` (test/tests/mismatched-inferred-params.wipple:3:11-3:12)
 
 Feedback:
 
-`x :: String` (test/tests/mismatched-inferred-params.wipple:3:25-3:36) (conflicting-types):
+`x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) (conflicting-types):
 
-  `x :: String` (test/tests/mismatched-inferred-params.wipple:3:25-3:36) is a `Number` (test/tests/mismatched-inferred-params.wipple:3:2-3:3) or a `String` (test/tests/mismatched-inferred-params.wipple:3:30-3:36), but it can only be one of these.
+  `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) is a `Number` (test/tests/mismatched-inferred-params.wipple:3:2-3:3) or a `String` (test/tests/mismatched-inferred-params.wipple:3:30-3:36), but it can only be one of these.
 
-  `x :: String` (test/tests/mismatched-inferred-params.wipple:3:25-3:36) must be the same type as `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26), `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3), `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6), and 69 others; double-check these.
+  `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) must be the same type as `x :: String` (test/tests/mismatched-inferred-params.wipple:3:25-3:36), `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3), `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6), and 69 others; double-check these.
 
   -  `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3) is a Number.
 

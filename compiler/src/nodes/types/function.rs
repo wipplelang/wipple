@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::Codegen,
     database::{Node, NodeRef},
     nodes::{parse_atomic_type, parse_type, visit_type},
     syntax::{ParseError, Parser, TokenKind},
@@ -55,8 +55,4 @@ impl Visit for FunctionTypeNode {
     }
 }
 
-impl Codegen for FunctionTypeNode {
-    fn codegen(&self, _node: &NodeRef, _ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        None
-    }
-}
+impl Codegen for FunctionTypeNode {}

@@ -22,7 +22,7 @@ use wipple::{
     syntax::format,
 };
 
-const CODEGEN_OPTIONS: codegen::js::Options<'static> = codegen::js::Options {
+const CODEGEN_OPTIONS: codegen::Options<'static> = codegen::Options {
     sourcemap: true,
     trace: &[],
 };
@@ -86,10 +86,19 @@ struct CompileOptions {
 fn main() -> anyhow::Result<()> {
     match Command::parse() {
         Command::Compile { output, options } => {
-            compile(output.as_deref(), &options)?;
+            let write_to_string = match output.as_deref() {
+                Some(path) => match path.extension().and_then(|ext| ext.to_str()) {
+                    // Some("wat") => codegen::wasm::write_to_string,
+                    Some("js") => codegen::js::write_to_string,
+                    _ => return Err(anyhow::format_err!("invalid extension")),
+                },
+                None => codegen::js::write_to_string,
+            };
+
+            compile(output.as_deref(), &options, write_to_string)?;
         }
         Command::Run { output, options } => {
-            let script = compile(None, &options)?;
+            let script = compile(None, &options, codegen::js::write_to_string)?;
             run(output.as_deref(), script, |cmd| cmd)?;
         }
         Command::Test { options } => {
@@ -115,7 +124,11 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn compile(module_output: Option<&Path>, options: &CompileOptions) -> anyhow::Result<String> {
+fn compile(
+    output_path: Option<&Path>,
+    options: &CompileOptions,
+    write_to_string: fn(&codegen::ir::Program, codegen::Options<'_>, &Db) -> String,
+) -> anyhow::Result<String> {
     let (mut db, lib_files) = setup(options, true)?;
 
     let files = options
@@ -149,22 +162,20 @@ fn compile(module_output: Option<&Path>, options: &CompileOptions) -> anyhow::Re
         ));
     }
 
-    let program = codegen(&mut db, &files, &lib_files)
-        .ok_or_else(|| anyhow::format_err!("codegen failed"))?;
+    let program = codegen(&mut db, &files, &lib_files)?;
 
-    let codegen_options = codegen::js::Options {
+    let codegen_options = codegen::Options {
         sourcemap: !options.no_source_map,
         ..CODEGEN_OPTIONS
     };
 
-    if let Some(path) = module_output {
-        fs::write(
-            path,
-            codegen::js::write_to_string(&program, codegen_options),
-        )?;
+    let script = write_to_string(&program, codegen_options, &db);
+
+    if let Some(path) = output_path {
+        fs::write(path, &script)?;
     }
 
-    Ok(codegen::js::write_to_string(&program, codegen_options))
+    Ok(script)
 }
 
 fn run(
@@ -249,15 +260,15 @@ fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
             compile_layer("", options, &mut db, &layer, false, progress);
 
         if feedback_count == 0 {
-            let program = codegen(&mut db, &layer.files, &lib_files)
-                .ok_or_else(|| anyhow::format_err!("codegen failed"))?;
+            let program = codegen(&mut db, &layer.files, &lib_files)?;
 
             let script = codegen::js::write_to_string(
                 &program,
-                codegen::js::Options {
+                codegen::Options {
                     sourcemap: !options.no_source_map,
                     ..CODEGEN_OPTIONS
                 },
+                &db,
             );
 
             let buf = run(None, script, |cmd| cmd.stdout(process::Stdio::piped()))?;

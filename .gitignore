@@ -1,6 +1,7 @@
 test*.wipple
 out*/
 out*.js
+out*.wat
 out*.txt
 .task/
 netlify/

@@ -1,8 +1,8 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{
-        ConstructorExpressionNode, ResolvedWhen, WhenArm, WhenExpressionNode, WildcardPatternNode,
+        ConstructorExpressionNode, WhenArm, WhenExpressionNode, WildcardPatternNode,
         parse_expression_element, parse_pattern_element, visit_expression,
     },
     syntax::{ParseError, Parser, TokenKind},
@@ -12,7 +12,6 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct ResolvedIs {
-    pub input_temporary: NodeRef,
     pub true_variant: NodeRef,
     pub false_variant: NodeRef,
 }
@@ -47,19 +46,11 @@ impl Visit for IsExpressionNode {
 
         let span = visitor.span(node);
 
-        let input_span = visitor.span(&self.left);
-        let input_temporary = visitor.node(input_span, HiddenNode(None));
-
-        visitor.matching(&input_temporary, true, false, |visitor| {
-            visitor.current_match().root = Some(input_temporary.clone());
+        visitor.matching(&self.left, true, false, |visitor| {
+            visitor.current_match().root = Some(self.left.clone());
             visitor.visit(&self.right);
             visitor.edge(&self.right, node, "right");
         });
-
-        visitor.constraint(GroupConstraint::new(
-            input_temporary.clone(),
-            self.left.clone(),
-        ));
 
         let true_node = visitor.node(
             span.clone(),
@@ -84,7 +75,6 @@ impl Visit for IsExpressionNode {
         visitor.insert(
             node,
             ResolvedIs {
-                input_temporary,
                 true_variant: true_node,
                 false_variant: false_node,
             },
@@ -93,12 +83,13 @@ impl Visit for IsExpressionNode {
 }
 
 impl Codegen for IsExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
         let ResolvedIs {
-            input_temporary,
             true_variant,
             false_variant,
-        } = ctx.get::<ResolvedIs>(node)?;
+        } = ctx
+            .get(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
         let span = ctx.span(node);
 
@@ -121,8 +112,13 @@ impl Codegen for IsExpressionNode {
             },
         );
 
-        ctx.insert(&when_expression, ResolvedWhen { input_temporary });
+        ctx.codegen(&when_expression)?;
 
-        ctx.codegen(&when_expression)
+        ctx.instruction(ir::Instruction::Value {
+            node: node.clone(),
+            value: ir::Value::Variable(when_expression),
+        });
+
+        Ok(())
     }
 }

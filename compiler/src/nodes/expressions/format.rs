@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Db, Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{ConstructorExpressionNode, NamedTypeNode, parse_atomic_expression, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
@@ -30,20 +30,21 @@ impl Render for ExtraFormatInput {
 }
 
 #[derive(Debug, Clone)]
-pub struct FormatSegments {
+pub struct ResolvedFormat {
     pub segments: Vec<FormatSegment>,
     pub trailing: String,
 }
 
-impl Fact for FormatSegments {}
+impl Fact for ResolvedFormat {}
 
-impl Render for FormatSegments {}
+impl Render for ResolvedFormat {}
 
 #[derive(Debug, Clone)]
 pub struct FormatSegment {
     pub string: String,
     pub describe_node: NodeRef,
     pub input: NodeRef,
+    pub temporary: NodeRef,
 }
 
 #[derive(Debug)]
@@ -98,7 +99,7 @@ impl Visit for FormatExpressionNode {
 
                 let span = visitor.span(node);
                 let describe_node = visitor.node(
-                    span,
+                    span.clone(),
                     HiddenNode::new(ConstructorExpressionNode {
                         constructor: String::from("Describe"),
                     }),
@@ -110,10 +111,14 @@ impl Visit for FormatExpressionNode {
                     visitor.function_type([input.clone()], string_type.clone()),
                 ));
 
+                let temporary = visitor.node(span, HiddenNode::default());
+                visitor.constraint(GroupConstraint::new(temporary.clone(), string_type.clone()));
+
                 FormatSegment {
                     string: segment.to_string(),
                     describe_node,
                     input,
+                    temporary,
                 }
             })
             .collect::<Vec<_>>();
@@ -131,7 +136,7 @@ impl Visit for FormatExpressionNode {
 
         visitor.insert(
             node,
-            FormatSegments {
+            ResolvedFormat {
                 segments: format_segments,
                 trailing,
             },
@@ -140,23 +145,34 @@ impl Visit for FormatExpressionNode {
 }
 
 impl Codegen for FormatExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let FormatSegments { segments, trailing } = ctx.get::<FormatSegments>(node)?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        let ResolvedFormat { segments, trailing } = ctx
+            .get::<ResolvedFormat>(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-        let mut expressions = vec![ir::Expression::String(String::new()).at(node, ctx)];
-        for segment in segments {
-            expressions.push(ir::Expression::String(segment.string).at(node, ctx));
-            expressions.push(
-                ir::Expression::Call(
-                    Box::new(ctx.codegen(&segment.describe_node)?),
-                    vec![ctx.codegen(&segment.input)?],
-                )
-                .at(&segment.input, ctx),
-            );
-        }
+        let segments = segments
+            .into_iter()
+            .map(|segment| {
+                ctx.codegen(&segment.describe_node)?;
+                ctx.codegen(&segment.input)?;
 
-        expressions.push(ir::Expression::String(trailing).at(node, ctx));
+                ctx.instruction(ir::Instruction::Value {
+                    node: segment.temporary.clone(),
+                    value: ir::Value::Call {
+                        function: segment.describe_node,
+                        inputs: vec![segment.input],
+                    },
+                });
 
-        Some(ir::Expression::Concat(expressions).at(node, ctx))
+                Ok((segment.string, segment.temporary))
+            })
+            .collect::<CodegenResult<Vec<_>>>()?;
+
+        ctx.instruction(ir::Instruction::Value {
+            node: node.clone(),
+            value: ir::Value::Concat { segments, trailing },
+        });
+
+        Ok(())
     }
 }

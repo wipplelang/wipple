@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Node, NodeRef},
     nodes::{parse_expression_element, visit_expression},
     syntax::{ParseError, Parser, TokenKind},
@@ -54,12 +54,16 @@ impl Visit for TupleExpressionNode {
 }
 
 impl Codegen for TupleExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let mut elements = Vec::new();
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
         for element in &self.elements {
-            elements.push(ctx.codegen(element)?);
+            ctx.codegen(element)?;
         }
 
-        Some(ir::Expression::List(elements).at(node, ctx))
+        ctx.instruction(ir::Instruction::Value {
+            node: node.clone(),
+            value: ir::Value::Tuple(self.elements.clone()),
+        });
+
+        Ok(())
     }
 }

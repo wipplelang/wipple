@@ -1,5 +1,5 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Fact, Node, NodeRef, Render},
     nodes::{codegen_instance, visit_expression},
     syntax::{ParseError, Parser, parse_constructor_name},
@@ -97,33 +97,51 @@ impl Visit for ConstructorExpressionNode {
 }
 
 impl Codegen for ConstructorExpressionNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let constructor = ctx.get::<ResolvedConstructor>(node)?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        let constructor = ctx
+            .get::<ResolvedConstructor>(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
         match constructor {
-            ResolvedConstructor::Marker => Some(ir::Expression::Marker.at(node, ctx)),
+            ResolvedConstructor::Marker => {
+                ctx.instruction(ir::Instruction::Value {
+                    node: node.clone(),
+                    value: ir::Value::Marker,
+                });
+            }
             ResolvedConstructor::Trait(generic) => {
                 let bounds = ctx.get::<Bounds>(node).unwrap_or_default();
 
                 let instance = bounds
                     .0
                     .get(node)
-                    .and_then(|bound| bound.instance.as_ref())?;
+                    .and_then(|bound| bound.instance.as_ref())
+                    .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
                 let instance = codegen_instance(ctx, instance, generic)?;
 
                 match instance {
-                    ir::Instance::Bound(bound) => Some(ir::Expression::Bound(bound).at(node, ctx)),
+                    ir::Instance::Bound(bound) => {
+                        ctx.instruction(ir::Instruction::Value {
+                            node: node.clone(),
+                            value: ir::Value::Bound(bound),
+                        });
+                    }
                     ir::Instance::Definition(key) => {
-                        Some(ir::Expression::Constant(key).at(node, ctx))
+                        ctx.instruction(ir::Instruction::Value {
+                            node: node.clone(),
+                            value: ir::Value::Constant(key),
+                        });
                     }
                 }
             }
             ResolvedConstructor::Variant(variant) => {
                 // Codegen the variant constructor in the context of the current
                 // node so the instantiated type is used
-                variant.codegen(node, ctx)
+                variant.codegen(node, ctx)?;
             }
         }
+
+        Ok(())
     }
 }

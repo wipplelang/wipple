@@ -1,7 +1,7 @@
 use crate::{
-    codegen::{Codegen, CodegenCtx, ir},
+    codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Db, Fact, Node, NodeRef, Render},
-    nodes::{HasTemporaries, IsMutated, Matching, visit_pattern},
+    nodes::{IsMutated, Matching, Temporaries, visit_pattern},
     syntax::{ParseError, Parser, TokenKind, parse_variable_name},
     typecheck::GroupConstraint,
     visit::{Definition, MatchPathSegment, Resolved, Visit, Visitor},
@@ -57,19 +57,39 @@ impl Visit for SetPatternNode {
 
         visitor.graph.replace(node, &variable_definition.node);
 
-        // Do NOT include `self.matching_variable`, that would shadow it!
-        visitor.insert(node, HasTemporaries(Vec::new()));
+        visitor.insert(
+            node,
+            Temporaries {
+                // Do NOT include `self.matching_variable`, that would shadow it!
+                has: Vec::new(),
+                inherit: Vec::new(),
+            },
+        );
 
         visitor.insert(&variable_definition.node, IsMutated);
     }
 }
 
 impl Codegen for SetPatternNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> Option<ir::SpannedExpression> {
-        let Resolved { definitions, .. } = ctx.get::<Resolved>(node)?;
-        let matching_variable = definitions.into_iter().next()?;
-        let Matching(matching) = ctx.get(node)?;
+    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
+        let Resolved { definitions, .. } = ctx
+            .get::<Resolved>(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-        Some(ir::Expression::Mutate(matching_variable, matching).at(node, ctx))
+        let matching_variable = definitions
+            .into_iter()
+            .next()
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
+
+        let Matching(matching) = ctx
+            .get(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
+
+        ctx.condition(ir::Condition::Mutate {
+            input: matching,
+            variable: matching_variable,
+        });
+
+        Ok(())
     }
 }
