@@ -17,6 +17,10 @@ export default defineConfig(({ mode }) => {
                 authToken: env.SENTRY_AUTH_TOKEN,
             }),
         ],
+        worker: {
+            plugins: () => [sveltekit()],
+            format: "es",
+        },
         build: {
             sourcemap: true,
         },
