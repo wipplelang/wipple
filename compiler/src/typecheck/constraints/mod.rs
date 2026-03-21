@@ -173,6 +173,14 @@ impl Constraints {
         }
     }
 
+    pub fn constraints_mut(&mut self) -> impl Iterator<Item = &mut dyn Constraint> {
+        self.constraints
+            .values_mut()
+            .flatten()
+            .chain(&mut self.default_constraints)
+            .map(AsMut::as_mut)
+    }
+
     pub fn into_constraints(self) -> impl Iterator<Item = Box<dyn Constraint>> {
         self.constraints
             .into_values()

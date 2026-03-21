@@ -34,6 +34,7 @@ FunctionExpressionNode `x -> x` (test/tests/transmute.wipple:4:13-4:19)
   at test/tests/transmute.wipple:4:13-4:19
   has type a -> a
   is an expression
+  no captures
 
 
 Feedback:

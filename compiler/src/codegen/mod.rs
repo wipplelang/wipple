@@ -1,8 +1,8 @@
 pub mod ir;
-pub mod js;
 pub mod mangle;
 pub mod monomorphize;
 pub mod types;
+pub mod wasm;
 
 use crate::{
     codegen::monomorphize::MonomorphizeCtx,
@@ -128,7 +128,15 @@ pub fn codegen(
         ctx.codegen(file)?;
     }
 
-    program.instructions = ctx.pop_instructions();
+    program.top_level.instructions = ctx.pop_instructions();
+
+    for instruction in &program.top_level.instructions {
+        for node in instruction.nodes(true) {
+            if let Some(ty) = ctx.db.ir_type(node.clone()) {
+                program.top_level.types.insert(node.clone(), ty);
+            }
+        }
+    }
 
     program.definitions = ctx
         .monomorphize_ctx

@@ -128,6 +128,7 @@ impl Db {
                             source_node: node.clone(),
                             bound_node: node.clone(),
                             trait_node: trait_definition.node.clone(),
+                            target_node: node.clone(),
                             substitutions,
                             optional: true,
                         },

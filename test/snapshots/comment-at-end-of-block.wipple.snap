@@ -23,6 +23,7 @@ BlockExpressionNode `{⋯}` (test/tests/comment-at-end-of-block.wipple:4:9-7:2)
   at test/tests/comment-at-end-of-block.wipple:4:9-7:2
   has type {Number}
   is an expression
+  no captures
 VariableExpressionNode `show` (test/tests/comment-at-end-of-block.wipple:9:1-9:5)
   at test/tests/comment-at-end-of-block.wipple:9:1-9:5
   has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))

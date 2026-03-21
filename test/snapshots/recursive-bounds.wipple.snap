@@ -108,7 +108,7 @@ NamedTypeNode `Maybe String` (test/tests/recursive-bounds.wipple:11:16-11:28)
   resolved to 1 definition(s): `Maybe` (test/tests/recursive-bounds.wipple:5:1-5:34)
 ConstructorExpressionNode `Describe` (test/tests/recursive-bounds.wipple:11:1-11:9)
   at test/tests/recursive-bounds.wipple:11:1-11:9
-  has bound(s) Describe (Maybe String) (`instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61))
+  has bound(s) Describe String (`instance (Describe String)` (test/tests/recursive-bounds.wipple:8:1-8:31)), Describe (Maybe String) (`instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61))
   has type (Maybe String) -> String
   is an expression
   resolved to 1 definition(s): `Describe : value => trait (value -> String)` (test/tests/recursive-bounds.wipple:7:1-7:44)

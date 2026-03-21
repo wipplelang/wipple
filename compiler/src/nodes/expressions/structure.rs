@@ -41,6 +41,15 @@ impl Render for DuplicateField {
     }
 }
 
+#[derive(Debug, Clone)]
+struct ResolvedStructure {
+    fields: Vec<(String, NodeRef)>,
+}
+
+impl Fact for ResolvedStructure {}
+
+impl Render for ResolvedStructure {}
+
 #[derive(Debug)]
 pub struct StructureExpressionNode {
     pub name: String,
@@ -105,24 +114,26 @@ impl Visit for StructureExpressionNode {
             return;
         };
 
-        let mut field_values = HashMap::new();
+        let mut field_names = HashMap::new();
+        let mut field_values = Vec::new();
         let replacements = Replacements::from_iter([(definition.node.clone(), node.clone())]);
 
         for (name, field) in definition.fields {
             if let Some(value) = fields.get(&name) {
-                if field_values.insert(name.clone(), field.clone()).is_some() {
+                if field_names.insert(name.clone(), field.clone()).is_some() {
                     visitor.insert(node, DuplicateField);
                     continue;
                 }
 
                 replacements.insert(field, value.clone());
+                field_values.push((name.clone(), value.clone()));
             } else {
                 visitor.insert(node, MissingField(name));
             }
         }
 
         for name in fields.keys() {
-            if !field_values.contains_key(name) {
+            if !field_names.contains_key(name) {
                 visitor.insert(node, ExtraField(name.clone()));
             }
         }
@@ -134,23 +145,29 @@ impl Visit for StructureExpressionNode {
             replacements,
             from_expression: true,
         }));
+
+        visitor.insert(
+            node,
+            ResolvedStructure {
+                fields: field_values,
+            },
+        );
     }
 }
 
 impl Codegen for StructureExpressionNode {
     fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
-        for field in &self.fields {
-            ctx.codegen(&field.value)?;
+        let ResolvedStructure { fields } = ctx
+            .get(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
+
+        for (_, field) in &fields {
+            ctx.codegen(field)?;
         }
 
         ctx.instruction(ir::Instruction::Value {
             node: node.clone(),
-            value: ir::Value::Structure(
-                self.fields
-                    .iter()
-                    .map(|field| (field.name.clone(), field.value.clone()))
-                    .collect(),
-            ),
+            value: ir::Value::Structure(fields),
         });
 
         Ok(())

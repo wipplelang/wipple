@@ -164,6 +164,7 @@ FunctionExpressionNode `f result l -> when l {⋯}` (test/tests/linked-list.wipp
   at test/tests/linked-list.wipple:9:22-12:2
   has type (value result -> result) result (Linked-List value) -> result
   is an expression
+  no captures
 VariablePatternNode `list` (test/tests/linked-list.wipple:14:1-14:5)
   at test/tests/linked-list.wipple:14:1-14:5
   has type Linked-List Number

@@ -66,8 +66,23 @@ pub struct Captures(pub BTreeSet<NodeRef>);
 impl Fact for Captures {}
 
 impl Render for Captures {
-    fn write(&self, w: &mut dyn std::fmt::Write, _db: &Db) -> std::fmt::Result {
-        write!(w, "captures {} variables", self.0.len())
+    fn write(&self, w: &mut dyn std::fmt::Write, db: &Db) -> std::fmt::Result {
+        if self.0.is_empty() {
+            write!(w, "no captures")?;
+            return Ok(());
+        }
+
+        write!(w, "captures ")?;
+
+        for (index, capture) in self.0.iter().enumerate() {
+            if index > 0 {
+                write!(w, ", ")?;
+            }
+
+            write!(w, "{}", db.render(capture))?;
+        }
+
+        Ok(())
     }
 }
 
@@ -196,7 +211,7 @@ impl<'db> Visitor<'db> {
         self.scopes.push(Default::default());
     }
 
-    fn peek_scope_mut(&mut self) -> RefMut<'_, Scope<Rc<RefCell<Definition>>>> {
+    pub fn peek_scope_mut(&mut self) -> RefMut<'_, Scope<Rc<RefCell<Definition>>>> {
         self.scopes.last_mut().unwrap().borrow_mut()
     }
 
@@ -365,6 +380,7 @@ impl<'db> Visitor<'db> {
             value: value.clone(),
             allow_or,
             allow_set,
+            mutable: true,
             path: existing_match
                 .as_ref()
                 .map(|existing| existing.path.clone())
@@ -494,10 +510,10 @@ impl<'db> Visitor<'db> {
 }
 
 #[derive(Debug)]
-struct Scope<T> {
+pub struct Scope<T> {
     names: HashMap<String, Vec<T>>,
     defined: BTreeSet<NodeRef>,
-    captured_variables: BTreeSet<NodeRef>,
+    pub captured_variables: BTreeSet<NodeRef>,
 }
 
 impl<T> Default for Scope<T> {
@@ -548,6 +564,7 @@ pub struct CurrentMatch {
     pub value: NodeRef,
     pub allow_or: bool,
     pub allow_set: bool,
+    pub mutable: bool,
     pub path: MatchPath,
 }
 

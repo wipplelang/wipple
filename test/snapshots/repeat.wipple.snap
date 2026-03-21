@@ -36,6 +36,7 @@ BlockExpressionNode `{⋯}` (test/tests/repeat.wipple:3:18-5:2)
   at test/tests/repeat.wipple:3:18-5:2
   has type {()}
   is an expression
+  no captures
 CallExpressionNode `repeat (4 times) {⋯}` (test/tests/repeat.wipple:3:1-5:2)
   at test/tests/repeat.wipple:3:1-5:2
   has type ()

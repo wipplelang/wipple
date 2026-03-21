@@ -43,6 +43,7 @@ FunctionExpressionNode `_ -> ()` (test/tests/bounds-dont-influence-other-bounds.
   at test/tests/bounds-dont-influence-other-bounds.wipple:5:23-5:30
   has type Number -> ()
   is an expression
+  no captures
 InstanceDefinitionNode `instance (T Number)` (test/tests/bounds-dont-influence-other-bounds.wipple:5:1-5:30)
   at test/tests/bounds-dont-influence-other-bounds.wipple:5:1-5:30
   has definition constraints
@@ -68,6 +69,7 @@ FunctionExpressionNode `_ -> ()` (test/tests/bounds-dont-influence-other-bounds.
   at test/tests/bounds-dont-influence-other-bounds.wipple:6:23-6:30
   has type String -> ()
   is an expression
+  no captures
 InstanceDefinitionNode `instance (T String)` (test/tests/bounds-dont-influence-other-bounds.wipple:6:1-6:30)
   at test/tests/bounds-dont-influence-other-bounds.wipple:6:1-6:30
   has definition constraints
@@ -120,7 +122,7 @@ VariableExpressionNode `todo` (test/tests/bounds-dont-influence-other-bounds.wip
   at test/tests/bounds-dont-influence-other-bounds.wipple:9:5-9:9
   has type (a; b)
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:21:1-21:14)
+  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:14)
 NamedTypeNode `Number` (test/tests/bounds-dont-influence-other-bounds.wipple:12:8-12:14)
   at test/tests/bounds-dont-influence-other-bounds.wipple:12:8-12:14
   has type Number

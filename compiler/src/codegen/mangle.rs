@@ -1,7 +1,4 @@
-use crate::{
-    codegen::ir::{DefinitionKey, Type},
-    database::NodeRef,
-};
+use crate::{codegen::ir, database::NodeRef};
 use std::fmt::Write as _;
 
 pub trait Mangle {
@@ -14,12 +11,12 @@ impl Mangle for NodeRef {
     }
 }
 
-impl Mangle for DefinitionKey {
+impl Mangle for ir::DefinitionKey {
     fn mangle(&self) -> String {
         let mut s = self.node.mangle();
 
-        for (parameter, representation) in &self.substitutions {
-            write!(s, "_{}_{}", parameter.id(), representation.mangle()).unwrap();
+        for (parameter, ty) in &self.substitutions {
+            write!(s, "_{}_{}", parameter.id(), ty.mangle_nominal()).unwrap();
         }
 
         // Bounds do not need to be part of the mangled ID because instances are
@@ -29,39 +26,51 @@ impl Mangle for DefinitionKey {
     }
 }
 
-impl Mangle for Type {
-    fn mangle(&self) -> String {
+impl ir::Type {
+    pub fn mangle_nominal(&self) -> String {
+        self.mangle_inner(true).unwrap()
+    }
+
+    pub fn mangle_structural(&self) -> Option<String> {
+        self.mangle_inner(false)
+    }
+
+    fn mangle_inner(&self, nominal: bool) -> Option<String> {
         match self {
-            Type::Named(node, parameters) => {
-                let mut s = format!("type{}", node.mangle());
+            ir::Type::Named(node, parameters, flags) => {
+                if !nominal && flags.intrinsic {
+                    None
+                } else {
+                    let mut s = format!("type{}", node.mangle());
 
-                for parameter in parameters {
-                    write!(s, "_{}", parameter.mangle()).unwrap();
+                    for parameter in parameters {
+                        write!(s, "_{}", parameter.mangle_nominal()).unwrap();
+                    }
+
+                    Some(s)
                 }
-
-                s
             }
-            Type::Tuple(elements) => {
+            ir::Type::Tuple(elements) => {
                 let mut s = String::from("tuple");
 
                 for element in elements {
-                    write!(s, "_{}", element.mangle()).unwrap();
+                    write!(s, "_{}", element.mangle_nominal()).unwrap();
                 }
 
-                s
+                Some(s)
             }
-            Type::Function(inputs, output) => {
+            ir::Type::Function(inputs, output) => {
                 let mut s = String::from("function");
 
                 for input in inputs {
-                    write!(s, "_{}", input.mangle()).unwrap();
+                    write!(s, "_{}", input.mangle_nominal()).unwrap();
                 }
 
-                write!(s, "_{}", output.mangle()).unwrap();
+                write!(s, "_{}", output.mangle_nominal()).unwrap();
 
-                s
+                Some(s)
             }
-            Type::Parameter(node) => format!("parameter{}", node.mangle()),
+            ir::Type::Parameter(node) => Some(format!("parameter{}", node.mangle())),
         }
     }
 }

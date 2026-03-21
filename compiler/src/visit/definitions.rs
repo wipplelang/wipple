@@ -1,5 +1,4 @@
 use crate::database::{Db, Fact, NodeRef, Render};
-use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
 pub struct Defined(pub Definition);
@@ -30,6 +29,7 @@ pub struct VariableDefinition {
     pub name: String,
     pub node: NodeRef,
     pub value: NodeRef,
+    pub mutable: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -66,12 +66,14 @@ pub struct TypeDefinition {
 #[derive(Debug, Clone)]
 pub struct TypeAttributes {
     pub intrinsic: bool,
+    pub flat: bool,
 }
 
 impl TypeAttributes {
     pub fn from_attributes(db: &mut Db, attributes: &[NodeRef]) -> Self {
         TypeAttributes {
             intrinsic: db.contains_name_attribute(attributes, "intrinsic"),
+            flat: db.contains_name_attribute(attributes, "flat"),
         }
     }
 }
@@ -130,7 +132,7 @@ pub struct StructureConstructorDefinition {
     pub name: String,
     pub node: NodeRef,
     pub comments: Vec<String>,
-    pub fields: BTreeMap<String, NodeRef>,
+    pub fields: Vec<(String, NodeRef)>,
 }
 
 #[derive(Debug, Clone)]

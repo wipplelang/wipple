@@ -28,7 +28,7 @@ arc :: Arc -> ()
 arc : (Arc {
   radius : (Distance {pixels : radius})
   angle : (Angle {degrees : angle})
-}) -> external "arc" (radius; angle)
+}) -> external "arc" (radius, angle)
 
 -- Rotate the turtle counterclockwise by an angle.
 left :: Angle -> ()
@@ -39,7 +39,7 @@ right :: Angle -> ()
 right : (Angle {degrees : degrees}) -> external "right" degrees
 -- Go to a position on the screen without drawing.
 go :: Distance Distance -> ()
-go : (Distance {pixels : x}) (Distance {pixels : y}) -> external "go" (x; y)
+go : (Distance {pixels : x}) (Distance {pixels : y}) -> external "go" (x, y)
 
 -- Set the pen color.
 color :: Color -> ()

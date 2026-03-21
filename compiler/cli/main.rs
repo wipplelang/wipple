@@ -71,7 +71,7 @@ struct CompileOptions {
     lib: Vec<PathBuf>,
 
     #[clap(long)]
-    facts: bool,
+    facts: Option<Option<String>>,
 
     #[clap(long)]
     no_source_map: bool,
@@ -86,19 +86,10 @@ struct CompileOptions {
 fn main() -> anyhow::Result<()> {
     match Command::parse() {
         Command::Compile { output, options } => {
-            let write_to_string = match output.as_deref() {
-                Some(path) => match path.extension().and_then(|ext| ext.to_str()) {
-                    // Some("wat") => codegen::wasm::write_to_string,
-                    Some("js") => codegen::js::write_to_string,
-                    _ => return Err(anyhow::format_err!("invalid extension")),
-                },
-                None => codegen::js::write_to_string,
-            };
-
-            compile(output.as_deref(), &options, write_to_string)?;
+            compile(output.as_deref(), &options)?;
         }
         Command::Run { output, options } => {
-            let script = compile(None, &options, codegen::js::write_to_string)?;
+            let script = compile(None, &options)?;
             run(output.as_deref(), script, |cmd| cmd)?;
         }
         Command::Test { options } => {
@@ -124,11 +115,7 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn compile(
-    output_path: Option<&Path>,
-    options: &CompileOptions,
-    write_to_string: fn(&codegen::ir::Program, codegen::Options<'_>, &Db) -> String,
-) -> anyhow::Result<String> {
+fn compile(output_path: Option<&Path>, options: &CompileOptions) -> anyhow::Result<String> {
     let (mut db, lib_files) = setup(options, true)?;
 
     let files = options
@@ -169,18 +156,18 @@ fn compile(
         ..CODEGEN_OPTIONS
     };
 
-    let script = write_to_string(&program, codegen_options, &db);
+    let wat = codegen::wasm::write_to_string(&program, codegen_options, &db)?;
 
     if let Some(path) = output_path {
-        fs::write(path, &script)?;
+        fs::write(path, &wat)?;
     }
 
-    Ok(script)
+    Ok(wat)
 }
 
 fn run(
     path: Option<&Path>,
-    script: String,
+    wat: String,
     setup: impl FnOnce(&mut process::Command) -> &mut process::Command,
 ) -> Result<Vec<u8>, anyhow::Error> {
     enum OutputPath<'a> {
@@ -212,7 +199,10 @@ fn run(
         )?;
     }
 
-    fs::write(output_path.as_ref().join("main.js"), script)?;
+    fs::write(output_path.as_ref().join("main.wat"), &wat)?;
+
+    let wasm = wat::parse_str(wat)?;
+    fs::write(output_path.as_ref().join("main.wasm"), wasm)?;
 
     let output = setup(process::Command::new("/usr/bin/env").args([
         "node".as_ref(),
@@ -262,16 +252,16 @@ fn test(options: &CompileOptions) -> anyhow::Result<Vec<serde_json::Value>> {
         if feedback_count == 0 {
             let program = codegen(&mut db, &layer.files, &lib_files)?;
 
-            let script = codegen::js::write_to_string(
+            let wat = codegen::wasm::write_to_string(
                 &program,
                 codegen::Options {
                     sourcemap: !options.no_source_map,
                     ..CODEGEN_OPTIONS
                 },
                 &db,
-            );
+            )?;
 
-            let buf = run(None, script, |cmd| cmd.stdout(process::Stdio::piped()))?;
+            let buf = run(None, wat, |cmd| cmd.stdout(process::Stdio::piped()))?;
             writeln!(&mut output, "Output:").unwrap();
             output.push_str(str::from_utf8(&buf).unwrap());
         }
@@ -367,7 +357,7 @@ fn compile_layer(
 
     let mut output = String::new();
 
-    if options.facts {
+    if let Some(filter) = &options.facts {
         let file_paths = layer
             .files
             .iter()
@@ -375,6 +365,19 @@ fn compile_layer(
             .collect::<Vec<_>>();
 
         let node_is_in_layer = |node: &NodeRef| {
+            if let Some(filter) = &filter {
+                let id = node.id();
+
+                if let Ok(filter) = filter.parse::<usize>() {
+                    return id == filter;
+                } else if let Some((min, max)) = filter.split_once('-')
+                    && let Ok(min) = min.parse::<usize>()
+                    && let Ok(max) = max.parse::<usize>()
+                {
+                    return id >= min && id <= max;
+                }
+            }
+
             env::var("WIPPLE_DEBUG").is_ok() || file_paths.contains(&db.span(node).path)
         };
 

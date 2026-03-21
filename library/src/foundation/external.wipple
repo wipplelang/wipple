@@ -6,11 +6,8 @@ instance (As-External String) : s -> intrinsic "string-as-external" s
 
 instance (As-External ()) : () -> intrinsic "unit-as-external"
 
-instance (As-External (a; b)) where (As-External a) (As-External b) : (a; b) ->
-  intrinsic "tuple-2-as-external" (As-External a) (As-External b)
-
-instance (As-External (a; b; c)) where (As-External a) (As-External b) (As-External c) : (a; b; c) ->
-  intrinsic "tuple-3-as-external" (As-External a) (As-External b) (As-External c)
+instance (As-External (List element)) where (As-External element) : list ->
+  intrinsic "list-as-external" (list . transform (As-External :: (element -> _)) . collect)
 
 From-External : value => trait (String -> value)
 
@@ -20,15 +17,8 @@ instance (From-External String) : s -> intrinsic "string-from-external" s
 
 instance (From-External ()) : _ -> ()
 
-instance (From-External (a; b)) where (From-External a) (From-External b) : s -> do {
-  (a; b) : intrinsic "tuple-2-from-external" s
-  (From-External a; From-External b)
-}
-
-instance (From-External (a; b; c)) where (From-External a) (From-External b) (From-External c) : s -> do {
-  (a; b; c) : intrinsic "tuple-3-from-external" s
-  (From-External a; From-External b; From-External c)
-}
+instance (From-External (List element)) where (From-External element) : s ->
+  (intrinsic "list-from-external" s :: List _) . transform (From-External :: (_ -> element)) . collect
 
 -- Send a message to the runtime.
 external :: String input -> output where (As-External input) (From-External output) (output :: ())

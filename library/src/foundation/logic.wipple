@@ -46,7 +46,12 @@ Order : value => trait (value value -> Ordering)
 -- You can't use comparison operators like `>` or `<` with [`value`]
 -- because it doesn't support ordering.
 [default] [error] instance (Order value)
-instance (Order Number) : a b -> intrinsic "number-ordering" a b
+instance (Order Number) : a b -> when (intrinsic "number-ordering" a b) {
+  -1 -> Is-Less-Than
+  0 -> Is-Equal-To
+  1 -> Is-Greater-Than
+  _ -> error "unreachable"
+}
 
 -- Returns `True` if the left side is less than the right side.
 Less-Than : value => trait (value value -> Boolean)
@@ -66,9 +71,21 @@ instance (Greater-Than-Or-Equal value) where (Order value) : a b -> (Order a b) 
 
 -- Returns `True` if two values are equal.
 Equal : value => trait (value value -> Boolean)
-instance (Equal String) : a b -> intrinsic "string-equality" a b
-instance (Equal Number) : a b -> intrinsic "number-equality" a b
+
+instance (Equal String) : a b -> when (intrinsic "string-equality" a b) {
+  0 -> False
+  1 -> True
+  _ -> error "unreachable"
+}
+
+instance (Equal Number) : a b -> when (intrinsic "number-equality" a b) {
+  0 -> False
+  1 -> True
+  _ -> error "unreachable"
+}
+
 instance (Equal ()) : () () -> True
+
 instance (Equal Boolean) : a b -> if a {b} {not b}
 
 -- Returns `True` if two values are not equal.

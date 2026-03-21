@@ -2,8 +2,8 @@ use crate::{
     codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{
-        ConstructorExpressionNode, WhenArm, WhenExpressionNode, WildcardPatternNode,
-        parse_expression_element, parse_pattern_element, visit_expression,
+        ConstructorExpressionNode, parse_expression_element, parse_pattern_element,
+        visit_expression,
     },
     syntax::{ParseError, Parser, TokenKind},
     typecheck::GroupConstraint,
@@ -91,32 +91,24 @@ impl Codegen for IsExpressionNode {
             .get(node)
             .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-        let span = ctx.span(node);
+        ctx.codegen(&self.left)?;
 
-        let wildcard_node = ctx.node(span.clone(), WildcardPatternNode);
+        ctx.push_conditions();
+        ctx.codegen(&self.right)?;
+        let conditions = ctx.pop_conditions();
 
-        let when_expression = ctx.node(
-            span,
-            WhenExpressionNode {
-                input: self.left.clone(),
-                arms: vec![
-                    WhenArm {
-                        pattern: self.right.clone(),
-                        value: true_variant,
-                    },
-                    WhenArm {
-                        pattern: wildcard_node,
-                        value: false_variant,
-                    },
-                ],
-            },
-        );
+        ctx.push_instructions();
+        ctx.codegen(&true_variant)?;
+        let true_instructions = ctx.pop_instructions();
 
-        ctx.codegen(&when_expression)?;
+        ctx.push_instructions();
+        ctx.codegen(&false_variant)?;
+        let false_instructions = ctx.pop_instructions();
 
-        ctx.instruction(ir::Instruction::Value {
-            node: node.clone(),
-            value: ir::Value::Variable(when_expression),
+        ctx.instruction(ir::Instruction::If {
+            node: Some(node.clone()),
+            branches: vec![(conditions, true_instructions, Some(true_variant.clone()))],
+            else_branch: Some((false_instructions, Some(false_variant.clone()))),
         });
 
         Ok(())

@@ -34,6 +34,7 @@ FunctionExpressionNode `(Person {name` (test/tests/format.wipple:5:30-5:60)
   at test/tests/format.wipple:5:30-5:60
   has type Person -> String
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Describe Person)` (test/tests/format.wipple:5:1-5:60)
   at test/tests/format.wipple:5:1-5:60
   has definition constraints

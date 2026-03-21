@@ -70,6 +70,7 @@ FunctionExpressionNode `grade -> when grade {⋯}` (test/tests/exhaustiveness-ch
   at test/tests/exhaustiveness-checking.wipple:12:15-16:2
   has type Grade -> String
   is an expression
+  no captures
 VariantNode `A` (test/tests/exhaustiveness-checking.wipple:4:3-4:4)
   at test/tests/exhaustiveness-checking.wipple:4:3-4:4
   has definition constraints

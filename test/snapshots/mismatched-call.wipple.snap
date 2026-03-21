@@ -23,7 +23,7 @@ VariableExpressionNode `todo` (test/tests/mismatched-call.wipple:4:16-4:20)
   at test/tests/mismatched-call.wipple:4:16-4:20
   has type String -> ()
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:21:1-21:14)
+  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:14)
 VariableExpressionNode `accepts-text` (test/tests/mismatched-call.wipple:8:1-8:13)
   at test/tests/mismatched-call.wipple:8:1-8:13
   has type Number -> ()

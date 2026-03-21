@@ -31,10 +31,10 @@ VariableExpressionNode `sports` (test/tests/dictionary.wipple:4:11-4:17)
   resolved to 1 definition(s): `sports` (test/tests/dictionary.wipple:3:1-3:7)
 VariableExpressionNode `reduce` (test/tests/dictionary.wipple:4:20-4:26)
   at test/tests/dictionary.wipple:4:20-4:26
-  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-211:2))
   has type (Dictionary String Number) ((Dictionary String Number) String -> Dictionary String Number) -> (List String) -> Dictionary String Number
   is an expression
-  resolved to 1 definition(s): `reduce` (library/src/foundation/sequence.wipple:155:1-156:105)
+  resolved to 1 definition(s): `reduce` (library/src/foundation/sequence.wipple:158:1-159:105)
 CollectionExpressionNode `,` (test/tests/dictionary.wipple:4:28-4:29)
   at test/tests/dictionary.wipple:4:28-4:29
   has type Dictionary String Number
@@ -54,7 +54,7 @@ VariableExpressionNode `sports` (test/tests/dictionary.wipple:4:48-4:54)
   resolved to 1 definition(s): `sports` (test/tests/dictionary.wipple:4:32-4:38)
 VariableExpressionNode `insert-entry` (test/tests/dictionary.wipple:4:57-4:69)
   at test/tests/dictionary.wipple:4:57-4:69
-  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
+  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:75:1-79:2)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
   has type String Number -> (Dictionary String Number) -> Dictionary String Number
   is an expression
   resolved to 1 definition(s): `insert-entry` (library/src/foundation/dictionary.wipple:38:1-39:105)
@@ -65,10 +65,10 @@ VariableExpressionNode `sport` (test/tests/dictionary.wipple:4:70-4:75)
   resolved to 1 definition(s): `sport` (test/tests/dictionary.wipple:4:39-4:44)
 VariableExpressionNode `count` (test/tests/dictionary.wipple:4:77-4:82)
   at test/tests/dictionary.wipple:4:77-4:82
-  has bound(s) As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:414:1-415:68))
+  has bound(s) As-Sequence String String (`instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:417:1-418:68))
   has type String -> Number
   is an expression
-  resolved to 1 definition(s): `count` (library/src/foundation/sequence.wipple:260:1-261:69)
+  resolved to 1 definition(s): `count` (library/src/foundation/sequence.wipple:263:1-264:69)
 VariableExpressionNode `sport` (test/tests/dictionary.wipple:4:83-4:88)
   at test/tests/dictionary.wipple:4:83-4:88
   has type String
@@ -90,6 +90,7 @@ FunctionExpressionNode `sports sport -> sports . insert-entry sport (count sport
   at test/tests/dictionary.wipple:4:32-4:89
   has type (Dictionary String Number) String -> Dictionary String Number
   is an expression
+  no captures
 CallExpressionNode `reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (test/tests/dictionary.wipple:4:20-4:90)
   at test/tests/dictionary.wipple:4:20-4:90
   has type (List String) -> Dictionary String Number
@@ -105,10 +106,10 @@ VariableExpressionNode `sports` (test/tests/dictionary.wipple:6:1-6:7)
   resolved to 1 definition(s): `sports` (test/tests/dictionary.wipple:3:1-3:7)
 VariableExpressionNode `each` (test/tests/dictionary.wipple:6:10-6:14)
   at test/tests/dictionary.wipple:6:10-6:14
-  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-211:2))
   has type (String -> ()) -> (List String) -> ()
   is an expression
-  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
+  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:220:1-221:81)
 VariablePatternNode `sport` (test/tests/dictionary.wipple:6:16-6:21)
   at test/tests/dictionary.wipple:6:16-6:21
   has type String
@@ -131,7 +132,7 @@ VariableExpressionNode `lengths` (test/tests/dictionary.wipple:6:57-6:64)
   resolved to 1 definition(s): `lengths` (test/tests/dictionary.wipple:4:1-4:8)
 VariableExpressionNode `entry` (test/tests/dictionary.wipple:6:67-6:72)
   at test/tests/dictionary.wipple:6:67-6:72
-  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:69:1-69:65)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
+  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:75:1-79:2)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
   has type String -> (Dictionary String Number) -> Maybe Number
   is an expression
   resolved to 1 definition(s): `entry` (library/src/foundation/dictionary.wipple:19:1-20:83)
@@ -152,7 +153,7 @@ VariableExpressionNode `unreachable` (test/tests/dictionary.wipple:6:83-6:94)
   at test/tests/dictionary.wipple:6:83-6:94
   has type Number
   is an expression
-  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:27:1-27:21)
+  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:31:1-31:21)
 OperatorExpressionNode `lengths . entry sport) or unreachable` (test/tests/dictionary.wipple:6:57-6:94)
   at test/tests/dictionary.wipple:6:57-6:94
   has type Number
@@ -167,6 +168,7 @@ CallExpressionNode `show ("_ has _ letters" sport ((lengths . entry sport) or un
   is an expression
 FunctionExpressionNode `sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable))` (test/tests/dictionary.wipple:6:16-6:96)
   at test/tests/dictionary.wipple:6:16-6:96
+  captures `lengths` (test/tests/dictionary.wipple:4:1-4:8)
   has type String -> ()
   is an expression
 CallExpressionNode `each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (test/tests/dictionary.wipple:6:10-6:97)
@@ -199,6 +201,7 @@ BlockExpressionNode `unreachable` (test/tests/dictionary.wipple:6:83-6:94)
   at test/tests/dictionary.wipple:6:83-6:94
   has type {Number}
   is an expression
+  no captures
 CallExpressionNode `lengths . entry sport) or unreachable` (test/tests/dictionary.wipple:6:57-6:94)
   at test/tests/dictionary.wipple:6:57-6:94
   has type Number

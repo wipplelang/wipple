@@ -52,12 +52,13 @@ FunctionExpressionNode `(Elephants {count` (test/tests/number-units.wipple:5:30-
   at test/tests/number-units.wipple:5:30-5:86
   has type Elephants Elephants -> Boolean
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Equal Elephants)` (test/tests/number-units.wipple:5:1-5:86)
   at test/tests/number-units.wipple:5:1-5:86
   has definition constraints
   has type Elephants Elephants -> Boolean
   is a definition
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:72:1-73:48)
 NamedTypeNode `Number` (test/tests/number-units.wipple:7:21-7:27)
   at test/tests/number-units.wipple:7:21-7:27
   has type Number
@@ -97,6 +98,7 @@ FunctionExpressionNode `count -> Elephants {count` (test/tests/number-units.wipp
   at test/tests/number-units.wipple:8:13-8:47
   has type Number -> Elephants
   is an expression
+  no captures
 VariableExpressionNode `show` (test/tests/number-units.wipple:10:1-10:5)
   at test/tests/number-units.wipple:10:1-10:5
   has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
@@ -139,10 +141,10 @@ CallExpressionNode `show (42 elephants = elephants 42)` (test/tests/number-units
   is an expression
 ConstructorExpressionNode `=` (test/tests/number-units.wipple:5:83-5:84)
   at test/tests/number-units.wipple:5:83-5:84
-  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:70:1-70:65))
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:81:1-85:2))
   has type Number Number -> Boolean
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:72:1-73:48)
 CallExpressionNode `a = b` (test/tests/number-units.wipple:5:81-5:86)
   at test/tests/number-units.wipple:5:81-5:86
   has type Boolean
@@ -152,7 +154,7 @@ ConstructorExpressionNode `=` (test/tests/number-units.wipple:10:20-10:21)
   has bound(s) Equal Elephants (`instance (Equal Elephants)` (test/tests/number-units.wipple:5:1-5:86))
   has type Elephants Elephants -> Boolean
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:67:1-68:48)
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:72:1-73:48)
 CallExpressionNode `42 elephants = elephants 42` (test/tests/number-units.wipple:10:7-10:34)
   at test/tests/number-units.wipple:10:7-10:34
   has type Boolean

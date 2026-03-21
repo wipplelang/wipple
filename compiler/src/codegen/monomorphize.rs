@@ -50,8 +50,8 @@ fn convert_substitutions(
         .map(|(parameter, ty)| {
             Ok((
                 parameter,
-                ty.key(db)
-                    .ok_or_else(|| anyhow::format_err!("cannot codegen type"))?,
+                db.ir_type(ty.clone())
+                    .ok_or_else(|| anyhow::format_err!("cannot codegen type {ty:?}"))?,
             ))
         })
         .collect()
@@ -61,8 +61,7 @@ impl MonomorphizeCtx {
     pub fn monomorphize_definitions(
         &mut self,
         db: &mut Db,
-    ) -> CodegenResult<impl Iterator<Item = (ir::DefinitionKey, Vec<ir::Instruction>)> + use<>>
-    {
+    ) -> CodegenResult<impl Iterator<Item = (ir::DefinitionKey, ir::Definition)> + use<>> {
         let mut cache = BTreeMap::new();
 
         for key in mem::take(&mut self.definitions) {
@@ -71,13 +70,13 @@ impl MonomorphizeCtx {
 
         Ok(cache
             .into_iter()
-            .map(|(key, instructions)| (key, instructions.unwrap())))
+            .map(|(key, definition)| (key, definition.unwrap())))
     }
 
     fn monomorphize_definition(
         &mut self,
         key: &ir::DefinitionKey,
-        cache: &mut BTreeMap<ir::DefinitionKey, Option<Vec<ir::Instruction>>>,
+        cache: &mut BTreeMap<ir::DefinitionKey, Option<ir::Definition>>,
         db: &mut Db,
     ) -> CodegenResult {
         if cache.contains_key(key) {
@@ -95,7 +94,7 @@ impl MonomorphizeCtx {
             Definition::Instance(definition) => definition.value,
             _ => None,
         }
-        .ok_or_else(|| anyhow::format_err!("definition has no value"))?;
+        .ok_or_else(|| anyhow::format_err!("definition {key:?} has no value"))?;
 
         let mut ctx = CodegenCtx::new(db);
         ctx.codegen(&body)?;
@@ -104,8 +103,16 @@ impl MonomorphizeCtx {
         });
 
         let mut instructions = ctx.pop_instructions();
+        let mut types = BTreeMap::new();
         for instruction in &mut instructions {
             instruction.traverse_mut(&mut |instruction| {
+                for node in instruction.nodes(true) {
+                    if let Some(mut ty) = db.ir_type(node.clone()) {
+                        ty.substitute(&key.substitutions);
+                        types.insert(node.clone(), ty);
+                    }
+                }
+
                 if let ir::Instruction::Value { value, .. } = instruction {
                     match value {
                         ir::Value::Constant(constant_key) => {
@@ -142,7 +149,11 @@ impl MonomorphizeCtx {
             })?;
         }
 
-        cache.get_mut(key).unwrap().replace(instructions);
+        cache.get_mut(key).unwrap().replace(ir::Definition {
+            ty: types.get(&body).cloned(),
+            instructions,
+            types,
+        });
 
         Ok(())
     }
@@ -152,7 +163,7 @@ impl MonomorphizeCtx {
         key: &mut ir::DefinitionKey,
         substitutions: &BTreeMap<NodeRef, ir::Type>,
         bounds: &BTreeMap<NodeRef, ir::Instance>,
-        cache: &mut BTreeMap<ir::DefinitionKey, Option<Vec<ir::Instruction>>>,
+        cache: &mut BTreeMap<ir::DefinitionKey, Option<ir::Definition>>,
         db: &mut Db,
     ) -> CodegenResult {
         for ty in key.substitutions.values_mut() {
@@ -200,7 +211,7 @@ impl MonomorphizeCtx {
         instance: &mut ir::Instance,
         substitutions: &BTreeMap<NodeRef, ir::Type>,
         bounds: &BTreeMap<NodeRef, ir::Instance>,
-        cache: &mut BTreeMap<ir::DefinitionKey, Option<Vec<ir::Instruction>>>,
+        cache: &mut BTreeMap<ir::DefinitionKey, Option<ir::Definition>>,
         db: &mut Db,
     ) -> CodegenResult {
         match instance {

@@ -90,6 +90,7 @@ FunctionExpressionNode `(Person {name` (test/tests/destructuring.wipple:10:12-10
   at test/tests/destructuring.wipple:10:12-10:42
   has type Person -> String
   is an expression
+  no captures
 VariablePatternNode `bob` (test/tests/destructuring.wipple:12:1-12:4)
   at test/tests/destructuring.wipple:12:1-12:4
   has type Person
@@ -152,6 +153,7 @@ FunctionExpressionNode `(Person {name` (test/tests/destructuring.wipple:15:30-15
   at test/tests/destructuring.wipple:15:30-15:60
   has type Person -> String
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Describe Person)` (test/tests/destructuring.wipple:15:1-15:60)
   at test/tests/destructuring.wipple:15:1-15:60
   has definition constraints

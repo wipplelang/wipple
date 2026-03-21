@@ -119,7 +119,7 @@ VariablePatternNode `t` (test/tests/implied-instance.wipple:12:1-12:2)
   at test/tests/implied-instance.wipple:12:1-12:2
 ConstructorExpressionNode `T` (test/tests/implied-instance.wipple:12:5-12:6)
   at test/tests/implied-instance.wipple:12:5-12:6
-  has bound(s) T value (`instance (T value)` (test/tests/implied-instance.wipple:9:1-9:39))
+  has bound(s) U value (`U value` (test/tests/implied-instance.wipple:11:24-11:33)), T value (`instance (T value)` (test/tests/implied-instance.wipple:9:1-9:39))
   has type value -> ()
   is an expression
   resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/implied-instance.wipple:6:1-6:33)

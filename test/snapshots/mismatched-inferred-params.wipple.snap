@@ -17,10 +17,10 @@ CollectionExpressionNode `1, 2, 3` (test/tests/mismatched-inferred-params.wipple
   is an expression
 VariableExpressionNode `transform` (test/tests/mismatched-inferred-params.wipple:3:13-3:22)
   at test/tests/mismatched-inferred-params.wipple:3:13-3:22
-  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-211:2))
   has type (Number -> Number) -> (List Number) -> Sequence Number
   is an expression
-  resolved to 1 definition(s): `transform` (library/src/foundation/sequence.wipple:66:1-66:99)
+  resolved to 1 definition(s): `transform` (library/src/foundation/sequence.wipple:69:1-69:99)
 VariablePatternNode `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26)
   at test/tests/mismatched-inferred-params.wipple:3:25-3:26
   has type Number or String
@@ -43,6 +43,7 @@ FunctionExpressionNode `(x :: String) -> x` (test/tests/mismatched-inferred-para
   at test/tests/mismatched-inferred-params.wipple:3:24-3:42
   has type Number -> Number
   is an expression
+  no captures
 CallExpressionNode `transform ((x :: String) -> x)` (test/tests/mismatched-inferred-params.wipple:3:13-3:43)
   at test/tests/mismatched-inferred-params.wipple:3:13-3:43
   has type (List Number) -> Sequence Number
@@ -71,8 +72,8 @@ Feedback:
 
   -  `3` (test/tests/mismatched-inferred-params.wipple:3:8-3:9) is a Number.
 
-  -  `element` (library/src/foundation/sequence.wipple:196:29-196:36) must have the same type everywhere in this use of `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2).
+  -  `element` (library/src/foundation/sequence.wipple:199:29-199:36) must have the same type everywhere in this use of `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-211:2).
 
-  -  `input` (library/src/foundation/sequence.wipple:66:15-66:20) must have the same type everywhere in this use of `transform` (library/src/foundation/sequence.wipple:66:1-66:99).
+  -  `input` (library/src/foundation/sequence.wipple:69:15-69:20) must have the same type everywhere in this use of `transform` (library/src/foundation/sequence.wipple:69:1-69:99).
 
-  -  `output` (library/src/foundation/sequence.wipple:66:24-66:30) must have the same type everywhere in this use of `transform` (library/src/foundation/sequence.wipple:66:1-66:99).
+  -  `output` (library/src/foundation/sequence.wipple:69:24-69:30) must have the same type everywhere in this use of `transform` (library/src/foundation/sequence.wipple:69:1-69:99).

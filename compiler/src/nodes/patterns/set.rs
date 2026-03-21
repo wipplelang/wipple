@@ -1,14 +1,17 @@
 use crate::{
     codegen::{Codegen, CodegenCtx, CodegenResult, ir},
     database::{Db, Fact, Node, NodeRef, Render},
-    nodes::{IsMutated, Matching, Temporaries, visit_pattern},
+    nodes::{IsCaptured, IsMutated, Matching, Temporaries, visit_pattern},
     syntax::{ParseError, Parser, TokenKind, parse_variable_name},
     typecheck::GroupConstraint,
     visit::{Definition, MatchPathSegment, Resolved, Visit, Visitor},
 };
 
 #[derive(Debug, Clone)]
-pub struct InvalidSetPattern;
+pub enum InvalidSetPattern {
+    Nested,
+    Immutable(NodeRef),
+}
 
 impl Fact for InvalidSetPattern {}
 
@@ -38,7 +41,7 @@ impl Visit for SetPatternNode {
         visit_pattern(node, visitor, Some(MatchPathSegment::Match));
 
         if !visitor.current_match().allow_set {
-            visitor.insert(node, InvalidSetPattern);
+            visitor.insert(node, InvalidSetPattern::Nested);
         }
 
         let Some(variable_definition) =
@@ -50,10 +53,21 @@ impl Visit for SetPatternNode {
             return;
         };
 
+        if !variable_definition.mutable {
+            visitor.insert(
+                node,
+                InvalidSetPattern::Immutable(variable_definition.node.clone()),
+            );
+        }
+
         visitor.constraint(GroupConstraint::new(
             node.clone(),
             variable_definition.node.clone(),
         ));
+
+        if visitor.capture(&variable_definition.node) {
+            visitor.insert(&variable_definition.node, IsCaptured);
+        }
 
         visitor.graph.replace(node, &variable_definition.node);
 

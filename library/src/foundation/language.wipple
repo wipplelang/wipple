@@ -1,7 +1,7 @@
 [intrinsic] Number : type
 [intrinsic] String : type
 
-Maybe : value => type {
+[flat] Maybe : value => type {
   None
   Some value
 }
@@ -16,7 +16,11 @@ As : input output => trait (input -> output)
 instance (As value value) : value -> value
 
 error :: String -> value
-error : message -> intrinsic "crash" message
+error : message -> do {
+  [intrinsic] Error : type
+  (intrinsic "crash" message) :: Error
+  error message -- will never be reached
+}
 
 todo :: value
 todo : error "not yet implemented"

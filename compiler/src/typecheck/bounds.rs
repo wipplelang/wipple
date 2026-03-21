@@ -80,6 +80,7 @@ pub struct Bound {
     pub source_node: NodeRef,
     pub bound_node: NodeRef,
     pub trait_node: NodeRef,
+    pub target_node: NodeRef,
     pub substitutions: Substitutions,
     pub optional: bool,
 }

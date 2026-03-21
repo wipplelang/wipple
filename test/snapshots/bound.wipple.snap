@@ -80,6 +80,7 @@ FunctionExpressionNode `x -> T x` (test/tests/bound.wipple:6:7-6:15)
   at test/tests/bound.wipple:6:7-6:15
   has type value -> String
   is an expression
+  no captures
 TypeDefinitionNode `A` (test/tests/bound.wipple:8:1-8:9)
   at test/tests/bound.wipple:8:1-8:9
   has definition constraints
@@ -104,6 +105,7 @@ FunctionExpressionNode `_ -> "Hello, world!"` (test/tests/bound.wipple:9:18-9:38
   at test/tests/bound.wipple:9:18-9:38
   has type A -> String
   is an expression
+  no captures
 InstanceDefinitionNode `instance (T A)` (test/tests/bound.wipple:9:1-9:38)
   at test/tests/bound.wipple:9:1-9:38
   has definition constraints

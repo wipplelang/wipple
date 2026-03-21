@@ -1,18 +1,18 @@
 use crate::{
     codegen::ir,
     database::{Db, NodeRef},
+    nodes::{EnumerationVariants, StructureFields},
     typecheck::{ConstructedTypeTag, Type},
+    visit::{Defined, Definition, TypeDefinition},
 };
 use std::collections::BTreeMap;
 
-impl Type {
-    pub fn key(self, db: &Db) -> Option<ir::Type> {
-        db.key_for_type(self, &Default::default())
-    }
-}
-
 impl Db {
-    pub fn key_for_type(
+    pub fn ir_type(&self, ty: impl Into<Type>) -> Option<ir::Type> {
+        self.ir_type_inner(ty.into(), &BTreeMap::new())
+    }
+
+    fn ir_type_inner(
         &self,
         ty: Type,
         substitutions: &BTreeMap<NodeRef, ir::Type>,
@@ -27,19 +27,32 @@ impl Db {
                 let parameters = ty
                     .children
                     .into_iter()
-                    .map(|ty| self.key_for_type(ty, substitutions))
+                    .map(|ty| self.ir_type_inner(ty, substitutions))
                     .collect::<Option<_>>()?;
 
-                Some(ir::Type::Named(definition, parameters))
+                let Defined(Definition::Type(TypeDefinition { attributes, .. })) =
+                    self.get(&definition)?
+                else {
+                    return None;
+                };
+
+                Some(ir::Type::Named(
+                    definition,
+                    parameters,
+                    ir::TypeFlags {
+                        intrinsic: attributes.intrinsic,
+                        flat: attributes.flat,
+                    },
+                ))
             }
             ConstructedTypeTag::Function => {
                 let (output, inputs) = ty.children.split_first()?;
 
-                let output = self.key_for_type(output.clone(), substitutions)?;
+                let output = self.ir_type_inner(output.clone(), substitutions)?;
 
                 let inputs = inputs
                     .iter()
-                    .map(|input| self.key_for_type(input.clone(), substitutions))
+                    .map(|input| self.ir_type_inner(input.clone(), substitutions))
                     .collect::<Option<_>>()?;
 
                 Some(ir::Type::Function(inputs, Box::new(output)))
@@ -48,7 +61,7 @@ impl Db {
                 let elements = ty
                     .children
                     .into_iter()
-                    .map(|child| self.key_for_type(child, substitutions))
+                    .map(|child| self.ir_type_inner(child, substitutions))
                     .collect::<Option<_>>()?;
 
                 Some(ir::Type::Tuple(elements))
@@ -60,7 +73,7 @@ impl Db {
 
                 Some(ir::Type::Function(
                     Vec::new(),
-                    Box::new(self.key_for_type(output.clone(), substitutions)?),
+                    Box::new(self.ir_type_inner(output.clone(), substitutions)?),
                 ))
             }
             ConstructedTypeTag::Parameter(parameter) => Some(
@@ -78,7 +91,7 @@ impl ir::Type {
         f(self);
 
         match self {
-            ir::Type::Named(_, parameters) => {
+            ir::Type::Named(_, parameters, _) => {
                 for parameter in parameters {
                     parameter.traverse_mut(f);
                 }
@@ -97,5 +110,70 @@ impl ir::Type {
             }
             ir::Type::Parameter(_) => {}
         }
+    }
+
+    pub fn substitute(&mut self, substitutions: &BTreeMap<NodeRef, ir::Type>) {
+        self.traverse_mut(&mut |ty| {
+            if let ir::Type::Parameter(parameter) = ty
+                && let Some(substitution) = substitutions.get(parameter)
+            {
+                *ty = substitution.clone();
+            }
+        });
+    }
+}
+
+impl Db {
+    pub fn ir_named_type_representation(
+        &self,
+        definition: &NodeRef,
+        parameters: &[ir::Type],
+    ) -> Option<ir::TypeRepresentation> {
+        let Defined(Definition::Type(TypeDefinition {
+            attributes,
+            parameters: type_parameters,
+            ..
+        })) = self.get(definition)?
+        else {
+            return None;
+        };
+
+        let substitutions = type_parameters
+            .into_iter()
+            .zip(parameters.iter().cloned())
+            .collect::<BTreeMap<_, _>>();
+
+        Some(if attributes.intrinsic {
+            ir::TypeRepresentation::Intrinsic
+        } else if let Some(StructureFields(fields)) = self.get(definition) {
+            ir::TypeRepresentation::Structure(
+                fields
+                    .into_iter()
+                    .map(|field| {
+                        let mut ty = self.ir_type(field)?;
+                        ty.substitute(&substitutions);
+                        Some(ty)
+                    })
+                    .collect::<Option<_>>()?,
+            )
+        } else if let Some(EnumerationVariants(variants)) = self.get(definition) {
+            ir::TypeRepresentation::Enumeration(
+                variants
+                    .into_iter()
+                    .map(|(_, elements)| {
+                        elements
+                            .into_iter()
+                            .map(|element| {
+                                let mut ty = self.ir_type(element)?;
+                                ty.substitute(&substitutions);
+                                Some(ty)
+                            })
+                            .collect()
+                    })
+                    .collect::<Option<_>>()?,
+            )
+        } else {
+            ir::TypeRepresentation::Marker
+        })
     }
 }

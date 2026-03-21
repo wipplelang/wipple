@@ -81,6 +81,7 @@ FunctionExpressionNode `(Box {value` (test/tests/generic-instance.wipple:7:36-7:
   at test/tests/generic-instance.wipple:7:36-7:66
   has type (Box value) -> value
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Foo (Box value) value)` (test/tests/generic-instance.wipple:7:1-7:66)
   at test/tests/generic-instance.wipple:7:1-7:66
   has definition constraints

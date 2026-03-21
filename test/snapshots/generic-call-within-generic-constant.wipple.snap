@@ -34,6 +34,7 @@ FunctionExpressionNode `x -> x` (test/tests/generic-call-within-generic-constant
   at test/tests/generic-call-within-generic-constant.wipple:4:5-4:11
   has type value -> value
   is an expression
+  no captures
 TypeParameterNode `value` (test/tests/generic-call-within-generic-constant.wipple:6:6-6:11)
   at test/tests/generic-call-within-generic-constant.wipple:6:6-6:11
   has type value
@@ -78,6 +79,7 @@ FunctionExpressionNode `x -> f x` (test/tests/generic-call-within-generic-consta
   at test/tests/generic-call-within-generic-constant.wipple:7:5-7:13
   has type value -> value
   is an expression
+  no captures
 WildcardPatternNode `_` (test/tests/generic-call-within-generic-constant.wipple:9:1-9:2)
   at test/tests/generic-call-within-generic-constant.wipple:9:1-9:2
   has type Number

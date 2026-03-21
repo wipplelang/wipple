@@ -53,13 +53,16 @@ As-Sequence : container (infer element) => trait (container -> Sequence element)
 
 instance (As-Sequence (Sequence element) element) : sequence -> sequence
 
-instance (As-Sequence (Maybe element) element) : maybe -> sequence {
-  when maybe {
-    (Some value) -> do {
-      set maybe : None
-      Some value
+instance (As-Sequence (Maybe element) element) : maybe -> do {
+  current : maybe
+  sequence {
+    when current {
+      (Some value) -> do {
+        set current : None
+        Some value
+      }
+      None -> None
     }
-    None -> None
   }
 }
 

@@ -32,6 +32,7 @@ BlockExpressionNode `{⋯}` (test/tests/logic.wipple:3:27-3:32)
   at test/tests/logic.wipple:3:27-3:32
   has type {String}
   is an expression
+  no captures
 StringExpressionNode `"b"` (test/tests/logic.wipple:3:34-3:37)
   at test/tests/logic.wipple:3:34-3:37
   has type String
@@ -40,6 +41,7 @@ BlockExpressionNode `{⋯}` (test/tests/logic.wipple:3:33-3:38)
   at test/tests/logic.wipple:3:33-3:38
   has type {String}
   is an expression
+  no captures
 CallExpressionNode `if (True and False) {⋯}` (test/tests/logic.wipple:3:7-3:38)
   at test/tests/logic.wipple:3:7-3:38
   has type String
@@ -81,6 +83,7 @@ BlockExpressionNode `{⋯}` (test/tests/logic.wipple:4:26-4:31)
   at test/tests/logic.wipple:4:26-4:31
   has type {String}
   is an expression
+  no captures
 StringExpressionNode `"b"` (test/tests/logic.wipple:4:33-4:36)
   at test/tests/logic.wipple:4:33-4:36
   has type String
@@ -89,6 +92,7 @@ BlockExpressionNode `{⋯}` (test/tests/logic.wipple:4:32-4:37)
   at test/tests/logic.wipple:4:32-4:37
   has type {String}
   is an expression
+  no captures
 CallExpressionNode `if (True or False) {⋯}` (test/tests/logic.wipple:4:7-4:37)
   at test/tests/logic.wipple:4:7-4:37
   has type String
@@ -107,6 +111,7 @@ BlockExpressionNode `False` (test/tests/logic.wipple:3:20-3:25)
   at test/tests/logic.wipple:3:20-3:25
   has type {Boolean}
   is an expression
+  no captures
 CallExpressionNode `True and False` (test/tests/logic.wipple:3:11-3:25)
   at test/tests/logic.wipple:3:11-3:25
   has type Boolean
@@ -121,6 +126,7 @@ BlockExpressionNode `False` (test/tests/logic.wipple:4:19-4:24)
   at test/tests/logic.wipple:4:19-4:24
   has type {Boolean}
   is an expression
+  no captures
 CallExpressionNode `True or False` (test/tests/logic.wipple:4:11-4:24)
   at test/tests/logic.wipple:4:11-4:24
   has type Boolean

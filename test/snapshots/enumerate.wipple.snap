@@ -26,16 +26,16 @@ VariableExpressionNode `list` (test/tests/enumerate.wipple:4:1-4:5)
   resolved to 1 definition(s): `list` (test/tests/enumerate.wipple:3:1-3:5)
 VariableExpressionNode `enumerate` (test/tests/enumerate.wipple:4:8-4:17)
   at test/tests/enumerate.wipple:4:8-4:17
-  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:196:1-208:2))
+  has bound(s) As-Sequence (List String) String (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-211:2))
   has type (List String) -> Sequence (Number; String)
   is an expression
-  resolved to 1 definition(s): `enumerate` (library/src/foundation/sequence.wipple:363:1-366:93)
+  resolved to 1 definition(s): `enumerate` (library/src/foundation/sequence.wipple:366:1-369:93)
 VariableExpressionNode `each` (test/tests/enumerate.wipple:4:20-4:24)
   at test/tests/enumerate.wipple:4:20-4:24
   has bound(s) As-Sequence (Sequence (Number; _)) (Number; _) (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
   has type ((Number; String) -> ()) -> (Sequence (Number; String)) -> ()
   is an expression
-  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
+  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:220:1-221:81)
 VariablePatternNode `n` (test/tests/enumerate.wipple:4:27-4:28)
   at test/tests/enumerate.wipple:4:27-4:28
   has type Number
@@ -76,6 +76,7 @@ FunctionExpressionNode `n; c) -> show ("_` (test/tests/enumerate.wipple:4:26-4:5
   at test/tests/enumerate.wipple:4:26-4:53
   has type (Number; String) -> ()
   is an expression
+  no captures
 CallExpressionNode `each ((n; c) -> show ("_` (test/tests/enumerate.wipple:4:20-4:54)
   at test/tests/enumerate.wipple:4:20-4:54
   has type (Sequence (Number; String)) -> ()

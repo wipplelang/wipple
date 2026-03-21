@@ -29,7 +29,7 @@ VariableExpressionNode `each` (test/tests/list-mismatched-elements.wipple:4:11-4
   has bound(s) As-Sequence (List Number) _ (`instance (As-Sequence container element)` (library/src/foundation/sequence.wipple:49:1-52:59))
   has type (_ -> ()) -> (List Number) -> ()
   is an expression
-  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
+  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:220:1-221:81)
 VariableExpressionNode `show` (test/tests/list-mismatched-elements.wipple:4:16-4:20)
   at test/tests/list-mismatched-elements.wipple:4:16-4:20
   has type _ -> ()

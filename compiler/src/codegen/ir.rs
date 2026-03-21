@@ -7,8 +7,8 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, Default)]
 pub struct Program {
     pub files: Vec<Span>,
-    pub instructions: Vec<Instruction>,
-    pub definitions: BTreeMap<DefinitionKey, Vec<Instruction>>,
+    pub top_level: Definition,
+    pub definitions: BTreeMap<DefinitionKey, Definition>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -18,12 +18,25 @@ pub struct DefinitionKey {
     pub bounds: BTreeMap<NodeRef, Instance>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct Definition {
+    pub ty: Option<Type>,
+    pub instructions: Vec<Instruction>,
+    pub types: BTreeMap<NodeRef, Type>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Type {
-    Named(NodeRef, Vec<Type>),
+    Named(NodeRef, Vec<Type>, TypeFlags),
     Tuple(Vec<Type>),
     Function(Vec<Type>, Box<Type>),
     Parameter(NodeRef),
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
+pub struct TypeFlags {
+    pub intrinsic: bool,
+    pub flat: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -78,7 +91,8 @@ pub enum Value {
     },
     Field {
         input: NodeRef,
-        field: String,
+        field_name: String,
+        field_index: usize,
     },
     Tuple(Vec<NodeRef>),
     Marker,
@@ -102,13 +116,14 @@ pub enum Value {
     },
     VariantElement {
         input: NodeRef,
+        variant: usize,
         index: usize,
     },
 }
 
 #[derive(Debug, Clone)]
 pub enum Condition {
-    Or(Vec<Condition>),
+    Or(Vec<Vec<Condition>>),
     EqualToNumber {
         input: NodeRef,
         value: String,
@@ -123,6 +138,7 @@ pub enum Condition {
     },
     Initialize {
         variable: NodeRef,
+        node: Option<NodeRef>,
         value: Value,
         mutable: bool,
     },
@@ -133,43 +149,55 @@ pub enum Condition {
 }
 
 impl Instruction {
-    pub fn nodes(&self) -> Vec<&NodeRef> {
+    pub fn nodes(&self, traverse_functions: bool) -> Vec<&NodeRef> {
         match self {
             Instruction::If {
                 node,
                 branches,
                 else_branch,
-            } => node
-                .iter()
-                .chain(
-                    branches
-                        .iter()
-                        .flat_map(|(conditions, instructions, then_node)| {
-                            conditions
-                                .iter()
-                                .flat_map(|condition| condition.nodes())
-                                .chain(
-                                    instructions
-                                        .iter()
-                                        .flat_map(|instruction| instruction.nodes()),
-                                )
-                                .chain(then_node)
-                        })
-                        .chain(else_branch.iter().flat_map(|(instructions, else_node)| {
-                            instructions
-                                .iter()
-                                .flat_map(|instruction| instruction.nodes())
-                                .chain(else_node)
-                        })),
-                )
-                .collect(),
+            } => {
+                node.iter()
+                    .chain(
+                        branches
+                            .iter()
+                            .flat_map(|(conditions, instructions, then_node)| {
+                                conditions
+                                    .iter()
+                                    .flat_map(|condition| condition.nodes())
+                                    .chain(instructions.iter().flat_map(|instruction| {
+                                        instruction.nodes(traverse_functions)
+                                    }))
+                                    .chain(then_node)
+                            })
+                            .chain(else_branch.iter().flat_map(|(instructions, else_node)| {
+                                instructions
+                                    .iter()
+                                    .flat_map(|instruction| instruction.nodes(traverse_functions))
+                                    .chain(else_node)
+                            })),
+                    )
+                    .collect()
+            }
             Instruction::Return { .. } => Vec::new(),
             Instruction::Trace { .. } => Vec::new(),
-            Instruction::Value {
-                node,
-                value: _, // functions declare their own nodes
-            } => {
-                vec![node]
+            Instruction::Value { node, value } => {
+                let mut nodes = vec![node];
+
+                if traverse_functions
+                    && let Value::Function {
+                        inputs,
+                        instructions,
+                        ..
+                    } = value
+                {
+                    nodes.extend(inputs);
+
+                    for instruction in instructions {
+                        nodes.extend(instruction.nodes(true));
+                    }
+                }
+
+                nodes
             }
         }
     }
@@ -215,16 +243,14 @@ impl Condition {
         match self {
             Condition::Or(conditions) => conditions
                 .iter()
+                .flatten()
                 .flat_map(|condition| condition.nodes())
                 .collect(),
             Condition::EqualToNumber { input, .. } => vec![input],
             Condition::EqualToString { input, .. } => vec![input],
             Condition::EqualToVariant { input, .. } => vec![input],
             Condition::Initialize { variable, .. } => vec![variable],
-            Condition::Mutate {
-                input,
-                variable: _, // don't shadow the existing variable
-            } => vec![input],
+            Condition::Mutate { input, variable } => vec![input, variable],
         }
     }
 }

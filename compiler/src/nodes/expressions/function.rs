@@ -48,8 +48,8 @@ impl Visit for FunctionExpressionNode {
 
         for pattern in &self.inputs {
             visitor.matching(pattern, false, false, |visitor| {
+                visitor.current_match().mutable = false;
                 visitor.current_match().root = Some(pattern.clone());
-                visitor.current_match().arm = Some(pattern.clone());
                 visitor.visit(pattern);
             });
 
@@ -58,6 +58,14 @@ impl Visit for FunctionExpressionNode {
 
         visitor.visit(&self.output);
         visitor.edge(&self.output, node, "output");
+
+        visitor.after_all_expressions({
+            let node = node.clone();
+            move |visitor| {
+                let captures = visitor.peek_scope_mut().captured_variables.clone();
+                visitor.insert(&node, Captures(captures));
+            }
+        });
 
         visitor.pop_scope();
 

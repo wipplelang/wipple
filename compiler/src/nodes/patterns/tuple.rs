@@ -90,6 +90,7 @@ impl Codegen for TuplePatternNode {
         {
             ctx.condition(ir::Condition::Initialize {
                 variable: temporary,
+                node: None,
                 value: ir::Value::TupleElement {
                     input: matching.clone(),
                     index,

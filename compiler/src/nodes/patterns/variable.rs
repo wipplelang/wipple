@@ -24,6 +24,7 @@ impl Visit for VariablePatternNode {
         visit_pattern(node, visitor, Some(MatchPathSegment::Match));
 
         let value = visitor.current_match().value.clone();
+        let mutable = visitor.current_match().mutable;
 
         visitor.define(
             &self.variable,
@@ -31,6 +32,7 @@ impl Visit for VariablePatternNode {
                 name: self.variable.clone(),
                 node: node.clone(),
                 value,
+                mutable,
             },
         );
 
@@ -54,6 +56,7 @@ impl Codegen for VariablePatternNode {
 
         ctx.condition(ir::Condition::Initialize {
             variable: node.clone(),
+            node: Some(matching.clone()),
             value: ir::Value::Variable(matching),
             mutable,
         });

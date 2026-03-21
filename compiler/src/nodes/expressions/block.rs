@@ -45,6 +45,14 @@ impl Visit for BlockExpressionNode {
             visitor.edge(statement, node, "statement");
         }
 
+        visitor.after_all_expressions({
+            let node = node.clone();
+            move |visitor| {
+                let captures = visitor.peek_scope_mut().captured_variables.clone();
+                visitor.insert(&node, Captures(captures));
+            }
+        });
+
         visitor.pop_scope();
 
         let output = self

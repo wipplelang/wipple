@@ -86,6 +86,7 @@ BlockExpressionNode `False` (test/tests/operator-without-parentheses.wipple:4:14
   at test/tests/operator-without-parentheses.wipple:4:14-4:19
   has type {Boolean}
   is an expression
+  no captures
 CallExpressionNode `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19)
   at test/tests/operator-without-parentheses.wipple:4:1-4:19
   is an expression

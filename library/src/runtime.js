@@ -1,29 +1,4 @@
-const variant = (index, values) => {
-    values[variant] = index;
-    return values;
-};
-
-variant.toString = () => "<variant>";
-
-const fromBoolean = (value) => (value ? variant(1, []) : variant(0, []));
-
-const fromMaybe = (value) => (value !== undefined ? variant(1, [value]) : variant(0, []));
-
-const toMaybe = (value) => {
-    switch (value[variant]) {
-        case 0: {
-            return undefined;
-        }
-        case 1: {
-            return value[0];
-        }
-        default: {
-            throw new Error("expected maybe");
-        }
-    }
-};
-
-const fromOrdering = (ordering) => variant(ordering + 1, []);
+const fromMaybe = (value) => (value !== undefined ? [value, 1] : [null, 0]);
 
 const isValidListIndex = (index, list, includeEnd = false) =>
     index === Math.floor(index) &&
@@ -31,8 +6,6 @@ const isValidListIndex = (index, list, includeEnd = false) =>
     (includeEnd ? index <= list.length : index < list.length);
 
 export default (env) => ({
-    variant,
-
     debug: (value) => {
         env.debug?.(value);
         return value;
@@ -40,6 +13,14 @@ export default (env) => ({
 
     trace: (trace) => {
         env.trace?.(trace);
+    },
+
+    number: (n) => {
+        return n;
+    },
+
+    "number-equal-condition": (a, b) => {
+        return a === b;
     },
 
     crash: (message) => {
@@ -51,63 +32,63 @@ export default (env) => ({
 
         let validated;
         do {
-            validated = toMaybe(validate(input));
+            validated = validate(input);
             input = env.validatePrompt(validated !== undefined);
         } while (validated === undefined);
 
-        return validated;
+        return fromMaybe(validated);
     },
 
     external: (func, input) => {
         return env[func](input);
     },
 
-    numberToString: (number) => {
+    "number-to-string": (number) => {
         return number.toString();
     },
 
-    stringToNumber: (string) => {
+    "string-to-number": (string) => {
         if (string.toLowerCase() === "nan") {
             return fromMaybe(NaN);
         } else {
             const number = parseFloat(string);
-            return isNaN(number) ? fromMaybe(undefined) : fromMaybe(number);
+            return fromMaybe(isNaN(number) ? undefined : number);
         }
     },
 
-    addNumbers: (left, right) => {
+    "add-numbers": (left, right) => {
         return left + right;
     },
 
-    subtractNumbers: (left, right) => {
+    "subtract-numbers": (left, right) => {
         return left - right;
     },
 
-    multiplyNumbers: (left, right) => {
+    "multiply-numbers": (left, right) => {
         return left * right;
     },
 
-    divideNumbers: (left, right) => {
+    "divide-numbers": (left, right) => {
         return left / right;
     },
 
-    remainderNumbers: (left, right) => {
+    "remainder-numbers": (left, right) => {
         return left % right;
     },
 
-    powerNumbers: (left, right) => {
+    "power-numbers": (left, right) => {
         return Math.pow(left, right);
     },
 
-    floorNumber: (number) => {
+    "floor-number": (number) => {
         return Math.floor(number);
     },
 
-    ceilingNumber: (number) => {
+    "ceiling-number": (number) => {
         return Math.ceil(number);
     },
 
-    sqrtNumber: (number) => {
+    "sqrt-number": (number) => {
         return Math.sqrt(number);
     },
 
@@ -123,71 +104,71 @@ export default (env) => ({
         return Math.tan(number);
     },
 
-    negateNumber: (number) => {
+    "negate-number": (number) => {
         return -number;
     },
 
-    stringEquality: (left, right) => {
-        return fromBoolean(left === right);
+    "string-equality": (left, right) => {
+        return left === right ? 1 : 0;
     },
 
-    numberEquality: (left, right) => {
-        return fromBoolean(left === right);
+    "number-equality": (left, right) => {
+        return left === right ? 1 : 0;
     },
 
-    stringOrdering: (left, right) => {
+    "string-ordering": (left, right) => {
         if (left < right) {
-            return fromOrdering(-1);
+            return -1;
         } else if (left === right) {
-            return fromOrdering(0);
+            return 0;
         } else {
-            return fromOrdering(1);
+            return 1;
         }
     },
 
-    numberOrdering: (left, right) => {
+    "number-ordering": (left, right) => {
         if (left < right) {
-            return fromOrdering(-1);
+            return -1;
         } else if (left === right) {
-            return fromOrdering(0);
+            return 0;
         } else {
-            return fromOrdering(1);
+            return 1;
         }
     },
 
-    makeEmptyList: () => {
+    "make-empty-list": () => {
         return [];
     },
 
-    listFirst: (list) => {
-        return fromMaybe(list[0]);
+    "list-first": (list) => {
+        return fromMaybe(list.length > 0 ? list[0] : undefined);
     },
 
-    listLast: (list) => {
-        return fromMaybe(list[list.length - 1]);
+    "list-last": (list) => {
+        return fromMaybe(list.length > 0 ? list[list.length - 1] : undefined);
     },
 
-    listInitial: (list) => {
+    "list-initial": (list) => {
         return fromMaybe(list.length > 0 ? list.slice(0, -1) : undefined);
     },
 
-    listTail: (list) => {
+    "list-tail": (list) => {
         return fromMaybe(list.length > 0 ? list.slice(1) : undefined);
     },
 
-    listNth: (list, index) => {
+    "list-nth": (list, index) => {
         return fromMaybe(isValidListIndex(index, list) ? list[index] : undefined);
     },
 
-    listAppend: (list, element) => {
+    "list-append": (list, element) => {
         return [...list, element];
     },
 
-    listPrepend: (element, list) => {
+    "list-prepend": (element, list) => {
         return [element, ...list];
     },
 
-    listInsertAt: (list, index, element) => {
+    "list-insert-at": (list, index, element) => {
         return fromMaybe(
             isValidListIndex(index, list, true)
                 ? [...list.slice(0, index), element, ...list.slice(index)]
@@ -195,7 +176,7 @@ export default (env) => ({
         );
     },
 
-    listRemoveAt: (list, index) => {
+    "list-remove-at": (list, index) => {
         return fromMaybe(
             isValidListIndex(index, list)
                 ? [...list.slice(0, index), ...list.slice(index + 1)]
@@ -203,11 +184,11 @@ export default (env) => ({
         );
     },
 
-    listCount: (list) => {
+    "list-count": (list) => {
         return list.length;
     },
 
-    listSlice: (list, start, end) => {
+    "list-slice": (list, start, end) => {
         return fromMaybe(
             isValidListIndex(start, list) && isValidListIndex(end, list, true) && start <= end
                 ? list.slice(start, end)
@@ -215,11 +196,11 @@ export default (env) => ({
         );
     },
 
-    stringCharacters: (string) => {
+    "string-characters": (string) => {
         return string.split("");
     },
 
-    randomNumber: (min, max) => {
+    "random-number": (min, max) => {
         return Math.random() * (max - min) + min;
     },
 
@@ -227,7 +208,7 @@ export default (env) => ({
         return NaN;
     },
 
-    hashString: (string) => {
+    "hash-string": (string) => {
         // https://gist.github.com/jlevy/c246006675becc446360a798e2b2d781
         let hash = 0;
         for (const char of string) {
@@ -236,39 +217,31 @@ export default (env) => ({
         return hash >>> 0;
     },
 
-    numberAsExternal: (number) => {
-        return number;
+    "number-as-external": (number) => {
+        return JSON.stringify(number);
     },
 
-    stringAsExternal: (string) => {
-        return string;
+    "string-as-external": (string) => {
+        return JSON.stringify(string);
     },
 
-    unitAsExternal: () => {
-        return [];
+    "unit-as-external": () => {
+        return JSON.stringify([]);
     },
 
-    tuple2AsExternal: (a, b) => {
-        return [a, b];
+    "list-as-external": (list) => {
+        return JSON.stringify(list.map((element) => JSON.parse(element)));
     },
 
-    tuple3AsExternal: (a, b, c) => {
-        return [a, b, c];
+    "number-from-external": (value) => {
+        return JSON.parse(value);
     },
 
-    numberFromExternal: (value) => {
-        return value;
+    "string-from-external": (value) => {
+        return JSON.parse(value);
     },
 
-    stringFromExternal: (value) => {
-        return value;
-    },
-
-    tuple2FromExternal: (value) => {
-        return value;
-    },
-
-    tuple3FromExternal: (value) => {
-        return value;
+    "list-from-external": (value) => {
+        return JSON.parse(value).map((element) => JSON.stringify(element));
     },
 });

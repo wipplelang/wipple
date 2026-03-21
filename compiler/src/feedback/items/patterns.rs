@@ -28,14 +28,26 @@ pub fn register(ctx: &mut FeedbackCtx) {
         FeedbackRank::Syntax,
         queries::fact::<InvalidSetPattern>,
         |(node, _)| (node.clone(), BTreeSet::new()),
-        |w, (node, _)| {
-            w.write_node(node);
-            w.write_string(" cannot be used inside another pattern.");
-            w.write_break();
-            w.write_code("set");
-            w.write_string(" can only be used immediately before a variable assignment using ");
-            w.write_code(":");
-            w.write_string(".");
+        |w, (node, reason)| match reason {
+            InvalidSetPattern::Nested => {
+                w.write_node(node);
+                w.write_string(" cannot be used inside another pattern.");
+                w.write_break();
+                w.write_code("set");
+                w.write_string(" can only be used immediately before a variable assignment using ");
+                w.write_code(":");
+                w.write_string(".");
+            }
+            InvalidSetPattern::Immutable(variable) => {
+                w.write_node(variable);
+                w.write_string(" cannot be changed.");
+                w.write_break();
+                w.write_string("Try copying ");
+                w.write_node(variable);
+                w.write_string("into a new variable before using ");
+                w.write_code("set");
+                w.write_string(".");
+            }
         },
     ));
 

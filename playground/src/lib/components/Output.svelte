@@ -94,8 +94,8 @@
             let submitPrompt: ((input: string) => void) | undefined;
             let validatePrompt!: (valid: boolean) => void;
             const env: runner.Env = {
-                trace: async (trace) => {
-                    onchangeline(JSON.parse(trace).line);
+                trace: async (trace: any) => {
+                    onchangeline(trace.line);
                 },
                 display: async (message: string) => {
                     output.push({

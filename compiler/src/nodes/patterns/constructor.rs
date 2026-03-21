@@ -213,12 +213,12 @@ impl Codegen for ConstructorPatternNode {
         match constructor_match {
             ConstructorMatch::Marker => {}
             ConstructorMatch::Variant {
-                index,
+                index: variant,
                 element_temporaries,
             } => {
                 ctx.condition(ir::Condition::EqualToVariant {
                     input: matching.clone(),
-                    variant: index,
+                    variant,
                 });
 
                 for (index, (element, temporary)) in
@@ -226,8 +226,10 @@ impl Codegen for ConstructorPatternNode {
                 {
                     ctx.condition(ir::Condition::Initialize {
                         variable: temporary,
+                        node: None,
                         value: ir::Value::VariantElement {
                             input: matching.clone(),
+                            variant,
                             index,
                         },
                         mutable: false,

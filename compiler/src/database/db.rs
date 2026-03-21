@@ -3,6 +3,7 @@ use dyn_clone::DynClone;
 use std::{
     any::{Any, TypeId},
     collections::{BTreeMap, BTreeSet},
+    env,
     fmt::{Debug, Display},
 };
 
@@ -172,7 +173,9 @@ impl Db {
                             continue;
                         };
 
-                        if node.is_hidden() || !(self.filter)(&node) {
+                        if (env::var("WIPPLE_DEBUG").is_err() && node.is_hidden())
+                            || !(self.filter)(&node)
+                        {
                             continue;
                         }
 

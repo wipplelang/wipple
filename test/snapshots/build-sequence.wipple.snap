@@ -51,6 +51,7 @@ FunctionExpressionNode `n -> Some (n + 1)` (test/tests/build-sequence.wipple:3:3
   at test/tests/build-sequence.wipple:3:36-3:53
   has type Number -> Maybe Number
   is an expression
+  no captures
 CallExpressionNode `build-sequence (Some 0) (n -> Some (n + 1))` (test/tests/build-sequence.wipple:3:11-3:54)
   at test/tests/build-sequence.wipple:3:11-3:54
   has type Sequence Number
@@ -65,7 +66,7 @@ VariableExpressionNode `take` (test/tests/build-sequence.wipple:4:11-4:15)
   has bound(s) As-Sequence (Sequence Number) Number (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
   has type Number -> (Sequence Number) -> Sequence Number
   is an expression
-  resolved to 1 definition(s): `take` (library/src/foundation/sequence.wipple:281:1-282:88)
+  resolved to 1 definition(s): `take` (library/src/foundation/sequence.wipple:284:1-285:88)
 NumberExpressionNode `5` (test/tests/build-sequence.wipple:4:16-4:17)
   at test/tests/build-sequence.wipple:4:16-4:17
   has type Number
@@ -79,7 +80,7 @@ VariableExpressionNode `each` (test/tests/build-sequence.wipple:4:20-4:24)
   has bound(s) As-Sequence (Sequence Number) Number (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
   has type (Number -> ()) -> (Sequence Number) -> ()
   is an expression
-  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
+  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:220:1-221:81)
 VariableExpressionNode `show` (test/tests/build-sequence.wipple:4:25-4:29)
   at test/tests/build-sequence.wipple:4:25-4:29
   has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))

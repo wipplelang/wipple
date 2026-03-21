@@ -91,7 +91,7 @@ VariableExpressionNode `unreachable` (test/tests/lists.wipple:7:30-7:41)
   at test/tests/lists.wipple:7:30-7:41
   has type List Number
   is an expression
-  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:27:1-27:21)
+  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:31:1-31:21)
 VariableExpressionNode `last` (test/tests/lists.wipple:7:44-7:48)
   at test/tests/lists.wipple:7:44-7:48
   has type (List Number) -> Maybe Number
@@ -133,7 +133,7 @@ VariableExpressionNode `unreachable` (test/tests/lists.wipple:8:27-8:38)
   at test/tests/lists.wipple:8:27-8:38
   has type List Number
   is an expression
-  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:27:1-27:21)
+  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:31:1-31:21)
 VariableExpressionNode `first` (test/tests/lists.wipple:8:41-8:46)
   at test/tests/lists.wipple:8:41-8:46
   has type (List Number) -> Maybe Number
@@ -205,6 +205,7 @@ BlockExpressionNode `unreachable` (test/tests/lists.wipple:7:30-7:41)
   at test/tests/lists.wipple:7:30-7:41
   has type {List Number}
   is an expression
+  no captures
 CallExpressionNode `my-list . initial) or unreachable` (test/tests/lists.wipple:7:8-7:41)
   at test/tests/lists.wipple:7:8-7:41
   has type List Number
@@ -227,6 +228,7 @@ BlockExpressionNode `unreachable` (test/tests/lists.wipple:8:27-8:38)
   at test/tests/lists.wipple:8:27-8:38
   has type {List Number}
   is an expression
+  no captures
 CallExpressionNode `my-list . tail) or unreachable` (test/tests/lists.wipple:8:8-8:38)
   at test/tests/lists.wipple:8:8-8:38
   has type List Number

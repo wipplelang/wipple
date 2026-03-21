@@ -226,6 +226,7 @@ FunctionExpressionNode `(_ :: Number) -> _` (test/tests/sequence.wipple:26:13-26
   at test/tests/sequence.wipple:26:13-26:31
   has type String -> Boolean
   is an expression
+  no captures
 VariableExpressionNode `filter` (test/tests/sequence.wipple:27:2-27:8)
   at test/tests/sequence.wipple:27:2-27:8
   has bound(s) As-Sequence (Box String) String (`instance (As-Sequence (Box value) value)` (test/tests/sequence.wipple:20:1-20:45))

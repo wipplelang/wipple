@@ -41,7 +41,7 @@ VariableExpressionNode `todo` (test/tests/complex-nested-bounds.wipple:6:26-6:30
   at test/tests/complex-nested-bounds.wipple:6:26-6:30
   has type Boolean -> Boolean
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:21:1-21:14)
+  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:14)
 InstanceDefinitionNode `instance (Not Boolean)` (test/tests/complex-nested-bounds.wipple:6:1-6:30)
   at test/tests/complex-nested-bounds.wipple:6:1-6:30
   has definition constraints
@@ -109,12 +109,14 @@ CallExpressionNode `not (f x)` (test/tests/complex-nested-bounds.wipple:7:51-7:6
   is an expression
 FunctionExpressionNode `x -> not (f x)` (test/tests/complex-nested-bounds.wipple:7:46-7:60)
   at test/tests/complex-nested-bounds.wipple:7:46-7:60
+  captures `f` (test/tests/complex-nested-bounds.wipple:7:41-7:42)
   has type a -> b
   is an expression
 FunctionExpressionNode `f -> x -> not (f x)` (test/tests/complex-nested-bounds.wipple:7:41-7:60)
   at test/tests/complex-nested-bounds.wipple:7:41-7:60
   has type (a -> b) -> a -> b
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Not (a -> b))` (test/tests/complex-nested-bounds.wipple:7:1-7:60)
   at test/tests/complex-nested-bounds.wipple:7:1-7:60
   has definition constraints
@@ -143,7 +145,7 @@ TypeParameterNode `value` (test/tests/complex-nested-bounds.wipple:9:34-9:39)
   resolved to 1 definition(s): `value` (test/tests/complex-nested-bounds.wipple:9:8-9:13)
 BoundConstraintNode `Not value` (test/tests/complex-nested-bounds.wipple:9:29-9:40)
   at test/tests/complex-nested-bounds.wipple:9:29-9:40
-  has bound(s) Not value (`Not value` (test/tests/complex-nested-bounds.wipple:9:29-9:40))
+  has bound(s) Not b (`Not b` (test/tests/complex-nested-bounds.wipple:7:31-7:38))
   is a constraint
   resolved to 1 definition(s): `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
 ConstantDefinitionNode `not` (test/tests/complex-nested-bounds.wipple:9:1-9:40)

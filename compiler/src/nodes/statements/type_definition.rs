@@ -7,13 +7,12 @@ use crate::{
     syntax::{
         ParseError, Parser, TokenKind, parse_constructor_name, parse_type_name, parse_variable_name,
     },
-    typecheck::{GroupConstraint, Type, TypeConstraint, Typed},
+    typecheck::{GroupConstraint, TypeConstraint, Typed},
     visit::{
         MarkerConstructorDefinition, StructureConstructorDefinition, TypeAttributes,
         TypeDefinition, VariantConstructorDefinition, Visit, Visitor,
     },
 };
-use std::collections::{BTreeMap, HashMap};
 
 #[derive(Debug, Clone)]
 pub struct DuplicateFieldDefinition;
@@ -272,23 +271,25 @@ impl Visit for TypeDefinitionNode {
                             );
                         }
                         TypeRepresentation::Structure(representation) => {
-                            let mut fields = BTreeMap::new();
+                            let mut fields = Vec::new();
                             for field in representation.fields {
                                 visitor.visit(&field.ty);
                                 visitor.edge(&field.ty, &node, "field");
 
-                                if fields.contains_key(&field.name) {
+                                if fields.iter().any(|(name, _)| *name == field.name) {
                                     visitor.insert(&node, DuplicateFieldDefinition);
                                     continue;
                                 }
 
-                                fields.insert(field.name, field.ty);
+                                fields.push((field.name, field.ty));
                             }
 
                             visitor.pop_scope();
 
-                            visitor
-                                .insert(&node, StructureFields(fields.values().cloned().collect()));
+                            visitor.insert(
+                                &node,
+                                StructureFields(fields.iter().map(|(_, ty)| ty.clone()).collect()),
+                            );
 
                             visitor.define(
                                 &definition.name,
@@ -301,10 +302,14 @@ impl Visit for TypeDefinitionNode {
                             );
                         }
                         TypeRepresentation::Enumeration(representation) => {
-                            let mut variant_definitions = HashMap::new();
+                            let mut variant_definitions = Vec::new();
                             for (index, variant) in representation.variants.into_iter().enumerate()
                             {
-                                if variant_definitions.contains_key(&variant.name) {
+                                if variant_definitions
+                                    .iter()
+                                    .find(|(name, _)| *name == variant.name)
+                                    .is_some()
+                                {
                                     visitor.insert(&node, DuplicateVariantDefinition);
                                     continue;
                                 }
@@ -312,6 +317,7 @@ impl Visit for TypeDefinitionNode {
                                 let variant_node = visitor.node(
                                     variant.span.clone(),
                                     VariantNode {
+                                        type_definition: node.clone(),
                                         index,
                                         variant: variant.clone(),
                                     },
@@ -355,7 +361,7 @@ impl Visit for TypeDefinitionNode {
                                     });
 
                                 variant_definitions
-                                    .insert(variant.name.clone(), constructor_definition);
+                                    .push((variant.name.clone(), constructor_definition));
                             }
 
                             visitor.pop_scope();
@@ -398,7 +404,7 @@ impl Codegen for TypeDefinitionNode {
             Some(ir::TypeRepresentation::Structure(
                 fields
                     .into_iter()
-                    .map(|field| Type::Node(field).key(ctx.db))
+                    .map(|field| ctx.db.ir_type(field))
                     .collect::<Option<_>>()?,
             ))
         } else if let Some(EnumerationVariants(variants)) = ctx.get(node) {
@@ -408,7 +414,7 @@ impl Codegen for TypeDefinitionNode {
                     .map(|(_, elements)| {
                         elements
                             .into_iter()
-                            .map(|element| Type::Node(element).key(ctx.db))
+                            .map(|element| ctx.db.ir_type(element))
                             .collect::<Option<_>>()
                     })
                     .collect::<Option<_>>()?,
@@ -421,6 +427,7 @@ impl Codegen for TypeDefinitionNode {
 
 #[derive(Debug, Clone)]
 pub struct VariantNode {
+    pub type_definition: NodeRef,
     pub index: usize,
     pub variant: VariantDefinition,
 }
@@ -431,38 +438,4 @@ impl Visit for VariantNode {
     fn visit(&self, _node: &NodeRef, _visitor: &mut Visitor<'_>) {}
 }
 
-impl Codegen for VariantNode {
-    fn codegen(&self, node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
-        if self.variant.elements.is_empty() {
-            ctx.instruction(ir::Instruction::Value {
-                node: node.clone(),
-                value: ir::Value::Variant {
-                    index: self.index,
-                    elements: Vec::new(),
-                },
-            });
-        } else {
-            ctx.instruction(ir::Instruction::Value {
-                node: node.clone(),
-                value: ir::Value::Function {
-                    inputs: self.variant.elements.clone(),
-                    captures: Vec::new(),
-                    instructions: vec![
-                        ir::Instruction::Value {
-                            node: node.clone(),
-                            value: ir::Value::Variant {
-                                index: self.index,
-                                elements: self.variant.elements.clone(),
-                            },
-                        },
-                        ir::Instruction::Return {
-                            value: node.clone(),
-                        },
-                    ],
-                },
-            });
-        }
-
-        Ok(())
-    }
-}
+impl Codegen for VariantNode {}

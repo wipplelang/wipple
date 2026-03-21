@@ -32,6 +32,10 @@ impl Solver {
         self.groups.into_sorted(key)
     }
 
+    pub fn constraints_mut(&mut self) -> impl Iterator<Item = &mut dyn Constraint> {
+        self.constraints.constraints_mut()
+    }
+
     pub fn into_constraints(self) -> impl Iterator<Item = Box<dyn Constraint>> + use<> {
         self.constraints.into_constraints()
     }

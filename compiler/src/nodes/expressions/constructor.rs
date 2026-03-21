@@ -1,20 +1,20 @@
 use crate::{
     codegen::{Codegen, CodegenCtx, CodegenResult, ir},
-    database::{Fact, Node, NodeRef, Render},
+    database::{Fact, HiddenNode, Node, NodeRef, Render},
     nodes::{codegen_instance, visit_expression},
     syntax::{ParseError, Parser, parse_constructor_name},
     typecheck::{
         Bound, BoundConstraint, Bounds, Instantation, InstantiateConstraint, Replacements,
-        Substitutions,
+        Substitutions, TypeConstraint,
     },
-    visit::{Definition, Visit, Visitor},
+    visit::{Definition, VariantConstructorDefinition, Visit, Visitor},
 };
 
 #[derive(Debug, Clone)]
 pub enum ResolvedConstructor {
     Marker,
     Trait(bool),
-    Variant(NodeRef),
+    Variant(VariantConstructorDefinition, NodeRef),
 }
 
 impl Fact for ResolvedConstructor {}
@@ -76,6 +76,7 @@ impl Visit for ConstructorExpressionNode {
                         source_node: node.clone(),
                         bound_node: node.clone(),
                         trait_node: trait_definition.node,
+                        target_node: node.clone(),
                         substitutions,
                         optional: false,
                     },
@@ -86,7 +87,31 @@ impl Visit for ConstructorExpressionNode {
                 visitor.insert(node, ResolvedConstructor::Trait(generic));
             }
             Definition::VariantConstructor(definition) => {
-                visitor.insert(node, ResolvedConstructor::Variant(definition.variant));
+                let result = if definition.elements.is_empty() {
+                    node.clone()
+                } else {
+                    let span = visitor.span(node);
+
+                    let element_temporaries = definition
+                        .elements
+                        .iter()
+                        .map(|node| {
+                            let span = visitor.span(node);
+                            visitor.node(span, HiddenNode::default())
+                        })
+                        .collect::<Vec<_>>();
+
+                    let result_temporary = visitor.node(span, HiddenNode::default());
+
+                    visitor.constraint(TypeConstraint::new(
+                        node.clone(),
+                        visitor.function_type(element_temporaries, result_temporary.clone()),
+                    ));
+
+                    result_temporary
+                };
+
+                visitor.insert(node, ResolvedConstructor::Variant(definition, result));
             }
             Definition::MarkerConstructor(_) => {
                 visitor.insert(node, ResolvedConstructor::Marker);
@@ -135,10 +160,34 @@ impl Codegen for ConstructorExpressionNode {
                     }
                 }
             }
-            ResolvedConstructor::Variant(variant) => {
-                // Codegen the variant constructor in the context of the current
-                // node so the instantiated type is used
-                variant.codegen(node, ctx)?;
+            ResolvedConstructor::Variant(definition, result) => {
+                if definition.elements.is_empty() {
+                    ctx.instruction(ir::Instruction::Value {
+                        node: node.clone(),
+                        value: ir::Value::Variant {
+                            index: definition.index,
+                            elements: Vec::new(),
+                        },
+                    });
+                } else {
+                    ctx.instruction(ir::Instruction::Value {
+                        node: node.clone(),
+                        value: ir::Value::Function {
+                            inputs: definition.elements.clone(),
+                            captures: Vec::new(),
+                            instructions: vec![
+                                ir::Instruction::Value {
+                                    node: result.clone(),
+                                    value: ir::Value::Variant {
+                                        index: definition.index,
+                                        elements: definition.elements,
+                                    },
+                                },
+                                ir::Instruction::Return { value: result },
+                            ],
+                        },
+                    });
+                }
             }
         }
 

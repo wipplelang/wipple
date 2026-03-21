@@ -77,11 +77,12 @@ impl Visit for OrPatternNode {
 
 impl Codegen for OrPatternNode {
     fn codegen(&self, _node: &NodeRef, ctx: &mut CodegenCtx<'_>) -> CodegenResult {
-        ctx.push_conditions();
+        let mut conditions = Vec::new();
         for pattern in &self.patterns {
+            ctx.push_conditions();
             ctx.codegen(pattern)?;
+            conditions.push(ctx.pop_conditions());
         }
-        let conditions = ctx.pop_conditions();
 
         ctx.condition(ir::Condition::Or(conditions));
 

@@ -1,5 +1,6 @@
 import { PUBLIC_RUNTIME_URL } from "$env/static/public";
 import { makeChannel, readMessage, writeMessage, type Channel } from "sync-message";
+import "core-js/proposals/array-buffer-base64";
 
 export type Env = Record<string, (input: any) => Promise<any>>;
 
@@ -14,7 +15,7 @@ export const init = (worker: Worker, env: Env) => {
             switch (e.data.type) {
                 case "call": {
                     const { f, input } = e.data;
-                    const output = await env[f](input);
+                    const output = JSON.stringify(await env[f](JSON.parse(input)));
                     writeMessage(channel, { output }, globalMessageId);
                     break;
                 }
@@ -35,12 +36,6 @@ export const init = (worker: Worker, env: Env) => {
 };
 
 const run = async (channel: Channel, executable: string) => {
-    const { default: initRuntime } = await import(/* @vite-ignore */ PUBLIC_RUNTIME_URL);
-
-    const module = await import(
-        /* @vite-ignore */ `data:text/javascript,${encodeURIComponent(executable)}`
-    );
-
     const env = new Proxy(
         {},
         {
@@ -52,10 +47,22 @@ const run = async (channel: Channel, executable: string) => {
         },
     );
 
+    const { default: initRuntime } = await import(/* @vite-ignore */ PUBLIC_RUNTIME_URL);
     const runtime = initRuntime(env);
 
+    // @ts-expect-error polyfilled via core-js above
+    const data = Uint8Array.fromBase64(executable);
+
+    const wasm = await WebAssembly.instantiate(
+        data,
+        { runtime },
+        { builtins: ["js-string"], importedStringConstants: "string_constants" },
+    );
+
+    const main = wasm.instance.exports.main as any;
+
     try {
-        await module.default(runtime);
+        main(runtime);
     } catch (e) {
         console.error(e);
     }

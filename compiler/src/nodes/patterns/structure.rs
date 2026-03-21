@@ -1,6 +1,6 @@
 use crate::{
     codegen::{Codegen, CodegenCtx, CodegenResult, ir},
-    database::{Node, NodeRef},
+    database::{Fact, Node, NodeRef, Render},
     nodes::{Matching, Temporaries, parse_pattern, visit_pattern},
     syntax::{ParseError, Parser, TokenKind, parse_type_name, parse_variable_name},
     typecheck::{Instantation, InstantiateConstraint, Replacements, Substitutions},
@@ -13,11 +13,20 @@ pub struct StructurePatternNode {
     pub fields: Vec<StructurePatternField>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StructurePatternField {
     pub name: String,
     pub pattern: NodeRef,
 }
+
+#[derive(Debug, Clone)]
+struct ResolvedStructurePattern {
+    fields: Vec<(Option<usize>, String, NodeRef)>,
+}
+
+impl Fact for ResolvedStructurePattern {}
+
+impl Render for ResolvedStructurePattern {}
 
 impl Node for StructurePatternNode {}
 
@@ -60,12 +69,14 @@ impl Visit for StructurePatternNode {
         };
 
         let mut field_temporaries = Vec::new();
+        let mut field_values = Vec::new();
         for field in &self.fields {
             let temporary = visitor.visit_matching(
                 &field.pattern,
                 definition
                     .fields
-                    .get(&field.name)
+                    .iter()
+                    .find_map(|(name, ty)| (*name == field.name).then_some(ty))
                     .cloned()
                     .map(MatchPathSegment::Field),
             );
@@ -73,18 +84,30 @@ impl Visit for StructurePatternNode {
             visitor.edge(&field.pattern, node, "field");
 
             field_temporaries.push((field.name.as_str(), temporary));
+            field_values.push(field.clone());
         }
 
         let definition_node = definition.node.clone();
-        let fields = definition.fields;
+
+        let field_values = field_values
+            .iter()
+            .map(|field| {
+                let index = definition
+                    .fields
+                    .iter()
+                    .position(|(name, _)| *name == field.name);
+
+                (index, field.name.clone(), field.pattern.clone())
+            })
+            .collect::<Vec<_>>();
 
         let replacements = Replacements::from_iter([(definition_node.clone(), node.clone())]);
-        for (field_name, field_type) in fields {
+        for (field_name, field_type) in &definition.fields {
             if let Some((_, temporary)) = field_temporaries
                 .iter()
-                .find(|&(name, _)| *name == field_name)
+                .find(|&(name, _)| *name == *field_name)
             {
-                replacements.insert(field_type, temporary.clone());
+                replacements.insert(field_type.clone(), temporary.clone());
             }
         }
 
@@ -95,6 +118,13 @@ impl Visit for StructurePatternNode {
             replacements,
             from_expression: true,
         }));
+
+        visitor.insert(
+            node,
+            ResolvedStructurePattern {
+                fields: field_values,
+            },
+        );
 
         visitor.insert(
             node,
@@ -126,17 +156,25 @@ impl Codegen for StructurePatternNode {
             .get(node)
             .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-        for (field, temporary) in self.fields.iter().zip(field_temporaries) {
+        let ResolvedStructurePattern { fields } = ctx
+            .get(node)
+            .ok_or_else(|| anyhow::format_err!("unresolved"))?;
+
+        for ((index, name, pattern), temporary) in fields.iter().zip(field_temporaries) {
+            let index = index.ok_or_else(|| anyhow::format_err!("unresolved"))?;
+
             ctx.condition(ir::Condition::Initialize {
                 variable: temporary,
+                node: None,
                 value: ir::Value::Field {
                     input: matching.clone(),
-                    field: field.name.clone(),
+                    field_name: name.clone(),
+                    field_index: index,
                 },
                 mutable: false,
             });
 
-            ctx.codegen(&field.pattern)?;
+            ctx.codegen(pattern)?;
         }
 
         Ok(())

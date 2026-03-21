@@ -21,7 +21,7 @@ VariableExpressionNode `each` (test/tests/replicate.wipple:3:23-3:27)
   has bound(s) As-Sequence (Sequence String) String (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
   has type (String -> ()) -> (Sequence String) -> ()
   is an expression
-  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:217:1-218:81)
+  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:220:1-221:81)
 VariableExpressionNode `show` (test/tests/replicate.wipple:3:28-3:32)
   at test/tests/replicate.wipple:3:28-3:32
   has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))

@@ -84,6 +84,7 @@ FunctionExpressionNode `x -> "Hello, _!" (Greet x)` (test/tests/greet.wipple:8:9
   at test/tests/greet.wipple:8:9-8:35
   has type value -> String
   is an expression
+  no captures
 NamedTypeNode `String` (test/tests/greet.wipple:10:24-10:30)
   at test/tests/greet.wipple:10:24-10:30
   has type String
@@ -119,6 +120,7 @@ FunctionExpressionNode `(Person {name` (test/tests/greet.wipple:13:27-13:57)
   at test/tests/greet.wipple:13:27-13:57
   has type Person -> String
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Greet Person)` (test/tests/greet.wipple:12:1-13:57)
   at test/tests/greet.wipple:12:1-13:57
   has definition constraints
@@ -149,6 +151,7 @@ FunctionExpressionNode `_ -> "world"` (test/tests/greet.wipple:18:26-18:38)
   at test/tests/greet.wipple:18:26-18:38
   has type Earth -> String
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Greet Earth)` (test/tests/greet.wipple:17:1-18:38)
   at test/tests/greet.wipple:17:1-18:38
   has definition constraints

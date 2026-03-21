@@ -53,6 +53,7 @@ FunctionExpressionNode `_ -> show "using default instance"` (test/tests/default-
   at test/tests/default-instance.wipple:5:43-5:77
   has type value -> ()
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Do-Something value)` (test/tests/default-instance.wipple:5:1-5:77)
   at test/tests/default-instance.wipple:5:1-5:77
   has definition constraints
@@ -94,6 +95,7 @@ FunctionExpressionNode `text -> show ("using specific instance` (test/tests/defa
   at test/tests/default-instance.wipple:6:34-6:82
   has type String -> ()
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Do-Something String)` (test/tests/default-instance.wipple:6:1-6:82)
   at test/tests/default-instance.wipple:6:1-6:82
   has definition constraints

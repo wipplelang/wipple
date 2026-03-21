@@ -1,4 +1,5 @@
 use crate::{File, InputMetadata, compile};
+use base64::Engine;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::{
@@ -52,9 +53,11 @@ pub async fn handle(request: Request) -> anyhow::Result<serde_json::Value> {
 
     let program = codegen(&mut db, &files, &[])?;
 
-    let script = codegen::js::write_to_string(&program, CODEGEN_OPTIONS, &db);
+    let wat = codegen::wasm::write_to_string(&program, CODEGEN_OPTIONS, &db)?;
+    let wasm = wat::parse_str(wat)?;
+    let base64 = base64::prelude::BASE64_STANDARD.encode(wasm);
 
-    Ok(json!({ "executable": script }))
+    Ok(json!({ "executable": base64 }))
 }
 
 fn convert_feedback(db: &mut Db, item: FeedbackItem) -> serde_json::Value {

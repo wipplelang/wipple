@@ -39,6 +39,7 @@ impl Constraint for BoundConstraint {
                 bound_node: self.info.node.clone(),
                 source_node: ctx.source_node.clone(),
                 trait_node: self.bound.trait_node.clone(),
+                target_node: self.bound.target_node.clone(),
                 substitutions: ctx.instantiate_substitutions(&self.bound.substitutions),
                 optional: self.bound.optional,
             },
@@ -101,6 +102,13 @@ impl Constraint for BoundConstraint {
 
                 // Run the solver (excluding bounds) to populate `replacements`
                 copy.run_pass_until(ctx.db, Some(TypeId::of::<BoundConstraint>()));
+
+                // Propagate the target node to new bounds
+                for constraint in copy.constraints_mut() {
+                    if let Some(constraint) = constraint.downcast_mut::<BoundConstraint>() {
+                        constraint.bound.target_node = self.bound.target_node.clone();
+                    }
+                }
 
                 // These are for the *trait's* parameters
                 let instance_substitutions = Substitutions::new();
@@ -174,21 +182,26 @@ impl Constraint for BoundConstraint {
 
                 ctx.apply_substitutions(&resolved_substitutions);
 
-                ctx.db.with_fact(&self.bound.source_node, |Bounds(bounds)| {
-                    bounds
-                        .entry(self.bound.bound_node.clone())
-                        .or_insert_with(|| BoundsItem {
-                            bound: resolved_bound,
-                            instance: Some(BoundsItemInstance {
-                                instance_node,
-                                instance_substitutions,
-                                resolved_node,
-                                resolved_substitutions,
-                                from_bound,
-                                error: is_error,
-                            }),
-                        });
-                });
+                // Record the resolved bound on the current source node
+                // (necessary for codegen) and the original target node (set
+                // above; necessary for error reporting).
+                for node in [&self.bound.target_node, &self.bound.source_node] {
+                    ctx.db.with_fact(node, |Bounds(bounds)| {
+                        bounds
+                            .entry(self.bound.bound_node.clone())
+                            .or_insert_with(|| BoundsItem {
+                                bound: resolved_bound.clone(),
+                                instance: Some(BoundsItemInstance {
+                                    instance_node: instance_node.clone(),
+                                    instance_substitutions: instance_substitutions.clone(),
+                                    resolved_node: resolved_node.clone(),
+                                    resolved_substitutions: resolved_substitutions.clone(),
+                                    from_bound,
+                                    error: is_error,
+                                }),
+                            });
+                    });
+                }
 
                 return ConstraintResult::Enqueue(copy.into_constraints().collect());
             } else if candidates.len() > 1 {

@@ -48,7 +48,7 @@ VariableExpressionNode `contains?` (test/tests/set.wipple:5:16-5:25)
   has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
   has type String -> (Set String) -> Boolean
   is an expression
-  resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:397:1-398:83)
+  resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:400:1-401:83)
 StringExpressionNode `"Basketball"` (test/tests/set.wipple:5:26-5:38)
   at test/tests/set.wipple:5:26-5:38
   has type String
@@ -81,7 +81,7 @@ VariableExpressionNode `contains?` (test/tests/set.wipple:6:16-6:25)
   has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
   has type String -> (Set String) -> Boolean
   is an expression
-  resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:397:1-398:83)
+  resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:400:1-401:83)
 StringExpressionNode `"Soccer"` (test/tests/set.wipple:6:26-6:34)
   at test/tests/set.wipple:6:26-6:34
   has type String
@@ -114,7 +114,7 @@ VariableExpressionNode `contains?` (test/tests/set.wipple:7:16-7:25)
   has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
   has type String -> (Set String) -> Boolean
   is an expression
-  resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:397:1-398:83)
+  resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:400:1-401:83)
 StringExpressionNode `"Golf"` (test/tests/set.wipple:7:26-7:32)
   at test/tests/set.wipple:7:26-7:32
   has type String
@@ -147,7 +147,7 @@ VariableExpressionNode `contains?` (test/tests/set.wipple:8:16-8:25)
   has bound(s) Container (Set String) String (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
   has type String -> (Set String) -> Boolean
   is an expression
-  resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:397:1-398:83)
+  resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:400:1-401:83)
 StringExpressionNode `"Baseball"` (test/tests/set.wipple:8:26-8:36)
   at test/tests/set.wipple:8:26-8:36
   has type String

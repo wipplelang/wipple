@@ -81,6 +81,7 @@ FunctionExpressionNode `_ -> "X"` (test/tests/default-type-parameter.wipple:10:2
   at test/tests/default-type-parameter.wipple:10:25-10:33
   has type X -> String
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Describe X)` (test/tests/default-type-parameter.wipple:10:1-10:33)
   at test/tests/default-type-parameter.wipple:10:1-10:33
   has definition constraints
@@ -106,6 +107,7 @@ FunctionExpressionNode `_ -> "Y"` (test/tests/default-type-parameter.wipple:11:2
   at test/tests/default-type-parameter.wipple:11:25-11:33
   has type Y -> String
   is an expression
+  no captures
 InstanceDefinitionNode `instance (Describe Y)` (test/tests/default-type-parameter.wipple:11:1-11:33)
   at test/tests/default-type-parameter.wipple:11:1-11:33
   has definition constraints
