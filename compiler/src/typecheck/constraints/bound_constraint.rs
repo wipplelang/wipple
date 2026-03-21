@@ -106,7 +106,10 @@ impl Constraint for BoundConstraint {
                 // Propagate the target node to new bounds
                 for constraint in copy.constraints_mut() {
                     if let Some(constraint) = constraint.downcast_mut::<BoundConstraint>() {
-                        constraint.bound.target_node = self.bound.target_node.clone();
+                        constraint
+                            .bound
+                            .target_node
+                            .get_or_insert_with(|| self.bound.source_node.clone());
                     }
                 }
 
@@ -185,7 +188,12 @@ impl Constraint for BoundConstraint {
                 // Record the resolved bound on the current source node
                 // (necessary for codegen) and the original target node (set
                 // above; necessary for error reporting).
-                for node in [&self.bound.target_node, &self.bound.source_node] {
+                for node in self
+                    .bound
+                    .target_node
+                    .iter()
+                    .chain([&self.bound.source_node])
+                {
                     ctx.db.with_fact(node, |Bounds(bounds)| {
                         bounds
                             .entry(self.bound.bound_node.clone())
@@ -211,14 +219,21 @@ impl Constraint for BoundConstraint {
             if last_instance_set && !self.bound.optional {
                 ctx.apply_substitutions(&resolved_substitutions);
 
-                ctx.db.with_fact(&self.bound.source_node, |Bounds(bounds)| {
-                    bounds
-                        .entry(self.bound.bound_node.clone())
-                        .or_insert_with(|| BoundsItem {
-                            bound: resolved_bound,
-                            instance: None,
-                        });
-                });
+                for node in self
+                    .bound
+                    .target_node
+                    .iter()
+                    .chain([&self.bound.source_node])
+                {
+                    ctx.db.with_fact(node, |Bounds(bounds)| {
+                        bounds
+                            .entry(self.bound.bound_node.clone())
+                            .or_insert_with(|| BoundsItem {
+                                bound: resolved_bound.clone(),
+                                instance: None,
+                            });
+                    });
+                }
             }
         }
 

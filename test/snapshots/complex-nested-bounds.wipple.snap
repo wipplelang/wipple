@@ -145,7 +145,7 @@ TypeParameterNode `value` (test/tests/complex-nested-bounds.wipple:9:34-9:39)
   resolved to 1 definition(s): `value` (test/tests/complex-nested-bounds.wipple:9:8-9:13)
 BoundConstraintNode `Not value` (test/tests/complex-nested-bounds.wipple:9:29-9:40)
   at test/tests/complex-nested-bounds.wipple:9:29-9:40
-  has bound(s) Not b (`Not b` (test/tests/complex-nested-bounds.wipple:7:31-7:38))
+  has bound(s) Not value (`Not value` (test/tests/complex-nested-bounds.wipple:9:29-9:40))
   is a constraint
   resolved to 1 definition(s): `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
 ConstantDefinitionNode `not` (test/tests/complex-nested-bounds.wipple:9:1-9:40)

@@ -21,7 +21,7 @@ CollectionExpressionNode `1, 2, 3` (test/tests/lists.wipple:3:11-3:18)
   is an expression
 VariableExpressionNode `show` (test/tests/lists.wipple:5:1-5:5)
   at test/tests/lists.wipple:5:1-5:5
-  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2))
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
   has type (Maybe Number) -> ()
   is an expression
   resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
@@ -45,7 +45,7 @@ CallExpressionNode `show (my-list . first)` (test/tests/lists.wipple:5:1-5:23)
   is an expression
 VariableExpressionNode `show` (test/tests/lists.wipple:6:1-6:5)
   at test/tests/lists.wipple:6:1-6:5
-  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2))
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
   has type (Maybe Number) -> ()
   is an expression
   resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
@@ -69,7 +69,7 @@ CallExpressionNode `show (my-list . last)` (test/tests/lists.wipple:6:1-6:22)
   is an expression
 VariableExpressionNode `show` (test/tests/lists.wipple:7:1-7:5)
   at test/tests/lists.wipple:7:1-7:5
-  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2))
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
   has type (Maybe Number) -> ()
   is an expression
   resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
@@ -111,7 +111,7 @@ CallExpressionNode `show ((my-list . initial) or unreachable . last)` (test/test
   is an expression
 VariableExpressionNode `show` (test/tests/lists.wipple:8:1-8:5)
   at test/tests/lists.wipple:8:1-8:5
-  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2))
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
   has type (Maybe Number) -> ()
   is an expression
   resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
@@ -153,7 +153,7 @@ CallExpressionNode `show ((my-list . tail) or unreachable . first)` (test/tests/
   is an expression
 VariableExpressionNode `show` (test/tests/lists.wipple:9:1-9:5)
   at test/tests/lists.wipple:9:1-9:5
-  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2))
+  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (library/src/foundation/io.wipple:17:1-20:2)), Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
   has type (Maybe Number) -> ()
   is an expression
   resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)

@@ -136,7 +136,7 @@ NamedTypeNode `Maybe Number` (test/tests/recursive-bounds.wipple:12:16-12:28)
   resolved to 1 definition(s): `Maybe` (test/tests/recursive-bounds.wipple:5:1-5:34)
 ConstructorExpressionNode `Describe` (test/tests/recursive-bounds.wipple:12:1-12:9)
   at test/tests/recursive-bounds.wipple:12:1-12:9
-  has bound(s) Describe (Maybe Number) (`instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61))
+  has bound(s) Describe Number (unresolved), Describe (Maybe Number) (`instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61))
   has type (Maybe Number) -> String
   is an expression
   resolved to 1 definition(s): `Describe : value => trait (value -> String)` (test/tests/recursive-bounds.wipple:7:1-7:44)
@@ -155,6 +155,12 @@ CallExpressionNode `Describe (_ :: Maybe Number)` (test/tests/recursive-bounds.w
 
 
 Feedback:
+
+`Describe` (test/tests/recursive-bounds.wipple:12:1-12:9) (unresolved-bound):
+
+  `Describe` (test/tests/recursive-bounds.wipple:12:1-12:9) requires the instance Describe Number, but this instance isn't defined.
+
+  Double-check that these types are correct.
 
 `Describe` (test/tests/recursive-bounds.wipple:12:1-12:9) (unresolved-bound):
 

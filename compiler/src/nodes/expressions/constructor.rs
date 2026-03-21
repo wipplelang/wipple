@@ -76,7 +76,7 @@ impl Visit for ConstructorExpressionNode {
                         source_node: node.clone(),
                         bound_node: node.clone(),
                         trait_node: trait_definition.node,
-                        target_node: node.clone(),
+                        target_node: None,
                         substitutions,
                         optional: false,
                     },

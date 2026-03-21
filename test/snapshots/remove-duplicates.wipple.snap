@@ -89,13 +89,13 @@ VariableExpressionNode `seen` (test/tests/remove-duplicates.wipple:6:20-6:24)
   resolved to 1 definition(s): `seen` (test/tests/remove-duplicates.wipple:5:3-5:7)
 VariableExpressionNode `not` (test/tests/remove-duplicates.wipple:6:28-6:31)
   at test/tests/remove-duplicates.wipple:6:28-6:31
-  has bound(s) Not (element -> (Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75))
+  has bound(s) Not ((Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75)), Not (element -> (Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:17:1-17:75))
   has type (element -> (Set element) -> Boolean) -> element -> (Set element) -> Boolean
   is an expression
   resolved to 1 definition(s): `not` (library/src/foundation/logic.wipple:19:1-21:59)
 VariableExpressionNode `contains?` (test/tests/remove-duplicates.wipple:6:32-6:41)
   at test/tests/remove-duplicates.wipple:6:32-6:41
-  has bound(s) Container (Set element) element (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
+  has bound(s) Equal element (`Equal element` (test/tests/remove-duplicates.wipple:3:82-3:97)), Hash element (`Hash element` (test/tests/remove-duplicates.wipple:3:98-3:112)), Container (Set element) element (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
   has type element -> (Set element) -> Boolean
   is an expression
   resolved to 1 definition(s): `contains?` (library/src/foundation/sequence.wipple:400:1-401:83)
