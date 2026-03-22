@@ -3,7 +3,7 @@ NamedTypeNode `Number` (test/tests/collections.wipple:3:17-3:23)
   at test/tests/collections.wipple:3:17-3:23
   has type Number
   is a type
-  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:51)
 NamedTypeNode `List Number` (test/tests/collections.wipple:3:12-3:23)
   at test/tests/collections.wipple:3:12-3:23
   has type List Number

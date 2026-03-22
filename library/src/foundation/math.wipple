@@ -5,7 +5,7 @@ nan : intrinsic "nan"
 
 -- Add two values together, returning the sum.
 Add : left right (infer sum) => trait (left right -> sum)
-instance (Add Number Number Number) : left right -> intrinsic "add-numbers" left right
+instance (Add Number Number Number) : left right -> intrinsic "f64.add" left right
 
 -- Can't add [`left`] and [`right`].
 --
@@ -20,7 +20,7 @@ instance (Add Number Number Number) : left right -> intrinsic "add-numbers" left
 
 -- Subtract one value from another, returning the difference.
 Subtract : left right (infer difference) => trait (left right -> difference)
-instance (Subtract Number Number Number) : left right -> intrinsic "subtract-numbers" left right
+instance (Subtract Number Number Number) : left right -> intrinsic "f64.sub" left right
 
 -- Can't subtract [`right`] from [`left`].
 --
@@ -35,7 +35,7 @@ instance (Subtract Number Number Number) : left right -> intrinsic "subtract-num
 
 -- Multiply two values together, returning the product.
 Multiply : left right (infer product) => trait (left right -> product)
-instance (Multiply Number Number Number) : left right -> intrinsic "multiply-numbers" left right
+instance (Multiply Number Number Number) : left right -> intrinsic "f64.mul" left right
 
 -- Can't multiply [`left`] and [`right`].
 --
@@ -50,7 +50,7 @@ instance (Multiply Number Number Number) : left right -> intrinsic "multiply-num
 
 -- Divide two numbers, returning the quotient.
 Divide : left right (infer quotient) => trait (left right -> quotient)
-instance (Divide Number Number Number) : left right -> intrinsic "divide-numbers" left right
+instance (Divide Number Number Number) : left right -> intrinsic "f64.div" left right
 
 -- Can't divide [`left`] by [`right`].
 --
@@ -65,7 +65,7 @@ instance (Divide Number Number Number) : left right -> intrinsic "divide-numbers
 
 -- Divide two numbers, returning the remainder.
 Remainder : left right (infer remainder) => trait (left right -> remainder)
-instance (Remainder Number Number Number) : left right -> intrinsic "remainder-numbers" left right
+instance (Remainder Number Number Number) : left right -> intrinsic "rem" left right
 
 -- Can't divide [`left`] by [`right`] and get the remainder.
 --
@@ -80,7 +80,7 @@ instance (Remainder Number Number Number) : left right -> intrinsic "remainder-n
 
 -- Raise one number to the power of the other number.
 Power : left right (infer power) => trait (left right -> power)
-instance (Power Number Number Number) : left right -> intrinsic "power-numbers" left right
+instance (Power Number Number Number) : left right -> intrinsic "pow" left right
 
 -- Can't raise [`left`] to the power of [`right`].
 --
@@ -95,15 +95,15 @@ instance (Power Number Number Number) : left right -> intrinsic "power-numbers" 
 
 -- Round down a number to the nearest integer.
 floor :: Number -> Number
-floor : n -> intrinsic "floor-number" n
+floor : n -> intrinsic "f64.floor" n
 
 -- Round up a number to the nearest integer.
 ceil :: Number -> Number
-ceil : n -> intrinsic "ceil-number" n
+ceil : n -> intrinsic "f64.ceil" n
 
 -- Calculate the square root of a number.
 sqrt :: Number -> Number
-sqrt : n -> intrinsic "sqrt-number" n
+sqrt : n -> intrinsic "f64.sqrt" n
 
 -- An angle represented in degrees.
 Angle : type {degrees :: Number}
@@ -126,7 +126,7 @@ tan : (Angle {degrees : degrees}) -> intrinsic "tan" degrees
 
 -- Negate the sign of a number.
 negate :: Number -> Number
-negate : n -> intrinsic "negate-number" n
+negate : n -> intrinsic "f64.neg" n
 
 -- Check if the first number is divisible by the second.
 divisible-by? :: Number -> Number -> Boolean

@@ -27,16 +27,16 @@ pub struct Definition {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Type {
-    Named(NodeRef, Vec<Type>, TypeFlags),
+    Named {
+        definition: NodeRef,
+        parameters: Vec<Type>,
+        intrinsic: bool,
+        representation: Option<String>,
+        abi: Option<String>,
+    },
     Tuple(Vec<Type>),
     Function(Vec<Type>, Box<Type>),
     Parameter(NodeRef),
-}
-
-#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord)]
-pub struct TypeFlags {
-    pub intrinsic: bool,
-    pub flat: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]

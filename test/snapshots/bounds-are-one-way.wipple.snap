@@ -19,7 +19,7 @@ NamedTypeNode `Number` (test/tests/bounds-are-one-way.wipple:5:6-5:12)
   at test/tests/bounds-are-one-way.wipple:5:6-5:12
   has type Number
   is a type
-  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:51)
 TypeParameterNode `value` (test/tests/bounds-are-one-way.wipple:5:22-5:27)
   at test/tests/bounds-are-one-way.wipple:5:22-5:27
   has type value

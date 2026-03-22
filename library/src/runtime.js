@@ -15,14 +15,6 @@ export default (env) => ({
         env.trace?.(trace);
     },
 
-    number: (n) => {
-        return n;
-    },
-
-    "number-equal-condition": (a, b) => {
-        return a === b;
-    },
-
     crash: (message) => {
         throw new Error(message);
     },
@@ -56,40 +48,12 @@ export default (env) => ({
         }
     },
 
-    "add-numbers": (left, right) => {
-        return left + right;
-    },
-
-    "subtract-numbers": (left, right) => {
-        return left - right;
-    },
-
-    "multiply-numbers": (left, right) => {
-        return left * right;
-    },
-
-    "divide-numbers": (left, right) => {
-        return left / right;
-    },
-
-    "remainder-numbers": (left, right) => {
+    rem: (left, right) => {
         return left % right;
     },
 
-    "power-numbers": (left, right) => {
+    pow: (left, right) => {
         return Math.pow(left, right);
-    },
-
-    "floor-number": (number) => {
-        return Math.floor(number);
-    },
-
-    "ceiling-number": (number) => {
-        return Math.ceil(number);
-    },
-
-    "sqrt-number": (number) => {
-        return Math.sqrt(number);
     },
 
     sin: (number) => {
@@ -102,10 +66,6 @@ export default (env) => ({
 
     tan: (number) => {
         return Math.tan(number);
-    },
-
-    "negate-number": (number) => {
-        return -number;
     },
 
     "string-equality": (left, right) => {

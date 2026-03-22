@@ -117,6 +117,7 @@ impl<'a> Backend<'a> {
             }
         }
 
+        writeln!(decls, "(type $number (struct (field f64)))")?;
         writeln!(decls, "(type $box (struct (field (mut anyref))))")?;
 
         for ty in mem::take(&mut self.types) {
@@ -402,81 +403,90 @@ impl<'a> Backend<'a> {
                 let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
                 let ty = self.ty(node, types)?;
 
-                if self.is_externref(&ty) {
-                    write!(w, "(extern.convert_any")?;
-                } else {
-                    write!(w, "(ref.cast {}", self.structural_ty(&ty))?;
-                }
+                write!(w, "(struct.get $box 0 (local.get ${}))", variable.mangle())?;
 
-                write!(
-                    w,
-                    " (struct.get $box 0 (local.get ${})))",
-                    variable.mangle()
-                )?;
+                if let (Some(from), _) = self.conversions(&ty) {
+                    write!(w, "{}", from)?;
+                }
             }
             ir::Value::Number(number) => {
-                let name = self.runtime("number", vec![Err("f64")], vec![Err("externref")])?;
-                write!(w, "(call ${} (f64.const {}))", name, number)?;
+                write!(w, "(f64.const {})", number)?;
             }
             ir::Value::Runtime { name, inputs } => {
-                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-                let output_ty = self.ty(node, types)?;
+                if name.contains(".") {
+                    // Treat as a Wasm instruction
 
-                let input_tys = inputs
-                    .iter()
-                    .map(|node| self.ty(node, types))
-                    .collect::<CodegenResult<Vec<_>>>()?;
+                    write!(w, "({}", name)?;
 
-                let flat_output_ty = match &output_ty {
-                    ir::Type::Named(_, parameters, flags) if flags.flat => parameters.first(),
-                    _ => None,
-                };
+                    for input in inputs {
+                        write!(w, " (local.get ${})", input.mangle())?;
+                    }
 
-                let name = if let Some(flat_output_ty) = flat_output_ty {
-                    self.runtime(
-                        name,
-                        input_tys.into_iter().map(Ok).collect(),
-                        vec![Ok(flat_output_ty.clone()), Err("i32")],
-                    )?
+                    write!(w, ")")?;
                 } else {
-                    self.runtime(
-                        name,
-                        input_tys.into_iter().map(Ok).collect(),
-                        vec![Ok(output_ty.clone())],
-                    )?
-                };
+                    // Treat as an external function call
 
-                write!(w, "(call ${}", name)?;
-                for input in inputs {
-                    write!(w, "(local.get ${})", input.mangle())?;
-                }
-                write!(w, ")")?;
+                    let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+                    let output_ty = self.ty(node, types)?;
 
-                if flat_output_ty.is_some() {
-                    write!(
-                        w,
-                        "(if (param {}) (result {}) (then ",
-                        self.structural_ty(flat_output_ty.unwrap_or(&output_ty)),
-                        self.structural_ty(&output_ty)
-                    )?;
+                    let input_tys = inputs
+                        .iter()
+                        .map(|node| self.ty(node, types))
+                        .collect::<CodegenResult<Vec<_>>>()?;
 
-                    write!(
-                        w,
-                        "(struct.new ${} (struct.new ${}_variant1) (i32.const 1))",
-                        output_ty.mangle_nominal(),
-                        output_ty.mangle_nominal(),
-                    )?;
+                    let maybe_output_ty = match &output_ty {
+                        ir::Type::Named {
+                            parameters, abi, ..
+                        } if abi.as_deref() == Some("maybe") => parameters.first(),
+                        _ => None,
+                    };
 
-                    write!(w, ") (else ")?;
+                    let name = if let Some(maybe_output_ty) = maybe_output_ty {
+                        self.runtime(
+                            name,
+                            input_tys.into_iter().map(Ok).collect(),
+                            vec![Ok(maybe_output_ty.clone()), Err("i32")],
+                        )?
+                    } else {
+                        self.runtime(
+                            name,
+                            input_tys.into_iter().map(Ok).collect(),
+                            vec![Ok(output_ty.clone())],
+                        )?
+                    };
 
-                    write!(
-                        w,
-                        "(drop) (struct.new ${} (struct.new ${}_variant0) (i32.const 0))",
-                        output_ty.mangle_nominal(),
-                        output_ty.mangle_nominal(),
-                    )?;
+                    write!(w, "(call ${}", name)?;
+                    for input in inputs {
+                        write!(w, "(local.get ${})", input.mangle())?;
+                    }
+                    write!(w, ")")?;
 
-                    write!(w, "))")?;
+                    if maybe_output_ty.is_some() {
+                        write!(
+                            w,
+                            "(if (param {}) (result {}) (then ",
+                            self.structural_ty(maybe_output_ty.unwrap_or(&output_ty)),
+                            self.structural_ty(&output_ty)
+                        )?;
+
+                        write!(
+                            w,
+                            "(struct.new ${} (struct.new ${}_variant1) (i32.const 1))",
+                            output_ty.mangle_nominal(),
+                            output_ty.mangle_nominal(),
+                        )?;
+
+                        write!(w, ") (else ")?;
+
+                        write!(
+                            w,
+                            "(drop) (struct.new ${} (struct.new ${}_variant0) (i32.const 0))",
+                            output_ty.mangle_nominal(),
+                            output_ty.mangle_nominal(),
+                        )?;
+
+                        write!(w, "))")?;
+                    }
                 }
             }
             ir::Value::String(string) => {
@@ -600,21 +610,10 @@ impl<'a> Backend<'a> {
                 }
             }
             ir::Condition::EqualToNumber { input, value } => {
-                let number_equal_condition_name = self.runtime(
-                    "number-equal-condition",
-                    vec![Err("externref"), Err("externref")],
-                    vec![Err("i32")],
-                )?;
-
-                let number_name =
-                    self.runtime("number", vec![Err("f64")], vec![Err("externref")])?;
-
                 write!(
                     w,
-                    "(call ${} (local.get ${}) (call ${} (f64.const {})))",
-                    number_equal_condition_name,
+                    "(f64.eq (local.get ${}) (f64.const {}))",
                     input.mangle(),
-                    number_name,
                     value
                 )?;
             }
@@ -644,7 +643,7 @@ impl<'a> Backend<'a> {
                 mutable,
             } => {
                 write!(w, "(block (result i32) (local.set ${} ", variable.mangle())?;
-                let mut convert = false;
+                let mut to = None;
                 if *mutable {
                     write!(w, "(struct.new $box ")?;
 
@@ -654,15 +653,15 @@ impl<'a> Backend<'a> {
 
                     let value_ty = self.ty(node, types)?;
 
-                    convert = self.is_externref(&value_ty);
+                    (_, to) = self.conversions(&value_ty);
                 }
-                if convert {
-                    write!(w, "(any.convert_extern ")?;
-                }
+
                 self.write_value(w, node.as_ref(), value, definition, types)?;
-                if convert {
-                    write!(w, ")")?;
+
+                if let Some(to) = to {
+                    write!(w, "{}", to)?;
                 }
+
                 if *mutable {
                     write!(w, ")")?;
                 }
@@ -670,19 +669,15 @@ impl<'a> Backend<'a> {
             }
             ir::Condition::Mutate { input, variable } => {
                 let ty = self.ty(variable, types)?;
-                let convert = self.is_externref(&ty);
 
                 write!(
                     w,
                     "(block (result i32) (struct.set $box 0 (local.get ${}) ",
                     variable.mangle()
                 )?;
-                if convert {
-                    write!(w, "(any.convert_extern ")?;
-                }
                 write!(w, "(local.get ${})", input.mangle())?;
-                if convert {
-                    write!(w, ")")?;
+                if let (_, Some(to)) = self.conversions(&ty) {
+                    write!(w, "{}", to)?;
                 }
                 write!(w, ") (i32.const 1))")?;
             }
@@ -802,7 +797,11 @@ impl<'a> Backend<'a> {
 
     fn write_type(&mut self, w: &mut Writer, ty: ir::Type) -> CodegenResult {
         match &ty {
-            ir::Type::Named(definition, parameters, _) => {
+            ir::Type::Named {
+                definition,
+                parameters,
+                ..
+            } => {
                 let representation = self
                     .db
                     .ir_named_type_representation(definition, parameters)
@@ -892,14 +891,47 @@ impl<'a> Backend<'a> {
         match ty.mangle_structural() {
             Some(ty) => format!("(ref null ${ty})"),
             None => match ty {
-                ir::Type::Named(..) => String::from("externref"),
+                ir::Type::Named {
+                    intrinsic,
+                    representation,
+                    ..
+                } => {
+                    if let Some(representation) = representation {
+                        representation.clone()
+                    } else if *intrinsic {
+                        String::from("externref")
+                    } else {
+                        unreachable!()
+                    }
+                }
                 _ => unreachable!(),
             },
         }
     }
 
-    fn is_externref(&self, ty: &ir::Type) -> bool {
-        matches!(ty, ir::Type::Named(..)) && ty.mangle_structural().is_none()
+    fn conversions(&self, ty: &ir::Type) -> (Option<String>, Option<String>) {
+        if let ir::Type::Named {
+            intrinsic,
+            representation,
+            ..
+        } = ty
+        {
+            if let Some("f64") = representation.as_deref() {
+                return (
+                    Some(String::from(
+                        "(ref.cast (ref null $number)) (struct.get $number 0)",
+                    )),
+                    Some(String::from("(struct.new $number)")),
+                );
+            } else if *intrinsic {
+                return (
+                    Some(String::from("(extern.convert_any)")),
+                    Some(String::from("(any.convert_extern)")),
+                );
+            }
+        }
+
+        (Some(format!("(ref.cast {})", self.structural_ty(ty))), None)
     }
 
     fn runtime(

@@ -66,14 +66,16 @@ pub struct TypeDefinition {
 #[derive(Debug, Clone)]
 pub struct TypeAttributes {
     pub intrinsic: bool,
-    pub flat: bool,
+    pub representation: Option<String>,
+    pub abi: Option<String>,
 }
 
 impl TypeAttributes {
     pub fn from_attributes(db: &mut Db, attributes: &[NodeRef]) -> Self {
         TypeAttributes {
             intrinsic: db.contains_name_attribute(attributes, "intrinsic"),
-            flat: db.contains_name_attribute(attributes, "flat"),
+            representation: db.contains_string_attribute_value(attributes, "representation"),
+            abi: db.contains_string_attribute_value(attributes, "abi"),
         }
     }
 }

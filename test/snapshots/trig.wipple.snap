@@ -195,7 +195,7 @@ CallExpressionNode `sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (tes
   is an expression
 ConstructorExpressionNode `/` (test/tests/trig.wipple:5:24-5:25)
   at test/tests/trig.wipple:5:24-5:25
-  has bound(s) Divide Number Number Number (`instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:93))
+  has bound(s) Divide Number Number Number (`instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:86))
   has type Number Number -> Number
   is an expression
   resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:51:1-52:71)

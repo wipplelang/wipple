@@ -3,7 +3,7 @@ NamedTypeNode `Number` (test/tests/number-units.wipple:3:28-3:34)
   at test/tests/number-units.wipple:3:28-3:34
   has type Number
   is a type
-  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:51)
 TypeDefinitionNode `Elephants : type {⋯}` (test/tests/number-units.wipple:1:1-3:35)
   at test/tests/number-units.wipple:1:1-3:35
   has definition constraints
@@ -63,7 +63,7 @@ NamedTypeNode `Number` (test/tests/number-units.wipple:7:21-7:27)
   at test/tests/number-units.wipple:7:21-7:27
   has type Number
   is a type
-  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:51)
 NamedTypeNode `Elephants` (test/tests/number-units.wipple:7:31-7:40)
   at test/tests/number-units.wipple:7:31-7:40
   has type Elephants

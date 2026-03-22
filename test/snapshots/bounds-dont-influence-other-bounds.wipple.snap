@@ -28,7 +28,7 @@ NamedTypeNode `Number` (test/tests/bounds-dont-influence-other-bounds.wipple:5:1
   at test/tests/bounds-dont-influence-other-bounds.wipple:5:13-5:19
   has type Number
   is a type
-  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:51)
 BoundConstraintNode `T Number` (test/tests/bounds-dont-influence-other-bounds.wipple:5:10-5:20)
   at test/tests/bounds-dont-influence-other-bounds.wipple:5:10-5:20
 WildcardPatternNode `_` (test/tests/bounds-dont-influence-other-bounds.wipple:5:23-5:24)
@@ -127,7 +127,7 @@ NamedTypeNode `Number` (test/tests/bounds-dont-influence-other-bounds.wipple:12:
   at test/tests/bounds-dont-influence-other-bounds.wipple:12:8-12:14
   has type Number
   is a type
-  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:51)
 PlaceholderTypeNode `_` (test/tests/bounds-dont-influence-other-bounds.wipple:12:16-12:17)
   at test/tests/bounds-dont-influence-other-bounds.wipple:12:16-12:17
   is a type

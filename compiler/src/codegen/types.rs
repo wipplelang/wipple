@@ -36,14 +36,13 @@ impl Db {
                     return None;
                 };
 
-                Some(ir::Type::Named(
+                Some(ir::Type::Named {
                     definition,
                     parameters,
-                    ir::TypeFlags {
-                        intrinsic: attributes.intrinsic,
-                        flat: attributes.flat,
-                    },
-                ))
+                    intrinsic: attributes.intrinsic,
+                    representation: attributes.representation,
+                    abi: attributes.abi,
+                })
             }
             ConstructedTypeTag::Function => {
                 let (output, inputs) = ty.children.split_first()?;
@@ -91,7 +90,7 @@ impl ir::Type {
         f(self);
 
         match self {
-            ir::Type::Named(_, parameters, _) => {
+            ir::Type::Named { parameters, .. } => {
                 for parameter in parameters {
                     parameter.traverse_mut(f);
                 }

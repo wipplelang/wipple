@@ -37,11 +37,17 @@ impl ir::Type {
 
     fn mangle_inner(&self, nominal: bool) -> Option<String> {
         match self {
-            ir::Type::Named(node, parameters, flags) => {
-                if !nominal && flags.intrinsic {
+            ir::Type::Named {
+                definition,
+                parameters,
+                intrinsic,
+                representation,
+                ..
+            } => {
+                if !nominal && (*intrinsic || representation.is_some()) {
                     None
                 } else {
-                    let mut s = format!("type{}", node.mangle());
+                    let mut s = format!("type{}", definition.mangle());
 
                     for parameter in parameters {
                         write!(s, "_{}", parameter.mangle_nominal()).unwrap();

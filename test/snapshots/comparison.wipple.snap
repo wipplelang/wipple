@@ -305,7 +305,7 @@ CallExpressionNode `1 + 2 = 3` (test/tests/comparison.wipple:3:7-3:16)
   is an expression
 ConstructorExpressionNode `+` (test/tests/comparison.wipple:3:9-3:10)
   at test/tests/comparison.wipple:3:9-3:10
-  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:87))
+  has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:83))
   has type Number Number -> Number
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58)

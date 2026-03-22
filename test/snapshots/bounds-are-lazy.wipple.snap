@@ -28,7 +28,7 @@ NamedTypeNode `Number` (test/tests/bounds-are-lazy.wipple:5:13-5:19)
   at test/tests/bounds-are-lazy.wipple:5:13-5:19
   has type Number
   is a type
-  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:51)
 BoundConstraintNode `T Number` (test/tests/bounds-are-lazy.wipple:5:10-5:20)
   at test/tests/bounds-are-lazy.wipple:5:10-5:20
 VariableExpressionNode `show` (test/tests/bounds-are-lazy.wipple:6:3-6:7)
