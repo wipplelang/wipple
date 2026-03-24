@@ -5,183 +5,199 @@ const isValidListIndex = (index, list, includeEnd = false) =>
     index >= 0 &&
     (includeEnd ? index <= list.length : index < list.length);
 
-export default (env) => ({
-    debug: (value) => {
-        env.debug?.(value);
-        return value;
-    },
+export default (env) => {
+    let memory;
 
-    trace: (trace) => {
-        env.trace?.(trace);
-    },
+    return {
+        init: (mem) => {
+            memory = mem;
+        },
 
-    crash: (message) => {
-        throw new Error(message);
-    },
+        debug: (value) => {
+            env.debug?.(value);
+            return value;
+        },
 
-    bridge: (value) => {
-        return value;
-    },
+        trace: (trace) => {
+            env.trace?.(trace);
+        },
 
-    "bridge-unit": () => {
-        return undefined;
-    },
+        crash: (message) => {
+            throw new Error(message);
+        },
 
-    prompt: (message, validate) => {
-        let input = env.prompt(message);
+        bridge: (value) => {
+            return value;
+        },
 
-        let validated;
-        do {
-            validated = validate(input);
-            input = env.validatePrompt(validated !== undefined);
-        } while (validated === undefined);
+        "bridge-unit": () => {
+            return undefined;
+        },
 
-        return fromMaybe(validated);
-    },
+        "make-string": (ptr, len) => {
+            return new TextDecoder("utf8").decode(new Uint8Array(memory, ptr, len));
+        },
 
-    external: (func, input) => {
-        return env[func](input);
-    },
+        concat: (a, b) => {
+            return a + b;
+        },
 
-    "number-to-string": (number) => {
-        return number.toString();
-    },
+        prompt: (message, validate) => {
+            let input = env.prompt(message);
 
-    "string-to-number": (string) => {
-        if (string.toLowerCase() === "nan") {
-            return fromMaybe(NaN);
-        } else {
-            const number = parseFloat(string);
-            return fromMaybe(isNaN(number) ? undefined : number);
-        }
-    },
+            let validated;
+            do {
+                validated = validate(input);
+                input = env.validatePrompt(validated !== undefined);
+            } while (validated === undefined);
 
-    rem: (left, right) => {
-        return left % right;
-    },
+            return fromMaybe(validated);
+        },
 
-    pow: (left, right) => {
-        return Math.pow(left, right);
-    },
+        external: (func, input) => {
+            return env[func](input);
+        },
 
-    sin: (number) => {
-        return Math.sin(number);
-    },
+        "number-to-string": (number) => {
+            return number.toString();
+        },
 
-    cos: (number) => {
-        return Math.cos(number);
-    },
+        "string-to-number": (string) => {
+            if (string.toLowerCase() === "nan") {
+                return fromMaybe(NaN);
+            } else {
+                const number = parseFloat(string);
+                return fromMaybe(isNaN(number) ? undefined : number);
+            }
+        },
 
-    tan: (number) => {
-        return Math.tan(number);
-    },
+        rem: (left, right) => {
+            return left % right;
+        },
 
-    "string-equality": (left, right) => {
-        return left === right ? 1 : 0;
-    },
+        pow: (left, right) => {
+            return Math.pow(left, right);
+        },
 
-    "number-equality": (left, right) => {
-        return left === right ? 1 : 0;
-    },
+        sin: (number) => {
+            return Math.sin(number);
+        },
 
-    "string-ordering": (left, right) => {
-        if (left < right) {
-            return -1;
-        } else if (left === right) {
-            return 0;
-        } else {
-            return 1;
-        }
-    },
+        cos: (number) => {
+            return Math.cos(number);
+        },
 
-    "number-ordering": (left, right) => {
-        if (left < right) {
-            return -1;
-        } else if (left === right) {
-            return 0;
-        } else {
-            return 1;
-        }
-    },
+        tan: (number) => {
+            return Math.tan(number);
+        },
 
-    "make-empty-list": () => {
-        return [];
-    },
+        "string-equality": (left, right) => {
+            return left === right ? 1 : 0;
+        },
 
-    "list-first": (list) => {
-        return fromMaybe(list.length > 0 ? list[0] : undefined);
-    },
+        "number-equality": (left, right) => {
+            return left === right ? 1 : 0;
+        },
 
-    "list-last": (list) => {
-        return fromMaybe(list.length > 0 ? list[list.length - 1] : undefined);
-    },
+        "string-ordering": (left, right) => {
+            if (left < right) {
+                return -1;
+            } else if (left === right) {
+                return 0;
+            } else {
+                return 1;
+            }
+        },
 
-    "list-initial": (list) => {
-        return fromMaybe(list.length > 0 ? list.slice(0, -1) : undefined);
-    },
+        "number-ordering": (left, right) => {
+            if (left < right) {
+                return -1;
+            } else if (left === right) {
+                return 0;
+            } else {
+                return 1;
+            }
+        },
 
-    "list-tail": (list) => {
-        return fromMaybe(list.length > 0 ? list.slice(1) : undefined);
-    },
+        "make-empty-list": () => {
+            return [];
+        },
 
-    "list-nth": (list, index) => {
-        return fromMaybe(isValidListIndex(index, list) ? list[index] : undefined);
-    },
+        "list-first": (list) => {
+            return fromMaybe(list.length > 0 ? list[0] : undefined);
+        },
 
-    "list-append": (list, element) => {
-        return [...list, element];
-    },
+        "list-last": (list) => {
+            return fromMaybe(list.length > 0 ? list[list.length - 1] : undefined);
+        },
 
-    "list-prepend": (element, list) => {
-        return [element, ...list];
-    },
+        "list-initial": (list) => {
+            return fromMaybe(list.length > 0 ? list.slice(0, -1) : undefined);
+        },
 
-    "list-insert-at": (list, index, element) => {
-        return fromMaybe(
-            isValidListIndex(index, list, true)
-                ? [...list.slice(0, index), element, ...list.slice(index)]
-                : undefined,
-        );
-    },
+        "list-tail": (list) => {
+            return fromMaybe(list.length > 0 ? list.slice(1) : undefined);
+        },
 
-    "list-remove-at": (list, index) => {
-        return fromMaybe(
-            isValidListIndex(index, list)
-                ? [...list.slice(0, index), ...list.slice(index + 1)]
-                : undefined,
-        );
-    },
+        "list-nth": (list, index) => {
+            return fromMaybe(isValidListIndex(index, list) ? list[index] : undefined);
+        },
 
-    "list-count": (list) => {
-        return list.length;
-    },
+        "list-append": (list, element) => {
+            return [...list, element];
+        },
 
-    "list-slice": (list, start, end) => {
-        return fromMaybe(
-            isValidListIndex(start, list) && isValidListIndex(end, list, true) && start <= end
-                ? list.slice(start, end)
-                : undefined,
-        );
-    },
+        "list-prepend": (element, list) => {
+            return [element, ...list];
+        },
 
-    "string-characters": (string) => {
-        return string.split("");
-    },
+        "list-insert-at": (list, index, element) => {
+            return fromMaybe(
+                isValidListIndex(index, list, true)
+                    ? [...list.slice(0, index), element, ...list.slice(index)]
+                    : undefined,
+            );
+        },
 
-    "random-number": (min, max) => {
-        return Math.random() * (max - min) + min;
-    },
+        "list-remove-at": (list, index) => {
+            return fromMaybe(
+                isValidListIndex(index, list)
+                    ? [...list.slice(0, index), ...list.slice(index + 1)]
+                    : undefined,
+            );
+        },
 
-    nan: () => {
-        return NaN;
-    },
+        "list-count": (list) => {
+            return list.length;
+        },
 
-    "hash-string": (string) => {
-        // https://gist.github.com/jlevy/c246006675becc446360a798e2b2d781
-        let hash = 0;
-        for (const char of string) {
-            hash = (hash << 5) - hash + char;
-        }
-        return hash >>> 0;
-    },
-});
+        "list-slice": (list, start, end) => {
+            return fromMaybe(
+                isValidListIndex(start, list) && isValidListIndex(end, list, true) && start <= end
+                    ? list.slice(start, end)
+                    : undefined,
+            );
+        },
+
+        "string-characters": (string) => {
+            return string.split("");
+        },
+
+        "random-number": (min, max) => {
+            return Math.random() * (max - min) + min;
+        },
+
+        nan: () => {
+            return NaN;
+        },
+
+        "hash-string": (string) => {
+            // https://gist.github.com/jlevy/c246006675becc446360a798e2b2d781
+            let hash = 0;
+            for (const char of string) {
+                hash = (hash << 5) - hash + char;
+            }
+            return hash >>> 0;
+        },
+    };
+};

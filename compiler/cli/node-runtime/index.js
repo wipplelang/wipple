@@ -6,12 +6,10 @@ const runtime = initRuntime({
     display: (message) => console.log(message),
 });
 
-const wasm = await WebAssembly.instantiate(
-    readFileSync(join(import.meta.dirname, "./main.wasm")),
-    { runtime },
-    { builtins: ["js-string"], importedStringConstants: "string_constants" },
-);
+const data = readFileSync(join(import.meta.dirname, "./main.wasm"));
+const wasm = await WebAssembly.instantiate(data, { runtime });
 
-const { main } = wasm.instance.exports;
+const { main, memory } = wasm.instance.exports;
 
+runtime.init(memory.buffer);
 main(runtime);

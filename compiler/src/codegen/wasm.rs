@@ -30,7 +30,7 @@ pub struct Backend<'a> {
         Option<&'a ir::DefinitionKey>,
         BTreeMap<NodeRef, (&'a ir::Value, &'a BTreeMap<NodeRef, ir::Type>)>,
     >,
-    strings: Vec<String>,
+    strings: Vec<(usize, String)>,
     runtime_functions: BTreeMap<
         String,
         BTreeSet<(
@@ -125,15 +125,7 @@ impl<'a> Backend<'a> {
         }
         writeln!(decls, ")")?;
 
-        writeln!(
-            imports,
-            "(func $string-concat (import \"wasm:js-string\" \"concat\") (param externref) (param externref) (result (ref extern)))",
-        )?;
-
-        writeln!(
-            imports,
-            "(func $string-equals (import \"wasm:js-string\" \"equals\") (param externref) (param externref) (result i32))",
-        )?;
+        self.write_memory(&mut decls)?;
 
         for (name, runtime_functions) in mem::take(&mut self.runtime_functions) {
             for (mangled, inputs, outputs) in runtime_functions {
@@ -156,13 +148,6 @@ impl<'a> Backend<'a> {
                 }
                 writeln!(imports, ")")?;
             }
-        }
-
-        for (index, string) in self.strings.into_iter().enumerate() {
-            writeln!(
-                imports,
-                "(global $string{index} (import \"string_constants\" {string:?}) externref)",
-            )?;
         }
 
         // TODO
@@ -283,8 +268,8 @@ impl<'a> Backend<'a> {
 
                     if self.can_trace(&span) {
                         let name = self.runtime("trace", vec![Err("externref")], vec![])?;
-                        let string = self.string(&serde_json::json!(span.start).to_string());
-                        writeln!(w, "(call ${name} (global.get ${string}))")?;
+                        let string = self.string(&serde_json::json!(span.start).to_string())?;
+                        writeln!(w, "(call ${name} {string})")?;
                     }
                 }
             }
@@ -330,13 +315,19 @@ impl<'a> Backend<'a> {
             }
             ir::Value::Concat { segments, trailing } => {
                 for (string, node) in segments {
-                    let string = self.string(string);
-                    write!(w, "(call $string-concat (global.get ${string})")?;
-                    write!(w, "(call $string-concat (local.get ${})", node.mangle())?;
+                    let name = self.runtime(
+                        "concat",
+                        vec![Err("externref"), Err("externref")],
+                        vec![Err("externref")],
+                    )?;
+
+                    let string = self.string(string)?;
+                    write!(w, "(call ${name} {string} ")?;
+                    write!(w, "(call ${name} (local.get ${})", node.mangle())?;
                 }
 
-                let trailing = self.string(trailing);
-                write!(w, "(global.get ${trailing})")?;
+                let trailing = self.string(trailing)?;
+                write!(w, "{trailing}")?;
 
                 for _ in segments {
                     write!(w, "))")?;
@@ -490,8 +481,8 @@ impl<'a> Backend<'a> {
                 }
             }
             ir::Value::String(string) => {
-                let string = self.string(string);
-                write!(w, "(global.get ${string})")?;
+                let string = self.string(string)?;
+                write!(w, "{string}")?;
             }
             ir::Value::Structure(fields) => {
                 let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
@@ -618,10 +609,16 @@ impl<'a> Backend<'a> {
                 )?;
             }
             ir::Condition::EqualToString { input, value } => {
-                let string = self.string(value);
+                let name = self.runtime(
+                    "string-equality",
+                    vec![Err("externref"), Err("externref")],
+                    vec![Err("i32")],
+                )?;
+
+                let string = self.string(value)?;
                 write!(
                     w,
-                    "(call $string-equals (local.get ${}) (global.get ${}))",
+                    "(call ${name} (local.get ${}) {})",
                     input.mangle(),
                     string
                 )?;
@@ -953,16 +950,48 @@ impl<'a> Backend<'a> {
         Ok(mangled)
     }
 
-    fn string(&mut self, string: &str) -> String {
-        let index = if let Some(index) = self.strings.iter().position(|s| string == *s) {
-            index
+    fn string(&mut self, string: &str) -> CodegenResult<String> {
+        let offset = if let Some(&(offset, _)) = self.strings.iter().find(|(_, s)| string == *s) {
+            offset
         } else {
-            let index = self.strings.len();
-            self.strings.push(string.to_string());
-            index
+            let offset = self
+                .strings
+                .last()
+                .map_or(0, |(offset, s)| *offset + s.len());
+
+            self.strings.push((offset, string.to_string()));
+
+            offset
         };
 
-        format!("string{index}")
+        let name = self.runtime(
+            "make-string",
+            vec![Err("i32"), Err("i32")],
+            vec![Err("externref")],
+        )?;
+
+        Ok(format!(
+            "(call ${name} (i32.const {}) (i32.const {}))",
+            offset,
+            string.len()
+        ))
+    }
+
+    fn write_memory(&self, w: &mut Writer) -> CodegenResult {
+        const PAGE_SIZE: usize = 64 * 1024;
+
+        let pages = self
+            .strings
+            .last()
+            .map_or(1, |(offset, s)| (*offset + s.len()).div_ceil(PAGE_SIZE));
+
+        writeln!(w, "(memory (export \"memory\") {pages})")?;
+
+        for (offset, s) in &self.strings {
+            writeln!(w, "(data (i32.const {offset}) {s:?})")?;
+        }
+
+        Ok(())
     }
 }
 

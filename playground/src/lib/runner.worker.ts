@@ -53,15 +53,12 @@ const run = async (channel: Channel, executable: string) => {
     // @ts-expect-error polyfilled via core-js above
     const data = Uint8Array.fromBase64(executable);
 
-    const wasm = await WebAssembly.instantiate(
-        data,
-        { runtime },
-        { builtins: ["js-string"], importedStringConstants: "string_constants" },
-    );
+    const wasm = await WebAssembly.instantiate(data, { runtime });
 
-    const main = wasm.instance.exports.main as any;
+    const { main, memory } = wasm.instance.exports as any;
 
     try {
+        runtime.init(memory.buffer);
         main(runtime);
     } catch (e) {
         console.error(e);
