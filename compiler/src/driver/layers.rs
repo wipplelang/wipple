@@ -19,7 +19,7 @@ pub fn read_file(db: &mut Db, path: impl AsRef<Path>) -> io::Result<NodeRef> {
 pub fn read_layer(db: &mut Db, path: impl AsRef<Path>) -> anyhow::Result<Layer> {
     let path = path.as_ref();
 
-    let files = fs::read_dir(path)?
+    let mut files = fs::read_dir(path)?
         .map(|entry| -> anyhow::Result<_> {
             let entry = entry?;
 
@@ -38,17 +38,20 @@ pub fn read_layer(db: &mut Db, path: impl AsRef<Path>) -> anyhow::Result<Layer> 
                 return Ok(None);
             }
 
-            let file = read_file(db, path)?;
-
-            Ok(Some(file))
+            Ok(Some(path))
         })
         .collect::<anyhow::Result<Vec<_>>>()?
         .into_iter()
         .flatten()
         .collect::<Vec<_>>();
 
+    files.sort();
+
     Ok(Layer {
         name: path.to_string_lossy().to_string(),
-        files,
+        files: files
+            .into_iter()
+            .map(|path| Ok(read_file(db, path)?))
+            .collect::<anyhow::Result<Vec<_>>>()?,
     })
 }
