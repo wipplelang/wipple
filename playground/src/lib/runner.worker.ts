@@ -15,7 +15,7 @@ export const init = (worker: Worker, env: Env) => {
             switch (e.data.type) {
                 case "call": {
                     const { f, input } = e.data;
-                    const output = JSON.stringify(await env[f](JSON.parse(input)));
+                    const output = await env[f](input);
                     writeMessage(channel, { output }, globalMessageId);
                     break;
                 }

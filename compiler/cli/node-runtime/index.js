@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import initRuntime from "./runtime.js";
 
 const runtime = initRuntime({
-    display: (message) => console.log(JSON.parse(message)),
+    display: (message) => console.log(message),
 });
 
 const wasm = await WebAssembly.instantiate(

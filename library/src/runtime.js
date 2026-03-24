@@ -19,6 +19,14 @@ export default (env) => ({
         throw new Error(message);
     },
 
+    bridge: (value) => {
+        return value;
+    },
+
+    "bridge-unit": () => {
+        return undefined;
+    },
+
     prompt: (message, validate) => {
         let input = env.prompt(message);
 
@@ -175,33 +183,5 @@ export default (env) => ({
             hash = (hash << 5) - hash + char;
         }
         return hash >>> 0;
-    },
-
-    "number-as-external": (number) => {
-        return JSON.stringify(number);
-    },
-
-    "string-as-external": (string) => {
-        return JSON.stringify(string);
-    },
-
-    "unit-as-external": () => {
-        return JSON.stringify([]);
-    },
-
-    "list-as-external": (list) => {
-        return JSON.stringify(list.map((element) => JSON.parse(element)));
-    },
-
-    "number-from-external": (value) => {
-        return JSON.parse(value);
-    },
-
-    "string-from-external": (value) => {
-        return JSON.parse(value);
-    },
-
-    "list-from-external": (value) => {
-        return JSON.parse(value).map((element) => JSON.stringify(element));
     },
 });

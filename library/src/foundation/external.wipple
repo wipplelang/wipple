@@ -1,24 +1,22 @@
-As-External : value => trait (value -> String)
+[intrinsic] External : type
 
-instance (As-External Number) : n -> intrinsic "number-as-external" n
+As-External : value => trait (value -> External)
 
-instance (As-External String) : s -> intrinsic "string-as-external" s
-
-instance (As-External ()) : () -> intrinsic "unit-as-external"
+instance (As-External Number) : value -> intrinsic "bridge" value
+instance (As-External String) : value -> intrinsic "bridge" value
+instance (As-External ()) : _ -> intrinsic "bridge-unit"
 
 instance (As-External (List element)) where (As-External element) : list ->
-  intrinsic "list-as-external" (list . transform (As-External :: (element -> _)) . collect)
+  intrinsic "bridge" (list . transform (As-External :: (element -> _)) . collect)
 
-From-External : value => trait (String -> value)
+From-External : value => trait (External -> value)
 
-instance (From-External Number) : s -> intrinsic "number-from-external" s
-
-instance (From-External String) : s -> intrinsic "string-from-external" s
-
+instance (From-External Number) : value -> intrinsic "bridge" value
+instance (From-External String) : value -> intrinsic "bridge" value
 instance (From-External ()) : _ -> ()
 
-instance (From-External (List element)) where (From-External element) : s ->
-  (intrinsic "list-from-external" s :: List _) . transform (From-External :: (_ -> element)) . collect
+instance (From-External (List element)) where (From-External element) : list ->
+  (intrinsic "bridge" list :: List _) . transform (From-External :: (_ -> element)) . collect
 
 -- Send a message to the runtime.
 external :: String input -> output where (As-External input) (From-External output) (output :: ())
