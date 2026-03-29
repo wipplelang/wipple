@@ -4,6 +4,7 @@ mod definitions;
 mod filter;
 mod highlight;
 mod placeholders;
+mod syntax;
 mod types;
 
 pub use bounds::*;
@@ -12,6 +13,7 @@ pub use definitions::*;
 pub use filter::*;
 pub use highlight::*;
 pub use placeholders::*;
+pub use syntax::*;
 pub use types::*;
 
 use crate::database::{Db, Fact, NodeRef};

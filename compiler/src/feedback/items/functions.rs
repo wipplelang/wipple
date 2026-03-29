@@ -16,7 +16,7 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "missing-inputs",
-        FeedbackRank::Syntax,
+        FeedbackRank::Conflicts,
         |ctx, f| {
             queries::conflicting_types(ctx, &mut |data| {
                 let nodes = [&data.from]
@@ -96,7 +96,7 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "extra-input",
-        FeedbackRank::Syntax,
+        FeedbackRank::Conflicts,
         |ctx, f| {
             queries::conflicting_types(ctx, &mut |data| {
                 let nodes = [&data.from]

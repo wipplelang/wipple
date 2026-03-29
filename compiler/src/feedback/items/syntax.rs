@@ -30,4 +30,19 @@ pub fn register(ctx: &mut FeedbackCtx) {
             w.write_string("Check your spelling.");
         },
     ));
+
+    ctx.register(RegisteredFeedback::new(
+        "unused-block",
+        FeedbackRank::Syntax,
+        queries::unused_block,
+        |node| (node.clone(), BTreeSet::new()),
+        |w, node| {
+            w.write_node(node);
+            w.write_string(" is on its own line and will never run.");
+            w.write_break();
+            w.write_string("Did you mean to put the opening ");
+            w.write_code("{");
+            w.write_string(" on the line above?");
+        },
+    ));
 }
