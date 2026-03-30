@@ -1,13 +1,21 @@
 use crate::{
-    nodes::{IsType, TypeParameterNode},
+    nodes::{
+        IsType, NumberExpressionNode, NumberPatternNode, StringExpressionNode, StringPatternNode,
+        TypeParameterNode,
+    },
     queries::QueryCtx,
     typecheck::{ConstructedTypeTag, Typed},
     visit::{Defined, Definition, Resolved},
 };
 
 pub fn highlight_type(ctx: &QueryCtx<'_>, f: &mut dyn FnMut(())) {
-    if ctx.db.contains::<IsType>(&ctx.node)
+    if !ctx.node.is_hidden()
+        && ctx.db.contains::<IsType>(&ctx.node)
         && ctx.node.downcast_ref::<TypeParameterNode>().is_none()
+        && ctx.node.downcast_ref::<NumberExpressionNode>().is_none()
+        && ctx.node.downcast_ref::<NumberPatternNode>().is_none()
+        && ctx.node.downcast_ref::<StringExpressionNode>().is_none()
+        && ctx.node.downcast_ref::<StringPatternNode>().is_none()
     {
         f(());
     }

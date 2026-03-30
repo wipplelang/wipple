@@ -86,6 +86,13 @@ pub fn parse_instance_constraints(
 
 impl Visit for InstanceDefinitionNode {
     fn visit(&self, node: &NodeRef, visitor: &mut Visitor<'_>) {
+        // Hide the instance's value when rendering
+        if let Some(value) = &self.value {
+            let value_len = visitor.span(value).source.len();
+            let source = &mut visitor.span_mut(node).source;
+            source.replace_range((source.len() - value_len).., "");
+        }
+
         visitor.defining(node, |visitor| {
             visitor.push_scope();
 

@@ -48,7 +48,7 @@ OperatorExpressionNode `a = b` (test/tests/number-units.wipple:5:81-5:86)
   at test/tests/number-units.wipple:5:81-5:86
   has type Boolean
   is an expression
-FunctionExpressionNode `(Elephants {count` (test/tests/number-units.wipple:5:30-5:86)
+FunctionExpressionNode `(Elephants {⋯}) (Elephants {count` (test/tests/number-units.wipple:5:30-5:86)
   at test/tests/number-units.wipple:5:30-5:86
   has type Elephants Elephants -> Boolean
   is an expression

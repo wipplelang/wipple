@@ -46,6 +46,16 @@ impl Db {
         ))
     }
 
+    pub fn get_mut<T: Fact>(&mut self, node: &NodeRef) -> Option<&mut T> {
+        let fact = self
+            .facts
+            .get_mut(&TypeId::of::<T>())?
+            .get_mut(&node.downgrade())?
+            .as_mut();
+
+        Some((fact as &mut dyn Any).downcast_mut::<T>().unwrap())
+    }
+
     pub fn get_global<T: Fact>(&self) -> Option<T> {
         let fact = self.global_facts.get(&TypeId::of::<T>())?.as_ref();
 
@@ -135,6 +145,10 @@ impl Db {
 
     pub fn span(&self, node: &NodeRef) -> Span {
         self.get::<Span>(node).unwrap()
+    }
+
+    pub fn span_mut(&mut self, node: &NodeRef) -> &mut Span {
+        self.get_mut::<Span>(node).unwrap()
     }
 
     pub fn parent(&self, node: &NodeRef) -> Option<NodeRef> {

@@ -143,7 +143,7 @@ impl Span {
         };
 
         // Remove assigned value...
-        let source = if let Some(index) = source.find(":") {
+        let source = if let Some(index) = source.rfind(":") {
             // ...but not type annotations or type/trait definitions
             let rest = &source[index + 1..];
 
