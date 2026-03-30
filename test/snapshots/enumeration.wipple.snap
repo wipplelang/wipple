@@ -1,5 +1,5 @@
 Facts:
-TypeDefinitionNode `Grade : type {⋯}` (test/tests/enumeration.wipple:1:1-9:2)
+TypeDefinitionNode `Grade` (test/tests/enumeration.wipple:1:1-9:2)
   at test/tests/enumeration.wipple:1:1-9:2
   has definition constraints
   has type Grade

@@ -18,7 +18,7 @@ NamedTypeNode `Sequence element` (test/tests/remove-duplicates.wipple:3:40-3:56)
   at test/tests/remove-duplicates.wipple:3:40-3:56
   has type Sequence element
   is a type
-  resolved to 1 definition(s): `Sequence : element => type {⋯}` (library/src/foundation/sequence.wipple:1:1-2:53)
+  resolved to 1 definition(s): `Sequence` (library/src/foundation/sequence.wipple:1:1-2:53)
 FunctionTypeNode `(List element) -> Sequence element` (test/tests/remove-duplicates.wipple:3:22-3:56)
   at test/tests/remove-duplicates.wipple:3:22-3:56
   has type (List element) -> Sequence element
@@ -32,7 +32,7 @@ BoundConstraintNode `Describe element` (test/tests/remove-duplicates.wipple:3:63
   at test/tests/remove-duplicates.wipple:3:63-3:81
   has bound(s) Describe element (`Describe element` (test/tests/remove-duplicates.wipple:3:63-3:81))
   is a constraint
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:1:1-2:44)
+  resolved to 1 definition(s): `Describe` (library/src/foundation/io.wipple:1:1-2:44)
 TypeParameterNode `element` (test/tests/remove-duplicates.wipple:3:89-3:96)
   at test/tests/remove-duplicates.wipple:3:89-3:96
   has type element
@@ -42,7 +42,7 @@ BoundConstraintNode `Equal element` (test/tests/remove-duplicates.wipple:3:82-3:
   at test/tests/remove-duplicates.wipple:3:82-3:97
   has bound(s) Equal element (`Equal element` (test/tests/remove-duplicates.wipple:3:82-3:97))
   is a constraint
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:72:1-73:48)
+  resolved to 1 definition(s): `Equal` (library/src/foundation/logic.wipple:72:1-73:48)
 TypeParameterNode `element` (test/tests/remove-duplicates.wipple:3:104-3:111)
   at test/tests/remove-duplicates.wipple:3:104-3:111
   has type element
@@ -52,7 +52,7 @@ BoundConstraintNode `Hash element` (test/tests/remove-duplicates.wipple:3:98-3:1
   at test/tests/remove-duplicates.wipple:3:98-3:112
   has bound(s) Hash element (`Hash element` (test/tests/remove-duplicates.wipple:3:98-3:112))
   is a constraint
-  resolved to 1 definition(s): `Hash : value => trait (value -> Number)` (library/src/foundation/dictionary.wipple:1:1-3:40)
+  resolved to 1 definition(s): `Hash` (library/src/foundation/dictionary.wipple:1:1-3:40)
 ConstantDefinitionNode `remove-duplicates` (test/tests/remove-duplicates.wipple:1:1-3:112)
   at test/tests/remove-duplicates.wipple:1:1-3:112
   has definition constraints
@@ -285,7 +285,7 @@ ConstructorExpressionNode `and` (test/tests/remove-duplicates.wipple:6:49-6:52)
   has bound(s) And Boolean Boolean Boolean (`instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:26:1-26:63))
   has type Boolean {Boolean} -> Boolean
   is an expression
-  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:24:1-25:74)
+  resolved to 1 definition(s): `And` (library/src/foundation/logic.wipple:24:1-25:74)
 BlockExpressionNode `do {⋯` (test/tests/remove-duplicates.wipple:6:54-9:4)
   at test/tests/remove-duplicates.wipple:6:54-9:4
   captures `seen` (test/tests/remove-duplicates.wipple:5:3-5:7), `item` (test/tests/remove-duplicates.wipple:6:11-6:15)

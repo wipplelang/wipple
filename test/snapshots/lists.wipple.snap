@@ -91,7 +91,7 @@ VariableExpressionNode `unreachable` (test/tests/lists.wipple:7:30-7:41)
   at test/tests/lists.wipple:7:30-7:41
   has type List Number
   is an expression
-  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:31:1-31:21)
+  resolved to 1 definition(s): `unreachable` (library/src/foundation/language.wipple:31:1-31:21)
 VariableExpressionNode `last` (test/tests/lists.wipple:7:44-7:48)
   at test/tests/lists.wipple:7:44-7:48
   has type (List Number) -> Maybe Number
@@ -133,7 +133,7 @@ VariableExpressionNode `unreachable` (test/tests/lists.wipple:8:27-8:38)
   at test/tests/lists.wipple:8:27-8:38
   has type List Number
   is an expression
-  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:31:1-31:21)
+  resolved to 1 definition(s): `unreachable` (library/src/foundation/language.wipple:31:1-31:21)
 VariableExpressionNode `first` (test/tests/lists.wipple:8:41-8:46)
   at test/tests/lists.wipple:8:41-8:46
   has type (List Number) -> Maybe Number
@@ -200,7 +200,7 @@ ConstructorExpressionNode `or` (test/tests/lists.wipple:7:27-7:29)
   has bound(s) Or (Maybe (List Number)) (List Number) (List Number) (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:31:1-34:2))
   has type (Maybe (List Number)) {List Number} -> List Number
   is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:28:1-29:73)
+  resolved to 1 definition(s): `Or` (library/src/foundation/logic.wipple:28:1-29:73)
 BlockExpressionNode `unreachable` (test/tests/lists.wipple:7:30-7:41)
   at test/tests/lists.wipple:7:30-7:41
   has type {List Number}
@@ -223,7 +223,7 @@ ConstructorExpressionNode `or` (test/tests/lists.wipple:8:24-8:26)
   has bound(s) Or (Maybe (List Number)) (List Number) (List Number) (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:31:1-34:2))
   has type (Maybe (List Number)) {List Number} -> List Number
   is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {⋯} -> output)` (library/src/foundation/logic.wipple:28:1-29:73)
+  resolved to 1 definition(s): `Or` (library/src/foundation/logic.wipple:28:1-29:73)
 BlockExpressionNode `unreachable` (test/tests/lists.wipple:8:27-8:38)
   at test/tests/lists.wipple:8:27-8:38
   has type {List Number}

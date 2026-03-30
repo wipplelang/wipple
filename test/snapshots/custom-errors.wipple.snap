@@ -44,7 +44,7 @@ FunctionTypeNode `left right -> sum` (test/tests/custom-errors.wipple:6:40-6:57)
   at test/tests/custom-errors.wipple:6:40-6:57
   has type left right -> sum
   is a type
-TraitDefinitionNode `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+TraitDefinitionNode `Add` (test/tests/custom-errors.wipple:6:1-6:58)
   at test/tests/custom-errors.wipple:6:1-6:58
   has definition constraints
   has instances
@@ -77,7 +77,7 @@ InstanceDefinitionNode `instance (Add Number Number Number)` (test/tests/custom-
   has definition constraints
   has type Number Number -> Number
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+  resolved to 1 definition(s): `Add` (test/tests/custom-errors.wipple:6:1-6:58)
 NamedTypeNode `String` (test/tests/custom-errors.wipple:8:15-8:21)
   at test/tests/custom-errors.wipple:8:15-8:21
   has type String
@@ -104,7 +104,7 @@ InstanceDefinitionNode `instance (Add String String String)` (test/tests/custom-
   has definition constraints
   has type String String -> String
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+  resolved to 1 definition(s): `Add` (test/tests/custom-errors.wipple:6:1-6:58)
 UnitTypeNode `()` (test/tests/custom-errors.wipple:11:23-11:25)
   at test/tests/custom-errors.wipple:11:23-11:25
   has type ()
@@ -127,7 +127,7 @@ InstanceDefinitionNode `instance (Add () right sum)` (test/tests/custom-errors.w
   has type () right -> sum
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+  resolved to 1 definition(s): `Add` (test/tests/custom-errors.wipple:6:1-6:58)
 TypeParameterNode `left` (test/tests/custom-errors.wipple:14:33-14:37)
   at test/tests/custom-errors.wipple:14:33-14:37
   has type left
@@ -151,7 +151,7 @@ InstanceDefinitionNode `instance (Add left right sum)` (test/tests/custom-errors
   has type left right -> sum
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+  resolved to 1 definition(s): `Add` (test/tests/custom-errors.wipple:6:1-6:58)
 WildcardPatternNode `_` (test/tests/custom-errors.wipple:16:1-16:2)
   at test/tests/custom-errors.wipple:16:1-16:2
   has type Number
@@ -221,7 +221,7 @@ ConstructorExpressionNode `+` (test/tests/custom-errors.wipple:16:7-16:8)
   has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (test/tests/custom-errors.wipple:7:1-7:40))
   has type Number Number -> Number
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+  resolved to 1 definition(s): `Add` (test/tests/custom-errors.wipple:6:1-6:58)
 CallExpressionNode `1 + 2` (test/tests/custom-errors.wipple:16:5-16:10)
   at test/tests/custom-errors.wipple:16:5-16:10
   has type Number
@@ -231,7 +231,7 @@ ConstructorExpressionNode `+` (test/tests/custom-errors.wipple:17:9-17:10)
   has bound(s) Add String String String (`instance (Add String String String)` (test/tests/custom-errors.wipple:8:1-8:40))
   has type String String -> String
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+  resolved to 1 definition(s): `Add` (test/tests/custom-errors.wipple:6:1-6:58)
 CallExpressionNode `"a" + "b"` (test/tests/custom-errors.wipple:17:5-17:14)
   at test/tests/custom-errors.wipple:17:5-17:14
   has type String
@@ -241,7 +241,7 @@ ConstructorExpressionNode `+` (test/tests/custom-errors.wipple:18:7-18:8)
   has bound(s) Add Number String _ (`instance (Add left right sum)` (test/tests/custom-errors.wipple:13:1-14:48))
   has type Number String -> _
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+  resolved to 1 definition(s): `Add` (test/tests/custom-errors.wipple:6:1-6:58)
 CallExpressionNode `1 + "a"` (test/tests/custom-errors.wipple:18:5-18:12)
   at test/tests/custom-errors.wipple:18:5-18:12
   is an expression
@@ -251,7 +251,7 @@ ConstructorExpressionNode `+` (test/tests/custom-errors.wipple:19:8-19:9)
   has bound(s) Add () Number _ (`instance (Add () right sum)` (test/tests/custom-errors.wipple:10:1-11:36))
   has type () Number -> _
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (test/tests/custom-errors.wipple:6:1-6:58)
+  resolved to 1 definition(s): `Add` (test/tests/custom-errors.wipple:6:1-6:58)
 CallExpressionNode `() + 2` (test/tests/custom-errors.wipple:19:5-19:11)
   at test/tests/custom-errors.wipple:19:5-19:11
   is an expression

@@ -13,7 +13,7 @@ FunctionTypeNode `value -> value` (test/tests/generic-call-within-generic-consta
   at test/tests/generic-call-within-generic-constant.wipple:3:6-3:20
   has type value -> value
   is a type
-ConstantDefinitionNode `f :: value -> value` (test/tests/generic-call-within-generic-constant.wipple:1:1-3:20)
+ConstantDefinitionNode `f` (test/tests/generic-call-within-generic-constant.wipple:1:1-3:20)
   at test/tests/generic-call-within-generic-constant.wipple:1:1-3:20
   has definition constraints
   has type parameters
@@ -49,7 +49,7 @@ FunctionTypeNode `value -> value` (test/tests/generic-call-within-generic-consta
   at test/tests/generic-call-within-generic-constant.wipple:6:6-6:20
   has type value -> value
   is a type
-ConstantDefinitionNode `g :: value -> value` (test/tests/generic-call-within-generic-constant.wipple:6:1-6:20)
+ConstantDefinitionNode `g` (test/tests/generic-call-within-generic-constant.wipple:6:1-6:20)
   at test/tests/generic-call-within-generic-constant.wipple:6:1-6:20
   has definition constraints
   has type parameters
@@ -65,7 +65,7 @@ VariableExpressionNode `f` (test/tests/generic-call-within-generic-constant.wipp
   at test/tests/generic-call-within-generic-constant.wipple:7:10-7:11
   has type value -> value
   is an expression
-  resolved to 1 definition(s): `f :: value -> value` (test/tests/generic-call-within-generic-constant.wipple:1:1-3:20)
+  resolved to 1 definition(s): `f` (test/tests/generic-call-within-generic-constant.wipple:1:1-3:20)
 VariableExpressionNode `x` (test/tests/generic-call-within-generic-constant.wipple:7:12-7:13)
   at test/tests/generic-call-within-generic-constant.wipple:7:12-7:13
   has type value
@@ -88,7 +88,7 @@ VariableExpressionNode `g` (test/tests/generic-call-within-generic-constant.wipp
   at test/tests/generic-call-within-generic-constant.wipple:9:5-9:6
   has type Number -> Number
   is an expression
-  resolved to 1 definition(s): `g :: value -> value` (test/tests/generic-call-within-generic-constant.wipple:6:1-6:20)
+  resolved to 1 definition(s): `g` (test/tests/generic-call-within-generic-constant.wipple:6:1-6:20)
 NumberExpressionNode `42` (test/tests/generic-call-within-generic-constant.wipple:9:7-9:9)
   at test/tests/generic-call-within-generic-constant.wipple:9:7-9:9
   has type Number

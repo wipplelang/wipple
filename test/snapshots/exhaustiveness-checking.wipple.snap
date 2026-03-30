@@ -1,5 +1,5 @@
 Facts:
-TypeDefinitionNode `Grade : type {⋯}` (test/tests/exhaustiveness-checking.wipple:1:1-9:2)
+TypeDefinitionNode `Grade` (test/tests/exhaustiveness-checking.wipple:1:1-9:2)
   at test/tests/exhaustiveness-checking.wipple:1:1-9:2
   has definition constraints
   has type Grade
@@ -8,7 +8,7 @@ NamedTypeNode `Grade` (test/tests/exhaustiveness-checking.wipple:11:16-11:21)
   at test/tests/exhaustiveness-checking.wipple:11:16-11:21
   has type Grade
   is a type
-  resolved to 1 definition(s): `Grade : type {⋯}` (test/tests/exhaustiveness-checking.wipple:1:1-9:2)
+  resolved to 1 definition(s): `Grade` (test/tests/exhaustiveness-checking.wipple:1:1-9:2)
 NamedTypeNode `String` (test/tests/exhaustiveness-checking.wipple:11:25-11:31)
   at test/tests/exhaustiveness-checking.wipple:11:25-11:31
   has type String
@@ -18,7 +18,7 @@ FunctionTypeNode `Grade -> String` (test/tests/exhaustiveness-checking.wipple:11
   at test/tests/exhaustiveness-checking.wipple:11:16-11:31
   has type Grade -> String
   is a type
-ConstantDefinitionNode `report-card :: Grade -> String` (test/tests/exhaustiveness-checking.wipple:11:1-11:31)
+ConstantDefinitionNode `report-card` (test/tests/exhaustiveness-checking.wipple:11:1-11:31)
   at test/tests/exhaustiveness-checking.wipple:11:1-11:31
   has definition constraints
   has type Grade -> String

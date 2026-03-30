@@ -8,7 +8,7 @@ BlockTypeNode `{⋯}` (test/tests/comment-at-end-of-block.wipple:3:10-3:18)
   at test/tests/comment-at-end-of-block.wipple:3:10-3:18
   has type {Number}
   is a type
-ConstantDefinitionNode `block :: {⋯}` (test/tests/comment-at-end-of-block.wipple:1:1-3:18)
+ConstantDefinitionNode `block` (test/tests/comment-at-end-of-block.wipple:1:1-3:18)
   at test/tests/comment-at-end-of-block.wipple:1:1-3:18
   has definition constraints
   has type {Number}
@@ -34,7 +34,7 @@ VariableExpressionNode `block` (test/tests/comment-at-end-of-block.wipple:9:10-9
   at test/tests/comment-at-end-of-block.wipple:9:10-9:15
   has type {Number}
   is an expression
-  resolved to 1 definition(s): `block :: {⋯}` (test/tests/comment-at-end-of-block.wipple:1:1-3:18)
+  resolved to 1 definition(s): `block` (test/tests/comment-at-end-of-block.wipple:1:1-3:18)
 DoExpressionNode `do block` (test/tests/comment-at-end-of-block.wipple:9:7-9:15)
   at test/tests/comment-at-end-of-block.wipple:9:7-9:15
   has type Number

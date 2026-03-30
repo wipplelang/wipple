@@ -18,7 +18,7 @@ FunctionTypeNode `value -> String` (test/tests/bound.wipple:3:21-3:36)
   at test/tests/bound.wipple:3:21-3:36
   has type value -> String
   is a type
-TraitDefinitionNode `T : value => trait (value -> String)` (test/tests/bound.wipple:1:1-3:37)
+TraitDefinitionNode `T` (test/tests/bound.wipple:1:1-3:37)
   at test/tests/bound.wipple:1:1-3:37
   has definition constraints
   has instances
@@ -48,7 +48,7 @@ BoundConstraintNode `T value` (test/tests/bound.wipple:5:30-5:39)
   at test/tests/bound.wipple:5:30-5:39
   has bound(s) T value (`T value` (test/tests/bound.wipple:5:30-5:39))
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> String)` (test/tests/bound.wipple:1:1-3:37)
+  resolved to 1 definition(s): `T` (test/tests/bound.wipple:1:1-3:37)
 ConstantDefinitionNode `foo` (test/tests/bound.wipple:5:1-5:39)
   at test/tests/bound.wipple:5:1-5:39
   has definition constraints
@@ -66,7 +66,7 @@ ConstructorExpressionNode `T` (test/tests/bound.wipple:6:12-6:13)
   has bound(s) T value (`T value` (test/tests/bound.wipple:5:30-5:39))
   has type value -> String
   is an expression
-  resolved to 1 definition(s): `T : value => trait (value -> String)` (test/tests/bound.wipple:1:1-3:37)
+  resolved to 1 definition(s): `T` (test/tests/bound.wipple:1:1-3:37)
 VariableExpressionNode `x` (test/tests/bound.wipple:6:14-6:15)
   at test/tests/bound.wipple:6:14-6:15
   has type value
@@ -111,7 +111,7 @@ InstanceDefinitionNode `instance (T A)` (test/tests/bound.wipple:9:1-9:38)
   has definition constraints
   has type A -> String
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> String)` (test/tests/bound.wipple:1:1-3:37)
+  resolved to 1 definition(s): `T` (test/tests/bound.wipple:1:1-3:37)
 VariableExpressionNode `show` (test/tests/bound.wipple:11:1-11:5)
   at test/tests/bound.wipple:11:1-11:5
   has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))

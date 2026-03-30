@@ -13,7 +13,7 @@ FunctionTypeNode `a -> b` (test/tests/transmute.wipple:3:14-3:20)
   at test/tests/transmute.wipple:3:14-3:20
   has type a -> a
   is a type
-ConstantDefinitionNode `transmute :: a -> b` (test/tests/transmute.wipple:1:1-3:20)
+ConstantDefinitionNode `transmute` (test/tests/transmute.wipple:1:1-3:20)
   at test/tests/transmute.wipple:1:1-3:20
   has definition constraints
   has type a -> a

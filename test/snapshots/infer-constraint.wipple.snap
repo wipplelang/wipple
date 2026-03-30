@@ -43,7 +43,7 @@ FunctionTypeNode `left right -> sum` (test/tests/infer-constraint.wipple:6:32-6:
   at test/tests/infer-constraint.wipple:6:32-6:49
   has type left right -> sum
   is a type
-TraitDefinitionNode `Add : left right sum => trait (left right -> sum)` (test/tests/infer-constraint.wipple:6:1-6:50)
+TraitDefinitionNode `Add` (test/tests/infer-constraint.wipple:6:1-6:50)
   at test/tests/infer-constraint.wipple:6:1-6:50
   has definition constraints
   has instances
@@ -76,7 +76,7 @@ InstanceDefinitionNode `instance (Add Number Number Number)` (test/tests/infer-c
   has definition constraints
   has type Number Number -> Number
   is a definition
-  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)` (test/tests/infer-constraint.wipple:6:1-6:50)
+  resolved to 1 definition(s): `Add` (test/tests/infer-constraint.wipple:6:1-6:50)
 NamedTypeNode `String` (test/tests/infer-constraint.wipple:8:15-8:21)
   at test/tests/infer-constraint.wipple:8:15-8:21
   has type String
@@ -103,7 +103,7 @@ InstanceDefinitionNode `instance (Add String String String)` (test/tests/infer-c
   has definition constraints
   has type String String -> String
   is a definition
-  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)` (test/tests/infer-constraint.wipple:6:1-6:50)
+  resolved to 1 definition(s): `Add` (test/tests/infer-constraint.wipple:6:1-6:50)
 TypeParameterNode `left` (test/tests/infer-constraint.wipple:10:8-10:12)
   at test/tests/infer-constraint.wipple:10:8-10:12
   has type left
@@ -142,7 +142,7 @@ BoundConstraintNode `Add left right sum` (test/tests/infer-constraint.wipple:10:
   at test/tests/infer-constraint.wipple:10:32-10:52
   has bound(s) Add left right sum (`Add left right sum` (test/tests/infer-constraint.wipple:10:32-10:52))
   is a constraint
-  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)` (test/tests/infer-constraint.wipple:6:1-6:50)
+  resolved to 1 definition(s): `Add` (test/tests/infer-constraint.wipple:6:1-6:50)
 ConstantDefinitionNode `add` (test/tests/infer-constraint.wipple:10:1-10:52)
   at test/tests/infer-constraint.wipple:10:1-10:52
   has definition constraints
@@ -182,7 +182,7 @@ NamedTypeNode `String` (test/tests/infer-constraint.wipple:13:17-13:23)
   has type String
   is a type
   resolved to 1 definition(s): `String` (test/tests/infer-constraint.wipple:4:1-4:26)
-AnnotateExpressionNode `add 1 2 :: String` (test/tests/infer-constraint.wipple:13:6-13:23)
+AnnotateExpressionNode `add 1 2` (test/tests/infer-constraint.wipple:13:6-13:23)
   at test/tests/infer-constraint.wipple:13:6-13:23
   has type String
   is an expression
@@ -221,7 +221,7 @@ FunctionTypeNode `left right -> sum` (test/tests/infer-constraint.wipple:15:46-1
   at test/tests/infer-constraint.wipple:15:46-15:63
   has type left right -> sum
   is a type
-TraitDefinitionNode `Add-Infer : left right (infer sum) => trait (left right -> sum)` (test/tests/infer-constraint.wipple:15:1-15:64)
+TraitDefinitionNode `Add-Infer` (test/tests/infer-constraint.wipple:15:1-15:64)
   at test/tests/infer-constraint.wipple:15:1-15:64
   has definition constraints
   has instances
@@ -254,7 +254,7 @@ InstanceDefinitionNode `instance (Add-Infer Number Number Number)` (test/tests/i
   has definition constraints
   has type Number Number -> Number
   is a definition
-  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)` (test/tests/infer-constraint.wipple:15:1-15:64)
+  resolved to 1 definition(s): `Add-Infer` (test/tests/infer-constraint.wipple:15:1-15:64)
 NamedTypeNode `String` (test/tests/infer-constraint.wipple:17:21-17:27)
   at test/tests/infer-constraint.wipple:17:21-17:27
   has type String
@@ -281,7 +281,7 @@ InstanceDefinitionNode `instance (Add-Infer String String String)` (test/tests/i
   has definition constraints
   has type String String -> String
   is a definition
-  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)` (test/tests/infer-constraint.wipple:15:1-15:64)
+  resolved to 1 definition(s): `Add-Infer` (test/tests/infer-constraint.wipple:15:1-15:64)
 TypeParameterNode `left` (test/tests/infer-constraint.wipple:19:14-19:18)
   at test/tests/infer-constraint.wipple:19:14-19:18
   has type left
@@ -320,7 +320,7 @@ BoundConstraintNode `Add-Infer left right sum` (test/tests/infer-constraint.wipp
   at test/tests/infer-constraint.wipple:19:38-19:64
   has bound(s) Add-Infer left right sum (`Add-Infer left right sum` (test/tests/infer-constraint.wipple:19:38-19:64))
   is a constraint
-  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)` (test/tests/infer-constraint.wipple:15:1-15:64)
+  resolved to 1 definition(s): `Add-Infer` (test/tests/infer-constraint.wipple:15:1-15:64)
 ConstantDefinitionNode `add-infer` (test/tests/infer-constraint.wipple:19:1-19:64)
   at test/tests/infer-constraint.wipple:19:1-19:64
   has definition constraints
@@ -360,7 +360,7 @@ NamedTypeNode `String` (test/tests/infer-constraint.wipple:22:28-22:34)
   has type Number or String
   is a type
   resolved to 1 definition(s): `String` (test/tests/infer-constraint.wipple:4:1-4:26)
-AnnotateExpressionNode `add-infer 1 2 :: String` (test/tests/infer-constraint.wipple:22:11-22:34)
+AnnotateExpressionNode `add-infer 1 2` (test/tests/infer-constraint.wipple:22:11-22:34)
   at test/tests/infer-constraint.wipple:22:11-22:34
   has type Number or String
   is an expression
@@ -372,6 +372,6 @@ Feedback:
 
   `output` (test/tests/infer-constraint.wipple:22:1-22:7) is a `Number` (test/tests/infer-constraint.wipple:16:35-16:41) or a `String` (test/tests/infer-constraint.wipple:22:28-22:34), but it can only be one of these.
 
-  `output` (test/tests/infer-constraint.wipple:22:1-22:7) must be the same type as `add-infer 1 2` (test/tests/infer-constraint.wipple:22:11-22:24), `add-infer 1 2 :: String` (test/tests/infer-constraint.wipple:22:11-22:34), `String` (test/tests/infer-constraint.wipple:22:28-22:34), and 6 others; double-check these.
+  `output` (test/tests/infer-constraint.wipple:22:1-22:7) must be the same type as `add-infer 1 2` (test/tests/infer-constraint.wipple:22:11-22:24), `add-infer 1 2` (test/tests/infer-constraint.wipple:22:11-22:34), `String` (test/tests/infer-constraint.wipple:22:28-22:34), and 6 others; double-check these.
 
   -  `sum` (test/tests/infer-constraint.wipple:19:28-19:31) must have the same type everywhere in this use of `add-infer` (test/tests/infer-constraint.wipple:19:1-19:64).

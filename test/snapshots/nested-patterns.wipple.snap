@@ -1,5 +1,5 @@
 Facts:
-TypeDefinitionNode `E : type {⋯}` (test/tests/nested-patterns.wipple:1:1-6:2)
+TypeDefinitionNode `E` (test/tests/nested-patterns.wipple:1:1-6:2)
   at test/tests/nested-patterns.wipple:1:1-6:2
   has definition constraints
   has type E

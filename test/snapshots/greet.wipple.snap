@@ -18,7 +18,7 @@ FunctionTypeNode `value -> String` (test/tests/greet.wipple:4:25-4:40)
   at test/tests/greet.wipple:4:25-4:40
   has type value -> String
   is a type
-TraitDefinitionNode `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
+TraitDefinitionNode `Greet` (test/tests/greet.wipple:1:1-4:41)
   at test/tests/greet.wipple:1:1-4:41
   has definition constraints
   has instances
@@ -48,7 +48,7 @@ BoundConstraintNode `Greet value` (test/tests/greet.wipple:7:32-7:45)
   at test/tests/greet.wipple:7:32-7:45
   has bound(s) Greet value (`Greet value` (test/tests/greet.wipple:7:32-7:45))
   is a constraint
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
+  resolved to 1 definition(s): `Greet` (test/tests/greet.wipple:1:1-4:41)
 ConstantDefinitionNode `greet` (test/tests/greet.wipple:6:1-7:45)
   at test/tests/greet.wipple:6:1-7:45
   has definition constraints
@@ -66,7 +66,7 @@ ConstructorExpressionNode `Greet` (test/tests/greet.wipple:8:27-8:32)
   has bound(s) Greet value (`Greet value` (test/tests/greet.wipple:7:32-7:45))
   has type value -> String
   is an expression
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
+  resolved to 1 definition(s): `Greet` (test/tests/greet.wipple:1:1-4:41)
 VariableExpressionNode `x` (test/tests/greet.wipple:8:33-8:34)
   at test/tests/greet.wipple:8:33-8:34
   has type value
@@ -90,7 +90,7 @@ NamedTypeNode `String` (test/tests/greet.wipple:10:24-10:30)
   has type String
   is a type
   resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
-TypeDefinitionNode `Person : type {⋯}` (test/tests/greet.wipple:10:1-10:31)
+TypeDefinitionNode `Person` (test/tests/greet.wipple:10:1-10:31)
   at test/tests/greet.wipple:10:1-10:31
   has definition constraints
   has type Person
@@ -99,7 +99,7 @@ NamedTypeNode `Person` (test/tests/greet.wipple:13:17-13:23)
   at test/tests/greet.wipple:13:17-13:23
   has type Person
   is a type
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/greet.wipple:10:1-10:31)
+  resolved to 1 definition(s): `Person` (test/tests/greet.wipple:10:1-10:31)
 BoundConstraintNode `Greet Person` (test/tests/greet.wipple:13:10-13:24)
   at test/tests/greet.wipple:13:10-13:24
 VariablePatternNode `name` (test/tests/greet.wipple:13:43-13:47)
@@ -110,7 +110,7 @@ StructurePatternNode `Person {name` (test/tests/greet.wipple:13:28-13:48)
   at test/tests/greet.wipple:13:28-13:48
   has type Person
   is a pattern
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/greet.wipple:10:1-10:31)
+  resolved to 1 definition(s): `Person` (test/tests/greet.wipple:10:1-10:31)
 VariableExpressionNode `name` (test/tests/greet.wipple:13:53-13:57)
   at test/tests/greet.wipple:13:53-13:57
   has type String
@@ -126,7 +126,7 @@ InstanceDefinitionNode `instance (Greet Person)` (test/tests/greet.wipple:12:1-1
   has definition constraints
   has type Person -> String
   is a definition
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
+  resolved to 1 definition(s): `Greet` (test/tests/greet.wipple:1:1-4:41)
 TypeDefinitionNode `Earth` (test/tests/greet.wipple:15:1-15:13)
   at test/tests/greet.wipple:15:1-15:13
   has definition constraints
@@ -157,7 +157,7 @@ InstanceDefinitionNode `instance (Greet Earth)` (test/tests/greet.wipple:17:1-18
   has definition constraints
   has type Earth -> String
   is a definition
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (test/tests/greet.wipple:1:1-4:41)
+  resolved to 1 definition(s): `Greet` (test/tests/greet.wipple:1:1-4:41)
 VariableExpressionNode `show` (test/tests/greet.wipple:20:1-20:5)
   at test/tests/greet.wipple:20:1-20:5
   has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
@@ -178,7 +178,7 @@ StructureExpressionNode `Person {name` (test/tests/greet.wipple:20:14-20:35)
   at test/tests/greet.wipple:20:14-20:35
   has type Person
   is an expression
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/greet.wipple:10:1-10:31)
+  resolved to 1 definition(s): `Person` (test/tests/greet.wipple:10:1-10:31)
 CallExpressionNode `greet (Person {name` (test/tests/greet.wipple:20:7-20:36)
   at test/tests/greet.wipple:20:7-20:36
   has type String

@@ -27,8 +27,8 @@ NamedTypeNode `Set _` (test/tests/set.wipple:3:46-3:51)
   at test/tests/set.wipple:3:46-3:51
   has type Set String
   is a type
-  resolved to 1 definition(s): `Set : element => type {⋯}` (library/src/foundation/dictionary.wipple:134:1-135:60)
-AnnotateExpressionNode `("Basketball", "Soccer", "Golf") :: Set _` (test/tests/set.wipple:3:10-3:51)
+  resolved to 1 definition(s): `Set` (library/src/foundation/dictionary.wipple:134:1-135:60)
+AnnotateExpressionNode `("Basketball", "Soccer", "Golf")` (test/tests/set.wipple:3:10-3:51)
   at test/tests/set.wipple:3:10-3:51
   has type Set String
   is an expression

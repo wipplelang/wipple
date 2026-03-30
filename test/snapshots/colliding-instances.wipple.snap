@@ -8,7 +8,7 @@ UnitTypeNode `()` (test/tests/colliding-instances.wipple:3:20-3:22)
   at test/tests/colliding-instances.wipple:3:20-3:22
   has type ()
   is a type
-TraitDefinitionNode `T : value => trait ()` (test/tests/colliding-instances.wipple:1:1-3:22)
+TraitDefinitionNode `T` (test/tests/colliding-instances.wipple:1:1-3:22)
   at test/tests/colliding-instances.wipple:1:1-3:22
   has 4 overlapping instances
   has definition constraints
@@ -37,7 +37,7 @@ InstanceDefinitionNode `instance (T X)` (test/tests/colliding-instances.wipple:6
   has definition constraints
   has type ()
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()` (test/tests/colliding-instances.wipple:1:1-3:22)
+  resolved to 1 definition(s): `T` (test/tests/colliding-instances.wipple:1:1-3:22)
 NamedTypeNode `X` (test/tests/colliding-instances.wipple:7:13-7:14)
   at test/tests/colliding-instances.wipple:7:13-7:14
   has type X
@@ -54,7 +54,7 @@ InstanceDefinitionNode `instance (T X)` (test/tests/colliding-instances.wipple:7
   has definition constraints
   has type ()
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()` (test/tests/colliding-instances.wipple:1:1-3:22)
+  resolved to 1 definition(s): `T` (test/tests/colliding-instances.wipple:1:1-3:22)
 TypeParameterNode `value` (test/tests/colliding-instances.wipple:9:13-9:18)
   at test/tests/colliding-instances.wipple:9:13-9:18
   has type value
@@ -72,7 +72,7 @@ InstanceDefinitionNode `instance (T value)` (test/tests/colliding-instances.wipp
   has type ()
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()` (test/tests/colliding-instances.wipple:1:1-3:22)
+  resolved to 1 definition(s): `T` (test/tests/colliding-instances.wipple:1:1-3:22)
 TypeParameterNode `value` (test/tests/colliding-instances.wipple:11:5-11:10)
   at test/tests/colliding-instances.wipple:11:5-11:10
   has type value
@@ -82,7 +82,7 @@ UnitTypeNode `()` (test/tests/colliding-instances.wipple:11:20-11:22)
   at test/tests/colliding-instances.wipple:11:20-11:22
   has type ()
   is a type
-TraitDefinitionNode `U : value => trait ()` (test/tests/colliding-instances.wipple:11:1-11:22)
+TraitDefinitionNode `U` (test/tests/colliding-instances.wipple:11:1-11:22)
   at test/tests/colliding-instances.wipple:11:1-11:22
   has definition constraints
   has type ()
@@ -104,7 +104,7 @@ BoundConstraintNode `U a` (test/tests/colliding-instances.wipple:12:22-12:27)
   at test/tests/colliding-instances.wipple:12:22-12:27
   has bound(s) U a (`U a` (test/tests/colliding-instances.wipple:12:22-12:27))
   is a constraint
-  resolved to 1 definition(s): `U : value => trait ()` (test/tests/colliding-instances.wipple:11:1-11:22)
+  resolved to 1 definition(s): `U` (test/tests/colliding-instances.wipple:11:1-11:22)
 UnitExpressionNode `()` (test/tests/colliding-instances.wipple:12:30-12:32)
   at test/tests/colliding-instances.wipple:12:30-12:32
   has type ()
@@ -115,13 +115,13 @@ InstanceDefinitionNode `instance (T a)` (test/tests/colliding-instances.wipple:1
   has type ()
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()` (test/tests/colliding-instances.wipple:1:1-3:22)
+  resolved to 1 definition(s): `T` (test/tests/colliding-instances.wipple:1:1-3:22)
 
 
 Feedback:
 
-`T : value => trait ()` (test/tests/colliding-instances.wipple:1:1-3:22) (conflicting-instances):
+`T` (test/tests/colliding-instances.wipple:1:1-3:22) (conflicting-instances):
 
-  `T : value => trait ()` (test/tests/colliding-instances.wipple:1:1-3:22) has multiple overlapping instances: `instance (T X)` (test/tests/colliding-instances.wipple:6:1-6:20), `instance (T X)` (test/tests/colliding-instances.wipple:7:1-7:20), `instance (T value)` (test/tests/colliding-instances.wipple:9:1-9:24), and 1 other.
+  `T` (test/tests/colliding-instances.wipple:1:1-3:22) has multiple overlapping instances: `instance (T X)` (test/tests/colliding-instances.wipple:6:1-6:20), `instance (T X)` (test/tests/colliding-instances.wipple:7:1-7:20), `instance (T value)` (test/tests/colliding-instances.wipple:9:1-9:24), and 1 other.
 
   Only one of these instances can be defined at a time. Try making your instance more specific.

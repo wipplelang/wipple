@@ -7,7 +7,7 @@ VariableExpressionNode `replicate` (test/tests/replicate.wipple:3:9-3:18)
   at test/tests/replicate.wipple:3:9-3:18
   has type Number -> String -> Sequence String
   is an expression
-  resolved to 1 definition(s): `replicate :: Number -> element -> Sequence element` (library/src/foundation/sequence.wipple:25:1-27:51)
+  resolved to 1 definition(s): `replicate` (library/src/foundation/sequence.wipple:25:1-27:51)
 NumberExpressionNode `3` (test/tests/replicate.wipple:3:19-3:20)
   at test/tests/replicate.wipple:3:19-3:20
   has type Number

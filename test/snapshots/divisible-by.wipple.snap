@@ -7,7 +7,7 @@ VariableExpressionNode `divisible-by?` (test/tests/divisible-by.wipple:3:9-3:22)
   at test/tests/divisible-by.wipple:3:9-3:22
   has type Number -> Number -> Boolean
   is an expression
-  resolved to 1 definition(s): `divisible-by? :: Number -> Number -> Boolean` (library/src/foundation/math.wipple:131:1-132:45)
+  resolved to 1 definition(s): `divisible-by?` (library/src/foundation/math.wipple:131:1-132:45)
 NumberExpressionNode `2` (test/tests/divisible-by.wipple:3:23-3:24)
   at test/tests/divisible-by.wipple:3:23-3:24
   has type Number

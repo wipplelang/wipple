@@ -17,7 +17,7 @@ FunctionTypeNode `value -> ()` (test/tests/bounds-are-lazy.wipple:3:21-3:32)
   at test/tests/bounds-are-lazy.wipple:3:21-3:32
   has type value -> ()
   is a type
-TraitDefinitionNode `T : value => trait (value -> ())` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
+TraitDefinitionNode `T` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
   at test/tests/bounds-are-lazy.wipple:1:1-3:33
   has definition constraints
   has instances
@@ -72,7 +72,7 @@ InstanceDefinitionNode `instance (T Number)` (test/tests/bounds-are-lazy.wipple:
   has definition constraints
   has type Number -> ()
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
+  resolved to 1 definition(s): `T` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
 TypeParameterNode `value` (test/tests/bounds-are-lazy.wipple:10:6-10:11)
   at test/tests/bounds-are-lazy.wipple:10:6-10:11
   has type value
@@ -95,7 +95,7 @@ BoundConstraintNode `T value` (test/tests/bounds-are-lazy.wipple:10:24-10:33)
   at test/tests/bounds-are-lazy.wipple:10:24-10:33
   has bound(s) T value (`T value` (test/tests/bounds-are-lazy.wipple:10:24-10:33))
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
+  resolved to 1 definition(s): `T` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
 ConstantDefinitionNode `f` (test/tests/bounds-are-lazy.wipple:10:1-10:33)
   at test/tests/bounds-are-lazy.wipple:10:1-10:33
   has definition constraints
@@ -128,7 +128,7 @@ ConstructorExpressionNode `T` (test/tests/bounds-are-lazy.wipple:13:3-13:4)
   has bound(s) T value (`T value` (test/tests/bounds-are-lazy.wipple:10:24-10:33))
   has type value -> ()
   is an expression
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
+  resolved to 1 definition(s): `T` (test/tests/bounds-are-lazy.wipple:1:1-3:33)
 VariableExpressionNode `value` (test/tests/bounds-are-lazy.wipple:13:5-13:10)
   at test/tests/bounds-are-lazy.wipple:13:5-13:10
   has type value

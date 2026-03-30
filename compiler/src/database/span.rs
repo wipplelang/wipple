@@ -106,15 +106,8 @@ impl Span {
         // Collapse braces
         let source = BRACES_REGEX.replace_all(&source, "{⋯}");
 
-        let source = if let Some(left_parentheses_index) = source.find('(')
-            && let Some(annotate_index) = source.find("::")
-            && annotate_index < left_parentheses_index
-        {
-            // Remove assignments and type annotations
-            ASSIGNMENT_REGEX.replace_all(&source, "")
-        } else {
-            source
-        };
+        // Remove assignments and type annotations
+        let source = ASSIGNMENT_REGEX.replace_all(&source, "");
 
         // Remove bounds
         let source = BOUNDS_REGEX.replace_all(&source, "");

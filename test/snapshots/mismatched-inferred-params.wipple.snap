@@ -30,7 +30,7 @@ NamedTypeNode `String` (test/tests/mismatched-inferred-params.wipple:3:30-3:36)
   has type Number or String
   is a type
   resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
-AnnotatePatternNode `x :: String` (test/tests/mismatched-inferred-params.wipple:3:25-3:36)
+AnnotatePatternNode `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:36)
   at test/tests/mismatched-inferred-params.wipple:3:25-3:36
   has type Number or String
   is a pattern
@@ -39,16 +39,16 @@ VariableExpressionNode `x` (test/tests/mismatched-inferred-params.wipple:3:41-3:
   has type Number or String
   is an expression
   resolved to 1 definition(s): `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26)
-FunctionExpressionNode `(x :: String) -> x` (test/tests/mismatched-inferred-params.wipple:3:24-3:42)
+FunctionExpressionNode `(x` (test/tests/mismatched-inferred-params.wipple:3:24-3:42)
   at test/tests/mismatched-inferred-params.wipple:3:24-3:42
   has type Number -> Number
   is an expression
   no captures
-CallExpressionNode `transform ((x :: String) -> x)` (test/tests/mismatched-inferred-params.wipple:3:13-3:43)
+CallExpressionNode `transform ((x` (test/tests/mismatched-inferred-params.wipple:3:13-3:43)
   at test/tests/mismatched-inferred-params.wipple:3:13-3:43
   has type (List Number) -> Sequence Number
   is an expression
-OperatorExpressionNode `1, 2, 3) . transform ((x :: String) -> x)` (test/tests/mismatched-inferred-params.wipple:3:2-3:43)
+OperatorExpressionNode `1, 2, 3) . transform ((x` (test/tests/mismatched-inferred-params.wipple:3:2-3:43)
   at test/tests/mismatched-inferred-params.wipple:3:2-3:43
   has type Sequence Number
   is an expression
@@ -64,7 +64,7 @@ Feedback:
 
   `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) is a `Number` (test/tests/mismatched-inferred-params.wipple:3:2-3:3) or a `String` (test/tests/mismatched-inferred-params.wipple:3:30-3:36), but it can only be one of these.
 
-  `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) must be the same type as `x :: String` (test/tests/mismatched-inferred-params.wipple:3:25-3:36), `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3), `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6), and 69 others; double-check these.
+  `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) must be the same type as `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:36), `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3), `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6), and 69 others; double-check these.
 
   -  `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3) is a Number.
 

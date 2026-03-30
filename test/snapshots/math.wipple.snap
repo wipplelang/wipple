@@ -92,7 +92,7 @@ ConstructorExpressionNode `+` (test/tests/math.wipple:3:9-3:10)
   has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:83))
   has type Number Number -> Number
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58)
+  resolved to 1 definition(s): `Add` (library/src/foundation/math.wipple:6:1-7:58)
 CallExpressionNode `1 + 2` (test/tests/math.wipple:3:7-3:12)
   at test/tests/math.wipple:3:7-3:12
   has type Number
@@ -102,7 +102,7 @@ ConstructorExpressionNode `-` (test/tests/math.wipple:4:9-4:10)
   has bound(s) Subtract Number Number Number (`instance (Subtract Number Number Number)` (library/src/foundation/math.wipple:23:1-23:88))
   has type Number Number -> Number
   is an expression
-  resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)` (library/src/foundation/math.wipple:21:1-22:77)
+  resolved to 1 definition(s): `Subtract` (library/src/foundation/math.wipple:21:1-22:77)
 CallExpressionNode `4 - 1` (test/tests/math.wipple:4:7-4:12)
   at test/tests/math.wipple:4:7-4:12
   has type Number
@@ -112,7 +112,7 @@ ConstructorExpressionNode `*` (test/tests/math.wipple:5:9-5:10)
   has bound(s) Multiply Number Number Number (`instance (Multiply Number Number Number)` (library/src/foundation/math.wipple:38:1-38:88))
   has type Number Number -> Number
   is an expression
-  resolved to 1 definition(s): `Multiply : left right (infer product) => trait (left right -> product)` (library/src/foundation/math.wipple:36:1-37:71)
+  resolved to 1 definition(s): `Multiply` (library/src/foundation/math.wipple:36:1-37:71)
 CallExpressionNode `3 * 5` (test/tests/math.wipple:5:7-5:12)
   at test/tests/math.wipple:5:7-5:12
   has type Number
@@ -122,7 +122,7 @@ ConstructorExpressionNode `/` (test/tests/math.wipple:6:10-6:11)
   has bound(s) Divide Number Number Number (`instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:86))
   has type Number Number -> Number
   is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:51:1-52:71)
+  resolved to 1 definition(s): `Divide` (library/src/foundation/math.wipple:51:1-52:71)
 CallExpressionNode `10 / 4` (test/tests/math.wipple:6:7-6:13)
   at test/tests/math.wipple:6:7-6:13
   has type Number

@@ -4,7 +4,7 @@ NamedTypeNode `String` (test/tests/destructuring.wipple:3:24-3:30)
   has type String
   is a type
   resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
-TypeDefinitionNode `Person : type {⋯}` (test/tests/destructuring.wipple:1:1-3:31)
+TypeDefinitionNode `Person` (test/tests/destructuring.wipple:1:1-3:31)
   at test/tests/destructuring.wipple:1:1-3:31
   has definition constraints
   has type Person
@@ -21,7 +21,7 @@ StructureExpressionNode `Person {name` (test/tests/destructuring.wipple:5:9-5:32
   at test/tests/destructuring.wipple:5:9-5:32
   has type Person
   is an expression
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/destructuring.wipple:1:1-3:31)
+  resolved to 1 definition(s): `Person` (test/tests/destructuring.wipple:1:1-3:31)
 VariablePatternNode `name` (test/tests/destructuring.wipple:6:16-6:20)
   at test/tests/destructuring.wipple:6:16-6:20
   has type String
@@ -30,7 +30,7 @@ StructurePatternNode `Person {name` (test/tests/destructuring.wipple:6:1-6:21)
   at test/tests/destructuring.wipple:6:1-6:21
   has type Person
   is a pattern
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/destructuring.wipple:1:1-3:31)
+  resolved to 1 definition(s): `Person` (test/tests/destructuring.wipple:1:1-3:31)
 VariableExpressionNode `alice` (test/tests/destructuring.wipple:6:24-6:29)
   at test/tests/destructuring.wipple:6:24-6:29
   has type Person
@@ -55,7 +55,7 @@ NamedTypeNode `Person` (test/tests/destructuring.wipple:9:13-9:19)
   at test/tests/destructuring.wipple:9:13-9:19
   has type Person
   is a type
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/destructuring.wipple:1:1-3:31)
+  resolved to 1 definition(s): `Person` (test/tests/destructuring.wipple:1:1-3:31)
 NamedTypeNode `String` (test/tests/destructuring.wipple:9:23-9:29)
   at test/tests/destructuring.wipple:9:23-9:29
   has type String
@@ -65,7 +65,7 @@ FunctionTypeNode `Person -> String` (test/tests/destructuring.wipple:9:13-9:29)
   at test/tests/destructuring.wipple:9:13-9:29
   has type Person -> String
   is a type
-ConstantDefinitionNode `get-name :: Person -> String` (test/tests/destructuring.wipple:9:1-9:29)
+ConstantDefinitionNode `get-name` (test/tests/destructuring.wipple:9:1-9:29)
   at test/tests/destructuring.wipple:9:1-9:29
   has definition constraints
   has type Person -> String
@@ -80,7 +80,7 @@ StructurePatternNode `Person {name` (test/tests/destructuring.wipple:10:13-10:33
   at test/tests/destructuring.wipple:10:13-10:33
   has type Person
   is a pattern
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/destructuring.wipple:1:1-3:31)
+  resolved to 1 definition(s): `Person` (test/tests/destructuring.wipple:1:1-3:31)
 VariableExpressionNode `name` (test/tests/destructuring.wipple:10:38-10:42)
   at test/tests/destructuring.wipple:10:38-10:42
   has type String
@@ -103,7 +103,7 @@ StructureExpressionNode `Person {name` (test/tests/destructuring.wipple:12:7-12:
   at test/tests/destructuring.wipple:12:7-12:28
   has type Person
   is an expression
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/destructuring.wipple:1:1-3:31)
+  resolved to 1 definition(s): `Person` (test/tests/destructuring.wipple:1:1-3:31)
 VariableExpressionNode `show` (test/tests/destructuring.wipple:13:1-13:5)
   at test/tests/destructuring.wipple:13:1-13:5
   has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
@@ -114,7 +114,7 @@ VariableExpressionNode `get-name` (test/tests/destructuring.wipple:13:7-13:15)
   at test/tests/destructuring.wipple:13:7-13:15
   has type Person -> String
   is an expression
-  resolved to 1 definition(s): `get-name :: Person -> String` (test/tests/destructuring.wipple:9:1-9:29)
+  resolved to 1 definition(s): `get-name` (test/tests/destructuring.wipple:9:1-9:29)
 VariableExpressionNode `bob` (test/tests/destructuring.wipple:13:16-13:19)
   at test/tests/destructuring.wipple:13:16-13:19
   has type Person
@@ -132,7 +132,7 @@ NamedTypeNode `Person` (test/tests/destructuring.wipple:15:20-15:26)
   at test/tests/destructuring.wipple:15:20-15:26
   has type Person
   is a type
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/destructuring.wipple:1:1-3:31)
+  resolved to 1 definition(s): `Person` (test/tests/destructuring.wipple:1:1-3:31)
 BoundConstraintNode `Describe Person` (test/tests/destructuring.wipple:15:10-15:27)
   at test/tests/destructuring.wipple:15:10-15:27
 VariablePatternNode `name` (test/tests/destructuring.wipple:15:46-15:50)
@@ -143,7 +143,7 @@ StructurePatternNode `Person {name` (test/tests/destructuring.wipple:15:31-15:51
   at test/tests/destructuring.wipple:15:31-15:51
   has type Person
   is a pattern
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/destructuring.wipple:1:1-3:31)
+  resolved to 1 definition(s): `Person` (test/tests/destructuring.wipple:1:1-3:31)
 VariableExpressionNode `name` (test/tests/destructuring.wipple:15:56-15:60)
   at test/tests/destructuring.wipple:15:56-15:60
   has type String
@@ -159,7 +159,7 @@ InstanceDefinitionNode `instance (Describe Person)` (test/tests/destructuring.wi
   has definition constraints
   has type Person -> String
   is a definition
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:1:1-2:44)
+  resolved to 1 definition(s): `Describe` (library/src/foundation/io.wipple:1:1-2:44)
 VariablePatternNode `charlie` (test/tests/destructuring.wipple:17:1-17:8)
   at test/tests/destructuring.wipple:17:1-17:8
   has type Person
@@ -172,7 +172,7 @@ StructureExpressionNode `Person {name` (test/tests/destructuring.wipple:17:11-17
   at test/tests/destructuring.wipple:17:11-17:36
   has type Person
   is an expression
-  resolved to 1 definition(s): `Person : type {⋯}` (test/tests/destructuring.wipple:1:1-3:31)
+  resolved to 1 definition(s): `Person` (test/tests/destructuring.wipple:1:1-3:31)
 VariableExpressionNode `show` (test/tests/destructuring.wipple:18:1-18:5)
   at test/tests/destructuring.wipple:18:1-18:5
   has bound(s) Describe Person (`instance (Describe Person)` (test/tests/destructuring.wipple:15:1-15:60))

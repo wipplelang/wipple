@@ -9,7 +9,7 @@ VariableExpressionNode `negate` (test/tests/negate.wipple:3:8-3:14)
   at test/tests/negate.wipple:3:8-3:14
   has type Number -> Number
   is an expression
-  resolved to 1 definition(s): `negate :: Number -> Number` (library/src/foundation/math.wipple:127:1-128:27)
+  resolved to 1 definition(s): `negate` (library/src/foundation/math.wipple:127:1-128:27)
 NumberExpressionNode `3` (test/tests/negate.wipple:3:15-3:16)
   at test/tests/negate.wipple:3:15-3:16
   has type Number
@@ -35,7 +35,7 @@ ConstructorExpressionNode `=` (test/tests/negate.wipple:3:18-3:19)
   has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:81:1-85:2))
   has type Number Number -> Boolean
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:72:1-73:48)
+  resolved to 1 definition(s): `Equal` (library/src/foundation/logic.wipple:72:1-73:48)
 CallExpressionNode `negate 3) = -3` (test/tests/negate.wipple:3:8-3:22)
   at test/tests/negate.wipple:3:8-3:22
   has type Boolean

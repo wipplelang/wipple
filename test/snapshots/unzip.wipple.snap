@@ -83,7 +83,7 @@ TupleTypeNode `List _; List _` (test/tests/unzip.wipple:3:59-3:73)
   at test/tests/unzip.wipple:3:59-3:73
   has type (List Number; List String)
   is a type
-AnnotateExpressionNode `(1; "a"), (2; "b"), (3; "c")) . unzip :: (List _; List _` (test/tests/unzip.wipple:3:16-3:74)
+AnnotateExpressionNode `(1; "a"), (2; "b"), (3; "c")) . unzip` (test/tests/unzip.wipple:3:16-3:74)
   at test/tests/unzip.wipple:3:16-3:74
   has type (List Number; List String)
   is an expression

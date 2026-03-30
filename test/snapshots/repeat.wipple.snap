@@ -13,7 +13,7 @@ VariableExpressionNode `times` (test/tests/repeat.wipple:3:11-3:16)
   at test/tests/repeat.wipple:3:11-3:16
   has type Number -> Times
   is an expression
-  resolved to 1 definition(s): `times :: Number -> Times` (library/src/foundation/repeat.wipple:46:1-47:32)
+  resolved to 1 definition(s): `times` (library/src/foundation/repeat.wipple:46:1-47:32)
 CallExpressionNode `4 times` (test/tests/repeat.wipple:3:9-3:16)
   at test/tests/repeat.wipple:3:9-3:16
   has type Times

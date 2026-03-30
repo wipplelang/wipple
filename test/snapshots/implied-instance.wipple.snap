@@ -27,7 +27,7 @@ FunctionTypeNode `value -> ()` (test/tests/implied-instance.wipple:6:21-6:32)
   at test/tests/implied-instance.wipple:6:21-6:32
   has type value -> ()
   is a type
-TraitDefinitionNode `T : value => trait (value -> ())` (test/tests/implied-instance.wipple:6:1-6:33)
+TraitDefinitionNode `T` (test/tests/implied-instance.wipple:6:1-6:33)
   at test/tests/implied-instance.wipple:6:1-6:33
   has definition constraints
   has instances
@@ -52,7 +52,7 @@ FunctionTypeNode `value -> ()` (test/tests/implied-instance.wipple:7:21-7:32)
   at test/tests/implied-instance.wipple:7:21-7:32
   has type value -> ()
   is a type
-TraitDefinitionNode `U : value => trait (value -> ())` (test/tests/implied-instance.wipple:7:1-7:33)
+TraitDefinitionNode `U` (test/tests/implied-instance.wipple:7:1-7:33)
   at test/tests/implied-instance.wipple:7:1-7:33
   has definition constraints
   has type parameters
@@ -74,7 +74,7 @@ BoundConstraintNode `U value` (test/tests/implied-instance.wipple:9:26-9:35)
   at test/tests/implied-instance.wipple:9:26-9:35
   has bound(s) U value (`U value` (test/tests/implied-instance.wipple:9:26-9:35))
   is a constraint
-  resolved to 1 definition(s): `U : value => trait (value -> ())` (test/tests/implied-instance.wipple:7:1-7:33)
+  resolved to 1 definition(s): `U` (test/tests/implied-instance.wipple:7:1-7:33)
 PlaceholderExpressionNode `_` (test/tests/implied-instance.wipple:9:38-9:39)
   at test/tests/implied-instance.wipple:9:38-9:39
   has type value -> ()
@@ -85,7 +85,7 @@ InstanceDefinitionNode `instance (T value)` (test/tests/implied-instance.wipple:
   has type parameters
   has type value -> ()
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/implied-instance.wipple:6:1-6:33)
+  resolved to 1 definition(s): `T` (test/tests/implied-instance.wipple:6:1-6:33)
 TypeParameterNode `value` (test/tests/implied-instance.wipple:11:6-11:11)
   at test/tests/implied-instance.wipple:11:6-11:11
   has type value
@@ -108,7 +108,7 @@ BoundConstraintNode `U value` (test/tests/implied-instance.wipple:11:24-11:33)
   at test/tests/implied-instance.wipple:11:24-11:33
   has bound(s) U value (`U value` (test/tests/implied-instance.wipple:11:24-11:33))
   is a constraint
-  resolved to 1 definition(s): `U : value => trait (value -> ())` (test/tests/implied-instance.wipple:7:1-7:33)
+  resolved to 1 definition(s): `U` (test/tests/implied-instance.wipple:7:1-7:33)
 ConstantDefinitionNode `t` (test/tests/implied-instance.wipple:11:1-11:33)
   at test/tests/implied-instance.wipple:11:1-11:33
   has definition constraints
@@ -122,7 +122,7 @@ ConstructorExpressionNode `T` (test/tests/implied-instance.wipple:12:5-12:6)
   has bound(s) U value (`U value` (test/tests/implied-instance.wipple:11:24-11:33)), T value (`instance (T value)` (test/tests/implied-instance.wipple:9:1-9:39))
   has type value -> ()
   is an expression
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/implied-instance.wipple:6:1-6:33)
+  resolved to 1 definition(s): `T` (test/tests/implied-instance.wipple:6:1-6:33)
 
 
 Feedback:

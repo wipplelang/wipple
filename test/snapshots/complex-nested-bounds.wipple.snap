@@ -23,7 +23,7 @@ FunctionTypeNode `value -> value` (test/tests/complex-nested-bounds.wipple:5:23-
   at test/tests/complex-nested-bounds.wipple:5:23-5:37
   has type value -> value
   is a type
-TraitDefinitionNode `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
+TraitDefinitionNode `Not` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
   at test/tests/complex-nested-bounds.wipple:5:1-5:38
   has definition constraints
   has instances
@@ -41,13 +41,13 @@ VariableExpressionNode `todo` (test/tests/complex-nested-bounds.wipple:6:26-6:30
   at test/tests/complex-nested-bounds.wipple:6:26-6:30
   has type Boolean -> Boolean
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:14)
+  resolved to 1 definition(s): `todo` (library/src/foundation/language.wipple:25:1-25:14)
 InstanceDefinitionNode `instance (Not Boolean)` (test/tests/complex-nested-bounds.wipple:6:1-6:30)
   at test/tests/complex-nested-bounds.wipple:6:1-6:30
   has definition constraints
   has type Boolean -> Boolean
   is a definition
-  resolved to 1 definition(s): `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
+  resolved to 1 definition(s): `Not` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
 TypeParameterNode `a` (test/tests/complex-nested-bounds.wipple:7:16-7:17)
   at test/tests/complex-nested-bounds.wipple:7:16-7:17
   has type a
@@ -73,7 +73,7 @@ BoundConstraintNode `Not b` (test/tests/complex-nested-bounds.wipple:7:31-7:38)
   at test/tests/complex-nested-bounds.wipple:7:31-7:38
   has bound(s) Not b (`Not b` (test/tests/complex-nested-bounds.wipple:7:31-7:38))
   is a constraint
-  resolved to 1 definition(s): `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
+  resolved to 1 definition(s): `Not` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
 VariablePatternNode `f` (test/tests/complex-nested-bounds.wipple:7:41-7:42)
   at test/tests/complex-nested-bounds.wipple:7:41-7:42
   has type a -> b
@@ -123,7 +123,7 @@ InstanceDefinitionNode `instance (Not (a -> b))` (test/tests/complex-nested-boun
   has type (a -> b) -> a -> b
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
+  resolved to 1 definition(s): `Not` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
 TypeParameterNode `value` (test/tests/complex-nested-bounds.wipple:9:8-9:13)
   at test/tests/complex-nested-bounds.wipple:9:8-9:13
   has type value
@@ -147,7 +147,7 @@ BoundConstraintNode `Not value` (test/tests/complex-nested-bounds.wipple:9:29-9:
   at test/tests/complex-nested-bounds.wipple:9:29-9:40
   has bound(s) Not value (`Not value` (test/tests/complex-nested-bounds.wipple:9:29-9:40))
   is a constraint
-  resolved to 1 definition(s): `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
+  resolved to 1 definition(s): `Not` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
 ConstantDefinitionNode `not` (test/tests/complex-nested-bounds.wipple:9:1-9:40)
   at test/tests/complex-nested-bounds.wipple:9:1-9:40
   has definition constraints
@@ -161,6 +161,6 @@ ConstructorExpressionNode `Not` (test/tests/complex-nested-bounds.wipple:10:7-10
   has bound(s) Not value (`Not value` (test/tests/complex-nested-bounds.wipple:9:29-9:40))
   has type value -> value
   is an expression
-  resolved to 1 definition(s): `Not : value => trait (value -> value)` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
+  resolved to 1 definition(s): `Not` (test/tests/complex-nested-bounds.wipple:5:1-5:38)
 
 Output:

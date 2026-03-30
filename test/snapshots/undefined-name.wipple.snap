@@ -12,4 +12,4 @@ Feedback:
 
   Can't find `foo`.
 
-  Did you mean `todo :: value` (library/src/foundation/language.wipple:25:1-25:14)?
+  Did you mean `todo` (library/src/foundation/language.wipple:25:1-25:14)?

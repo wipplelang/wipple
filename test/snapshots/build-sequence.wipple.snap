@@ -104,7 +104,7 @@ ConstructorExpressionNode `+` (test/tests/build-sequence.wipple:3:49-3:50)
   has bound(s) Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:83))
   has type Number Number -> Number
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:6:1-7:58)
+  resolved to 1 definition(s): `Add` (library/src/foundation/math.wipple:6:1-7:58)
 CallExpressionNode `n + 1` (test/tests/build-sequence.wipple:3:47-3:52)
   at test/tests/build-sequence.wipple:3:47-3:52
   has type Number

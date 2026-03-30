@@ -4,7 +4,7 @@ NamedTypeNode `Number` (test/tests/constant-mismatched-types.wipple:3:6-3:12)
   has type Number or String
   is a type
   resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:51)
-ConstantDefinitionNode `x :: Number` (test/tests/constant-mismatched-types.wipple:1:1-3:12)
+ConstantDefinitionNode `x` (test/tests/constant-mismatched-types.wipple:1:1-3:12)
   at test/tests/constant-mismatched-types.wipple:1:1-3:12
   has definition constraints
   has type Number or String
@@ -23,6 +23,6 @@ Feedback:
 
   `"42"` (test/tests/constant-mismatched-types.wipple:4:5-4:9) is a `Number` (test/tests/constant-mismatched-types.wipple:3:6-3:12) or a `String` (test/tests/constant-mismatched-types.wipple:4:5-4:9), but it can only be one of these.
 
-  `"42"` (test/tests/constant-mismatched-types.wipple:4:5-4:9) must be the same type as `Number` (test/tests/constant-mismatched-types.wipple:3:6-3:12) and `x :: Number` (test/tests/constant-mismatched-types.wipple:1:1-3:12); double-check these.
+  `"42"` (test/tests/constant-mismatched-types.wipple:4:5-4:9) must be the same type as `Number` (test/tests/constant-mismatched-types.wipple:3:6-3:12) and `x` (test/tests/constant-mismatched-types.wipple:1:1-3:12); double-check these.
 
   -  `"42"` (test/tests/constant-mismatched-types.wipple:4:5-4:9) is a String.

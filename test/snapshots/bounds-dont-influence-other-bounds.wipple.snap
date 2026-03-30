@@ -17,7 +17,7 @@ FunctionTypeNode `value -> ()` (test/tests/bounds-dont-influence-other-bounds.wi
   at test/tests/bounds-dont-influence-other-bounds.wipple:3:21-3:32
   has type value -> ()
   is a type
-TraitDefinitionNode `T : value => trait (value -> ())` (test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33)
+TraitDefinitionNode `T` (test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33)
   at test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33
   has definition constraints
   has instances
@@ -49,7 +49,7 @@ InstanceDefinitionNode `instance (T Number)` (test/tests/bounds-dont-influence-o
   has definition constraints
   has type Number -> ()
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33)
+  resolved to 1 definition(s): `T` (test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33)
 NamedTypeNode `String` (test/tests/bounds-dont-influence-other-bounds.wipple:6:13-6:19)
   at test/tests/bounds-dont-influence-other-bounds.wipple:6:13-6:19
   has type String
@@ -75,7 +75,7 @@ InstanceDefinitionNode `instance (T String)` (test/tests/bounds-dont-influence-o
   has definition constraints
   has type String -> ()
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33)
+  resolved to 1 definition(s): `T` (test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33)
 TypeParameterNode `a` (test/tests/bounds-dont-influence-other-bounds.wipple:8:7-8:8)
   at test/tests/bounds-dont-influence-other-bounds.wipple:8:7-8:8
   has type a
@@ -99,7 +99,7 @@ BoundConstraintNode `T a` (test/tests/bounds-dont-influence-other-bounds.wipple:
   at test/tests/bounds-dont-influence-other-bounds.wipple:8:19-8:24
   has bound(s) T a (`T a` (test/tests/bounds-dont-influence-other-bounds.wipple:8:19-8:24))
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33)
+  resolved to 1 definition(s): `T` (test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33)
 TypeParameterNode `b` (test/tests/bounds-dont-influence-other-bounds.wipple:8:28-8:29)
   at test/tests/bounds-dont-influence-other-bounds.wipple:8:28-8:29
   has type b
@@ -109,7 +109,7 @@ BoundConstraintNode `T b` (test/tests/bounds-dont-influence-other-bounds.wipple:
   at test/tests/bounds-dont-influence-other-bounds.wipple:8:25-8:30
   has bound(s) T b (`T b` (test/tests/bounds-dont-influence-other-bounds.wipple:8:25-8:30))
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33)
+  resolved to 1 definition(s): `T` (test/tests/bounds-dont-influence-other-bounds.wipple:1:1-3:33)
 ConstantDefinitionNode `f` (test/tests/bounds-dont-influence-other-bounds.wipple:8:1-8:30)
   at test/tests/bounds-dont-influence-other-bounds.wipple:8:1-8:30
   has definition constraints
@@ -122,7 +122,7 @@ VariableExpressionNode `todo` (test/tests/bounds-dont-influence-other-bounds.wip
   at test/tests/bounds-dont-influence-other-bounds.wipple:9:5-9:9
   has type (a; b)
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:14)
+  resolved to 1 definition(s): `todo` (library/src/foundation/language.wipple:25:1-25:14)
 NamedTypeNode `Number` (test/tests/bounds-dont-influence-other-bounds.wipple:12:8-12:14)
   at test/tests/bounds-dont-influence-other-bounds.wipple:12:8-12:14
   has type Number
