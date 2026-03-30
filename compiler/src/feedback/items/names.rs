@@ -9,15 +9,24 @@ pub fn register(ctx: &mut FeedbackCtx) {
         "unresolved",
         FeedbackRank::Names,
         |ctx, f| {
-            queries::unresolved(ctx, &mut |name| f((ctx.node.clone(), name)));
+            queries::unresolved(ctx, &mut |(name, suggestion)| {
+                f((ctx.node.clone(), name, suggestion))
+            });
         },
-        |(node, _)| (node.clone(), BTreeSet::new()),
-        |w, (_, name)| {
+        |(node, _, suggestion)| (node.clone(), BTreeSet::from_iter(suggestion.clone())),
+        |w, (_, name, suggestion)| {
             w.write_string("Can't find ");
             w.write_code(name);
             w.write_string(".");
             w.write_break();
-            w.write_string("Double-check your spelling.");
+
+            if let Some(suggestion) = suggestion {
+                w.write_string("Did you mean ");
+                w.write_node(suggestion);
+                w.write_string("?");
+            } else {
+                w.write_string("Double-check your spelling.");
+            }
         },
     ));
 

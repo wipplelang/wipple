@@ -3,6 +3,7 @@ use crate::{
     queries::{QueriedComments, QueryCtx, comments, find_for},
     visit::{Defined, Resolved},
 };
+use levenshtein::levenshtein;
 
 pub fn definitions(ctx: &QueryCtx<'_>, f: &mut dyn FnMut(Vec<NodeRef>)) {
     let Some(Resolved { definitions, .. }) = ctx.db.get(&ctx.node) else {
@@ -20,13 +21,22 @@ pub fn references(ctx: &QueryCtx<'_>, f: &mut dyn FnMut(NodeRef)) {
     }
 }
 
-pub fn unresolved(ctx: &QueryCtx<'_>, f: &mut dyn FnMut(String)) {
+pub fn unresolved(ctx: &QueryCtx<'_>, f: &mut dyn FnMut((String, Option<NodeRef>))) {
     let Some(Resolved { name, definitions }) = ctx.db.get(&ctx.node) else {
         return;
     };
 
     if definitions.is_empty() {
-        f(name);
+        let suggestion = ctx
+            .db
+            .iter::<Defined>()
+            .filter_map(|(node, Defined(definition))| Some((node, definition.name()?.to_string())))
+            .map(|(node, definition)| (node, levenshtein(&name, &definition)))
+            .min_by_key(|(_, distance)| *distance)
+            .filter(|(_, distance)| *distance <= 3)
+            .map(|(node, _)| node);
+
+        f((name, suggestion));
     }
 }
 
