@@ -51,17 +51,14 @@ CallExpressionNode `.` (test/tests/list-mismatched-elements.wipple:4:9-4:10)
 
 Feedback:
 
-`()` (test/tests/list-mismatched-elements.wipple:3:20-3:22) (error-instance):
+`1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) (conflicting-types):
 
-  Can't create   `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8) from items that are   `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22).
+  `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) is a `Number` (test/tests/list-mismatched-elements.wipple:3:11-3:12) or a `String` (test/tests/list-mismatched-elements.wipple:3:14-3:18), but it can only be one of these.
 
- Creating   `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8) from these items isn't supported. Double-check that
- you're providing the right kinds of items here.
+  `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) must be the same type as `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18), `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18), `element` (library/src/foundation/collections.wipple:12:28-12:35), and 35 others; double-check these.
 
-`each` (test/tests/list-mismatched-elements.wipple:4:11-4:15) (error-instance):
+  -  `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) is a Number.
 
-  Can't make a sequence from   `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8).
+  -  `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18) is a String.
 
- You can't use   `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8) as a sequence. Try using a list instead.
-
-  
+  -  `element` (library/src/foundation/collections.wipple:12:28-12:35) must have the same type everywhere in this use of `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:85).

@@ -10,6 +10,7 @@ use std::collections::HashMap;
 #[derive(Debug)]
 pub struct QueriedErrorInstance {
     pub bound: Bound,
+    pub is_default: bool,
     pub comments: QueriedComments,
     pub trace: Vec<Box<dyn Constraint>>,
 }
@@ -59,6 +60,7 @@ pub fn error_instance(ctx: &QueryCtx<'_>, f: &mut dyn FnMut(QueriedErrorInstance
 
             f(QueriedErrorInstance {
                 bound: item.bound,
+                is_default: instance.default,
                 comments,
                 trace,
             });

@@ -8,8 +8,8 @@ use std::{collections::BTreeSet, sync::Arc};
 pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(RegisteredFeedback::new(
         "unresolved-bound",
-        FeedbackRank::Bounds,
         queries::unresolved_bound,
+        |_| FeedbackRank::Bounds,
         |bound| (bound.source_node.clone(), BTreeSet::new()),
         |w, bound| {
             w.write_node(&bound.source_node);
@@ -24,6 +24,7 @@ pub fn register(ctx: &mut FeedbackCtx) {
     #[derive(Debug)]
     struct ErrorInstanceData {
         bound: Bound,
+        is_default: bool,
         group: Arc<Group>,
         comments: QueriedComments,
         trace: Vec<Box<dyn Constraint>>,
@@ -32,7 +33,6 @@ pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(
         RegisteredFeedback::new(
             "error-instance",
-            FeedbackRank::Custom,
             |ctx, f| {
                 let Some(Typed { group: Some(group) }) = ctx.db.get(&ctx.node) else {
                     return;
@@ -41,11 +41,19 @@ pub fn register(ctx: &mut FeedbackCtx) {
                 queries::error_instance(ctx, &mut |data| {
                     f(ErrorInstanceData {
                         bound: data.bound,
+                        is_default: data.is_default,
                         group: group.clone(),
                         comments: data.comments,
                         trace: data.trace,
                     });
                 });
+            },
+            |data| {
+                if data.is_default {
+                    FeedbackRank::CustomDefault
+                } else {
+                    FeedbackRank::Custom
+                }
             },
             |data| {
                 let primary = data.bound.source_node.clone();

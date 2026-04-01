@@ -8,8 +8,8 @@ use std::collections::BTreeSet;
 pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(RegisteredFeedback::new(
         "duplicate-field-definition",
-        FeedbackRank::Syntax,
         queries::fact::<DuplicateFieldDefinition>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, _)| {
             w.write_node(node);
@@ -21,8 +21,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "duplicate-variant-definition",
-        FeedbackRank::Syntax,
         queries::fact::<DuplicateVariantDefinition>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, _)| {
             w.write_node(node);

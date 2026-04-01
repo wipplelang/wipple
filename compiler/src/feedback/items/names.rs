@@ -7,12 +7,12 @@ use std::collections::BTreeSet;
 pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(RegisteredFeedback::new(
         "unresolved",
-        FeedbackRank::Names,
         |ctx, f| {
             queries::unresolved(ctx, &mut |(name, suggestion)| {
                 f((ctx.node.clone(), name, suggestion))
             });
         },
+        |_| FeedbackRank::Names,
         |(node, _, suggestion)| (node.clone(), BTreeSet::from_iter(suggestion.clone())),
         |w, (_, name, suggestion)| {
             w.write_string("Can't find ");
@@ -32,8 +32,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "ambiguous",
-        FeedbackRank::Names,
         queries::ambiguous,
+        |_| FeedbackRank::Names,
         |(node, _, _)| (node.clone(), BTreeSet::new()),
         |w, (_, name, definitions)| {
             w.write_code(name);

@@ -9,8 +9,8 @@ use std::collections::BTreeSet;
 pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(RegisteredFeedback::new(
         "nested-or-pattern",
-        FeedbackRank::Syntax,
         queries::fact::<InvalidOrPattern>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, _)| {
             w.write_node(node);
@@ -25,8 +25,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "nested-set-pattern",
-        FeedbackRank::Syntax,
         queries::fact::<InvalidSetPattern>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, reason)| match reason {
             InvalidSetPattern::Nested => {
@@ -53,8 +53,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "extra-element",
-        FeedbackRank::Syntax,
         queries::fact::<ExtraElement>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, _)| {
             w.write_node(node);
@@ -68,8 +68,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "missing-patterns",
-        FeedbackRank::Exhaustiveness,
         queries::fact::<MissingPatterns>,
+        |_| FeedbackRank::Exhaustiveness,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, MissingPatterns(missing))| {
             if missing.as_slice() == [MatchTree::Wildcard] {

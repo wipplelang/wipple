@@ -7,8 +7,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(
         RegisteredFeedback::new(
             "placeholder",
-            FeedbackRank::Placeholders,
             queries::placeholder,
+            |_| FeedbackRank::Placeholders,
             |(node, others, _)| (node.clone(), others.iter().cloned().collect()),
             |w, (_, _, ty)| {
                 if let Some(ty) = ty {

@@ -154,6 +154,7 @@ impl Constraint for BoundConstraint {
                         instance.node.clone(),
                         instance.from_bound,
                         instance.error,
+                        instance.default,
                         substitutions,
                     ));
                 }
@@ -178,7 +179,7 @@ impl Constraint for BoundConstraint {
             };
 
             if has_candidate {
-                let (copy, instance_node, from_bound, is_error, instance_substitutions) =
+                let (copy, instance_node, from_bound, is_error, is_default, instance_substitutions) =
                     candidates.into_iter().next().unwrap();
 
                 *ctx.groups = copy.groups.clone();
@@ -206,6 +207,7 @@ impl Constraint for BoundConstraint {
                                     resolved_substitutions: resolved_substitutions.clone(),
                                     from_bound,
                                     error: is_error,
+                                    default: is_default,
                                 }),
                             });
                     });

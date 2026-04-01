@@ -8,8 +8,8 @@ use std::collections::BTreeSet;
 pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(RegisteredFeedback::new(
         "missing-constant-value",
-        FeedbackRank::Syntax,
         queries::fact::<MissingConstantValue>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, _)| {
             w.write_node(node);

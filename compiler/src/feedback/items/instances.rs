@@ -8,8 +8,8 @@ use std::collections::BTreeSet;
 pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(RegisteredFeedback::new(
         "missing-instance-value",
-        FeedbackRank::Syntax,
         queries::fact::<MissingInstanceValue>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, _)| {
             w.write_node(node);
@@ -23,8 +23,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "extra-instance-value",
-        FeedbackRank::Syntax,
         queries::fact::<ExtraInstanceValue>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, _| {
             w.write_string("This instance doesn't need a value because it is marked with ");

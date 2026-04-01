@@ -113,11 +113,3 @@ Feedback:
  the inputs to `+`.
 
   
-
-`+` (test/tests/operator-without-parentheses.wipple:5:9-5:10) (error-instance):
-
-  Can't add   `1` (test/tests/operator-without-parentheses.wipple:5:7-5:8) and   `"hi"` (test/tests/operator-without-parentheses.wipple:5:11-5:15).
-
- Adding these two items together isn't supported.
-
-  

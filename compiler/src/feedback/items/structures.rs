@@ -8,8 +8,8 @@ use std::collections::BTreeSet;
 pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(RegisteredFeedback::new(
         "missing-field",
-        FeedbackRank::Syntax,
         queries::fact::<MissingField>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, MissingField(field))| {
             w.write_node(node);
@@ -25,8 +25,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "extra-field",
-        FeedbackRank::Syntax,
         queries::fact::<ExtraField>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (_, ExtraField(field))| {
             w.write_code(field);
@@ -38,8 +38,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "duplicate-field",
-        FeedbackRank::Syntax,
         queries::fact::<DuplicateField>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, _)| {
             w.write_node(node);

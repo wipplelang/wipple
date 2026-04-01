@@ -73,6 +73,7 @@ pub struct BoundsItemInstance {
     pub resolved_substitutions: Substitutions,
     pub from_bound: bool,
     pub error: bool,
+    pub default: bool,
 }
 
 #[derive(Debug, Clone)]

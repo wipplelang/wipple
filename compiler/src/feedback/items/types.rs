@@ -12,8 +12,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(
         RegisteredFeedback::new(
             "conflicting-types",
-            FeedbackRank::Conflicts,
             queries::conflicting_types,
+            |_| FeedbackRank::Conflicts,
             |data| {
                 let mut related = data.nodes.iter().cloned().collect::<BTreeSet<_>>();
 
@@ -118,8 +118,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(
         RegisteredFeedback::new(
             "incomplete-type",
-            FeedbackRank::Unknown,
             queries::incomplete_type,
+            |_| FeedbackRank::Unknown,
             |(node, _)| (node.clone(), BTreeSet::new()),
             |w, (node, ty)| {
                 w.write_string("Missing information for the type of ");
@@ -140,8 +140,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(
         RegisteredFeedback::new(
             "unknown-type",
-            FeedbackRank::Unknown,
             queries::unknown_type,
+            |_| FeedbackRank::Unknown,
             |node| (node.clone(), BTreeSet::new()),
             |w, node| {
                 w.write_string("Could not determine the type of ");
@@ -157,8 +157,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "missing-type",
-        FeedbackRank::Syntax,
         queries::fact::<MissingTypes>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, MissingTypes(parameters))| {
             w.write_node(node);
@@ -184,8 +184,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "extra-type",
-        FeedbackRank::Syntax,
         queries::fact::<ExtraType>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, _)| {
             w.write_node(node);
@@ -197,8 +197,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "conflicting-instances",
-        FeedbackRank::Bounds,
         queries::fact::<OverlappingInstances>,
+        |_| FeedbackRank::Bounds,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, OverlappingInstances(instances))| {
             w.write_node(node);

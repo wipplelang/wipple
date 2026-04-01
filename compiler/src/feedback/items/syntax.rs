@@ -8,8 +8,8 @@ use std::collections::BTreeSet;
 pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(RegisteredFeedback::new(
         "syntax-error",
-        FeedbackRank::Syntax,
         queries::fact::<ParseError>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (_, error)| {
             w.write_string(&error.message);
@@ -33,8 +33,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "unused-block",
-        FeedbackRank::Syntax,
         queries::unused_block,
+        |_| FeedbackRank::Syntax,
         |node| (node.clone(), BTreeSet::new()),
         |w, node| {
             w.write_node(node);

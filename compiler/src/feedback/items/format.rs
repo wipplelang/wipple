@@ -8,8 +8,8 @@ use std::collections::BTreeSet;
 pub fn register(ctx: &mut FeedbackCtx) {
     ctx.register(RegisteredFeedback::new(
         "missing-format-inputs",
-        FeedbackRank::Syntax,
         queries::fact::<MissingFormatInputs>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, MissingFormatInputs(count))| {
             w.write_node(node);
@@ -23,8 +23,8 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "extra-format-input",
-        FeedbackRank::Syntax,
         queries::fact::<ExtraFormatInput>,
+        |_| FeedbackRank::Syntax,
         |(node, _)| (node.clone(), BTreeSet::new()),
         |w, (node, _)| {
             w.write_node(node);

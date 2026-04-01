@@ -43,7 +43,7 @@ pub fn collect_feedback(db: &Db, filter: impl Fn(&FeedbackItem) -> bool) -> Vec<
 
 struct RegisteredFeedback<T> {
     pub id: &'static str,
-    pub rank: FeedbackRank,
+    pub rank: Rc<dyn Fn(&T) -> FeedbackRank>,
     pub show_graph: bool,
     pub query: Rc<dyn Fn(&QueryCtx<'_>, &mut dyn FnMut(T))>,
     pub location: Rc<dyn Fn(&T) -> (NodeRef, BTreeSet<NodeRef>)>,
@@ -53,14 +53,14 @@ struct RegisteredFeedback<T> {
 impl<T> RegisteredFeedback<T> {
     pub fn new(
         id: &'static str,
-        rank: FeedbackRank,
         query: impl Fn(&QueryCtx<'_>, &mut dyn FnMut(T)) + 'static,
+        rank: impl Fn(&T) -> FeedbackRank + 'static,
         location: impl Fn(&T) -> (NodeRef, BTreeSet<NodeRef>) + 'static,
         write: impl Fn(&mut FeedbackWriter<'_>, &T) + 'static,
     ) -> Self {
         RegisteredFeedback {
             id,
-            rank,
+            rank: Rc::new(rank),
             show_graph: false,
             query: Rc::new(query),
             location: Rc::new(location),
@@ -92,6 +92,7 @@ impl FeedbackCtx {
     pub fn register<T: 'static>(&mut self, entry: RegisteredFeedback<T>) {
         self.queries.push(Rc::new(move |ctx, f| {
             (entry.query)(ctx, &mut |data| {
+                let rank = (entry.rank)(&data);
                 let location = (entry.location)(&data);
 
                 let write: Rc<dyn Fn(&Db, &mut dyn fmt::Write) -> _> = Rc::new({
@@ -105,7 +106,7 @@ impl FeedbackCtx {
 
                 f(FeedbackItem {
                     id: entry.id,
-                    rank: entry.rank,
+                    rank,
                     show_graph: entry.show_graph,
                     location,
                     write,

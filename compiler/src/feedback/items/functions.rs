@@ -16,7 +16,6 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "missing-inputs",
-        FeedbackRank::Conflicts,
         |ctx, f| {
             queries::conflicting_types(ctx, &mut |data| {
                 let nodes = [&data.from]
@@ -48,6 +47,7 @@ pub fn register(ctx: &mut FeedbackCtx) {
                 }
             });
         },
+        |_| FeedbackRank::Conflicts,
         |data| {
             let related = data
                 .nodes
@@ -96,7 +96,6 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "extra-input",
-        FeedbackRank::Conflicts,
         |ctx, f| {
             queries::conflicting_types(ctx, &mut |data| {
                 let nodes = [&data.from]
@@ -129,6 +128,7 @@ pub fn register(ctx: &mut FeedbackCtx) {
                 }
             });
         },
+        |_| FeedbackRank::Conflicts,
         |data| {
             let related = data
                 .nodes
@@ -167,7 +167,6 @@ pub fn register(ctx: &mut FeedbackCtx) {
 
     ctx.register(RegisteredFeedback::new(
         "not-a-function",
-        FeedbackRank::Conflicts,
         |ctx, f| {
             queries::conflicting_types(ctx, &mut |data| {
                 let nodes = [&data.from]
@@ -191,6 +190,7 @@ pub fn register(ctx: &mut FeedbackCtx) {
                 }
             });
         },
+        |_| FeedbackRank::Conflicts,
         |data| {
             let related = data
                 .nodes
