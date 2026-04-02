@@ -32,7 +32,7 @@ VariableExpressionNode `enumerate` (test/tests/enumerate.wipple:4:8-4:17)
   resolved to 1 definition(s): `enumerate` (library/src/foundation/sequence.wipple:366:1-369:93)
 VariableExpressionNode `each` (test/tests/enumerate.wipple:4:20-4:24)
   at test/tests/enumerate.wipple:4:20-4:24
-  has bound(s) As-Sequence (Sequence (Number; _)) (Number; _) (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
+  has bound(s) As-Sequence (Sequence (Number; String)) (Number; String) (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
   has type ((Number; String) -> ()) -> (Sequence (Number; String)) -> ()
   is an expression
   resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:220:1-221:81)

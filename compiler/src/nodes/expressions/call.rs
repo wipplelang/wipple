@@ -72,13 +72,13 @@ impl Visit for CallExpressionNode {
             }
         }
 
+        visitor.visit(&self.function);
+        visitor.edge(&self.function, node, "function");
+
         for input in &self.inputs {
             visitor.visit(input);
             visitor.edge(input, node, "input");
         }
-
-        visitor.visit(&self.function);
-        visitor.edge(&self.function, node, "function");
 
         visitor.constraint(TypeConstraint::new(
             self.function.clone(),

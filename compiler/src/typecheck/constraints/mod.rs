@@ -94,9 +94,9 @@ impl ConstraintInfo {
 }
 
 static CONSTRAINT_ORDER: &[TypeId] = &[
+    TypeId::of::<InstantiateConstraint>(),
     TypeId::of::<GroupConstraint>(),
     TypeId::of::<TypeConstraint>(),
-    TypeId::of::<InstantiateConstraint>(),
     TypeId::of::<BoundConstraint>(),
 ];
 

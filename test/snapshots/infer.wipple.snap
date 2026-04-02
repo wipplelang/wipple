@@ -89,7 +89,7 @@ VariableExpressionNode `short-names` (test/tests/infer.wipple:6:1-6:12)
   resolved to 1 definition(s): `short-names` (test/tests/infer.wipple:5:1-5:12)
 VariableExpressionNode `each` (test/tests/infer.wipple:6:15-6:19)
   at test/tests/infer.wipple:6:15-6:19
-  has bound(s) As-Sequence (Sequence _) _ (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
+  has bound(s) As-Sequence (Sequence String) String (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
   has type (String -> ()) -> (Sequence String) -> ()
   is an expression
   resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:220:1-221:81)

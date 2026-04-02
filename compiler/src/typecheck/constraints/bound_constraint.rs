@@ -136,6 +136,8 @@ impl Constraint for BoundConstraint {
                     }
                 }
 
+                copy.error = false;
+
                 copy.as_unify_ctx().unify_substitutions(
                     None,
                     &instance_substitutions,
@@ -184,7 +186,8 @@ impl Constraint for BoundConstraint {
 
                 *ctx.groups = copy.groups.clone();
 
-                ctx.apply_substitutions(&resolved_substitutions);
+                ctx.substitutions_to_apply
+                    .push(resolved_substitutions.clone());
 
                 // Record the resolved bound on the current source node
                 // (necessary for codegen) and the original target node (set
