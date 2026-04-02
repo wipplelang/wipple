@@ -18,6 +18,7 @@
     import PrintButton from "$lib/components/PrintButton.svelte";
     import { onMount } from "svelte";
     import Footer from "$lib/components/Footer.svelte";
+    import type { DocumentationItem } from "$lib/models/Documentation";
 
     const loadPlayground = (): Playground | undefined => {
         const json = window.localStorage.getItem("playground");
@@ -104,6 +105,11 @@
         context.ideInfo = ideInfo;
     });
 
+    let documentation = $state<Record<string, DocumentationItem>>({});
+    $effect(() => {
+        context.documentation = documentation;
+    });
+
     let ideInfoLibrary = $state<string>();
     $effect(() => {
         if (!playground) {
@@ -121,6 +127,11 @@
         (async () => {
             const response = await api.ideInfo({ ...metadata });
             ideInfo = response.info;
+        })();
+
+        (async () => {
+            const response = await api.documentation({ ...metadata });
+            documentation = response.items;
         })();
     });
 

@@ -29,14 +29,12 @@ pub fn fact<T: Fact>(ctx: &QueryCtx<'_>, f: &mut dyn FnMut((NodeRef, T))) {
     }
 }
 
-pub fn find<T>(
+pub fn all<T>(
     db: &Db,
     mut query: impl FnMut(&QueryCtx<'_>, &mut dyn FnMut(T)),
-    filter: impl FnMut(&T) -> bool,
-) -> Option<T> {
+) -> impl Iterator<Item = T> {
     db.iter_nodes()
-        .filter_map(|node| find_for(db, &node, &mut query))
-        .find(filter)
+        .filter_map(move |node| find_for(db, &node, &mut query))
 }
 
 pub fn find_for<T>(

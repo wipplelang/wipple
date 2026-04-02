@@ -1,7 +1,7 @@
 import axios, { type AxiosRequestConfig } from "axios";
 import type { PlaygroundMetadata } from "./models/Playground";
+import type { DocumentationItem } from "./models/Documentation";
 import { PUBLIC_SERVER_URL } from "$env/static/public";
-import type { RuntimeId } from "./runtimes";
 
 const request =
     <Request, Response>(type: string) =>
@@ -44,12 +44,10 @@ export interface FormatResponse {
 
 export const format = request<FormatRequest, FormatResponse>("format");
 
-export interface DocumentationRequest extends PlaygroundMetadata {
-    name: string;
-}
+export type DocumentationRequest = PlaygroundMetadata;
 
 export interface DocumentationResponse {
-    documentation: Record<string, any> | null;
+    items: Record<string, DocumentationItem>;
 }
 
 export const documentation = request<DocumentationRequest, DocumentationResponse>("documentation");

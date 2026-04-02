@@ -5,7 +5,7 @@
     import Documentation from "./Documentation.svelte";
     import Tooltip from "./Tooltip.svelte";
 
-    const tooltipDelay = 750; // ms
+    const tooltipDelay = 500; // ms
     const stickyThresholdTime = 400; // ms
     const stickyThresholdDistance = 10; // px
 
