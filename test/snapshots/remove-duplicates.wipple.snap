@@ -42,7 +42,7 @@ BoundConstraintNode `Equal element` (test/tests/remove-duplicates.wipple:3:82-3:
   at test/tests/remove-duplicates.wipple:3:82-3:97
   has bound(s) Equal element (`Equal element` (test/tests/remove-duplicates.wipple:3:82-3:97))
   is a constraint
-  resolved to 1 definition(s): `Equal` (library/src/foundation/logic.wipple:74:1-75:48)
+  resolved to 1 definition(s): `Equal` (library/src/foundation/logic.wipple:76:1-77:48)
 TypeParameterNode `element` (test/tests/remove-duplicates.wipple:3:104-3:111)
   at test/tests/remove-duplicates.wipple:3:104-3:111
   has type element
@@ -89,10 +89,10 @@ VariableExpressionNode `seen` (test/tests/remove-duplicates.wipple:6:20-6:24)
   resolved to 1 definition(s): `seen` (test/tests/remove-duplicates.wipple:5:3-5:7)
 VariableExpressionNode `not` (test/tests/remove-duplicates.wipple:6:28-6:31)
   at test/tests/remove-duplicates.wipple:6:28-6:31
-  has bound(s) Not ((Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:19:1-19:75)), Not (element -> (Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:19:1-19:75))
+  has bound(s) Not ((Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:21:1-21:75)), Not (element -> (Set element) -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:21:1-21:75))
   has type (element -> (Set element) -> Boolean) -> element -> (Set element) -> Boolean
   is an expression
-  resolved to 1 definition(s): `not` (library/src/foundation/logic.wipple:21:1-23:59)
+  resolved to 1 definition(s): `not` (library/src/foundation/logic.wipple:23:1-25:59)
 VariableExpressionNode `contains?` (test/tests/remove-duplicates.wipple:6:32-6:41)
   at test/tests/remove-duplicates.wipple:6:32-6:41
   has bound(s) Equal element (`Equal element` (test/tests/remove-duplicates.wipple:3:82-3:97)), Hash element (`Hash element` (test/tests/remove-duplicates.wipple:3:98-3:112)), Container (Set element) element (`instance (Container (Set element) element)` (library/src/foundation/dictionary.wipple:151:1-151:170))
@@ -244,7 +244,7 @@ VariableExpressionNode `numbers` (test/tests/remove-duplicates.wipple:13:1-13:8)
   resolved to 1 definition(s): `numbers` (test/tests/remove-duplicates.wipple:12:1-12:8)
 VariableExpressionNode `remove-duplicates` (test/tests/remove-duplicates.wipple:13:11-13:28)
   at test/tests/remove-duplicates.wipple:13:11-13:28
-  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65)), Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:83:1-87:2)), Hash Number (`instance (Hash Number)` (library/src/foundation/dictionary.wipple:4:1-4:42))
+  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65)), Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-89:2)), Hash Number (`instance (Hash Number)` (library/src/foundation/dictionary.wipple:4:1-4:42))
   has type (List Number) -> Sequence Number
   is an expression
   resolved to 1 definition(s): `remove-duplicates` (test/tests/remove-duplicates.wipple:1:1-3:112)
@@ -282,10 +282,10 @@ CallExpressionNode `remove-duplicates` (test/tests/remove-duplicates.wipple:13:1
   is an expression
 ConstructorExpressionNode `and` (test/tests/remove-duplicates.wipple:6:49-6:52)
   at test/tests/remove-duplicates.wipple:6:49-6:52
-  has bound(s) And Boolean Boolean Boolean (`instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:28:1-28:63))
+  has bound(s) And Boolean Boolean Boolean (`instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:63))
   has type Boolean {Boolean} -> Boolean
   is an expression
-  resolved to 1 definition(s): `And` (library/src/foundation/logic.wipple:26:1-27:74)
+  resolved to 1 definition(s): `And` (library/src/foundation/logic.wipple:28:1-29:74)
 BlockExpressionNode `do {⋯` (test/tests/remove-duplicates.wipple:6:54-9:4)
   at test/tests/remove-duplicates.wipple:6:54-9:4
   captures `seen` (test/tests/remove-duplicates.wipple:5:3-5:7), `item` (test/tests/remove-duplicates.wipple:6:11-6:15)
