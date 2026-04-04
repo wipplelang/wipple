@@ -84,8 +84,6 @@ impl Visit for VariableExpressionNode {
                 visitor.insert(node, ResolvedVariable::Variable(resolved_node));
             }
             Definition::Constant(definition) => {
-                visitor.edge(&definition.node, node, "constant");
-
                 let substitutions = Substitutions::new();
 
                 visitor.constraint(InstantiateConstraint::new(Instantation {

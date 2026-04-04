@@ -269,7 +269,7 @@ impl Visit for OperatorExpressionNode {
                     &self.right,
                     "Or",
                 ),
-                "." => apply_operator(visitor, &self.operator_span, node, &self.left, &self.right),
+                "." => apply_operator(visitor, node, &self.left, &self.right),
                 _ => panic!("unknown operator: {}", self.operator),
             }
         };
@@ -381,7 +381,6 @@ fn logic_operator(
 
 fn apply_operator(
     visitor: &mut Visitor<'_>,
-    operator_span: &Span,
     node: &NodeRef,
     left: &NodeRef,
     right: &NodeRef,
@@ -391,8 +390,10 @@ fn apply_operator(
         visitor.function_type([left.clone()], node.clone()),
     ));
 
+    let span = visitor.span(node);
+
     visitor.node(
-        operator_span.clone(),
+        span,
         CallExpressionNode {
             function: right.clone(),
             inputs: vec![left.clone()],

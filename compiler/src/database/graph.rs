@@ -1,8 +1,8 @@
 use crate::{
     database::{Db, NodeRef},
     nodes::IsType,
-    typecheck::{ConstructedType, Instantiated, Type},
-    visit::Defined,
+    typecheck::{ConstructedType, ConstructedTypeTag, Instantiated, Type},
+    visit::{Defined, Definition, Resolved},
 };
 use petgraph::prelude::DiGraphMap;
 use serde::Serialize;
@@ -190,6 +190,38 @@ impl Graph {
 
         // Remove unconnected nodes
         in_group.retain(|id| connected_nodes.contains(id));
+
+        // Remove groups containing only function constants
+        groups.retain(|_, (nodes, types)| {
+            if nodes.len() != 1 {
+                return true;
+            }
+
+            let node = nodes.iter().next().unwrap();
+            let Some(Resolved { definitions, .. }) = db.get(node) else {
+                return true;
+            };
+
+            let [definition] = definitions.as_slice() else {
+                return true;
+            };
+
+            let Some(Defined(definition)) = db.get(definition) else {
+                return true;
+            };
+
+            if let Definition::Variable(_) = definition {
+                return true;
+            }
+
+            !matches!(
+                types.as_slice(),
+                [ConstructedType {
+                    tag: ConstructedTypeTag::Function,
+                    ..
+                }],
+            )
+        });
 
         for node in reachable_nodes.into_keys() {
             if !in_group.contains(&node.id()) {

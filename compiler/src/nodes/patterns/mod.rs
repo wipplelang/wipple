@@ -140,7 +140,16 @@ pub fn visit_pattern(
 
     let matching = visitor.set_matches(terminal);
     visitor.insert(node, Matching(matching.clone()));
-    visitor.edge(&matching, node, "value");
+
+    if visitor
+        .current_match()
+        .arm
+        .as_ref()
+        .is_some_and(|arm| arm == node)
+    {
+        visitor.edge(&matching, node, "value");
+    }
+
     visitor.constraint(GroupConstraint::new(node.clone(), matching));
 }
 
