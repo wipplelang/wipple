@@ -197,10 +197,10 @@ CallExpressionNode `last` (test/tests/lists.wipple:7:44-7:48)
   is an expression
 ConstructorExpressionNode `or` (test/tests/lists.wipple:7:27-7:29)
   at test/tests/lists.wipple:7:27-7:29
-  has bound(s) Or (Maybe (List Number)) (List Number) (List Number) (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:33:1-36:2))
+  has bound(s) Or (Maybe (List Number)) (List Number) (List Number) (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:34:1-37:2))
   has type (Maybe (List Number)) {List Number} -> List Number
   is an expression
-  resolved to 1 definition(s): `Or` (library/src/foundation/logic.wipple:30:1-31:73)
+  resolved to 1 definition(s): `Or` (library/src/foundation/logic.wipple:31:1-32:73)
 BlockExpressionNode `unreachable` (test/tests/lists.wipple:7:30-7:41)
   at test/tests/lists.wipple:7:30-7:41
   has type {List Number}
@@ -220,10 +220,10 @@ CallExpressionNode `first` (test/tests/lists.wipple:8:41-8:46)
   is an expression
 ConstructorExpressionNode `or` (test/tests/lists.wipple:8:24-8:26)
   at test/tests/lists.wipple:8:24-8:26
-  has bound(s) Or (Maybe (List Number)) (List Number) (List Number) (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:33:1-36:2))
+  has bound(s) Or (Maybe (List Number)) (List Number) (List Number) (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:34:1-37:2))
   has type (Maybe (List Number)) {List Number} -> List Number
   is an expression
-  resolved to 1 definition(s): `Or` (library/src/foundation/logic.wipple:30:1-31:73)
+  resolved to 1 definition(s): `Or` (library/src/foundation/logic.wipple:31:1-32:73)
 BlockExpressionNode `unreachable` (test/tests/lists.wipple:8:27-8:38)
   at test/tests/lists.wipple:8:27-8:38
   has type {List Number}

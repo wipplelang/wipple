@@ -22,10 +22,10 @@ VariablePatternNode `odd?` (test/tests/divisible-by.wipple:4:1-4:5)
   is a pattern
 VariableExpressionNode `not` (test/tests/divisible-by.wipple:4:8-4:11)
   at test/tests/divisible-by.wipple:4:8-4:11
-  has bound(s) Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:18:1-18:62)), Not (Number -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:19:1-19:75))
+  has bound(s) Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:19:1-19:62)), Not (Number -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:20:1-20:75))
   has type (Number -> Boolean) -> Number -> Boolean
   is an expression
-  resolved to 1 definition(s): `not` (library/src/foundation/logic.wipple:21:1-23:59)
+  resolved to 1 definition(s): `not` (library/src/foundation/logic.wipple:22:1-24:59)
 VariableExpressionNode `even?` (test/tests/divisible-by.wipple:4:12-4:17)
   at test/tests/divisible-by.wipple:4:12-4:17
   has type Number -> Boolean

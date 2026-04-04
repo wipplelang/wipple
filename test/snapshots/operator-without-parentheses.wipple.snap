@@ -44,7 +44,7 @@ ConstructorExpressionNode `False` (test/tests/operator-without-parentheses.wippl
 OperatorExpressionNode `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19)
   at test/tests/operator-without-parentheses.wipple:4:1-4:19
   is an expression
-  missing type (group: `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `infer output` (library/src/foundation/logic.wipple:31:25-31:39), `infer output` (library/src/foundation/logic.wipple:31:25-31:39), `output` (library/src/foundation/logic.wipple:31:66-31:72))
+  missing type (group: `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `infer output` (library/src/foundation/logic.wipple:32:25-32:39), `infer output` (library/src/foundation/logic.wipple:32:25-32:39), `output` (library/src/foundation/logic.wipple:32:66-32:72))
 VariableExpressionNode `show` (test/tests/operator-without-parentheses.wipple:5:1-5:5)
   at test/tests/operator-without-parentheses.wipple:5:1-5:5
   has type _ -> ()
@@ -81,7 +81,7 @@ ConstructorExpressionNode `or` (test/tests/operator-without-parentheses.wipple:4
   has bound(s) Or () Boolean _ (unresolved)
   has type () {Boolean} -> _
   is an expression
-  resolved to 1 definition(s): `Or` (library/src/foundation/logic.wipple:30:1-31:73)
+  resolved to 1 definition(s): `Or` (library/src/foundation/logic.wipple:31:1-32:73)
 BlockExpressionNode `False` (test/tests/operator-without-parentheses.wipple:4:14-4:19)
   at test/tests/operator-without-parentheses.wipple:4:14-4:19
   has type {Boolean}
@@ -90,7 +90,7 @@ BlockExpressionNode `False` (test/tests/operator-without-parentheses.wipple:4:14
 CallExpressionNode `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19)
   at test/tests/operator-without-parentheses.wipple:4:1-4:19
   is an expression
-  missing type (group: `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `infer output` (library/src/foundation/logic.wipple:31:25-31:39), `infer output` (library/src/foundation/logic.wipple:31:25-31:39), `output` (library/src/foundation/logic.wipple:31:66-31:72))
+  missing type (group: `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `show True or False` (test/tests/operator-without-parentheses.wipple:4:1-4:19), `infer output` (library/src/foundation/logic.wipple:32:25-32:39), `infer output` (library/src/foundation/logic.wipple:32:25-32:39), `output` (library/src/foundation/logic.wipple:32:66-32:72))
 ConstructorExpressionNode `+` (test/tests/operator-without-parentheses.wipple:5:9-5:10)
   at test/tests/operator-without-parentheses.wipple:5:9-5:10
   has bound(s) Add Number String _ (`instance (Add left right sum)` (library/src/foundation/math.wipple:10:1-13:48))

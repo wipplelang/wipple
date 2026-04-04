@@ -165,30 +165,30 @@ CallExpressionNode `show (sin (45 degrees) / cos (45 degrees) = tan (45 degrees)
   is an expression
 ConstructorExpressionNode `=` (test/tests/trig.wipple:3:23-3:24)
   at test/tests/trig.wipple:3:23-3:24
-  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:83:1-87:2))
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:84:1-88:2))
   has type Number Number -> Boolean
   is an expression
-  resolved to 1 definition(s): `Equal` (library/src/foundation/logic.wipple:74:1-75:48)
+  resolved to 1 definition(s): `Equal` (library/src/foundation/logic.wipple:75:1-76:48)
 CallExpressionNode `sin (0 degrees) = 0` (test/tests/trig.wipple:3:7-3:26)
   at test/tests/trig.wipple:3:7-3:26
   has type Boolean
   is an expression
 ConstructorExpressionNode `=` (test/tests/trig.wipple:4:23-4:24)
   at test/tests/trig.wipple:4:23-4:24
-  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:83:1-87:2))
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:84:1-88:2))
   has type Number Number -> Boolean
   is an expression
-  resolved to 1 definition(s): `Equal` (library/src/foundation/logic.wipple:74:1-75:48)
+  resolved to 1 definition(s): `Equal` (library/src/foundation/logic.wipple:75:1-76:48)
 CallExpressionNode `cos (0 degrees) = 1` (test/tests/trig.wipple:4:7-4:26)
   at test/tests/trig.wipple:4:7-4:26
   has type Boolean
   is an expression
 ConstructorExpressionNode `=` (test/tests/trig.wipple:5:43-5:44)
   at test/tests/trig.wipple:5:43-5:44
-  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:83:1-87:2))
+  has bound(s) Equal Number (`instance (Equal Number)` (library/src/foundation/logic.wipple:84:1-88:2))
   has type Number Number -> Boolean
   is an expression
-  resolved to 1 definition(s): `Equal` (library/src/foundation/logic.wipple:74:1-75:48)
+  resolved to 1 definition(s): `Equal` (library/src/foundation/logic.wipple:75:1-76:48)
 CallExpressionNode `sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (test/tests/trig.wipple:5:7-5:61)
   at test/tests/trig.wipple:5:7-5:61
   has type Boolean
