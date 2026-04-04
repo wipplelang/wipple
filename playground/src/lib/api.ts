@@ -25,10 +25,12 @@ export interface CompileRequest extends PlaygroundMetadata {
 export type CompileResponse = CompileResponseSuccess | CompileResponseError;
 
 export interface CompileResponseSuccess {
+    graph: any;
     executable: string;
 }
 
 export interface CompileResponseError {
+    graph: any;
     diagnostics: any[];
 }
 

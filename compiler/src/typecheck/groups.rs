@@ -90,6 +90,8 @@ impl Group {
                 self.types.push(ty);
             }
         }
+
+        self.types.dedup();
     }
 }
 

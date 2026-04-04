@@ -7,6 +7,7 @@ export interface Runtime {
     commands: Record<string, Record<string, Command>>;
     units?: Record<string, UnitInfo>;
     printEnabled?: boolean;
+    visualizerEnabled?: boolean;
     Output?: Component;
 }
 

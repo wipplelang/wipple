@@ -8,6 +8,7 @@ use crate::{
     typecheck::{GroupConstraint, Typed},
     visit::{Visit, Visitor},
 };
+use itertools::Itertools;
 
 #[derive(Debug, Clone)]
 pub struct ResolvedCollection(pub NodeRef);
@@ -78,6 +79,8 @@ impl Visit for CollectionExpressionNode {
         );
 
         for element in &self.elements {
+            visitor.edge(element, node, "element");
+
             let element_span = visitor.span(element);
 
             let builder = visitor.node(
@@ -94,6 +97,13 @@ impl Visit for CollectionExpressionNode {
                     inputs: vec![element.clone(), collection_node],
                 }),
             );
+        }
+
+        // Improve type errors
+        if let Some((first, rest)) = self.elements.split_first() {
+            for element in rest {
+                visitor.constraint(GroupConstraint::new(first.clone(), element.clone()));
+            }
         }
 
         visitor.visit(&collection_node);

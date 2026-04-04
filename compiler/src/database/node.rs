@@ -202,3 +202,16 @@ pub struct Children(pub Vec<NodeRef>);
 impl Fact for Children {}
 
 impl Render for Children {}
+
+impl Db {
+    pub fn traverse_children(&self, node: &NodeRef, f: &mut dyn FnMut(&NodeRef)) {
+        let Some(Children(children)) = self.get(node) else {
+            return;
+        };
+
+        for child in &children {
+            f(child);
+            self.traverse_children(child, f);
+        }
+    }
+}

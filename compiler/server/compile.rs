@@ -40,10 +40,24 @@ pub async fn handle(request: Request) -> anyhow::Result<serde_json::Value> {
     )
     .await?;
 
+    let graph = {
+        let mut mask = BTreeSet::new();
+        for file in &files {
+            db.traverse_children(file, &mut |child| {
+                if !child.is_hidden() {
+                    mask.insert(child.clone());
+                }
+            });
+        }
+
+        db.filtered_graph(mask).serialize(&db)
+    };
+
     let feedback = collect_feedback(&db, |_| true);
 
     if !feedback.is_empty() {
         return Ok(json!({
+            "graph": graph,
             "diagnostics": feedback
                 .into_iter()
                 .map(|item| convert_feedback(&mut db, item))
@@ -57,7 +71,10 @@ pub async fn handle(request: Request) -> anyhow::Result<serde_json::Value> {
     let wasm = wat::parse_str(wat)?;
     let base64 = base64::prelude::BASE64_STANDARD.encode(wasm);
 
-    Ok(json!({ "executable": base64 }))
+    Ok(json!({
+        "graph": graph,
+        "executable": base64,
+    }))
 }
 
 fn convert_feedback(db: &mut Db, item: FeedbackItem) -> serde_json::Value {

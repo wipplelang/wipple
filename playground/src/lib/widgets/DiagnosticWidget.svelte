@@ -13,7 +13,7 @@
     import ToolbarButton from "$lib/components/ToolbarButton.svelte";
     import { scale } from "svelte/transition";
     import { context } from "$lib/context.svelte";
-    import { PUBLIC_VISUALIZER_URL } from "$env/static/public";
+    import Visualizer from "$lib/components/Visualizer.svelte";
 
     interface Props {
         animate: boolean;
@@ -27,46 +27,6 @@
     let showExtra = $state<"diagnostic" | "visualizer">();
 
     const transition = animate ? scale : () => ({});
-
-    const visualizationUrl = $derived.by(() => {
-        if (!context.diagnostic?.graph) {
-            return undefined;
-        }
-
-        const base = PUBLIC_VISUALIZER_URL;
-        if (!base) {
-            return undefined;
-        }
-
-        const url = new URL(base);
-        url.searchParams.set("embed", "1");
-        return url.toString();
-    });
-
-    let visualizationIFrame = $state<HTMLIFrameElement>();
-
-    $effect(() => {
-        if (visualizationIFrame == null) {
-            return;
-        }
-
-        visualizationIFrame.addEventListener("load", (event) => {
-            const visualizationWindow = (event.target as HTMLIFrameElement).contentWindow!;
-
-            window.addEventListener("message", (event) => {
-                if (event.source !== visualizationWindow) {
-                    return;
-                }
-
-                if (event.data === "requestEmbed") {
-                    visualizationWindow.postMessage(
-                        { embed: $state.snapshot(context.diagnostic.graph) },
-                        "*",
-                    );
-                }
-            });
-        });
-    });
 </script>
 
 {#snippet lines(lines: any[])}
@@ -121,11 +81,11 @@
                     {@render button("Details", "diagnostic")}
                 {/if}
 
-                {#if extra.length > 1 && visualizationUrl != null}
+                {#if extra.length > 1 && context.diagnostic?.graph != null}
                     <div class="h-[1.25em] rounded-full border-[1px] border-gray-500/40"></div>
                 {/if}
 
-                {#if visualizationUrl != null}
+                {#if context.diagnostic?.graph != null}
                     {@render button("Visualize", "visualizer")}
                 {/if}
             </div>
@@ -149,13 +109,8 @@
                 {/if}
             {/if}
 
-            {#if showExtra === "visualizer" && visualizationUrl != null}
-                <iframe
-                    bind:this={visualizationIFrame}
-                    title="Visualization"
-                    class="aspect-[3/2] flex-1 rounded-xl border-[1.5px] border-black/5 dark:bg-gray-800"
-                    src={visualizationUrl}
-                ></iframe>
+            {#if showExtra === "visualizer" && context.diagnostic.graph != null}
+                <Visualizer graph={context.diagnostic.graph} showFunctionsAndStatements />
             {/if}
         </div>
     </Box>

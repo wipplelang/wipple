@@ -26,7 +26,7 @@ const presets = [
     preset({
         icon: blankPresetIcon,
         name: "No template",
-        description: "A blank canvas",
+        description: "Run and visualize your code",
         runtime: "foundation",
     }),
 ];

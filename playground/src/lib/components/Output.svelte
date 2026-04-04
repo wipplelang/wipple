@@ -8,6 +8,7 @@
     import type { OutputItem } from "$lib/models/OutputItem";
     import Markdown from "./Markdown.svelte";
     import Prompt from "./Prompt.svelte";
+    import Visualizer from "./Visualizer.svelte";
 
     const throttleMs = 500;
 
@@ -38,6 +39,7 @@
             setTimeout(() => resolve(), throttleMs);
         });
 
+    let graph = $state<any>();
     let output = $state<OutputItem[]>([]);
     let runtimeOutput = $state<any>();
 
@@ -76,6 +78,8 @@
             abortController = undefined;
             return;
         }
+        graph = response.graph;
+        console.log({ nodes: response.graph.nodes.length });
 
         if ("diagnostics" in response) {
             ondiagnostics(response.diagnostics);
@@ -138,6 +142,7 @@
             }
 
             const { run } = createRunnerWorker(env);
+
             await run(response.executable);
         } finally {
             await stopRunning(false);
@@ -157,23 +162,29 @@
     };
 </script>
 
-{#if runtime?.Output == null && output.length === 0}
-    <div class="flex flex-1 flex-col items-center justify-center p-[14px] text-current/40">
-        <p>No output</p>
-        <p>
-            <small>
-                You can use <code class="border-standard rounded-[8px] px-[6px]">show</code> to display
-                a message.
-            </small>
-        </p>
-    </div>
-{:else}
-    <div class="flex flex-col gap-[10px] overflow-auto">
-        {#if runtime?.Output}
-            <runtime.Output bind:this={runtimeOutput} />
-        {/if}
+<div class="flex h-full flex-col gap-[10px] overflow-auto">
+    {#if runtime?.Output}
+        <runtime.Output bind:this={runtimeOutput} />
+    {/if}
 
-        {#each output as item}
+    {#if runtime?.visualizerEnabled && graph != null}
+        <div class="aspect-[3/2] max-h-[400px]">
+            <Visualizer {graph} />
+        </div>
+    {/if}
+
+    {#if runtime?.Output == null && output.length === 0}
+        <div class="flex flex-1 flex-col items-center justify-center p-[14px] text-current/40">
+            <p>No output</p>
+            <p>
+                <small>
+                    You can use <code class="border-standard rounded-[8px] px-[6px]">show</code>
+                    to display a message.
+                </small>
+            </p>
+        </div>
+    {:else}
+        {#each output as item, index (index)}
             {#if item.type === "display"}
                 <Box class="p-[14px]" scroll={false}>
                     <Markdown content={item.value} />
@@ -184,5 +195,5 @@
                 </Box>
             {/if}
         {/each}
-    </div>
-{/if}
+    {/if}
+</div>
