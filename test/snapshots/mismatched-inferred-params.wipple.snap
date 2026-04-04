@@ -64,13 +64,9 @@ Feedback:
 
   `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) is a `Number` (test/tests/mismatched-inferred-params.wipple:3:8-3:9) or a `String` (test/tests/mismatched-inferred-params.wipple:3:30-3:36), but it can only be one of these.
 
-  `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) must be the same type as `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:36), `3` (test/tests/mismatched-inferred-params.wipple:3:8-3:9), `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6), and 69 others; double-check these.
+  `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) must be the same type as `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:36), `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3), `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6), and 69 others; double-check these.
 
   -  `3` (test/tests/mismatched-inferred-params.wipple:3:8-3:9) is a Number.
-
-  -  `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6) is a Number.
-
-  -  `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3) is a Number.
 
   -  `element` (library/src/foundation/sequence.wipple:199:29-199:36) must have the same type everywhere in this use of `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-211:2).
 

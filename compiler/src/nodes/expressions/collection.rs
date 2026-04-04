@@ -8,7 +8,6 @@ use crate::{
     typecheck::{GroupConstraint, Typed},
     visit::{Visit, Visitor},
 };
-use itertools::Itertools;
 
 #[derive(Debug, Clone)]
 pub struct ResolvedCollection(pub NodeRef);

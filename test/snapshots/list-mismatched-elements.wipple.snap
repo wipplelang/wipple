@@ -5,15 +5,15 @@ VariablePatternNode `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:
   is a pattern
 NumberExpressionNode `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12)
   at test/tests/list-mismatched-elements.wipple:3:11-3:12
-  has type Number
+  has type () or String or Number
   is an expression
 StringExpressionNode `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18)
   at test/tests/list-mismatched-elements.wipple:3:14-3:18
-  has type () or String
+  has type () or String or Number
   is an expression
 UnitExpressionNode `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22)
   at test/tests/list-mismatched-elements.wipple:3:20-3:22
-  has type () or String
+  has type () or String or Number
   is an expression
 CollectionExpressionNode `1, "hi", ()` (test/tests/list-mismatched-elements.wipple:3:11-3:22)
   at test/tests/list-mismatched-elements.wipple:3:11-3:22
@@ -51,12 +51,14 @@ CallExpressionNode `.` (test/tests/list-mismatched-elements.wipple:4:9-4:10)
 
 Feedback:
 
-`()` (test/tests/list-mismatched-elements.wipple:3:20-3:22) (conflicting-types):
+`1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) (conflicting-types):
 
-  `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22) is a `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22) or a `String` (test/tests/list-mismatched-elements.wipple:3:14-3:18), but it can only be one of these.
+  `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) is a `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22), `String` (test/tests/list-mismatched-elements.wipple:3:14-3:18), or a `Number` (test/tests/list-mismatched-elements.wipple:3:11-3:12), but it can only be one of these.
 
-  `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22) must be the same type as `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18), `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18), `element` (library/src/foundation/collections.wipple:7:46-7:53), and 29 others; double-check these.
+  `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) must be the same type as `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18), `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22), `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18), and 36 others; double-check these.
 
   -  `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18) is a String.
+
+  -  `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) is a Number.
 
   -  `element` (library/src/foundation/collections.wipple:7:46-7:53) must have the same type everywhere in this use of `instance (Build-Collection element collection)` (library/src/foundation/collections.wipple:3:1-7:65).
