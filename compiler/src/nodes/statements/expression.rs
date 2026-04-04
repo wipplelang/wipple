@@ -34,7 +34,7 @@ impl Visit for ExpressionStatementNode {
 
         visitor.after_all_definitions(move |visitor| {
             visitor.visit(&expression);
-            visitor.edge(&expression, &node, "expression");
+            visitor.graph.replace(&node, &expression);
             visitor.constraint(GroupConstraint::new(node.clone(), expression));
         });
     }
