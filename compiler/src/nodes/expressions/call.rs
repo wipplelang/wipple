@@ -63,8 +63,8 @@ impl Visit for CallExpressionNode {
                         .function_type([self.function.clone()], node.clone()),
                 ));
 
-                visitor.edge(&self.function, node, "function");
-                visitor.edge(input, node, "input");
+                visitor.edge(&self.function, node, "number");
+                visitor.edge(input, node, "unit");
 
                 visitor.insert(node, ResolvedCall { is_unit: true });
 
@@ -73,11 +73,9 @@ impl Visit for CallExpressionNode {
         }
 
         visitor.visit(&self.function);
-        visitor.edge(&self.function, node, "function");
 
         for input in &self.inputs {
             visitor.visit(input);
-            visitor.edge(input, node, "input");
         }
 
         visitor.constraint(TypeConstraint::new(

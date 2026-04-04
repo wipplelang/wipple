@@ -46,7 +46,7 @@ impl Constraint for BoundConstraint {
         })
     }
 
-    fn run(&mut self, ctx: &mut ConstraintCtx<'_, '_>) -> ConstraintResult {
+    fn run(&mut self, ctx: &mut ConstraintCtx<'_>) -> ConstraintResult {
         // These are for the *trait's* parameters
         let (bound_inferred, bound_substitutions): (Substitutions, Substitutions) = self
             .bound
@@ -70,9 +70,10 @@ impl Constraint for BoundConstraint {
 
         let instance_groups_count = instance_groups.len();
 
-        let resolved_node = ctx
-            .db
-            .node(ctx.db.span(&self.bound.source_node), HiddenNode::default());
+        let resolved_node = ctx.unify_ctx.db.node(
+            ctx.unify_ctx.db.span(&self.bound.source_node),
+            HiddenNode::default(),
+        );
 
         let mut candidates = Vec::new();
         for (index, (instances, keep_generic)) in instance_groups.into_iter().enumerate() {
@@ -138,14 +139,14 @@ impl Constraint for BoundConstraint {
 
                 copy.error = false;
 
-                copy.as_unify_ctx().unify_substitutions(
+                copy.as_unify_ctx(ctx.db).unify_substitutions(
                     None,
                     &instance_substitutions,
                     &bound_substitutions,
                 );
 
                 if !copy.error {
-                    copy.as_unify_ctx().unify_substitutions(
+                    copy.as_unify_ctx(ctx.db).unify_substitutions(
                         None,
                         &instance_inferred,
                         &bound_inferred,

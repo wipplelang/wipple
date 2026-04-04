@@ -1,3 +1,4 @@
+mod connections;
 mod exhaustiveness;
 mod instances;
 

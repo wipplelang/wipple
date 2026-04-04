@@ -79,7 +79,6 @@
             return;
         }
         graph = response.graph;
-        console.log({ nodes: response.graph.nodes.length });
 
         if ("diagnostics" in response) {
             ondiagnostics(response.diagnostics);

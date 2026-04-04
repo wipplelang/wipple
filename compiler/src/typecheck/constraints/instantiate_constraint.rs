@@ -64,7 +64,7 @@ impl Constraint for InstantiateConstraint {
         })
     }
 
-    fn run(&mut self, ctx: &mut ConstraintCtx<'_, '_>) -> ConstraintResult {
+    fn run(&mut self, ctx: &mut ConstraintCtx<'_>) -> ConstraintResult {
         // NOTE: Types are *not* applied before instantiating; we have access to
         // all related nodes/constraints here, which together will form better
         // groups

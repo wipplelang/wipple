@@ -11,7 +11,7 @@ pub use instantiate_constraint::*;
 pub use type_constraint::*;
 
 use crate::{
-    database::{Db, NodeRef},
+    database::NodeRef,
     typecheck::{Instance, InstantiateContext, Substitutions, UnifyCtx},
 };
 use dyn_clone::DynClone;
@@ -22,14 +22,13 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-pub struct ConstraintCtx<'a, 'db> {
-    pub db: &'db mut Db,
+pub struct ConstraintCtx<'a> {
     pub implied_instances: &'a [Instance],
     pub substitutions_to_apply: &'a mut Vec<Substitutions>,
     pub unify_ctx: UnifyCtx<'a>,
 }
 
-impl<'a, 'db> Deref for ConstraintCtx<'a, 'db> {
+impl<'a> Deref for ConstraintCtx<'a> {
     type Target = UnifyCtx<'a>;
 
     fn deref(&self) -> &Self::Target {
@@ -37,7 +36,7 @@ impl<'a, 'db> Deref for ConstraintCtx<'a, 'db> {
     }
 }
 
-impl<'a, 'db> DerefMut for ConstraintCtx<'a, 'db> {
+impl<'a> DerefMut for ConstraintCtx<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.unify_ctx
     }
@@ -47,7 +46,7 @@ pub trait Constraint: Any + Debug + DynClone + Send + Sync + 'static {
     fn info(&self) -> &ConstraintInfo;
     fn info_mut(&mut self) -> &mut ConstraintInfo;
     fn instantiate(&self, ctx: &mut InstantiateContext<'_>) -> Box<dyn Constraint>;
-    fn run(&mut self, ctx: &mut ConstraintCtx<'_, '_>) -> ConstraintResult;
+    fn run(&mut self, ctx: &mut ConstraintCtx<'_>) -> ConstraintResult;
 }
 
 dyn_clone::clone_trait_object!(Constraint);
@@ -126,7 +125,7 @@ impl Constraints {
         }
     }
 
-    pub fn run_until(&mut self, ctx: &mut ConstraintCtx<'_, '_>, stop: Option<TypeId>) {
+    pub fn run_until(&mut self, ctx: &mut ConstraintCtx<'_>, stop: Option<TypeId>) {
         let mut requeued_constraints = Vec::new();
         loop {
             let Some(mut constraint) = self.dequeue(stop) else {
@@ -167,7 +166,7 @@ impl Constraints {
         None
     }
 
-    pub fn run_defaults(&mut self, ctx: &mut ConstraintCtx<'_, '_>) {
+    pub fn run_defaults(&mut self, ctx: &mut ConstraintCtx<'_>) {
         for mut constraint in self.default_constraints.drain(..) {
             constraint.run(ctx);
         }

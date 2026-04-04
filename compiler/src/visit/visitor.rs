@@ -195,7 +195,7 @@ impl<'db> Visitor<'db> {
         self.current_node = parent;
     }
 
-    pub fn edge(&mut self, from: &NodeRef, to: &NodeRef, label: &'static str) {
+    pub fn edge(&mut self, from: &NodeRef, to: &NodeRef, label: impl Into<String>) {
         if let Some(current_definition) = &self.current_definition
             && current_definition.within_constant_value
         {

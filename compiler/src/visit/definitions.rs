@@ -1,4 +1,7 @@
-use crate::database::{Db, Fact, NodeRef, Render};
+use crate::{
+    database::{Db, Fact, NodeRef, Render},
+    nodes::ConnectionAttributeValueNode,
+};
 
 #[derive(Debug, Clone)]
 pub struct Defined(pub Definition);
@@ -44,12 +47,16 @@ pub struct ConstantDefinition {
 #[derive(Debug, Clone)]
 pub struct ConstantAttributes {
     pub unit: bool,
+    pub connect: Vec<ConnectionAttributeValueNode>,
 }
 
 impl ConstantAttributes {
     pub fn from_attributes(db: &mut Db, attributes: &[NodeRef]) -> Self {
         ConstantAttributes {
             unit: db.contains_name_attribute(attributes, "unit"),
+            connect: db
+                .iter_connect_attribute_values(attributes, "connect")
+                .collect(),
         }
     }
 }

@@ -34,7 +34,7 @@ impl Constraint for GroupConstraint {
         GroupConstraint::new(node, other)
     }
 
-    fn run(&mut self, ctx: &mut ConstraintCtx<'_, '_>) -> ConstraintResult {
+    fn run(&mut self, ctx: &mut ConstraintCtx<'_>) -> ConstraintResult {
         ctx.unify(
             Some(Box::new(self.clone())),
             self.info.node.clone(),

@@ -1,9 +1,17 @@
 use crate::{
-    database::NodeRef,
+    database::{Db, Fact, NodeRef, Render},
     typecheck::{Constraint, ConstructedType, Group, Groups, Substitutions, Type},
 };
 
+#[derive(Debug, Clone, Default)]
+pub struct GroupedWith(pub Vec<NodeRef>);
+
+impl Fact for GroupedWith {}
+
+impl Render for GroupedWith {}
+
 pub struct UnifyCtx<'a> {
+    pub db: &'a mut Db,
     pub groups: &'a mut Groups,
     pub progress: &'a mut bool,
     pub error: &'a mut bool,
@@ -121,6 +129,14 @@ impl UnifyCtx<'_> {
         left_node: &NodeRef,
         right_node: &NodeRef,
     ) {
+        self.db.with_fact(left_node, |GroupedWith(nodes)| {
+            nodes.push(right_node.clone());
+        });
+
+        self.db.with_fact(right_node, |GroupedWith(nodes)| {
+            nodes.push(left_node.clone());
+        });
+
         let left_index = self.groups.index_of(left_node);
         let right_index = self.groups.index_of(right_node);
 
@@ -141,6 +157,7 @@ impl UnifyCtx<'_> {
             self.groups
                 .merge(trace, index, group, |groups, left, right| {
                     let mut ctx = UnifyCtx {
+                        db: self.db,
                         groups,
                         progress: self.progress,
                         error: self.error,

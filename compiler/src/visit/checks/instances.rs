@@ -70,7 +70,7 @@ impl Db {
                 let mut copy = Solver::new();
                 copy.groups = solver.groups.clone();
 
-                copy.as_unify_ctx().unify_substitutions(
+                copy.as_unify_ctx(self).unify_substitutions(
                     None,
                     &left_instance.substitutions,
                     &right_instance.substitutions,

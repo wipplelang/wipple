@@ -113,10 +113,10 @@ CallExpressionNode `filter (name -> count name < 5)` (test/tests/infer.wipple:5:
   is an expression
 ConstructorExpressionNode `<` (test/tests/infer.wipple:5:54-5:55)
   at test/tests/infer.wipple:5:54-5:55
-  has bound(s) Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:49:1-54:2)), Less-Than Number (`instance (Less-Than value)` (library/src/foundation/logic.wipple:58:1-58:84))
+  has bound(s) Order Number (`instance (Order Number)` (library/src/foundation/logic.wipple:51:1-56:2)), Less-Than Number (`instance (Less-Than value)` (library/src/foundation/logic.wipple:60:1-60:84))
   has type Number Number -> Boolean
   is an expression
-  resolved to 1 definition(s): `Less-Than` (library/src/foundation/logic.wipple:56:1-57:52)
+  resolved to 1 definition(s): `Less-Than` (library/src/foundation/logic.wipple:58:1-59:52)
 CallExpressionNode `count name < 5` (test/tests/infer.wipple:5:43-5:57)
   at test/tests/infer.wipple:5:43-5:57
   has type Boolean

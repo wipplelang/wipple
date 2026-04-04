@@ -54,7 +54,7 @@ VariableExpressionNode `sports` (test/tests/dictionary.wipple:4:48-4:54)
   resolved to 1 definition(s): `sports` (test/tests/dictionary.wipple:4:32-4:38)
 VariableExpressionNode `insert-entry` (test/tests/dictionary.wipple:4:57-4:69)
   at test/tests/dictionary.wipple:4:57-4:69
-  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:75:1-79:2)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
+  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:77:1-81:2)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
   has type String Number -> (Dictionary String Number) -> Dictionary String Number
   is an expression
   resolved to 1 definition(s): `insert-entry` (library/src/foundation/dictionary.wipple:38:1-39:105)
@@ -132,7 +132,7 @@ VariableExpressionNode `lengths` (test/tests/dictionary.wipple:6:57-6:64)
   resolved to 1 definition(s): `lengths` (test/tests/dictionary.wipple:4:1-4:8)
 VariableExpressionNode `entry` (test/tests/dictionary.wipple:6:67-6:72)
   at test/tests/dictionary.wipple:6:67-6:72
-  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:75:1-79:2)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
+  has bound(s) Equal String (`instance (Equal String)` (library/src/foundation/logic.wipple:77:1-81:2)), Hash String (`instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:66))
   has type String -> (Dictionary String Number) -> Maybe Number
   is an expression
   resolved to 1 definition(s): `entry` (library/src/foundation/dictionary.wipple:19:1-20:83)
@@ -193,10 +193,10 @@ CallExpressionNode `each (sport -> show ("_ has _ letters" sport ((lengths . ent
   is an expression
 ConstructorExpressionNode `or` (test/tests/dictionary.wipple:6:80-6:82)
   at test/tests/dictionary.wipple:6:80-6:82
-  has bound(s) Or (Maybe Number) Number Number (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:31:1-34:2))
+  has bound(s) Or (Maybe Number) Number Number (`instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:33:1-36:2))
   has type (Maybe Number) {Number} -> Number
   is an expression
-  resolved to 1 definition(s): `Or` (library/src/foundation/logic.wipple:28:1-29:73)
+  resolved to 1 definition(s): `Or` (library/src/foundation/logic.wipple:30:1-31:73)
 BlockExpressionNode `unreachable` (test/tests/dictionary.wipple:6:83-6:94)
   at test/tests/dictionary.wipple:6:83-6:94
   has type {Number}

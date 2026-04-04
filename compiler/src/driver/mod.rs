@@ -125,12 +125,15 @@ pub fn compile(db: &mut Db, files: &[NodeRef]) {
         }
     }
 
+    // Add custom connections
+    db.create_connections(node_is_from_files);
+
     db.gc();
 }
 
 fn set_groups(db: &mut Db, solver: Solver, filter: impl Fn(&mut Db, &NodeRef) -> bool) {
     for group in solver
-        .into_sorted_groups(|node| GroupOrder::new(db, node))
+        .into_sorted_groups(db, GroupOrder::new)
         .collect::<Vec<_>>()
     {
         let group = Arc::new(group);

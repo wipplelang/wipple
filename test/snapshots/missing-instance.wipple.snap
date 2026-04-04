@@ -25,7 +25,7 @@ Feedback:
 
 `show` (test/tests/missing-instance.wipple:4:1-4:5) (error-instance):
 
-  Can't describe   `Foo` (test/tests/missing-instance.wipple:4:6-4:9).
+  Can't describe   `value` (library/src/foundation/io.wipple:8:38-8:43).
 
- You can't display   `Foo` (test/tests/missing-instance.wipple:4:6-4:9) on the screen or use it in placeholders because
+ You can't display   `value` (library/src/foundation/io.wipple:8:38-8:43) on the screen or use it in placeholders because
  it can't be converted into a string.

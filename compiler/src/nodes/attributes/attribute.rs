@@ -1,7 +1,7 @@
 use crate::{
     codegen::Codegen,
     database::{Db, Fact, Node, NodeRef, Render},
-    nodes::{StringAttributeValueNode, parse_attribute_value},
+    nodes::{ConnectionAttributeValueNode, StringAttributeValueNode, parse_attribute_value},
     syntax::{ParseError, Parser, TokenKind, parse_attribute_name},
     visit::{Visit, Visitor},
 };
@@ -139,6 +139,31 @@ impl Db {
         result
     }
 
+    pub fn iter_assignment_attributes<T>(
+        &mut self,
+        attributes: &[NodeRef],
+        name: &str,
+        f: impl Fn(&NodeRef) -> Option<T>,
+    ) -> impl Iterator<Item = T> {
+        attributes.iter().filter_map(move |node| {
+            let attribute = node.downcast_ref::<AttributeNode>()?;
+
+            if attribute.name == name
+                && let Some(value) = &attribute.value
+            {
+                let result = f(value);
+
+                if result.is_none() {
+                    self.insert(node, MismatchedAttributeValue);
+                }
+
+                return result;
+            }
+
+            None
+        })
+    }
+
     pub fn contains_string_attribute_value(
         &mut self,
         attributes: &[NodeRef],
@@ -147,6 +172,16 @@ impl Db {
         self.contains_assignment_attribute(attributes, name, |node| {
             node.downcast_ref::<StringAttributeValueNode>()
                 .map(|node| node.value.clone())
+        })
+    }
+
+    pub fn iter_connect_attribute_values(
+        &mut self,
+        attributes: &[NodeRef],
+        name: &str,
+    ) -> impl Iterator<Item = ConnectionAttributeValueNode> {
+        self.iter_assignment_attributes(attributes, name, |node| {
+            node.downcast_ref::<ConnectionAttributeValueNode>().cloned()
         })
     }
 }

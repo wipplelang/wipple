@@ -109,9 +109,6 @@ impl Visit for TypeParameterNode {
         if let Some(existing) = existing {
             visitor.constraint(GroupConstraint::new(node.clone(), existing.node));
         } else {
-            let parameter_constraint =
-                TypeConstraint::new(node.clone(), visitor.parameter_type(node.clone()));
-
             let definition = TypeParameterDefinition {
                 name: self.name.clone(),
                 node: node.clone(),
@@ -119,7 +116,28 @@ impl Visit for TypeParameterNode {
 
             visitor.define(&definition.name, definition.clone());
 
-            visitor.constraint(parameter_constraint.clone());
+            if let Some(value) = &self.value {
+                visitor.visit(value);
+                visitor.edge(value, node, "value");
+
+                let mut constraint = GroupConstraint::new(node.clone(), value.clone());
+                constraint.info_mut().active = false; // wait until instantiated
+                visitor.constraint(constraint);
+            }
+
+            if self
+                .value
+                .as_ref()
+                .and_then(|value| value.downcast_ref::<TypeParameterNode>())
+                .is_some()
+            {
+                // Allow aliases to type parameters
+            } else {
+                visitor.constraint(TypeConstraint::new(
+                    node.clone(),
+                    visitor.parameter_type(node.clone()),
+                ));
+            }
 
             if self.infer {
                 visitor.insert(node, InferredParameter);
@@ -130,15 +148,6 @@ impl Visit for TypeParameterNode {
                 Definition::TypeParameter(_) => Some(()),
                 _ => None,
             });
-
-            if let Some(value) = &self.value {
-                visitor.visit(value);
-                visitor.edge(value, node, "value");
-
-                let mut constraint = GroupConstraint::new(node.clone(), value.clone());
-                constraint.info_mut().active = false; // wait until instantiated
-                visitor.constraint(constraint);
-            }
 
             let definition_node = visitor.current_definition().node.clone();
 

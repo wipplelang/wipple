@@ -2,7 +2,9 @@ use crate::{
     database::NodeRef,
     nodes::{InstanceDefinitionNode, TypeParameterNode},
     queries::QueryCtx,
-    typecheck::{Bound, Bounds, Constraint, ConstructedType, Instantiated, Type, Typed},
+    typecheck::{
+        Bound, Bounds, Constraint, ConstructedType, GroupedWith, Instantiated, Type, Typed,
+    },
     visit::{Defined, Resolved, TypeParameters},
 };
 use std::collections::HashMap;
@@ -99,28 +101,53 @@ pub struct QueriedCommentsLink {
     pub types: Vec<ConstructedType>,
 }
 
-fn get_links(
+pub fn get_links(
     ctx: &QueryCtx<'_>,
     definition_node: &NodeRef,
     source_node: &NodeRef,
 ) -> HashMap<String, QueriedCommentsLink> {
     let mut links = HashMap::new();
 
-    let Some(TypeParameters(type_parameters)) = ctx.db.get(definition_node) else {
+    let Some(Defined(definition)) = ctx.db.get::<Defined>(definition_node) else {
         return links;
     };
 
-    for type_parameter_node in type_parameters {
-        let Some(type_parameter) = type_parameter_node.downcast_ref::<TypeParameterNode>() else {
-            continue;
-        };
+    if let Some(name) = definition.name() {
+        links.insert(
+            name.to_string(),
+            QueriedCommentsLink {
+                node: definition.node(),
+                related: Vec::new(),
+                types: vec![],
+            },
+        );
+    }
 
+    let nodes = ctx
+        .db
+        .get::<Defined>(definition_node)
+        .and_then(|Defined(definition)| {
+            definition
+                .name()
+                .map(|name| (name.to_string(), source_node.clone()))
+        })
+        .into_iter()
+        .chain(
+            ctx.db
+                .get(definition_node)
+                .into_iter()
+                .flat_map(|TypeParameters(type_parameters)| type_parameters)
+                .filter_map(|node| {
+                    Some((node.downcast_ref::<TypeParameterNode>()?.name.clone(), node))
+                }),
+        );
+
+    for (name, name_node) in nodes {
         let Some(instantiated) = ctx
             .db
             .iter::<Instantiated>()
             .find_map(|(node, instantiated)| {
-                (instantiated.from == type_parameter_node
-                    && instantiated.source_node == *source_node)
+                (instantiated.from == name_node && instantiated.source_node == *source_node)
                     .then_some(node)
             })
         else {
@@ -131,15 +158,25 @@ fn get_links(
             continue;
         };
 
-        let mut uses = group.nodes.iter().cloned();
-        let first = uses.next().unwrap();
-        let related = uses.collect::<Vec<_>>();
+        // Prefer using the first node from the source that was grouped with
+        // `instantiated`
+        let node = ctx
+            .db
+            .get(&instantiated)
+            .as_ref()
+            .and_then(|GroupedWith(nodes)| {
+                nodes
+                    .iter()
+                    .find(|node| !ctx.db.contains::<Instantiated>(node))
+            })
+            .unwrap_or(&instantiated)
+            .clone();
 
         links.insert(
-            type_parameter.name.clone(),
+            name,
             QueriedCommentsLink {
-                node: first,
-                related,
+                node,
+                related: group.nodes.clone(),
                 types: group.types.clone(),
             },
         );

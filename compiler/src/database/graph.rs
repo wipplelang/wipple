@@ -40,11 +40,11 @@ impl Graph {
         self.replacements.insert(node.clone(), replacement.clone());
     }
 
-    pub fn edge(&mut self, from: &NodeRef, to: &NodeRef, label: &'static str) {
+    pub fn edge(&mut self, from: &NodeRef, to: &NodeRef, label: impl Into<String>) {
         self.edges.push_back(Edge {
             from: from.clone(),
             to: to.clone(),
-            label: label.to_string(),
+            label: label.into(),
         });
     }
 

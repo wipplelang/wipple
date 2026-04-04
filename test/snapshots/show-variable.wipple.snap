@@ -34,7 +34,7 @@ Feedback:
 
 `show` (test/tests/show-variable.wipple:6:1-6:5) (error-instance):
 
-  Can't describe   `my-variable` (test/tests/show-variable.wipple:5:1-5:12).
+  Can't describe   `value` (library/src/foundation/io.wipple:8:38-8:43).
 
- You can't display   `my-variable` (test/tests/show-variable.wipple:5:1-5:12) on the screen or use it in placeholders because
+ You can't display   `value` (library/src/foundation/io.wipple:8:38-8:43) on the screen or use it in placeholders because
  it can't be converted into a string.

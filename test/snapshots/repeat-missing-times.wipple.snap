@@ -38,8 +38,8 @@ Feedback:
 
 `repeat` (test/tests/repeat-missing-times.wipple:3:1-3:7) (error-instance):
 
-  Missing `times` after   `5` (test/tests/repeat-missing-times.wipple:3:8-3:9).
+  Missing `times` after   `state` (library/src/foundation/repeat.wipple:42:37-42:52).
 
- Try rewriting this code as `(  `5` (test/tests/repeat-missing-times.wipple:3:8-3:9) times)`, or double-check your parentheses.
+ Try rewriting this code as `(  `state` (library/src/foundation/repeat.wipple:42:37-42:52) times)`, or double-check your parentheses.
 
   

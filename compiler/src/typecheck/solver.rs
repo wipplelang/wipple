@@ -26,10 +26,11 @@ impl Solver {
 
     pub fn into_sorted_groups<K: Ord>(
         mut self,
-        key: impl FnMut(&NodeRef) -> K,
+        db: &mut Db,
+        mut key: impl FnMut(&mut Db, &NodeRef) -> K,
     ) -> impl Iterator<Item = Group> {
-        self.as_unify_ctx().apply_all();
-        self.groups.into_sorted(key)
+        self.as_unify_ctx(db).apply_all();
+        self.groups.into_sorted(move |node| key(db, node))
     }
 
     pub fn constraints_mut(&mut self) -> impl Iterator<Item = &mut dyn Constraint> {
@@ -55,7 +56,7 @@ impl Solver {
         self.run_pass_until(db, None);
 
         for substitutions in mem::take(&mut self.substitutions_to_apply) {
-            self.as_unify_ctx().apply_substitutions(&substitutions);
+            self.as_unify_ctx(db).apply_substitutions(&substitutions);
         }
     }
 
@@ -65,10 +66,10 @@ impl Solver {
         }
 
         let mut ctx = ConstraintCtx {
-            db,
             implied_instances: &mut self.implied_instances,
             substitutions_to_apply: &mut self.substitutions_to_apply,
             unify_ctx: UnifyCtx {
+                db,
                 groups: &mut self.groups,
                 progress: &mut self.progress,
                 error: &mut self.error,
@@ -104,8 +105,9 @@ impl Solver {
         self.constraints.extend(iter);
     }
 
-    pub fn as_unify_ctx(&mut self) -> UnifyCtx<'_> {
+    pub fn as_unify_ctx<'a>(&'a mut self, db: &'a mut Db) -> UnifyCtx<'a> {
         UnifyCtx {
+            db,
             groups: &mut self.groups,
             progress: &mut self.progress,
             error: &mut self.error,

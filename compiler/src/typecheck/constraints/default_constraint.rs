@@ -36,7 +36,7 @@ impl Constraint for DefaultConstraint {
         DefaultConstraint::new(node, ty)
     }
 
-    fn run(&mut self, ctx: &mut ConstraintCtx<'_, '_>) -> ConstraintResult {
+    fn run(&mut self, ctx: &mut ConstraintCtx<'_>) -> ConstraintResult {
         if let Type::Node(node) = ctx.apply(&Type::Node(self.info.node.clone())) {
             ctx.unify(Some(Box::new(self.clone())), node, self.ty.clone());
         }
