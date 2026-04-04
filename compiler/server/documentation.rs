@@ -30,7 +30,11 @@ pub async fn handle(request: Request) -> anyhow::Result<serde_json::Value> {
 
         items.insert(
             name,
-            json!({ "declaration": data.declaration, "docs": docs }),
+            json!({
+                "declaration": data.declaration,
+                "kind": data.kind,
+                "docs": docs,
+            }),
         );
     }
 

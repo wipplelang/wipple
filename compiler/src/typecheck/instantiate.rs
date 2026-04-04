@@ -39,10 +39,6 @@ impl InstantiateContext<'_> {
                 },
             );
 
-            self.db
-                .graph
-                .instantiate(&self.source_node, node, &replacement);
-
             replacement
         })
     }

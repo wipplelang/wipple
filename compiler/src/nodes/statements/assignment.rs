@@ -95,7 +95,6 @@ impl Visit for AssignmentNode {
             }
 
             visitor.visit(&value);
-            visitor.edge(&value, &pattern, "value");
 
             visitor.matching(&value, false, true, |visitor| {
                 visitor.current_match().root = Some(value.clone());

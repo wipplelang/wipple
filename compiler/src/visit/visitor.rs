@@ -196,6 +196,12 @@ impl<'db> Visitor<'db> {
     }
 
     pub fn edge(&mut self, from: &NodeRef, to: &NodeRef, label: &'static str) {
+        if let Some(current_definition) = &self.current_definition
+            && current_definition.within_constant_value
+        {
+            return; // ignore implementations
+        }
+
         self.db.graph.edge(from, to, label);
     }
 

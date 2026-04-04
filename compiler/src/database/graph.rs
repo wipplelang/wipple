@@ -1,6 +1,8 @@
 use crate::{
     database::{Db, NodeRef},
+    nodes::IsType,
     typecheck::{ConstructedType, Instantiated, Type},
+    visit::Defined,
 };
 use petgraph::prelude::DiGraphMap;
 use serde::Serialize;
@@ -10,9 +12,8 @@ use std::collections::{BTreeMap, BTreeSet};
 #[derive(Debug, Clone, Default)]
 pub struct Graph {
     mask: im::OrdSet<NodeRef>,
-    replacements: im::OrdMap<NodeRef, NodeRef>, // global replacements
-    instantiated: im::OrdMap<NodeRef, im::OrdMap<NodeRef, NodeRef>>, // replacements originating from a specific node
-    edges: im::Vector<(NodeRef, NodeRef, &'static str)>,
+    replacements: im::OrdMap<NodeRef, NodeRef>,
+    edges: im::Vector<Edge>,
     groups: im::Vector<Group>,
 }
 
@@ -34,19 +35,17 @@ impl Graph {
         self.mask = im::OrdSet::from_iter(nodes);
     }
 
+    /// This should only be called for nodes that are in the same group.
     pub fn replace(&mut self, node: &NodeRef, replacement: &NodeRef) {
         self.replacements.insert(node.clone(), replacement.clone());
     }
 
-    pub fn instantiate(&mut self, source: &NodeRef, node: &NodeRef, instantiated: &NodeRef) {
-        self.instantiated
-            .entry(source.clone())
-            .or_default()
-            .insert(node.clone(), instantiated.clone());
-    }
-
     pub fn edge(&mut self, from: &NodeRef, to: &NodeRef, label: &'static str) {
-        self.edges.push_back((from.clone(), to.clone(), label));
+        self.edges.push_back(Edge {
+            from: from.clone(),
+            to: to.clone(),
+            label: label.to_string(),
+        });
     }
 
     pub fn group(
@@ -61,7 +60,7 @@ impl Graph {
     }
 
     pub fn serialize(&self, db: &Db) -> impl Serialize + use<> {
-        const MAX_ITERATIONS: usize = 4;
+        const MAX_ITERATIONS: usize = 10;
 
         #[derive(Debug, Default, Serialize)]
         struct Result {
@@ -76,23 +75,12 @@ impl Graph {
             .map(|node| (node.clone(), None::<usize>))
             .collect::<BTreeMap<_, _>>();
 
-        let mut reachable_instantiated = Vec::new();
         let mut in_group = BTreeSet::new();
         let mut finished_groups = BTreeSet::new();
         let mut groups = BTreeMap::<usize, (BTreeSet<NodeRef>, Vec<ConstructedType>)>::new();
-        let mut graph = DiGraphMap::<usize, &str>::new();
+        let mut graph = DiGraphMap::<usize, String>::new();
         for _ in 0..MAX_ITERATIONS {
             let mut progress = false;
-
-            for node in reachable_nodes.keys() {
-                if let Some(instantiated) = self.instantiated.get(node)
-                    && !reachable_instantiated.iter().any(|&existing| {
-                        std::ptr::eq(existing as *const _, instantiated as *const _)
-                    })
-                {
-                    reachable_instantiated.push(instantiated);
-                }
-            }
 
             for (index, group) in self.groups.iter().enumerate() {
                 if finished_groups.contains(&index) {
@@ -103,7 +91,7 @@ impl Graph {
                     .nodes
                     .iter()
                     .filter(|node| self.can_display(db, node))
-                    .map(|node| self.replacement_for(node, &reachable_instantiated))
+                    .map(|node| self.replacement_for(node))
                     .collect::<BTreeSet<_>>();
 
                 nodes.retain(|node| {
@@ -138,11 +126,10 @@ impl Graph {
                 reachable_nodes.extend(nodes.into_iter().map(|node| (node, Some(index))));
             }
 
-            for (from, to, label) in &self.edges {
-                let from = self.replacement_for(from, &reachable_instantiated);
-                let to = self.replacement_for(to, &reachable_instantiated);
-
-                if !reachable_nodes.contains_key(&to) {
+            for edge in &self.edges {
+                let from = self.replacement_for(&edge.from);
+                let to = self.replacement_for(&edge.to);
+                if !reachable_nodes.contains_key(&from) && !reachable_nodes.contains_key(&to) {
                     continue;
                 }
 
@@ -153,7 +140,10 @@ impl Graph {
                 reachable_nodes.entry(from.clone()).or_insert(None);
                 reachable_nodes.entry(to.clone()).or_insert(None);
 
-                if graph.add_edge(from.id(), to.id(), *label).is_none() {
+                if graph
+                    .add_edge(from.id(), to.id(), edge.label.clone())
+                    .is_none()
+                {
                     progress = true;
                 }
             }
@@ -163,18 +153,12 @@ impl Graph {
             }
         }
 
-        // If there are non-generic types present, remove the groups with only type parameters
-
-        let contains_non_generic = |types: &[ConstructedType]| {
-            types.is_empty() || types.iter().any(|ty| ty.instantiate.is_none())
-        };
-
-        if groups
-            .values()
-            .any(|(_, types)| contains_non_generic(types))
-        {
-            groups.retain(|_, (nodes, types)| {
-                let keep = contains_non_generic(types);
+        // Remove groups containing only types
+        let contains_non_type =
+            |nodes: &BTreeSet<NodeRef>| nodes.iter().any(|node| !db.contains::<IsType>(node));
+        if groups.values().any(|(nodes, _)| contains_non_type(nodes)) {
+            groups.retain(|_, (nodes, _)| {
+                let keep = contains_non_type(nodes);
 
                 if !keep {
                     for node in nodes.iter() {
@@ -213,7 +197,7 @@ impl Graph {
             }
 
             let mut span = serde_json::json!(db.span(&node));
-            span["source"] = db.span(&node).as_node_source().into();
+            span["source"] = db.span(&node).source.into();
 
             result.nodes.push(json!({
                 "id": format!("node{}", node.id()),
@@ -233,9 +217,12 @@ impl Graph {
                 .map(|ty| Type::Constructed(ty).to_string(db, true))
                 .collect::<Vec<_>>();
 
-            if labels.is_empty() {
+            let conflict = if labels.is_empty() {
                 labels.push(String::from("_"));
-            }
+                true
+            } else {
+                labels.len() > 1
+            };
 
             result.groups.push(json!({
                 "nodes": nodes
@@ -243,6 +230,7 @@ impl Graph {
                     .map(|node| format!("node{}", node.id()))
                     .collect::<Vec<_>>(),
                 "labels": labels,
+                "conflict": conflict,
             }));
         }
 
@@ -250,23 +238,13 @@ impl Graph {
     }
 
     fn can_display(&self, db: &Db, node: &NodeRef) -> bool {
-        !node.is_hidden() || db.contains::<Instantiated>(node)
+        (!node.is_hidden() || db.contains::<Instantiated>(node)) && !db.contains::<Defined>(node)
     }
 
-    fn replacement_for<'a: 'b, 'b>(
-        &'a self,
-        node: &NodeRef,
-        instantiated: &[&'b im::OrdMap<NodeRef, NodeRef>],
-    ) -> NodeRef {
-        let replacements = [&self.replacements]
-            .into_iter()
-            .chain(instantiated.iter().copied());
-
+    fn replacement_for(&self, node: &NodeRef) -> NodeRef {
         let mut node = node.clone();
-        for entry in replacements {
-            while let Some(replacement) = entry.get(&node) {
-                node = replacement.clone();
-            }
+        while let Some(replacement) = self.replacements.get(&node) {
+            node = replacement.clone();
         }
 
         node

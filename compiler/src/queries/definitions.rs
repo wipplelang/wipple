@@ -1,7 +1,7 @@
 use crate::{
     database::NodeRef,
     queries::{QueriedComments, QueryCtx, comments, find_for},
-    visit::{Defined, Resolved},
+    visit::{Defined, Definition, Resolved},
 };
 use levenshtein::levenshtein;
 
@@ -53,6 +53,7 @@ pub fn ambiguous(ctx: &QueryCtx<'_>, f: &mut dyn FnMut((NodeRef, String, Vec<Nod
 #[derive(Debug)]
 pub struct QueriedDocumentation {
     pub name: Option<String>,
+    pub kind: Option<&'static str>,
     pub declaration: String,
     pub comments: QueriedComments,
 }
@@ -66,8 +67,21 @@ pub fn documentation(ctx: &QueryCtx<'_>, f: &mut dyn FnMut(QueriedDocumentation)
         return;
     };
 
+    let kind = match definition {
+        Definition::Variable(..) => Some("variable"),
+        Definition::Constant(..) => Some("constant"),
+        Definition::Type(..) => Some("type"),
+        Definition::Trait(..) => Some("trait"),
+        Definition::Instance(..) => Some("instance"),
+        Definition::TypeParameter(..) => None,
+        Definition::MarkerConstructor(..) => None,
+        Definition::StructureConstructor(..) => None,
+        Definition::VariantConstructor(..) => None,
+    };
+
     f(QueriedDocumentation {
         name: definition.name().map(|s| s.to_string()),
+        kind,
         declaration: ctx.db.span(&definition.node()).as_definition_source(),
         comments,
     })
