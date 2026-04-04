@@ -120,18 +120,7 @@ impl Visit for TypeParameterNode {
                 visitor.visit(value);
                 visitor.edge(value, node, "value");
 
-                let mut constraint = GroupConstraint::new(node.clone(), value.clone());
-                constraint.info_mut().active = false; // wait until instantiated
-                visitor.constraint(constraint);
-            }
-
-            if self
-                .value
-                .as_ref()
-                .and_then(|value| value.downcast_ref::<TypeParameterNode>())
-                .is_some()
-            {
-                // Allow aliases to type parameters
+                visitor.constraint(GroupConstraint::new(node.clone(), value.clone()));
             } else {
                 visitor.constraint(TypeConstraint::new(
                     node.clone(),
