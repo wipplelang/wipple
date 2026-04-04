@@ -43,8 +43,8 @@ OperatorExpressionNode `my-list . each show` (test/tests/list-mismatched-element
   at test/tests/list-mismatched-elements.wipple:4:1-4:20
   has type ()
   is an expression
-CallExpressionNode `.` (test/tests/list-mismatched-elements.wipple:4:9-4:10)
-  at test/tests/list-mismatched-elements.wipple:4:9-4:10
+CallExpressionNode `each show` (test/tests/list-mismatched-elements.wipple:4:11-4:20)
+  at test/tests/list-mismatched-elements.wipple:4:11-4:20
   has type ()
   is an expression
 

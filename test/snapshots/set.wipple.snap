@@ -164,20 +164,20 @@ CallExpressionNode `show (sports . contains? "Baseball")` (test/tests/set.wipple
   at test/tests/set.wipple:8:1-8:37
   has type ()
   is an expression
-CallExpressionNode `.` (test/tests/set.wipple:5:14-5:15)
-  at test/tests/set.wipple:5:14-5:15
+CallExpressionNode `contains? "Basketball"` (test/tests/set.wipple:5:16-5:38)
+  at test/tests/set.wipple:5:16-5:38
   has type Boolean
   is an expression
-CallExpressionNode `.` (test/tests/set.wipple:6:14-6:15)
-  at test/tests/set.wipple:6:14-6:15
+CallExpressionNode `contains? "Soccer"` (test/tests/set.wipple:6:16-6:34)
+  at test/tests/set.wipple:6:16-6:34
   has type Boolean
   is an expression
-CallExpressionNode `.` (test/tests/set.wipple:7:14-7:15)
-  at test/tests/set.wipple:7:14-7:15
+CallExpressionNode `contains? "Golf"` (test/tests/set.wipple:7:16-7:32)
+  at test/tests/set.wipple:7:16-7:32
   has type Boolean
   is an expression
-CallExpressionNode `.` (test/tests/set.wipple:8:14-8:15)
-  at test/tests/set.wipple:8:14-8:15
+CallExpressionNode `contains? "Baseball"` (test/tests/set.wipple:8:16-8:36)
+  at test/tests/set.wipple:8:16-8:36
   has type Boolean
   is an expression
 

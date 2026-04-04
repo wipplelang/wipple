@@ -183,16 +183,16 @@ CallExpressionNode `show (my-list . nth 1)` (test/tests/lists.wipple:9:1-9:23)
   at test/tests/lists.wipple:9:1-9:23
   has type ()
   is an expression
-CallExpressionNode `.` (test/tests/lists.wipple:5:15-5:16)
-  at test/tests/lists.wipple:5:15-5:16
+CallExpressionNode `first` (test/tests/lists.wipple:5:17-5:22)
+  at test/tests/lists.wipple:5:17-5:22
   has type Maybe Number
   is an expression
-CallExpressionNode `.` (test/tests/lists.wipple:6:15-6:16)
-  at test/tests/lists.wipple:6:15-6:16
+CallExpressionNode `last` (test/tests/lists.wipple:6:17-6:21)
+  at test/tests/lists.wipple:6:17-6:21
   has type Maybe Number
   is an expression
-CallExpressionNode `.` (test/tests/lists.wipple:7:42-7:43)
-  at test/tests/lists.wipple:7:42-7:43
+CallExpressionNode `last` (test/tests/lists.wipple:7:44-7:48)
+  at test/tests/lists.wipple:7:44-7:48
   has type Maybe Number
   is an expression
 ConstructorExpressionNode `or` (test/tests/lists.wipple:7:27-7:29)
@@ -210,12 +210,12 @@ CallExpressionNode `my-list . initial) or unreachable` (test/tests/lists.wipple:
   at test/tests/lists.wipple:7:8-7:41
   has type List Number
   is an expression
-CallExpressionNode `.` (test/tests/lists.wipple:7:16-7:17)
-  at test/tests/lists.wipple:7:16-7:17
+CallExpressionNode `initial` (test/tests/lists.wipple:7:18-7:25)
+  at test/tests/lists.wipple:7:18-7:25
   has type Maybe (List Number)
   is an expression
-CallExpressionNode `.` (test/tests/lists.wipple:8:39-8:40)
-  at test/tests/lists.wipple:8:39-8:40
+CallExpressionNode `first` (test/tests/lists.wipple:8:41-8:46)
+  at test/tests/lists.wipple:8:41-8:46
   has type Maybe Number
   is an expression
 ConstructorExpressionNode `or` (test/tests/lists.wipple:8:24-8:26)
@@ -233,12 +233,12 @@ CallExpressionNode `my-list . tail) or unreachable` (test/tests/lists.wipple:8:8
   at test/tests/lists.wipple:8:8-8:38
   has type List Number
   is an expression
-CallExpressionNode `.` (test/tests/lists.wipple:8:16-8:17)
-  at test/tests/lists.wipple:8:16-8:17
+CallExpressionNode `tail` (test/tests/lists.wipple:8:18-8:22)
+  at test/tests/lists.wipple:8:18-8:22
   has type Maybe (List Number)
   is an expression
-CallExpressionNode `.` (test/tests/lists.wipple:9:15-9:16)
-  at test/tests/lists.wipple:9:15-9:16
+CallExpressionNode `nth 1` (test/tests/lists.wipple:9:17-9:22)
+  at test/tests/lists.wipple:9:17-9:22
   has type Maybe Number
   is an expression
 

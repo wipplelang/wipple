@@ -165,16 +165,16 @@ OperatorExpressionNode `right . each show` (test/tests/unzip.wipple:9:1-9:18)
   at test/tests/unzip.wipple:9:1-9:18
   has type ()
   is an expression
-CallExpressionNode `.` (test/tests/unzip.wipple:3:47-3:48)
-  at test/tests/unzip.wipple:3:47-3:48
+CallExpressionNode `unzip` (test/tests/unzip.wipple:3:49-3:54)
+  at test/tests/unzip.wipple:3:49-3:54
   has type (List Number; List String)
   is an expression
-CallExpressionNode `.` (test/tests/unzip.wipple:6:6-6:7)
-  at test/tests/unzip.wipple:6:6-6:7
+CallExpressionNode `each show` (test/tests/unzip.wipple:6:8-6:17)
+  at test/tests/unzip.wipple:6:8-6:17
   has type ()
   is an expression
-CallExpressionNode `.` (test/tests/unzip.wipple:9:7-9:8)
-  at test/tests/unzip.wipple:9:7-9:8
+CallExpressionNode `each show` (test/tests/unzip.wipple:9:9-9:18)
+  at test/tests/unzip.wipple:9:9-9:18
   has type ()
   is an expression
 

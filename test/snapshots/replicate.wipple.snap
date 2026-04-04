@@ -40,12 +40,12 @@ OperatorExpressionNode `"abc" . replicate 3 . each show` (test/tests/replicate.w
   at test/tests/replicate.wipple:3:1-3:32
   has type ()
   is an expression
-CallExpressionNode `.` (test/tests/replicate.wipple:3:21-3:22)
-  at test/tests/replicate.wipple:3:21-3:22
+CallExpressionNode `each show` (test/tests/replicate.wipple:3:23-3:32)
+  at test/tests/replicate.wipple:3:23-3:32
   has type ()
   is an expression
-CallExpressionNode `.` (test/tests/replicate.wipple:3:7-3:8)
-  at test/tests/replicate.wipple:3:7-3:8
+CallExpressionNode `replicate 3` (test/tests/replicate.wipple:3:9-3:20)
+  at test/tests/replicate.wipple:3:9-3:20
   has type Sequence String
   is an expression
 

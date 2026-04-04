@@ -52,8 +52,8 @@ OperatorExpressionNode `1, 2, 3) . transform ((x` (test/tests/mismatched-inferre
   at test/tests/mismatched-inferred-params.wipple:3:2-3:43
   has type Sequence Number
   is an expression
-CallExpressionNode `.` (test/tests/mismatched-inferred-params.wipple:3:11-3:12)
-  at test/tests/mismatched-inferred-params.wipple:3:11-3:12
+CallExpressionNode `transform ((x` (test/tests/mismatched-inferred-params.wipple:3:13-3:43)
+  at test/tests/mismatched-inferred-params.wipple:3:13-3:43
   has type Sequence Number
   is an expression
 

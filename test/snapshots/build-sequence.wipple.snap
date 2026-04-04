@@ -109,12 +109,12 @@ CallExpressionNode `n + 1` (test/tests/build-sequence.wipple:3:47-3:52)
   at test/tests/build-sequence.wipple:3:47-3:52
   has type Number
   is an expression
-CallExpressionNode `.` (test/tests/build-sequence.wipple:4:18-4:19)
-  at test/tests/build-sequence.wipple:4:18-4:19
+CallExpressionNode `each show` (test/tests/build-sequence.wipple:4:20-4:29)
+  at test/tests/build-sequence.wipple:4:20-4:29
   has type ()
   is an expression
-CallExpressionNode `.` (test/tests/build-sequence.wipple:4:9-4:10)
-  at test/tests/build-sequence.wipple:4:9-4:10
+CallExpressionNode `take 5` (test/tests/build-sequence.wipple:4:11-4:17)
+  at test/tests/build-sequence.wipple:4:11-4:17
   has type Sequence Number
   is an expression
 

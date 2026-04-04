@@ -390,7 +390,7 @@ fn apply_operator(
         visitor.function_type([left.clone()], node.clone()),
     ));
 
-    let span = visitor.span(node);
+    let span = visitor.span(right);
 
     visitor.node(
         span,

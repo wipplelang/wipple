@@ -272,12 +272,12 @@ OperatorExpressionNode `numbers . remove-duplicates . each show` (test/tests/rem
   at test/tests/remove-duplicates.wipple:13:1-13:40
   has type ()
   is an expression
-CallExpressionNode `.` (test/tests/remove-duplicates.wipple:13:29-13:30)
-  at test/tests/remove-duplicates.wipple:13:29-13:30
+CallExpressionNode `each show` (test/tests/remove-duplicates.wipple:13:31-13:40)
+  at test/tests/remove-duplicates.wipple:13:31-13:40
   has type ()
   is an expression
-CallExpressionNode `.` (test/tests/remove-duplicates.wipple:13:9-13:10)
-  at test/tests/remove-duplicates.wipple:13:9-13:10
+CallExpressionNode `remove-duplicates` (test/tests/remove-duplicates.wipple:13:11-13:28)
+  at test/tests/remove-duplicates.wipple:13:11-13:28
   has type Sequence Number
   is an expression
 ConstructorExpressionNode `and` (test/tests/remove-duplicates.wipple:6:49-6:52)
@@ -295,12 +295,12 @@ CallExpressionNode `seen . (not contains?) item) and (do {⋯` (test/tests/remov
   at test/tests/remove-duplicates.wipple:6:20-9:4
   has type Boolean
   is an expression
-CallExpressionNode `.` (test/tests/remove-duplicates.wipple:6:25-6:26)
-  at test/tests/remove-duplicates.wipple:6:25-6:26
+CallExpressionNode `(not contains?) item` (test/tests/remove-duplicates.wipple:6:27-6:47)
+  at test/tests/remove-duplicates.wipple:6:27-6:47
   has type Boolean
   is an expression
-CallExpressionNode `.` (test/tests/remove-duplicates.wipple:7:21-7:22)
-  at test/tests/remove-duplicates.wipple:7:21-7:22
+CallExpressionNode `insert item` (test/tests/remove-duplicates.wipple:7:23-7:34)
+  at test/tests/remove-duplicates.wipple:7:23-7:34
   has type Set element
   is an expression
 
