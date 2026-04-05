@@ -183,7 +183,7 @@
                 </Box>
             </div>
 
-            <div class="flex min-w-[350px] flex-1 shrink-0 flex-col gap-[10px]">
+            <div class="flex min-w-[350px] flex-[1.25] shrink-0 flex-col gap-[10px]">
                 <div
                     class="printing:hidden flex h-(--toolbar-height) shrink-0 flex-row justify-between gap-[10px]"
                 >
@@ -272,7 +272,7 @@
                 </Box>
             </div>
 
-            <div class="flex max-w-[450px] flex-1 flex-col gap-[10px] overflow-auto">
+            <div class="flex max-w-[550px] flex-1 flex-col gap-[10px] overflow-auto">
                 <div
                     class="printing:hidden flex h-(--toolbar-height) shrink-0 flex-row justify-center gap-[10px]"
                 >
