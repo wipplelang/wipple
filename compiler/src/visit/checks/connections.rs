@@ -35,20 +35,15 @@ impl Db {
                 }))) = self.get(definition)
                 {
                     for value in attributes.connect {
-                        let get_link = |name: Option<&str>| match name {
-                            Some(name) => links.get(name).map(|link| &link.node),
-                            None => Some(&node),
-                        };
-
-                        let Some(left) = get_link(value.left.as_deref()) else {
+                        let Some(left) = links.get(&value.left) else {
                             continue;
                         };
 
-                        let Some(right) = get_link(value.right.as_deref()) else {
+                        let Some(right) = links.get(&value.right) else {
                             continue;
                         };
 
-                        self.graph.edge(left, right, &value.label);
+                        self.graph.edge(&left.node, &right.node, &value.label);
 
                         has_custom_edges = true;
                     }

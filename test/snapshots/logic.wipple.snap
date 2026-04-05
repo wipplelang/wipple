@@ -9,7 +9,7 @@ VariableExpressionNode `if` (test/tests/logic.wipple:3:7-3:9)
   at test/tests/logic.wipple:3:7-3:9
   has type Boolean {String} {String} -> String
   is an expression
-  resolved to 1 definition(s): `if` (library/src/foundation/logic.wipple:7:1-12:74)
+  resolved to 1 definition(s): `if` (library/src/foundation/logic.wipple:7:1-12:86)
 ConstructorExpressionNode `True` (test/tests/logic.wipple:3:11-3:15)
   at test/tests/logic.wipple:3:11-3:15
   has type Boolean
@@ -60,7 +60,7 @@ VariableExpressionNode `if` (test/tests/logic.wipple:4:7-4:9)
   at test/tests/logic.wipple:4:7-4:9
   has type Boolean {String} {String} -> String
   is an expression
-  resolved to 1 definition(s): `if` (library/src/foundation/logic.wipple:7:1-12:74)
+  resolved to 1 definition(s): `if` (library/src/foundation/logic.wipple:7:1-12:86)
 ConstructorExpressionNode `True` (test/tests/logic.wipple:4:11-4:15)
   at test/tests/logic.wipple:4:11-4:15
   has type Boolean

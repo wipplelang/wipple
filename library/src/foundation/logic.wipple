@@ -7,9 +7,9 @@ Boolean : type {
 -- Make a choice based on whether the input is `True` or `False`.
 [connect : condition -> then ("then")]
 [connect : condition -> else ("else")]
-[connect : then -> _ ("output")]
-[connect : else -> _ ("output")]
-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> value
+[connect : then -> output ("output")]
+[connect : else -> output ("output")]
+if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)
 if : condition then else -> when condition {
   True -> do then
   False -> do else
