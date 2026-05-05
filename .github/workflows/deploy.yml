@@ -28,9 +28,9 @@ jobs:
             - uses: actions/cache@v5
               with:
                   path: "compiler/.build"
-                  key: ${{ runner.os }}-spm-${{ hashFiles('compiler/Package.resolved') }}
+                  key: ${{ runner.os }}-spm-deploy-${{ hashFiles('compiler/Package.resolved') }}
                   restore-keys: |
-                      ${{ runner.os }}-spm-
+                      ${{ runner.os }}-spm-deploy-
 
             - run: task setup
 
