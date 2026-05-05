@@ -1,6 +1,7 @@
 const path = require("node:path");
 const fs = require("node:fs");
 const process = require("node:process");
+const { spawnSync } = require("node:child_process");
 
 process.chdir(__dirname);
 
@@ -23,5 +24,27 @@ for (let dir of fs.readdirSync("src")) {
             code: fs.readFileSync(path.join("src", dir, file), "utf8"),
         }));
 
-    fs.writeFileSync(path.join("dist", `${dir}.json`), JSON.stringify({ metadata, files }));
+    const cmd = spawnSync(
+        "swift",
+        [
+            "run",
+            "--package-path=compiler",
+            "wipple",
+            "doc",
+            ...files.map((file) => path.join(__dirname, "src", file.path)),
+            ...(metadata.library ? ["--lib", path.join(__dirname, "src", metadata.library)] : []),
+        ],
+        {
+            cwd: path.resolve(__dirname, ".."),
+            stdio: ["ignore", "pipe", "inherit"],
+        },
+    );
+
+    if (cmd.status !== 0) {
+        throw new Error(`compiler exited with status code ${cmd.status}`);
+    }
+
+    const docs = JSON.parse(cmd.stdout.toString("utf8"));
+
+    fs.writeFileSync(path.join("dist", `${dir}.json`), JSON.stringify({ metadata, files, docs }));
 }

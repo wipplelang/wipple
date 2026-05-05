@@ -90,6 +90,7 @@ tasks:
     dir: server
     deps:
       - build:api
+      - build:library
     cmds:
       - (cd wat-parser && ./build.sh)
       - npm run build

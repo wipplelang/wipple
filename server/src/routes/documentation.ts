@@ -1,5 +1,5 @@
 import { handler } from "../handler";
-import { InputMetadata, loadLibrary } from "../library";
+import { InputMetadata, libraries } from "../library";
 
 const DocumentationRequest = InputMetadata;
 
@@ -8,13 +8,10 @@ export default handler(DocumentationRequest, async (body) => {
         return { statusCode: 400, body: { error: "missing library" } };
     }
 
-    const result = loadLibrary(body.library);
-
-    if (result == null) {
-        throw new Error("compilation failed");
+    const library = libraries[body.library];
+    if (library == null) {
+        return { statusCode: 400, body: { error: "unknown library" } };
     }
 
-    const items = result.documentation();
-
-    return { statusCode: 200, body: { items } };
+    return { statusCode: 200, body: { items: library.docs } };
 });

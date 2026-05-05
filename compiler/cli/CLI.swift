@@ -13,7 +13,7 @@ import Synchronization
 @main struct CLI: ParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "wipple",
-        subcommands: [CompileCommand.self, RunCommand.self, TestCommand.self],
+        subcommands: [CompileCommand.self, RunCommand.self, TestCommand.self, DocCommand.self],
     )
 }
 
@@ -49,12 +49,20 @@ struct TestCommand: ParsableCommand {
     func run() throws { try test(with: self.compileOptions) }
 }
 
+struct DocCommand: ParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "doc")
+
+    @OptionGroup var compileOptions: CompileOptions
+
+    func run() throws { try doc(with: self.compileOptions) }
+}
+
 struct CompileOptions: ParsableArguments {
     @Option(name: .long) var lib: [String] = []
     @Flag var facts = false
     @Option(name: .long) var filterFacts: String?
     @Option(name: .long) var filterFeedback: [String] = []
-    @Argument var paths: [String]
+    @Argument var paths: [String] = []
 }
 
 @discardableResult func compile(
@@ -167,9 +175,64 @@ func test(with options: CompileOptions) throws {
 
     let outputs = try results.map { result in try result!.get() }
 
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = .prettyPrinted
-    print(String(data: try encoder.encode(outputs), encoding: .utf8)!)
+    print(String(data: try JSONEncoder().encode(outputs), encoding: .utf8)!)
+}
+
+func doc(with options: CompileOptions) throws {
+    guard let (libDb, _) = try setup(with: options, time: true, to: &stderr) else { return }
+
+    let db = DB(parent: libDb)
+
+    var paths: [String] = []
+    var files: [any Visitable] = []
+    for path in options.paths {
+        let file = try readFile(
+            db: db,
+            path: path,
+            source: String(contentsOfFile: path, encoding: .utf8),
+        )
+
+        paths.append(path)
+        files.append(file)
+    }
+
+    let layer = Layer(name: paths.joined(separator: ", "), files: files)
+
+    guard
+        compile(
+            layer: layer,
+            with: options,
+            db: db,
+            prefix: "Compiling ",
+            time: true,
+            to: &stderr,
+        ) != nil
+    else { return }
+
+    struct DocumentationItem: Codable {
+        var declaration: String
+        var kind: String
+        var docs: String
+    }
+
+    var items: [String: DocumentationItem] = [:]
+    db.forEachFact(Defined.self) { node, _ in
+        Queries.documentation(includeLinks: false)(db, node) { documentation in
+            guard let name = documentation.name else { return }
+
+            let writer = FeedbackWriter(db: db)
+            writer.write(documentation.comments)
+            let (docs, _) = writer.finish { $0.markdown(db: db) }
+
+            items[name] = .init(
+                declaration: documentation.declaration,
+                kind: documentation.kind,
+                docs: docs,
+            )
+        }
+    }
+
+    print(String(data: try JSONEncoder().encode(items), encoding: .utf8)!)
 }
 
 @discardableResult func runWasm(_ wasm: String, path: String?, captureOutput: Bool = false) throws

@@ -13,6 +13,7 @@ export const LibraryMetadata = z.object({
 export interface Library {
     metadata: z.infer<typeof LibraryMetadata>;
     files: File[];
+    docs: Record<string, any>;
 }
 
 import foundationLibrary from "../../library/dist/foundation.json";
