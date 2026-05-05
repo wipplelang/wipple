@@ -1,53 +1,53 @@
 Facts:
-StringExpressionNode `"abc"` (test/tests/replicate.wipple:3:1-3:6)
-  at test/tests/replicate.wipple:3:1-3:6
-  has type String
+`"abc" . replicate 3 . each show` (replicate.wipple:1:1-1:32) (OperatorExpressionSyntax):
+  has type `()`
   is an expression
-VariableExpressionNode `replicate` (test/tests/replicate.wipple:3:9-3:18)
-  at test/tests/replicate.wipple:3:9-3:18
-  has type Number -> String -> Sequence String
+
+`"abc" . replicate 3` (replicate.wipple:1:1-1:20) (VisitAs):
+  has type `Sequence String`
   is an expression
-  resolved to 1 definition(s): `replicate` (library/src/foundation/sequence.wipple:25:1-27:51)
-NumberExpressionNode `3` (test/tests/replicate.wipple:3:19-3:20)
-  at test/tests/replicate.wipple:3:19-3:20
-  has type Number
+
+`each show` (replicate.wipple:1:23-1:32) (VisitAs):
+  has type `(Sequence String) -> ()` (replicate.wipple:1:23-1:32)
   is an expression
-CallExpressionNode `replicate 3` (test/tests/replicate.wipple:3:9-3:20)
-  at test/tests/replicate.wipple:3:9-3:20
-  has type String -> Sequence String
+
+`each show` (replicate.wipple:1:23-1:32) (CallExpressionSyntax):
+  has type `()`
   is an expression
-VariableExpressionNode `each` (test/tests/replicate.wipple:3:23-3:27)
-  at test/tests/replicate.wipple:3:23-3:27
-  has bound(s) As-Sequence (Sequence String) String (`instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:73))
-  has type (String -> ()) -> (Sequence String) -> ()
+
+`each` (replicate.wipple:1:23-1:27) (VariableExpressionSyntax):
+  has bound(s) `As-Sequence` `(Sequence String)` `String` (`instance (As-Sequence (Sequence element) element)` (sequence.wipple:54:1-54:50))
+  has type `(String -> ()) -> (Sequence String) -> ()` (replicate.wipple:1:23-1:27)
   is an expression
-  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:220:1-221:81)
-VariableExpressionNode `show` (test/tests/replicate.wipple:3:28-3:32)
-  at test/tests/replicate.wipple:3:28-3:32
-  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
-  has type String -> ()
+  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (sequence.wipple:221:1-221:81)
+
+`show` (replicate.wipple:1:28-1:32) (VariableExpressionSyntax):
+  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
+  has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-CallExpressionNode `each show` (test/tests/replicate.wipple:3:23-3:32)
-  at test/tests/replicate.wipple:3:23-3:32
-  has type (Sequence String) -> ()
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`"abc"` (replicate.wipple:1:1-1:6) (VisitAs):
+  has type `String`
   is an expression
-OperatorExpressionNode `"abc" . replicate 3` (test/tests/replicate.wipple:3:1-3:20)
-  at test/tests/replicate.wipple:3:1-3:20
-  has type Sequence String
+
+`replicate 3` (replicate.wipple:1:9-1:20) (VisitAs):
+  has type `String -> Sequence String` (replicate.wipple:1:9-1:20)
   is an expression
-OperatorExpressionNode `"abc" . replicate 3 . each show` (test/tests/replicate.wipple:3:1-3:32)
-  at test/tests/replicate.wipple:3:1-3:32
-  has type ()
+
+`replicate 3` (replicate.wipple:1:9-1:20) (CallExpressionSyntax):
+  has type `Sequence String`
   is an expression
-CallExpressionNode `each show` (test/tests/replicate.wipple:3:23-3:32)
-  at test/tests/replicate.wipple:3:23-3:32
-  has type ()
+
+`replicate` (replicate.wipple:1:9-1:18) (VariableExpressionSyntax):
+  has type `Number -> String -> Sequence String` (replicate.wipple:1:9-1:18)
   is an expression
-CallExpressionNode `replicate 3` (test/tests/replicate.wipple:3:9-3:20)
-  at test/tests/replicate.wipple:3:9-3:20
-  has type Sequence String
+  resolved to 1 definition(s): `replicate :: Number -> element -> Sequence element` (sequence.wipple:27:1-27:51)
+
+`3` (replicate.wipple:1:19-1:20) (NumberExpressionSyntax):
+  has type `Number` (replicate.wipple:1:19-1:20)
   is an expression
+
 
 Output:
 abc

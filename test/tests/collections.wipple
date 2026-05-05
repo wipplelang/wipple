@@ -1,4 +1,2 @@
--- wipple run $FILE --lib library/src/foundation
-
 my-list :: List Number
 my-list : 1, 2, 3

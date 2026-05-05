@@ -1,5 +1,3 @@
--- wipple run $FILE --lib library/src/foundation
-
 T : value => trait ()
 U : value => trait ()
 V : value => trait ()

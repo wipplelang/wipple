@@ -1,127 +1,125 @@
 Facts:
-TypeParameterNode `value` (test/tests/colliding-instances.wipple:3:5-3:10)
-  at test/tests/colliding-instances.wipple:3:5-3:10
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/colliding-instances.wipple:3:5-3:10)
-UnitTypeNode `()` (test/tests/colliding-instances.wipple:3:20-3:22)
-  at test/tests/colliding-instances.wipple:3:20-3:22
-  has type ()
-  is a type
-TraitDefinitionNode `T` (test/tests/colliding-instances.wipple:1:1-3:22)
-  at test/tests/colliding-instances.wipple:1:1-3:22
+`T : value => trait` (colliding-instances.wipple:1:1-1:19) (TraitDefinitionSyntax):
   has 4 overlapping instances
   has definition constraints
   has instances
-  has type ()
+  has type `()` (colliding-instances.wipple:1:20-1:22)
   has type parameters
   is a definition
-TypeDefinitionNode `X` (test/tests/colliding-instances.wipple:5:1-5:9)
-  at test/tests/colliding-instances.wipple:5:1-5:9
-  has definition constraints
-  has type X
+
+`value` (colliding-instances.wipple:1:5-1:10) (TypeParameterSyntax):
+  has type `value` (colliding-instances.wipple:1:5-1:10)
   is a definition
-NamedTypeNode `X` (test/tests/colliding-instances.wipple:6:13-6:14)
-  at test/tests/colliding-instances.wipple:6:13-6:14
-  has type X
   is a type
-  resolved to 1 definition(s): `X` (test/tests/colliding-instances.wipple:5:1-5:9)
-BoundConstraintNode `T X` (test/tests/colliding-instances.wipple:6:10-6:15)
-  at test/tests/colliding-instances.wipple:6:10-6:15
-UnitExpressionNode `()` (test/tests/colliding-instances.wipple:6:18-6:20)
-  at test/tests/colliding-instances.wipple:6:18-6:20
-  has type ()
-  is an expression
-InstanceDefinitionNode `instance (T X)` (test/tests/colliding-instances.wipple:6:1-6:20)
-  at test/tests/colliding-instances.wipple:6:1-6:20
+  resolved to 1 definition(s): `value` (colliding-instances.wipple:1:5-1:10)
+
+`X : type` (colliding-instances.wipple:3:1-3:9) (TypeDefinitionSyntax):
   has definition constraints
-  has type ()
+  has type `X` (colliding-instances.wipple:3:1-3:9)
   is a definition
-  resolved to 1 definition(s): `T` (test/tests/colliding-instances.wipple:1:1-3:22)
-NamedTypeNode `X` (test/tests/colliding-instances.wipple:7:13-7:14)
-  at test/tests/colliding-instances.wipple:7:13-7:14
-  has type X
-  is a type
-  resolved to 1 definition(s): `X` (test/tests/colliding-instances.wipple:5:1-5:9)
-BoundConstraintNode `T X` (test/tests/colliding-instances.wipple:7:10-7:15)
-  at test/tests/colliding-instances.wipple:7:10-7:15
-UnitExpressionNode `()` (test/tests/colliding-instances.wipple:7:18-7:20)
-  at test/tests/colliding-instances.wipple:7:18-7:20
-  has type ()
-  is an expression
-InstanceDefinitionNode `instance (T X)` (test/tests/colliding-instances.wipple:7:1-7:20)
-  at test/tests/colliding-instances.wipple:7:1-7:20
+
+`instance (T X)` (colliding-instances.wipple:4:1-4:15) (InstanceDefinitionSyntax):
   has definition constraints
-  has type ()
+  has type `()` (colliding-instances.wipple:4:18-4:20)
   is a definition
-  resolved to 1 definition(s): `T` (test/tests/colliding-instances.wipple:1:1-3:22)
-TypeParameterNode `value` (test/tests/colliding-instances.wipple:9:13-9:18)
-  at test/tests/colliding-instances.wipple:9:13-9:18
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/colliding-instances.wipple:9:13-9:18)
-BoundConstraintNode `T value` (test/tests/colliding-instances.wipple:9:10-9:19)
-  at test/tests/colliding-instances.wipple:9:10-9:19
-UnitExpressionNode `()` (test/tests/colliding-instances.wipple:9:22-9:24)
-  at test/tests/colliding-instances.wipple:9:22-9:24
-  has type ()
-  is an expression
-InstanceDefinitionNode `instance (T value)` (test/tests/colliding-instances.wipple:9:1-9:24)
-  at test/tests/colliding-instances.wipple:9:1-9:24
+  resolved to 1 definition(s): `T : value => trait` (colliding-instances.wipple:1:1-1:19)
+
+`instance (T X)` (colliding-instances.wipple:5:1-5:15) (InstanceDefinitionSyntax):
   has definition constraints
-  has type ()
+  has type `()` (colliding-instances.wipple:5:18-5:20)
+  is a definition
+  resolved to 1 definition(s): `T : value => trait` (colliding-instances.wipple:1:1-1:19)
+
+`instance (T value)` (colliding-instances.wipple:7:1-7:19) (InstanceDefinitionSyntax):
+  has definition constraints
+  has type `()` (colliding-instances.wipple:7:22-7:24)
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T` (test/tests/colliding-instances.wipple:1:1-3:22)
-TypeParameterNode `value` (test/tests/colliding-instances.wipple:11:5-11:10)
-  at test/tests/colliding-instances.wipple:11:5-11:10
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/colliding-instances.wipple:11:5-11:10)
-UnitTypeNode `()` (test/tests/colliding-instances.wipple:11:20-11:22)
-  at test/tests/colliding-instances.wipple:11:20-11:22
-  has type ()
-  is a type
-TraitDefinitionNode `U` (test/tests/colliding-instances.wipple:11:1-11:22)
-  at test/tests/colliding-instances.wipple:11:1-11:22
+  resolved to 1 definition(s): `T : value => trait` (colliding-instances.wipple:1:1-1:19)
+
+`U : value => trait` (colliding-instances.wipple:9:1-9:19) (TraitDefinitionSyntax):
   has definition constraints
-  has type ()
+  has instances
+  has type `()` (colliding-instances.wipple:9:20-9:22)
   has type parameters
   is a definition
-TypeParameterNode `a` (test/tests/colliding-instances.wipple:12:13-12:14)
-  at test/tests/colliding-instances.wipple:12:13-12:14
-  has type a
+
+`value` (colliding-instances.wipple:9:5-9:10) (TypeParameterSyntax):
+  has type `value` (colliding-instances.wipple:9:5-9:10)
+  is a definition
   is a type
-  resolved to 1 definition(s): `a` (test/tests/colliding-instances.wipple:12:13-12:14)
-BoundConstraintNode `T a` (test/tests/colliding-instances.wipple:12:10-12:15)
-  at test/tests/colliding-instances.wipple:12:10-12:15
-TypeParameterNode `a` (test/tests/colliding-instances.wipple:12:25-12:26)
-  at test/tests/colliding-instances.wipple:12:25-12:26
-  has type a
+  resolved to 1 definition(s): `value` (colliding-instances.wipple:9:5-9:10)
+
+`instance (T a) where (U a)` (colliding-instances.wipple:10:1-10:27) (InstanceDefinitionSyntax):
+  has definition constraints
+  has type `()` (colliding-instances.wipple:10:30-10:32)
+  has type parameters
+  is a definition
+  resolved to 1 definition(s): `T : value => trait` (colliding-instances.wipple:1:1-1:19)
+
+`X` (colliding-instances.wipple:4:13-4:14) (NamedTypeSyntax):
+  has type `X` (colliding-instances.wipple:4:13-4:14)
   is a type
-  resolved to 1 definition(s): `a` (test/tests/colliding-instances.wipple:12:13-12:14)
-BoundConstraintNode `U a` (test/tests/colliding-instances.wipple:12:22-12:27)
-  at test/tests/colliding-instances.wipple:12:22-12:27
-  has bound(s) U a (`U a` (test/tests/colliding-instances.wipple:12:22-12:27))
+  resolved to 1 definition(s): `X : type` (colliding-instances.wipple:3:1-3:9)
+
+`X` (colliding-instances.wipple:5:13-5:14) (NamedTypeSyntax):
+  has type `X` (colliding-instances.wipple:5:13-5:14)
+  is a type
+  resolved to 1 definition(s): `X : type` (colliding-instances.wipple:3:1-3:9)
+
+`value` (colliding-instances.wipple:7:13-7:18) (TypeParameterSyntax):
+  has type `value` (colliding-instances.wipple:7:13-7:18)
+  is a definition
+  is a type
+  resolved to 1 definition(s): `value` (colliding-instances.wipple:7:13-7:18)
+
+`a` (colliding-instances.wipple:10:13-10:14) (TypeParameterSyntax):
+  has type `a` (colliding-instances.wipple:10:13-10:14)
+  is a definition
+  is a type
+  resolved to 1 definition(s): `a` (colliding-instances.wipple:10:13-10:14)
+
+`(U a)` (colliding-instances.wipple:10:22-10:27) (BoundConstraintSyntax):
+  has bound(s) `U` `a` (colliding-instances.wipple:10:13-10:14) (`(U a)` (colliding-instances.wipple:10:22-10:27))
+  has definition constraints
   is a constraint
-  resolved to 1 definition(s): `U` (test/tests/colliding-instances.wipple:11:1-11:22)
-UnitExpressionNode `()` (test/tests/colliding-instances.wipple:12:30-12:32)
-  at test/tests/colliding-instances.wipple:12:30-12:32
-  has type ()
+  resolved to 1 definition(s): `U : value => trait` (colliding-instances.wipple:9:1-9:19)
+
+`a` (colliding-instances.wipple:10:25-10:26) (TypeParameterSyntax):
+  has type `a` (colliding-instances.wipple:10:13-10:14)
+  is a type
+  resolved to 1 definition(s): `a` (colliding-instances.wipple:10:13-10:14)
+
+`()` (colliding-instances.wipple:1:20-1:22) (UnitTypeSyntax):
+  has type `()` (colliding-instances.wipple:1:20-1:22)
+  is a type
+
+`()` (colliding-instances.wipple:4:18-4:20) (UnitExpressionSyntax):
+  has type `()` (colliding-instances.wipple:4:18-4:20)
   is an expression
-InstanceDefinitionNode `instance (T a)` (test/tests/colliding-instances.wipple:12:1-12:32)
-  at test/tests/colliding-instances.wipple:12:1-12:32
-  has definition constraints
-  has type ()
-  has type parameters
-  is a definition
-  resolved to 1 definition(s): `T` (test/tests/colliding-instances.wipple:1:1-3:22)
+
+`()` (colliding-instances.wipple:5:18-5:20) (UnitExpressionSyntax):
+  has type `()` (colliding-instances.wipple:5:18-5:20)
+  is an expression
+
+`()` (colliding-instances.wipple:7:22-7:24) (UnitExpressionSyntax):
+  has type `()` (colliding-instances.wipple:7:22-7:24)
+  is an expression
+
+`()` (colliding-instances.wipple:9:20-9:22) (UnitTypeSyntax):
+  has type `()` (colliding-instances.wipple:9:20-9:22)
+  is a type
+
+`()` (colliding-instances.wipple:10:30-10:32) (UnitExpressionSyntax):
+  has type `()` (colliding-instances.wipple:10:30-10:32)
+  is an expression
+
 
 
 Feedback:
 
-`T` (test/tests/colliding-instances.wipple:1:1-3:22) (conflicting-instances):
+`T : value => trait` (colliding-instances.wipple:1:1-1:19) (conflicting-instances)
 
-  `T` (test/tests/colliding-instances.wipple:1:1-3:22) has multiple overlapping instances: `instance (T X)` (test/tests/colliding-instances.wipple:6:1-6:20), `instance (T X)` (test/tests/colliding-instances.wipple:7:1-7:20), `instance (T value)` (test/tests/colliding-instances.wipple:9:1-9:24), and 1 other.
-
+  `T : value => trait` (colliding-instances.wipple:1:1-1:19) has multiple overlapping instances: `instance (T X)` (colliding-instances.wipple:4:1-4:15), `instance (T X)` (colliding-instances.wipple:5:1-5:15), `instance (T value)` (colliding-instances.wipple:7:1-7:19), and 1 other.
+  
   Only one of these instances can be defined at a time. Try making your instance more specific.

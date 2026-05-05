@@ -3,35 +3,39 @@ version: "3"
 tasks:
   compiler:
     cmds:
-      - cargo run --bin=wipple {{.CLI_ARGS}}
+      - swift run --package-path=compiler wipple {{.CLI_ARGS}}
   test:
     cmds:
-      - cargo build --locked --bin=wipple
-      - cargo insta test
       - node {{.CLI_ARGS}} test
   test:update:
     cmds:
-      - INSTA_UPDATE=1 task test -- --test-update-snapshots
-  test:coverage:
-    cmd: bash -e coverage.sh
+      - task test -- --test-update-snapshots
   install:
+    dir: compiler
     cmds:
-      - cargo install --path=compiler --bin=wipple
-  vscode:
-    dir: vscode
-    cmds:
-      - npm run extension
+      - swift build -c release --product wipple
+      - cp $(swift build -c release --show-bin-path)/wipple /usr/local/bin/
 
   setup:
     deps:
+      - setup:compiler
       - setup:playground
       - setup:site
+      - setup:server
+  setup:compiler:
+    dir: compiler
+    cmds:
+      - npm install
   setup:playground:
     dir: playground
     cmds:
       - npm install
   setup:site:
     dir: site
+    cmds:
+      - npm install
+  setup:server:
+    dir: server
     cmds:
       - npm install
 
@@ -41,37 +45,24 @@ tasks:
       - npm run dev -- --open
   serve:playground:
     deps:
-      - serve:library
       - serve:server
       - serve:playground:watch
   serve:playground:watch:
     dir: playground
     cmds:
       - npm run dev -- --open
-  serve:library:
-    dir: library
-    cmds:
-      - npx serve dist & task serve:library:watch
-    env:
-      PORT: "3001"
-  serve:library:watch:
-    dir: library
-    watch: true
-    sources:
-      - src/**/*
-    cmds:
-      - node build.js
   serve:server:
+    dir: server
+    deps:
+      - build:server
     cmds:
-      - if [[ ! -v NO_SERVER ]]; then cargo lambda watch --no-reload --bin=wipple-server --features=lambda; fi
-    env:
-      LIBRARY_URL: "http://localhost:3001"
+      - PORT=9000 npm run dev
 
   build:
     deps:
       - build:library
       - build:playground
-      - build:functions
+      - build:server
     dir: site
     cmds:
       - rm -rf dist
@@ -86,9 +77,28 @@ tasks:
     dir: playground
     cmds:
       - npm run build
-  build:functions:
-    dir: .
+  build:api:
+    dir: compiler
     cmds:
-      - rm -rf netlify/functions && mkdir -p netlify/functions
-      - cargo lambda build --locked --bin=wipple-server --target=x86_64-unknown-linux-musl --features=lambda --release
-      - cp target/lambda/wipple-server/bootstrap netlify/functions/api
+      - |
+        if [[ -z "$CI" ]]; then
+          export SWIFT_SDK="$(swiftc -print-target-info | jq -r '.swiftCompilerTag')_wasm"
+        fi
+        WASM_BUILD=1 swift package --swift-sdk "$SWIFT_SDK" js ${CI+"-c release"} --product API
+        npm run build
+  build:server:
+    dir: server
+    deps:
+      - build:api
+    cmds:
+      - (cd wat-parser && ./build.sh)
+      - npm run build
+      - rm -rf ../netlify/functions/api && mkdir -p ../netlify/functions/api &&
+        cp dist/* ../netlify/functions/api/
+
+  vscode:
+    dir: vscode
+    deps:
+      - build:api
+    cmds:
+      - npm run extension

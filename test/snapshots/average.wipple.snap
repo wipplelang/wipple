@@ -1,104 +1,163 @@
 Facts:
-VariablePatternNode `average` (test/tests/average.wipple:3:1-3:8)
-  at test/tests/average.wipple:3:1-3:8
-  has type (List Number) -> Number
-  is a pattern
-VariablePatternNode `numbers` (test/tests/average.wipple:3:11-3:18)
-  at test/tests/average.wipple:3:11-3:18
-  has type List Number
-  is a pattern
-VariableExpressionNode `sum` (test/tests/average.wipple:3:22-3:25)
-  at test/tests/average.wipple:3:22-3:25
-  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-211:2)), Initial Number (`instance (Initial Number)` (library/src/foundation/language.wipple:43:1-43:30)), Add Number Number Number (`instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:83))
-  has type (List Number) -> Number
-  is an expression
-  resolved to 1 definition(s): `sum` (library/src/foundation/sequence.wipple:168:1-169:78)
-VariableExpressionNode `numbers` (test/tests/average.wipple:3:26-3:33)
-  at test/tests/average.wipple:3:26-3:33
-  has type List Number
-  is an expression
-  resolved to 1 definition(s): `numbers` (test/tests/average.wipple:3:11-3:18)
-CallExpressionNode `sum numbers` (test/tests/average.wipple:3:22-3:33)
-  at test/tests/average.wipple:3:22-3:33
-  has type Number
-  is an expression
-VariableExpressionNode `count` (test/tests/average.wipple:3:36-3:41)
-  at test/tests/average.wipple:3:36-3:41
-  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-211:2))
-  has type (List Number) -> Number
-  is an expression
-  resolved to 1 definition(s): `count` (library/src/foundation/sequence.wipple:263:1-264:69)
-VariableExpressionNode `numbers` (test/tests/average.wipple:3:42-3:49)
-  at test/tests/average.wipple:3:42-3:49
-  has type List Number
-  is an expression
-  resolved to 1 definition(s): `numbers` (test/tests/average.wipple:3:11-3:18)
-CallExpressionNode `count numbers` (test/tests/average.wipple:3:36-3:49)
-  at test/tests/average.wipple:3:36-3:49
-  has type Number
-  is an expression
-OperatorExpressionNode `sum numbers / count numbers` (test/tests/average.wipple:3:22-3:49)
-  at test/tests/average.wipple:3:22-3:49
-  has type Number
-  is an expression
-FunctionExpressionNode `numbers -> sum numbers / count numbers` (test/tests/average.wipple:3:11-3:49)
-  at test/tests/average.wipple:3:11-3:49
-  has type (List Number) -> Number
+`average : numbers -> sum numbers / count numbers` (average.wipple:1:1-1:49) (AssignmentStatementSyntax):
+  has type `()` (average.wipple:1:1-1:49)
+
+`numbers -> sum numbers / count numbers` (average.wipple:1:11-1:49) (FunctionExpressionSyntax):
+  has type `(List Number) -> Number` (average.wipple:1:11-1:49)
   is an expression
   no captures
-VariableExpressionNode `show` (test/tests/average.wipple:4:1-4:5)
-  at test/tests/average.wipple:4:1-4:5
-  has bound(s) Describe Number (`instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:65))
-  has type Number -> ()
+
+`numbers` (average.wipple:1:11-1:18) (VariablePatternSyntax):
+  has type `List Number`
+  is a pattern
+
+`sum numbers / count numbers` (average.wipple:1:22-1:49) (OperatorExpressionSyntax):
+  has type `Number`
   is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-VariableExpressionNode `average` (test/tests/average.wipple:4:7-4:14)
-  at test/tests/average.wipple:4:7-4:14
-  has type (List Number) -> Number
+
+`/` (average.wipple:1:34-1:35) (VisitAs):
+  has bound(s) `Divide` `Number` (average.wipple:2:28-2:29) `Number` `Number` (`instance (Divide Number Number Number)` (math.wipple:53:1-53:39))
+  has type `Number Number -> Number` (average.wipple:1:34-1:35)
   is an expression
-  resolved to 1 definition(s): `average` (test/tests/average.wipple:3:1-3:8)
-NumberExpressionNode `1` (test/tests/average.wipple:4:16-4:17)
-  at test/tests/average.wipple:4:16-4:17
-  has type Number
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait` (math.wipple:52:1-52:46)
+
+`sum numbers` (average.wipple:1:22-1:33) (VisitAs):
+  has type `Number` (average.wipple:2:28-2:29)
   is an expression
-NumberExpressionNode `2` (test/tests/average.wipple:4:19-4:20)
-  at test/tests/average.wipple:4:19-4:20
-  has type Number
+
+`count numbers` (average.wipple:1:36-1:49) (VisitAs):
+  has type `Number`
   is an expression
-NumberExpressionNode `3` (test/tests/average.wipple:4:22-4:23)
-  at test/tests/average.wipple:4:22-4:23
-  has type Number
+
+`/` (average.wipple:1:34-1:35) (CallExpressionSyntax):
+  has type `Number`
   is an expression
-NumberExpressionNode `4` (test/tests/average.wipple:4:25-4:26)
-  at test/tests/average.wipple:4:25-4:26
-  has type Number
+
+`sum` (average.wipple:1:22-1:25) (VariableExpressionSyntax):
+  has bound(s) `Initial` `Number` (average.wipple:2:28-2:29) (`instance (Initial Number)` (language.wipple:43:1-43:26)), `Add` `Number` (average.wipple:2:28-2:29) `Number` (average.wipple:2:28-2:29) `Number` (average.wipple:2:28-2:29) (`instance (Add Number Number Number)` (math.wipple:8:1-8:36)), `As-Sequence` `(List Number)` `Number` (average.wipple:2:28-2:29) (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
+  has type `(List Number) -> Number` (average.wipple:1:22-1:25)
   is an expression
-NumberExpressionNode `5` (test/tests/average.wipple:4:28-4:29)
-  at test/tests/average.wipple:4:28-4:29
-  has type Number
+  resolved to 1 definition(s): `sum :: container -> n where (As-Sequence container n) (Initial n) (Add n n n)` (sequence.wipple:169:1-169:78)
+
+`numbers` (average.wipple:1:26-1:33) (VariableExpressionSyntax):
+  has type `List Number`
   is an expression
-CollectionExpressionNode `1, 2, 3, 4, 5` (test/tests/average.wipple:4:16-4:29)
-  at test/tests/average.wipple:4:16-4:29
-  has type List Number
+  resolved to 1 definition(s): `numbers` (average.wipple:1:11-1:18)
+
+`count` (average.wipple:1:36-1:41) (VariableExpressionSyntax):
+  has bound(s) `As-Sequence` `(List Number)` `Number` (average.wipple:2:28-2:29) (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
+  has type `(List Number) -> Number` (average.wipple:1:36-1:41)
   is an expression
-CallExpressionNode `average (1, 2, 3, 4, 5)` (test/tests/average.wipple:4:7-4:30)
-  at test/tests/average.wipple:4:7-4:30
-  has type Number
+  resolved to 1 definition(s): `count :: collection -> Number where (As-Sequence collection element)` (sequence.wipple:264:1-264:69)
+
+`numbers` (average.wipple:1:42-1:49) (VariableExpressionSyntax):
+  has type `List Number`
   is an expression
-CallExpressionNode `show (average (1, 2, 3, 4, 5))` (test/tests/average.wipple:4:1-4:31)
-  at test/tests/average.wipple:4:1-4:31
-  has type ()
+  resolved to 1 definition(s): `numbers` (average.wipple:1:11-1:18)
+
+`average` (average.wipple:1:1-1:8) (VariablePatternSyntax):
+  has type `(List Number) -> Number` (average.wipple:1:11-1:49)
+  is a pattern
+
+`show (average (1, 2, 3, 4, 5))` (average.wipple:2:1-2:31) (CallExpressionSyntax):
+  has type `()`
   is an expression
-ConstructorExpressionNode `/` (test/tests/average.wipple:3:34-3:35)
-  at test/tests/average.wipple:3:34-3:35
-  has bound(s) Divide Number Number Number (`instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:86))
-  has type Number Number -> Number
+
+`show` (average.wipple:2:1-2:5) (VariableExpressionSyntax):
+  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
+  has type `Number -> ()` (average.wipple:2:1-2:5)
   is an expression
-  resolved to 1 definition(s): `Divide` (library/src/foundation/math.wipple:51:1-52:71)
-CallExpressionNode `sum numbers / count numbers` (test/tests/average.wipple:3:22-3:49)
-  at test/tests/average.wipple:3:22-3:49
-  has type Number
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`average (1, 2, 3, 4, 5)` (average.wipple:2:7-2:30) (CallExpressionSyntax):
+  has type `Number`
   is an expression
+
+`average` (average.wipple:2:7-2:14) (VariableExpressionSyntax):
+  has type `(List Number) -> Number` (average.wipple:1:11-1:49)
+  is an expression
+  resolved to 1 definition(s): `average` (average.wipple:1:1-1:8)
+
+`1, 2, 3, 4, 5` (average.wipple:2:16-2:29) (CollectionExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`1` (average.wipple:2:16-2:17) (VisitAs):
+  has type `Number` (average.wipple:2:28-2:29)
+  is an expression
+
+`2` (average.wipple:2:19-2:20) (VisitAs):
+  has type `Number` (average.wipple:2:28-2:29)
+  is an expression
+
+`3` (average.wipple:2:22-2:23) (VisitAs):
+  has type `Number` (average.wipple:2:28-2:29)
+  is an expression
+
+`4` (average.wipple:2:25-2:26) (VisitAs):
+  has type `Number` (average.wipple:2:28-2:29)
+  is an expression
+
+`5` (average.wipple:2:28-2:29) (VisitAs):
+  has type `Number` (average.wipple:2:28-2:29)
+  is an expression
+
+`5` (average.wipple:2:28-2:29) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`5` (average.wipple:2:28-2:29) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (average.wipple:2:28-2:29) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (average.wipple:2:28-2:29)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`4` (average.wipple:2:25-2:26) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`4` (average.wipple:2:25-2:26) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (average.wipple:2:28-2:29) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (average.wipple:2:25-2:26)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`3` (average.wipple:2:22-2:23) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`3` (average.wipple:2:22-2:23) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (average.wipple:2:28-2:29) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (average.wipple:2:22-2:23)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`2` (average.wipple:2:19-2:20) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`2` (average.wipple:2:19-2:20) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (average.wipple:2:28-2:29) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (average.wipple:2:19-2:20)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`1` (average.wipple:2:16-2:17) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`1` (average.wipple:2:16-2:17) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (average.wipple:2:28-2:29) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (average.wipple:2:16-2:17)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`1, 2, 3, 4, 5` (average.wipple:2:16-2:29) (ConstructorExpressionSyntax):
+  has bound(s) `Initial-Collection` `Number` (average.wipple:2:28-2:29) `(List Number)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `Number` (average.wipple:2:28-2:29) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `List Number`
+  is an expression
+  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait` (collections.wipple:9:1-9:57)
+
 
 Output:
 3

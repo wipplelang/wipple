@@ -1,5 +1,3 @@
--- wipple run $FILE --lib library/src/foundation
-
 my-list : 1, 2, 3
 
 show (my-list . first)

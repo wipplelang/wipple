@@ -3,12 +3,12 @@
     "displayName": "Wipple",
     "description": "",
     "version": "0.0.0",
-    "type": "commonjs",
+    "type": "module",
     "engines": {
-        "vscode": "^1.104.0"
+        "vscode": "^1.118.0"
     },
     "scripts": {
-        "build": "esbuild src/extension.js --bundle --platform=node --external:vscode --outfile=dist/extension.js",
+        "build": "node build.js",
         "extension": "npm run build && vsce package --no-dependencies --allow-missing-repository --skip-license && code --install-extension wipple-vscode-0.0.0.vsix"
     },
     "activationEvents": [],
@@ -37,19 +37,15 @@
                 "path": "./syntaxes/wipple.tmLanguage.json"
             }
         ],
-        "configuration": {
-            "wipple.lspArgs": {
-                "type": "array",
-                "items": {
-                    "type": "string"
-                },
-                "default": []
-            }
-        }
+        "configuration": {}
+    },
+    "dependencies": {
+        "compiler": "file:../compiler"
     },
     "devDependencies": {
+        "@chialab/esbuild-plugin-meta-url": "^0.19.1",
+        "@types/vscode": "^1.118.0",
         "@vscode/vsce": "^3.6.2",
-        "esbuild": "^0.25.10",
-        "vscode-languageclient": "^9.0.1"
+        "esbuild": "^0.28.0"
     }
 }

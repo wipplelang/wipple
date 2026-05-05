@@ -1,132 +1,138 @@
 Facts:
-VariablePatternNode `even?` (test/tests/divisible-by.wipple:3:1-3:6)
-  at test/tests/divisible-by.wipple:3:1-3:6
-  has type Number -> Boolean
+`even? : divisible-by? 2` (divisible-by.wipple:1:1-1:24) (AssignmentStatementSyntax):
+  has type `()` (divisible-by.wipple:1:1-1:24)
+
+`odd? : not even?` (divisible-by.wipple:2:1-2:17) (AssignmentStatementSyntax):
+  has type `()` (divisible-by.wipple:2:1-2:17)
+
+`divisible-by? 2` (divisible-by.wipple:1:9-1:24) (CallExpressionSyntax):
+  has type `Number -> Boolean`
+  is an expression
+
+`divisible-by?` (divisible-by.wipple:1:9-1:22) (VariableExpressionSyntax):
+  has type `Number -> Number -> Boolean` (divisible-by.wipple:1:9-1:22)
+  is an expression
+  resolved to 1 definition(s): `divisible-by? :: Number -> Number -> Boolean` (math.wipple:132:1-132:45)
+
+`2` (divisible-by.wipple:1:23-1:24) (NumberExpressionSyntax):
+  has type `Number` (divisible-by.wipple:1:23-1:24)
+  is an expression
+
+`even?` (divisible-by.wipple:1:1-1:6) (VariablePatternSyntax):
+  has type `Number -> Boolean`
   is a pattern
-VariableExpressionNode `divisible-by?` (test/tests/divisible-by.wipple:3:9-3:22)
-  at test/tests/divisible-by.wipple:3:9-3:22
-  has type Number -> Number -> Boolean
+
+`not even?` (divisible-by.wipple:2:8-2:17) (CallExpressionSyntax):
+  has type `Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `divisible-by?` (library/src/foundation/math.wipple:131:1-132:45)
-NumberExpressionNode `2` (test/tests/divisible-by.wipple:3:23-3:24)
-  at test/tests/divisible-by.wipple:3:23-3:24
-  has type Number
+
+`not` (divisible-by.wipple:2:8-2:11) (VariableExpressionSyntax):
+  has bound(s) `Not` `(Number -> Boolean)` (`instance (Not (a -> b)) where (Not b) (b :: Boolean)` (logic.wipple:21:1-21:53)), `Not` `Boolean` (`instance (Not Boolean)` (logic.wipple:20:1-20:23))
+  has type `(Number -> Boolean) -> Number -> Boolean` (divisible-by.wipple:2:8-2:11)
   is an expression
-CallExpressionNode `divisible-by? 2` (test/tests/divisible-by.wipple:3:9-3:24)
-  at test/tests/divisible-by.wipple:3:9-3:24
-  has type Number -> Boolean
+  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)` (logic.wipple:25:1-25:59)
+
+`even?` (divisible-by.wipple:2:12-2:17) (VariableExpressionSyntax):
+  has type `Number -> Boolean`
   is an expression
-VariablePatternNode `odd?` (test/tests/divisible-by.wipple:4:1-4:5)
-  at test/tests/divisible-by.wipple:4:1-4:5
-  has type Number -> Boolean
+  resolved to 1 definition(s): `even?` (divisible-by.wipple:1:1-1:6)
+
+`odd?` (divisible-by.wipple:2:1-2:5) (VariablePatternSyntax):
+  has type `Number -> Boolean`
   is a pattern
-VariableExpressionNode `not` (test/tests/divisible-by.wipple:4:8-4:11)
-  at test/tests/divisible-by.wipple:4:8-4:11
-  has bound(s) Not Boolean (`instance (Not Boolean)` (library/src/foundation/logic.wipple:20:1-20:62)), Not (Number -> Boolean) (`instance (Not (a -> b))` (library/src/foundation/logic.wipple:21:1-21:75))
-  has type (Number -> Boolean) -> Number -> Boolean
+
+`show (even? 2)` (divisible-by.wipple:4:1-4:15) (CallExpressionSyntax):
+  has type `()`
   is an expression
-  resolved to 1 definition(s): `not` (library/src/foundation/logic.wipple:23:1-25:59)
-VariableExpressionNode `even?` (test/tests/divisible-by.wipple:4:12-4:17)
-  at test/tests/divisible-by.wipple:4:12-4:17
-  has type Number -> Boolean
+
+`show` (divisible-by.wipple:4:1-4:5) (VariableExpressionSyntax):
+  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+  has type `Boolean -> ()` (divisible-by.wipple:4:1-4:5)
   is an expression
-  resolved to 1 definition(s): `even?` (test/tests/divisible-by.wipple:3:1-3:6)
-CallExpressionNode `not even?` (test/tests/divisible-by.wipple:4:8-4:17)
-  at test/tests/divisible-by.wipple:4:8-4:17
-  has type Number -> Boolean
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`even? 2` (divisible-by.wipple:4:7-4:14) (CallExpressionSyntax):
+  has type `Boolean`
   is an expression
-VariableExpressionNode `show` (test/tests/divisible-by.wipple:6:1-6:5)
-  at test/tests/divisible-by.wipple:6:1-6:5
-  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
-  has type Boolean -> ()
+
+`even?` (divisible-by.wipple:4:7-4:12) (VariableExpressionSyntax):
+  has type `Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-VariableExpressionNode `even?` (test/tests/divisible-by.wipple:6:7-6:12)
-  at test/tests/divisible-by.wipple:6:7-6:12
-  has type Number -> Boolean
+  resolved to 1 definition(s): `even?` (divisible-by.wipple:1:1-1:6)
+
+`2` (divisible-by.wipple:4:13-4:14) (NumberExpressionSyntax):
+  has type `Number` (divisible-by.wipple:4:13-4:14)
   is an expression
-  resolved to 1 definition(s): `even?` (test/tests/divisible-by.wipple:3:1-3:6)
-NumberExpressionNode `2` (test/tests/divisible-by.wipple:6:13-6:14)
-  at test/tests/divisible-by.wipple:6:13-6:14
-  has type Number
+
+`show (odd? 2)` (divisible-by.wipple:5:1-5:14) (CallExpressionSyntax):
+  has type `()`
   is an expression
-CallExpressionNode `even? 2` (test/tests/divisible-by.wipple:6:7-6:14)
-  at test/tests/divisible-by.wipple:6:7-6:14
-  has type Boolean
+
+`show` (divisible-by.wipple:5:1-5:5) (VariableExpressionSyntax):
+  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+  has type `Boolean -> ()` (divisible-by.wipple:5:1-5:5)
   is an expression
-CallExpressionNode `show (even? 2)` (test/tests/divisible-by.wipple:6:1-6:15)
-  at test/tests/divisible-by.wipple:6:1-6:15
-  has type ()
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`odd? 2` (divisible-by.wipple:5:7-5:13) (CallExpressionSyntax):
+  has type `Boolean`
   is an expression
-VariableExpressionNode `show` (test/tests/divisible-by.wipple:7:1-7:5)
-  at test/tests/divisible-by.wipple:7:1-7:5
-  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
-  has type Boolean -> ()
+
+`odd?` (divisible-by.wipple:5:7-5:11) (VariableExpressionSyntax):
+  has type `Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-VariableExpressionNode `odd?` (test/tests/divisible-by.wipple:7:7-7:11)
-  at test/tests/divisible-by.wipple:7:7-7:11
-  has type Number -> Boolean
+  resolved to 1 definition(s): `odd?` (divisible-by.wipple:2:1-2:5)
+
+`2` (divisible-by.wipple:5:12-5:13) (NumberExpressionSyntax):
+  has type `Number` (divisible-by.wipple:4:13-4:14)
   is an expression
-  resolved to 1 definition(s): `odd?` (test/tests/divisible-by.wipple:4:1-4:5)
-NumberExpressionNode `2` (test/tests/divisible-by.wipple:7:12-7:13)
-  at test/tests/divisible-by.wipple:7:12-7:13
-  has type Number
+
+`show (even? 3)` (divisible-by.wipple:6:1-6:15) (CallExpressionSyntax):
+  has type `()`
   is an expression
-CallExpressionNode `odd? 2` (test/tests/divisible-by.wipple:7:7-7:13)
-  at test/tests/divisible-by.wipple:7:7-7:13
-  has type Boolean
+
+`show` (divisible-by.wipple:6:1-6:5) (VariableExpressionSyntax):
+  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+  has type `Boolean -> ()` (divisible-by.wipple:6:1-6:5)
   is an expression
-CallExpressionNode `show (odd? 2)` (test/tests/divisible-by.wipple:7:1-7:14)
-  at test/tests/divisible-by.wipple:7:1-7:14
-  has type ()
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`even? 3` (divisible-by.wipple:6:7-6:14) (CallExpressionSyntax):
+  has type `Boolean`
   is an expression
-VariableExpressionNode `show` (test/tests/divisible-by.wipple:8:1-8:5)
-  at test/tests/divisible-by.wipple:8:1-8:5
-  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
-  has type Boolean -> ()
+
+`even?` (divisible-by.wipple:6:7-6:12) (VariableExpressionSyntax):
+  has type `Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-VariableExpressionNode `even?` (test/tests/divisible-by.wipple:8:7-8:12)
-  at test/tests/divisible-by.wipple:8:7-8:12
-  has type Number -> Boolean
+  resolved to 1 definition(s): `even?` (divisible-by.wipple:1:1-1:6)
+
+`3` (divisible-by.wipple:6:13-6:14) (NumberExpressionSyntax):
+  has type `Number` (divisible-by.wipple:4:13-4:14)
   is an expression
-  resolved to 1 definition(s): `even?` (test/tests/divisible-by.wipple:3:1-3:6)
-NumberExpressionNode `3` (test/tests/divisible-by.wipple:8:13-8:14)
-  at test/tests/divisible-by.wipple:8:13-8:14
-  has type Number
+
+`show (odd? 3)` (divisible-by.wipple:7:1-7:14) (CallExpressionSyntax):
+  has type `()`
   is an expression
-CallExpressionNode `even? 3` (test/tests/divisible-by.wipple:8:7-8:14)
-  at test/tests/divisible-by.wipple:8:7-8:14
-  has type Boolean
+
+`show` (divisible-by.wipple:7:1-7:5) (VariableExpressionSyntax):
+  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+  has type `Boolean -> ()` (divisible-by.wipple:7:1-7:5)
   is an expression
-CallExpressionNode `show (even? 3)` (test/tests/divisible-by.wipple:8:1-8:15)
-  at test/tests/divisible-by.wipple:8:1-8:15
-  has type ()
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`odd? 3` (divisible-by.wipple:7:7-7:13) (CallExpressionSyntax):
+  has type `Boolean`
   is an expression
-VariableExpressionNode `show` (test/tests/divisible-by.wipple:9:1-9:5)
-  at test/tests/divisible-by.wipple:9:1-9:5
-  has bound(s) Describe Boolean (`instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:59))
-  has type Boolean -> ()
+
+`odd?` (divisible-by.wipple:7:7-7:11) (VariableExpressionSyntax):
+  has type `Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-VariableExpressionNode `odd?` (test/tests/divisible-by.wipple:9:7-9:11)
-  at test/tests/divisible-by.wipple:9:7-9:11
-  has type Number -> Boolean
+  resolved to 1 definition(s): `odd?` (divisible-by.wipple:2:1-2:5)
+
+`3` (divisible-by.wipple:7:12-7:13) (NumberExpressionSyntax):
+  has type `Number` (divisible-by.wipple:4:13-4:14)
   is an expression
-  resolved to 1 definition(s): `odd?` (test/tests/divisible-by.wipple:4:1-4:5)
-NumberExpressionNode `3` (test/tests/divisible-by.wipple:9:12-9:13)
-  at test/tests/divisible-by.wipple:9:12-9:13
-  has type Number
-  is an expression
-CallExpressionNode `odd? 3` (test/tests/divisible-by.wipple:9:7-9:13)
-  at test/tests/divisible-by.wipple:9:7-9:13
-  has type Boolean
-  is an expression
-CallExpressionNode `show (odd? 3)` (test/tests/divisible-by.wipple:9:1-9:14)
-  at test/tests/divisible-by.wipple:9:1-9:14
-  has type ()
-  is an expression
+
 
 Output:
 True

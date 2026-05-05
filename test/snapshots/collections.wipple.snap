@@ -1,36 +1,73 @@
 Facts:
-NamedTypeNode `Number` (test/tests/collections.wipple:3:17-3:23)
-  at test/tests/collections.wipple:3:17-3:23
-  has type Number
-  is a type
-  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:51)
-NamedTypeNode `List Number` (test/tests/collections.wipple:3:12-3:23)
-  at test/tests/collections.wipple:3:12-3:23
-  has type List Number
-  is a type
-  resolved to 1 definition(s): `List` (library/src/foundation/list.wipple:1:1-1:35)
-ConstantDefinitionNode `my-list` (test/tests/collections.wipple:1:1-3:23)
-  at test/tests/collections.wipple:1:1-3:23
+`my-list :: List Number` (collections.wipple:1:1-1:23) (ConstantDefinitionSyntax):
   has definition constraints
-  has type List Number
+  has type `List Number`
   is a definition
-VariablePatternNode `my-list` (test/tests/collections.wipple:4:1-4:8)
-  at test/tests/collections.wipple:4:1-4:8
-NumberExpressionNode `1` (test/tests/collections.wipple:4:11-4:12)
-  at test/tests/collections.wipple:4:11-4:12
-  has type Number
+
+`my-list : 1, 2, 3` (collections.wipple:2:1-2:18) (AssignmentStatementSyntax):
+  has type `()` (collections.wipple:2:1-2:18)
+
+`List Number` (collections.wipple:1:12-1:23) (NamedTypeSyntax):
+  has type `List Number`
+  is a type
+  resolved to 1 definition(s): `List : element => type` (list.wipple:1:13-1:35)
+
+`Number` (collections.wipple:1:17-1:23) (NamedTypeSyntax):
+  has type `Number` (collections.wipple:1:17-1:23)
+  is a type
+  resolved to 1 definition(s): `Number : type` (language.wipple:1:38-1:51)
+
+`1, 2, 3` (collections.wipple:2:11-2:18) (CollectionExpressionSyntax):
+  has type `List Number`
   is an expression
-NumberExpressionNode `2` (test/tests/collections.wipple:4:14-4:15)
-  at test/tests/collections.wipple:4:14-4:15
-  has type Number
+
+`1` (collections.wipple:2:11-2:12) (VisitAs):
+  has type `Number` (collections.wipple:1:17-1:23)
   is an expression
-NumberExpressionNode `3` (test/tests/collections.wipple:4:17-4:18)
-  at test/tests/collections.wipple:4:17-4:18
-  has type Number
+
+`2` (collections.wipple:2:14-2:15) (VisitAs):
+  has type `Number` (collections.wipple:1:17-1:23)
   is an expression
-CollectionExpressionNode `1, 2, 3` (test/tests/collections.wipple:4:11-4:18)
-  at test/tests/collections.wipple:4:11-4:18
-  has type List Number
+
+`3` (collections.wipple:2:17-2:18) (VisitAs):
+  has type `Number` (collections.wipple:1:17-1:23)
   is an expression
+
+`3` (collections.wipple:2:17-2:18) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`3` (collections.wipple:2:17-2:18) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (collections.wipple:1:17-1:23) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (collections.wipple:2:17-2:18)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`2` (collections.wipple:2:14-2:15) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`2` (collections.wipple:2:14-2:15) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (collections.wipple:1:17-1:23) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (collections.wipple:2:14-2:15)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`1` (collections.wipple:2:11-2:12) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`1` (collections.wipple:2:11-2:12) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (collections.wipple:1:17-1:23) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (collections.wipple:2:11-2:12)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`1, 2, 3` (collections.wipple:2:11-2:18) (ConstructorExpressionSyntax):
+  has bound(s) `Initial-Collection` `Number` (collections.wipple:1:17-1:23) `(List Number)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `Number` (collections.wipple:1:17-1:23) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `List Number`
+  is an expression
+  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait` (collections.wipple:9:1-9:57)
+
 
 Output:

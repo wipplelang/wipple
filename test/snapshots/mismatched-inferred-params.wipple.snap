@@ -1,75 +1,117 @@
 Facts:
-NumberExpressionNode `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3)
-  at test/tests/mismatched-inferred-params.wipple:3:2-3:3
-  has type Number or String
+`1, 2, 3) . transform ((x :: String) -> x)` (mismatched-inferred-params.wipple:1:2-1:43) (OperatorExpressionSyntax):
+  has type `Sequence Number`
   is an expression
-NumberExpressionNode `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6)
-  at test/tests/mismatched-inferred-params.wipple:3:5-3:6
-  has type Number or String
+
+`1, 2, 3` (mismatched-inferred-params.wipple:1:2-1:9) (VisitAs):
+  has type `List Number`
   is an expression
-NumberExpressionNode `3` (test/tests/mismatched-inferred-params.wipple:3:8-3:9)
-  at test/tests/mismatched-inferred-params.wipple:3:8-3:9
-  has type Number or String
+
+`transform ((x :: String) -> x)` (mismatched-inferred-params.wipple:1:13-1:43) (VisitAs):
+  has type `(List Number) -> Sequence Number` (mismatched-inferred-params.wipple:1:13-1:43)
   is an expression
-CollectionExpressionNode `1, 2, 3` (test/tests/mismatched-inferred-params.wipple:3:2-3:9)
-  at test/tests/mismatched-inferred-params.wipple:3:2-3:9
-  has type List Number
+
+`transform ((x :: String) -> x)` (mismatched-inferred-params.wipple:1:13-1:43) (CallExpressionSyntax):
+  has type `Sequence Number`
   is an expression
-VariableExpressionNode `transform` (test/tests/mismatched-inferred-params.wipple:3:13-3:22)
-  at test/tests/mismatched-inferred-params.wipple:3:13-3:22
-  has bound(s) As-Sequence (List Number) Number (`instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-211:2))
-  has type (Number -> Number) -> (List Number) -> Sequence Number
+
+`transform` (mismatched-inferred-params.wipple:1:13-1:22) (VariableExpressionSyntax):
+  has bound(s) `As-Sequence` `(List Number)` `Number` (mismatched-inferred-params.wipple:1:8-1:9) (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
+  has type `(Number -> Number) -> (List Number) -> Sequence Number` (mismatched-inferred-params.wipple:1:13-1:22)
   is an expression
-  resolved to 1 definition(s): `transform` (library/src/foundation/sequence.wipple:69:1-69:99)
-VariablePatternNode `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26)
-  at test/tests/mismatched-inferred-params.wipple:3:25-3:26
-  has type Number or String
-  is a pattern
-NamedTypeNode `String` (test/tests/mismatched-inferred-params.wipple:3:30-3:36)
-  at test/tests/mismatched-inferred-params.wipple:3:30-3:36
-  has type Number or String
-  is a type
-  resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
-AnnotatePatternNode `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:36)
-  at test/tests/mismatched-inferred-params.wipple:3:25-3:36
-  has type Number or String
-  is a pattern
-VariableExpressionNode `x` (test/tests/mismatched-inferred-params.wipple:3:41-3:42)
-  at test/tests/mismatched-inferred-params.wipple:3:41-3:42
-  has type Number or String
-  is an expression
-  resolved to 1 definition(s): `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26)
-FunctionExpressionNode `(x` (test/tests/mismatched-inferred-params.wipple:3:24-3:42)
-  at test/tests/mismatched-inferred-params.wipple:3:24-3:42
-  has type Number -> Number
+  resolved to 1 definition(s): `transform :: (input -> output) -> container -> Sequence output where (As-Sequence container input)` (sequence.wipple:69:1-69:99)
+
+`(x :: String) -> x` (mismatched-inferred-params.wipple:1:24-1:42) (FunctionExpressionSyntax):
+  has type `Number -> Number` (mismatched-inferred-params.wipple:1:24-1:42)
   is an expression
   no captures
-CallExpressionNode `transform ((x` (test/tests/mismatched-inferred-params.wipple:3:13-3:43)
-  at test/tests/mismatched-inferred-params.wipple:3:13-3:43
-  has type (List Number) -> Sequence Number
+
+`x :: String` (mismatched-inferred-params.wipple:1:25-1:36) (AnnotatePatternSyntax):
+  has type `Number` (mismatched-inferred-params.wipple:1:8-1:9) or `String` (mismatched-inferred-params.wipple:1:30-1:36)
+  is a pattern
+
+`x` (mismatched-inferred-params.wipple:1:25-1:26) (VariablePatternSyntax):
+  has type `Number` (mismatched-inferred-params.wipple:1:8-1:9) or `String` (mismatched-inferred-params.wipple:1:30-1:36)
+  is a pattern
+
+`String` (mismatched-inferred-params.wipple:1:30-1:36) (NamedTypeSyntax):
+  has type `Number` (mismatched-inferred-params.wipple:1:8-1:9) or `String` (mismatched-inferred-params.wipple:1:30-1:36)
+  is a type
+  resolved to 1 definition(s): `String : type` (language.wipple:2:13-2:26)
+
+`x` (mismatched-inferred-params.wipple:1:41-1:42) (VariableExpressionSyntax):
+  has type `Number` (mismatched-inferred-params.wipple:1:8-1:9) or `String` (mismatched-inferred-params.wipple:1:30-1:36)
   is an expression
-OperatorExpressionNode `1, 2, 3) . transform ((x` (test/tests/mismatched-inferred-params.wipple:3:2-3:43)
-  at test/tests/mismatched-inferred-params.wipple:3:2-3:43
-  has type Sequence Number
+  resolved to 1 definition(s): `x` (mismatched-inferred-params.wipple:1:25-1:26)
+
+`1` (mismatched-inferred-params.wipple:1:2-1:3) (VisitAs):
+  has type `Number` (mismatched-inferred-params.wipple:1:8-1:9) or `String` (mismatched-inferred-params.wipple:1:30-1:36)
   is an expression
-CallExpressionNode `transform ((x` (test/tests/mismatched-inferred-params.wipple:3:13-3:43)
-  at test/tests/mismatched-inferred-params.wipple:3:13-3:43
-  has type Sequence Number
+
+`2` (mismatched-inferred-params.wipple:1:5-1:6) (VisitAs):
+  has type `Number` (mismatched-inferred-params.wipple:1:8-1:9) or `String` (mismatched-inferred-params.wipple:1:30-1:36)
   is an expression
+
+`3` (mismatched-inferred-params.wipple:1:8-1:9) (VisitAs):
+  has type `Number` (mismatched-inferred-params.wipple:1:8-1:9) or `String` (mismatched-inferred-params.wipple:1:30-1:36)
+  is an expression
+
+`3` (mismatched-inferred-params.wipple:1:8-1:9) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`3` (mismatched-inferred-params.wipple:1:8-1:9) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (mismatched-inferred-params.wipple:1:8-1:9)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`2` (mismatched-inferred-params.wipple:1:5-1:6) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`2` (mismatched-inferred-params.wipple:1:5-1:6) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (mismatched-inferred-params.wipple:1:5-1:6)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`1` (mismatched-inferred-params.wipple:1:2-1:3) (CallExpressionSyntax):
+  has type `List Number`
+  is an expression
+
+`1` (mismatched-inferred-params.wipple:1:2-1:3) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `Number (List Number) -> List Number` (mismatched-inferred-params.wipple:1:2-1:3)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`1, 2, 3` (mismatched-inferred-params.wipple:1:2-1:9) (ConstructorExpressionSyntax):
+  has bound(s) `Initial-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `List Number`
+  is an expression
+  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait` (collections.wipple:9:1-9:57)
+
 
 
 Feedback:
 
-`x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) (conflicting-types):
+`x` (mismatched-inferred-params.wipple:1:25-1:26) (conflicting-types)
 
-  `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) is a `Number` (test/tests/mismatched-inferred-params.wipple:3:8-3:9) or a `String` (test/tests/mismatched-inferred-params.wipple:3:30-3:36), but it can only be one of these.
-
-  `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:26) must be the same type as `x` (test/tests/mismatched-inferred-params.wipple:3:25-3:36), `1` (test/tests/mismatched-inferred-params.wipple:3:2-3:3), `2` (test/tests/mismatched-inferred-params.wipple:3:5-3:6), and 69 others; double-check these.
-
-  -  `3` (test/tests/mismatched-inferred-params.wipple:3:8-3:9) is a Number.
-
-  -  `element` (library/src/foundation/sequence.wipple:199:29-199:36) must have the same type everywhere in this use of `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-211:2).
-
-  -  `input` (library/src/foundation/sequence.wipple:69:15-69:20) must have the same type everywhere in this use of `transform` (library/src/foundation/sequence.wipple:69:1-69:99).
-
-  -  `output` (library/src/foundation/sequence.wipple:69:24-69:30) must have the same type everywhere in this use of `transform` (library/src/foundation/sequence.wipple:69:1-69:99).
+  `x` (mismatched-inferred-params.wipple:1:25-1:26) is a `Number` (mismatched-inferred-params.wipple:1:8-1:9) or a `String` (mismatched-inferred-params.wipple:1:30-1:36), but it can only be one of these.
+  
+  `x` (mismatched-inferred-params.wipple:1:25-1:26) must be the same type as `x :: String` (mismatched-inferred-params.wipple:1:25-1:36), `1` (mismatched-inferred-params.wipple:1:2-1:3), `2` (mismatched-inferred-params.wipple:1:5-1:6), and 69 others; double-check these.
+  
+  -  `1, 2, 3` (mismatched-inferred-params.wipple:1:2-1:9) requires `Initial-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)`.
+  
+  -  `3` (mismatched-inferred-params.wipple:1:8-1:9) is a `Number` (language.wipple:1:38-1:51).
+  
+  -  `3` (mismatched-inferred-params.wipple:1:8-1:9) requires `Build-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)`.
+  
+  -  `_` requires `As-Sequence` `_` `_`.
+  
+  -  `element` (sequence.wipple:199:29-199:36) must have the same type everywhere in this use of `_`.
+  
+  -  `input` (sequence.wipple:69:15-69:20) must have the same type everywhere in this use of `transform` (mismatched-inferred-params.wipple:1:13-1:22).
+  
+  -  `output` (sequence.wipple:69:24-69:30) must have the same type everywhere in this use of `transform` (mismatched-inferred-params.wipple:1:13-1:22).

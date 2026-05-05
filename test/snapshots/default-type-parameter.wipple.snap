@@ -1,202 +1,198 @@
 Facts:
-TypeDefinitionNode `X` (test/tests/default-type-parameter.wipple:1:1-3:9)
-  at test/tests/default-type-parameter.wipple:1:1-3:9
+`X : type` (default-type-parameter.wipple:1:1-1:9) (TypeDefinitionSyntax):
   has definition constraints
-  has type X
+  has type `X` (default-type-parameter.wipple:1:1-1:9)
   is a definition
-TypeDefinitionNode `Y` (test/tests/default-type-parameter.wipple:4:1-4:9)
-  at test/tests/default-type-parameter.wipple:4:1-4:9
+
+`Y : type` (default-type-parameter.wipple:2:1-2:9) (TypeDefinitionSyntax):
   has definition constraints
-  has type Y
+  has type `Y` (default-type-parameter.wipple:2:1-2:9)
   is a definition
-TypeParameterNode `value` (test/tests/default-type-parameter.wipple:6:5-6:10)
-  at test/tests/default-type-parameter.wipple:6:5-6:10
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/default-type-parameter.wipple:6:5-6:10)
-TypeParameterNode `value` (test/tests/default-type-parameter.wipple:6:20-6:25)
-  at test/tests/default-type-parameter.wipple:6:20-6:25
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/default-type-parameter.wipple:6:5-6:10)
-TraitDefinitionNode `T` (test/tests/default-type-parameter.wipple:6:1-6:25)
-  at test/tests/default-type-parameter.wipple:6:1-6:25
+
+`T : value => trait` (default-type-parameter.wipple:4:1-4:19) (TraitDefinitionSyntax):
   has definition constraints
   has instances
+  has type `value` (default-type-parameter.wipple:4:5-4:10)
   has type parameters
-  has type value
   is a definition
-NamedTypeNode `X` (test/tests/default-type-parameter.wipple:7:13-7:14)
-  at test/tests/default-type-parameter.wipple:7:13-7:14
-  has type X
+
+`value` (default-type-parameter.wipple:4:5-4:10) (TypeParameterSyntax):
+  has type `value` (default-type-parameter.wipple:4:5-4:10)
+  is a definition
   is a type
-  resolved to 1 definition(s): `X` (test/tests/default-type-parameter.wipple:1:1-3:9)
-BoundConstraintNode `T X` (test/tests/default-type-parameter.wipple:7:10-7:15)
-  at test/tests/default-type-parameter.wipple:7:10-7:15
-ConstructorExpressionNode `X` (test/tests/default-type-parameter.wipple:7:18-7:19)
-  at test/tests/default-type-parameter.wipple:7:18-7:19
-  has type X
-  is an expression
-  resolved to 1 definition(s): `X` (test/tests/default-type-parameter.wipple:1:1-3:9)
-InstanceDefinitionNode `instance (T X)` (test/tests/default-type-parameter.wipple:7:1-7:19)
-  at test/tests/default-type-parameter.wipple:7:1-7:19
+  resolved to 1 definition(s): `value` (default-type-parameter.wipple:4:5-4:10)
+
+`instance (T X)` (default-type-parameter.wipple:5:1-5:15) (InstanceDefinitionSyntax):
   has definition constraints
-  has type X
+  has type `X` (default-type-parameter.wipple:5:13-5:14)
   is a definition
-  resolved to 1 definition(s): `T` (test/tests/default-type-parameter.wipple:6:1-6:25)
-NamedTypeNode `Y` (test/tests/default-type-parameter.wipple:8:13-8:14)
-  at test/tests/default-type-parameter.wipple:8:13-8:14
-  has type Y
-  is a type
-  resolved to 1 definition(s): `Y` (test/tests/default-type-parameter.wipple:4:1-4:9)
-BoundConstraintNode `T Y` (test/tests/default-type-parameter.wipple:8:10-8:15)
-  at test/tests/default-type-parameter.wipple:8:10-8:15
-ConstructorExpressionNode `Y` (test/tests/default-type-parameter.wipple:8:18-8:19)
-  at test/tests/default-type-parameter.wipple:8:18-8:19
-  has type Y
-  is an expression
-  resolved to 1 definition(s): `Y` (test/tests/default-type-parameter.wipple:4:1-4:9)
-InstanceDefinitionNode `instance (T Y)` (test/tests/default-type-parameter.wipple:8:1-8:19)
-  at test/tests/default-type-parameter.wipple:8:1-8:19
+  resolved to 1 definition(s): `T : value => trait` (default-type-parameter.wipple:4:1-4:19)
+
+`instance (T Y)` (default-type-parameter.wipple:6:1-6:15) (InstanceDefinitionSyntax):
   has definition constraints
-  has type Y
+  has type `Y` (default-type-parameter.wipple:6:13-6:14)
   is a definition
-  resolved to 1 definition(s): `T` (test/tests/default-type-parameter.wipple:6:1-6:25)
-NamedTypeNode `X` (test/tests/default-type-parameter.wipple:10:20-10:21)
-  at test/tests/default-type-parameter.wipple:10:20-10:21
-  has type X
+  resolved to 1 definition(s): `T : value => trait` (default-type-parameter.wipple:4:1-4:19)
+
+`instance (Describe X)` (default-type-parameter.wipple:8:1-8:22) (InstanceDefinitionSyntax):
+  has definition constraints
+  has type `X -> String` (default-type-parameter.wipple:8:25-8:33)
+  is a definition
+  resolved to 1 definition(s): `Describe : value => trait` (io.wipple:2:1-2:26)
+
+`instance (Describe Y)` (default-type-parameter.wipple:9:1-9:22) (InstanceDefinitionSyntax):
+  has definition constraints
+  has type `Y -> String` (default-type-parameter.wipple:9:25-9:33)
+  is a definition
+  resolved to 1 definition(s): `Describe : value => trait` (io.wipple:2:1-2:26)
+
+`foo :: value where (value :: X) (T value)` (default-type-parameter.wipple:11:1-11:42) (ConstantDefinitionSyntax):
+  has definition constraints
+  has type `value` (default-type-parameter.wipple:11:8-11:13)
+  has type parameters
+  is a definition
+
+`foo : T` (default-type-parameter.wipple:12:1-12:8) (AssignmentStatementSyntax):
+  has type `()` (default-type-parameter.wipple:12:1-12:8)
+
+`X` (default-type-parameter.wipple:5:13-5:14) (NamedTypeSyntax):
+  has type `X` (default-type-parameter.wipple:5:13-5:14)
   is a type
-  resolved to 1 definition(s): `X` (test/tests/default-type-parameter.wipple:1:1-3:9)
-BoundConstraintNode `Describe X` (test/tests/default-type-parameter.wipple:10:10-10:22)
-  at test/tests/default-type-parameter.wipple:10:10-10:22
-WildcardPatternNode `_` (test/tests/default-type-parameter.wipple:10:25-10:26)
-  at test/tests/default-type-parameter.wipple:10:25-10:26
-  has type X
-  is a pattern
-StringExpressionNode `"X"` (test/tests/default-type-parameter.wipple:10:30-10:33)
-  at test/tests/default-type-parameter.wipple:10:30-10:33
-  has type String
+  resolved to 1 definition(s): `X : type` (default-type-parameter.wipple:1:1-1:9)
+
+`Y` (default-type-parameter.wipple:6:13-6:14) (NamedTypeSyntax):
+  has type `Y` (default-type-parameter.wipple:6:13-6:14)
+  is a type
+  resolved to 1 definition(s): `Y : type` (default-type-parameter.wipple:2:1-2:9)
+
+`X` (default-type-parameter.wipple:8:20-8:21) (NamedTypeSyntax):
+  has type `X` (default-type-parameter.wipple:8:20-8:21)
+  is a type
+  resolved to 1 definition(s): `X : type` (default-type-parameter.wipple:1:1-1:9)
+
+`Y` (default-type-parameter.wipple:9:20-9:21) (NamedTypeSyntax):
+  has type `Y` (default-type-parameter.wipple:9:20-9:21)
+  is a type
+  resolved to 1 definition(s): `Y : type` (default-type-parameter.wipple:2:1-2:9)
+
+`value` (default-type-parameter.wipple:11:8-11:13) (TypeParameterSyntax):
+  has type `value` (default-type-parameter.wipple:11:8-11:13)
+  is a definition
+  is a type
+  resolved to 1 definition(s): `value` (default-type-parameter.wipple:11:8-11:13)
+
+`(value :: X)` (default-type-parameter.wipple:11:20-11:32) (DefaultConstraintSyntax):
+  is a constraint
+
+`value` (default-type-parameter.wipple:11:21-11:26) (TypeParameterSyntax):
+  has type `value` (default-type-parameter.wipple:11:8-11:13)
+  is a type
+  resolved to 1 definition(s): `value` (default-type-parameter.wipple:11:8-11:13)
+
+`X` (default-type-parameter.wipple:11:30-11:31) (NamedTypeSyntax):
+  has type `X` (default-type-parameter.wipple:11:30-11:31)
+  is a type
+  resolved to 1 definition(s): `X : type` (default-type-parameter.wipple:1:1-1:9)
+
+`(T value)` (default-type-parameter.wipple:11:33-11:42) (BoundConstraintSyntax):
+  has bound(s) `T` `value` (default-type-parameter.wipple:11:8-11:13) (`(T value)` (default-type-parameter.wipple:11:33-11:42))
+  has definition constraints
+  is a constraint
+  resolved to 1 definition(s): `T : value => trait` (default-type-parameter.wipple:4:1-4:19)
+
+`value` (default-type-parameter.wipple:11:36-11:41) (TypeParameterSyntax):
+  has type `value` (default-type-parameter.wipple:11:8-11:13)
+  is a type
+  resolved to 1 definition(s): `value` (default-type-parameter.wipple:11:8-11:13)
+
+`value` (default-type-parameter.wipple:4:20-4:25) (TypeParameterSyntax):
+  has type `value` (default-type-parameter.wipple:4:5-4:10)
+  is a type
+  resolved to 1 definition(s): `value` (default-type-parameter.wipple:4:5-4:10)
+
+`X` (default-type-parameter.wipple:5:18-5:19) (ConstructorExpressionSyntax):
+  has type `X` (default-type-parameter.wipple:5:13-5:14)
   is an expression
-FunctionExpressionNode `_ -> "X"` (test/tests/default-type-parameter.wipple:10:25-10:33)
-  at test/tests/default-type-parameter.wipple:10:25-10:33
-  has type X -> String
+  resolved to 1 definition(s): `X : type` (default-type-parameter.wipple:1:1-1:9)
+
+`Y` (default-type-parameter.wipple:6:18-6:19) (ConstructorExpressionSyntax):
+  has type `Y` (default-type-parameter.wipple:6:13-6:14)
+  is an expression
+  resolved to 1 definition(s): `Y : type` (default-type-parameter.wipple:2:1-2:9)
+
+`_ -> "X"` (default-type-parameter.wipple:8:25-8:33) (FunctionExpressionSyntax):
+  has type `X -> String` (default-type-parameter.wipple:8:25-8:33)
   is an expression
   no captures
-InstanceDefinitionNode `instance (Describe X)` (test/tests/default-type-parameter.wipple:10:1-10:33)
-  at test/tests/default-type-parameter.wipple:10:1-10:33
-  has definition constraints
-  has type X -> String
-  is a definition
-  resolved to 1 definition(s): `Describe` (library/src/foundation/io.wipple:1:1-2:44)
-NamedTypeNode `Y` (test/tests/default-type-parameter.wipple:11:20-11:21)
-  at test/tests/default-type-parameter.wipple:11:20-11:21
-  has type Y
-  is a type
-  resolved to 1 definition(s): `Y` (test/tests/default-type-parameter.wipple:4:1-4:9)
-BoundConstraintNode `Describe Y` (test/tests/default-type-parameter.wipple:11:10-11:22)
-  at test/tests/default-type-parameter.wipple:11:10-11:22
-WildcardPatternNode `_` (test/tests/default-type-parameter.wipple:11:25-11:26)
-  at test/tests/default-type-parameter.wipple:11:25-11:26
-  has type Y
+
+`_` (default-type-parameter.wipple:8:25-8:26) (WildcardPatternSyntax):
+  has type `X` (default-type-parameter.wipple:8:20-8:21)
   is a pattern
-StringExpressionNode `"Y"` (test/tests/default-type-parameter.wipple:11:30-11:33)
-  at test/tests/default-type-parameter.wipple:11:30-11:33
-  has type String
+
+`"X"` (default-type-parameter.wipple:8:30-8:33) (StringExpressionSyntax):
+  has type `String` (default-type-parameter.wipple:8:30-8:33)
   is an expression
-FunctionExpressionNode `_ -> "Y"` (test/tests/default-type-parameter.wipple:11:25-11:33)
-  at test/tests/default-type-parameter.wipple:11:25-11:33
-  has type Y -> String
+
+`_ -> "Y"` (default-type-parameter.wipple:9:25-9:33) (FunctionExpressionSyntax):
+  has type `Y -> String` (default-type-parameter.wipple:9:25-9:33)
   is an expression
   no captures
-InstanceDefinitionNode `instance (Describe Y)` (test/tests/default-type-parameter.wipple:11:1-11:33)
-  at test/tests/default-type-parameter.wipple:11:1-11:33
-  has definition constraints
-  has type Y -> String
-  is a definition
-  resolved to 1 definition(s): `Describe` (library/src/foundation/io.wipple:1:1-2:44)
-TypeParameterNode `value` (test/tests/default-type-parameter.wipple:13:8-13:13)
-  at test/tests/default-type-parameter.wipple:13:8-13:13
-  has type value
+
+`_` (default-type-parameter.wipple:9:25-9:26) (WildcardPatternSyntax):
+  has type `Y` (default-type-parameter.wipple:9:20-9:21)
+  is a pattern
+
+`"Y"` (default-type-parameter.wipple:9:30-9:33) (StringExpressionSyntax):
+  has type `String` (default-type-parameter.wipple:9:30-9:33)
+  is an expression
+
+`T` (default-type-parameter.wipple:12:7-12:8) (ConstructorExpressionSyntax):
+  has bound(s) `T` `value` (default-type-parameter.wipple:11:8-11:13) (`(T value)` (default-type-parameter.wipple:11:33-11:42))
+  has type `value` (default-type-parameter.wipple:11:8-11:13)
+  is an expression
+  resolved to 1 definition(s): `T : value => trait` (default-type-parameter.wipple:4:1-4:19)
+
+`show foo` (default-type-parameter.wipple:14:1-14:9) (CallExpressionSyntax):
+  has type `()`
+  is an expression
+
+`show` (default-type-parameter.wipple:14:1-14:5) (VariableExpressionSyntax):
+  has bound(s) `Describe` `X` (`instance (Describe X)` (default-type-parameter.wipple:8:1-8:22))
+  has type `X -> ()` (default-type-parameter.wipple:14:1-14:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`foo` (default-type-parameter.wipple:14:6-14:9) (VariableExpressionSyntax):
+  has bound(s) `T` `X` (`instance (T X)` (default-type-parameter.wipple:5:1-5:15))
+  has type `X`
+  is an expression
+  resolved to 1 definition(s): `foo :: value where (value :: X) (T value)` (default-type-parameter.wipple:11:1-11:42)
+
+`show (foo :: Y)` (default-type-parameter.wipple:15:1-15:16) (CallExpressionSyntax):
+  has type `()`
+  is an expression
+
+`show` (default-type-parameter.wipple:15:1-15:5) (VariableExpressionSyntax):
+  has bound(s) `Describe` `Y` (`instance (Describe Y)` (default-type-parameter.wipple:9:1-9:22))
+  has type `Y -> ()` (default-type-parameter.wipple:15:1-15:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`foo :: Y` (default-type-parameter.wipple:15:7-15:15) (AnnotateExpressionSyntax):
+  has type `Y`
+  is an expression
+
+`foo` (default-type-parameter.wipple:15:7-15:10) (VariableExpressionSyntax):
+  has bound(s) `T` `Y` (`instance (T Y)` (default-type-parameter.wipple:6:1-6:15))
+  has type `Y`
+  is an expression
+  resolved to 1 definition(s): `foo :: value where (value :: X) (T value)` (default-type-parameter.wipple:11:1-11:42)
+
+`Y` (default-type-parameter.wipple:15:14-15:15) (NamedTypeSyntax):
+  has type `Y`
   is a type
-  resolved to 1 definition(s): `value` (test/tests/default-type-parameter.wipple:13:8-13:13)
-TypeParameterNode `value` (test/tests/default-type-parameter.wipple:13:21-13:26)
-  at test/tests/default-type-parameter.wipple:13:21-13:26
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/default-type-parameter.wipple:13:8-13:13)
-NamedTypeNode `X` (test/tests/default-type-parameter.wipple:13:30-13:31)
-  at test/tests/default-type-parameter.wipple:13:30-13:31
-  has type X
-  is a type
-  resolved to 1 definition(s): `X` (test/tests/default-type-parameter.wipple:1:1-3:9)
-DefaultConstraintNode `value` (test/tests/default-type-parameter.wipple:13:20-13:32)
-  at test/tests/default-type-parameter.wipple:13:20-13:32
-  is a constraint
-TypeParameterNode `value` (test/tests/default-type-parameter.wipple:13:36-13:41)
-  at test/tests/default-type-parameter.wipple:13:36-13:41
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/default-type-parameter.wipple:13:8-13:13)
-BoundConstraintNode `T value` (test/tests/default-type-parameter.wipple:13:33-13:42)
-  at test/tests/default-type-parameter.wipple:13:33-13:42
-  has bound(s) T value (`T value` (test/tests/default-type-parameter.wipple:13:33-13:42))
-  is a constraint
-  resolved to 1 definition(s): `T` (test/tests/default-type-parameter.wipple:6:1-6:25)
-ConstantDefinitionNode `foo` (test/tests/default-type-parameter.wipple:13:1-13:42)
-  at test/tests/default-type-parameter.wipple:13:1-13:42
-  has definition constraints
-  has type parameters
-  has type value
-  is a definition
-VariablePatternNode `foo` (test/tests/default-type-parameter.wipple:14:1-14:4)
-  at test/tests/default-type-parameter.wipple:14:1-14:4
-ConstructorExpressionNode `T` (test/tests/default-type-parameter.wipple:14:7-14:8)
-  at test/tests/default-type-parameter.wipple:14:7-14:8
-  has bound(s) T value (`T value` (test/tests/default-type-parameter.wipple:13:33-13:42))
-  has type value
-  is an expression
-  resolved to 1 definition(s): `T` (test/tests/default-type-parameter.wipple:6:1-6:25)
-VariableExpressionNode `show` (test/tests/default-type-parameter.wipple:16:1-16:5)
-  at test/tests/default-type-parameter.wipple:16:1-16:5
-  has bound(s) Describe X (`instance (Describe X)` (test/tests/default-type-parameter.wipple:10:1-10:33))
-  has type X -> ()
-  is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-VariableExpressionNode `foo` (test/tests/default-type-parameter.wipple:16:6-16:9)
-  at test/tests/default-type-parameter.wipple:16:6-16:9
-  has bound(s) T X (`instance (T X)` (test/tests/default-type-parameter.wipple:7:1-7:19))
-  has type X
-  is an expression
-  resolved to 1 definition(s): `foo` (test/tests/default-type-parameter.wipple:13:1-13:42)
-CallExpressionNode `show foo` (test/tests/default-type-parameter.wipple:16:1-16:9)
-  at test/tests/default-type-parameter.wipple:16:1-16:9
-  has type ()
-  is an expression
-NamedTypeNode `Y` (test/tests/default-type-parameter.wipple:17:14-17:15)
-  at test/tests/default-type-parameter.wipple:17:14-17:15
-  has type Y
-  is a type
-  resolved to 1 definition(s): `Y` (test/tests/default-type-parameter.wipple:4:1-4:9)
-VariableExpressionNode `show` (test/tests/default-type-parameter.wipple:17:1-17:5)
-  at test/tests/default-type-parameter.wipple:17:1-17:5
-  has bound(s) Describe Y (`instance (Describe Y)` (test/tests/default-type-parameter.wipple:11:1-11:33))
-  has type Y -> ()
-  is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-VariableExpressionNode `foo` (test/tests/default-type-parameter.wipple:17:7-17:10)
-  at test/tests/default-type-parameter.wipple:17:7-17:10
-  has bound(s) T Y (`instance (T Y)` (test/tests/default-type-parameter.wipple:8:1-8:19))
-  has type Y
-  is an expression
-  resolved to 1 definition(s): `foo` (test/tests/default-type-parameter.wipple:13:1-13:42)
-AnnotateExpressionNode `foo` (test/tests/default-type-parameter.wipple:17:7-17:15)
-  at test/tests/default-type-parameter.wipple:17:7-17:15
-  has type Y
-  is an expression
-CallExpressionNode `show (foo` (test/tests/default-type-parameter.wipple:17:1-17:16)
-  at test/tests/default-type-parameter.wipple:17:1-17:16
-  has type ()
-  is an expression
+  resolved to 1 definition(s): `Y : type` (default-type-parameter.wipple:2:1-2:9)
+
 
 Output:
 X

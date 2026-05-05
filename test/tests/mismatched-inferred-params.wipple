@@ -1,3 +1,1 @@
--- wipple run $FILE --lib library/src/foundation
-
 (1, 2, 3) . transform ((x :: String) -> x)

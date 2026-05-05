@@ -1,5 +1,3 @@
--- wipple compile $FILE --facts
-
 [intrinsic] Boolean : type
 
 Not : value => trait (value -> value)

@@ -1,40 +1,43 @@
 Facts:
-TypeDefinitionNode `Cannot-Be-Shown` (test/tests/show-variable.wipple:1:1-3:23)
-  at test/tests/show-variable.wipple:1:1-3:23
+`Cannot-Be-Shown : type` (show-variable.wipple:1:1-1:23) (TypeDefinitionSyntax):
   has definition constraints
-  has type Cannot-Be-Shown
+  has type `Cannot-Be-Shown` (show-variable.wipple:1:1-1:23)
   is a definition
-VariablePatternNode `my-variable` (test/tests/show-variable.wipple:5:1-5:12)
-  at test/tests/show-variable.wipple:5:1-5:12
-  has type Cannot-Be-Shown
+
+`my-variable : Cannot-Be-Shown` (show-variable.wipple:3:1-3:30) (AssignmentStatementSyntax):
+  has type `()` (show-variable.wipple:3:1-3:30)
+
+`Cannot-Be-Shown` (show-variable.wipple:3:15-3:30) (ConstructorExpressionSyntax):
+  has type `Cannot-Be-Shown` (show-variable.wipple:3:15-3:30)
+  is an expression
+  resolved to 1 definition(s): `Cannot-Be-Shown : type` (show-variable.wipple:1:1-1:23)
+
+`my-variable` (show-variable.wipple:3:1-3:12) (VariablePatternSyntax):
+  has type `Cannot-Be-Shown` (show-variable.wipple:3:15-3:30)
   is a pattern
-ConstructorExpressionNode `Cannot-Be-Shown` (test/tests/show-variable.wipple:5:15-5:30)
-  at test/tests/show-variable.wipple:5:15-5:30
-  has type Cannot-Be-Shown
+
+`show my-variable` (show-variable.wipple:4:1-4:17) (CallExpressionSyntax):
+  has type `()`
   is an expression
-  resolved to 1 definition(s): `Cannot-Be-Shown` (test/tests/show-variable.wipple:1:1-3:23)
-VariableExpressionNode `show` (test/tests/show-variable.wipple:6:1-6:5)
-  at test/tests/show-variable.wipple:6:1-6:5
-  has bound(s) Describe Cannot-Be-Shown (`instance (Describe value)` (library/src/foundation/io.wipple:4:1-8:44))
-  has type Cannot-Be-Shown -> ()
+
+`show` (show-variable.wipple:4:1-4:5) (VariableExpressionSyntax):
+  has bound(s) `Describe` `Cannot-Be-Shown` (show-variable.wipple:3:15-3:30) (`instance (Describe value)` (io.wipple:8:19-8:44))
+  has type `Cannot-Be-Shown -> ()` (show-variable.wipple:4:1-4:5)
   is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-VariableExpressionNode `my-variable` (test/tests/show-variable.wipple:6:6-6:17)
-  at test/tests/show-variable.wipple:6:6-6:17
-  has type Cannot-Be-Shown
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`my-variable` (show-variable.wipple:4:6-4:17) (VariableExpressionSyntax):
+  has type `Cannot-Be-Shown` (show-variable.wipple:3:15-3:30)
   is an expression
-  resolved to 1 definition(s): `my-variable` (test/tests/show-variable.wipple:5:1-5:12)
-CallExpressionNode `show my-variable` (test/tests/show-variable.wipple:6:1-6:17)
-  at test/tests/show-variable.wipple:6:1-6:17
-  has type ()
-  is an expression
+  resolved to 1 definition(s): `my-variable` (show-variable.wipple:3:1-3:12)
+
 
 
 Feedback:
 
-`show` (test/tests/show-variable.wipple:6:1-6:5) (error-instance):
+`show` (show-variable.wipple:4:1-4:5) (error-instance)
 
-  Can't describe   `value` (library/src/foundation/io.wipple:8:38-8:43).
-
- You can't display   `value` (library/src/foundation/io.wipple:8:38-8:43) on the screen or use it in placeholders because
- it can't be converted into a string.
+  Can't describe `my-variable` (show-variable.wipple:3:1-3:12).
+  
+  You can't display `my-variable` (show-variable.wipple:3:1-3:12) on the screen or use it in placeholders because
+  it can't be converted into a string.

@@ -1,0 +1,16 @@
+{
+    "name": "wipple",
+    "private": true,
+    "type": "module",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "node build.js"
+    },
+    "dependencies": {
+        "uwasi": "^1.4.1"
+    },
+    "devDependencies": {
+        "@chialab/esbuild-plugin-meta-url": "^0.19.1",
+        "esbuild": "^0.28.0"
+    }
+}

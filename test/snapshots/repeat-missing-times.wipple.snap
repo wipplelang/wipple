@@ -1,45 +1,45 @@
 Facts:
-VariableExpressionNode `repeat` (test/tests/repeat-missing-times.wipple:3:1-3:7)
-  at test/tests/repeat-missing-times.wipple:3:1-3:7
-  has bound(s) Repeat-Predicate Number () _ (`instance (Repeat-Predicate (state` (library/src/foundation/repeat.wipple:39:1-42:66))
-  has type Number {()} -> _
+`repeat 5 {⋯}` (repeat-missing-times.wipple:1:1-3:2) (CallExpressionSyntax):
   is an expression
-  resolved to 1 definition(s): `repeat` (library/src/foundation/repeat.wipple:50:1-51:76)
-NumberExpressionNode `5` (test/tests/repeat-missing-times.wipple:3:8-3:9)
-  at test/tests/repeat-missing-times.wipple:3:8-3:9
-  has type Number
+  missing type (group: `repeat 5 {⋯}` (repeat-missing-times.wipple:1:1-3:2), `_`, `_`, `_`, `_`, `_`, `repeat 5 {⋯}` (repeat-missing-times.wipple:1:1-3:2), `_`, `_`, `_`)
+
+`repeat` (repeat-missing-times.wipple:1:1-1:7) (VariableExpressionSyntax):
+  has bound(s) `Repeat-Predicate` `Number` `()` `_` (`instance (Repeat-Predicate (state :: Number) body result)` (repeat.wipple:42:9-42:66))
+  has type `Number {()} -> _` (repeat-missing-times.wipple:1:1-1:7)
   is an expression
-VariableExpressionNode `show` (test/tests/repeat-missing-times.wipple:4:3-4:7)
-  at test/tests/repeat-missing-times.wipple:4:3-4:7
-  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
-  has type String -> ()
+  resolved to 1 definition(s): `repeat :: state {body} -> result where (Repeat-Predicate state body result)` (repeat.wipple:51:1-51:76)
+
+`5` (repeat-missing-times.wipple:1:8-1:9) (NumberExpressionSyntax):
+  has type `Number`
   is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-StringExpressionNode `"Hello, world!"` (test/tests/repeat-missing-times.wipple:4:8-4:23)
-  at test/tests/repeat-missing-times.wipple:4:8-4:23
-  has type String
-  is an expression
-CallExpressionNode `show "Hello, world!"` (test/tests/repeat-missing-times.wipple:4:3-4:23)
-  at test/tests/repeat-missing-times.wipple:4:3-4:23
-  has type ()
-  is an expression
-BlockExpressionNode `{⋯}` (test/tests/repeat-missing-times.wipple:3:10-5:2)
-  at test/tests/repeat-missing-times.wipple:3:10-5:2
-  has type {()}
+
+`{⋯}` (repeat-missing-times.wipple:1:10-3:2) (BlockExpressionSyntax):
+  has type `{()}` (repeat-missing-times.wipple:1:10-3:2)
   is an expression
   no captures
-CallExpressionNode `repeat 5 {⋯}` (test/tests/repeat-missing-times.wipple:3:1-5:2)
-  at test/tests/repeat-missing-times.wipple:3:1-5:2
+
+`show "Hello, world!"` (repeat-missing-times.wipple:2:3-2:23) (CallExpressionSyntax):
+  has type `()`
   is an expression
-  missing type (group: `repeat 5 {⋯}` (test/tests/repeat-missing-times.wipple:3:1-5:2), `result` (library/src/foundation/repeat.wipple:42:59-42:65), `result` (library/src/foundation/repeat.wipple:42:59-42:65), `result` (library/src/foundation/repeat.wipple:8:31-8:37), `result` (library/src/foundation/repeat.wipple:8:86-8:92), `result` (library/src/foundation/repeat.wipple:2:22-2:28), `repeat 5 {⋯}` (test/tests/repeat-missing-times.wipple:1:1-5:2), `result` (library/src/foundation/repeat.wipple:51:27-51:33), `result` (library/src/foundation/repeat.wipple:51:27-51:33), `result` (library/src/foundation/repeat.wipple:51:69-51:75))
+
+`show` (repeat-missing-times.wipple:2:3-2:7) (VariableExpressionSyntax):
+  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
+  has type `String -> ()` (repeat-missing-times.wipple:2:3-2:7)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`"Hello, world!"` (repeat-missing-times.wipple:2:8-2:23) (StringExpressionSyntax):
+  has type `String`
+  is an expression
+
 
 
 Feedback:
 
-`repeat` (test/tests/repeat-missing-times.wipple:3:1-3:7) (error-instance):
+`repeat` (repeat-missing-times.wipple:1:1-1:7) (error-instance)
 
-  Missing `times` after   `state` (library/src/foundation/repeat.wipple:42:37-42:52).
-
- Try rewriting this code as `(  `state` (library/src/foundation/repeat.wipple:42:37-42:52) times)`, or double-check your parentheses.
-
+  Missing `times` after `5` (repeat-missing-times.wipple:1:8-1:9).
   
+  Try rewriting this code as `(`5` (repeat-missing-times.wipple:1:8-1:9) times)`, or double-check your parentheses.
+  
+  -  `_` requires `Repeat-Predicate` `_` `_` `_`.

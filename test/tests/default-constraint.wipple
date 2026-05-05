@@ -1,5 +1,3 @@
--- wipple compile $FILE --facts
-
 [intrinsic] Number : type
 [intrinsic] String : type
 [intrinsic] List : element => type

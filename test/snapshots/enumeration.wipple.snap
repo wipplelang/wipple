@@ -1,42 +1,46 @@
 Facts:
-TypeDefinitionNode `Grade` (test/tests/enumeration.wipple:1:1-9:2)
-  at test/tests/enumeration.wipple:1:1-9:2
+`Grade : type` (enumeration.wipple:1:1-1:13) (TypeDefinitionSyntax):
   has definition constraints
-  has type Grade
+  has enumeration variants
+  has type `Grade` (enumeration.wipple:1:1-1:13)
   is a definition
-WildcardPatternNode `_` (test/tests/enumeration.wipple:11:1-11:2)
-  at test/tests/enumeration.wipple:11:1-11:2
-  has type Grade
-  is a pattern
-ConstructorExpressionNode `A` (test/tests/enumeration.wipple:11:5-11:6)
-  at test/tests/enumeration.wipple:11:5-11:6
-  has type Grade
+
+`_ : A` (enumeration.wipple:9:1-9:6) (AssignmentStatementSyntax):
+  has type `()` (enumeration.wipple:9:1-9:6)
+
+`A` (enumeration.wipple:2:3-2:4) (VariantDefinitionSyntax):
+  has definition constraints
+  has type `Grade` (enumeration.wipple:1:1-1:13)
+  is a definition
+
+`B` (enumeration.wipple:3:3-3:4) (VariantDefinitionSyntax):
+  has definition constraints
+  has type `Grade` (enumeration.wipple:1:1-1:13)
+  is a definition
+
+`C` (enumeration.wipple:4:3-4:4) (VariantDefinitionSyntax):
+  has definition constraints
+  has type `Grade` (enumeration.wipple:1:1-1:13)
+  is a definition
+
+`D` (enumeration.wipple:5:3-5:4) (VariantDefinitionSyntax):
+  has definition constraints
+  has type `Grade` (enumeration.wipple:1:1-1:13)
+  is a definition
+
+`F` (enumeration.wipple:6:3-6:4) (VariantDefinitionSyntax):
+  has definition constraints
+  has type `Grade` (enumeration.wipple:1:1-1:13)
+  is a definition
+
+`A` (enumeration.wipple:9:5-9:6) (ConstructorExpressionSyntax):
+  has type `Grade`
   is an expression
-  resolved to 1 definition(s): `A` (test/tests/enumeration.wipple:4:3-4:4)
-VariantNode `A` (test/tests/enumeration.wipple:4:3-4:4)
-  at test/tests/enumeration.wipple:4:3-4:4
-  has definition constraints
-  has type Grade
-  is a definition
-VariantNode `B` (test/tests/enumeration.wipple:5:3-5:4)
-  at test/tests/enumeration.wipple:5:3-5:4
-  has definition constraints
-  has type Grade
-  is a definition
-VariantNode `C` (test/tests/enumeration.wipple:6:3-6:4)
-  at test/tests/enumeration.wipple:6:3-6:4
-  has definition constraints
-  has type Grade
-  is a definition
-VariantNode `D` (test/tests/enumeration.wipple:7:3-7:4)
-  at test/tests/enumeration.wipple:7:3-7:4
-  has definition constraints
-  has type Grade
-  is a definition
-VariantNode `F` (test/tests/enumeration.wipple:8:3-8:4)
-  at test/tests/enumeration.wipple:8:3-8:4
-  has definition constraints
-  has type Grade
-  is a definition
+  resolved to 1 definition(s): `A` (enumeration.wipple:2:3-2:4)
+
+`_` (enumeration.wipple:9:1-9:2) (WildcardPatternSyntax):
+  has type `Grade`
+  is a pattern
+
 
 Output:

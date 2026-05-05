@@ -1,169 +1,176 @@
 Facts:
-TypeDefinitionNode `Number` (test/tests/recursive-bounds.wipple:1:1-3:26)
-  at test/tests/recursive-bounds.wipple:1:1-3:26
+`Number : type` (recursive-bounds.wipple:1:13-1:26) (TypeDefinitionSyntax):
   has definition constraints
-  has type Number
+  has type `Number` (recursive-bounds.wipple:1:13-1:26)
   is a definition
-TypeDefinitionNode `String` (test/tests/recursive-bounds.wipple:4:1-4:26)
-  at test/tests/recursive-bounds.wipple:4:1-4:26
+
+`[intrinsic]` (recursive-bounds.wipple:1:1-1:12) (AttributeSyntax):
+  (no facts)
+
+`String : type` (recursive-bounds.wipple:2:13-2:26) (TypeDefinitionSyntax):
   has definition constraints
-  has type String
+  has type `String` (recursive-bounds.wipple:2:13-2:26)
   is a definition
-TypeParameterNode `value` (test/tests/recursive-bounds.wipple:5:21-5:26)
-  at test/tests/recursive-bounds.wipple:5:21-5:26
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/recursive-bounds.wipple:5:21-5:26)
-TypeDefinitionNode `Maybe` (test/tests/recursive-bounds.wipple:5:1-5:34)
-  at test/tests/recursive-bounds.wipple:5:1-5:34
+
+`[intrinsic]` (recursive-bounds.wipple:2:1-2:12) (AttributeSyntax):
+  (no facts)
+
+`Maybe : value => type` (recursive-bounds.wipple:3:13-3:34) (TypeDefinitionSyntax):
   has definition constraints
-  has type Maybe value
+  has type `Maybe value` (recursive-bounds.wipple:3:13-3:34)
   has type parameters
   is a definition
-TypeParameterNode `value` (test/tests/recursive-bounds.wipple:7:12-7:17)
-  at test/tests/recursive-bounds.wipple:7:12-7:17
-  has type value
+
+`[intrinsic]` (recursive-bounds.wipple:3:1-3:12) (AttributeSyntax):
+  (no facts)
+
+`value` (recursive-bounds.wipple:3:21-3:26) (TypeParameterSyntax):
+  has type `value` (recursive-bounds.wipple:3:21-3:26)
+  is a definition
   is a type
-  resolved to 1 definition(s): `value` (test/tests/recursive-bounds.wipple:7:12-7:17)
-TypeParameterNode `value` (test/tests/recursive-bounds.wipple:7:28-7:33)
-  at test/tests/recursive-bounds.wipple:7:28-7:33
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/recursive-bounds.wipple:7:12-7:17)
-NamedTypeNode `String` (test/tests/recursive-bounds.wipple:7:37-7:43)
-  at test/tests/recursive-bounds.wipple:7:37-7:43
-  has type String
-  is a type
-  resolved to 1 definition(s): `String` (test/tests/recursive-bounds.wipple:4:1-4:26)
-FunctionTypeNode `value -> String` (test/tests/recursive-bounds.wipple:7:28-7:43)
-  at test/tests/recursive-bounds.wipple:7:28-7:43
-  has type value -> String
-  is a type
-TraitDefinitionNode `Describe` (test/tests/recursive-bounds.wipple:7:1-7:44)
-  at test/tests/recursive-bounds.wipple:7:1-7:44
+  resolved to 1 definition(s): `value` (recursive-bounds.wipple:3:21-3:26)
+
+`Describe : value => trait` (recursive-bounds.wipple:5:1-5:26) (TraitDefinitionSyntax):
   has definition constraints
   has instances
+  has type `value -> String` (recursive-bounds.wipple:5:28-5:43)
   has type parameters
-  has type value -> String
   is a definition
-NamedTypeNode `String` (test/tests/recursive-bounds.wipple:8:20-8:26)
-  at test/tests/recursive-bounds.wipple:8:20-8:26
-  has type String
+
+`value` (recursive-bounds.wipple:5:12-5:17) (TypeParameterSyntax):
+  has type `value` (recursive-bounds.wipple:5:12-5:17)
+  is a definition
   is a type
-  resolved to 1 definition(s): `String` (test/tests/recursive-bounds.wipple:4:1-4:26)
-BoundConstraintNode `Describe String` (test/tests/recursive-bounds.wipple:8:10-8:27)
-  at test/tests/recursive-bounds.wipple:8:10-8:27
-PlaceholderExpressionNode `_` (test/tests/recursive-bounds.wipple:8:30-8:31)
-  at test/tests/recursive-bounds.wipple:8:30-8:31
-  has type String -> String
-  is an expression
-InstanceDefinitionNode `instance (Describe String)` (test/tests/recursive-bounds.wipple:8:1-8:31)
-  at test/tests/recursive-bounds.wipple:8:1-8:31
+  resolved to 1 definition(s): `value` (recursive-bounds.wipple:5:12-5:17)
+
+`instance (Describe String)` (recursive-bounds.wipple:6:1-6:27) (InstanceDefinitionSyntax):
   has definition constraints
-  has type String -> String
+  has type `String -> String`
   is a definition
-  resolved to 1 definition(s): `Describe` (test/tests/recursive-bounds.wipple:7:1-7:44)
-TypeParameterNode `value` (test/tests/recursive-bounds.wipple:9:27-9:32)
-  at test/tests/recursive-bounds.wipple:9:27-9:32
-  has type value
+  resolved to 1 definition(s): `Describe : value => trait` (recursive-bounds.wipple:5:1-5:26)
+
+`instance (Describe (Maybe value)) where (Describe value)` (recursive-bounds.wipple:7:1-7:57) (InstanceDefinitionSyntax):
+  has definition constraints
+  has type `(Maybe value) -> String`
+  has type parameters
+  is a definition
+  resolved to 1 definition(s): `Describe : value => trait` (recursive-bounds.wipple:5:1-5:26)
+
+`String` (recursive-bounds.wipple:6:20-6:26) (NamedTypeSyntax):
+  has type `String` (recursive-bounds.wipple:6:20-6:26)
   is a type
-  resolved to 1 definition(s): `value` (test/tests/recursive-bounds.wipple:9:27-9:32)
-NamedTypeNode `Maybe value` (test/tests/recursive-bounds.wipple:9:21-9:32)
-  at test/tests/recursive-bounds.wipple:9:21-9:32
-  has type Maybe value
+  resolved to 1 definition(s): `String : type` (recursive-bounds.wipple:2:13-2:26)
+
+`Maybe value` (recursive-bounds.wipple:7:21-7:32) (NamedTypeSyntax):
+  has type `Maybe value` (recursive-bounds.wipple:7:21-7:32)
   is a type
-  resolved to 1 definition(s): `Maybe` (test/tests/recursive-bounds.wipple:5:1-5:34)
-BoundConstraintNode `Describe (Maybe value)` (test/tests/recursive-bounds.wipple:9:10-9:34)
-  at test/tests/recursive-bounds.wipple:9:10-9:34
-TypeParameterNode `value` (test/tests/recursive-bounds.wipple:9:51-9:56)
-  at test/tests/recursive-bounds.wipple:9:51-9:56
-  has type value
+  resolved to 1 definition(s): `Maybe : value => type` (recursive-bounds.wipple:3:13-3:34)
+
+`value` (recursive-bounds.wipple:7:27-7:32) (TypeParameterSyntax):
+  has type `value` (recursive-bounds.wipple:7:27-7:32)
+  is a definition
   is a type
-  resolved to 1 definition(s): `value` (test/tests/recursive-bounds.wipple:9:27-9:32)
-BoundConstraintNode `Describe value` (test/tests/recursive-bounds.wipple:9:41-9:57)
-  at test/tests/recursive-bounds.wipple:9:41-9:57
-  has bound(s) Describe value (`Describe value` (test/tests/recursive-bounds.wipple:9:41-9:57))
+  resolved to 1 definition(s): `value` (recursive-bounds.wipple:7:27-7:32)
+
+`(Describe value)` (recursive-bounds.wipple:7:41-7:57) (BoundConstraintSyntax):
+  has bound(s) `Describe` `value` (recursive-bounds.wipple:7:27-7:32) (`(Describe value)` (recursive-bounds.wipple:7:41-7:57))
+  has definition constraints
   is a constraint
-  resolved to 1 definition(s): `Describe` (test/tests/recursive-bounds.wipple:7:1-7:44)
-PlaceholderExpressionNode `_` (test/tests/recursive-bounds.wipple:9:60-9:61)
-  at test/tests/recursive-bounds.wipple:9:60-9:61
-  has type (Maybe value) -> String
-  is an expression
-InstanceDefinitionNode `instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61)
-  at test/tests/recursive-bounds.wipple:9:1-9:61
-  has definition constraints
-  has type (Maybe value) -> String
-  has type parameters
-  is a definition
-  resolved to 1 definition(s): `Describe` (test/tests/recursive-bounds.wipple:7:1-7:44)
-NamedTypeNode `String` (test/tests/recursive-bounds.wipple:11:22-11:28)
-  at test/tests/recursive-bounds.wipple:11:22-11:28
-  has type String
+  resolved to 1 definition(s): `Describe : value => trait` (recursive-bounds.wipple:5:1-5:26)
+
+`value` (recursive-bounds.wipple:7:51-7:56) (TypeParameterSyntax):
+  has type `value` (recursive-bounds.wipple:7:27-7:32)
   is a type
-  resolved to 1 definition(s): `String` (test/tests/recursive-bounds.wipple:4:1-4:26)
-NamedTypeNode `Maybe String` (test/tests/recursive-bounds.wipple:11:16-11:28)
-  at test/tests/recursive-bounds.wipple:11:16-11:28
-  has type Maybe String
+  resolved to 1 definition(s): `value` (recursive-bounds.wipple:7:27-7:32)
+
+`value -> String` (recursive-bounds.wipple:5:28-5:43) (FunctionTypeSyntax):
+  has type `value -> String` (recursive-bounds.wipple:5:28-5:43)
   is a type
-  resolved to 1 definition(s): `Maybe` (test/tests/recursive-bounds.wipple:5:1-5:34)
-ConstructorExpressionNode `Describe` (test/tests/recursive-bounds.wipple:11:1-11:9)
-  at test/tests/recursive-bounds.wipple:11:1-11:9
-  has bound(s) Describe String (`instance (Describe String)` (test/tests/recursive-bounds.wipple:8:1-8:31)), Describe (Maybe String) (`instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61))
-  has type (Maybe String) -> String
-  is an expression
-  resolved to 1 definition(s): `Describe` (test/tests/recursive-bounds.wipple:7:1-7:44)
-PlaceholderExpressionNode `_` (test/tests/recursive-bounds.wipple:11:11-11:12)
-  at test/tests/recursive-bounds.wipple:11:11-11:12
-  has type Maybe String
-  is an expression
-AnnotateExpressionNode `_` (test/tests/recursive-bounds.wipple:11:11-11:28)
-  at test/tests/recursive-bounds.wipple:11:11-11:28
-  has type Maybe String
-  is an expression
-CallExpressionNode `Describe (_` (test/tests/recursive-bounds.wipple:11:1-11:29)
-  at test/tests/recursive-bounds.wipple:11:1-11:29
-  has type String
-  is an expression
-NamedTypeNode `Number` (test/tests/recursive-bounds.wipple:12:22-12:28)
-  at test/tests/recursive-bounds.wipple:12:22-12:28
-  has type Number
+
+`value` (recursive-bounds.wipple:5:28-5:33) (TypeParameterSyntax):
+  has type `value` (recursive-bounds.wipple:5:12-5:17)
   is a type
-  resolved to 1 definition(s): `Number` (test/tests/recursive-bounds.wipple:1:1-3:26)
-NamedTypeNode `Maybe Number` (test/tests/recursive-bounds.wipple:12:16-12:28)
-  at test/tests/recursive-bounds.wipple:12:16-12:28
-  has type Maybe Number
+  resolved to 1 definition(s): `value` (recursive-bounds.wipple:5:12-5:17)
+
+`String` (recursive-bounds.wipple:5:37-5:43) (NamedTypeSyntax):
+  has type `String` (recursive-bounds.wipple:5:37-5:43)
   is a type
-  resolved to 1 definition(s): `Maybe` (test/tests/recursive-bounds.wipple:5:1-5:34)
-ConstructorExpressionNode `Describe` (test/tests/recursive-bounds.wipple:12:1-12:9)
-  at test/tests/recursive-bounds.wipple:12:1-12:9
-  has bound(s) Describe Number (unresolved), Describe (Maybe Number) (`instance (Describe (Maybe value))` (test/tests/recursive-bounds.wipple:9:1-9:61))
-  has type (Maybe Number) -> String
+  resolved to 1 definition(s): `String : type` (recursive-bounds.wipple:2:13-2:26)
+
+`_` (recursive-bounds.wipple:6:30-6:31) (PlaceholderExpressionSyntax):
+  has type `String -> String`
+  is a placeholder
   is an expression
-  resolved to 1 definition(s): `Describe` (test/tests/recursive-bounds.wipple:7:1-7:44)
-PlaceholderExpressionNode `_` (test/tests/recursive-bounds.wipple:12:11-12:12)
-  at test/tests/recursive-bounds.wipple:12:11-12:12
-  has type Maybe Number
+
+`_` (recursive-bounds.wipple:7:60-7:61) (PlaceholderExpressionSyntax):
+  has type `(Maybe value) -> String`
+  is a placeholder
   is an expression
-AnnotateExpressionNode `_` (test/tests/recursive-bounds.wipple:12:11-12:28)
-  at test/tests/recursive-bounds.wipple:12:11-12:28
-  has type Maybe Number
+
+`Describe (_ :: Maybe String)` (recursive-bounds.wipple:9:1-9:29) (CallExpressionSyntax):
+  has type `String`
   is an expression
-CallExpressionNode `Describe (_` (test/tests/recursive-bounds.wipple:12:1-12:29)
-  at test/tests/recursive-bounds.wipple:12:1-12:29
-  has type String
+
+`Describe` (recursive-bounds.wipple:9:1-9:9) (ConstructorExpressionSyntax):
+  has bound(s) `Describe` `(Maybe String)` (`instance (Describe (Maybe value)) where (Describe value)` (recursive-bounds.wipple:7:1-7:57)), `Describe` `String` (`instance (Describe String)` (recursive-bounds.wipple:6:1-6:27))
+  has type `(Maybe String) -> String` (recursive-bounds.wipple:9:1-9:9)
   is an expression
+  resolved to 1 definition(s): `Describe : value => trait` (recursive-bounds.wipple:5:1-5:26)
+
+`_ :: Maybe String` (recursive-bounds.wipple:9:11-9:28) (AnnotateExpressionSyntax):
+  has type `Maybe String`
+  is an expression
+
+`_` (recursive-bounds.wipple:9:11-9:12) (PlaceholderExpressionSyntax):
+  has type `Maybe String`
+  is a placeholder
+  is an expression
+
+`Maybe String` (recursive-bounds.wipple:9:16-9:28) (NamedTypeSyntax):
+  has type `Maybe String`
+  is a type
+  resolved to 1 definition(s): `Maybe : value => type` (recursive-bounds.wipple:3:13-3:34)
+
+`String` (recursive-bounds.wipple:9:22-9:28) (NamedTypeSyntax):
+  has type `String`
+  is a type
+  resolved to 1 definition(s): `String : type` (recursive-bounds.wipple:2:13-2:26)
+
+`Describe (_ :: Maybe Number)` (recursive-bounds.wipple:10:1-10:29) (CallExpressionSyntax):
+  has type `String`
+  is an expression
+
+`Describe` (recursive-bounds.wipple:10:1-10:9) (ConstructorExpressionSyntax):
+  has bound(s) `Describe` `(Maybe Number)` (`instance (Describe (Maybe value)) where (Describe value)` (recursive-bounds.wipple:7:1-7:57)), `Describe` `Number` (recursive-bounds.wipple:10:22-10:28) (unresolved)
+  has type `(Maybe Number) -> String` (recursive-bounds.wipple:10:1-10:9)
+  is an expression
+  resolved to 1 definition(s): `Describe : value => trait` (recursive-bounds.wipple:5:1-5:26)
+
+`_ :: Maybe Number` (recursive-bounds.wipple:10:11-10:28) (AnnotateExpressionSyntax):
+  has type `Maybe Number`
+  is an expression
+
+`_` (recursive-bounds.wipple:10:11-10:12) (PlaceholderExpressionSyntax):
+  has type `Maybe Number`
+  is a placeholder
+  is an expression
+
+`Maybe Number` (recursive-bounds.wipple:10:16-10:28) (NamedTypeSyntax):
+  has type `Maybe Number`
+  is a type
+  resolved to 1 definition(s): `Maybe : value => type` (recursive-bounds.wipple:3:13-3:34)
+
+`Number` (recursive-bounds.wipple:10:22-10:28) (NamedTypeSyntax):
+  has type `Number` (recursive-bounds.wipple:10:22-10:28)
+  is a type
+  resolved to 1 definition(s): `Number : type` (recursive-bounds.wipple:1:13-1:26)
+
 
 
 Feedback:
 
-`Describe` (test/tests/recursive-bounds.wipple:12:1-12:9) (unresolved-bound):
+`Describe` (recursive-bounds.wipple:10:1-10:9) (unresolved-bound)
 
-  `Describe` (test/tests/recursive-bounds.wipple:12:1-12:9) requires the instance Describe Number, but this instance isn't defined.
-
-  Double-check that these types are correct.
-
-`Describe` (test/tests/recursive-bounds.wipple:12:1-12:9) (unresolved-bound):
-
-  `Describe` (test/tests/recursive-bounds.wipple:12:1-12:9) requires the instance Describe Number, but this instance isn't defined.
-
+  `Describe` (recursive-bounds.wipple:10:1-10:9) requires the instance `Describe` `Number` (recursive-bounds.wipple:10:22-10:28), but this instance isn't defined.
+  
   Double-check that these types are correct.

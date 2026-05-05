@@ -1,55 +1,60 @@
 Facts:
-TypeParameterNode `value` (test/tests/bounds-are-one-way.wipple:3:5-3:10)
-  at test/tests/bounds-are-one-way.wipple:3:5-3:10
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/bounds-are-one-way.wipple:3:5-3:10)
-TypeParameterNode `value` (test/tests/bounds-are-one-way.wipple:3:20-3:25)
-  at test/tests/bounds-are-one-way.wipple:3:20-3:25
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/bounds-are-one-way.wipple:3:5-3:10)
-TraitDefinitionNode `T` (test/tests/bounds-are-one-way.wipple:1:1-3:25)
-  at test/tests/bounds-are-one-way.wipple:1:1-3:25
+`T : value => trait` (bounds-are-one-way.wipple:1:1-1:19) (TraitDefinitionSyntax):
   has definition constraints
+  has instances
+  has type `value` (bounds-are-one-way.wipple:1:5-1:10)
   has type parameters
-  has type value
   is a definition
-NamedTypeNode `Number` (test/tests/bounds-are-one-way.wipple:5:6-5:12)
-  at test/tests/bounds-are-one-way.wipple:5:6-5:12
-  has type Number
+
+`value` (bounds-are-one-way.wipple:1:5-1:10) (TypeParameterSyntax):
+  has type `value` (bounds-are-one-way.wipple:1:5-1:10)
+  is a definition
   is a type
-  resolved to 1 definition(s): `Number` (library/src/foundation/language.wipple:1:1-1:51)
-TypeParameterNode `value` (test/tests/bounds-are-one-way.wipple:5:22-5:27)
-  at test/tests/bounds-are-one-way.wipple:5:22-5:27
-  has type value
+  resolved to 1 definition(s): `value` (bounds-are-one-way.wipple:1:5-1:10)
+
+`f :: Number where (T value)` (bounds-are-one-way.wipple:3:1-3:28) (ConstantDefinitionSyntax):
+  has definition constraints
+  has type `Number` (bounds-are-one-way.wipple:3:6-3:12)
+  has type parameters
+  is a definition
+
+`f : T` (bounds-are-one-way.wipple:4:1-4:6) (AssignmentStatementSyntax):
+  has type `()` (bounds-are-one-way.wipple:4:1-4:6)
+
+`Number` (bounds-are-one-way.wipple:3:6-3:12) (NamedTypeSyntax):
+  has type `Number` (bounds-are-one-way.wipple:3:6-3:12)
   is a type
-  resolved to 1 definition(s): `value` (test/tests/bounds-are-one-way.wipple:5:22-5:27)
-BoundConstraintNode `T value` (test/tests/bounds-are-one-way.wipple:5:19-5:28)
-  at test/tests/bounds-are-one-way.wipple:5:19-5:28
-  has bound(s) T value (`T value` (test/tests/bounds-are-one-way.wipple:5:19-5:28))
+  resolved to 1 definition(s): `Number : type` (language.wipple:1:38-1:51)
+
+`(T value)` (bounds-are-one-way.wipple:3:19-3:28) (BoundConstraintSyntax):
+  has bound(s) `T` `value` (bounds-are-one-way.wipple:3:22-3:27) (`(T value)` (bounds-are-one-way.wipple:3:19-3:28))
+  has definition constraints
   is a constraint
-  resolved to 1 definition(s): `T` (test/tests/bounds-are-one-way.wipple:1:1-3:25)
-ConstantDefinitionNode `f` (test/tests/bounds-are-one-way.wipple:5:1-5:28)
-  at test/tests/bounds-are-one-way.wipple:5:1-5:28
-  has definition constraints
-  has type Number
-  has type parameters
+  resolved to 1 definition(s): `T : value => trait` (bounds-are-one-way.wipple:1:1-1:19)
+
+`value` (bounds-are-one-way.wipple:3:22-3:27) (TypeParameterSyntax):
+  has type `value` (bounds-are-one-way.wipple:3:22-3:27)
   is a definition
-VariablePatternNode `f` (test/tests/bounds-are-one-way.wipple:6:1-6:2)
-  at test/tests/bounds-are-one-way.wipple:6:1-6:2
-ConstructorExpressionNode `T` (test/tests/bounds-are-one-way.wipple:6:5-6:6)
-  at test/tests/bounds-are-one-way.wipple:6:5-6:6
-  has bound(s) T Number (unresolved)
-  has type Number
+  is a type
+  resolved to 1 definition(s): `value` (bounds-are-one-way.wipple:3:22-3:27)
+
+`value` (bounds-are-one-way.wipple:1:20-1:25) (TypeParameterSyntax):
+  has type `value` (bounds-are-one-way.wipple:1:5-1:10)
+  is a type
+  resolved to 1 definition(s): `value` (bounds-are-one-way.wipple:1:5-1:10)
+
+`T` (bounds-are-one-way.wipple:4:5-4:6) (ConstructorExpressionSyntax):
+  has bound(s) `T` `Number` (bounds-are-one-way.wipple:3:6-3:12) (unresolved)
+  has type `Number` (bounds-are-one-way.wipple:3:6-3:12)
   is an expression
-  resolved to 1 definition(s): `T` (test/tests/bounds-are-one-way.wipple:1:1-3:25)
+  resolved to 1 definition(s): `T : value => trait` (bounds-are-one-way.wipple:1:1-1:19)
+
 
 
 Feedback:
 
-`T` (test/tests/bounds-are-one-way.wipple:6:5-6:6) (unresolved-bound):
+`T` (bounds-are-one-way.wipple:4:5-4:6) (unresolved-bound)
 
-  `T` (test/tests/bounds-are-one-way.wipple:6:5-6:6) requires the instance T Number, but this instance isn't defined.
-
+  `T` (bounds-are-one-way.wipple:4:5-4:6) requires the instance `T` `Number` (bounds-are-one-way.wipple:3:6-3:12), but this instance isn't defined.
+  
   Double-check that these types are correct.

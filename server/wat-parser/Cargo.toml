@@ -1,0 +1,12 @@
+[package]
+name = "wat-parser"
+version = "0.0.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+base64 = "0.22"
+wasm-bindgen = "0.2"
+wat = "1"

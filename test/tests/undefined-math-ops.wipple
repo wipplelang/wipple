@@ -1,5 +1,3 @@
--- wipple run $FILE --lib library/src/foundation
-
 show nan
 show (1 / 0)
 show (0 / 0)

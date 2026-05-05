@@ -1,0 +1,52 @@
+name: Deploy
+on:
+    push:
+        branches: [ "main" ]
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+
+            - uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+
+            - uses: go-task/setup-task@v1
+
+            - id: setup-swiftwasm
+              uses: swiftwasm/setup-swiftwasm@v2
+              with:
+                  target: wasm32-unknown-wasip1
+
+            - run: rustup target add wasm32-unknown-unknown
+
+            - run: |
+                  curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+                  cargo binstall wasm-opt wasm-bindgen-cli
+
+            - uses: actions/cache@v5
+              with:
+                  path: "compiler/.build"
+                  key: ${{ runner.os }}-spm-${{ hashFiles('compiler/Package.resolved') }}
+                  restore-keys: |
+                      ${{ runner.os }}-spm-
+
+            - run: task setup
+
+            - run: task build
+              env:
+                  PUBLIC_SERVER_URL: ${{ vars.PUBLIC_SERVER_URL }}
+                  PUBLIC_VISUALIZER_URL: ${{ vars.PUBLIC_VISUALIZER_URL }}
+                  PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SWIFT_SDK: ${{ steps.setup-swiftwasm.outputs.swift-sdk-id }}
+
+            - run: npm i -g netlify-cli
+
+            - run: netlify deploy --no-build --prod
+              env:
+                  NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+                  NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}

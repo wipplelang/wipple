@@ -1,5 +1,3 @@
--- wipple run $FILE --lib library/src/foundation
-
 x : 1
 set x : x + 1
 show x

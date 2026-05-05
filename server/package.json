@@ -1,0 +1,24 @@
+{
+    "name": "server",
+    "private": true,
+    "type": "module",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "tsc && node build.js",
+        "dev": "npm run build && node --enable-source-maps dev.js"
+    },
+    "dependencies": {
+        "compiler": "file:../compiler",
+        "trouter": "^4.0.0",
+        "wat-parser": "file:wat-parser",
+        "zod": "^4.3.6"
+    },
+    "devDependencies": {
+        "@chialab/esbuild-plugin-meta-url": "^0.19.1",
+        "@netlify/functions": "^5.2.0",
+        "@types/node": "^25.6.0",
+        "esbuild": "^0.28.0",
+        "esbuild-plugin-inline-import": "^1.1.0",
+        "typescript": "~6.0.2"
+    }
+}

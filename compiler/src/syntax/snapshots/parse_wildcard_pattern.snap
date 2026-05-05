@@ -1,6 +1,0 @@
----
-source: compiler/src/syntax/mod.rs
-description: _
-expression: result
----
-WildcardPatternNode

@@ -1,135 +1,147 @@
 Facts:
-TypeParameterNode `value` (test/tests/default-instance.wipple:3:16-3:21)
-  at test/tests/default-instance.wipple:3:16-3:21
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/default-instance.wipple:3:16-3:21)
-TypeParameterNode `value` (test/tests/default-instance.wipple:3:32-3:37)
-  at test/tests/default-instance.wipple:3:32-3:37
-  has type value
-  is a type
-  resolved to 1 definition(s): `value` (test/tests/default-instance.wipple:3:16-3:21)
-UnitTypeNode `()` (test/tests/default-instance.wipple:3:41-3:43)
-  at test/tests/default-instance.wipple:3:41-3:43
-  has type ()
-  is a type
-FunctionTypeNode `value -> ()` (test/tests/default-instance.wipple:3:32-3:43)
-  at test/tests/default-instance.wipple:3:32-3:43
-  has type value -> ()
-  is a type
-TraitDefinitionNode `Do-Something` (test/tests/default-instance.wipple:1:1-3:44)
-  at test/tests/default-instance.wipple:1:1-3:44
+`Do-Something : value => trait` (default-instance.wipple:1:1-1:30) (TraitDefinitionSyntax):
   has definition constraints
   has instances
+  has type `value -> ()` (default-instance.wipple:1:32-1:43)
   has type parameters
-  has type value -> ()
   is a definition
-TypeParameterNode `value` (test/tests/default-instance.wipple:5:34-5:39)
-  at test/tests/default-instance.wipple:5:34-5:39
-  has type value
+
+`value` (default-instance.wipple:1:16-1:21) (TypeParameterSyntax):
+  has type `value` (default-instance.wipple:1:16-1:21)
+  is a definition
   is a type
-  resolved to 1 definition(s): `value` (test/tests/default-instance.wipple:5:34-5:39)
-BoundConstraintNode `Do-Something value` (test/tests/default-instance.wipple:5:20-5:40)
-  at test/tests/default-instance.wipple:5:20-5:40
-WildcardPatternNode `_` (test/tests/default-instance.wipple:5:43-5:44)
-  at test/tests/default-instance.wipple:5:43-5:44
-  has type value
-  is a pattern
-VariableExpressionNode `show` (test/tests/default-instance.wipple:5:48-5:52)
-  at test/tests/default-instance.wipple:5:48-5:52
-  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
-  has type String -> ()
-  is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-StringExpressionNode `"using default instance"` (test/tests/default-instance.wipple:5:53-5:77)
-  at test/tests/default-instance.wipple:5:53-5:77
-  has type String
-  is an expression
-CallExpressionNode `show "using default instance"` (test/tests/default-instance.wipple:5:48-5:77)
-  at test/tests/default-instance.wipple:5:48-5:77
-  has type ()
-  is an expression
-FunctionExpressionNode `_ -> show "using default instance"` (test/tests/default-instance.wipple:5:43-5:77)
-  at test/tests/default-instance.wipple:5:43-5:77
-  has type value -> ()
+  resolved to 1 definition(s): `value` (default-instance.wipple:1:16-1:21)
+
+`instance (Do-Something value)` (default-instance.wipple:3:11-3:40) (InstanceDefinitionSyntax):
+  has definition constraints
+  has type `value -> ()` (default-instance.wipple:3:43-3:77)
+  has type parameters
+  is a definition
+  resolved to 1 definition(s): `Do-Something : value => trait` (default-instance.wipple:1:1-1:30)
+
+`[default]` (default-instance.wipple:3:1-3:10) (AttributeSyntax):
+  (no facts)
+
+`instance (Do-Something String)` (default-instance.wipple:4:1-4:31) (InstanceDefinitionSyntax):
+  has definition constraints
+  has type `String -> ()` (default-instance.wipple:4:34-4:82)
+  is a definition
+  resolved to 1 definition(s): `Do-Something : value => trait` (default-instance.wipple:1:1-1:30)
+
+`value` (default-instance.wipple:3:34-3:39) (TypeParameterSyntax):
+  has type `value` (default-instance.wipple:3:34-3:39)
+  is a definition
+  is a type
+  resolved to 1 definition(s): `value` (default-instance.wipple:3:34-3:39)
+
+`String` (default-instance.wipple:4:24-4:30) (NamedTypeSyntax):
+  has type `String`
+  is a type
+  resolved to 1 definition(s): `String : type` (language.wipple:2:13-2:26)
+
+`value -> ()` (default-instance.wipple:1:32-1:43) (FunctionTypeSyntax):
+  has type `value -> ()` (default-instance.wipple:1:32-1:43)
+  is a type
+
+`value` (default-instance.wipple:1:32-1:37) (TypeParameterSyntax):
+  has type `value` (default-instance.wipple:1:16-1:21)
+  is a type
+  resolved to 1 definition(s): `value` (default-instance.wipple:1:16-1:21)
+
+`()` (default-instance.wipple:1:41-1:43) (UnitTypeSyntax):
+  has type `()` (default-instance.wipple:1:41-1:43)
+  is a type
+
+`_ -> show "using default instance"` (default-instance.wipple:3:43-3:77) (FunctionExpressionSyntax):
+  has type `value -> ()` (default-instance.wipple:3:43-3:77)
   is an expression
   no captures
-InstanceDefinitionNode `instance (Do-Something value)` (test/tests/default-instance.wipple:5:1-5:77)
-  at test/tests/default-instance.wipple:5:1-5:77
-  has definition constraints
-  has type parameters
-  has type value -> ()
-  is a definition
-  resolved to 1 definition(s): `Do-Something` (test/tests/default-instance.wipple:1:1-3:44)
-NamedTypeNode `String` (test/tests/default-instance.wipple:6:24-6:30)
-  at test/tests/default-instance.wipple:6:24-6:30
-  has type String
-  is a type
-  resolved to 1 definition(s): `String` (library/src/foundation/language.wipple:2:1-2:26)
-BoundConstraintNode `Do-Something String` (test/tests/default-instance.wipple:6:10-6:31)
-  at test/tests/default-instance.wipple:6:10-6:31
-VariablePatternNode `text` (test/tests/default-instance.wipple:6:34-6:38)
-  at test/tests/default-instance.wipple:6:34-6:38
-  has type String
+
+`_` (default-instance.wipple:3:43-3:44) (WildcardPatternSyntax):
+  has type `value` (default-instance.wipple:3:34-3:39)
   is a pattern
-VariableExpressionNode `show` (test/tests/default-instance.wipple:6:42-6:46)
-  at test/tests/default-instance.wipple:6:42-6:46
-  has bound(s) Describe String (`instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:46))
-  has type String -> ()
+
+`show "using default instance"` (default-instance.wipple:3:48-3:77) (CallExpressionSyntax):
+  has type `()`
   is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-VariableExpressionNode `text` (test/tests/default-instance.wipple:6:77-6:81)
-  at test/tests/default-instance.wipple:6:77-6:81
-  has type String
+
+`show` (default-instance.wipple:3:48-3:52) (VariableExpressionSyntax):
+  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
+  has type `String -> ()` (default-instance.wipple:3:48-3:52)
   is an expression
-  resolved to 1 definition(s): `text` (test/tests/default-instance.wipple:6:34-6:38)
-FormatExpressionNode `"using specific instance` (test/tests/default-instance.wipple:6:48-6:81)
-  at test/tests/default-instance.wipple:6:48-6:81
-  has type String
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`"using default instance"` (default-instance.wipple:3:53-3:77) (StringExpressionSyntax):
+  has type `String`
   is an expression
-CallExpressionNode `show ("using specific instance` (test/tests/default-instance.wipple:6:42-6:82)
-  at test/tests/default-instance.wipple:6:42-6:82
-  has type ()
-  is an expression
-FunctionExpressionNode `text -> show ("using specific instance` (test/tests/default-instance.wipple:6:34-6:82)
-  at test/tests/default-instance.wipple:6:34-6:82
-  has type String -> ()
+
+`text -> show ("using specific instance: _" text)` (default-instance.wipple:4:34-4:82) (FunctionExpressionSyntax):
+  has type `String -> ()` (default-instance.wipple:4:34-4:82)
   is an expression
   no captures
-InstanceDefinitionNode `instance (Do-Something String)` (test/tests/default-instance.wipple:6:1-6:82)
-  at test/tests/default-instance.wipple:6:1-6:82
-  has definition constraints
-  has type String -> ()
-  is a definition
-  resolved to 1 definition(s): `Do-Something` (test/tests/default-instance.wipple:1:1-3:44)
-ConstructorExpressionNode `Do-Something` (test/tests/default-instance.wipple:8:1-8:13)
-  at test/tests/default-instance.wipple:8:1-8:13
-  has bound(s) Do-Something Number (`instance (Do-Something value)` (test/tests/default-instance.wipple:5:1-5:77))
-  has type Number -> ()
+
+`text` (default-instance.wipple:4:34-4:38) (VariablePatternSyntax):
+  has type `String`
+  is a pattern
+
+`show ("using specific instance: _" text)` (default-instance.wipple:4:42-4:82) (CallExpressionSyntax):
+  has type `()`
   is an expression
-  resolved to 1 definition(s): `Do-Something` (test/tests/default-instance.wipple:1:1-3:44)
-NumberExpressionNode `42` (test/tests/default-instance.wipple:8:14-8:16)
-  at test/tests/default-instance.wipple:8:14-8:16
-  has type Number
+
+`show` (default-instance.wipple:4:42-4:46) (VariableExpressionSyntax):
+  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
+  has type `String -> ()` (default-instance.wipple:4:42-4:46)
   is an expression
-CallExpressionNode `Do-Something 42` (test/tests/default-instance.wipple:8:1-8:16)
-  at test/tests/default-instance.wipple:8:1-8:16
-  has type ()
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`"using specific instance: _" text` (default-instance.wipple:4:48-4:81) (FormatExpressionSyntax):
+  has type `String`
   is an expression
-ConstructorExpressionNode `Do-Something` (test/tests/default-instance.wipple:9:1-9:13)
-  at test/tests/default-instance.wipple:9:1-9:13
-  has bound(s) Do-Something String (`instance (Do-Something String)` (test/tests/default-instance.wipple:6:1-6:82))
-  has type String -> ()
+
+`"using specific instance: _" text` (default-instance.wipple:4:48-4:81) (NamedTypeSyntax):
+  has type `String`
+  is a type
+  resolved to 1 definition(s): `String : type` (language.wipple:2:13-2:26)
+
+`text` (default-instance.wipple:4:77-4:81) (VariableExpressionSyntax):
+  has type `String`
   is an expression
-  resolved to 1 definition(s): `Do-Something` (test/tests/default-instance.wipple:1:1-3:44)
-StringExpressionNode `"Hello, world!"` (test/tests/default-instance.wipple:9:14-9:29)
-  at test/tests/default-instance.wipple:9:14-9:29
-  has type String
+  resolved to 1 definition(s): `text` (default-instance.wipple:4:34-4:38)
+
+`"using specific instance: _" text` (default-instance.wipple:4:48-4:81) (ConstructorExpressionSyntax):
+  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
+  has type `String -> String` (default-instance.wipple:4:48-4:81)
   is an expression
-CallExpressionNode `Do-Something "Hello, world!"` (test/tests/default-instance.wipple:9:1-9:29)
-  at test/tests/default-instance.wipple:9:1-9:29
-  has type ()
+  resolved to 1 definition(s): `Describe : value => trait` (io.wipple:2:1-2:26)
+
+`Do-Something 42` (default-instance.wipple:6:1-6:16) (CallExpressionSyntax):
+  has type `()`
   is an expression
+
+`Do-Something` (default-instance.wipple:6:1-6:13) (ConstructorExpressionSyntax):
+  has bound(s) `Do-Something` `Number` (default-instance.wipple:6:14-6:16) (`instance (Do-Something value)` (default-instance.wipple:3:11-3:40))
+  has type `Number -> ()` (default-instance.wipple:6:1-6:13)
+  is an expression
+  resolved to 1 definition(s): `Do-Something : value => trait` (default-instance.wipple:1:1-1:30)
+
+`42` (default-instance.wipple:6:14-6:16) (NumberExpressionSyntax):
+  has type `Number` (default-instance.wipple:6:14-6:16)
+  is an expression
+
+`Do-Something "Hello, world!"` (default-instance.wipple:7:1-7:29) (CallExpressionSyntax):
+  has type `()`
+  is an expression
+
+`Do-Something` (default-instance.wipple:7:1-7:13) (ConstructorExpressionSyntax):
+  has bound(s) `Do-Something` `String` (`instance (Do-Something String)` (default-instance.wipple:4:1-4:31))
+  has type `String -> ()` (default-instance.wipple:7:1-7:13)
+  is an expression
+  resolved to 1 definition(s): `Do-Something : value => trait` (default-instance.wipple:1:1-1:30)
+
+`"Hello, world!"` (default-instance.wipple:7:14-7:29) (StringExpressionSyntax):
+  has type `String`
+  is an expression
+
 
 Output:
 using default instance

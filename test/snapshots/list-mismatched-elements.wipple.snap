@@ -1,64 +1,113 @@
 Facts:
-VariablePatternNode `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8)
-  at test/tests/list-mismatched-elements.wipple:3:1-3:8
-  has type List ()
+`my-list : 1, "hi", ()` (list-mismatched-elements.wipple:1:1-1:22) (AssignmentStatementSyntax):
+  has type `()` (list-mismatched-elements.wipple:1:1-1:22)
+
+`1, "hi", ()` (list-mismatched-elements.wipple:1:11-1:22) (CollectionExpressionSyntax):
+  has type `List ()`
+  is an expression
+
+`1` (list-mismatched-elements.wipple:1:11-1:12) (VisitAs):
+  has type `()` (list-mismatched-elements.wipple:1:20-1:22) or `String` (list-mismatched-elements.wipple:1:14-1:18) or `Number` (list-mismatched-elements.wipple:1:11-1:12)
+  is an expression
+
+`"hi"` (list-mismatched-elements.wipple:1:14-1:18) (VisitAs):
+  has type `()` (list-mismatched-elements.wipple:1:20-1:22) or `String` (list-mismatched-elements.wipple:1:14-1:18) or `Number` (list-mismatched-elements.wipple:1:11-1:12)
+  is an expression
+
+`()` (list-mismatched-elements.wipple:1:20-1:22) (VisitAs):
+  has type `()` (list-mismatched-elements.wipple:1:20-1:22) or `String` (list-mismatched-elements.wipple:1:14-1:18) or `Number` (list-mismatched-elements.wipple:1:11-1:12)
+  is an expression
+
+`()` (list-mismatched-elements.wipple:1:20-1:22) (CallExpressionSyntax):
+  has type `List ()`
+  is an expression
+
+`()` (list-mismatched-elements.wipple:1:20-1:22) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+  has type `() (List ()) -> List ()` (list-mismatched-elements.wipple:1:20-1:22)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`"hi"` (list-mismatched-elements.wipple:1:14-1:18) (CallExpressionSyntax):
+  has type `List ()`
+  is an expression
+
+`"hi"` (list-mismatched-elements.wipple:1:14-1:18) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())` (`instance (Build-Collection element collection)` (collections.wipple:7:19-7:65))
+  has type `() (List ()) -> List ()` (list-mismatched-elements.wipple:1:14-1:18)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`1` (list-mismatched-elements.wipple:1:11-1:12) (CallExpressionSyntax):
+  has type `List ()`
+  is an expression
+
+`1` (list-mismatched-elements.wipple:1:11-1:12) (ConstructorExpressionSyntax):
+  has bound(s) `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())` (`instance (Build-Collection element collection)` (collections.wipple:7:19-7:65))
+  has type `() (List ()) -> List ()` (list-mismatched-elements.wipple:1:11-1:12)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+
+`1, "hi", ()` (list-mismatched-elements.wipple:1:11-1:22) (ConstructorExpressionSyntax):
+  has bound(s) `Initial-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List ())` (`instance (Initial value)` (language.wipple:41:19-41:43)), `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())` (`instance (Build-Collection element collection)` (collections.wipple:7:19-7:65))
+  has type `List ()`
+  is an expression
+  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait` (collections.wipple:9:1-9:57)
+
+`my-list` (list-mismatched-elements.wipple:1:1-1:8) (VariablePatternSyntax):
+  has type `List ()`
   is a pattern
-NumberExpressionNode `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12)
-  at test/tests/list-mismatched-elements.wipple:3:11-3:12
-  has type () or String or Number
+
+`my-list . each show` (list-mismatched-elements.wipple:2:1-2:20) (OperatorExpressionSyntax):
+  has type `()`
   is an expression
-StringExpressionNode `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18)
-  at test/tests/list-mismatched-elements.wipple:3:14-3:18
-  has type () or String or Number
+
+`my-list` (list-mismatched-elements.wipple:2:1-2:8) (VisitAs):
+  has type `List ()`
   is an expression
-UnitExpressionNode `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22)
-  at test/tests/list-mismatched-elements.wipple:3:20-3:22
-  has type () or String or Number
+  resolved to 1 definition(s): `my-list` (list-mismatched-elements.wipple:1:1-1:8)
+
+`each show` (list-mismatched-elements.wipple:2:11-2:20) (VisitAs):
+  has type `(List ()) -> ()` (list-mismatched-elements.wipple:2:11-2:20)
   is an expression
-CollectionExpressionNode `1, "hi", ()` (test/tests/list-mismatched-elements.wipple:3:11-3:22)
-  at test/tests/list-mismatched-elements.wipple:3:11-3:22
-  has type List ()
+
+`each show` (list-mismatched-elements.wipple:2:11-2:20) (CallExpressionSyntax):
+  has type `()`
   is an expression
-VariableExpressionNode `my-list` (test/tests/list-mismatched-elements.wipple:4:1-4:8)
-  at test/tests/list-mismatched-elements.wipple:4:1-4:8
-  has type List ()
+
+`each` (list-mismatched-elements.wipple:2:11-2:15) (VariableExpressionSyntax):
+  has bound(s) `As-Sequence` `(List ())` `_` (`instance (As-Sequence container element)` (sequence.wipple:52:19-52:59))
+  has type `(_ -> ()) -> (List ()) -> ()` (list-mismatched-elements.wipple:2:11-2:15)
   is an expression
-  resolved to 1 definition(s): `my-list` (test/tests/list-mismatched-elements.wipple:3:1-3:8)
-VariableExpressionNode `each` (test/tests/list-mismatched-elements.wipple:4:11-4:15)
-  at test/tests/list-mismatched-elements.wipple:4:11-4:15
-  has bound(s) As-Sequence (List ()) _ (`instance (As-Sequence container element)` (library/src/foundation/sequence.wipple:49:1-52:59))
-  has type (_ -> ()) -> (List ()) -> ()
+  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (sequence.wipple:221:1-221:81)
+
+`show` (list-mismatched-elements.wipple:2:16-2:20) (VariableExpressionSyntax):
+  has type `_ -> ()`
   is an expression
-  resolved to 1 definition(s): `each` (library/src/foundation/sequence.wipple:220:1-221:81)
-VariableExpressionNode `show` (test/tests/list-mismatched-elements.wipple:4:16-4:20)
-  at test/tests/list-mismatched-elements.wipple:4:16-4:20
-  has type _ -> ()
-  is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-CallExpressionNode `each show` (test/tests/list-mismatched-elements.wipple:4:11-4:20)
-  at test/tests/list-mismatched-elements.wipple:4:11-4:20
-  has type (List ()) -> ()
-  is an expression
-OperatorExpressionNode `my-list . each show` (test/tests/list-mismatched-elements.wipple:4:1-4:20)
-  at test/tests/list-mismatched-elements.wipple:4:1-4:20
-  has type ()
-  is an expression
-CallExpressionNode `each show` (test/tests/list-mismatched-elements.wipple:4:11-4:20)
-  at test/tests/list-mismatched-elements.wipple:4:11-4:20
-  has type ()
-  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
 
 
 Feedback:
 
-`1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) (conflicting-types):
+`1` (list-mismatched-elements.wipple:1:11-1:12) (conflicting-types)
 
-  `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) is a `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22), `String` (test/tests/list-mismatched-elements.wipple:3:14-3:18), or a `Number` (test/tests/list-mismatched-elements.wipple:3:11-3:12), but it can only be one of these.
-
-  `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) must be the same type as `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18), `()` (test/tests/list-mismatched-elements.wipple:3:20-3:22), `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18), and 36 others; double-check these.
-
-  -  `"hi"` (test/tests/list-mismatched-elements.wipple:3:14-3:18) is a String.
-
-  -  `1` (test/tests/list-mismatched-elements.wipple:3:11-3:12) is a Number.
-
-  -  `element` (library/src/foundation/collections.wipple:7:46-7:53) must have the same type everywhere in this use of `instance (Build-Collection element collection)` (library/src/foundation/collections.wipple:3:1-7:65).
+  `1` (list-mismatched-elements.wipple:1:11-1:12) is a `()` (list-mismatched-elements.wipple:1:20-1:22), `String` (list-mismatched-elements.wipple:1:14-1:18), or a `Number` (list-mismatched-elements.wipple:1:11-1:12), but it can only be one of these.
+  
+  `1` (list-mismatched-elements.wipple:1:11-1:12) must be the same type as `"hi"` (list-mismatched-elements.wipple:1:14-1:18), `()` (list-mismatched-elements.wipple:1:20-1:22), `"hi"` (list-mismatched-elements.wipple:1:14-1:18), and 36 others; double-check these.
+  
+  -  `1, "hi", ()` (list-mismatched-elements.wipple:1:11-1:22) requires `Initial-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())`.
+  
+  -  `"hi"` (list-mismatched-elements.wipple:1:14-1:18) is a `String` (language.wipple:2:13-2:26).
+  
+  -  `1` (list-mismatched-elements.wipple:1:11-1:12) is a `Number` (language.wipple:1:38-1:51).
+  
+  -  `()` (list-mismatched-elements.wipple:1:20-1:22) requires `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())`.
+  
+  -  `"hi"` (list-mismatched-elements.wipple:1:14-1:18) requires `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())`.
+  
+  -  `1` (list-mismatched-elements.wipple:1:11-1:12) requires `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())`.
+  
+  -  `_` requires `Build-Collection` `_` `_`.
+  
+  -  `element` (collections.wipple:7:46-7:53) must have the same type everywhere in this use of `_`.

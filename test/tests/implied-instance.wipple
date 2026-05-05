@@ -1,5 +1,3 @@
--- wipple compile $FILE --facts
-
 A : type
 B : type
 

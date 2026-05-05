@@ -8,8 +8,11 @@ const testsPath = "test/tests";
 const tests = fs.readdirSync(testsPath).filter((file) => path.extname(file) === ".wipple");
 
 const cmd = spawnSync(
-    "./target/debug/wipple",
+    "swift",
     [
+        "run",
+        "--package-path=compiler",
+        "wipple",
         "test",
         "--lib",
         "library/src/foundation",

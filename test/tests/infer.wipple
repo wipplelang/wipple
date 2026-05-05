@@ -1,5 +1,3 @@
--- wipple run $FILE --lib library/src/foundation
-
 languages : "C", "Python", "Java", "JavaScript", "Wipple"
 
 short-names : languages . filter (name -> count name < 5)

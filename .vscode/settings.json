@@ -1,4 +1,0 @@
-{
-    "wipple.lspArgs": ["--lib", "${workspaceFolder}/library/src/foundation"],
-    "rust-analyzer.cargo.features": ["lambda"]
-}

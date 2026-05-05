@@ -1,5 +1,3 @@
--- wipple run $FILE --lib library/src/foundation
-
 Grade : type {
   A
   B

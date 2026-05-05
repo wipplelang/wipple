@@ -1,31 +1,31 @@
 Facts:
-TypeDefinitionNode `Foo` (test/tests/missing-instance.wipple:1:1-3:11)
-  at test/tests/missing-instance.wipple:1:1-3:11
+`Foo : type` (missing-instance.wipple:1:1-1:11) (TypeDefinitionSyntax):
   has definition constraints
-  has type Foo
+  has type `Foo` (missing-instance.wipple:1:1-1:11)
   is a definition
-VariableExpressionNode `show` (test/tests/missing-instance.wipple:4:1-4:5)
-  at test/tests/missing-instance.wipple:4:1-4:5
-  has bound(s) Describe Foo (`instance (Describe value)` (library/src/foundation/io.wipple:4:1-8:44))
-  has type Foo -> ()
+
+`show Foo` (missing-instance.wipple:2:1-2:9) (CallExpressionSyntax):
+  has type `()`
   is an expression
-  resolved to 1 definition(s): `show` (library/src/foundation/io.wipple:10:1-11:43)
-ConstructorExpressionNode `Foo` (test/tests/missing-instance.wipple:4:6-4:9)
-  at test/tests/missing-instance.wipple:4:6-4:9
-  has type Foo
+
+`show` (missing-instance.wipple:2:1-2:5) (VariableExpressionSyntax):
+  has bound(s) `Describe` `Foo` (missing-instance.wipple:2:6-2:9) (`instance (Describe value)` (io.wipple:8:19-8:44))
+  has type `Foo -> ()` (missing-instance.wipple:2:1-2:5)
   is an expression
-  resolved to 1 definition(s): `Foo` (test/tests/missing-instance.wipple:1:1-3:11)
-CallExpressionNode `show Foo` (test/tests/missing-instance.wipple:4:1-4:9)
-  at test/tests/missing-instance.wipple:4:1-4:9
-  has type ()
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`Foo` (missing-instance.wipple:2:6-2:9) (ConstructorExpressionSyntax):
+  has type `Foo` (missing-instance.wipple:2:6-2:9)
   is an expression
+  resolved to 1 definition(s): `Foo : type` (missing-instance.wipple:1:1-1:11)
+
 
 
 Feedback:
 
-`show` (test/tests/missing-instance.wipple:4:1-4:5) (error-instance):
+`show` (missing-instance.wipple:2:1-2:5) (error-instance)
 
-  Can't describe   `value` (library/src/foundation/io.wipple:8:38-8:43).
-
- You can't display   `value` (library/src/foundation/io.wipple:8:38-8:43) on the screen or use it in placeholders because
- it can't be converted into a string.
+  Can't describe `Foo` (missing-instance.wipple:2:6-2:9).
+  
+  You can't display `Foo` (missing-instance.wipple:2:6-2:9) on the screen or use it in placeholders because
+  it can't be converted into a string.

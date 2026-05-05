@@ -1,5 +1,3 @@
--- wipple run $FILE --lib library/src/foundation
-
 remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)
 remove-duplicates : do {
   seen : (,)

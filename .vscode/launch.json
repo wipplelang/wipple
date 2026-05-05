@@ -1,22 +1,14 @@
 {
-    "version": "0.2.0",
     "configurations": [
         {
-            "name": "Debug Compiler",
-            "type": "lldb",
+            "type": "swift",
             "request": "launch",
-            "cargo": {
-                "args": ["run", "--bin", "wipple"]
-            },
-            "args": ["compile", "test.wipple", "--lib", "library/src/foundation", "-o", "out.js"],
-            "console": "internalConsole"
-        },
-        {
-            "name": "Debug test.wipple",
-            "type": "node",
-            "request": "launch",
-            "program": "${workspaceFolder}/test.wipple",
-            "console": "internalConsole"
+            "args": ["compile", "test.wipple", "--lib", "library/src/foundation", "--facts"],
+            "cwd": "${workspaceFolder}",
+            "name": "Debug",
+            "target": "wipple",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug wipple (compiler)"
         }
     ]
 }

@@ -1,8 +1,0 @@
----
-source: compiler/src/syntax/mod.rs
-description: set x
-expression: result
----
-SetPatternNode {
-    variable: "x",
-}
