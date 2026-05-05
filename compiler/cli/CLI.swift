@@ -1,7 +1,14 @@
 import ArgumentParser
 import Compiler
-import Foundation
 import Synchronization
+
+#if os(Linux)
+    @preconcurrency import Glibc
+    import Foundation
+#else
+    import Darwin
+    import Foundation
+#endif
 
 @main struct CLI: ParsableCommand {
     static let configuration = CommandConfiguration(
@@ -337,7 +344,13 @@ func compile(
 }
 
 private struct Stderr: TextOutputStream {
-    nonmutating func write(_ string: String) { fputs(string, Foundation.stderr) }
+    nonmutating func write(_ string: String) {
+        #if os(Linux)
+            fputs(string, Glibc.stderr)
+        #else
+            fputs(string, Darwin.stderr)
+        #endif
+    }
 }
 
 nonisolated(unsafe) private var stderr = Stderr()
