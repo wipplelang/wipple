@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import compiler, { IDERange, type CompileResult, type IDE } from "compiler";
 import foundationLibrary from "../../library/dist/foundation.json";
+import { debounce } from "./util";
 
 const foundation = compiler.compile(foundationLibrary.files);
 if (foundation != null) {
@@ -18,7 +19,6 @@ export const activate = (context: vscode.ExtensionContext) => {
     vscode.workspace.onDidOpenTextDocument(update);
     vscode.workspace.onDidChangeTextDocument((e) => update(e.document));
     vscode.workspace.onDidCloseTextDocument(close);
-
 
     vscode.languages.registerDocumentSemanticTokensProvider(
         "wipple",
@@ -41,7 +41,7 @@ export const activate = (context: vscode.ExtensionContext) => {
 
 const documents = new Map<vscode.TextDocument, IDE>();
 
-const update = (document: vscode.TextDocument) => {
+const update = debounce(150, (document: vscode.TextDocument) => {
     if (document.languageId !== "wipple") return;
 
     documents.get(document)?.release();
@@ -75,7 +75,7 @@ const update = (document: vscode.TextDocument) => {
     if (ide != null) {
         documents.set(document, ide);
     }
-};
+});
 
 const close = (document: vscode.TextDocument) => {
     if (document.languageId !== "wipple") return;
