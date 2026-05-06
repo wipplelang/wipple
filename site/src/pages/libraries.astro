@@ -1,0 +1,51 @@
+---
+import Layout from "@/layouts/Layout.astro";
+import { Code } from "astro:components";
+import { marked } from "marked";
+import { wippleLanguage } from "../../astro.config.mjs";
+import foundationLibrary from "../../../library/dist/foundation.json";
+
+const docs = Object.entries(foundationLibrary.docs);
+docs.sort(([left], [right]) => left.localeCompare(right));
+---
+
+<Layout>
+    <main
+        class="flex flex-1 flex-col gap-[40px] px-4 not-print:mx-auto not-print:max-w-4xl sm:gap-[60px]"
+    >
+        <div class="mt-[20px] flex w-full flex-1 flex-col items-center">
+            <p class="text-3xl font-semibold">Library Documentation</p>
+
+            <!-- TODO: Search -->
+        </div>
+
+        {
+            docs.map(([name, entry]) => {
+                const key = `${entry.kind}.${name}`;
+                const docs = marked.parse(entry.docs);
+
+                return (
+                    <a
+                        id={key}
+                        href={`#${encodeURIComponent(key)}`}
+                        class="flex flex-col gap-[10px] no-underline"
+                    >
+                        <h2 class="text-xl font-bold">
+                            <code>{name}</code>
+                        </h2>
+
+                        <div class="markdown">
+                            <div set:html={docs} />
+
+                            <Code
+                                code={entry.declaration}
+                                theme="github-light"
+                                lang={wippleLanguage}
+                            />
+                        </div>
+                    </a>
+                );
+            })
+        }
+    </main>
+</Layout>

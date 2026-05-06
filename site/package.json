@@ -12,6 +12,7 @@
         "@fontsource-variable/jetbrains-mono": "^5.2.8",
         "@tailwindcss/vite": "^4.1.11",
         "astro": "^5.12.2",
+        "marked": "^18.0.3",
         "postcss-nesting": "^13.0.2",
         "rehype-autolink-headings": "^7.1.0",
         "tailwindcss": "^4.1.11"

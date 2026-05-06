@@ -59,7 +59,7 @@ extension Queries {
         public let comments: Queries.Comments
     }
 
-    public static func documentation(includeLinks: Bool) -> Query<Documentation> {
+    public static var documentation: Query<Documentation> {
         { db, node, body in
             guard let definition = db[node, Defined.self]?.definition,
                 let source = db[definition.node, Syntax.self]?.value.span.source
@@ -77,12 +77,31 @@ extension Queries {
 
             guard let kind else { return }
 
-            Queries.comments(includeLinks: includeLinks)(db, definition.node) { comments in
+            Queries.comments(includeLinks: false)(db, definition.node) { comments in
+                guard !comments.comments.isEmpty else { return }
+
+                var declaration = String(source)
+
+                Queries.references(db, definition.node) { reference in
+                    guard
+                        let definition = db[reference, Defined.self]?.definition
+                            as? InstanceDefinition,
+                        let source = db[definition.node, Syntax.self]?.value.span.source
+                    else { return }
+
+                    declaration += "\n"
+
+                    if definition.attributes.default { declaration += "[default] " }
+                    if definition.attributes.error { declaration += "[error] " }
+
+                    declaration += source
+                }
+
                 body(
                     .init(
                         name: definition.name,
                         kind: kind,
-                        declaration: String(source),
+                        declaration: declaration,
                         comments: comments,
                     )
                 )

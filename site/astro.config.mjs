@@ -6,6 +6,10 @@ import { rehypeHeadingIds } from "@astrojs/markdown-remark";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import { readFileSync } from "node:fs";
 
+export const wippleLanguage = JSON.parse(
+    readFileSync("../vscode/syntaxes/wipple.tmLanguage.json", "utf8"),
+);
+
 // https://astro.build/config
 export default defineConfig({
     markdown: {
@@ -21,7 +25,7 @@ export default defineConfig({
         ],
         shikiConfig: {
             theme: "github-light",
-            langs: [JSON.parse(readFileSync("../vscode/syntaxes/wipple.tmLanguage.json", "utf8"))],
+            langs: [wippleLanguage],
             langAlias: {
                 wipple: "Wipple",
                 "wipple,playground": "Wipple",

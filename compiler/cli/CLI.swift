@@ -213,11 +213,12 @@ func doc(with options: CompileOptions) throws {
         var declaration: String
         var kind: String
         var docs: String
+        var imported: Bool
     }
 
     var items: [String: DocumentationItem] = [:]
     db.forEachFact(Defined.self) { node, _ in
-        Queries.documentation(includeLinks: false)(db, node) { documentation in
+        Queries.documentation(db, node) { documentation in
             guard let name = documentation.name else { return }
 
             let writer = FeedbackWriter(db: db)
@@ -228,6 +229,7 @@ func doc(with options: CompileOptions) throws {
                 declaration: documentation.declaration,
                 kind: documentation.kind,
                 docs: docs,
+                imported: !node.belongs(to: db),
             )
         }
     }

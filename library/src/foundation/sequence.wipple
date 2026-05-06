@@ -11,7 +11,7 @@ sequence : next -> Sequence {next : next}
 
 -- Create a sequence that always produces the provided element.
 --
--- ## Example
+-- **Example:**
 --
 -- ```wipple
 -- my-sequence : always "Hello, world!"
