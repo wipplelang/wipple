@@ -45,8 +45,7 @@ func getLinks(db: DB, definitionNode: Node, sourceNode: Node) -> [String: Link] 
         // `instantiated`
         let node =
             db[instantiatedNode, GroupedWith.self]?.nodes
-            .first { node in !node.isHidden && !db.contains(Instantiated.self, for: node) }
-            ?? group.nodes[0]
+            .first { !db.contains(Instantiated.self, for: $0) } ?? group.nodes[0]
 
         links[name] = .init(node: node, related: OrderedSet(group.nodes), types: group.types)
     }

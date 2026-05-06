@@ -130,8 +130,8 @@ class Solver {
     }
 
     private func merge(_ leftNode: Node, _ rightNode: Node, trace: Constraint?) {
-        self.db[leftNode, GroupedWith.self, default: GroupedWith()].nodes.append(rightNode)
-        self.db[rightNode, GroupedWith.self, default: GroupedWith()].nodes.append(leftNode)
+        self.db[leftNode, GroupedWith.self, default: .init()].nodes.append(rightNode)
+        self.db[rightNode, GroupedWith.self, default: .init()].nodes.append(leftNode)
 
         let leftIndex = self.groups.index(of: leftNode)
         let rightIndex = self.groups.index(of: rightNode)

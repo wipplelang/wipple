@@ -3,7 +3,7 @@ func createConnections(db: DB, filter: (Node) -> Bool) {
         guard filter(node) else { return }
 
         var hasCustomEdges = false
-        if let definitions = db[node, Resolved.self]?.definitions, definitions.count == 1 {
+        if let definitions = db[call.function, Resolved.self]?.definitions, definitions.count == 1 {
             let definition = definitions[0]
 
             let links = getLinks(db: db, definitionNode: definition, sourceNode: call.function)

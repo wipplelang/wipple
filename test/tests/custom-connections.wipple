@@ -1,0 +1,8 @@
+[connect : condition -> then ("then")]
+[connect : condition -> else ("else")]
+[connect : then -> output ("output")]
+[connect : else -> output ("output")]
+my-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)
+my-if : if
+
+show (my-if True {123} {456})
