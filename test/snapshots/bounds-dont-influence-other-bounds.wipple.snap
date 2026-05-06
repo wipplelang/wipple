@@ -1,5 +1,5 @@
 Facts:
-`T : value => trait` (bounds-dont-influence-other-bounds.wipple:1:1-1:19) (TraitDefinitionSyntax):
+`T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:33) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `value -> ()` (bounds-dont-influence-other-bounds.wipple:1:21-1:32)
@@ -16,13 +16,13 @@ Facts:
   has definition constraints
   has type `Number -> ()` (bounds-dont-influence-other-bounds.wipple:3:23-3:30)
   is a definition
-  resolved to 1 definition(s): `T : value => trait` (bounds-dont-influence-other-bounds.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:33)
 
 `instance (T String)` (bounds-dont-influence-other-bounds.wipple:4:1-4:20) (InstanceDefinitionSyntax):
   has definition constraints
   has type `String -> ()` (bounds-dont-influence-other-bounds.wipple:4:23-4:30)
   is a definition
-  resolved to 1 definition(s): `T : value => trait` (bounds-dont-influence-other-bounds.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:33)
 
 `f :: (a; b) where (T a) (T b)` (bounds-dont-influence-other-bounds.wipple:6:1-6:30) (ConstantDefinitionSyntax):
   has definition constraints
@@ -63,7 +63,7 @@ Facts:
   has bound(s) `T` `a` (bounds-dont-influence-other-bounds.wipple:6:7-6:8) (`(T a)` (bounds-dont-influence-other-bounds.wipple:6:19-6:24))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `T : value => trait` (bounds-dont-influence-other-bounds.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:33)
 
 `a` (bounds-dont-influence-other-bounds.wipple:6:22-6:23) (TypeParameterSyntax):
   has type `a` (bounds-dont-influence-other-bounds.wipple:6:7-6:8)
@@ -74,7 +74,7 @@ Facts:
   has bound(s) `T` `b` (bounds-dont-influence-other-bounds.wipple:6:10-6:11) (`(T b)` (bounds-dont-influence-other-bounds.wipple:6:25-6:30))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `T : value => trait` (bounds-dont-influence-other-bounds.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:33)
 
 `b` (bounds-dont-influence-other-bounds.wipple:6:28-6:29) (TypeParameterSyntax):
   has type `b` (bounds-dont-influence-other-bounds.wipple:6:10-6:11)

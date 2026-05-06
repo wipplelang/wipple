@@ -1,8 +1,8 @@
 Facts:
-`Grade : type` (enumeration.wipple:1:1-1:13) (TypeDefinitionSyntax):
+`Grade : type {⋯}` (enumeration.wipple:1:1-7:2) (TypeDefinitionSyntax):
   has definition constraints
   has enumeration variants
-  has type `Grade` (enumeration.wipple:1:1-1:13)
+  has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
 `_ : A` (enumeration.wipple:9:1-9:6) (AssignmentStatementSyntax):
@@ -10,27 +10,27 @@ Facts:
 
 `A` (enumeration.wipple:2:3-2:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-1:13)
+  has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
 `B` (enumeration.wipple:3:3-3:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-1:13)
+  has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
 `C` (enumeration.wipple:4:3-4:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-1:13)
+  has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
 `D` (enumeration.wipple:5:3-5:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-1:13)
+  has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
 `F` (enumeration.wipple:6:3-6:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-1:13)
+  has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
 `A` (enumeration.wipple:9:5-9:6) (ConstructorExpressionSyntax):

@@ -32,7 +32,7 @@ Facts:
   has bound(s) `Divide` `Number` `Number` `Number` (`instance (Divide Number Number Number)` (math.wipple:53:1-53:39))
   has type `Number Number -> Number` (undefined-math-ops.wipple:2:9-2:10)
   is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait` (math.wipple:52:1-52:46)
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (math.wipple:52:1-52:71)
 
 `1` (undefined-math-ops.wipple:2:7-2:8) (VisitAs):
   has type `Number`
@@ -64,7 +64,7 @@ Facts:
   has bound(s) `Divide` `Number` `Number` `Number` (`instance (Divide Number Number Number)` (math.wipple:53:1-53:39))
   has type `Number Number -> Number` (undefined-math-ops.wipple:3:9-3:10)
   is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait` (math.wipple:52:1-52:46)
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (math.wipple:52:1-52:71)
 
 `0` (undefined-math-ops.wipple:3:7-3:8) (VisitAs):
   has type `Number`
@@ -119,7 +119,7 @@ Facts:
   has bound(s) `Power` `Number` `Number` `Number` (`instance (Power Number Number Number)` (math.wipple:83:1-83:38))
   has type `Number Number -> Number` (undefined-math-ops.wipple:5:9-5:10)
   is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait` (math.wipple:82:1-82:42)
+  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (math.wipple:82:1-82:64)
 
 `2 ^ 2 ^ 2` (undefined-math-ops.wipple:5:7-5:16) (VisitAs):
   has type `Number`
@@ -137,7 +137,7 @@ Facts:
   has bound(s) `Power` `Number` `Number` `Number` (`instance (Power Number Number Number)` (math.wipple:83:1-83:38))
   has type `Number Number -> Number` (undefined-math-ops.wipple:5:13-5:14)
   is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait` (math.wipple:82:1-82:42)
+  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (math.wipple:82:1-82:64)
 
 `2 ^ 2 ^ 2 ^ 2048` (undefined-math-ops.wipple:5:7-5:23) (VisitAs):
   has type `Number`
@@ -155,7 +155,7 @@ Facts:
   has bound(s) `Power` `Number` `Number` `Number` (`instance (Power Number Number Number)` (math.wipple:83:1-83:38))
   has type `Number Number -> Number` (undefined-math-ops.wipple:5:17-5:18)
   is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait` (math.wipple:82:1-82:42)
+  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (math.wipple:82:1-82:64)
 
 `2` (undefined-math-ops.wipple:5:7-5:8) (VisitAs):
   has type `Number`

@@ -30,7 +30,7 @@ Facts:
   has bound(s) `Build-Collection` `String` `(Set String)` (`instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (collections.wipple:16:1-16:87)), `Equal` `String` (`instance (Equal String)` (logic.wipple:79:1-79:24)), `Hash` `String` (`instance (Hash String)` (dictionary.wipple:5:1-5:23))
   has type `String (Set String) -> Set String` (set.wipple:1:35-1:41)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
 
 `"Soccer"` (set.wipple:1:25-1:33) (CallExpressionSyntax):
   has type `Set String`
@@ -40,7 +40,7 @@ Facts:
   has bound(s) `Build-Collection` `String` `(Set String)` (`instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (collections.wipple:16:1-16:87)), `Equal` `String` (`instance (Equal String)` (logic.wipple:79:1-79:24)), `Hash` `String` (`instance (Hash String)` (dictionary.wipple:5:1-5:23))
   has type `String (Set String) -> Set String` (set.wipple:1:25-1:33)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
 
 `"Basketball"` (set.wipple:1:11-1:23) (CallExpressionSyntax):
   has type `Set String`
@@ -50,18 +50,18 @@ Facts:
   has bound(s) `Build-Collection` `String` `(Set String)` (`instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (collections.wipple:16:1-16:87)), `Equal` `String` (`instance (Equal String)` (logic.wipple:79:1-79:24)), `Hash` `String` (`instance (Hash String)` (dictionary.wipple:5:1-5:23))
   has type `String (Set String) -> Set String` (set.wipple:1:11-1:23)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
 
 `"Basketball", "Soccer", "Golf"` (set.wipple:1:11-1:41) (ConstructorExpressionSyntax):
   has bound(s) `Initial-Collection` `String` `(Set String)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(Set String)` (`instance (Initial (Set element))` (dictionary.wipple:137:1-137:33)), `Build-Collection` `String` `(Set String)` (`instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (collections.wipple:16:1-16:87)), `Equal` `String` (`instance (Equal String)` (logic.wipple:79:1-79:24)), `Hash` `String` (`instance (Hash String)` (dictionary.wipple:5:1-5:23))
   has type `Set String`
   is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait` (collections.wipple:9:1-9:57)
+  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
 
 `Set _` (set.wipple:1:46-1:51) (NamedTypeSyntax):
   has type `Set String`
   is a type
-  resolved to 1 definition(s): `Set : element => type` (dictionary.wipple:135:1-135:22)
+  resolved to 1 definition(s): `Set : element => type {dictionary :: Dictionary element ()}` (dictionary.wipple:135:1-135:60)
 
 `_` (set.wipple:1:50-1:51) (PlaceholderTypeSyntax):
   has type `String`

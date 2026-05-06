@@ -1,8 +1,8 @@
 Facts:
-`Grade : type` (exhaustiveness-checking.wipple:1:1-1:13) (TypeDefinitionSyntax):
+`Grade : type {⋯}` (exhaustiveness-checking.wipple:1:1-7:2) (TypeDefinitionSyntax):
   has definition constraints
   has enumeration variants
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-1:13)
+  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
   is a definition
 
 `report-card :: Grade -> String` (exhaustiveness-checking.wipple:9:1-9:31) (ConstantDefinitionSyntax):
@@ -15,27 +15,27 @@ Facts:
 
 `A` (exhaustiveness-checking.wipple:2:3-2:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-1:13)
+  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
   is a definition
 
 `B` (exhaustiveness-checking.wipple:3:3-3:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-1:13)
+  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
   is a definition
 
 `C` (exhaustiveness-checking.wipple:4:3-4:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-1:13)
+  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
   is a definition
 
 `D` (exhaustiveness-checking.wipple:5:3-5:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-1:13)
+  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
   is a definition
 
 `F` (exhaustiveness-checking.wipple:6:3-6:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-1:13)
+  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
   is a definition
 
 `Grade -> String` (exhaustiveness-checking.wipple:9:16-9:31) (FunctionTypeSyntax):
@@ -45,7 +45,7 @@ Facts:
 `Grade` (exhaustiveness-checking.wipple:9:16-9:21) (NamedTypeSyntax):
   has type `Grade` (exhaustiveness-checking.wipple:9:16-9:21)
   is a type
-  resolved to 1 definition(s): `Grade : type` (exhaustiveness-checking.wipple:1:1-1:13)
+  resolved to 1 definition(s): `Grade : type {⋯}` (exhaustiveness-checking.wipple:1:1-7:2)
 
 `String` (exhaustiveness-checking.wipple:9:25-9:31) (NamedTypeSyntax):
   has type `String` (exhaustiveness-checking.wipple:9:25-9:31)

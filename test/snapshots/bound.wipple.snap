@@ -1,5 +1,5 @@
 Facts:
-`T : value => trait` (bound.wipple:1:1-1:19) (TraitDefinitionSyntax):
+`T : value => trait (value -> String)` (bound.wipple:1:1-1:37) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `value -> String` (bound.wipple:1:21-1:36)
@@ -30,7 +30,7 @@ Facts:
   has definition constraints
   has type `A -> String` (bound.wipple:7:18-7:38)
   is a definition
-  resolved to 1 definition(s): `T : value => trait` (bound.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait (value -> String)` (bound.wipple:1:1-1:37)
 
 `value -> String` (bound.wipple:3:8-3:23) (FunctionTypeSyntax):
   has type `value -> String` (bound.wipple:3:8-3:23)
@@ -51,7 +51,7 @@ Facts:
   has bound(s) `T` `value` (bound.wipple:3:8-3:13) (`(T value)` (bound.wipple:3:30-3:39))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `T : value => trait` (bound.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait (value -> String)` (bound.wipple:1:1-1:37)
 
 `value` (bound.wipple:3:33-3:38) (TypeParameterSyntax):
   has type `value` (bound.wipple:3:8-3:13)
@@ -94,7 +94,7 @@ Facts:
   has bound(s) `T` `value` (bound.wipple:3:8-3:13) (`(T value)` (bound.wipple:3:30-3:39))
   has type `value -> String` (bound.wipple:4:12-4:13)
   is an expression
-  resolved to 1 definition(s): `T : value => trait` (bound.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait (value -> String)` (bound.wipple:1:1-1:37)
 
 `x` (bound.wipple:4:14-4:15) (VariableExpressionSyntax):
   has type `value` (bound.wipple:3:8-3:13)

@@ -1,8 +1,8 @@
 Facts:
-`Foo : value => type` (generic-type.wipple:1:1-1:20) (TypeDefinitionSyntax):
+`Foo : value => type {inner :: value}` (generic-type.wipple:1:1-1:37) (TypeDefinitionSyntax):
   has definition constraints
   has structure fields
-  has type `Foo value` (generic-type.wipple:1:1-1:20)
+  has type `Foo value` (generic-type.wipple:1:1-1:37)
   has type parameters
   is a definition
 
@@ -26,7 +26,7 @@ Facts:
 `Foo {inner : "Hello, world!"}` (generic-type.wipple:3:7-3:36) (StructureExpressionSyntax):
   has type `Foo String` (generic-type.wipple:3:7-3:36)
   is an expression
-  resolved to 1 definition(s): `Foo : value => type` (generic-type.wipple:1:1-1:20)
+  resolved to 1 definition(s): `Foo : value => type {inner :: value}` (generic-type.wipple:1:1-1:37)
 
 `"Hello, world!"` (generic-type.wipple:3:20-3:35) (StringExpressionSyntax):
   has type `String`
@@ -44,7 +44,7 @@ Facts:
 `Foo {inner : inner}` (generic-type.wipple:5:1-5:20) (StructurePatternSyntax):
   has type `Foo String` (generic-type.wipple:3:7-3:36)
   is a pattern
-  resolved to 1 definition(s): `Foo : value => type` (generic-type.wipple:1:1-1:20)
+  resolved to 1 definition(s): `Foo : value => type {inner :: value}` (generic-type.wipple:1:1-1:37)
 
 `inner` (generic-type.wipple:5:14-5:19) (VariablePatternSyntax):
   has type `String`

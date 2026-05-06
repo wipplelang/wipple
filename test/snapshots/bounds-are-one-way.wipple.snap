@@ -1,5 +1,5 @@
 Facts:
-`T : value => trait` (bounds-are-one-way.wipple:1:1-1:19) (TraitDefinitionSyntax):
+`T : value => trait value` (bounds-are-one-way.wipple:1:1-1:25) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `value` (bounds-are-one-way.wipple:1:5-1:10)
@@ -30,7 +30,7 @@ Facts:
   has bound(s) `T` `value` (bounds-are-one-way.wipple:3:22-3:27) (`(T value)` (bounds-are-one-way.wipple:3:19-3:28))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `T : value => trait` (bounds-are-one-way.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait value` (bounds-are-one-way.wipple:1:1-1:25)
 
 `value` (bounds-are-one-way.wipple:3:22-3:27) (TypeParameterSyntax):
   has type `value` (bounds-are-one-way.wipple:3:22-3:27)
@@ -47,7 +47,7 @@ Facts:
   has bound(s) `T` `Number` (bounds-are-one-way.wipple:3:6-3:12) (unresolved)
   has type `Number` (bounds-are-one-way.wipple:3:6-3:12)
   is an expression
-  resolved to 1 definition(s): `T : value => trait` (bounds-are-one-way.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait value` (bounds-are-one-way.wipple:1:1-1:25)
 
 
 

@@ -1,8 +1,8 @@
 Facts:
-`Person : type` (destructuring.wipple:1:1-1:14) (TypeDefinitionSyntax):
+`Person : type {name :: String}` (destructuring.wipple:1:1-1:31) (TypeDefinitionSyntax):
   has definition constraints
   has structure fields
-  has type `Person` (destructuring.wipple:1:1-1:14)
+  has type `Person` (destructuring.wipple:1:1-1:31)
   is a definition
 
 `alice : Person {name : "Alice"}` (destructuring.wipple:3:1-3:32) (AssignmentStatementSyntax):
@@ -26,7 +26,7 @@ Facts:
   has definition constraints
   has type `Person -> String` (destructuring.wipple:13:30-13:60)
   is a definition
-  resolved to 1 definition(s): `Describe : value => trait` (io.wipple:2:1-2:26)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (io.wipple:2:1-2:44)
 
 `charlie : Person {name : "Charlie"}` (destructuring.wipple:15:1-15:36) (AssignmentStatementSyntax):
   has type `()` (destructuring.wipple:15:1-15:36)
@@ -43,7 +43,7 @@ Facts:
 `Person` (destructuring.wipple:7:13-7:19) (NamedTypeSyntax):
   has type `Person` (destructuring.wipple:7:13-7:19)
   is a type
-  resolved to 1 definition(s): `Person : type` (destructuring.wipple:1:1-1:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
 `String` (destructuring.wipple:7:23-7:29) (NamedTypeSyntax):
   has type `String` (destructuring.wipple:7:23-7:29)
@@ -53,12 +53,12 @@ Facts:
 `Person` (destructuring.wipple:13:20-13:26) (NamedTypeSyntax):
   has type `Person` (destructuring.wipple:13:20-13:26)
   is a type
-  resolved to 1 definition(s): `Person : type` (destructuring.wipple:1:1-1:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
 `Person {name : "Alice"}` (destructuring.wipple:3:9-3:32) (StructureExpressionSyntax):
   has type `Person` (destructuring.wipple:3:9-3:32)
   is an expression
-  resolved to 1 definition(s): `Person : type` (destructuring.wipple:1:1-1:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
 `"Alice"` (destructuring.wipple:3:24-3:31) (StringExpressionSyntax):
   has type `String` (destructuring.wipple:3:24-3:31)
@@ -76,7 +76,7 @@ Facts:
 `Person {name : name}` (destructuring.wipple:4:1-4:21) (StructurePatternSyntax):
   has type `Person` (destructuring.wipple:3:9-3:32)
   is a pattern
-  resolved to 1 definition(s): `Person : type` (destructuring.wipple:1:1-1:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
 `name` (destructuring.wipple:4:16-4:20) (VariablePatternSyntax):
   has type `String`
@@ -105,7 +105,7 @@ Facts:
 `Person {name : name}` (destructuring.wipple:8:13-8:33) (StructurePatternSyntax):
   has type `Person` (destructuring.wipple:7:13-7:19)
   is a pattern
-  resolved to 1 definition(s): `Person : type` (destructuring.wipple:1:1-1:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
 `name` (destructuring.wipple:8:28-8:32) (VariablePatternSyntax):
   has type `String` (destructuring.wipple:7:23-7:29)
@@ -119,7 +119,7 @@ Facts:
 `Person {name : "Bob"}` (destructuring.wipple:10:7-10:28) (StructureExpressionSyntax):
   has type `Person` (destructuring.wipple:10:7-10:28)
   is an expression
-  resolved to 1 definition(s): `Person : type` (destructuring.wipple:1:1-1:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
 `"Bob"` (destructuring.wipple:10:22-10:27) (StringExpressionSyntax):
   has type `String` (destructuring.wipple:10:22-10:27)
@@ -161,7 +161,7 @@ Facts:
 `Person {name : name}` (destructuring.wipple:13:31-13:51) (StructurePatternSyntax):
   has type `Person` (destructuring.wipple:13:20-13:26)
   is a pattern
-  resolved to 1 definition(s): `Person : type` (destructuring.wipple:1:1-1:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
 `name` (destructuring.wipple:13:46-13:50) (VariablePatternSyntax):
   has type `String`
@@ -175,7 +175,7 @@ Facts:
 `Person {name : "Charlie"}` (destructuring.wipple:15:11-15:36) (StructureExpressionSyntax):
   has type `Person`
   is an expression
-  resolved to 1 definition(s): `Person : type` (destructuring.wipple:1:1-1:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
 `"Charlie"` (destructuring.wipple:15:26-15:35) (StringExpressionSyntax):
   has type `String` (destructuring.wipple:15:26-15:35)

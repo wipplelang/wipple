@@ -9,7 +9,7 @@ Facts:
   has type `Y` (default-type-parameter.wipple:2:1-2:9)
   is a definition
 
-`T : value => trait` (default-type-parameter.wipple:4:1-4:19) (TraitDefinitionSyntax):
+`T : value => trait value` (default-type-parameter.wipple:4:1-4:25) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `value` (default-type-parameter.wipple:4:5-4:10)
@@ -26,25 +26,25 @@ Facts:
   has definition constraints
   has type `X` (default-type-parameter.wipple:5:13-5:14)
   is a definition
-  resolved to 1 definition(s): `T : value => trait` (default-type-parameter.wipple:4:1-4:19)
+  resolved to 1 definition(s): `T : value => trait value` (default-type-parameter.wipple:4:1-4:25)
 
 `instance (T Y)` (default-type-parameter.wipple:6:1-6:15) (InstanceDefinitionSyntax):
   has definition constraints
   has type `Y` (default-type-parameter.wipple:6:13-6:14)
   is a definition
-  resolved to 1 definition(s): `T : value => trait` (default-type-parameter.wipple:4:1-4:19)
+  resolved to 1 definition(s): `T : value => trait value` (default-type-parameter.wipple:4:1-4:25)
 
 `instance (Describe X)` (default-type-parameter.wipple:8:1-8:22) (InstanceDefinitionSyntax):
   has definition constraints
   has type `X -> String` (default-type-parameter.wipple:8:25-8:33)
   is a definition
-  resolved to 1 definition(s): `Describe : value => trait` (io.wipple:2:1-2:26)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (io.wipple:2:1-2:44)
 
 `instance (Describe Y)` (default-type-parameter.wipple:9:1-9:22) (InstanceDefinitionSyntax):
   has definition constraints
   has type `Y -> String` (default-type-parameter.wipple:9:25-9:33)
   is a definition
-  resolved to 1 definition(s): `Describe : value => trait` (io.wipple:2:1-2:26)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (io.wipple:2:1-2:44)
 
 `foo :: value where (value :: X) (T value)` (default-type-parameter.wipple:11:1-11:42) (ConstantDefinitionSyntax):
   has definition constraints
@@ -98,7 +98,7 @@ Facts:
   has bound(s) `T` `value` (default-type-parameter.wipple:11:8-11:13) (`(T value)` (default-type-parameter.wipple:11:33-11:42))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `T : value => trait` (default-type-parameter.wipple:4:1-4:19)
+  resolved to 1 definition(s): `T : value => trait value` (default-type-parameter.wipple:4:1-4:25)
 
 `value` (default-type-parameter.wipple:11:36-11:41) (TypeParameterSyntax):
   has type `value` (default-type-parameter.wipple:11:8-11:13)
@@ -150,7 +150,7 @@ Facts:
   has bound(s) `T` `value` (default-type-parameter.wipple:11:8-11:13) (`(T value)` (default-type-parameter.wipple:11:33-11:42))
   has type `value` (default-type-parameter.wipple:11:8-11:13)
   is an expression
-  resolved to 1 definition(s): `T : value => trait` (default-type-parameter.wipple:4:1-4:19)
+  resolved to 1 definition(s): `T : value => trait value` (default-type-parameter.wipple:4:1-4:25)
 
 `show foo` (default-type-parameter.wipple:14:1-14:9) (CallExpressionSyntax):
   has type `()`

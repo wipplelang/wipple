@@ -17,7 +17,7 @@ Facts:
   has bound(s) `Equal` `Number` (`instance (Equal Number)` (logic.wipple:85:1-85:24))
   has type `Number Number -> Boolean` (negate.wipple:1:18-1:19)
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait` (logic.wipple:77:1-77:23)
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
 
 `negate 3` (negate.wipple:1:8-1:16) (VisitAs):
   has type `Number`

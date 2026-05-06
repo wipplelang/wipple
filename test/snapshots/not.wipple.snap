@@ -30,7 +30,7 @@ Facts:
   has bound(s) `Equal` `Number` (`instance (Equal Number)` (logic.wipple:85:1-85:24))
   has type `Number Number -> Boolean` (not.wipple:2:17-2:18)
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait` (logic.wipple:77:1-77:23)
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
 
 `n` (not.wipple:2:15-2:16) (VisitAs):
   has type `Number`
@@ -67,7 +67,7 @@ Facts:
   has bound(s) `Equal` `Boolean` (`instance (Equal Boolean)` (logic.wipple:93:1-93:25))
   has type `Boolean Boolean -> Boolean` (not.wipple:3:26-3:27)
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait` (logic.wipple:77:1-77:23)
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
 
 `(not is-42?) input` (not.wipple:3:7-3:25) (VisitAs):
   has type `Boolean`

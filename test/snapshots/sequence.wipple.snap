@@ -15,16 +15,16 @@ Facts:
 `[intrinsic]` (sequence.wipple:2:1-2:12) (AttributeSyntax):
   (no facts)
 
-`Boolean : type` (sequence.wipple:4:1-4:15) (TypeDefinitionSyntax):
+`Boolean : type {⋯}` (sequence.wipple:4:1-7:2) (TypeDefinitionSyntax):
   has definition constraints
   has enumeration variants
-  has type `Boolean` (sequence.wipple:4:1-4:15)
+  has type `Boolean` (sequence.wipple:4:1-7:2)
   is a definition
 
-`Sequence : element => type` (sequence.wipple:9:1-9:27) (TypeDefinitionSyntax):
+`Sequence : element => type {⋯}` (sequence.wipple:9:1-11:2) (TypeDefinitionSyntax):
   has definition constraints
   has structure fields
-  has type `Sequence element` (sequence.wipple:9:1-9:27)
+  has type `Sequence element` (sequence.wipple:9:1-11:2)
   has type parameters
   is a definition
 
@@ -34,10 +34,10 @@ Facts:
   is a type
   resolved to 1 definition(s): `element` (sequence.wipple:9:12-9:19)
 
-`Box : value => type` (sequence.wipple:13:1-13:20) (TypeDefinitionSyntax):
+`Box : value => type {⋯}` (sequence.wipple:13:1-15:2) (TypeDefinitionSyntax):
   has definition constraints
   has structure fields
-  has type `Box value` (sequence.wipple:13:1-13:20)
+  has type `Box value` (sequence.wipple:13:1-15:2)
   has type parameters
   is a definition
 
@@ -47,7 +47,7 @@ Facts:
   is a type
   resolved to 1 definition(s): `value` (sequence.wipple:13:7-13:12)
 
-`As-Sequence : collection (infer element) => trait` (sequence.wipple:17:1-17:50) (TraitDefinitionSyntax):
+`As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (sequence.wipple:17:1-17:83) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `collection -> Sequence element` (sequence.wipple:17:52-17:82)
@@ -72,7 +72,7 @@ Facts:
   has type `(Box value) -> Sequence value`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `As-Sequence : collection (infer element) => trait` (sequence.wipple:17:1-17:50)
+  resolved to 1 definition(s): `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (sequence.wipple:17:1-17:83)
 
 `filter :: (item -> Boolean) -> collection -> Sequence item where (As-Sequence collection item)` (sequence.wipple:20:1-20:95) (ConstantDefinitionSyntax):
   has definition constraints
@@ -91,12 +91,12 @@ Facts:
 
 `True` (sequence.wipple:5:3-5:7) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Boolean` (sequence.wipple:4:1-4:15)
+  has type `Boolean` (sequence.wipple:4:1-7:2)
   is a definition
 
 `False` (sequence.wipple:6:3-6:8) (VariantDefinitionSyntax):
   has definition constraints
-  has type `Boolean` (sequence.wipple:4:1-4:15)
+  has type `Boolean` (sequence.wipple:4:1-7:2)
   is a definition
 
 `{element}` (sequence.wipple:10:11-10:20) (BlockTypeSyntax):
@@ -116,7 +116,7 @@ Facts:
 `Box value` (sequence.wipple:18:24-18:33) (NamedTypeSyntax):
   has type `Box value` (sequence.wipple:18:24-18:33)
   is a type
-  resolved to 1 definition(s): `Box : value => type` (sequence.wipple:13:1-13:20)
+  resolved to 1 definition(s): `Box : value => type {⋯}` (sequence.wipple:13:1-15:2)
 
 `value` (sequence.wipple:18:28-18:33) (TypeParameterSyntax):
   has type `value` (sequence.wipple:18:28-18:33)
@@ -146,7 +146,7 @@ Facts:
 `Boolean` (sequence.wipple:20:20-20:27) (NamedTypeSyntax):
   has type `Boolean` (sequence.wipple:20:20-20:27)
   is a type
-  resolved to 1 definition(s): `Boolean : type` (sequence.wipple:4:1-4:15)
+  resolved to 1 definition(s): `Boolean : type {⋯}` (sequence.wipple:4:1-7:2)
 
 `collection -> Sequence item` (sequence.wipple:20:32-20:59) (FunctionTypeSyntax):
   has type `collection -> Sequence item` (sequence.wipple:20:32-20:59)
@@ -161,7 +161,7 @@ Facts:
 `Sequence item` (sequence.wipple:20:46-20:59) (NamedTypeSyntax):
   has type `Sequence item` (sequence.wipple:20:46-20:59)
   is a type
-  resolved to 1 definition(s): `Sequence : element => type` (sequence.wipple:9:1-9:27)
+  resolved to 1 definition(s): `Sequence : element => type {⋯}` (sequence.wipple:9:1-11:2)
 
 `item` (sequence.wipple:20:55-20:59) (TypeParameterSyntax):
   has type `item` (sequence.wipple:20:12-20:16)
@@ -172,7 +172,7 @@ Facts:
   has bound(s) `As-Sequence` `collection` (sequence.wipple:20:32-20:42) `item` (sequence.wipple:20:12-20:16) (`(As-Sequence collection item)` (sequence.wipple:20:66-20:95))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `As-Sequence : collection (infer element) => trait` (sequence.wipple:17:1-17:50)
+  resolved to 1 definition(s): `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (sequence.wipple:17:1-17:83)
 
 `collection` (sequence.wipple:20:79-20:89) (TypeParameterSyntax):
   has type `collection` (sequence.wipple:20:32-20:42)
@@ -196,7 +196,7 @@ Facts:
 `Sequence element` (sequence.wipple:17:66-17:82) (NamedTypeSyntax):
   has type `Sequence element` (sequence.wipple:17:66-17:82)
   is a type
-  resolved to 1 definition(s): `Sequence : element => type` (sequence.wipple:9:1-9:27)
+  resolved to 1 definition(s): `Sequence : element => type {⋯}` (sequence.wipple:9:1-11:2)
 
 `element` (sequence.wipple:17:75-17:82) (TypeParameterSyntax):
   has type `element` (sequence.wipple:17:26-17:41)
@@ -225,7 +225,7 @@ Facts:
 `Box String` (sequence.wipple:23:13-23:23) (NamedTypeSyntax):
   has type `Box String`
   is a type
-  resolved to 1 definition(s): `Box : value => type` (sequence.wipple:13:1-13:20)
+  resolved to 1 definition(s): `Box : value => type {⋯}` (sequence.wipple:13:1-15:2)
 
 `String` (sequence.wipple:23:17-23:23) (NamedTypeSyntax):
   has type `String` (sequence.wipple:23:17-23:23) or `Number` (sequence.wipple:24:19-24:25)

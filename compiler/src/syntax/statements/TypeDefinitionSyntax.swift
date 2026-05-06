@@ -84,11 +84,10 @@ public func parseTypeDefinitionStatement(with parser: Parser) throws(ParseError)
     parser.consumeLineBreaks()
     let parameters = try parseTypeParameters(with: parser)
     try parser.token(.typeKeyword)
-    let typeSpan = span()
     let representation = try parseTypeRepresentation(with: parser)
 
     return TypeDefinitionSyntax(
-        span: typeSpan,
+        span: span(),
         comments: comments,
         attributes: attributes,
         name: name,

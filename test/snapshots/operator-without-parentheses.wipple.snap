@@ -7,7 +7,7 @@ Facts:
   has bound(s) `Add` `()` `Number` (operator-without-parentheses.wipple:1:10-1:11) `_` (`instance (Add () right sum)` (math.wipple:19:9-19:36))
   has type `() Number -> _` (operator-without-parentheses.wipple:1:8-1:9)
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait` (math.wipple:7:1-7:38)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (math.wipple:7:1-7:58)
 
 `show 1` (operator-without-parentheses.wipple:1:1-1:7) (VisitAs):
   has type `()`
@@ -39,7 +39,7 @@ Facts:
   has bound(s) `Or` `()` `Boolean` `_` (unresolved)
   has type `() {Boolean} -> _` (operator-without-parentheses.wipple:2:11-2:13)
   is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait` (logic.wipple:33:1-33:48)
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (logic.wipple:33:1-33:73)
 
 `show True` (operator-without-parentheses.wipple:2:1-2:10) (VisitAs):
   has type `()`
@@ -87,7 +87,7 @@ Facts:
   has bound(s) `Add` `Number` (operator-without-parentheses.wipple:3:7-3:8) `String` (operator-without-parentheses.wipple:3:11-3:15) `_` (`instance (Add left right sum)` (math.wipple:13:19-13:48))
   has type `Number String -> _` (operator-without-parentheses.wipple:3:9-3:10)
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait` (math.wipple:7:1-7:38)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (math.wipple:7:1-7:58)
 
 `1` (operator-without-parentheses.wipple:3:7-3:8) (VisitAs):
   has type `Number` (operator-without-parentheses.wipple:3:7-3:8)

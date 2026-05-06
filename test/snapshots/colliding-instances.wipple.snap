@@ -1,5 +1,5 @@
 Facts:
-`T : value => trait` (colliding-instances.wipple:1:1-1:19) (TraitDefinitionSyntax):
+`T : value => trait ()` (colliding-instances.wipple:1:1-1:22) (TraitDefinitionSyntax):
   has 4 overlapping instances
   has definition constraints
   has instances
@@ -22,22 +22,22 @@ Facts:
   has definition constraints
   has type `()` (colliding-instances.wipple:4:18-4:20)
   is a definition
-  resolved to 1 definition(s): `T : value => trait` (colliding-instances.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:22)
 
 `instance (T X)` (colliding-instances.wipple:5:1-5:15) (InstanceDefinitionSyntax):
   has definition constraints
   has type `()` (colliding-instances.wipple:5:18-5:20)
   is a definition
-  resolved to 1 definition(s): `T : value => trait` (colliding-instances.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:22)
 
 `instance (T value)` (colliding-instances.wipple:7:1-7:19) (InstanceDefinitionSyntax):
   has definition constraints
   has type `()` (colliding-instances.wipple:7:22-7:24)
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T : value => trait` (colliding-instances.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:22)
 
-`U : value => trait` (colliding-instances.wipple:9:1-9:19) (TraitDefinitionSyntax):
+`U : value => trait ()` (colliding-instances.wipple:9:1-9:22) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `()` (colliding-instances.wipple:9:20-9:22)
@@ -55,7 +55,7 @@ Facts:
   has type `()` (colliding-instances.wipple:10:30-10:32)
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T : value => trait` (colliding-instances.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:22)
 
 `X` (colliding-instances.wipple:4:13-4:14) (NamedTypeSyntax):
   has type `X` (colliding-instances.wipple:4:13-4:14)
@@ -83,7 +83,7 @@ Facts:
   has bound(s) `U` `a` (colliding-instances.wipple:10:13-10:14) (`(U a)` (colliding-instances.wipple:10:22-10:27))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `U : value => trait` (colliding-instances.wipple:9:1-9:19)
+  resolved to 1 definition(s): `U : value => trait ()` (colliding-instances.wipple:9:1-9:22)
 
 `a` (colliding-instances.wipple:10:25-10:26) (TypeParameterSyntax):
   has type `a` (colliding-instances.wipple:10:13-10:14)
@@ -118,8 +118,8 @@ Facts:
 
 Feedback:
 
-`T : value => trait` (colliding-instances.wipple:1:1-1:19) (conflicting-instances)
+`T : value => trait ()` (colliding-instances.wipple:1:1-1:22) (conflicting-instances)
 
-  `T : value => trait` (colliding-instances.wipple:1:1-1:19) has multiple overlapping instances: `instance (T X)` (colliding-instances.wipple:4:1-4:15), `instance (T X)` (colliding-instances.wipple:5:1-5:15), `instance (T value)` (colliding-instances.wipple:7:1-7:19), and 1 other.
+  `T : value => trait ()` (colliding-instances.wipple:1:1-1:22) has multiple overlapping instances: `instance (T X)` (colliding-instances.wipple:4:1-4:15), `instance (T X)` (colliding-instances.wipple:5:1-5:15), `instance (T value)` (colliding-instances.wipple:7:1-7:19), and 1 other.
   
   Only one of these instances can be defined at a time. Try making your instance more specific.

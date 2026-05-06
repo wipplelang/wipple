@@ -1,5 +1,5 @@
 Facts:
-`Do-Something : value => trait` (default-instance.wipple:1:1-1:30) (TraitDefinitionSyntax):
+`Do-Something : value => trait (value -> ())` (default-instance.wipple:1:1-1:44) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `value -> ()` (default-instance.wipple:1:32-1:43)
@@ -17,7 +17,7 @@ Facts:
   has type `value -> ()` (default-instance.wipple:3:43-3:77)
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Do-Something : value => trait` (default-instance.wipple:1:1-1:30)
+  resolved to 1 definition(s): `Do-Something : value => trait (value -> ())` (default-instance.wipple:1:1-1:44)
 
 `[default]` (default-instance.wipple:3:1-3:10) (AttributeSyntax):
   (no facts)
@@ -26,7 +26,7 @@ Facts:
   has definition constraints
   has type `String -> ()` (default-instance.wipple:4:34-4:82)
   is a definition
-  resolved to 1 definition(s): `Do-Something : value => trait` (default-instance.wipple:1:1-1:30)
+  resolved to 1 definition(s): `Do-Something : value => trait (value -> ())` (default-instance.wipple:1:1-1:44)
 
 `value` (default-instance.wipple:3:34-3:39) (TypeParameterSyntax):
   has type `value` (default-instance.wipple:3:34-3:39)
@@ -112,7 +112,7 @@ Facts:
   has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
   has type `String -> String` (default-instance.wipple:4:48-4:81)
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait` (io.wipple:2:1-2:26)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (io.wipple:2:1-2:44)
 
 `Do-Something 42` (default-instance.wipple:6:1-6:16) (CallExpressionSyntax):
   has type `()`
@@ -122,7 +122,7 @@ Facts:
   has bound(s) `Do-Something` `Number` (default-instance.wipple:6:14-6:16) (`instance (Do-Something value)` (default-instance.wipple:3:11-3:40))
   has type `Number -> ()` (default-instance.wipple:6:1-6:13)
   is an expression
-  resolved to 1 definition(s): `Do-Something : value => trait` (default-instance.wipple:1:1-1:30)
+  resolved to 1 definition(s): `Do-Something : value => trait (value -> ())` (default-instance.wipple:1:1-1:44)
 
 `42` (default-instance.wipple:6:14-6:16) (NumberExpressionSyntax):
   has type `Number` (default-instance.wipple:6:14-6:16)
@@ -136,7 +136,7 @@ Facts:
   has bound(s) `Do-Something` `String` (`instance (Do-Something String)` (default-instance.wipple:4:1-4:31))
   has type `String -> ()` (default-instance.wipple:7:1-7:13)
   is an expression
-  resolved to 1 definition(s): `Do-Something : value => trait` (default-instance.wipple:1:1-1:30)
+  resolved to 1 definition(s): `Do-Something : value => trait (value -> ())` (default-instance.wipple:1:1-1:44)
 
 `"Hello, world!"` (default-instance.wipple:7:14-7:29) (StringExpressionSyntax):
   has type `String`

@@ -64,7 +64,7 @@ Facts:
   has bound(s) `Build-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
   has type `Number (List Number) -> List Number` (mismatched-inferred-params.wipple:1:8-1:9)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
 
 `2` (mismatched-inferred-params.wipple:1:5-1:6) (CallExpressionSyntax):
   has type `List Number`
@@ -74,7 +74,7 @@ Facts:
   has bound(s) `Build-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
   has type `Number (List Number) -> List Number` (mismatched-inferred-params.wipple:1:5-1:6)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
 
 `1` (mismatched-inferred-params.wipple:1:2-1:3) (CallExpressionSyntax):
   has type `List Number`
@@ -84,13 +84,13 @@ Facts:
   has bound(s) `Build-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
   has type `Number (List Number) -> List Number` (mismatched-inferred-params.wipple:1:2-1:3)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
 
 `1, 2, 3` (mismatched-inferred-params.wipple:1:2-1:9) (ConstructorExpressionSyntax):
   has bound(s) `Initial-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `Number` (mismatched-inferred-params.wipple:1:8-1:9) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
   has type `List Number`
   is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait` (collections.wipple:9:1-9:57)
+  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
 
 
 

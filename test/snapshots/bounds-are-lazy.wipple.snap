@@ -1,5 +1,5 @@
 Facts:
-`T : value => trait` (bounds-are-lazy.wipple:1:1-1:19) (TraitDefinitionSyntax):
+`T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:33) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `value -> ()` (bounds-are-lazy.wipple:1:21-1:32)
@@ -16,7 +16,7 @@ Facts:
   has definition constraints
   has type `Number -> ()` (bounds-are-lazy.wipple:5:3-5:10)
   is a definition
-  resolved to 1 definition(s): `T : value => trait` (bounds-are-lazy.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:33)
 
 `f :: value -> () where (T value)` (bounds-are-lazy.wipple:8:1-8:33) (ConstantDefinitionSyntax):
   has definition constraints
@@ -50,7 +50,7 @@ Facts:
   has bound(s) `T` `value` (bounds-are-lazy.wipple:8:6-8:11) (`(T value)` (bounds-are-lazy.wipple:8:24-8:33))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `T : value => trait` (bounds-are-lazy.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:33)
 
 `value` (bounds-are-lazy.wipple:8:27-8:32) (TypeParameterSyntax):
   has type `value` (bounds-are-lazy.wipple:8:6-8:11)
@@ -161,7 +161,7 @@ Facts:
   has bound(s) `T` `value` (bounds-are-lazy.wipple:8:6-8:11) (`(T value)` (bounds-are-lazy.wipple:8:24-8:33))
   has type `value -> ()` (bounds-are-lazy.wipple:11:3-11:4)
   is an expression
-  resolved to 1 definition(s): `T : value => trait` (bounds-are-lazy.wipple:1:1-1:19)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:33)
 
 `value` (bounds-are-lazy.wipple:11:5-11:10) (VariableExpressionSyntax):
   has type `value` (bounds-are-lazy.wipple:8:6-8:11)

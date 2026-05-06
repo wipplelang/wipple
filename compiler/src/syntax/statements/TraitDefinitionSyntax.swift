@@ -20,11 +20,10 @@ public func parseTraitDefinitionStatement(with parser: Parser) throws(ParseError
     let parameters = try parseTypeParameters(with: parser)
     try parser.token(.traitKeyword)
     parser.commit(trace: "in this trait definition")
-    let traitSpan = span()
     let (type, constraints) = try parseTraitConstraints(with: parser)
 
     return TraitDefinitionSyntax(
-        span: traitSpan,
+        span: span(),
         comments: comments,
         attributes: attributes,
         name: name,

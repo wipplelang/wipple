@@ -1,18 +1,18 @@
 Facts:
-`E : type` (nested-patterns.wipple:1:1-1:9) (TypeDefinitionSyntax):
+`E : type {⋯}` (nested-patterns.wipple:1:1-4:2) (TypeDefinitionSyntax):
   has definition constraints
   has enumeration variants
-  has type `E` (nested-patterns.wipple:1:1-1:9)
+  has type `E` (nested-patterns.wipple:1:1-4:2)
   is a definition
 
 `A` (nested-patterns.wipple:2:3-2:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `E` (nested-patterns.wipple:1:1-1:9)
+  has type `E` (nested-patterns.wipple:1:1-4:2)
   is a definition
 
 `B` (nested-patterns.wipple:3:3-3:4) (VariantDefinitionSyntax):
   has definition constraints
-  has type `E` (nested-patterns.wipple:1:1-1:9)
+  has type `E` (nested-patterns.wipple:1:1-4:2)
   is a definition
 
 `show (when (A; B) {⋯})` (nested-patterns.wipple:6:1-9:3) (CallExpressionSyntax):

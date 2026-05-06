@@ -15,7 +15,7 @@ Facts:
 `[intrinsic]` (custom-errors.wipple:2:1-2:12) (AttributeSyntax):
   (no facts)
 
-`Add : left right (infer sum) => trait` (custom-errors.wipple:4:1-4:38) (TraitDefinitionSyntax):
+`Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `left right -> sum` (custom-errors.wipple:4:40-4:57)
@@ -45,20 +45,20 @@ Facts:
   has definition constraints
   has type `Number Number -> Number`
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait` (custom-errors.wipple:4:1-4:38)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
 
 `instance (Add String String String)` (custom-errors.wipple:6:1-6:36) (InstanceDefinitionSyntax):
   has definition constraints
   has type `String String -> String`
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait` (custom-errors.wipple:4:1-4:38)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
 
 `instance (Add () right sum)` (custom-errors.wipple:9:9-9:36) (InstanceDefinitionSyntax):
   has definition constraints
   has type `() right -> sum`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait` (custom-errors.wipple:4:1-4:38)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
 
 `[error]` (custom-errors.wipple:9:1-9:8) (AttributeSyntax):
   (no facts)
@@ -68,7 +68,7 @@ Facts:
   has type `left right -> sum`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait` (custom-errors.wipple:4:1-4:38)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
 
 `[default]` (custom-errors.wipple:12:1-12:10) (AttributeSyntax):
   (no facts)
@@ -189,7 +189,7 @@ Facts:
   has bound(s) `Add` `Number` `Number` `Number` (`instance (Add Number Number Number)` (custom-errors.wipple:5:1-5:36))
   has type `Number Number -> Number` (custom-errors.wipple:14:7-14:8)
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait` (custom-errors.wipple:4:1-4:38)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
 
 `1` (custom-errors.wipple:14:5-14:6) (VisitAs):
   has type `Number`
@@ -215,7 +215,7 @@ Facts:
   has bound(s) `Add` `String` `String` `String` (`instance (Add String String String)` (custom-errors.wipple:6:1-6:36))
   has type `String String -> String` (custom-errors.wipple:15:9-15:10)
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait` (custom-errors.wipple:4:1-4:38)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
 
 `"a"` (custom-errors.wipple:15:5-15:8) (VisitAs):
   has type `String`
@@ -241,7 +241,7 @@ Facts:
   has bound(s) `Add` `Number` (custom-errors.wipple:16:5-16:6) `String` (custom-errors.wipple:16:9-16:12) `_` (`instance (Add left right sum)` (custom-errors.wipple:12:19-12:48))
   has type `Number String -> _` (custom-errors.wipple:16:7-16:8)
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait` (custom-errors.wipple:4:1-4:38)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
 
 `1` (custom-errors.wipple:16:5-16:6) (VisitAs):
   has type `Number` (custom-errors.wipple:16:5-16:6)
@@ -267,7 +267,7 @@ Facts:
   has bound(s) `Add` `()` `Number` (custom-errors.wipple:17:10-17:11) `_` (`instance (Add () right sum)` (custom-errors.wipple:9:9-9:36))
   has type `() Number -> _` (custom-errors.wipple:17:8-17:9)
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait` (custom-errors.wipple:4:1-4:38)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
 
 `()` (custom-errors.wipple:17:5-17:7) (VisitAs):
   has type `()`

@@ -26,7 +26,7 @@ Facts:
   has bound(s) `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
   has type `() (List ()) -> List ()` (list-mismatched-elements.wipple:1:20-1:22)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
 
 `"hi"` (list-mismatched-elements.wipple:1:14-1:18) (CallExpressionSyntax):
   has type `List ()`
@@ -36,7 +36,7 @@ Facts:
   has bound(s) `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())` (`instance (Build-Collection element collection)` (collections.wipple:7:19-7:65))
   has type `() (List ()) -> List ()` (list-mismatched-elements.wipple:1:14-1:18)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
 
 `1` (list-mismatched-elements.wipple:1:11-1:12) (CallExpressionSyntax):
   has type `List ()`
@@ -46,13 +46,13 @@ Facts:
   has bound(s) `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())` (`instance (Build-Collection element collection)` (collections.wipple:7:19-7:65))
   has type `() (List ()) -> List ()` (list-mismatched-elements.wipple:1:11-1:12)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait` (collections.wipple:1:1-1:55)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
 
 `1, "hi", ()` (list-mismatched-elements.wipple:1:11-1:22) (ConstructorExpressionSyntax):
   has bound(s) `Initial-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List ())` (`instance (Initial value)` (language.wipple:41:19-41:43)), `Build-Collection` `()` (list-mismatched-elements.wipple:1:20-1:22) `(List ())` (`instance (Build-Collection element collection)` (collections.wipple:7:19-7:65))
   has type `List ()`
   is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait` (collections.wipple:9:1-9:57)
+  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
 
 `my-list` (list-mismatched-elements.wipple:1:1-1:8) (VariablePatternSyntax):
   has type `List ()`

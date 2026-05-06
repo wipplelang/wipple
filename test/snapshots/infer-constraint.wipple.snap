@@ -15,7 +15,7 @@ Facts:
 `[intrinsic]` (infer-constraint.wipple:2:1-2:12) (AttributeSyntax):
   (no facts)
 
-`Add : left right sum => trait` (infer-constraint.wipple:4:1-4:30) (TraitDefinitionSyntax):
+`Add : left right sum => trait (left right -> sum)` (infer-constraint.wipple:4:1-4:50) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `left right -> sum` (infer-constraint.wipple:4:32-4:49)
@@ -44,13 +44,13 @@ Facts:
   has definition constraints
   has type `Number Number -> Number`
   is a definition
-  resolved to 1 definition(s): `Add : left right sum => trait` (infer-constraint.wipple:4:1-4:30)
+  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)` (infer-constraint.wipple:4:1-4:50)
 
 `instance (Add String String String)` (infer-constraint.wipple:6:1-6:36) (InstanceDefinitionSyntax):
   has definition constraints
   has type `String String -> String`
   is a definition
-  resolved to 1 definition(s): `Add : left right sum => trait` (infer-constraint.wipple:4:1-4:30)
+  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)` (infer-constraint.wipple:4:1-4:50)
 
 `add :: left right -> sum where (Add left right sum)` (infer-constraint.wipple:8:1-8:52) (ConstantDefinitionSyntax):
   has definition constraints
@@ -64,7 +64,7 @@ Facts:
 `_ : (add 1 2 :: String)` (infer-constraint.wipple:11:1-11:24) (AssignmentStatementSyntax):
   has type `()` (infer-constraint.wipple:11:1-11:24)
 
-`Add-Infer : left right (infer sum) => trait` (infer-constraint.wipple:13:1-13:44) (TraitDefinitionSyntax):
+`Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-constraint.wipple:13:1-13:64) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `left right -> sum` (infer-constraint.wipple:13:46-13:63)
@@ -94,13 +94,13 @@ Facts:
   has definition constraints
   has type `Number Number -> Number`
   is a definition
-  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait` (infer-constraint.wipple:13:1-13:44)
+  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-constraint.wipple:13:1-13:64)
 
 `instance (Add-Infer String String String)` (infer-constraint.wipple:15:1-15:42) (InstanceDefinitionSyntax):
   has definition constraints
   has type `String String -> String`
   is a definition
-  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait` (infer-constraint.wipple:13:1-13:44)
+  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-constraint.wipple:13:1-13:64)
 
 `add-infer :: left right -> sum where (Add-Infer left right sum)` (infer-constraint.wipple:17:1-17:64) (ConstantDefinitionSyntax):
   has definition constraints
@@ -170,7 +170,7 @@ Facts:
   has bound(s) `Add` `left` (infer-constraint.wipple:8:8-8:12) `right` (infer-constraint.wipple:8:13-8:18) `sum` (infer-constraint.wipple:8:22-8:25) (`(Add left right sum)` (infer-constraint.wipple:8:32-8:52))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `Add : left right sum => trait` (infer-constraint.wipple:4:1-4:30)
+  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)` (infer-constraint.wipple:4:1-4:50)
 
 `left` (infer-constraint.wipple:8:37-8:41) (TypeParameterSyntax):
   has type `left` (infer-constraint.wipple:8:8-8:12)
@@ -243,7 +243,7 @@ Facts:
   has bound(s) `Add-Infer` `left` (infer-constraint.wipple:17:14-17:18) `right` (infer-constraint.wipple:17:19-17:24) `sum` (infer-constraint.wipple:17:28-17:31) (`(Add-Infer left right sum)` (infer-constraint.wipple:17:38-17:64))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait` (infer-constraint.wipple:13:1-13:44)
+  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-constraint.wipple:13:1-13:64)
 
 `left` (infer-constraint.wipple:17:49-17:53) (TypeParameterSyntax):
   has type `left` (infer-constraint.wipple:17:14-17:18)

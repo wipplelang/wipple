@@ -1,5 +1,5 @@
 Facts:
-`Greet : value => trait` (greet.wipple:2:1-2:23) (TraitDefinitionSyntax):
+`Greet : value => trait (value -> String)` (greet.wipple:2:1-2:41) (TraitDefinitionSyntax):
   has definition constraints
   has instances
   has type `value -> String` (greet.wipple:2:25-2:40)
@@ -21,17 +21,17 @@ Facts:
 `greet : x -> "Hello, _!" (Greet x)` (greet.wipple:6:1-6:35) (AssignmentStatementSyntax):
   has type `()` (greet.wipple:6:1-6:35)
 
-`Person : type` (greet.wipple:8:1-8:14) (TypeDefinitionSyntax):
+`Person : type {name :: String}` (greet.wipple:8:1-8:31) (TypeDefinitionSyntax):
   has definition constraints
   has structure fields
-  has type `Person` (greet.wipple:8:1-8:14)
+  has type `Person` (greet.wipple:8:1-8:31)
   is a definition
 
 `instance (Greet Person)` (greet.wipple:11:1-11:24) (InstanceDefinitionSyntax):
   has definition constraints
   has type `Person -> String` (greet.wipple:11:27-11:57)
   is a definition
-  resolved to 1 definition(s): `Greet : value => trait` (greet.wipple:2:1-2:23)
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:41)
 
 `Earth : type` (greet.wipple:13:1-13:13) (TypeDefinitionSyntax):
   has definition constraints
@@ -42,7 +42,7 @@ Facts:
   has definition constraints
   has type `Earth -> String` (greet.wipple:16:26-16:38)
   is a definition
-  resolved to 1 definition(s): `Greet : value => trait` (greet.wipple:2:1-2:23)
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:41)
 
 `value -> String` (greet.wipple:5:10-5:25) (FunctionTypeSyntax):
   has type `value -> String` (greet.wipple:5:10-5:25)
@@ -63,7 +63,7 @@ Facts:
   has bound(s) `Greet` `value` (greet.wipple:5:10-5:15) (`(Greet value)` (greet.wipple:5:32-5:45))
   has definition constraints
   is a constraint
-  resolved to 1 definition(s): `Greet : value => trait` (greet.wipple:2:1-2:23)
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:41)
 
 `value` (greet.wipple:5:39-5:44) (TypeParameterSyntax):
   has type `value` (greet.wipple:5:10-5:15)
@@ -78,7 +78,7 @@ Facts:
 `Person` (greet.wipple:11:17-11:23) (NamedTypeSyntax):
   has type `Person` (greet.wipple:11:17-11:23)
   is a type
-  resolved to 1 definition(s): `Person : type` (greet.wipple:8:1-8:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (greet.wipple:8:1-8:31)
 
 `Earth` (greet.wipple:16:17-16:22) (NamedTypeSyntax):
   has type `Earth` (greet.wipple:16:17-16:22)
@@ -125,7 +125,7 @@ Facts:
   has bound(s) `Greet` `value` (greet.wipple:5:10-5:15) (`(Greet value)` (greet.wipple:5:32-5:45))
   has type `value -> String` (greet.wipple:6:27-6:32)
   is an expression
-  resolved to 1 definition(s): `Greet : value => trait` (greet.wipple:2:1-2:23)
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:41)
 
 `x` (greet.wipple:6:33-6:34) (VariableExpressionSyntax):
   has type `value` (greet.wipple:5:10-5:15)
@@ -136,7 +136,7 @@ Facts:
   has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
   has type `String -> String` (greet.wipple:6:14-6:35)
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait` (io.wipple:2:1-2:26)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (io.wipple:2:1-2:44)
 
 `(Person {name : name}) -> name` (greet.wipple:11:27-11:57) (FunctionExpressionSyntax):
   has type `Person -> String` (greet.wipple:11:27-11:57)
@@ -146,7 +146,7 @@ Facts:
 `Person {name : name}` (greet.wipple:11:28-11:48) (StructurePatternSyntax):
   has type `Person` (greet.wipple:11:17-11:23)
   is a pattern
-  resolved to 1 definition(s): `Person : type` (greet.wipple:8:1-8:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (greet.wipple:8:1-8:31)
 
 `name` (greet.wipple:11:43-11:47) (VariablePatternSyntax):
   has type `String`
@@ -193,7 +193,7 @@ Facts:
 `Person {name : "Bob"}` (greet.wipple:18:14-18:35) (StructureExpressionSyntax):
   has type `Person`
   is an expression
-  resolved to 1 definition(s): `Person : type` (greet.wipple:8:1-8:14)
+  resolved to 1 definition(s): `Person : type {name :: String}` (greet.wipple:8:1-8:31)
 
 `"Bob"` (greet.wipple:18:29-18:34) (StringExpressionSyntax):
   has type `String` (greet.wipple:18:29-18:34)

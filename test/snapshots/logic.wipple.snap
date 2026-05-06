@@ -26,7 +26,7 @@ Facts:
   has bound(s) `And` `Boolean` `Boolean` `Boolean` (`instance (And Boolean Boolean Boolean)` (logic.wipple:30:1-30:39))
   has type `Boolean {Boolean} -> Boolean` (logic.wipple:1:16-1:19)
   is an expression
-  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait` (logic.wipple:29:1-29:49)
+  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)` (logic.wipple:29:1-29:74)
 
 `True` (logic.wipple:1:11-1:15) (VisitAs):
   has type `Boolean`
@@ -84,7 +84,7 @@ Facts:
   has bound(s) `Or` `Boolean` `Boolean` `Boolean` (`instance (Or Boolean Boolean Boolean)` (logic.wipple:34:1-34:38))
   has type `Boolean {Boolean} -> Boolean` (logic.wipple:2:16-2:18)
   is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait` (logic.wipple:33:1-33:48)
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (logic.wipple:33:1-33:73)
 
 `True` (logic.wipple:2:11-2:15) (VisitAs):
   has type `Boolean`
