@@ -26,6 +26,12 @@ struct Graph {
     }
 
     func serialize(including mask: OrderedSet<Node>, db: DB) -> SerializedGraph {
+        // Ensure IDs are stable
+        func id(for node: Node) -> String? {
+            guard let span = db[node, Syntax.self]?.value.span else { return nil }
+            return "node_\(span.description.replacing(/[^A-Za-z0-9]/, with: "_"))"
+        }
+
         let maxIterations = 10
 
         func canDisplay(_ node: Node) -> Bool {
@@ -43,7 +49,7 @@ struct Graph {
             uniqueKeysWithValues: mask.map { ($0, nil) }
         )
 
-        var inGroup: OrderedSet<Int> = []
+        var inGroup: OrderedSet<String> = []
         var finishedGroups: OrderedSet<Int> = []
         var groups: OrderedDictionary<Int, (nodes: OrderedSet<Node>, types: [ConstructedType])> =
             [:]
@@ -80,7 +86,7 @@ struct Graph {
                     progress = true
                 }
 
-                inGroup.formUnion(nodes.map(\.id))
+                inGroup.formUnion(nodes.compactMap(id(for:)))
                 for node in nodes { reachableNodes[node] = index }
             }
 
@@ -110,24 +116,30 @@ struct Graph {
 
         if groups.values.lazy.map(\.nodes).contains(where: containsNonType(_:)) {
             groups.removeAll { _, group in
+
                 let keep = containsNonType(group.nodes)
-                if !keep { for node in group.nodes { inGroup.remove(node.id) } }
+                if !keep {
+                    for node in group.nodes {
+                        guard let id = id(for: node) else { continue }
+                        inGroup.remove(id)
+                    }
+                }
                 return !keep
             }
         }
 
         var result = SerializedGraph()
 
-        var connectedNodes: OrderedSet<Int> = []
+        var connectedNodes: OrderedSet<String> = []
         for edge in edges {
-            guard inGroup.contains(edge.from.id) && inGroup.contains(edge.to.id) else { continue }
+            guard let from = id(for: edge.from), let to = id(for: edge.to),
+                inGroup.contains(from) && inGroup.contains(to)
+            else { continue }
 
-            connectedNodes.append(edge.from.id)
-            connectedNodes.append(edge.to.id)
+            connectedNodes.append(from)
+            connectedNodes.append(to)
 
-            result.edges.append(
-                .init(from: "node\(edge.from.id)", to: "node\(edge.to.id)", label: edge.label)
-            )
+            result.edges.append(.init(from: from, to: to, label: edge.label))
         }
 
         // Remove unconnected nodes
@@ -149,14 +161,19 @@ struct Graph {
         }
 
         for node in reachableNodes.keys {
-            guard inGroup.contains(node.id) else { continue }
-            guard let span = db[node, Syntax.self]?.value.span else { continue }
+            guard let id = id(for: node), inGroup.contains(id),
+                let span = db[node, Syntax.self]?.value.span
+            else { continue }
 
-            result.nodes.append(.init(id: "node\(node.id)", span: span))
+            result.nodes.append(.init(id: id, span: span))
         }
 
         for (var nodes, types) in groups.values {
-            nodes.removeAll { !inGroup.contains($0.id) }
+
+            nodes.removeAll {
+                guard let id = id(for: $0) else { return true }
+                return !inGroup.contains(id)
+            }
 
             guard !nodes.isEmpty else { continue }
 
@@ -167,7 +184,7 @@ struct Graph {
             if labels.isEmpty { labels.append("_") }
 
             result.groups.append(
-                .init(nodes: nodes.map { "node\($0.id)" }, labels: labels, conflict: conflict)
+                .init(nodes: nodes.compactMap(id(for:)), labels: labels, conflict: conflict)
             )
         }
 
@@ -196,4 +213,21 @@ public struct SerializedGraph {
     public var groups: [Group] = []
     public var nodes: [Node] = []
     public var edges: [Edge] = []
+
+    public func toDOT() -> String {
+        var graph = ""
+
+        graph += "digraph G {\n"
+        graph += "  node [shape=box, fontname=monospace]\n"
+
+        for node in nodes { graph += "  \(node.id) [label=\(node.span.source.debugDescription)]\n" }
+
+        for edge in edges {
+            graph += "  \(edge.from) -> \(edge.to) [label=\(edge.label.debugDescription)]\n"
+        }
+
+        graph += "}"
+
+        return graph
+    }
 }

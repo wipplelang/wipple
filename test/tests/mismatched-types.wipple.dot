@@ -1,0 +1,7 @@
+digraph G {
+  node [shape=box, fontname=monospace]
+  node_mismatched_types_wipple_1_2_1_4 [label="42"]
+  node_mismatched_types_wipple_1_2_1_4 [label="42"]
+  node_mismatched_types_wipple_1_8_1_14 [label="String"]
+  node_mismatched_types_wipple_1_8_1_14 -> node_mismatched_types_wipple_1_2_1_4 [label="type"]
+}

@@ -34,8 +34,12 @@ for (const entry of output) {
     test(entry.file, (t) => {
         t.assert.fileSnapshot(
             [entry.feedback, entry.output].join(""),
-            path.join("test/snapshots", `${entry.file}.snap`),
+            path.join("test/tests", `${entry.file}.snap`),
             { serializers: [(s) => s] },
         );
+
+        t.assert.fileSnapshot(entry.graph, path.join("test/tests", `${entry.file}.dot`), {
+            serializers: [(s) => s],
+        });
     });
 }

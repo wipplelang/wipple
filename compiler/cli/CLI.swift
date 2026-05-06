@@ -1,5 +1,6 @@
 import ArgumentParser
 import Compiler
+import OrderedCollections
 import Synchronization
 
 #if os(Linux)
@@ -135,9 +136,12 @@ func test(with options: CompileOptions) throws {
     struct RunResult: Encodable {
         let file: String
         let output: String
+        let graph: String
     }
 
     let run = { @Sendable (index: Int, test: (db: DB, layer: Layer)) in
+        let filter = defaultFilter(db: test.db)
+
         var out = ""
         if let files = compile(
             layer: test.layer,
@@ -152,9 +156,13 @@ func test(with options: CompileOptions) throws {
             print("Output:", to: &out)
             let output = try runWasm(wasm, path: nil, captureOutput: true)!
             print(output, terminator: "", to: &out)
+
         }
 
-        return RunResult(file: test.layer.name, output: out)
+        let graph = test.db.graph(including: OrderedSet(test.db.ownedNodes.lazy.filter(filter)))
+            .toDOT()
+
+        return RunResult(file: test.layer.name, output: out, graph: graph)
     }
 
     let results: [Result<RunResult, Error>?]

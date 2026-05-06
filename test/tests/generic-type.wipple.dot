@@ -1,0 +1,18 @@
+digraph G {
+  node [shape=box, fontname=monospace]
+  node_generic_type_wipple_6_1_6_11 [label="show inner"]
+  node_generic_type_wipple_3_7_3_36 [label="Foo {inner : \"Hello, world!\"}"]
+  node_generic_type_wipple_3_20_3_35 [label="\"Hello, world!\""]
+  node_generic_type_wipple_3_20_3_35 [label="\"Hello, world!\""]
+  node_generic_type_wipple_3_1_3_4 [label="foo"]
+  node_generic_type_wipple_5_1_5_20 [label="Foo {inner : inner}"]
+  node_generic_type_wipple_5_14_5_19 [label="inner"]
+  node_generic_type_wipple_6_1_6_11 [label="show inner"]
+  node_generic_type_wipple_6_1_6_5 [label="show"]
+  node_generic_type_wipple_3_20_3_35 -> node_generic_type_wipple_3_7_3_36 [label="field"]
+  node_generic_type_wipple_3_7_3_36 -> node_generic_type_wipple_3_1_3_4 [label="value"]
+  node_generic_type_wipple_3_1_3_4 -> node_generic_type_wipple_5_1_5_20 [label="value"]
+  node_generic_type_wipple_5_14_5_19 -> node_generic_type_wipple_5_1_5_20 [label="field"]
+  node_generic_type_wipple_6_1_6_5 -> node_generic_type_wipple_6_1_6_11 [label="function"]
+  node_generic_type_wipple_5_14_5_19 -> node_generic_type_wipple_6_1_6_11 [label="input"]
+}

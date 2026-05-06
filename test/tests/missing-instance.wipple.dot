@@ -1,0 +1,9 @@
+digraph G {
+  node [shape=box, fontname=monospace]
+  node_missing_instance_wipple_2_1_2_9 [label="show Foo"]
+  node_missing_instance_wipple_2_1_2_9 [label="show Foo"]
+  node_missing_instance_wipple_2_1_2_5 [label="show"]
+  node_missing_instance_wipple_2_6_2_9 [label="Foo"]
+  node_missing_instance_wipple_2_1_2_5 -> node_missing_instance_wipple_2_1_2_9 [label="function"]
+  node_missing_instance_wipple_2_6_2_9 -> node_missing_instance_wipple_2_1_2_9 [label="input"]
+}

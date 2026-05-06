@@ -1,0 +1,16 @@
+digraph G {
+  node [shape=box, fontname=monospace]
+  node_too_many_inputs_wipple_1_1_1_11 [label="show 1 2 3"]
+  node_too_many_inputs_wipple_1_1_1_11 [label="show 1 2 3"]
+  node_too_many_inputs_wipple_1_1_1_5 [label="show"]
+  node_too_many_inputs_wipple_1_6_1_7 [label="1"]
+  node_too_many_inputs_wipple_1_6_1_7 [label="1"]
+  node_too_many_inputs_wipple_1_8_1_9 [label="2"]
+  node_too_many_inputs_wipple_1_8_1_9 [label="2"]
+  node_too_many_inputs_wipple_1_10_1_11 [label="3"]
+  node_too_many_inputs_wipple_1_10_1_11 [label="3"]
+  node_too_many_inputs_wipple_1_1_1_5 -> node_too_many_inputs_wipple_1_1_1_11 [label="function"]
+  node_too_many_inputs_wipple_1_6_1_7 -> node_too_many_inputs_wipple_1_1_1_11 [label="input"]
+  node_too_many_inputs_wipple_1_8_1_9 -> node_too_many_inputs_wipple_1_1_1_11 [label="input"]
+  node_too_many_inputs_wipple_1_10_1_11 -> node_too_many_inputs_wipple_1_1_1_11 [label="input"]
+}

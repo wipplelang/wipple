@@ -1,0 +1,7 @@
+digraph G {
+  node [shape=box, fontname=monospace]
+  node_transmute_wipple_2_13_2_19 [label="x -> x"]
+  node_transmute_wipple_2_13_2_14 [label="x"]
+  node_transmute_wipple_2_13_2_14 -> node_transmute_wipple_2_13_2_19 [label="input"]
+  node_transmute_wipple_2_13_2_14 -> node_transmute_wipple_2_13_2_19 [label="output"]
+}

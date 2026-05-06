@@ -1,0 +1,10 @@
+digraph G {
+  node [shape=box, fontname=monospace]
+  node_hello_world_wipple_1_1_1_21 [label="show \"Hello, world!\""]
+  node_hello_world_wipple_1_1_1_21 [label="show \"Hello, world!\""]
+  node_hello_world_wipple_1_1_1_5 [label="show"]
+  node_hello_world_wipple_1_6_1_21 [label="\"Hello, world!\""]
+  node_hello_world_wipple_1_6_1_21 [label="\"Hello, world!\""]
+  node_hello_world_wipple_1_1_1_5 -> node_hello_world_wipple_1_1_1_21 [label="function"]
+  node_hello_world_wipple_1_6_1_21 -> node_hello_world_wipple_1_1_1_21 [label="input"]
+}

@@ -1,0 +1,3 @@
+digraph G {
+  node [shape=box, fontname=monospace]
+}

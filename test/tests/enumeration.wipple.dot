@@ -1,0 +1,6 @@
+digraph G {
+  node [shape=box, fontname=monospace]
+  node_enumeration_wipple_9_5_9_6 [label="A"]
+  node_enumeration_wipple_9_1_9_2 [label="_"]
+  node_enumeration_wipple_9_5_9_6 -> node_enumeration_wipple_9_1_9_2 [label="value"]
+}

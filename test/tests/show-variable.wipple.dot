@@ -1,0 +1,11 @@
+digraph G {
+  node [shape=box, fontname=monospace]
+  node_show_variable_wipple_4_1_4_17 [label="show my-variable"]
+  node_show_variable_wipple_3_15_3_30 [label="Cannot-Be-Shown"]
+  node_show_variable_wipple_3_1_3_12 [label="my-variable"]
+  node_show_variable_wipple_4_1_4_17 [label="show my-variable"]
+  node_show_variable_wipple_4_1_4_5 [label="show"]
+  node_show_variable_wipple_3_15_3_30 -> node_show_variable_wipple_3_1_3_12 [label="value"]
+  node_show_variable_wipple_4_1_4_5 -> node_show_variable_wipple_4_1_4_17 [label="function"]
+  node_show_variable_wipple_3_1_3_12 -> node_show_variable_wipple_4_1_4_17 [label="input"]
+}

@@ -1,0 +1,18 @@
+digraph G {
+  node [shape=box, fontname=monospace]
+  node_recursive_instance_wipple_1_1_1_22 [label="show (Some (Some 42))"]
+  node_recursive_instance_wipple_1_1_1_22 [label="show (Some (Some 42))"]
+  node_recursive_instance_wipple_1_1_1_5 [label="show"]
+  node_recursive_instance_wipple_1_7_1_21 [label="Some (Some 42)"]
+  node_recursive_instance_wipple_1_7_1_11 [label="Some"]
+  node_recursive_instance_wipple_1_13_1_20 [label="Some 42"]
+  node_recursive_instance_wipple_1_13_1_17 [label="Some"]
+  node_recursive_instance_wipple_1_18_1_20 [label="42"]
+  node_recursive_instance_wipple_1_18_1_20 [label="42"]
+  node_recursive_instance_wipple_1_1_1_5 -> node_recursive_instance_wipple_1_1_1_22 [label="function"]
+  node_recursive_instance_wipple_1_7_1_21 -> node_recursive_instance_wipple_1_1_1_22 [label="input"]
+  node_recursive_instance_wipple_1_7_1_11 -> node_recursive_instance_wipple_1_7_1_21 [label="function"]
+  node_recursive_instance_wipple_1_13_1_20 -> node_recursive_instance_wipple_1_7_1_21 [label="input"]
+  node_recursive_instance_wipple_1_13_1_17 -> node_recursive_instance_wipple_1_13_1_20 [label="function"]
+  node_recursive_instance_wipple_1_18_1_20 -> node_recursive_instance_wipple_1_13_1_20 [label="input"]
+}
