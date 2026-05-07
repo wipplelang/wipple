@@ -6,6 +6,7 @@
     import * as runner from "$lib/runner.worker";
     import RunnerWorker from "$lib/runner.worker?worker";
     import type { OutputItem } from "$lib/models/OutputItem";
+    import type { Groups } from "$lib/models/Groups";
     import Markdown from "./Markdown.svelte";
     import Prompt from "./Prompt.svelte";
     import Visualizer from "./Visualizer.svelte";
@@ -17,10 +18,11 @@
     interface Props {
         runState: RunState | undefined;
         ondiagnostics: (diagnostics: any[]) => void;
+        ongroups: (groups: Groups) => void;
         onchangeline: (line: number | undefined) => void;
     }
 
-    let { runState = $bindable(), ondiagnostics, onchangeline }: Props = $props();
+    let { runState = $bindable(), ondiagnostics, ongroups, onchangeline }: Props = $props();
 
     let runnerWorker: Worker | undefined = undefined;
 
@@ -70,6 +72,7 @@
                 {
                     code: playground.code,
                     library,
+                    groups: visualizerEnabled,
                     graph: visualizerEnabled,
                 },
                 {
@@ -90,6 +93,10 @@
         }
 
         response satisfies api.CompileResponseSuccess;
+
+        if ("groups" in response) {
+            ongroups(response.groups);
+        }
 
         runState = "running";
         ondiagnostics([]);

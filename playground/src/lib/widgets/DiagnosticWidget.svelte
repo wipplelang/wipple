@@ -7,7 +7,7 @@
 
 <script lang="ts">
     import Box from "$lib/components/Box.svelte";
-    import CodeEditor from "$lib/components/CodeEditor.svelte";
+    import CodeEditor, { createGroups } from "$lib/components/CodeEditor.svelte";
     import Icon from "$lib/components/Icon.svelte";
     import Markdown from "$lib/components/Markdown.svelte";
     import ToolbarButton from "$lib/components/ToolbarButton.svelte";
@@ -22,7 +22,7 @@
 
     let { animate, onclose }: Props = $props();
 
-    const [title, ...extra] = context.diagnostic.message.split("\n\n");
+    const [title, ...extra] = context.diagnostic!.message.split("\n\n");
 
     let showExtra = $state<"diagnostic" | "visualizer">();
 
@@ -36,6 +36,7 @@
                 <CodeEditor
                     readOnly
                     code={line.source}
+                    groups={createGroups(context.diagnostic!.groups, line.locations)}
                     diagnostic={{
                         value: { locations: line.locations },
                         hideWidget: true,
@@ -95,11 +96,11 @@
                     <Markdown content={extra.join("\n\n")} highlightGroups />
                 </div>
 
-                {#if context.diagnostic.lines != null && context.diagnostic.lines.length > 0}
+                {#if context.diagnostic?.lines != null && context.diagnostic.lines.length > 0}
                     {@render lines(context.diagnostic.lines)}
                 {/if}
 
-                {#if context.diagnostic.groups > 1}
+                {#if context.diagnostic!.groups > 1}
                     <p class="mx-[4px] my-[8px] text-sm opacity-75">
                         <strong>Tip:</strong>
                         Hover over an
@@ -109,8 +110,8 @@
                 {/if}
             {/if}
 
-            {#if showExtra === "visualizer" && context.diagnostic.graph != null}
-                <Visualizer graph={context.diagnostic.graph} showFunctionsAndStatements />
+            {#if showExtra === "visualizer" && context.diagnostic!.graph != null}
+                <Visualizer graph={context.diagnostic!.graph} showFunctionsAndStatements />
             {/if}
         </div>
     </Box>

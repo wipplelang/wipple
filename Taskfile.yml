@@ -1,5 +1,7 @@
 version: "3"
 
+run: once
+
 tasks:
   compiler:
     cmds:

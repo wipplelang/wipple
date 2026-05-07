@@ -22,6 +22,30 @@ import OrderedCollections
 }
 
 extension CompileResult {
+    @JS func groups() -> [[DiagnosticLocation]] {
+        let filter = defaultFilter(db: self.db)
+
+        var groups: OrderedDictionary<[Node], (index: Int, locations: [DiagnosticLocation])> = [:]
+        for node in self.db.ownedNodes {
+            guard filter(node), let span = self.db[node, Syntax.self]?.value.span,
+                span.path == self.path, let group = self.db[node, Typed.self]?.group
+            else { continue }
+
+            let groupIndex =
+                groups.first(where: { $0.key == group.nodes })?.value.index ?? groups.count
+
+            let location = DiagnosticLocation(
+                start: span.start.index,
+                end: span.end.index,
+                group: groupIndex,
+            )
+
+            groups[group.nodes, default: (groupIndex, [])].locations.append(location)
+        }
+
+        return Array(groups.values.map(\.1))
+    }
+
     @JS func diagnostics() -> [Diagnostic]? {
         let filter = defaultFilter(db: self.db)
         let items = collectFeedback(db: self.db, filter: { filter($0.location.primary) })

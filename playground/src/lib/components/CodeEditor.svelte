@@ -1,3 +1,22 @@
+<script module lang="ts">
+    import type * as compiler from "compiler";
+    import type { Groups } from "$lib/models/Groups";
+
+    export const createGroups = (count: number, locations: compiler.DiagnosticLocation[]) => {
+        const groups: Groups = new Array(count).fill(undefined).map(() => []);
+
+        for (const [index, { start, end, group }] of (locations ?? []).entries()) {
+            if (group === -1) {
+                continue;
+            }
+
+            groups[group].push({ start, end, primary: index === 0 });
+        }
+
+        return groups;
+    };
+</script>
+
 <script lang="ts">
     import {
         elementDecoration,
@@ -19,7 +38,7 @@
     import NumberWidget from "$lib/widgets/NumberWidget.svelte";
     import { defaultKeymap, indentWithTab } from "@codemirror/commands";
     import { Compartment, EditorState, RangeSet } from "@codemirror/state";
-    import { EditorView, keymap, placeholder, type Command } from "@codemirror/view";
+    import { EditorView, keymap, placeholder, ViewPlugin, type Command } from "@codemirror/view";
     import { minimalSetup } from "codemirror";
     import type { Action } from "svelte/action";
     import { type Command as CommandType } from "$lib/models/Command";
@@ -31,9 +50,10 @@
     interface Props {
         readOnly?: boolean;
         code: string;
-        highlightGroup?: number;
+        groups?: Groups;
+        highlightedGroup?: number;
         diagnostic?: {
-            value: any;
+            value: compiler.Diagnostic;
             hideWidget?: boolean;
             onclose?: () => void;
         };
@@ -44,7 +64,8 @@
     let {
         readOnly = false,
         code = $bindable(),
-        highlightGroup,
+        groups = [],
+        highlightedGroup,
         diagnostic,
         runningLine,
         padding,
@@ -462,7 +483,21 @@
 
     const markDiagnostic = new Compartment();
 
-    const getMarkDiagnosticDecorations = (options: {
+    const allMarkGroupDecorations = () =>
+        [...document.querySelectorAll("[data-group-decoration-id]")]
+            .flatMap((node) => {
+                const element = node as HTMLElement;
+
+                return [
+                    {
+                        element,
+                        label: parseFloat(element.dataset.groupLabel!) - 1,
+                    },
+                ];
+            })
+            .filter(({ label }) => label !== -1);
+
+    const getMarkGroupDecoration = (options: {
         start: number;
         end: number;
         group: number;
@@ -471,105 +506,92 @@
         const id = nanoid();
 
         if (options.group === -1) {
-            return [];
+            return undefined;
         }
 
         const attributes = {
-            "data-diagnostic-decoration-id": id,
-            "data-diagnostic-group-label": (options.group + 1).toString(),
+            "data-group-decoration-id": id,
+            "data-group-label": (options.group + 1).toString(),
         };
 
-        const decorations = [
-            markRange(options.start, options.end, () =>
-                markDecoration(
-                    `diagnostic ${options.primary ? "diagnostic-primary diagnostic-highlighted" : "diagnostic-dimmed"}`,
-                    "",
-                    attributes,
-                ),
-            ),
-        ];
+        const decoration = markDecoration(
+            `group ${options.primary ? "group-primary group-highlighted" : "group-dimmed"}`,
+            "",
+            attributes,
+        );
 
-        if (options.group !== -1) {
-            requestAnimationFrame(() => {
-                const element = document.querySelector(
-                    `[data-diagnostic-decoration-id="${id}"]`,
-                ) as HTMLElement;
+        requestAnimationFrame(() => {
+            const element = document.querySelector(
+                `[data-group-decoration-id="${id}"]`,
+            ) as HTMLElement;
 
-                if (element == null) return;
+            if (element == null) return;
 
-                const allDecorations = () =>
-                    [...document.querySelectorAll("[data-diagnostic-decoration-id]")]
-                        .flatMap((node) => {
-                            const element = node as HTMLElement;
+            element.addEventListener("mouseover", (e) => {
+                e.stopPropagation();
 
-                            return [
-                                {
-                                    element,
-                                    label: parseFloat(element.dataset.diagnosticGroupLabel!) - 1,
-                                },
-                            ];
-                        })
-                        .filter(({ label }) => label !== -1);
+                for (const { element, label } of allMarkGroupDecorations()) {
+                    element.classList.remove("group-highlighted", "group-dimmed");
 
-                element.addEventListener("mouseover", (e) => {
-                    e.stopPropagation();
-
-                    for (const { element, label } of allDecorations()) {
-                        element.classList.remove("diagnostic-highlighted", "diagnostic-dimmed");
-
-                        if (label === options.group) {
-                            element.classList.add("diagnostic-highlighted");
-                        } else {
-                            element.classList.add("diagnostic-dimmed");
-                        }
+                    if (label === options.group) {
+                        element.classList.add("group-highlighted");
+                    } else {
+                        element.classList.add("group-dimmed");
                     }
-                });
-
-                element.addEventListener("mouseout", (e) => {
-                    e.stopPropagation();
-
-                    for (const { element } of allDecorations()) {
-                        if (element.classList.contains("diagnostic-primary")) {
-                            element.classList.add("diagnostic-highlighted");
-                            element.classList.remove("diagnostic-dimmed");
-                        } else {
-                            element.classList.add("diagnostic-dimmed");
-                            element.classList.remove("diagnostic-highlighted");
-                        }
-                    }
-                });
+                }
             });
-        }
 
-        return decorations;
+            element.addEventListener("mouseout", (e) => {
+                e.stopPropagation();
+
+                for (const { element } of allMarkGroupDecorations()) {
+                    if (element.classList.contains("group-primary")) {
+                        element.classList.add("group-highlighted");
+                        element.classList.remove("group-dimmed");
+                    } else {
+                        element.classList.add("group-dimmed");
+                        element.classList.remove("group-highlighted");
+                    }
+                }
+            });
+        });
+
+        return decoration.range(options.start, options.end);
     };
 
-    const createMarkDiagnostic = ({ value, hideWidget }: NonNullable<typeof diagnostic>) => {
-        return (value.locations as any[]).flatMap(({ start, end, group }, index) => {
-            if (
-                start === end ||
-                start >= editorView.state.doc.length ||
-                end >= editorView.state.doc.length
-            ) {
-                return [];
-            }
+    const createMarkGroups = (hideWidget: boolean) => {
+        const decorations = groups.flatMap((locations, group) =>
+            locations.flatMap(({ start, end, primary }) => {
+                if (
+                    start === end ||
+                    start >= editorView.state.doc.length ||
+                    end >= editorView.state.doc.length
+                ) {
+                    return [];
+                }
 
-            return [
-                getMarkDiagnosticDecorations({
+                const decoration = getMarkGroupDecoration({
                     start,
                     end,
                     group,
-                    primary: index === 0 && !hideWidget,
-                }),
-            ];
+                    primary: primary ? !hideWidget : false,
+                });
+
+                return decoration != null ? [decoration] : [];
+            }),
+        );
+
+        return ViewPlugin.fromClass(class {}, {
+            decorations: () => RangeSet.of(decorations, true),
         });
     };
 
     $effect(() => {
         code; // required to update the position of the diagnostic
+        groups;
 
         editorView.dispatch({
-            effects: markDiagnostic.reconfigure(diagnostic ? createMarkDiagnostic(diagnostic) : []),
+            effects: markDiagnostic.reconfigure(createMarkGroups(diagnostic?.hideWidget ?? true)),
         });
     });
 
@@ -578,14 +600,21 @@
             return;
         }
 
+        const decoration =
+            highlightedGroup != null
+                ? getMarkGroupDecoration({
+                      start: 0,
+                      end: editorView.state.doc.length,
+                      group: highlightedGroup,
+                      primary: false,
+                  })
+                : undefined;
+
         editorView.dispatch({
             effects: markDiagnostic.reconfigure(
-                highlightGroup != null
-                    ? getMarkDiagnosticDecorations({
-                          start: 0,
-                          end: editorView.state.doc.length,
-                          group: highlightGroup,
-                          primary: false,
+                decoration != null
+                    ? ViewPlugin.fromClass(class {}, {
+                          decorations: () => RangeSet.of([decoration], true),
                       })
                     : [],
             ),
@@ -642,6 +671,6 @@
 
 <div
     use:codemirror
-    class="code-editor h-full w-full"
+    class={["code-editor h-full w-full", diagnostic ? "has-diagnostic" : ""]}
     style={padding ? `--code-editor-padding: ${padding};` : ""}
 ></div>

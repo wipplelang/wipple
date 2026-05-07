@@ -8,6 +8,7 @@ const CompileRequest = z.intersection(
     InputMetadata,
     z.object({
         code: z.string(),
+        groups: z.boolean().optional(),
         graph: z.boolean().optional(),
     }),
 );
@@ -31,6 +32,8 @@ export default handler(CompileRequest, async (body) => {
             return { statusCode: 200, body: { graph, diagnostics } };
         }
 
+        const groups = body.groups ? result.groups() : undefined;
+
         const executable = result.executable();
         if (executable == null) {
             throw new Error("missing executable");
@@ -41,7 +44,7 @@ export default handler(CompileRequest, async (body) => {
             throw new Error("failed to parse WebAssembly executable");
         }
 
-        return { statusCode: 200, body: { graph, executable: executableBase64 } };
+        return { statusCode: 200, body: { groups, graph, executable: executableBase64 } };
     } finally {
         result?.release();
     }

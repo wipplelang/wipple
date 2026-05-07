@@ -7,7 +7,7 @@
     import PrintingHeader from "$lib/components/PrintingHeader.svelte";
     import ToolbarButton from "$lib/components/ToolbarButton.svelte";
     import Icon from "$lib/components/Icon.svelte";
-    import CodeEditor from "$lib/components/CodeEditor.svelte";
+    import CodeEditor, { createGroups } from "$lib/components/CodeEditor.svelte";
     import * as commands from "@codemirror/commands";
     import Tooltip from "$lib/components/Tooltip.svelte";
     import Commands from "$lib/components/Commands.svelte";
@@ -161,7 +161,14 @@
     $effect(() => {
         playground?.code;
         context.diagnostic = undefined;
+        context.groups = [];
     });
+
+    const groups = $derived(
+        context.diagnostic
+            ? createGroups(context.diagnostic.groups, context.diagnostic.locations)
+            : context.groups,
+    );
 </script>
 
 <svelte:window onbeforeunload={() => savePlayground(playground)} />
@@ -244,6 +251,7 @@
                         <CodeEditor
                             bind:this={editor}
                             bind:code={playground.code}
+                            {groups}
                             diagnostic={dragInfo == null && context.diagnostic != null
                                 ? {
                                       value: context.diagnostic,
@@ -311,6 +319,9 @@
                     }}
                     ondiagnostics={(diagnostics) => {
                         context.diagnostic = diagnostics[0];
+                    }}
+                    ongroups={(groups) => {
+                        context.groups = groups;
                     }}
                 />
             </div>

@@ -1,6 +1,7 @@
 import axios, { type AxiosRequestConfig } from "axios";
 import type { PlaygroundMetadata } from "./models/Playground";
 import type { DocumentationItem } from "./models/Documentation";
+import type { Groups } from "./models/Groups";
 import { PUBLIC_SERVER_URL } from "$env/static/public";
 
 const request =
@@ -20,12 +21,14 @@ export const ideInfo = request<IdeInfoRequest, IdeInfoResponse>("ide-info");
 
 export interface CompileRequest extends PlaygroundMetadata {
     code: string;
+    groups?: boolean;
     graph?: boolean;
 }
 
 export type CompileResponse = CompileResponseSuccess | CompileResponseError;
 
 export interface CompileResponseSuccess {
+    groups: Groups;
     graph: any;
     executable: string;
 }

@@ -8,6 +8,15 @@ process.chdir(__dirname);
 fs.rmSync("dist", { recursive: true, force: true });
 fs.mkdirSync("dist", { recursive: true });
 
+const buildCmd = spawnSync("swift", ["build", "--package-path=compiler", "--product", "wipple"], {
+    cwd: path.resolve(__dirname, ".."),
+    stdio: "inherit",
+});
+
+if (buildCmd.status !== 0) {
+    throw new Error(`build exited with status code ${buildCmd.status}`);
+}
+
 for (let dir of fs.readdirSync("src")) {
     if (!fs.statSync(path.join("src", dir)).isDirectory()) {
         fs.copyFileSync(path.join("src", dir), path.join("dist", dir));
@@ -25,11 +34,8 @@ for (let dir of fs.readdirSync("src")) {
         }));
 
     const cmd = spawnSync(
-        "swift",
+        "./compiler/.build/debug/wipple",
         [
-            "run",
-            "--package-path=compiler",
-            "wipple",
             "doc",
             ...files.map((file) => path.join(__dirname, "src", file.path)),
             ...(metadata.library ? ["--lib", path.join(__dirname, "src", metadata.library)] : []),
