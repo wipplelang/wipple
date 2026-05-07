@@ -62,12 +62,15 @@
 
         abortController = new AbortController();
 
+        const { library, visualizerEnabled } = runtimes[playground.runtime];
+
         let response: api.CompileResponse;
         try {
             response = await api.compile(
                 {
                     code: playground.code,
-                    library: runtimes[playground.runtime].library,
+                    library,
+                    graph: visualizerEnabled,
                 },
                 {
                     signal: abortController.signal,
@@ -78,6 +81,7 @@
             abortController = undefined;
             return;
         }
+
         graph = response.graph;
 
         if ("diagnostics" in response) {

@@ -8,6 +8,7 @@ const CompileRequest = z.intersection(
     InputMetadata,
     z.object({
         code: z.string(),
+        graph: z.boolean().optional(),
     }),
 );
 
@@ -23,7 +24,7 @@ export default handler(CompileRequest, async (body) => {
             throw new Error("compilation failed");
         }
 
-        const graph = result.graph();
+        const graph = body.graph ? result.graph() : undefined;
 
         const diagnostics = result.diagnostics();
         if (diagnostics != null) {

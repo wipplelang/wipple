@@ -20,6 +20,7 @@ export const ideInfo = request<IdeInfoRequest, IdeInfoResponse>("ide-info");
 
 export interface CompileRequest extends PlaygroundMetadata {
     code: string;
+    graph?: boolean;
 }
 
 export type CompileResponse = CompileResponseSuccess | CompileResponseError;
