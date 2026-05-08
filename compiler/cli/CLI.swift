@@ -352,7 +352,7 @@ func compile(
     let clock = ContinuousClock()
     let start = clock.now
 
-    let files = compile(db: db, files: layer.files)
+    let (_, files) = compile(db: db, files: layer.files)
 
     if time {
         let duration = clock.now - start

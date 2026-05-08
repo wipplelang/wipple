@@ -37,6 +37,8 @@ export const activate = (context: vscode.ExtensionContext) => {
     vscode.languages.registerDocumentFormattingEditProvider("wipple", {
         provideDocumentFormattingEdits,
     });
+
+    vscode.languages.registerCompletionItemProvider("wipple", { provideCompletionItems });
 };
 
 const documents = new Map<vscode.TextDocument, IDE>();
@@ -191,6 +193,38 @@ const provideDocumentFormattingEdits = (
             formatted,
         ),
     ];
+};
+
+const provideCompletionItems = (
+    document: vscode.TextDocument,
+    position: vscode.Position,
+): vscode.ProviderResult<vscode.CompletionItem[]> => {
+    if (document.languageId !== "wipple") return;
+
+    const ide = documents.get(document);
+    if (ide == null) return;
+
+    const definitions = ide.autocomplete(position.line + 1, position.character + 1);
+
+    return definitions.map(({ name, type, definition, comments }) => {
+        const kind = {
+            variable: vscode.CompletionItemKind.Variable,
+            function: vscode.CompletionItemKind.Function,
+            class: vscode.CompletionItemKind.Class,
+            interface: vscode.CompletionItemKind.Interface,
+            typeParameter: vscode.CompletionItemKind.TypeParameter,
+            constructor: vscode.CompletionItemKind.Constructor,
+        }[type];
+
+        const completionItem = new vscode.CompletionItem(name, kind);
+
+        completionItem.detail = definition;
+
+        completionItem.documentation =
+            comments != null ? new vscode.MarkdownString(comments) : undefined;
+
+        return completionItem;
+    });
 };
 
 const convertRange = (range: IDERange) =>

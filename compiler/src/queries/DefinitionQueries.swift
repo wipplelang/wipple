@@ -108,4 +108,16 @@ extension Queries {
             }
         }
     }
+
+    public static var scopes: Query<[String: OrderedDictionary<Node, Definition>]> {
+        { db, node, body in
+            var node = node
+            while true {
+                if let definitions = db[node, Scope.self]?.definitions { body(definitions) }
+
+                guard let parent = db[node, Parent.self]?.parent else { break }
+                node = parent
+            }
+        }
+    }
 }

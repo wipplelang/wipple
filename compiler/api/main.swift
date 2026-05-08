@@ -4,12 +4,14 @@ import JavaScriptKit
 @JS class CompileResult {
     let db: DB
     let path: String
+    let root: Node
     let files: [Node]
     let libFiles: [Node]?
 
-    init(db: DB, path: String, files: [Node], libFiles: [Node]?) {
+    init(db: DB, path: String, root: Node, files: [Node], libFiles: [Node]?) {
         self.db = db
         self.path = path
+        self.root = root
         self.files = files
         self.libFiles = libFiles
     }
@@ -36,12 +38,12 @@ private var libraries: [String: CompileResult] = [:]
 
     let path = files[0].path
 
-    let files = compile(
+    let (root, files) = compile(
         db: db,
         files: files.map { readFile(db: db, path: $0.path, source: $0.code) },
     )
 
-    return CompileResult(db: db, path: path, files: files, libFiles: library?.files)
+    return CompileResult(db: db, path: path, root: root, files: files, libFiles: library?.files)
 }
 
 @JS func format(_ code: String) -> String? { Compiler.format(code) }

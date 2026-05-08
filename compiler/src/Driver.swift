@@ -8,12 +8,14 @@ public func defaultFilter(db: DB) -> (Node) -> Bool {
     { node in node.belongs(to: db) && db.contains(Syntax.self, for: node) }
 }
 
-public func compile(db: DB, files: [any Visitable]) -> [Node] {
+public func compile(db: DB, files: [any Visitable]) -> (root: Node, files: [Node]) {
     // Define/resolve names and collect constraints
 
     let topLevelDefinitions = db[.topLevel, TopLevelDefinitions.self, default: .init()].definitions
 
-    let visitor = Visitor(db: db, definitions: topLevelDefinitions)
+    let root = db.node(isHidden: true)
+
+    let visitor = Visitor(db: db, root: root, definitions: topLevelDefinitions)
     let files = files.map { visitor.visit($0) }
     let visited = visitor.finish()
 
@@ -88,7 +90,7 @@ public func compile(db: DB, files: [any Visitable]) -> [Node] {
     // Add custom connections
     createConnections(db: db, filter: defaultFilter(db: db))
 
-    return files
+    return (root, files)
 }
 
 func setGroups(db: DB, solver: Solver) {

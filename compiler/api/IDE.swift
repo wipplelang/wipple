@@ -1,5 +1,6 @@
 import Compiler
 import JavaScriptKit
+import OrderedCollections
 
 @JS struct IDEDiagnostic {
     let range: IDERange
@@ -29,6 +30,13 @@ import JavaScriptKit
 @JS struct IDEHoverItem {
     let value: String
     let isCode: Bool
+}
+
+@JS struct IDEDefinition {
+    let name: String
+    let type: String
+    let definition: String
+    let comments: String?
 }
 
 @JS class IDE {
@@ -125,16 +133,8 @@ import JavaScriptKit
             contents.append(.init(value: string, isCode: true))
         }
 
-        Queries.comments(includeLinks: false)(self.result.db, node) { comments in
-            let writer = FeedbackWriter(db: self.result.db)
-            writer.write(comments)
-            let (string, _) = writer.finish(with: {
-                $0.markdown(db: self.result.db, showSpan: false)
-            })
-
-            guard !string.isEmpty else { return }
-
-            contents.append(.init(value: string, isCode: false))
+        if let comments = self.comments(node: node) {
+            contents.append(.init(value: comments, isCode: false))
         }
 
         guard !contents.isEmpty else { return nil }
@@ -208,6 +208,72 @@ import JavaScriptKit
         return references
     }
 
+    @JS func autocomplete(line: Int, column: Int) -> [IDEDefinition] {
+        var nodes: [Node] = [self.result.root]
+
+        let nodeAtPosition = self.node(atLine: line, column: column)
+
+        if let nodeAtPosition { nodes.append(nodeAtPosition) }
+
+        let prefix: Substring = {
+            guard let nodeAtPosition, let syntax = self.result.db[nodeAtPosition, Syntax.self]
+            else { return Substring() }
+            let prefix =
+                switch syntax.value {
+                case let value as VariableExpressionSyntax: value.variable
+                case let value as VariablePatternSyntax: value.variable
+                case let value as ConstructorExpressionSyntax: value.constructor
+                case let value as ConstructorPatternSyntax: value.constructor
+                case let value as NamedTypeSyntax: value.name
+                default: Substring()
+                }
+
+            let span = syntax.value.span
+
+            // Ensure the cursor is actually within the prefix
+            guard span.end.column <= span.start.column + prefix.count else { return Substring() }
+
+            return prefix
+        }()
+
+        var definitions: OrderedDictionary<Node, Definition> = [:]
+        for node in nodes {
+            Queries.scopes(self.result.db, node) { scope in
+                for (name, scopeDefinitions) in scope {
+                    guard name.hasPrefix(prefix) else { continue }
+
+                    for (node, definition) in scopeDefinitions { definitions[node] = definition }
+                }
+            }
+        }
+
+        return definitions.values.compactMap { definition in
+            guard let name = definition.name else { return nil }
+
+            let type: String? =
+                switch definition {
+                case is VariableDefinition: "variable"
+                case is ConstantDefinition: "function"
+                case is TypeDefinition, is StructureConstructorDefinition: "class"
+                case is TraitDefinition: "interface"
+                case is TypeParameterDefinition: "typeParameter"
+                case is MarkerConstructorDefinition, is VariantConstructorDefinition: "constructor"
+                default: nil
+                }
+
+            guard let type else { return nil }
+
+            let renderContext = RenderContext(db: self.result.db)
+            renderContext.node(definition.node)
+
+            let (string, _) = renderContext.render(with: { $0.plainText(db: self.result.db) })
+
+            let comments = self.comments(node: definition.node)
+
+            return IDEDefinition(name: name, type: type, definition: string, comments: comments)
+        }
+    }
+
     private func node(atLine line: Int, column: Int) -> Node? {
         var matches: [(node: Node, length: Int)] = []
         for node in self.result.db.ownedNodes {
@@ -224,5 +290,22 @@ import JavaScriptKit
         matches.sort(by: { $0.length < $1.length })
 
         return matches.first?.node
+    }
+
+    private func comments(node: Node) -> String? {
+        var result: String?
+        Queries.comments(includeLinks: false)(self.result.db, node) { comments in
+            let writer = FeedbackWriter(db: self.result.db)
+            writer.write(comments)
+            let (string, _) = writer.finish(with: {
+                $0.markdown(db: self.result.db, showSpan: false)
+            })
+
+            guard !string.isEmpty else { return }
+
+            result = string
+        }
+
+        return result
     }
 }

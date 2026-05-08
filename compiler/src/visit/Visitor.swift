@@ -23,6 +23,10 @@ public struct Resolved: Fact {
     }
 }
 
+public class Scope: Fact {
+    public var definitions: [String: OrderedDictionary<Node, Definition>] = [:]
+}
+
 struct DefinitionConstraints: Fact {
     public var constraints: [Constraint] = []
 
@@ -83,7 +87,7 @@ public struct VisitAs: Visitable {
 private let utilities = ["Mismatched"]
 
 public class Visitor {
-    class Scope {
+    class ScopeValues {
         var names: [String: [Definition]] = [:]
         var defined: OrderedSet<Node> = []
         var capturedVariables: OrderedSet<Node> = []
@@ -138,20 +142,26 @@ public class Visitor {
     var currentNode: Node?
     var currentDefinition: CurrentDefinition?
     var currentMatch: CurrentMatch?
-    private var scopes: [Scope]
+    private var scopes: [ScopeValues]
     private var constraints: [Constraint] = []
     private var queue = Queue()
 
-    init(db: DB, definitions: some Sequence<[String: [Definition]]>) {
+    init(db: DB, root: Node, definitions: some Sequence<[String: [Definition]]>) {
         self.db = db
+        self.currentNode = root
 
-        self.scopes = definitions.map { names in
-            let scope = Scope()
-            scope.names = names
-            return scope
+        let scope = ScopeValues()
+        for names in definitions {
+            for (name, definitions) in names {
+                for definition in definitions { scope.names[name, default: []].append(definition) }
+            }
         }
 
-        self.scopes.append(Scope())
+        // Register `definitions` in `root`
+        self.scopes = [scope]
+        self.popScope()
+
+        self.scopes = [scope, ScopeValues()]
     }
 
     func visit(_ value: some Visitable) -> Node {
@@ -196,11 +206,20 @@ public class Visitor {
         self.db[node, Codegen.self] = .init(value: value)
     }
 
-    func pushScope() { self.scopes.append(Scope()) }
+    func pushScope() { self.scopes.append(ScopeValues()) }
 
-    var currentScope: Scope { self.scopes.last! }
+    var currentScope: ScopeValues { self.scopes.last! }
 
-    func popScope() { self.scopes.removeLast() }
+    func popScope() {
+        let scope = self.scopes.removeLast()
+
+        let fact = self.db[self.currentNode!, Scope.self, default: .init()]
+        for (name, definitions) in scope.names {
+            for definition in definitions {
+                fact.definitions[name, default: [:]][definition.node] = definition
+            }
+        }
+    }
 
     func resolve<T: Definition>(name: String, as node: Node) -> T? {
         self.resolve(name: name, as: node) { $0 as? T }
@@ -365,6 +384,8 @@ public class Visitor {
             let utilities = Array(self.peek(name: name, match: \.self))
             if utilities.count == 1 { result.utilities[name] = utilities[0].node }
         }
+
+        self.popScope()
 
         return result
     }
