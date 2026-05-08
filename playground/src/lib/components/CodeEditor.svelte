@@ -503,6 +503,14 @@
         group: number;
         primary: boolean;
     }) => {
+        if (
+            options.start >= options.end ||
+            options.start >= editorView.state.doc.length ||
+            options.end >= editorView.state.doc.length
+        ) {
+            return undefined;
+        }
+
         const id = nanoid();
 
         if (options.group === -1) {
@@ -562,14 +570,6 @@
     const createMarkGroups = (hideWidget: boolean) => {
         const decorations = groups.flatMap((locations, group) =>
             locations.flatMap(({ start, end, primary }) => {
-                if (
-                    start === end ||
-                    start >= editorView.state.doc.length ||
-                    end >= editorView.state.doc.length
-                ) {
-                    return [];
-                }
-
                 const decoration = getMarkGroupDecoration({
                     start,
                     end,
