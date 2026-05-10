@@ -3,15 +3,14 @@
 
     interface Props {
         prompt: string;
-        onsubmit: (value: string) => Promise<boolean>;
+        valid: boolean;
+        onsubmit?: (value: string) => void;
     }
 
-    const { prompt, onsubmit }: Props = $props();
+    let { prompt, valid = $bindable(), onsubmit }: Props = $props();
 
     let value = $state("");
-    let valid = $state(true);
     let disabled = $state(false);
-    let submitted = $state(false);
     let input: HTMLInputElement;
 
     $effect(() => {
@@ -23,20 +22,20 @@
         valid = true;
         disabled = true;
 
-        submitted = await onsubmit(value);
+        onsubmit?.(value);
+    };
 
-        if (submitted) {
-            valid = true;
+    $effect(() => {
+        if (valid && onsubmit == null) {
             disabled = true;
         } else {
-            valid = false;
             disabled = false;
 
             requestAnimationFrame(() => {
                 input.focus();
             });
         }
-    };
+    });
 </script>
 
 <form

@@ -5,7 +5,7 @@
     import runtimes from "$lib/runtimes";
     import * as runner from "$lib/runner.worker";
     import RunnerWorker from "$lib/runner.worker?worker";
-    import type { OutputItem } from "$lib/models/OutputItem";
+    import type { OutputItem, PromptOutputItem } from "$lib/models/OutputItem";
     import type { Groups } from "$lib/models/Groups";
     import Markdown from "./Markdown.svelte";
     import Prompt from "./Prompt.svelte";
@@ -105,8 +105,12 @@
         try {
             await runtimeOutput?._initialize?.();
 
-            let submitPrompt: ((input: string) => void) | undefined;
-            let validatePrompt!: (valid: boolean) => void;
+            let currentPrompt: {
+                index: number;
+                firstSubmission: boolean;
+                input: Promise<string>;
+            };
+
             const env: runner.Env = {
                 trace: async (trace: any) => {
                     onchangeline(trace.line);
@@ -117,32 +121,41 @@
                         value: message,
                     });
                 },
-                prompt: (message: string) =>
-                    new Promise<string>((resolve) => {
-                        output.push({
-                            type: "prompt",
-                            prompt: message,
-                            submit: (input) => {
-                                resolve(input);
-                                submitPrompt?.(input);
-                                submitPrompt = undefined;
+                beginPrompt: async (message: string) => {
+                    currentPrompt = {
+                        index: output.length,
+                        firstSubmission: true,
+                        input: new Promise<string>((resolve) => {
+                            output.push({
+                                type: "prompt",
+                                prompt: message,
+                                onsubmit: resolve,
+                                valid: true,
+                            });
+                        }),
+                    };
+                },
+                getPrompt: async () => {
+                    const item = output[currentPrompt.index] as PromptOutputItem;
 
-                                return new Promise<boolean>((resolve) => {
-                                    validatePrompt = resolve;
-                                });
-                            },
-                        });
-                    }),
-                validatePrompt: async (valid: boolean) => {
-                    validatePrompt(valid);
-
-                    if (valid) {
-                        validatePrompt = undefined!;
+                    if (!currentPrompt.firstSubmission) {
+                        item.valid = false;
                     } else {
-                        return await new Promise<string>((resolve) => {
-                            submitPrompt = resolve;
-                        });
+                        currentPrompt.firstSubmission = false;
                     }
+
+                    const input = await currentPrompt.input;
+
+                    currentPrompt.input = new Promise<string>((resolve) => {
+                        item.onsubmit = resolve;
+                    });
+
+                    return input;
+                },
+                endPrompt: async () => {
+                    const item = output[currentPrompt.index] as PromptOutputItem;
+                    item.onsubmit = undefined;
+                    item.valid = true;
                 },
             };
 
@@ -201,7 +214,7 @@
                 </Box>
             {:else if item.type === "prompt"}
                 <Box class="p-[14px]" scroll={false}>
-                    <Prompt prompt={item.prompt} onsubmit={item.submit} />
+                    <Prompt prompt={item.prompt} onsubmit={item.onsubmit} bind:valid={item.valid} />
                 </Box>
             {/if}
         {/each}

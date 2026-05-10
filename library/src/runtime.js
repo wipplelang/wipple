@@ -42,16 +42,12 @@ export default (env) => {
             return a + b;
         },
 
-        prompt: (message, validate) => {
-            let input = env.prompt(message);
+        prompt: (message) => {
+            return env.prompt(message);
+        },
 
-            let validated;
-            do {
-                validated = validate(input);
-                input = env.validatePrompt(validated !== undefined);
-            } while (validated === undefined);
-
-            return fromMaybe(validated);
+        "prompt-result": (success) => {
+            env.promptResult(success === 1);
         },
 
         external: (func, input) => {

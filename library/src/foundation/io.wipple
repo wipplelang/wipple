@@ -33,4 +33,17 @@ instance (Read Number) : string -> intrinsic "string-to-number" string
 
 -- Ask the user to enter a value.
 prompt :: String -> value where (value :: String) (Read value)
-prompt : prompt -> intrinsic "prompt" prompt Read
+prompt : message -> do {
+  external "beginPrompt" message
+
+  repeat with-control-flow {
+    input : external "getPrompt" ()
+    when (Read input) {
+      (Some input) -> do {
+        external "endPrompt" ()
+        Stop input
+      }
+      None -> Continue ()
+    }
+  }
+}

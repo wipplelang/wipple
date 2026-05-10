@@ -86,7 +86,7 @@ tasks:
         if [[ -z "$CI" ]]; then
           export SWIFT_SDK="$(swiftc -print-target-info | jq -r '.swiftCompilerTag')_wasm"
         fi
-        WASM_BUILD=1 swift package --swift-sdk "$SWIFT_SDK" js ${CI+"-c release"} --product API
+        WASM_BUILD=1 swift package --build-path=".build-wasm" --swift-sdk "$SWIFT_SDK" js ${CI+"-c release"} --product API
         npm run build
   build:server:
     dir: server

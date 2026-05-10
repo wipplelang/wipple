@@ -8,7 +8,8 @@ export interface DisplayOutputItem {
 export interface PromptOutputItem {
     type: "prompt";
     prompt: string;
-    submit: (value: string) => Promise<boolean>;
+    onsubmit?: (value: string) => void;
+    valid: boolean;
 }
 
 export type OutputItem = DisplayOutputItem | PromptOutputItem;

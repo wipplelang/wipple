@@ -6,6 +6,7 @@ netlify/
 coverage.html
 flamegraph.svg
 coverage/
+.build-wasm/
 
 # Created by https://www.toptal.com/developers/gitignore/api/macos,linux,swift,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=macos,linux,swift,node
