@@ -18,12 +18,12 @@ tasks:
 
   setup:
     deps:
-      - setup:compiler
+      - setup:api
       - setup:playground
       - setup:site
       - setup:server
-  setup:compiler:
-    dir: compiler
+  setup:api:
+    dir: compiler/api
     cmds:
       - npm install
   setup:playground:
