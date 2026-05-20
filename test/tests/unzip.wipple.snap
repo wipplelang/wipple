@@ -1,151 +1,135 @@
-Facts:
-`left; right : (((1; "a"), (2; "b"), (3; "c")) . unzip :: (List _; List _))` (unzip.wipple:1:1-1:75) (AssignmentStatementSyntax):
-  has type `()` (unzip.wipple:1:1-1:75)
+Facts (layer 2):
 
-`((1; "a"), (2; "b"), (3; "c")) . unzip :: (List _; List _)` (unzip.wipple:1:16-1:74) (AnnotateExpressionSyntax):
-  has type `(List Number; List String)` (unzip.wipple:1:59-1:73)
+`left` (unzip.wipple:1:1-1:5) (VariablePattern):
+  has type `List Number`
+  is a definition
+  is a pattern
+
+`left; right` (unzip.wipple:1:1-1:11) (TuplePattern):
+  has type `(List Number; List String)` (unzip.wipple:1:47-1:58)
+  is a pattern
+
+`left; right : (((1; "a"), (2; "b"), (3; "c")) . unzip :: (List _; List _))` (unzip.wipple:1:1-1:60) (AssignmentStatement):
+  has type `()` (unzip.wipple:1:1-1:60)
+
+`right` (unzip.wipple:1:6-1:11) (VariablePattern):
+  has type `List String`
+  is a definition
+  is a pattern
+
+`((1; "a"), (2; "b"), (3; "c")) . unzip :: (List _; List _)` (unzip.wipple:1:13-1:59) (AnnotateExpression):
+  has type `(List Number; List String)` (unzip.wipple:1:47-1:58)
   is an expression
 
-`(1; "a"), (2; "b"), (3; "c")) . unzip` (unzip.wipple:1:17-1:54) (OperatorExpressionSyntax):
-  has type `(List Number; List String)` (unzip.wipple:1:59-1:73)
-  is an expression
-
-`(1; "a"), (2; "b"), (3; "c")` (unzip.wipple:1:17-1:45) (VisitAs):
+`(1; "a"), (2; "b"), (3; "c")` (unzip.wipple:1:14-1:37) (VisitAs):
   has type `List (Number; String)`
   is an expression
 
-`unzip` (unzip.wipple:1:49-1:54) (VisitAs):
-  has bound(s) `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Initial` `(List String)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Extend` `(List Number)` `Number` (`instance (Extend (List element) element)` (sequence.wipple:373:1-373:41)), `Extend` `(List String)` `String` (`instance (Extend (List element) element)` (sequence.wipple:373:1-373:41)), `As-Sequence` `(List (Number; String))` `(Number; String)` (unzip.wipple:1:38-1:44) (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
-  has type `(List (Number; String)) -> (List Number; List String)` (unzip.wipple:1:49-1:54)
-  is an expression
-  resolved to 1 definition(s): `unzip :: collection -> (left; right) where (Initial left) (Initial right) (As-Sequence collection (left-element; right-element)) (Extend left left-element) (Extend right right-element)` (sequence.wipple:395:1-395:185)
-
-`unzip` (unzip.wipple:1:49-1:54) (CallExpressionSyntax):
-  has type `(List Number; List String)` (unzip.wipple:1:59-1:73)
+`(1; "a"), (2; "b"), (3; "c")) . unzip` (unzip.wipple:1:14-1:44) (OperatorExpression):
+  has type `(List Number; List String)` (unzip.wipple:1:47-1:58)
   is an expression
 
-`1; "a"` (unzip.wipple:1:18-1:24) (VisitAs):
-  has type `(Number; String)` (unzip.wipple:1:38-1:44)
-  is an expression
-
-`2; "b"` (unzip.wipple:1:28-1:34) (VisitAs):
-  has type `(Number; String)` (unzip.wipple:1:38-1:44)
-  is an expression
-
-`3; "c"` (unzip.wipple:1:38-1:44) (VisitAs):
-  has type `(Number; String)` (unzip.wipple:1:38-1:44)
-  is an expression
-
-`3; "c"` (unzip.wipple:1:38-1:44) (CallExpressionSyntax):
-  has type `List (Number; String)`
-  is an expression
-
-`3; "c"` (unzip.wipple:1:38-1:44) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `(Number; String)` (unzip.wipple:1:38-1:44) `(List (Number; String))` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `(Number; String) (List (Number; String)) -> List (Number; String)` (unzip.wipple:1:38-1:44)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`3` (unzip.wipple:1:38-1:39) (NumberExpressionSyntax):
+`1` (unzip.wipple:1:15-1:16) (NumberExpression):
   has type `Number`
   is an expression
 
-`"c"` (unzip.wipple:1:41-1:44) (StringExpressionSyntax):
+`1; "a"` (unzip.wipple:1:15-1:20) (VisitAs):
+  has type `(Number; String)` (unzip.wipple:1:31-1:36)
+  is an expression
+
+`1; "a"` (unzip.wipple:1:15-1:20) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `(Number; String)` (unzip.wipple:1:31-1:36) `(List (Number; String))` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `(Number; String) (List (Number; String)) -> List (Number; String)` (unzip.wipple:1:15-1:20)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`"a"` (unzip.wipple:1:17-1:20) (StringExpression):
   has type `String`
   is an expression
 
-`2; "b"` (unzip.wipple:1:28-1:34) (CallExpressionSyntax):
-  has type `List (Number; String)`
-  is an expression
-
-`2; "b"` (unzip.wipple:1:28-1:34) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `(Number; String)` (unzip.wipple:1:38-1:44) `(List (Number; String))` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `(Number; String) (List (Number; String)) -> List (Number; String)` (unzip.wipple:1:28-1:34)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`2` (unzip.wipple:1:28-1:29) (NumberExpressionSyntax):
+`2` (unzip.wipple:1:23-1:24) (NumberExpression):
   has type `Number`
   is an expression
 
-`"b"` (unzip.wipple:1:31-1:34) (StringExpressionSyntax):
+`2; "b"` (unzip.wipple:1:23-1:28) (VisitAs):
+  has type `(Number; String)` (unzip.wipple:1:31-1:36)
+  is an expression
+
+`2; "b"` (unzip.wipple:1:23-1:28) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `(Number; String)` (unzip.wipple:1:31-1:36) `(List (Number; String))` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `(Number; String) (List (Number; String)) -> List (Number; String)` (unzip.wipple:1:23-1:28)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`"b"` (unzip.wipple:1:25-1:28) (StringExpression):
   has type `String`
   is an expression
 
-`1; "a"` (unzip.wipple:1:18-1:24) (CallExpressionSyntax):
-  has type `List (Number; String)`
-  is an expression
-
-`1; "a"` (unzip.wipple:1:18-1:24) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `(Number; String)` (unzip.wipple:1:38-1:44) `(List (Number; String))` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `(Number; String) (List (Number; String)) -> List (Number; String)` (unzip.wipple:1:18-1:24)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`1` (unzip.wipple:1:18-1:19) (NumberExpressionSyntax):
+`3` (unzip.wipple:1:31-1:32) (NumberExpression):
   has type `Number`
   is an expression
 
-`"a"` (unzip.wipple:1:21-1:24) (StringExpressionSyntax):
+`3; "c"` (unzip.wipple:1:31-1:36) (VisitAs):
+  has type `(Number; String)` (unzip.wipple:1:31-1:36)
+  is an expression
+
+`3; "c"` (unzip.wipple:1:31-1:36) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `(Number; String)` (unzip.wipple:1:31-1:36) `(List (Number; String))` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `(Number; String) (List (Number; String)) -> List (Number; String)` (unzip.wipple:1:31-1:36)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`"c"` (unzip.wipple:1:33-1:36) (StringExpression):
   has type `String`
   is an expression
 
-`(1; "a"), (2; "b"), (3; "c")` (unzip.wipple:1:17-1:45) (ConstructorExpressionSyntax):
-  has bound(s) `Initial-Collection` `(Number; String)` (unzip.wipple:1:38-1:44) `(List (Number; String))` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List (Number; String))` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `(Number; String)` (unzip.wipple:1:38-1:44) `(List (Number; String))` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `List (Number; String)`
+`unzip` (unzip.wipple:1:39-1:44) (CallExpression):
+  has type `(List Number; List String)` (unzip.wipple:1:47-1:58)
   is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
 
-`List _; List _` (unzip.wipple:1:59-1:73) (TupleTypeSyntax):
-  has type `(List Number; List String)` (unzip.wipple:1:59-1:73)
-  is a type
+`unzip` (unzip.wipple:1:39-1:44) (VisitAs):
+  has bound(s) `Initial` (library/src/foundation/language.wipple:35:1-35:26) `(List Number)` (resolved as `instance (Initial (List element))` (library/src/foundation/list.wipple:3:1-3:31)), `Initial` (library/src/foundation/language.wipple:35:1-35:26) `(List String)` (resolved as `instance (Initial (List element))` (library/src/foundation/list.wipple:3:1-3:31)), `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List (Number; String))` `(Number; String)` (unzip.wipple:1:31-1:36) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:42)), `Extend` (library/src/foundation/sequence.wipple:372:1-372:79) `(List Number)` `Number` (resolved as `instance (Extend (List element) element)` (library/src/foundation/sequence.wipple:373:1-373:37)), `Extend` (library/src/foundation/sequence.wipple:372:1-372:79) `(List String)` `String` (resolved as `instance (Extend (List element) element)` (library/src/foundation/sequence.wipple:373:1-373:37))
+  has type `(List (Number; String)) -> (List Number; List String)` (unzip.wipple:1:39-1:44)
+  is an expression
+  resolved to 1 definition(s): `unzip :: collection -> (left; right) where (Initial left) (Initial right) (As-Sequence collection (left-element; right-element)) (Extend left left-element) (Extend right right-element)` (library/src/foundation/sequence.wipple:395:1-395:165)
 
-`List _` (unzip.wipple:1:59-1:65) (NamedTypeSyntax):
+`List _` (unzip.wipple:1:47-1:52) (NamedType):
   has type `List Number`
   is a type
-  resolved to 1 definition(s): `List : element => type` (list.wipple:1:13-1:35)
+  resolved to 1 definition(s): `List : element => type` (library/src/foundation/list.wipple:1:12-1:30)
 
-`_` (unzip.wipple:1:64-1:65) (PlaceholderTypeSyntax):
+`List _; List _` (unzip.wipple:1:47-1:58) (TupleType):
+  has type `(List Number; List String)` (unzip.wipple:1:47-1:58)
+  is a type
+
+`_` (unzip.wipple:1:51-1:52) (PlaceholderType):
   has type `Number`
   is a type
 
-`List _` (unzip.wipple:1:67-1:73) (NamedTypeSyntax):
+`List _` (unzip.wipple:1:53-1:58) (NamedType):
   has type `List String`
   is a type
-  resolved to 1 definition(s): `List : element => type` (list.wipple:1:13-1:35)
+  resolved to 1 definition(s): `List : element => type` (library/src/foundation/list.wipple:1:12-1:30)
 
-`_` (unzip.wipple:1:72-1:73) (PlaceholderTypeSyntax):
+`_` (unzip.wipple:1:57-1:58) (PlaceholderType):
   has type `String`
   is a type
 
-`left; right` (unzip.wipple:1:1-1:12) (TuplePatternSyntax):
-  has type `(List Number; List String)` (unzip.wipple:1:59-1:73)
-  is a pattern
-
-`left` (unzip.wipple:1:1-1:5) (VariablePatternSyntax):
-  has type `List Number`
-  is a pattern
-
-`right` (unzip.wipple:1:7-1:12) (VariablePatternSyntax):
-  has type `List String`
-  is a pattern
-
-`show "Left:"` (unzip.wipple:3:1-3:13) (CallExpressionSyntax):
-  has type `()`
-  is an expression
-
-`show` (unzip.wipple:3:1-3:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
+`show` (unzip.wipple:3:1-3:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
   has type `String -> ()` (unzip.wipple:3:1-3:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`"Left:"` (unzip.wipple:3:6-3:13) (StringExpressionSyntax):
-  has type `String`
+`show "Left:"` (unzip.wipple:3:1-3:12) (ExpressionStatement):
+  has type `()`
+
+`show "Left:"` (unzip.wipple:3:1-3:12) (CallExpression):
+  has type `()`
   is an expression
 
-`left . each show` (unzip.wipple:4:1-4:17) (OperatorExpressionSyntax):
-  has type `()`
+`"Left:"` (unzip.wipple:3:5-3:12) (StringExpression):
+  has type `String`
   is an expression
 
 `left` (unzip.wipple:4:1-4:5) (VisitAs):
@@ -153,68 +137,81 @@ Facts:
   is an expression
   resolved to 1 definition(s): `left` (unzip.wipple:1:1-1:5)
 
-`each show` (unzip.wipple:4:8-4:17) (VisitAs):
-  has type `(List Number) -> ()` (unzip.wipple:4:8-4:17)
-  is an expression
+`left . each show` (unzip.wipple:4:1-4:14) (ExpressionStatement):
+  has type `()`
 
-`each show` (unzip.wipple:4:8-4:17) (CallExpressionSyntax):
+`left . each show` (unzip.wipple:4:1-4:14) (OperatorExpression):
   has type `()`
   is an expression
 
-`each` (unzip.wipple:4:8-4:12) (VariableExpressionSyntax):
-  has bound(s) `As-Sequence` `(List Number)` `Number` (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
-  has type `(Number -> ()) -> (List Number) -> ()` (unzip.wipple:4:8-4:12)
+`each` (unzip.wipple:4:6-4:10) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:42))
+  has type `(Number -> ()) -> (List Number) -> ()` (unzip.wipple:4:6-4:10)
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (sequence.wipple:221:1-221:81)
+  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:69)
 
-`show` (unzip.wipple:4:13-4:17) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
+`each show` (unzip.wipple:4:6-4:14) (CallExpression):
+  has type `()`
+  is an expression
+
+`each show` (unzip.wipple:4:6-4:14) (VisitAs):
+  has type `(List Number) -> ()` (unzip.wipple:4:6-4:14)
+  is an expression
+
+`show` (unzip.wipple:4:10-4:14) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`show "Right:"` (unzip.wipple:6:1-6:14) (CallExpressionSyntax):
-  has type `()`
-  is an expression
-
-`show` (unzip.wipple:6:1-6:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
+`show` (unzip.wipple:6:1-6:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
   has type `String -> ()` (unzip.wipple:6:1-6:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`"Right:"` (unzip.wipple:6:6-6:14) (StringExpressionSyntax):
-  has type `String`
+`show "Right:"` (unzip.wipple:6:1-6:13) (ExpressionStatement):
+  has type `()`
+
+`show "Right:"` (unzip.wipple:6:1-6:13) (CallExpression):
+  has type `()`
   is an expression
 
-`right . each show` (unzip.wipple:7:1-7:18) (OperatorExpressionSyntax):
-  has type `()`
+`"Right:"` (unzip.wipple:6:5-6:13) (StringExpression):
+  has type `String`
   is an expression
 
 `right` (unzip.wipple:7:1-7:6) (VisitAs):
   has type `List String`
   is an expression
-  resolved to 1 definition(s): `right` (unzip.wipple:1:7-1:12)
+  resolved to 1 definition(s): `right` (unzip.wipple:1:6-1:11)
 
-`each show` (unzip.wipple:7:9-7:18) (VisitAs):
-  has type `(List String) -> ()` (unzip.wipple:7:9-7:18)
-  is an expression
+`right . each show` (unzip.wipple:7:1-7:15) (ExpressionStatement):
+  has type `()`
 
-`each show` (unzip.wipple:7:9-7:18) (CallExpressionSyntax):
+`right . each show` (unzip.wipple:7:1-7:15) (OperatorExpression):
   has type `()`
   is an expression
 
-`each` (unzip.wipple:7:9-7:13) (VariableExpressionSyntax):
-  has bound(s) `As-Sequence` `(List String)` `String` (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
-  has type `(String -> ()) -> (List String) -> ()` (unzip.wipple:7:9-7:13)
+`each` (unzip.wipple:7:7-7:11) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:42))
+  has type `(String -> ()) -> (List String) -> ()` (unzip.wipple:7:7-7:11)
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (sequence.wipple:221:1-221:81)
+  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:69)
 
-`show` (unzip.wipple:7:14-7:18) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
+`each show` (unzip.wipple:7:7-7:15) (CallExpression):
+  has type `()`
+  is an expression
+
+`each show` (unzip.wipple:7:7-7:15) (VisitAs):
+  has type `(List String) -> ()` (unzip.wipple:7:7-7:15)
+  is an expression
+
+`show` (unzip.wipple:7:11-7:15) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
 
 Output:

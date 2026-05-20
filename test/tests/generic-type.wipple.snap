@@ -1,69 +1,79 @@
-Facts:
-`Foo : value => type {inner :: value}` (generic-type.wipple:1:1-1:37) (TypeDefinitionSyntax):
+Facts (layer 2):
+
+`Foo : value => type {inner :: value}` (generic-type.wipple:1:1-1:30) (TypeDefinition):
   has definition constraints
-  has structure fields
-  has type `Foo value` (generic-type.wipple:1:1-1:37)
+  has type `Foo value` (generic-type.wipple:1:1-1:30)
   has type parameters
   is a definition
 
-`value` (generic-type.wipple:1:7-1:12) (TypeParameterSyntax):
-  has type `value` (generic-type.wipple:1:7-1:12)
+`Foo : value => type {inner :: value}` (generic-type.wipple:1:1-1:30) (TypeDefinition):
+  has definition constraints
+  has type `Foo value` (generic-type.wipple:1:1-1:30)
+  is a definition
+
+`value` (generic-type.wipple:1:5-1:10) (TypeParameter):
+  has type `value` (generic-type.wipple:1:5-1:10)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (generic-type.wipple:1:7-1:12)
+  resolved to 1 definition(s): `value` (generic-type.wipple:1:5-1:10)
 
-`foo : Foo {inner : "Hello, world!"}` (generic-type.wipple:3:1-3:36) (AssignmentStatementSyntax):
-  has type `()` (generic-type.wipple:3:1-3:36)
-
-`Foo {inner : inner} : foo` (generic-type.wipple:5:1-5:26) (AssignmentStatementSyntax):
-  has type `()` (generic-type.wipple:5:1-5:26)
-
-`value` (generic-type.wipple:1:31-1:36) (TypeParameterSyntax):
-  has type `value` (generic-type.wipple:1:7-1:12)
+`value` (generic-type.wipple:1:24-1:29) (TypeParameter):
+  has type `value` (generic-type.wipple:1:5-1:10)
   is a type
-  resolved to 1 definition(s): `value` (generic-type.wipple:1:7-1:12)
+  resolved to 1 definition(s): `value` (generic-type.wipple:1:5-1:10)
 
-`Foo {inner : "Hello, world!"}` (generic-type.wipple:3:7-3:36) (StructureExpressionSyntax):
-  has type `Foo String` (generic-type.wipple:3:7-3:36)
+`foo` (generic-type.wipple:3:1-3:4) (VariablePattern):
+  has type `Foo String`
+  is a definition
+  is a pattern
+
+`foo : Foo {inner : "Hello, world!"}` (generic-type.wipple:3:1-3:31) (AssignmentStatement):
+  has type `()` (generic-type.wipple:3:1-3:31)
+
+`Foo {inner : "Hello, world!"}` (generic-type.wipple:3:5-3:31) (StructureExpression):
+  has type `Foo String`
   is an expression
-  resolved to 1 definition(s): `Foo : value => type {inner :: value}` (generic-type.wipple:1:1-1:37)
+  resolved to 1 definition(s): `Foo : value => type {inner :: value}` (generic-type.wipple:1:1-1:30)
 
-`"Hello, world!"` (generic-type.wipple:3:20-3:35) (StringExpressionSyntax):
+`"Hello, world!"` (generic-type.wipple:3:15-3:30) (StringExpression):
   has type `String`
   is an expression
 
-`foo` (generic-type.wipple:3:1-3:4) (VariablePatternSyntax):
-  has type `Foo String` (generic-type.wipple:3:7-3:36)
+`Foo {inner : inner}` (generic-type.wipple:5:1-5:17) (StructurePattern):
+  has type `Foo String`
+  is a pattern
+  resolved to 1 definition(s): `Foo : value => type {inner :: value}` (generic-type.wipple:1:1-1:30)
+
+`Foo {inner : inner} : foo` (generic-type.wipple:5:1-5:21) (AssignmentStatement):
+  has type `()` (generic-type.wipple:5:1-5:21)
+
+`inner` (generic-type.wipple:5:11-5:16) (VariablePattern):
+  has type `String`
+  is a definition
   is a pattern
 
-`foo` (generic-type.wipple:5:23-5:26) (VariableExpressionSyntax):
-  has type `Foo String` (generic-type.wipple:3:7-3:36)
+`foo` (generic-type.wipple:5:18-5:21) (VariableExpression):
+  has type `Foo String`
   is an expression
   resolved to 1 definition(s): `foo` (generic-type.wipple:3:1-3:4)
 
-`Foo {inner : inner}` (generic-type.wipple:5:1-5:20) (StructurePatternSyntax):
-  has type `Foo String` (generic-type.wipple:3:7-3:36)
-  is a pattern
-  resolved to 1 definition(s): `Foo : value => type {inner :: value}` (generic-type.wipple:1:1-1:37)
+`show` (generic-type.wipple:6:1-6:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has type `String -> ()` (generic-type.wipple:6:1-6:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`inner` (generic-type.wipple:5:14-5:19) (VariablePatternSyntax):
-  has type `String`
-  is a pattern
+`show inner` (generic-type.wipple:6:1-6:10) (ExpressionStatement):
+  has type `()`
 
-`show inner` (generic-type.wipple:6:1-6:11) (CallExpressionSyntax):
+`show inner` (generic-type.wipple:6:1-6:10) (CallExpression):
   has type `()`
   is an expression
 
-`show` (generic-type.wipple:6:1-6:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
-  has type `String -> ()` (generic-type.wipple:6:1-6:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`inner` (generic-type.wipple:6:6-6:11) (VariableExpressionSyntax):
+`inner` (generic-type.wipple:6:5-6:10) (VariableExpression):
   has type `String`
   is an expression
-  resolved to 1 definition(s): `inner` (generic-type.wipple:5:14-5:19)
+  resolved to 1 definition(s): `inner` (generic-type.wipple:5:11-5:16)
 
 
 Output:

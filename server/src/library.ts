@@ -1,4 +1,5 @@
-import compiler, { type CompileResult, type File } from "compiler";
+import * as compiler from "compiler";
+import { readFileSync } from "node:fs";
 import * as z from "zod";
 
 export const InputMetadata = z.object({
@@ -12,56 +13,45 @@ export const LibraryMetadata = z.object({
 
 export interface Library {
     metadata: z.infer<typeof LibraryMetadata>;
-    files: File[];
     docs: Record<string, any>;
 }
 
 import foundationLibrary from "../../library/dist/foundation.json";
-import mathLibrary from "../../library/dist/math.json";
-import musicLibrary from "../../library/dist/music.json";
-import turtleLibrary from "../../library/dist/turtle.json";
+const foundationBin = readFileSync(new URL("../../library/dist/foundation.bin", import.meta.url));
 
-export const libraries: Record<string, Library> = {
-    foundation: foundationLibrary,
-    math: mathLibrary,
-    music: musicLibrary,
-    turtle: turtleLibrary,
+import mathLibrary from "../../library/dist/math.json";
+const mathBin = readFileSync(new URL("../../library/dist/math.bin", import.meta.url));
+
+import musicLibrary from "../../library/dist/music.json";
+const musicBin = readFileSync(new URL("../../library/dist/music.bin", import.meta.url));
+
+import turtleLibrary from "../../library/dist/turtle.json";
+const turtleBin = readFileSync(new URL("../../library/dist/turtle.bin", import.meta.url));
+
+export const libraries: Record<string, [Library, Uint8Array]> = {
+    foundation: [foundationLibrary, foundationBin],
+    math: [mathLibrary, mathBin],
+    music: [musicLibrary, musicBin],
+    turtle: [turtleLibrary, turtleBin],
 };
 
-const loadedLibraries = new Map<string, CompileResult | undefined>();
+const loadedLibraries = new Set<string>();
 
 export const loadLibrary = (name: string) => {
     if (!(name in libraries)) {
         return undefined;
     }
 
-    if (loadedLibraries.has(name)) {
-        return loadedLibraries.get(name)!;
-    }
-
-    console.log(`loading library '${name}'`);
-
-    const library = libraries[name];
+    const [library, bin] = libraries[name];
 
     if (library.metadata.library != null) {
-        if (loadLibrary(library.metadata.library) == null) {
-            loadedLibraries.set(name, undefined);
-            return undefined;
-        }
+        loadLibrary(library.metadata.library);
     }
 
-    const result = compiler.compile(library.files, library.metadata.library) ?? undefined;
-
-    loadedLibraries.set(name, result);
-
-    if (result == null) {
-        console.error(`failed to compile library '${name}'`);
-        return undefined;
+    if (!loadedLibraries.has(name)) {
+        compiler.register_library(name, bin);
+        loadedLibraries.add(name);
     }
-
-    compiler.registerLibrary(name, result);
-
-    return result;
 };
 
 // @ts-ignore

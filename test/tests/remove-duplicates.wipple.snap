@@ -1,87 +1,245 @@
-Facts:
-`remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)` (remove-duplicates.wipple:1:1-1:112) (ConstantDefinitionSyntax):
+Facts (layer 2):
+
+`remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)` (remove-duplicates.wipple:1:1-1:99) (ConstantDefinition):
   has definition constraints
-  has type `(List element) -> Sequence element` (remove-duplicates.wipple:1:22-1:56)
+  has type `(List element) -> Sequence element` (remove-duplicates.wipple:1:20-1:50)
   has type parameters
   is a definition
 
-`remove-duplicates : do {⋯}` (remove-duplicates.wipple:2:1-8:2) (AssignmentStatementSyntax):
-  has type `()` (remove-duplicates.wipple:2:1-8:2)
-
-`numbers : 5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (remove-duplicates.wipple:10:1-10:45) (AssignmentStatementSyntax):
-  has type `()` (remove-duplicates.wipple:10:1-10:45)
-
-`(List element) -> Sequence element` (remove-duplicates.wipple:1:22-1:56) (FunctionTypeSyntax):
-  has type `(List element) -> Sequence element` (remove-duplicates.wipple:1:22-1:56)
+`(List element) -> Sequence element` (remove-duplicates.wipple:1:20-1:50) (FunctionType):
+  has type `(List element) -> Sequence element` (remove-duplicates.wipple:1:20-1:50)
   is a type
 
-`List element` (remove-duplicates.wipple:1:23-1:35) (NamedTypeSyntax):
+`List element` (remove-duplicates.wipple:1:21-1:32) (NamedType):
   has type `List element`
   is a type
-  resolved to 1 definition(s): `List : element => type` (list.wipple:1:13-1:35)
+  resolved to 1 definition(s): `List : element => type` (library/src/foundation/list.wipple:1:12-1:30)
 
-`element` (remove-duplicates.wipple:1:28-1:35) (TypeParameterSyntax):
-  has type `element` (remove-duplicates.wipple:1:28-1:35)
+`element` (remove-duplicates.wipple:1:25-1:32) (TypeParameter):
+  has type `element` (remove-duplicates.wipple:1:25-1:32)
   is a definition
   is a type
-  resolved to 1 definition(s): `element` (remove-duplicates.wipple:1:28-1:35)
+  resolved to 1 definition(s): `element` (remove-duplicates.wipple:1:25-1:32)
 
-`Sequence element` (remove-duplicates.wipple:1:40-1:56) (NamedTypeSyntax):
-  has type `Sequence element` (remove-duplicates.wipple:1:40-1:56)
+`Sequence element` (remove-duplicates.wipple:1:35-1:50) (NamedType):
+  has type `Sequence element` (remove-duplicates.wipple:1:35-1:50)
   is a type
-  resolved to 1 definition(s): `Sequence : element => type {next :: {Maybe element}}` (sequence.wipple:2:1-2:53)
+  resolved to 1 definition(s): `Sequence : element => type {next :: {Maybe element}}` (library/src/foundation/sequence.wipple:2:1-2:45)
 
-`element` (remove-duplicates.wipple:1:49-1:56) (TypeParameterSyntax):
-  has type `element` (remove-duplicates.wipple:1:28-1:35)
+`element` (remove-duplicates.wipple:1:43-1:50) (TypeParameter):
+  has type `element` (remove-duplicates.wipple:1:25-1:32)
   is a type
-  resolved to 1 definition(s): `element` (remove-duplicates.wipple:1:28-1:35)
+  resolved to 1 definition(s): `element` (remove-duplicates.wipple:1:25-1:32)
 
-`(Describe element)` (remove-duplicates.wipple:1:63-1:81) (BoundConstraintSyntax):
-  has bound(s) `Describe` `element` (remove-duplicates.wipple:1:28-1:35) (`(Describe element)` (remove-duplicates.wipple:1:63-1:81))
-  has definition constraints
+`(Describe element)` (remove-duplicates.wipple:1:55-1:72) (BoundConstraint):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `element` (remove-duplicates.wipple:1:25-1:32) (resolved as `(Describe element)` (remove-duplicates.wipple:1:55-1:72))
   is a constraint
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (io.wipple:2:1-2:44)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:37)
 
-`element` (remove-duplicates.wipple:1:73-1:80) (TypeParameterSyntax):
-  has type `element` (remove-duplicates.wipple:1:28-1:35)
+`element` (remove-duplicates.wipple:1:64-1:71) (TypeParameter):
+  has type `element` (remove-duplicates.wipple:1:25-1:32)
   is a type
-  resolved to 1 definition(s): `element` (remove-duplicates.wipple:1:28-1:35)
+  resolved to 1 definition(s): `element` (remove-duplicates.wipple:1:25-1:32)
 
-`(Equal element)` (remove-duplicates.wipple:1:82-1:97) (BoundConstraintSyntax):
-  has bound(s) `Equal` `element` (remove-duplicates.wipple:1:28-1:35) (`(Equal element)` (remove-duplicates.wipple:1:82-1:97))
-  has definition constraints
+`(Equal element)` (remove-duplicates.wipple:1:72-1:86) (BoundConstraint):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `element` (remove-duplicates.wipple:1:25-1:32) (resolved as `(Equal element)` (remove-duplicates.wipple:1:72-1:86))
   is a constraint
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
 
-`element` (remove-duplicates.wipple:1:89-1:96) (TypeParameterSyntax):
-  has type `element` (remove-duplicates.wipple:1:28-1:35)
+`element` (remove-duplicates.wipple:1:78-1:85) (TypeParameter):
+  has type `element` (remove-duplicates.wipple:1:25-1:32)
   is a type
-  resolved to 1 definition(s): `element` (remove-duplicates.wipple:1:28-1:35)
+  resolved to 1 definition(s): `element` (remove-duplicates.wipple:1:25-1:32)
 
-`(Hash element)` (remove-duplicates.wipple:1:98-1:112) (BoundConstraintSyntax):
-  has bound(s) `Hash` `element` (remove-duplicates.wipple:1:28-1:35) (`(Hash element)` (remove-duplicates.wipple:1:98-1:112))
-  has definition constraints
+`(Hash element)` (remove-duplicates.wipple:1:86-1:99) (BoundConstraint):
+  has bound(s) `Hash` (library/src/foundation/dictionary.wipple:3:1-3:33) `element` (remove-duplicates.wipple:1:25-1:32) (resolved as `(Hash element)` (remove-duplicates.wipple:1:86-1:99))
   is a constraint
-  resolved to 1 definition(s): `Hash : value => trait (value -> Number)` (dictionary.wipple:3:1-3:40)
+  resolved to 1 definition(s): `Hash : value => trait (value -> Number)` (library/src/foundation/dictionary.wipple:3:1-3:33)
 
-`element` (remove-duplicates.wipple:1:104-1:111) (TypeParameterSyntax):
-  has type `element` (remove-duplicates.wipple:1:28-1:35)
+`element` (remove-duplicates.wipple:1:91-1:98) (TypeParameter):
+  has type `element` (remove-duplicates.wipple:1:25-1:32)
   is a type
-  resolved to 1 definition(s): `element` (remove-duplicates.wipple:1:28-1:35)
+  resolved to 1 definition(s): `element` (remove-duplicates.wipple:1:25-1:32)
 
-`do` (remove-duplicates.wipple:2:21-2:23) (DoExpressionSyntax):
-  has type `(List element) -> Sequence element` (remove-duplicates.wipple:1:22-1:56)
+`remove-duplicates : do {⋯}` (remove-duplicates.wipple:2:1-8:2) (AssignmentStatement):
+  has type `()` (remove-duplicates.wipple:2:1-8:2)
+
+`do {⋯}` (remove-duplicates.wipple:2:19-8:2) (DoExpression):
+  has type `(List element) -> Sequence element` (remove-duplicates.wipple:1:20-1:50)
   is an expression
 
-`{⋯}` (remove-duplicates.wipple:2:24-8:2) (BlockExpressionSyntax):
-  has type `{(List element) -> Sequence element}` (remove-duplicates.wipple:2:24-8:2)
+`{⋯}` (remove-duplicates.wipple:2:21-8:2) (BlockExpression):
+  has type `{(List element) -> Sequence element}` (remove-duplicates.wipple:2:21-8:2)
   is an expression
-  no captures
 
-`seen : (,)` (remove-duplicates.wipple:3:3-3:13) (AssignmentStatementSyntax):
-  has type `()` (remove-duplicates.wipple:3:3-3:13)
+`seen` (remove-duplicates.wipple:3:1-3:5) (VariablePattern):
+  has type `Set element`
+  is a definition
+  is a pattern
+  is mutated
 
-`5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (remove-duplicates.wipple:10:11-10:45) (CollectionExpressionSyntax):
+`seen : (,)` (remove-duplicates.wipple:3:1-3:9) (AssignmentStatement):
+  has type `()` (remove-duplicates.wipple:3:1-3:9)
+
+`,` (remove-duplicates.wipple:3:7-3:8) (CollectionExpression):
+  has type `Set element`
+  is an expression
+
+`filter` (remove-duplicates.wipple:4:1-4:7) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List element)` `element` (remove-duplicates.wipple:1:25-1:32) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:42))
+  has type `(element -> Boolean) -> (List element) -> Sequence element` (remove-duplicates.wipple:4:1-4:7)
+  is an expression
+  resolved to 1 definition(s): `filter :: (element -> Boolean) -> container -> Sequence element where (As-Sequence container element)` (library/src/foundation/sequence.wipple:82:1-82:89)
+
+`filter (item -> (seen . (not contains?) item) and (do {⋯}))` (remove-duplicates.wipple:4:1-7:4) (ExpressionStatement):
+  has type `(List element) -> Sequence element` (remove-duplicates.wipple:1:20-1:50)
+
+`filter (item -> (seen . (not contains?) item) and (do {⋯}))` (remove-duplicates.wipple:4:1-7:4) (CallExpression):
+  has type `(List element) -> Sequence element` (remove-duplicates.wipple:1:20-1:50)
+  is an expression
+
+`item` (remove-duplicates.wipple:4:8-4:12) (VariablePattern):
+  has type `element` (remove-duplicates.wipple:1:25-1:32)
+  is a definition
+  is a pattern
+
+`item -> (seen . (not contains?) item) and (do {⋯})` (remove-duplicates.wipple:4:8-7:3) (FunctionExpression):
+  captures `seen` (remove-duplicates.wipple:3:1-3:5)
+  has type `element -> Boolean` (remove-duplicates.wipple:4:8-7:3)
+  is an expression
+
+`seen` (remove-duplicates.wipple:4:15-4:19) (VisitAs):
+  has type `Set element`
+  is an expression
+  resolved to 1 definition(s): `seen` (remove-duplicates.wipple:3:1-3:5)
+
+`seen . (not contains?) item` (remove-duplicates.wipple:4:15-4:38) (VisitAs):
+  has type `Boolean`
+  is an expression
+
+`seen . (not contains?) item) and (do {⋯}` (remove-duplicates.wipple:4:15-7:2) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`(not contains?) item` (remove-duplicates.wipple:4:20-4:38) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`(not contains?) item` (remove-duplicates.wipple:4:20-4:38) (VisitAs):
+  has type `(Set element) -> Boolean`
+  is an expression
+
+`not` (remove-duplicates.wipple:4:21-4:24) (VariableExpression):
+  has bound(s) `Not` (library/src/foundation/logic.wipple:19:1-19:31) `Boolean` (resolved as `instance (Not Boolean)` (library/src/foundation/logic.wipple:20:1-20:21)), `Not` (library/src/foundation/logic.wipple:19:1-19:31) `(element -> (Set element) -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)` (library/src/foundation/logic.wipple:21:1-21:43))
+  has type `(element -> (Set element) -> Boolean) -> element -> (Set element) -> Boolean` (remove-duplicates.wipple:4:21-4:24)
+  is an expression
+  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)` (library/src/foundation/logic.wipple:25:1-25:49)
+
+`not contains?` (remove-duplicates.wipple:4:21-4:33) (CallExpression):
+  has type `element -> (Set element) -> Boolean`
+  is an expression
+
+`contains?` (remove-duplicates.wipple:4:24-4:33) (VariableExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `element` (remove-duplicates.wipple:1:25-1:32) (resolved as `(Equal element)` (remove-duplicates.wipple:1:72-1:86)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:33) `element` (remove-duplicates.wipple:1:25-1:32) (resolved as `(Hash element)` (remove-duplicates.wipple:1:86-1:99)), `Container` (library/src/foundation/sequence.wipple:398:1-398:72) `(Set element)` `element` (remove-duplicates.wipple:1:25-1:32) (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:71))
+  has type `element -> (Set element) -> Boolean`
+  is an expression
+  resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)` (library/src/foundation/sequence.wipple:401:1-401:73)
+
+`item` (remove-duplicates.wipple:4:34-4:38) (VariableExpression):
+  has type `element` (remove-duplicates.wipple:1:25-1:32)
+  is an expression
+  resolved to 1 definition(s): `item` (remove-duplicates.wipple:4:8-4:12)
+
+`and` (remove-duplicates.wipple:4:39-4:42) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`and` (remove-duplicates.wipple:4:39-4:42) (VisitAs):
+  has bound(s) `And` (library/src/foundation/logic.wipple:29:1-29:62) `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:35))
+  has type `Boolean {Boolean} -> Boolean` (remove-duplicates.wipple:4:39-4:42)
+  is an expression
+  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:29:1-29:62)
+
+`do {⋯}` (remove-duplicates.wipple:4:43-7:2) (VisitAs):
+  has type `Boolean`
+  is an expression
+
+`do {⋯}` (remove-duplicates.wipple:4:43-7:2) (BlockExpression):
+  captures `seen` (remove-duplicates.wipple:3:1-3:5), `item` (remove-duplicates.wipple:4:8-4:12)
+  has type `{Boolean}` (remove-duplicates.wipple:4:43-7:2)
+  is an expression
+
+`do {⋯}` (remove-duplicates.wipple:4:43-7:2) (ExpressionStatement):
+  has type `Boolean`
+
+`{⋯}` (remove-duplicates.wipple:4:45-7:2) (BlockExpression):
+  captures `seen` (remove-duplicates.wipple:3:1-3:5), `item` (remove-duplicates.wipple:4:8-4:12)
+  has type `{Boolean}` (remove-duplicates.wipple:4:45-7:2)
+  is an expression
+
+`set seen` (remove-duplicates.wipple:5:1-5:8) (SetPattern):
+  has type `Set element`
+  is a pattern
+  resolved to 1 definition(s): `seen` (remove-duplicates.wipple:3:1-3:5)
+
+`set seen : seen . insert item` (remove-duplicates.wipple:5:1-5:24) (AssignmentStatement):
+  has type `()` (remove-duplicates.wipple:5:1-5:24)
+
+`seen` (remove-duplicates.wipple:5:9-5:13) (VisitAs):
+  has type `Set element`
+  is an expression
+  resolved to 1 definition(s): `seen` (remove-duplicates.wipple:3:1-3:5)
+
+`seen . insert item` (remove-duplicates.wipple:5:9-5:24) (OperatorExpression):
+  has type `Set element`
+  is an expression
+
+`insert` (remove-duplicates.wipple:5:14-5:20) (VariableExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `element` (remove-duplicates.wipple:1:25-1:32) (resolved as `(Equal element)` (remove-duplicates.wipple:1:72-1:86)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:33) `element` (remove-duplicates.wipple:1:25-1:32) (resolved as `(Hash element)` (remove-duplicates.wipple:1:86-1:99))
+  has type `element -> (Set element) -> Set element` (remove-duplicates.wipple:5:14-5:20)
+  is an expression
+  resolved to 1 definition(s): `insert :: element -> (Set element) -> Set element where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:140:1-140:74)
+
+`insert item` (remove-duplicates.wipple:5:14-5:24) (CallExpression):
+  has type `Set element`
+  is an expression
+
+`insert item` (remove-duplicates.wipple:5:14-5:24) (VisitAs):
+  has type `(Set element) -> Set element` (remove-duplicates.wipple:5:14-5:24)
+  is an expression
+
+`item` (remove-duplicates.wipple:5:20-5:24) (VariableExpression):
+  has type `element` (remove-duplicates.wipple:1:25-1:32)
+  is an expression
+  resolved to 1 definition(s): `item` (remove-duplicates.wipple:4:8-4:12)
+
+`True` (remove-duplicates.wipple:6:1-6:5) (ExpressionStatement):
+  has type `Boolean`
+
+`True` (remove-duplicates.wipple:6:1-6:5) (ConstructorExpression):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:1-4:5)
+
+`numbers` (remove-duplicates.wipple:10:1-10:8) (VariablePattern):
+  has type `List Number`
+  is a definition
+  is a pattern
+
+`numbers : 5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (remove-duplicates.wipple:10:1-10:32) (AssignmentStatement):
+  has type `()` (remove-duplicates.wipple:10:1-10:32)
+
+`5` (remove-duplicates.wipple:10:9-10:10) (VisitAs):
+  has type `Number`
+  is an expression
+
+`5` (remove-duplicates.wipple:10:9-10:10) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:9-10:10)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (remove-duplicates.wipple:10:9-10:32) (CollectionExpression):
   has type `List Number`
   is an expression
 
@@ -89,365 +247,157 @@ Facts:
   has type `Number`
   is an expression
 
-`5` (remove-duplicates.wipple:10:14-10:15) (VisitAs):
-  has type `Number`
-  is an expression
-
-`4` (remove-duplicates.wipple:10:17-10:18) (VisitAs):
-  has type `Number`
-  is an expression
-
-`3` (remove-duplicates.wipple:10:20-10:21) (VisitAs):
-  has type `Number`
-  is an expression
-
-`3` (remove-duplicates.wipple:10:23-10:24) (VisitAs):
-  has type `Number`
-  is an expression
-
-`3` (remove-duplicates.wipple:10:26-10:27) (VisitAs):
-  has type `Number`
-  is an expression
-
-`2` (remove-duplicates.wipple:10:29-10:30) (VisitAs):
-  has type `Number`
-  is an expression
-
-`1` (remove-duplicates.wipple:10:32-10:33) (VisitAs):
-  has type `Number`
-  is an expression
-
-`2` (remove-duplicates.wipple:10:35-10:36) (VisitAs):
-  has type `Number`
-  is an expression
-
-`3` (remove-duplicates.wipple:10:38-10:39) (VisitAs):
-  has type `Number`
-  is an expression
-
-`4` (remove-duplicates.wipple:10:41-10:42) (VisitAs):
-  has type `Number`
-  is an expression
-
-`5` (remove-duplicates.wipple:10:44-10:45) (VisitAs):
-  has type `Number`
-  is an expression
-
-`5` (remove-duplicates.wipple:10:44-10:45) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`5` (remove-duplicates.wipple:10:44-10:45) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:44-10:45)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`4` (remove-duplicates.wipple:10:41-10:42) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`4` (remove-duplicates.wipple:10:41-10:42) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:41-10:42)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`3` (remove-duplicates.wipple:10:38-10:39) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`3` (remove-duplicates.wipple:10:38-10:39) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:38-10:39)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`2` (remove-duplicates.wipple:10:35-10:36) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`2` (remove-duplicates.wipple:10:35-10:36) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:35-10:36)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`1` (remove-duplicates.wipple:10:32-10:33) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`1` (remove-duplicates.wipple:10:32-10:33) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:32-10:33)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`2` (remove-duplicates.wipple:10:29-10:30) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`2` (remove-duplicates.wipple:10:29-10:30) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:29-10:30)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`3` (remove-duplicates.wipple:10:26-10:27) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`3` (remove-duplicates.wipple:10:26-10:27) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:26-10:27)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`3` (remove-duplicates.wipple:10:23-10:24) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`3` (remove-duplicates.wipple:10:23-10:24) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:23-10:24)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`3` (remove-duplicates.wipple:10:20-10:21) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`3` (remove-duplicates.wipple:10:20-10:21) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:20-10:21)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`4` (remove-duplicates.wipple:10:17-10:18) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`4` (remove-duplicates.wipple:10:17-10:18) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:17-10:18)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`5` (remove-duplicates.wipple:10:14-10:15) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`5` (remove-duplicates.wipple:10:14-10:15) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:14-10:15)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`5` (remove-duplicates.wipple:10:11-10:12) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`5` (remove-duplicates.wipple:10:11-10:12) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+`5` (remove-duplicates.wipple:10:11-10:12) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
   has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:11-10:12)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
 
-`5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (remove-duplicates.wipple:10:11-10:45) (ConstructorExpressionSyntax):
-  has bound(s) `Initial-Collection` `Number` `(List Number)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `List Number`
-  is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
-
-`numbers` (remove-duplicates.wipple:10:1-10:8) (VariablePatternSyntax):
-  has type `List Number`
-  is a pattern
-
-`numbers . remove-duplicates . each show` (remove-duplicates.wipple:11:1-11:40) (OperatorExpressionSyntax):
-  has type `()`
+`4` (remove-duplicates.wipple:10:13-10:14) (VisitAs):
+  has type `Number`
   is an expression
 
-`numbers . remove-duplicates` (remove-duplicates.wipple:11:1-11:28) (VisitAs):
-  has type `Sequence Number`
+`4` (remove-duplicates.wipple:10:13-10:14) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:13-10:14)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`3` (remove-duplicates.wipple:10:15-10:16) (VisitAs):
+  has type `Number`
   is an expression
 
-`each show` (remove-duplicates.wipple:11:31-11:40) (VisitAs):
-  has type `(Sequence Number) -> ()` (remove-duplicates.wipple:11:31-11:40)
+`3` (remove-duplicates.wipple:10:15-10:16) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:15-10:16)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`3` (remove-duplicates.wipple:10:17-10:18) (VisitAs):
+  has type `Number`
   is an expression
 
-`each show` (remove-duplicates.wipple:11:31-11:40) (CallExpressionSyntax):
-  has type `()`
+`3` (remove-duplicates.wipple:10:17-10:18) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:17-10:18)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`3` (remove-duplicates.wipple:10:19-10:20) (VisitAs):
+  has type `Number`
   is an expression
 
-`each` (remove-duplicates.wipple:11:31-11:35) (VariableExpressionSyntax):
-  has bound(s) `As-Sequence` `(Sequence Number)` `Number` (`instance (As-Sequence (Sequence element) element)` (sequence.wipple:54:1-54:50))
-  has type `(Number -> ()) -> (Sequence Number) -> ()` (remove-duplicates.wipple:11:31-11:35)
+`3` (remove-duplicates.wipple:10:19-10:20) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:19-10:20)
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (sequence.wipple:221:1-221:81)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
 
-`show` (remove-duplicates.wipple:11:36-11:40) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
-  has type `Number -> ()`
+`2` (remove-duplicates.wipple:10:21-10:22) (VisitAs):
+  has type `Number`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+
+`2` (remove-duplicates.wipple:10:21-10:22) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:21-10:22)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`1` (remove-duplicates.wipple:10:23-10:24) (VisitAs):
+  has type `Number`
+  is an expression
+
+`1` (remove-duplicates.wipple:10:23-10:24) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:23-10:24)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`2` (remove-duplicates.wipple:10:25-10:26) (VisitAs):
+  has type `Number`
+  is an expression
+
+`2` (remove-duplicates.wipple:10:25-10:26) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:25-10:26)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`3` (remove-duplicates.wipple:10:27-10:28) (VisitAs):
+  has type `Number`
+  is an expression
+
+`3` (remove-duplicates.wipple:10:27-10:28) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:27-10:28)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`4` (remove-duplicates.wipple:10:29-10:30) (VisitAs):
+  has type `Number`
+  is an expression
+
+`4` (remove-duplicates.wipple:10:29-10:30) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:29-10:30)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`5` (remove-duplicates.wipple:10:31-10:32) (VisitAs):
+  has type `Number`
+  is an expression
+
+`5` (remove-duplicates.wipple:10:31-10:32) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (remove-duplicates.wipple:10:31-10:32)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
 
 `numbers` (remove-duplicates.wipple:11:1-11:8) (VisitAs):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `numbers` (remove-duplicates.wipple:10:1-10:8)
 
-`remove-duplicates` (remove-duplicates.wipple:11:11-11:28) (VisitAs):
-  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27)), `Equal` `Number` (`instance (Equal Number)` (logic.wipple:85:1-85:24)), `Hash` `Number` (`instance (Hash Number)` (dictionary.wipple:4:1-4:23))
-  has type `(List Number) -> Sequence Number` (remove-duplicates.wipple:11:11-11:28)
-  is an expression
-  resolved to 1 definition(s): `remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)` (remove-duplicates.wipple:1:1-1:112)
-
-`remove-duplicates` (remove-duplicates.wipple:11:11-11:28) (CallExpressionSyntax):
+`numbers . remove-duplicates` (remove-duplicates.wipple:11:1-11:26) (VisitAs):
   has type `Sequence Number`
   is an expression
 
-`,` (remove-duplicates.wipple:3:11-3:12) (CollectionExpressionSyntax):
-  has type `Set element`
+`numbers . remove-duplicates . each show` (remove-duplicates.wipple:11:1-11:35) (ExpressionStatement):
+  has type `()`
+
+`numbers . remove-duplicates . each show` (remove-duplicates.wipple:11:1-11:35) (OperatorExpression):
+  has type `()`
   is an expression
 
-`,` (remove-duplicates.wipple:3:11-3:12) (ConstructorExpressionSyntax):
-  has bound(s) `Initial-Collection` `element` (remove-duplicates.wipple:1:28-1:35) `(Set element)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(Set element)` (`instance (Initial (Set element))` (dictionary.wipple:137:1-137:33)), `Build-Collection` `element` (remove-duplicates.wipple:1:28-1:35) `(Set element)` (`instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (collections.wipple:16:1-16:87)), `Equal` `element` (remove-duplicates.wipple:1:28-1:35) (`(Equal element)` (remove-duplicates.wipple:1:82-1:97)), `Hash` `element` (remove-duplicates.wipple:1:28-1:35) (`(Hash element)` (remove-duplicates.wipple:1:98-1:112))
-  has type `Set element`
-  is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
-
-`seen` (remove-duplicates.wipple:3:3-3:7) (VariablePatternSyntax):
-  has type `Set element`
-  is a pattern
-  is captured
-  is mutated
-
-`filter (item -> (seen . (not contains?) item) and (do {⋯}))` (remove-duplicates.wipple:4:3-7:6) (CallExpressionSyntax):
-  has type `(List element) -> Sequence element` (remove-duplicates.wipple:1:22-1:56)
+`remove-duplicates` (remove-duplicates.wipple:11:9-11:26) (CallExpression):
+  has type `Sequence Number`
   is an expression
 
-`filter` (remove-duplicates.wipple:4:3-4:9) (VariableExpressionSyntax):
-  has bound(s) `As-Sequence` `(List element)` `element` (remove-duplicates.wipple:1:28-1:35) (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
-  has type `(element -> Boolean) -> (List element) -> Sequence element` (remove-duplicates.wipple:4:3-4:9)
+`remove-duplicates` (remove-duplicates.wipple:11:9-11:26) (VisitAs):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25)), `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:33) `Number` (resolved as `instance (Hash Number)` (library/src/foundation/dictionary.wipple:4:1-4:21))
+  has type `(List Number) -> Sequence Number` (remove-duplicates.wipple:11:9-11:26)
   is an expression
-  resolved to 1 definition(s): `filter :: (element -> Boolean) -> container -> Sequence element where (As-Sequence container element)` (sequence.wipple:82:1-82:102)
+  resolved to 1 definition(s): `remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)` (remove-duplicates.wipple:1:1-1:99)
 
-`item -> (seen . (not contains?) item) and (do {⋯})` (remove-duplicates.wipple:4:11-7:5) (FunctionExpressionSyntax):
-  captures `seen` (remove-duplicates.wipple:3:3-3:7)
-  has type `element -> Boolean` (remove-duplicates.wipple:4:11-7:5)
+`each` (remove-duplicates.wipple:11:27-11:31) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:46))
+  has type `(Number -> ()) -> (Sequence Number) -> ()` (remove-duplicates.wipple:11:27-11:31)
   is an expression
+  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:69)
 
-`item` (remove-duplicates.wipple:4:11-4:15) (VariablePatternSyntax):
-  has type `element` (remove-duplicates.wipple:1:28-1:35)
-  is a pattern
-  is captured
-
-`seen . (not contains?) item) and (do` (remove-duplicates.wipple:4:20-4:56) (OperatorExpressionSyntax):
-  has type `Boolean`
+`each show` (remove-duplicates.wipple:11:27-11:35) (CallExpression):
+  has type `()`
   is an expression
 
-`and` (remove-duplicates.wipple:4:49-4:52) (VisitAs):
-  has bound(s) `And` `Boolean` `Boolean` `Boolean` (`instance (And Boolean Boolean Boolean)` (logic.wipple:30:1-30:39))
-  has type `Boolean {Boolean} -> Boolean` (remove-duplicates.wipple:4:49-4:52)
-  is an expression
-  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)` (logic.wipple:29:1-29:74)
-
-`seen . (not contains?) item` (remove-duplicates.wipple:4:20-4:47) (VisitAs):
-  has type `Boolean`
+`each show` (remove-duplicates.wipple:11:27-11:35) (VisitAs):
+  has type `(Sequence Number) -> ()` (remove-duplicates.wipple:11:27-11:35)
   is an expression
 
-`do` (remove-duplicates.wipple:4:54-4:56) (VisitAs):
-  has type `Boolean`
+`show` (remove-duplicates.wipple:11:31-11:35) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
+  has type `Number -> ()`
   is an expression
-
-`and` (remove-duplicates.wipple:4:49-4:52) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`seen` (remove-duplicates.wipple:4:20-4:24) (VisitAs):
-  has type `Set element`
-  is an expression
-  resolved to 1 definition(s): `seen` (remove-duplicates.wipple:3:3-3:7)
-
-`(not contains?) item` (remove-duplicates.wipple:4:27-4:47) (VisitAs):
-  has type `(Set element) -> Boolean`
-  is an expression
-
-`(not contains?) item` (remove-duplicates.wipple:4:27-4:47) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`not contains?` (remove-duplicates.wipple:4:28-4:41) (CallExpressionSyntax):
-  has type `element -> (Set element) -> Boolean`
-  is an expression
-
-`not` (remove-duplicates.wipple:4:28-4:31) (VariableExpressionSyntax):
-  has bound(s) `Not` `(element -> (Set element) -> Boolean)` (`instance (Not (a -> b)) where (Not b) (b :: Boolean)` (logic.wipple:21:1-21:53)), `Not` `Boolean` (`instance (Not Boolean)` (logic.wipple:20:1-20:23))
-  has type `(element -> (Set element) -> Boolean) -> element -> (Set element) -> Boolean` (remove-duplicates.wipple:4:28-4:31)
-  is an expression
-  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)` (logic.wipple:25:1-25:59)
-
-`contains?` (remove-duplicates.wipple:4:32-4:41) (VariableExpressionSyntax):
-  has bound(s) `Container` `(Set element)` `element` (remove-duplicates.wipple:1:28-1:35) (`instance (Container (Set element) element) where (Equal element) (Hash element)` (dictionary.wipple:151:1-151:80)), `Equal` `element` (remove-duplicates.wipple:1:28-1:35) (`(Equal element)` (remove-duplicates.wipple:1:82-1:97)), `Hash` `element` (remove-duplicates.wipple:1:28-1:35) (`(Hash element)` (remove-duplicates.wipple:1:98-1:112))
-  has type `element -> (Set element) -> Boolean`
-  is an expression
-  resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)` (sequence.wipple:401:1-401:83)
-
-`item` (remove-duplicates.wipple:4:43-4:47) (VariableExpressionSyntax):
-  has type `element` (remove-duplicates.wipple:1:28-1:35)
-  is an expression
-  resolved to 1 definition(s): `item` (remove-duplicates.wipple:4:11-4:15)
-
-`do` (remove-duplicates.wipple:4:54-4:56) (BlockExpressionSyntax):
-  captures `item` (remove-duplicates.wipple:4:11-4:15), `seen` (remove-duplicates.wipple:3:3-3:7)
-  has type `{Boolean}` (remove-duplicates.wipple:4:54-4:56)
-  is an expression
-
-`{⋯}` (remove-duplicates.wipple:4:57-7:4) (BlockExpressionSyntax):
-  captures `item` (remove-duplicates.wipple:4:11-4:15), `seen` (remove-duplicates.wipple:3:3-3:7)
-  has type `{Boolean}` (remove-duplicates.wipple:4:57-7:4)
-  is an expression
-
-`set seen : seen . insert item` (remove-duplicates.wipple:5:5-5:34) (AssignmentStatementSyntax):
-  has type `()` (remove-duplicates.wipple:5:5-5:34)
-
-`seen . insert item` (remove-duplicates.wipple:5:16-5:34) (OperatorExpressionSyntax):
-  has type `Set element`
-  is an expression
-
-`seen` (remove-duplicates.wipple:5:16-5:20) (VisitAs):
-  has type `Set element`
-  is an expression
-  resolved to 1 definition(s): `seen` (remove-duplicates.wipple:3:3-3:7)
-
-`insert item` (remove-duplicates.wipple:5:23-5:34) (VisitAs):
-  has type `(Set element) -> Set element` (remove-duplicates.wipple:5:23-5:34)
-  is an expression
-
-`insert item` (remove-duplicates.wipple:5:23-5:34) (CallExpressionSyntax):
-  has type `Set element`
-  is an expression
-
-`insert` (remove-duplicates.wipple:5:23-5:29) (VariableExpressionSyntax):
-  has bound(s) `Equal` `element` (remove-duplicates.wipple:1:28-1:35) (`(Equal element)` (remove-duplicates.wipple:1:82-1:97)), `Hash` `element` (remove-duplicates.wipple:1:28-1:35) (`(Hash element)` (remove-duplicates.wipple:1:98-1:112))
-  has type `element -> (Set element) -> Set element` (remove-duplicates.wipple:5:23-5:29)
-  is an expression
-  resolved to 1 definition(s): `insert :: element -> (Set element) -> Set element where (Equal element) (Hash element)` (dictionary.wipple:140:1-140:87)
-
-`item` (remove-duplicates.wipple:5:30-5:34) (VariableExpressionSyntax):
-  has type `element` (remove-duplicates.wipple:1:28-1:35)
-  is an expression
-  resolved to 1 definition(s): `item` (remove-duplicates.wipple:4:11-4:15)
-
-`set` (remove-duplicates.wipple:5:5-5:8) (SetPatternSyntax):
-  has type `Set element`
-  is a pattern
-  resolved to 1 definition(s): `seen` (remove-duplicates.wipple:3:3-3:7)
-
-`True` (remove-duplicates.wipple:6:5-6:9) (ConstructorExpressionSyntax):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `True` (logic.wipple:4:3-4:7)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
 
 Output:

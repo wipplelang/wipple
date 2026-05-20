@@ -8,7 +8,7 @@ export default handler(DocumentationRequest, async (body) => {
         return { statusCode: 400, body: { error: "missing library" } };
     }
 
-    const library = libraries[body.library];
+    const library = libraries[body.library]?.[0];
     if (library == null) {
         return { statusCode: 400, body: { error: "unknown library" } };
     }

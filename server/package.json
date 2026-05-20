@@ -8,9 +8,8 @@
         "dev": "npm run build && node --enable-source-maps dev.js"
     },
     "dependencies": {
-        "compiler": "file:../compiler",
+        "compiler": "file:../compiler/api",
         "trouter": "^4.0.0",
-        "wat-parser": "file:wat-parser",
         "zod": "^4.3.6"
     },
     "devDependencies": {

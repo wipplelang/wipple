@@ -1,51 +1,55 @@
-Facts:
-`show (when 3 {⋯})` (or-pattern.wipple:1:1-5:3) (CallExpressionSyntax):
+Facts (layer 2):
+
+`show` (or-pattern.wipple:1:1-1:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has type `String -> ()` (or-pattern.wipple:1:1-1:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show (when 3 {⋯})` (or-pattern.wipple:1:1-5:3) (ExpressionStatement):
+  has type `()`
+
+`show (when 3 {⋯})` (or-pattern.wipple:1:1-5:3) (CallExpression):
   has type `()`
   is an expression
 
-`show` (or-pattern.wipple:1:1-1:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
-  has type `String -> ()` (or-pattern.wipple:1:1-1:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`when 3 {⋯}` (or-pattern.wipple:1:7-5:2) (WhenExpressionSyntax):
+`when 3 {⋯}` (or-pattern.wipple:1:6-5:2) (WhenExpression):
   has type `String`
   is an expression
 
-`3` (or-pattern.wipple:1:12-1:13) (NumberExpressionSyntax):
-  has type `Number` (or-pattern.wipple:1:12-1:13)
+`3` (or-pattern.wipple:1:10-1:11) (NumberExpression):
+  has type `Number` (or-pattern.wipple:1:10-1:11)
   is an expression
 
-`` (or-pattern.wipple:2:3-2:1) (NumberPatternSyntax):
-  has type `Number` (or-pattern.wipple:1:12-1:13)
+`1` (or-pattern.wipple:2:1-2:2) (NumberPattern):
+  has type `Number` (or-pattern.wipple:1:10-1:11)
   is a pattern
 
-`"oh no"` (or-pattern.wipple:2:8-2:15) (StringExpressionSyntax):
+`"oh no"` (or-pattern.wipple:2:4-2:11) (StringExpression):
   has type `String`
   is an expression
 
-`2 or 3` (or-pattern.wipple:3:4-3:10) (OrPatternSyntax):
-  has type `Number` (or-pattern.wipple:1:12-1:13)
+`2` (or-pattern.wipple:3:2-3:3) (NumberPattern):
+  has type `Number` (or-pattern.wipple:1:10-1:11)
   is a pattern
 
-`` (or-pattern.wipple:3:4-3:4) (NumberPatternSyntax):
-  has type `Number` (or-pattern.wipple:1:12-1:13)
+`2 or 3` (or-pattern.wipple:3:2-3:6) (OrPattern):
+  has type `Number` (or-pattern.wipple:1:10-1:11)
   is a pattern
 
-`` (or-pattern.wipple:3:9-3:8) (NumberPatternSyntax):
-  has type `Number` (or-pattern.wipple:1:12-1:13)
+`3` (or-pattern.wipple:3:5-3:6) (NumberPattern):
+  has type `Number` (or-pattern.wipple:1:10-1:11)
   is a pattern
 
-`"yay"` (or-pattern.wipple:3:15-3:20) (StringExpressionSyntax):
+`"yay"` (or-pattern.wipple:3:9-3:14) (StringExpression):
   has type `String`
   is an expression
 
-`_` (or-pattern.wipple:4:3-4:4) (WildcardPatternSyntax):
-  has type `Number` (or-pattern.wipple:1:12-1:13)
+`_` (or-pattern.wipple:4:1-4:2) (WildcardPattern):
+  has type `Number` (or-pattern.wipple:1:10-1:11)
   is a pattern
 
-`"uh oh"` (or-pattern.wipple:4:8-4:15) (StringExpressionSyntax):
+`"uh oh"` (or-pattern.wipple:4:4-4:11) (StringExpression):
   has type `String`
   is an expression
 

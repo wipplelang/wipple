@@ -1,5 +1,0 @@
-{
-    "name": "wat-parser",
-    "private": true,
-    "main": "./pkg/wat_parser.js"
-}

@@ -1,122 +1,128 @@
-Facts:
-`input : 3.14` (not.wipple:1:1-1:13) (AssignmentStatementSyntax):
-  has type `()` (not.wipple:1:1-1:13)
+Facts (layer 2):
 
-`is-42? : n -> n = 42` (not.wipple:2:1-2:21) (AssignmentStatementSyntax):
-  has type `()` (not.wipple:2:1-2:21)
+`input` (not.wipple:1:1-1:6) (VariablePattern):
+  has type `Number`
+  is a definition
+  is a pattern
 
-`3.14` (not.wipple:1:9-1:13) (NumberExpressionSyntax):
+`input : 3.14` (not.wipple:1:1-1:11) (AssignmentStatement):
+  has type `()` (not.wipple:1:1-1:11)
+
+`3.14` (not.wipple:1:7-1:11) (NumberExpression):
   has type `Number`
   is an expression
 
-`input` (not.wipple:1:1-1:6) (VariablePatternSyntax):
-  has type `Number`
+`is-42?` (not.wipple:2:1-2:7) (VariablePattern):
+  has type `Number -> Boolean`
+  is a definition
   is a pattern
 
-`n -> n = 42` (not.wipple:2:10-2:21) (FunctionExpressionSyntax):
+`is-42? : n -> n = 42` (not.wipple:2:1-2:15) (AssignmentStatement):
+  has type `()` (not.wipple:2:1-2:15)
+
+`n` (not.wipple:2:8-2:9) (VariablePattern):
+  has type `Number`
+  is a definition
+  is a pattern
+
+`n -> n = 42` (not.wipple:2:8-2:15) (FunctionExpression):
   has type `Number -> Boolean`
   is an expression
-  no captures
 
-`n` (not.wipple:2:10-2:11) (VariablePatternSyntax):
+`n` (not.wipple:2:11-2:12) (VariableExpression):
   has type `Number`
-  is a pattern
+  is an expression
+  resolved to 1 definition(s): `n` (not.wipple:2:8-2:9)
 
-`n = 42` (not.wipple:2:15-2:21) (OperatorExpressionSyntax):
+`n = 42` (not.wipple:2:11-2:15) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`=` (not.wipple:2:17-2:18) (VisitAs):
-  has bound(s) `Equal` `Number` (`instance (Equal Number)` (logic.wipple:85:1-85:24))
-  has type `Number Number -> Boolean` (not.wipple:2:17-2:18)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
-
-`n` (not.wipple:2:15-2:16) (VisitAs):
-  has type `Number`
-  is an expression
-  resolved to 1 definition(s): `n` (not.wipple:2:10-2:11)
-
-`42` (not.wipple:2:19-2:21) (VisitAs):
-  has type `Number`
-  is an expression
-
-`=` (not.wipple:2:17-2:18) (CallExpressionSyntax):
+`=` (not.wipple:2:12-2:13) (CallExpression):
   has type `Boolean`
   is an expression
 
-`is-42?` (not.wipple:2:1-2:7) (VariablePatternSyntax):
-  has type `Number -> Boolean`
-  is a pattern
+`=` (not.wipple:2:12-2:13) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
+  has type `Number Number -> Boolean` (not.wipple:2:12-2:13)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
 
-`show ((not is-42?) input = not (is-42? input))` (not.wipple:3:1-3:47) (CallExpressionSyntax):
+`42` (not.wipple:2:13-2:15) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (not.wipple:3:1-3:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
+  has type `Boolean -> ()` (not.wipple:3:1-3:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show ((not is-42?) input = not (is-42? input))` (not.wipple:3:1-3:40) (ExpressionStatement):
+  has type `()`
+
+`show ((not is-42?) input = not (is-42? input))` (not.wipple:3:1-3:40) (CallExpression):
   has type `()`
   is an expression
 
-`show` (not.wipple:3:1-3:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
-  has type `Boolean -> ()` (not.wipple:3:1-3:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`(not is-42?) input = not (is-42? input)` (not.wipple:3:7-3:46) (OperatorExpressionSyntax):
+`(not is-42?) input` (not.wipple:3:6-3:22) (CallExpression):
   has type `Boolean`
   is an expression
 
-`=` (not.wipple:3:26-3:27) (VisitAs):
-  has bound(s) `Equal` `Boolean` (`instance (Equal Boolean)` (logic.wipple:93:1-93:25))
-  has type `Boolean Boolean -> Boolean` (not.wipple:3:26-3:27)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
-
-`(not is-42?) input` (not.wipple:3:7-3:25) (VisitAs):
+`(not is-42?) input = not (is-42? input)` (not.wipple:3:6-3:39) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`not (is-42? input)` (not.wipple:3:28-3:46) (VisitAs):
-  has type `Boolean`
+`not` (not.wipple:3:7-3:10) (VariableExpression):
+  has bound(s) `Not` (library/src/foundation/logic.wipple:19:1-19:31) `Boolean` (resolved as `instance (Not Boolean)` (library/src/foundation/logic.wipple:20:1-20:21)), `Not` (library/src/foundation/logic.wipple:19:1-19:31) `(Number -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)` (library/src/foundation/logic.wipple:21:1-21:43))
+  has type `(Number -> Boolean) -> Number -> Boolean` (not.wipple:3:7-3:10)
   is an expression
+  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)` (library/src/foundation/logic.wipple:25:1-25:49)
 
-`=` (not.wipple:3:26-3:27) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`not is-42?` (not.wipple:3:8-3:18) (CallExpressionSyntax):
+`not is-42?` (not.wipple:3:7-3:16) (CallExpression):
   has type `Number -> Boolean`
   is an expression
 
-`not` (not.wipple:3:8-3:11) (VariableExpressionSyntax):
-  has bound(s) `Not` `(Number -> Boolean)` (`instance (Not (a -> b)) where (Not b) (b :: Boolean)` (logic.wipple:21:1-21:53)), `Not` `Boolean` (`instance (Not Boolean)` (logic.wipple:20:1-20:23))
-  has type `(Number -> Boolean) -> Number -> Boolean` (not.wipple:3:8-3:11)
-  is an expression
-  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)` (logic.wipple:25:1-25:59)
-
-`is-42?` (not.wipple:3:12-3:18) (VariableExpressionSyntax):
+`is-42?` (not.wipple:3:10-3:16) (VariableExpression):
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `is-42?` (not.wipple:2:1-2:7)
 
-`input` (not.wipple:3:20-3:25) (VariableExpressionSyntax):
+`input` (not.wipple:3:17-3:22) (VariableExpression):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `input` (not.wipple:1:1-1:6)
 
-`not` (not.wipple:3:28-3:31) (VariableExpressionSyntax):
-  has bound(s) `Not` `Boolean` (`instance (Not Boolean)` (logic.wipple:20:1-20:23))
-  has type `Boolean -> Boolean` (not.wipple:3:28-3:31)
-  is an expression
-  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)` (logic.wipple:25:1-25:59)
-
-`is-42? input` (not.wipple:3:33-3:45) (CallExpressionSyntax):
+`=` (not.wipple:3:22-3:23) (CallExpression):
   has type `Boolean`
   is an expression
 
-`is-42?` (not.wipple:3:33-3:39) (VariableExpressionSyntax):
+`=` (not.wipple:3:22-3:23) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Boolean` (resolved as `instance (Equal Boolean)` (library/src/foundation/logic.wipple:93:1-93:23))
+  has type `Boolean Boolean -> Boolean` (not.wipple:3:22-3:23)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`not` (not.wipple:3:23-3:26) (VariableExpression):
+  has bound(s) `Not` (library/src/foundation/logic.wipple:19:1-19:31) `Boolean` (resolved as `instance (Not Boolean)` (library/src/foundation/logic.wipple:20:1-20:21))
+  has type `Boolean -> Boolean` (not.wipple:3:23-3:26)
+  is an expression
+  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)` (library/src/foundation/logic.wipple:25:1-25:49)
+
+`not (is-42? input)` (not.wipple:3:23-3:39) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`is-42?` (not.wipple:3:27-3:33) (VariableExpression):
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `is-42?` (not.wipple:2:1-2:7)
 
-`input` (not.wipple:3:40-3:45) (VariableExpressionSyntax):
+`is-42? input` (not.wipple:3:27-3:38) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`input` (not.wipple:3:33-3:38) (VariableExpression):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `input` (not.wipple:1:1-1:6)

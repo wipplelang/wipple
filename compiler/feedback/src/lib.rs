@@ -1,0 +1,152 @@
+mod item;
+mod items;
+mod writer;
+
+pub use item::*;
+pub use writer::*;
+
+use wipple_core::db::{Db, Node};
+
+pub fn collect_feedback<'a>(
+    db: &'a Db,
+    filter: impl FnMut(&FeedbackItem<'a>) -> bool,
+) -> Vec<FeedbackItem<'a>> {
+    let mut ctx = FeedbackCtx::default();
+    items::register(&mut ctx);
+
+    let mut items = db
+        .owned_nodes()
+        .flat_map(|node| ctx.queries.iter().flat_map(move |query| query(db, node)))
+        .filter(filter)
+        .collect::<Vec<_>>();
+
+    sort_feedback(db, &mut items);
+
+    items
+}
+
+#[derive(Default)]
+struct FeedbackCtx<'a> {
+    queries: Vec<Box<dyn Fn(&'a Db, Node) -> Box<dyn Iterator<Item = FeedbackItem<'a>> + 'a> + 'a>>,
+}
+
+trait FeedbackQueryItem<'a> {
+    type Item: 'a;
+
+    fn into_iter(self) -> Box<dyn Iterator<Item = Self::Item> + 'a>;
+}
+
+impl<'a, T: 'a> FeedbackQueryItem<'a> for Vec<T> {
+    type Item = T;
+
+    fn into_iter(self) -> Box<dyn Iterator<Item = Self::Item> + 'a> {
+        Box::new(IntoIterator::into_iter(self))
+    }
+}
+
+impl<'a, T: 'a> FeedbackQueryItem<'a> for Option<T> {
+    type Item = T;
+
+    fn into_iter(self) -> Box<dyn Iterator<Item = Self::Item> + 'a> {
+        Box::new(IntoIterator::into_iter(self))
+    }
+}
+
+impl<'a> FeedbackQueryItem<'a> for bool {
+    type Item = ();
+
+    fn into_iter(self) -> Box<dyn Iterator<Item = Self::Item> + 'a> {
+        if self {
+            Box::new(std::iter::once(()))
+        } else {
+            Box::new(std::iter::empty())
+        }
+    }
+}
+
+#[must_use]
+struct FeedbackBuilder<'ctx, 'a, T: 'a> {
+    ctx: &'ctx mut FeedbackCtx<'a>,
+    id: String,
+    query: Option<Box<dyn Fn(&'a Db, Node) -> Box<dyn Iterator<Item = T> + 'a>>>,
+    rank: Option<fn(&T) -> FeedbackRank>,
+    location: Option<fn(Node, &T) -> FeedbackLocation>,
+    display: Option<fn(&Db, &mut FeedbackWriter, Node, &T)>,
+    show_graph: bool,
+}
+
+impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
+    fn query<I: FeedbackQueryItem<'a, Item = T>>(
+        mut self,
+        query: impl Fn(&'a Db, Node) -> I + 'static,
+    ) -> Self {
+        self.query = Some(Box::new(move |db, node| query(db, node).into_iter()));
+        self
+    }
+
+    fn rank(mut self, rank: fn(&T) -> FeedbackRank) -> Self {
+        self.rank = Some(rank);
+        self
+    }
+
+    fn location(mut self, location: fn(Node, &T) -> FeedbackLocation) -> Self {
+        self.location = Some(location);
+        self
+    }
+
+    fn display(mut self, display: fn(&Db, &mut FeedbackWriter, Node, &T)) -> Self {
+        self.display = Some(display);
+        self
+    }
+
+    fn show_graph(mut self) -> Self {
+        self.show_graph = true;
+        self
+    }
+
+    fn register(self) {
+        let id = self.id;
+        let query = self.query.unwrap();
+        let rank = self.rank.unwrap();
+        let location = self.location;
+        let display = self.display.unwrap();
+        let show_graph = self.show_graph;
+
+        self.ctx.queries.push(Box::new(move |db, node| {
+            let items = query(db, node);
+
+            Box::new({
+                let id = id.clone();
+                items.map(move |item| FeedbackItem {
+                    id: id.clone(),
+                    rank: rank(&item),
+                    location: match location {
+                        Some(f) => f(node, &item),
+                        None => FeedbackLocation::from(node),
+                    },
+                    display: Box::new(move |db, render_segment| {
+                        let mut writer = FeedbackWriter::default();
+                        display(db, &mut writer, node, &item);
+                        let (s, nodes) = writer.finish(db, render_segment);
+                        (s.to_string(), nodes)
+                    }),
+                    show_graph,
+                })
+            })
+        }))
+    }
+}
+
+impl<'a> FeedbackCtx<'a> {
+    fn feedback<T: 'a>(&mut self, id: impl Into<String>) -> FeedbackBuilder<'_, 'a, T> {
+        FeedbackBuilder {
+            ctx: self,
+            id: id.into(),
+            query: None,
+            rank: None,
+            location: None,
+            display: None,
+            show_graph: false,
+        }
+    }
+}

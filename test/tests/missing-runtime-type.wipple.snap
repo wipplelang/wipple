@@ -1,188 +1,192 @@
-Facts:
-`T1 : a b => trait (a -> b)` (missing-runtime-type.wipple:1:1-1:27) (TraitDefinitionSyntax):
+Facts (layer 2):
+
+`T1 : a b => trait (a -> b)` (missing-runtime-type.wipple:1:1-1:19) (TraitDefinition):
+  has 1 instances
   has definition constraints
-  has instances
-  has type `a -> b` (missing-runtime-type.wipple:1:20-1:26)
+  has type `a -> b` (missing-runtime-type.wipple:1:14-1:18)
   has type parameters
   is a definition
 
-`a` (missing-runtime-type.wipple:1:6-1:7) (TypeParameterSyntax):
-  has type `a` (missing-runtime-type.wipple:1:6-1:7)
+`a` (missing-runtime-type.wipple:1:4-1:5) (TypeParameter):
+  has type `a` (missing-runtime-type.wipple:1:4-1:5)
   is a definition
   is a type
-  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:1:6-1:7)
+  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:1:4-1:5)
 
-`b` (missing-runtime-type.wipple:1:8-1:9) (TypeParameterSyntax):
-  has type `b` (missing-runtime-type.wipple:1:8-1:9)
+`b` (missing-runtime-type.wipple:1:5-1:6) (TypeParameter):
+  has type `b` (missing-runtime-type.wipple:1:5-1:6)
   is a definition
   is a type
-  resolved to 1 definition(s): `b` (missing-runtime-type.wipple:1:8-1:9)
+  resolved to 1 definition(s): `b` (missing-runtime-type.wipple:1:5-1:6)
 
-`instance (T1 () ())` (missing-runtime-type.wipple:2:1-2:20) (InstanceDefinitionSyntax):
+`a` (missing-runtime-type.wipple:1:14-1:15) (TypeParameter):
+  has type `a` (missing-runtime-type.wipple:1:4-1:5)
+  is a type
+  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:1:4-1:5)
+
+`a -> b` (missing-runtime-type.wipple:1:14-1:18) (FunctionType):
+  has type `a -> b` (missing-runtime-type.wipple:1:14-1:18)
+  is a type
+
+`b` (missing-runtime-type.wipple:1:17-1:18) (TypeParameter):
+  has type `b` (missing-runtime-type.wipple:1:5-1:6)
+  is a type
+  resolved to 1 definition(s): `b` (missing-runtime-type.wipple:1:5-1:6)
+
+`instance (T1 () ())` (missing-runtime-type.wipple:2:1-2:17) (InstanceDefinition):
   has definition constraints
-  has type `() -> ()` (missing-runtime-type.wipple:2:23-2:31)
+  has type `() -> ()` (missing-runtime-type.wipple:2:18-2:24)
   is a definition
-  resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (missing-runtime-type.wipple:1:1-1:27)
+  resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (missing-runtime-type.wipple:1:1-1:19)
 
-`T2 : a => trait (a -> ())` (missing-runtime-type.wipple:4:1-4:26) (TraitDefinitionSyntax):
+`()` (missing-runtime-type.wipple:2:12-2:14) (UnitType):
+  has type `()` (missing-runtime-type.wipple:2:18-2:20)
+  is a type
+
+`()` (missing-runtime-type.wipple:2:14-2:16) (UnitType):
+  has type `()` (missing-runtime-type.wipple:2:22-2:24)
+  is a type
+
+`()` (missing-runtime-type.wipple:2:18-2:20) (UnitPattern):
+  has type `()` (missing-runtime-type.wipple:2:18-2:20)
+  is a pattern
+
+`() -> ()` (missing-runtime-type.wipple:2:18-2:24) (FunctionExpression):
+  has type `() -> ()` (missing-runtime-type.wipple:2:18-2:24)
+  is an expression
+
+`()` (missing-runtime-type.wipple:2:22-2:24) (UnitExpression):
+  has type `()` (missing-runtime-type.wipple:2:22-2:24)
+  is an expression
+
+`T2 : a => trait (a -> ())` (missing-runtime-type.wipple:4:1-4:19) (TraitDefinition):
+  has 1 instances
   has definition constraints
-  has instances
-  has type `a -> ()` (missing-runtime-type.wipple:4:18-4:25)
+  has type `a -> ()` (missing-runtime-type.wipple:4:13-4:18)
   has type parameters
   is a definition
 
-`a` (missing-runtime-type.wipple:4:6-4:7) (TypeParameterSyntax):
-  has type `a` (missing-runtime-type.wipple:4:6-4:7)
+`a` (missing-runtime-type.wipple:4:4-4:5) (TypeParameter):
+  has type `a` (missing-runtime-type.wipple:4:4-4:5)
   is a definition
   is a type
-  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:4:6-4:7)
+  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:4:4-4:5)
 
-`instance (T2 a) where (T1 a b)` (missing-runtime-type.wipple:5:1-5:31) (InstanceDefinitionSyntax):
+`a` (missing-runtime-type.wipple:4:13-4:14) (TypeParameter):
+  has type `a` (missing-runtime-type.wipple:4:4-4:5)
+  is a type
+  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:4:4-4:5)
+
+`a -> ()` (missing-runtime-type.wipple:4:13-4:18) (FunctionType):
+  has type `a -> ()` (missing-runtime-type.wipple:4:13-4:18)
+  is a type
+
+`()` (missing-runtime-type.wipple:4:16-4:18) (UnitType):
+  has type `()` (missing-runtime-type.wipple:4:16-4:18)
+  is a type
+
+`instance (T2 a) where (T1 a b)` (missing-runtime-type.wipple:5:1-5:25) (InstanceDefinition):
   has definition constraints
-  has type `a -> ()` (missing-runtime-type.wipple:5:34-5:52)
+  has type `a -> ()` (missing-runtime-type.wipple:5:26-5:38)
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T2 : a => trait (a -> ())` (missing-runtime-type.wipple:4:1-4:26)
+  resolved to 1 definition(s): `T2 : a => trait (a -> ())` (missing-runtime-type.wipple:4:1-4:19)
 
-`()` (missing-runtime-type.wipple:2:14-2:16) (UnitTypeSyntax):
-  has type `()` (missing-runtime-type.wipple:2:23-2:25)
-  is a type
-
-`()` (missing-runtime-type.wipple:2:17-2:19) (UnitTypeSyntax):
-  has type `()` (missing-runtime-type.wipple:2:29-2:31)
-  is a type
-
-`a` (missing-runtime-type.wipple:5:14-5:15) (TypeParameterSyntax):
-  has type `a` (missing-runtime-type.wipple:5:14-5:15)
+`a` (missing-runtime-type.wipple:5:12-5:13) (TypeParameter):
+  has type `a` (missing-runtime-type.wipple:5:12-5:13)
   is a definition
   is a type
-  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:5:14-5:15)
+  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:5:12-5:13)
 
-`(T1 a b)` (missing-runtime-type.wipple:5:23-5:31) (BoundConstraintSyntax):
-  has bound(s) `T1` `a` (missing-runtime-type.wipple:5:14-5:15) `b` (missing-runtime-type.wipple:5:29-5:30) (`(T1 a b)` (missing-runtime-type.wipple:5:23-5:31))
-  has definition constraints
+`(T1 a b)` (missing-runtime-type.wipple:5:19-5:25) (BoundConstraint):
+  has bound(s) `T1` (missing-runtime-type.wipple:1:1-1:19) `a` (missing-runtime-type.wipple:5:12-5:13) `b` (missing-runtime-type.wipple:5:23-5:24) (resolved as `(T1 a b)` (missing-runtime-type.wipple:5:19-5:25))
   is a constraint
-  resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (missing-runtime-type.wipple:1:1-1:27)
+  resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (missing-runtime-type.wipple:1:1-1:19)
 
-`a` (missing-runtime-type.wipple:5:27-5:28) (TypeParameterSyntax):
-  has type `a` (missing-runtime-type.wipple:5:14-5:15)
+`a` (missing-runtime-type.wipple:5:22-5:23) (TypeParameter):
+  has type `a` (missing-runtime-type.wipple:5:12-5:13)
   is a type
-  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:5:14-5:15)
+  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:5:12-5:13)
 
-`b` (missing-runtime-type.wipple:5:29-5:30) (TypeParameterSyntax):
-  has type `b` (missing-runtime-type.wipple:5:29-5:30)
+`b` (missing-runtime-type.wipple:5:23-5:24) (TypeParameter):
+  has type `b` (missing-runtime-type.wipple:5:23-5:24)
   is a definition
   is a type
-  resolved to 1 definition(s): `b` (missing-runtime-type.wipple:5:29-5:30)
+  resolved to 1 definition(s): `b` (missing-runtime-type.wipple:5:23-5:24)
 
-`a -> b` (missing-runtime-type.wipple:1:20-1:26) (FunctionTypeSyntax):
-  has type `a -> b` (missing-runtime-type.wipple:1:20-1:26)
-  is a type
-
-`a` (missing-runtime-type.wipple:1:20-1:21) (TypeParameterSyntax):
-  has type `a` (missing-runtime-type.wipple:1:6-1:7)
-  is a type
-  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:1:6-1:7)
-
-`b` (missing-runtime-type.wipple:1:25-1:26) (TypeParameterSyntax):
-  has type `b` (missing-runtime-type.wipple:1:8-1:9)
-  is a type
-  resolved to 1 definition(s): `b` (missing-runtime-type.wipple:1:8-1:9)
-
-`() -> ()` (missing-runtime-type.wipple:2:23-2:31) (FunctionExpressionSyntax):
-  has type `() -> ()` (missing-runtime-type.wipple:2:23-2:31)
-  is an expression
-  no captures
-
-`()` (missing-runtime-type.wipple:2:23-2:25) (UnitPatternSyntax):
-  has type `()` (missing-runtime-type.wipple:2:23-2:25)
+`x` (missing-runtime-type.wipple:5:26-5:27) (VariablePattern):
+  has type `a` (missing-runtime-type.wipple:5:12-5:13)
+  is a definition
   is a pattern
 
-`()` (missing-runtime-type.wipple:2:29-2:31) (UnitExpressionSyntax):
-  has type `()` (missing-runtime-type.wipple:2:29-2:31)
+`x -> do {_ : T1 x}` (missing-runtime-type.wipple:5:26-5:38) (FunctionExpression):
+  has type `a -> ()` (missing-runtime-type.wipple:5:26-5:38)
   is an expression
 
-`a -> ()` (missing-runtime-type.wipple:4:18-4:25) (FunctionTypeSyntax):
-  has type `a -> ()` (missing-runtime-type.wipple:4:18-4:25)
-  is a type
-
-`a` (missing-runtime-type.wipple:4:18-4:19) (TypeParameterSyntax):
-  has type `a` (missing-runtime-type.wipple:4:6-4:7)
-  is a type
-  resolved to 1 definition(s): `a` (missing-runtime-type.wipple:4:6-4:7)
-
-`()` (missing-runtime-type.wipple:4:23-4:25) (UnitTypeSyntax):
-  has type `()` (missing-runtime-type.wipple:4:23-4:25)
-  is a type
-
-`x -> do {_ : T1 x}` (missing-runtime-type.wipple:5:34-5:52) (FunctionExpressionSyntax):
-  has type `a -> ()` (missing-runtime-type.wipple:5:34-5:52)
+`do {_ : T1 x}` (missing-runtime-type.wipple:5:29-5:38) (DoExpression):
+  has type `()` (missing-runtime-type.wipple:5:32-5:37)
   is an expression
-  no captures
 
-`x` (missing-runtime-type.wipple:5:34-5:35) (VariablePatternSyntax):
-  has type `a` (missing-runtime-type.wipple:5:14-5:15)
+`{_ : T1 x}` (missing-runtime-type.wipple:5:31-5:38) (BlockExpression):
+  captures `x` (missing-runtime-type.wipple:5:26-5:27)
+  has type `{()}` (missing-runtime-type.wipple:5:31-5:38)
+  is an expression
+
+`_` (missing-runtime-type.wipple:5:32-5:33) (WildcardPattern):
+  has type `b` (missing-runtime-type.wipple:5:23-5:24)
   is a pattern
-  is captured
 
-`do` (missing-runtime-type.wipple:5:39-5:41) (DoExpressionSyntax):
-  has type `()` (missing-runtime-type.wipple:5:43-5:51)
+`_ : T1 x` (missing-runtime-type.wipple:5:32-5:37) (AssignmentStatement):
+  has type `()` (missing-runtime-type.wipple:5:32-5:37)
+
+`T1` (missing-runtime-type.wipple:5:34-5:36) (ConstructorExpression):
+  has bound(s) `T1` (missing-runtime-type.wipple:1:1-1:19) `a` (missing-runtime-type.wipple:5:12-5:13) `b` (missing-runtime-type.wipple:5:23-5:24) (resolved as `(T1 a b)` (missing-runtime-type.wipple:5:19-5:25))
+  has type `a -> b` (missing-runtime-type.wipple:5:34-5:36)
+  is an expression
+  resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (missing-runtime-type.wipple:1:1-1:19)
+
+`T1 x` (missing-runtime-type.wipple:5:34-5:37) (CallExpression):
+  has type `b` (missing-runtime-type.wipple:5:23-5:24)
   is an expression
 
-`{_ : T1 x}` (missing-runtime-type.wipple:5:42-5:52) (BlockExpressionSyntax):
-  captures `x` (missing-runtime-type.wipple:5:34-5:35)
-  has type `{()}` (missing-runtime-type.wipple:5:42-5:52)
+`x` (missing-runtime-type.wipple:5:36-5:37) (VariableExpression):
+  has type `a` (missing-runtime-type.wipple:5:12-5:13)
   is an expression
+  resolved to 1 definition(s): `x` (missing-runtime-type.wipple:5:26-5:27)
 
-`_ : T1 x` (missing-runtime-type.wipple:5:43-5:51) (AssignmentStatementSyntax):
-  has type `()` (missing-runtime-type.wipple:5:43-5:51)
-
-`T2 ()` (missing-runtime-type.wipple:6:1-6:6) (CallExpressionSyntax):
-  has type `()`
-  is an expression
-
-`T2` (missing-runtime-type.wipple:6:1-6:3) (ConstructorExpressionSyntax):
-  has bound(s) `T2` `()` (`instance (T2 a) where (T1 a b)` (missing-runtime-type.wipple:5:1-5:31)), `T1` `()` `()` (`instance (T1 () ())` (missing-runtime-type.wipple:2:1-2:20))
+`T2` (missing-runtime-type.wipple:6:1-6:3) (ConstructorExpression):
+  has bound(s) `T1` (missing-runtime-type.wipple:1:1-1:19) `()` `()` (resolved as `instance (T1 () ())` (missing-runtime-type.wipple:2:1-2:17)), `T2` (missing-runtime-type.wipple:4:1-4:19) `()` (resolved as `instance (T2 a) where (T1 a b)` (missing-runtime-type.wipple:5:1-5:25))
   has type `() -> ()` (missing-runtime-type.wipple:6:1-6:3)
   is an expression
-  resolved to 1 definition(s): `T2 : a => trait (a -> ())` (missing-runtime-type.wipple:4:1-4:26)
+  resolved to 1 definition(s): `T2 : a => trait (a -> ())` (missing-runtime-type.wipple:4:1-4:19)
 
-`()` (missing-runtime-type.wipple:6:4-6:6) (UnitExpressionSyntax):
+`T2 ()` (missing-runtime-type.wipple:6:1-6:5) (ExpressionStatement):
+  has type `()`
+
+`T2 ()` (missing-runtime-type.wipple:6:1-6:5) (CallExpression):
   has type `()`
   is an expression
 
-`show "done"` (missing-runtime-type.wipple:8:1-8:12) (CallExpressionSyntax):
+`()` (missing-runtime-type.wipple:6:3-6:5) (UnitExpression):
   has type `()`
   is an expression
 
-`show` (missing-runtime-type.wipple:8:1-8:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
+`show` (missing-runtime-type.wipple:8:1-8:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
   has type `String -> ()` (missing-runtime-type.wipple:8:1-8:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`"done"` (missing-runtime-type.wipple:8:6-8:12) (StringExpressionSyntax):
+`show "done"` (missing-runtime-type.wipple:8:1-8:11) (ExpressionStatement):
+  has type `()`
+
+`show "done"` (missing-runtime-type.wipple:8:1-8:11) (CallExpression):
+  has type `()`
+  is an expression
+
+`"done"` (missing-runtime-type.wipple:8:5-8:11) (StringExpression):
   has type `String`
   is an expression
-
-`T1 x` (missing-runtime-type.wipple:5:47-5:51) (CallExpressionSyntax):
-  has type `b` (missing-runtime-type.wipple:5:29-5:30)
-  is an expression
-
-`T1` (missing-runtime-type.wipple:5:47-5:49) (ConstructorExpressionSyntax):
-  has bound(s) `T1` `a` (missing-runtime-type.wipple:5:14-5:15) `b` (missing-runtime-type.wipple:5:29-5:30) (`(T1 a b)` (missing-runtime-type.wipple:5:23-5:31))
-  has type `a -> b` (missing-runtime-type.wipple:5:47-5:49)
-  is an expression
-  resolved to 1 definition(s): `T1 : a b => trait (a -> b)` (missing-runtime-type.wipple:1:1-1:27)
-
-`x` (missing-runtime-type.wipple:5:50-5:51) (VariableExpressionSyntax):
-  has type `a` (missing-runtime-type.wipple:5:14-5:15)
-  is an expression
-  resolved to 1 definition(s): `x` (missing-runtime-type.wipple:5:34-5:35)
-
-`_` (missing-runtime-type.wipple:5:43-5:44) (WildcardPatternSyntax):
-  has type `b` (missing-runtime-type.wipple:5:29-5:30)
-  is a pattern
 
 
 Output:

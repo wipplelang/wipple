@@ -1,12 +1,12 @@
+/// <reference types="node" />
+
 import * as vscode from "vscode";
-import compiler, { IDERange, type CompileResult, type IDE } from "compiler";
-import foundationLibrary from "../../library/dist/foundation.json";
+import { readFileSync } from "node:fs";
+import * as compiler from "compiler";
 import { debounce } from "./util";
 
-const foundation = compiler.compile(foundationLibrary.files);
-if (foundation != null) {
-    compiler.registerLibrary("foundation", foundation);
-}
+const foundationBin = readFileSync(new URL("../../library/dist/math.bin", import.meta.url));
+compiler.register_library("foundation", foundationBin);
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("wipple");
 
@@ -41,38 +41,33 @@ export const activate = (context: vscode.ExtensionContext) => {
     vscode.languages.registerCompletionItemProvider("wipple", { provideCompletionItems });
 };
 
-const documents = new Map<vscode.TextDocument, IDE>();
+const documents = new Map<vscode.TextDocument, compiler.Ide>();
 
 const update = debounce(150, (document: vscode.TextDocument) => {
     if (document.languageId !== "wipple") return;
 
-    documents.get(document)?.release();
+    documents.get(document)?.[Symbol.dispose]();
     documents.delete(document);
 
-    let result: CompileResult | null = null;
-    let ide: IDE | null = null;
-    try {
-        result = compiler.compile(
-            [{ path: document.uri.fsPath, code: document.getText() }],
-            "foundation",
-        );
+    let ide: compiler.Ide | null = null;
+    using result = compiler.compile(
+        [new compiler.File(document.uri.fsPath, document.getText())],
+        "foundation",
+    );
 
-        if (result == null) return;
+    if (result == null) return;
 
-        ide = new compiler.IDE(result);
+    ide = new compiler.Ide(result);
 
-        diagnosticCollection.set(
-            document.uri,
-            ide.diagnostics().map((diagnostic) => ({
-                range: convertRange(diagnostic.range),
-                message: diagnostic.message,
-                severity: vscode.DiagnosticSeverity.Information,
-                source: "wipple",
-            })),
-        );
-    } finally {
-        result?.release();
-    }
+    diagnosticCollection.set(
+        document.uri,
+        ide.diagnostics().map((diagnostic) => ({
+            range: convertRange(diagnostic.range),
+            message: diagnostic.message,
+            severity: vscode.DiagnosticSeverity.Information,
+            source: "wipple",
+        })),
+    );
 
     if (ide != null) {
         documents.set(document, ide);
@@ -82,7 +77,7 @@ const update = debounce(150, (document: vscode.TextDocument) => {
 const close = (document: vscode.TextDocument) => {
     if (document.languageId !== "wipple") return;
 
-    documents.get(document)?.release();
+    documents.get(document)?.[Symbol.dispose]();
     documents.delete(document);
 
     diagnosticCollection.delete(document.uri);
@@ -100,7 +95,7 @@ const provideDocumentSemanticTokens = (
 
     const builder = new vscode.SemanticTokensBuilder({ tokenTypes, tokenModifiers: [] });
 
-    for (const token of ide.semanticTokens()) {
+    for (const token of ide.semantic_tokens()) {
         builder.push(convertRange(token.range), token.type);
     }
 
@@ -123,7 +118,7 @@ const provideHover = (
         hover.contents.map((item) => {
             const markedString = new vscode.MarkdownString();
 
-            if (item.isCode) {
+            if (item.is_code) {
                 markedString.appendCodeblock(item.value);
             } else {
                 markedString.appendMarkdown(item.value);
@@ -227,7 +222,7 @@ const provideCompletionItems = (
     });
 };
 
-const convertRange = (range: IDERange) =>
+const convertRange = (range: compiler.IdeRange) =>
     new vscode.Range(
         new vscode.Position(range.start.line - 1, range.start.column - 1),
         new vscode.Position(range.end.line - 1, range.end.column - 1),

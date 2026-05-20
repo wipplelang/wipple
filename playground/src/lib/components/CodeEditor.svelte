@@ -3,14 +3,14 @@
     import type { Groups } from "$lib/models/Groups";
 
     export const createGroups = (count: number, locations: compiler.DiagnosticLocation[]) => {
-        const groups: Groups = new Array(count).fill(undefined).map(() => []);
+        const groups: Groups = new Array(count).fill(undefined).map(() => ({ locations: [] }));
 
         for (const [index, { start, end, group }] of (locations ?? []).entries()) {
             if (group === -1) {
                 continue;
             }
 
-            groups[group].push({ start, end, primary: index === 0 });
+            groups[group].locations.push({ start, end, primary: index === 0 });
         }
 
         return groups;
@@ -568,7 +568,7 @@
     };
 
     const createMarkGroups = (hideWidget: boolean) => {
-        const decorations = groups.flatMap((locations, group) =>
+        const decorations = groups.flatMap(({ locations }, group) =>
             locations.flatMap(({ start, end, primary }) => {
                 const decoration = getMarkGroupDecoration({
                     start,

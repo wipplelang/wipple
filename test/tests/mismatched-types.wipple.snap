@@ -1,25 +1,65 @@
-Facts:
-`42 :: String` (mismatched-types.wipple:1:2-1:14) (AnnotateExpressionSyntax):
-  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:8-1:14)
+Facts (layer 2):
+
+`(42 :: String)` (mismatched-types.wipple:1:1-1:13) (ExpressionStatement):
+  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:6-1:12)
+
+`42` (mismatched-types.wipple:1:2-1:4) (NumberExpression):
+  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:6-1:12)
   is an expression
 
-`42` (mismatched-types.wipple:1:2-1:4) (NumberExpressionSyntax):
-  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:8-1:14)
+`42 :: String` (mismatched-types.wipple:1:2-1:12) (AnnotateExpression):
+  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:6-1:12)
   is an expression
 
-`String` (mismatched-types.wipple:1:8-1:14) (NamedTypeSyntax):
-  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:8-1:14)
+`String` (mismatched-types.wipple:1:6-1:12) (NamedType):
+  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:6-1:12)
   is a type
-  resolved to 1 definition(s): `String : type` (language.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
 
 
 
 Feedback:
 
+`(42 :: String)` (mismatched-types.wipple:1:1-1:13) (conflicting-types)
+
+  `(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
+  
+  `(42 :: String)` must be the same type as `42`, `42 :: String`, and `String`; double-check these.
+  
+  -  `42` is a `Number`.
+
+
 `42` (mismatched-types.wipple:1:2-1:4) (conflicting-types)
 
-  `42` (mismatched-types.wipple:1:2-1:4) is a `Number` (mismatched-types.wipple:1:2-1:4) or a `String` (mismatched-types.wipple:1:8-1:14), but it can only be one of these.
+  `42` is a `Number` or a `String`, but it can only be one of these.
   
-  `42` (mismatched-types.wipple:1:2-1:4) must be the same type as `42 :: String` (mismatched-types.wipple:1:2-1:14), `String` (mismatched-types.wipple:1:8-1:14), and `(42 :: String)` (mismatched-types.wipple:1:1-1:15); double-check these.
+  `42` must be the same type as `42 :: String`, `String`, and `(42 :: String)`; double-check these.
   
-  -  `42` (mismatched-types.wipple:1:2-1:4) is a `Number` (language.wipple:1:38-1:51).
+  -  `42` is a `Number`.
+
+
+`42` (mismatched-types.wipple:1:2-1:4) (conflicting-types)
+
+  `42` is a `Number` or a `String`, but it can only be one of these.
+  
+  `42` must be the same type as `42 :: String`, `String`, and `(42 :: String)`; double-check these.
+  
+  -  `42` is a `Number`.
+
+
+`42 :: String` (mismatched-types.wipple:1:2-1:12) (conflicting-types)
+
+  `42 :: String` is a `Number` or a `String`, but it can only be one of these.
+  
+  `42 :: String` must be the same type as `42`, `String`, and `(42 :: String)`; double-check these.
+  
+  -  `42` is a `Number`.
+
+
+`String` (mismatched-types.wipple:1:6-1:12) (conflicting-types)
+
+  `String` is a `Number` or a `String`, but it can only be one of these.
+  
+  `String` must be the same type as `42`, `42 :: String`, and `(42 :: String)`; double-check these.
+  
+  -  `42` is a `Number`.

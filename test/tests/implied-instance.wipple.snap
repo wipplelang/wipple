@@ -1,140 +1,147 @@
-Facts:
-`A : type` (implied-instance.wipple:1:1-1:9) (TypeDefinitionSyntax):
+Facts (layer 2):
+
+`A : type` (implied-instance.wipple:1:1-1:7) (TypeDefinition):
   has definition constraints
-  has type `A` (implied-instance.wipple:1:1-1:9)
+  has type `A` (implied-instance.wipple:1:1-1:7)
   is a definition
 
-`B : type` (implied-instance.wipple:2:1-2:9) (TypeDefinitionSyntax):
+`A : type` (implied-instance.wipple:1:1-1:7) (TypeDefinition):
   has definition constraints
-  has type `B` (implied-instance.wipple:2:1-2:9)
+  has type `A` (implied-instance.wipple:1:1-1:7)
   is a definition
 
-`T : value => trait (value -> ())` (implied-instance.wipple:4:1-4:33) (TraitDefinitionSyntax):
+`B : type` (implied-instance.wipple:2:1-2:7) (TypeDefinition):
   has definition constraints
-  has instances
-  has type `value -> ()` (implied-instance.wipple:4:21-4:32)
+  has type `B` (implied-instance.wipple:2:1-2:7)
+  is a definition
+
+`B : type` (implied-instance.wipple:2:1-2:7) (TypeDefinition):
+  has definition constraints
+  has type `B` (implied-instance.wipple:2:1-2:7)
+  is a definition
+
+`T : value => trait (value -> ())` (implied-instance.wipple:4:1-4:26) (TraitDefinition):
+  has 1 instances
+  has definition constraints
+  has type `value -> ()` (implied-instance.wipple:4:16-4:25)
   has type parameters
   is a definition
 
-`value` (implied-instance.wipple:4:5-4:10) (TypeParameterSyntax):
-  has type `value` (implied-instance.wipple:4:5-4:10)
+`value` (implied-instance.wipple:4:3-4:8) (TypeParameter):
+  has type `value` (implied-instance.wipple:4:3-4:8)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (implied-instance.wipple:4:5-4:10)
+  resolved to 1 definition(s): `value` (implied-instance.wipple:4:3-4:8)
 
-`U : value => trait (value -> ())` (implied-instance.wipple:5:1-5:33) (TraitDefinitionSyntax):
+`value` (implied-instance.wipple:4:16-4:21) (TypeParameter):
+  has type `value` (implied-instance.wipple:4:3-4:8)
+  is a type
+  resolved to 1 definition(s): `value` (implied-instance.wipple:4:3-4:8)
+
+`value -> ()` (implied-instance.wipple:4:16-4:25) (FunctionType):
+  has type `value -> ()` (implied-instance.wipple:4:16-4:25)
+  is a type
+
+`()` (implied-instance.wipple:4:23-4:25) (UnitType):
+  has type `()` (implied-instance.wipple:4:23-4:25)
+  is a type
+
+`U : value => trait (value -> ())` (implied-instance.wipple:5:1-5:26) (TraitDefinition):
   has definition constraints
-  has instances
-  has type `value -> ()` (implied-instance.wipple:5:21-5:32)
+  has type `value -> ()` (implied-instance.wipple:5:16-5:25)
   has type parameters
   is a definition
 
-`value` (implied-instance.wipple:5:5-5:10) (TypeParameterSyntax):
-  has type `value` (implied-instance.wipple:5:5-5:10)
+`value` (implied-instance.wipple:5:3-5:8) (TypeParameter):
+  has type `value` (implied-instance.wipple:5:3-5:8)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (implied-instance.wipple:5:5-5:10)
+  resolved to 1 definition(s): `value` (implied-instance.wipple:5:3-5:8)
 
-`instance (T value) where (U value)` (implied-instance.wipple:7:1-7:35) (InstanceDefinitionSyntax):
+`value` (implied-instance.wipple:5:16-5:21) (TypeParameter):
+  has type `value` (implied-instance.wipple:5:3-5:8)
+  is a type
+  resolved to 1 definition(s): `value` (implied-instance.wipple:5:3-5:8)
+
+`value -> ()` (implied-instance.wipple:5:16-5:25) (FunctionType):
+  has type `value -> ()` (implied-instance.wipple:5:16-5:25)
+  is a type
+
+`()` (implied-instance.wipple:5:23-5:25) (UnitType):
+  has type `()` (implied-instance.wipple:5:23-5:25)
+  is a type
+
+`instance (T value) where (U value)` (implied-instance.wipple:7:1-7:30) (InstanceDefinition):
   has definition constraints
   has type `value -> ()`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (implied-instance.wipple:4:1-4:33)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (implied-instance.wipple:4:1-4:26)
 
-`t :: value -> () where (U value)` (implied-instance.wipple:9:1-9:33) (ConstantDefinitionSyntax):
+`value` (implied-instance.wipple:7:11-7:16) (TypeParameter):
+  has type `value` (implied-instance.wipple:7:11-7:16)
+  is a definition
+  is a type
+  resolved to 1 definition(s): `value` (implied-instance.wipple:7:11-7:16)
+
+`(U value)` (implied-instance.wipple:7:22-7:30) (BoundConstraint):
+  has bound(s) `U` (implied-instance.wipple:5:1-5:26) `value` (implied-instance.wipple:7:11-7:16) (resolved as `(U value)` (implied-instance.wipple:7:22-7:30))
+  is a constraint
+  resolved to 1 definition(s): `U : value => trait (value -> ())` (implied-instance.wipple:5:1-5:26)
+
+`value` (implied-instance.wipple:7:24-7:29) (TypeParameter):
+  has type `value` (implied-instance.wipple:7:11-7:16)
+  is a type
+  resolved to 1 definition(s): `value` (implied-instance.wipple:7:11-7:16)
+
+`_` (implied-instance.wipple:7:31-7:32) (PlaceholderExpression):
+  has type `value -> ()`
+  is an expression
+
+`t :: value -> () where (U value)` (implied-instance.wipple:9:1-9:26) (ConstantDefinition):
   has definition constraints
-  has type `value -> ()` (implied-instance.wipple:9:6-9:17)
+  has type `value -> ()` (implied-instance.wipple:9:4-9:13)
   has type parameters
   is a definition
 
-`t : T` (implied-instance.wipple:10:1-10:6) (AssignmentStatementSyntax):
-  has type `()` (implied-instance.wipple:10:1-10:6)
-
-`value` (implied-instance.wipple:7:13-7:18) (TypeParameterSyntax):
-  has type `value` (implied-instance.wipple:7:13-7:18)
+`value` (implied-instance.wipple:9:4-9:9) (TypeParameter):
+  has type `value` (implied-instance.wipple:9:4-9:9)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (implied-instance.wipple:7:13-7:18)
+  resolved to 1 definition(s): `value` (implied-instance.wipple:9:4-9:9)
 
-`(U value)` (implied-instance.wipple:7:26-7:35) (BoundConstraintSyntax):
-  has bound(s) `U` `value` (implied-instance.wipple:7:13-7:18) (`(U value)` (implied-instance.wipple:7:26-7:35))
-  has definition constraints
+`value -> ()` (implied-instance.wipple:9:4-9:13) (FunctionType):
+  has type `value -> ()` (implied-instance.wipple:9:4-9:13)
+  is a type
+
+`()` (implied-instance.wipple:9:11-9:13) (UnitType):
+  has type `()` (implied-instance.wipple:9:11-9:13)
+  is a type
+
+`(U value)` (implied-instance.wipple:9:18-9:26) (BoundConstraint):
+  has bound(s) `U` (implied-instance.wipple:5:1-5:26) `value` (implied-instance.wipple:9:4-9:9) (resolved as `(U value)` (implied-instance.wipple:9:18-9:26))
   is a constraint
-  resolved to 1 definition(s): `U : value => trait (value -> ())` (implied-instance.wipple:5:1-5:33)
+  resolved to 1 definition(s): `U : value => trait (value -> ())` (implied-instance.wipple:5:1-5:26)
 
-`value` (implied-instance.wipple:7:29-7:34) (TypeParameterSyntax):
-  has type `value` (implied-instance.wipple:7:13-7:18)
+`value` (implied-instance.wipple:9:20-9:25) (TypeParameter):
+  has type `value` (implied-instance.wipple:9:4-9:9)
   is a type
-  resolved to 1 definition(s): `value` (implied-instance.wipple:7:13-7:18)
+  resolved to 1 definition(s): `value` (implied-instance.wipple:9:4-9:9)
 
-`value -> ()` (implied-instance.wipple:9:6-9:17) (FunctionTypeSyntax):
-  has type `value -> ()` (implied-instance.wipple:9:6-9:17)
-  is a type
+`t : T` (implied-instance.wipple:10:1-10:4) (AssignmentStatement):
+  has type `()` (implied-instance.wipple:10:1-10:4)
 
-`value` (implied-instance.wipple:9:6-9:11) (TypeParameterSyntax):
-  has type `value` (implied-instance.wipple:9:6-9:11)
-  is a definition
-  is a type
-  resolved to 1 definition(s): `value` (implied-instance.wipple:9:6-9:11)
-
-`()` (implied-instance.wipple:9:15-9:17) (UnitTypeSyntax):
-  has type `()` (implied-instance.wipple:9:15-9:17)
-  is a type
-
-`(U value)` (implied-instance.wipple:9:24-9:33) (BoundConstraintSyntax):
-  has bound(s) `U` `value` (implied-instance.wipple:9:6-9:11) (`(U value)` (implied-instance.wipple:9:24-9:33))
-  has definition constraints
-  is a constraint
-  resolved to 1 definition(s): `U : value => trait (value -> ())` (implied-instance.wipple:5:1-5:33)
-
-`value` (implied-instance.wipple:9:27-9:32) (TypeParameterSyntax):
-  has type `value` (implied-instance.wipple:9:6-9:11)
-  is a type
-  resolved to 1 definition(s): `value` (implied-instance.wipple:9:6-9:11)
-
-`value -> ()` (implied-instance.wipple:4:21-4:32) (FunctionTypeSyntax):
-  has type `value -> ()` (implied-instance.wipple:4:21-4:32)
-  is a type
-
-`value` (implied-instance.wipple:4:21-4:26) (TypeParameterSyntax):
-  has type `value` (implied-instance.wipple:4:5-4:10)
-  is a type
-  resolved to 1 definition(s): `value` (implied-instance.wipple:4:5-4:10)
-
-`()` (implied-instance.wipple:4:30-4:32) (UnitTypeSyntax):
-  has type `()` (implied-instance.wipple:4:30-4:32)
-  is a type
-
-`value -> ()` (implied-instance.wipple:5:21-5:32) (FunctionTypeSyntax):
-  has type `value -> ()` (implied-instance.wipple:5:21-5:32)
-  is a type
-
-`value` (implied-instance.wipple:5:21-5:26) (TypeParameterSyntax):
-  has type `value` (implied-instance.wipple:5:5-5:10)
-  is a type
-  resolved to 1 definition(s): `value` (implied-instance.wipple:5:5-5:10)
-
-`()` (implied-instance.wipple:5:30-5:32) (UnitTypeSyntax):
-  has type `()` (implied-instance.wipple:5:30-5:32)
-  is a type
-
-`_` (implied-instance.wipple:7:38-7:39) (PlaceholderExpressionSyntax):
-  has type `value -> ()`
-  is a placeholder
+`T` (implied-instance.wipple:10:3-10:4) (ConstructorExpression):
+  has bound(s) `U` (implied-instance.wipple:5:1-5:26) `value` (implied-instance.wipple:9:4-9:9) (resolved as `(U value)` (implied-instance.wipple:9:18-9:26)), `T` (implied-instance.wipple:4:1-4:26) `value` (implied-instance.wipple:9:4-9:9) (resolved as `instance (T value) where (U value)` (implied-instance.wipple:7:1-7:30))
+  has type `value -> ()` (implied-instance.wipple:9:4-9:13)
   is an expression
-
-`T` (implied-instance.wipple:10:5-10:6) (ConstructorExpressionSyntax):
-  has bound(s) `T` `value` (implied-instance.wipple:9:6-9:11) (`instance (T value) where (U value)` (implied-instance.wipple:7:1-7:35)), `U` `value` (implied-instance.wipple:9:6-9:11) (`(U value)` (implied-instance.wipple:9:24-9:33))
-  has type `value -> ()` (implied-instance.wipple:9:6-9:17)
-  is an expression
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (implied-instance.wipple:4:1-4:33)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (implied-instance.wipple:4:1-4:26)
 
 
 
 Feedback:
 
-`_` (implied-instance.wipple:7:38-7:39) (placeholder)
+`_` (implied-instance.wipple:7:31-7:32) (placeholder)
 
   Found a placeholder of type `value -> ()`.
   

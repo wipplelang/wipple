@@ -1,46 +1,46 @@
-Facts:
-`Grade : type {⋯}` (enumeration.wipple:1:1-7:2) (TypeDefinitionSyntax):
-  has definition constraints
-  has enumeration variants
-  has type `Grade` (enumeration.wipple:1:1-7:2)
-  is a definition
+Facts (layer 2):
 
-`_ : A` (enumeration.wipple:9:1-9:6) (AssignmentStatementSyntax):
-  has type `()` (enumeration.wipple:9:1-9:6)
-
-`A` (enumeration.wipple:2:3-2:4) (VariantDefinitionSyntax):
+`Grade : type {⋯}` (enumeration.wipple:1:1-7:2) (TypeDefinition):
   has definition constraints
   has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
-`B` (enumeration.wipple:3:3-3:4) (VariantDefinitionSyntax):
+`A` (enumeration.wipple:2:1-2:2) (VariantDefinition):
   has definition constraints
   has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
-`C` (enumeration.wipple:4:3-4:4) (VariantDefinitionSyntax):
+`B` (enumeration.wipple:3:1-3:2) (VariantDefinition):
   has definition constraints
   has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
-`D` (enumeration.wipple:5:3-5:4) (VariantDefinitionSyntax):
+`C` (enumeration.wipple:4:1-4:2) (VariantDefinition):
   has definition constraints
   has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
-`F` (enumeration.wipple:6:3-6:4) (VariantDefinitionSyntax):
+`D` (enumeration.wipple:5:1-5:2) (VariantDefinition):
   has definition constraints
   has type `Grade` (enumeration.wipple:1:1-7:2)
   is a definition
 
-`A` (enumeration.wipple:9:5-9:6) (ConstructorExpressionSyntax):
-  has type `Grade`
-  is an expression
-  resolved to 1 definition(s): `A` (enumeration.wipple:2:3-2:4)
+`F` (enumeration.wipple:6:1-6:2) (VariantDefinition):
+  has definition constraints
+  has type `Grade` (enumeration.wipple:1:1-7:2)
+  is a definition
 
-`_` (enumeration.wipple:9:1-9:2) (WildcardPatternSyntax):
+`_` (enumeration.wipple:9:1-9:2) (WildcardPattern):
   has type `Grade`
   is a pattern
+
+`_ : A` (enumeration.wipple:9:1-9:4) (AssignmentStatement):
+  has type `()` (enumeration.wipple:9:1-9:4)
+
+`A` (enumeration.wipple:9:3-9:4) (ConstructorExpression):
+  has type `Grade`
+  is an expression
+  resolved to 1 definition(s): `A` (enumeration.wipple:2:1-2:2)
 
 
 Output:

@@ -8,14 +8,13 @@ const testsPath = "test/tests";
 const tests = fs.readdirSync(testsPath).filter((file) => path.extname(file) === ".wipple");
 
 const cmd = spawnSync(
-    "swift",
+    "cargo",
     [
         "run",
-        "--package-path=compiler",
-        "wipple",
+        "-q",
+        "--",
         "test",
-        "--lib",
-        "library/src/foundation",
+        "--lib=library/src/foundation",
         "--facts",
         ...tests.map((file) => path.join(testsPath, file)),
     ],

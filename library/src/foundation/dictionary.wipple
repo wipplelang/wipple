@@ -103,12 +103,12 @@ set-entry : key value -> (Dictionary {
     None -> None
   }
 
-  entries2 : (((entries . remove-at index) or unreachable) . insert-at index new-entry)
+  entries : (((entries . remove-at index) or unreachable) . insert-at index new-entry)
     or unreachable
 
   Dictionary {
     size : size
-    entries : entries2
+    entries : entries
   }
 }
 

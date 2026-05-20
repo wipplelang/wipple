@@ -1,283 +1,286 @@
-Facts:
-`my-list : 1, 2, 3` (lists.wipple:1:1-1:18) (AssignmentStatementSyntax):
-  has type `()` (lists.wipple:1:1-1:18)
+Facts (layer 2):
 
-`1, 2, 3` (lists.wipple:1:11-1:18) (CollectionExpressionSyntax):
+`my-list` (lists.wipple:1:1-1:8) (VariablePattern):
   has type `List Number`
-  is an expression
-
-`1` (lists.wipple:1:11-1:12) (VisitAs):
-  has type `Number`
-  is an expression
-
-`2` (lists.wipple:1:14-1:15) (VisitAs):
-  has type `Number`
-  is an expression
-
-`3` (lists.wipple:1:17-1:18) (VisitAs):
-  has type `Number`
-  is an expression
-
-`3` (lists.wipple:1:17-1:18) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`3` (lists.wipple:1:17-1:18) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (lists.wipple:1:17-1:18)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`2` (lists.wipple:1:14-1:15) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`2` (lists.wipple:1:14-1:15) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (lists.wipple:1:14-1:15)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`1` (lists.wipple:1:11-1:12) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`1` (lists.wipple:1:11-1:12) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (lists.wipple:1:11-1:12)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`1, 2, 3` (lists.wipple:1:11-1:18) (ConstructorExpressionSyntax):
-  has bound(s) `Initial-Collection` `Number` `(List Number)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `Number` `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `List Number`
-  is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
-
-`my-list` (lists.wipple:1:1-1:8) (VariablePatternSyntax):
-  has type `List Number`
+  is a definition
   is a pattern
 
-`show (my-list . first)` (lists.wipple:3:1-3:23) (CallExpressionSyntax):
-  has type `()`
+`my-list : 1, 2, 3` (lists.wipple:1:1-1:14) (AssignmentStatement):
+  has type `()` (lists.wipple:1:1-1:14)
+
+`1` (lists.wipple:1:9-1:10) (VisitAs):
+  has type `Number`
   is an expression
 
-`show` (lists.wipple:3:1-3:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `(Maybe Number)` (`instance (Describe (Maybe value)) where (Describe value)` (io.wipple:17:1-17:57)), `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
+`1` (lists.wipple:1:9-1:10) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (lists.wipple:1:9-1:10)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`1, 2, 3` (lists.wipple:1:9-1:14) (CollectionExpression):
+  has type `List Number`
+  is an expression
+
+`2` (lists.wipple:1:11-1:12) (VisitAs):
+  has type `Number`
+  is an expression
+
+`2` (lists.wipple:1:11-1:12) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (lists.wipple:1:11-1:12)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`3` (lists.wipple:1:13-1:14) (VisitAs):
+  has type `Number`
+  is an expression
+
+`3` (lists.wipple:1:13-1:14) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (lists.wipple:1:13-1:14)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`show` (lists.wipple:3:1-3:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (library/src/foundation/io.wipple:17:1-17:51)), `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
   has type `(Maybe Number) -> ()` (lists.wipple:3:1-3:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`my-list . first` (lists.wipple:3:7-3:22) (OperatorExpressionSyntax):
-  has type `Maybe Number`
+`show (my-list . first)` (lists.wipple:3:1-3:20) (ExpressionStatement):
+  has type `()`
+
+`show (my-list . first)` (lists.wipple:3:1-3:20) (CallExpression):
+  has type `()`
   is an expression
 
-`my-list` (lists.wipple:3:7-3:14) (VisitAs):
+`my-list` (lists.wipple:3:6-3:13) (VisitAs):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list` (lists.wipple:1:1-1:8)
 
-`first` (lists.wipple:3:17-3:22) (VisitAs):
-  has type `(List Number) -> Maybe Number` (lists.wipple:3:17-3:22)
-  is an expression
-  resolved to 1 definition(s): `first :: (List element) -> Maybe element` (list.wipple:6:1-6:41)
-
-`first` (lists.wipple:3:17-3:22) (CallExpressionSyntax):
+`my-list . first` (lists.wipple:3:6-3:19) (OperatorExpression):
   has type `Maybe Number`
   is an expression
 
-`show (my-list . last)` (lists.wipple:4:1-4:22) (CallExpressionSyntax):
-  has type `()`
+`first` (lists.wipple:3:14-3:19) (CallExpression):
+  has type `Maybe Number`
   is an expression
 
-`show` (lists.wipple:4:1-4:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `(Maybe Number)` (`instance (Describe (Maybe value)) where (Describe value)` (io.wipple:17:1-17:57)), `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
+`first` (lists.wipple:3:14-3:19) (VisitAs):
+  has type `(List Number) -> Maybe Number` (lists.wipple:3:14-3:19)
+  is an expression
+  resolved to 1 definition(s): `first :: (List element) -> Maybe element` (library/src/foundation/list.wipple:6:1-6:35)
+
+`show` (lists.wipple:4:1-4:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (library/src/foundation/io.wipple:17:1-17:51)), `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
   has type `(Maybe Number) -> ()` (lists.wipple:4:1-4:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`my-list . last` (lists.wipple:4:7-4:21) (OperatorExpressionSyntax):
-  has type `Maybe Number`
+`show (my-list . last)` (lists.wipple:4:1-4:19) (ExpressionStatement):
+  has type `()`
+
+`show (my-list . last)` (lists.wipple:4:1-4:19) (CallExpression):
+  has type `()`
   is an expression
 
-`my-list` (lists.wipple:4:7-4:14) (VisitAs):
+`my-list` (lists.wipple:4:6-4:13) (VisitAs):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list` (lists.wipple:1:1-1:8)
 
-`last` (lists.wipple:4:17-4:21) (VisitAs):
-  has type `(List Number) -> Maybe Number` (lists.wipple:4:17-4:21)
-  is an expression
-  resolved to 1 definition(s): `last :: (List element) -> Maybe element` (list.wipple:10:1-10:40)
-
-`last` (lists.wipple:4:17-4:21) (CallExpressionSyntax):
+`my-list . last` (lists.wipple:4:6-4:18) (OperatorExpression):
   has type `Maybe Number`
   is an expression
 
-`show ((my-list . initial) or unreachable . last)` (lists.wipple:5:1-5:49) (CallExpressionSyntax):
-  has type `()`
+`last` (lists.wipple:4:14-4:18) (CallExpression):
+  has type `Maybe Number`
   is an expression
 
-`show` (lists.wipple:5:1-5:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `(Maybe Number)` (`instance (Describe (Maybe value)) where (Describe value)` (io.wipple:17:1-17:57)), `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
+`last` (lists.wipple:4:14-4:18) (VisitAs):
+  has type `(List Number) -> Maybe Number` (lists.wipple:4:14-4:18)
+  is an expression
+  resolved to 1 definition(s): `last :: (List element) -> Maybe element` (library/src/foundation/list.wipple:10:1-10:34)
+
+`show` (lists.wipple:5:1-5:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (library/src/foundation/io.wipple:17:1-17:51)), `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
   has type `(Maybe Number) -> ()` (lists.wipple:5:1-5:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`my-list . initial) or unreachable . last` (lists.wipple:5:8-5:48) (OperatorExpressionSyntax):
-  has type `Maybe Number`
+`show ((my-list . initial) or unreachable . last)` (lists.wipple:5:1-5:42) (ExpressionStatement):
+  has type `()`
+
+`show ((my-list . initial) or unreachable . last)` (lists.wipple:5:1-5:42) (CallExpression):
+  has type `()`
   is an expression
 
-`my-list . initial) or unreachable` (lists.wipple:5:8-5:41) (VisitAs):
-  has type `List Number`
-  is an expression
-
-`last` (lists.wipple:5:44-5:48) (VisitAs):
-  has type `(List Number) -> Maybe Number` (lists.wipple:5:44-5:48)
-  is an expression
-  resolved to 1 definition(s): `last :: (List element) -> Maybe element` (list.wipple:10:1-10:40)
-
-`last` (lists.wipple:5:44-5:48) (CallExpressionSyntax):
-  has type `Maybe Number`
-  is an expression
-
-`or` (lists.wipple:5:27-5:29) (VisitAs):
-  has bound(s) `Or` `(Maybe (List Number))` `(List Number)` `(List Number)` (`instance (Or (Maybe value) value value)` (logic.wipple:35:1-35:40))
-  has type `(Maybe (List Number)) {List Number} -> List Number` (lists.wipple:5:27-5:29)
-  is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (logic.wipple:33:1-33:73)
-
-`my-list . initial` (lists.wipple:5:8-5:25) (VisitAs):
-  has type `Maybe (List Number)`
-  is an expression
-
-`unreachable` (lists.wipple:5:30-5:41) (VisitAs):
-  has type `List Number`
-  is an expression
-  resolved to 1 definition(s): `unreachable :: value` (language.wipple:31:1-31:21)
-
-`or` (lists.wipple:5:27-5:29) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`my-list` (lists.wipple:5:8-5:15) (VisitAs):
+`my-list` (lists.wipple:5:7-5:14) (VisitAs):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list` (lists.wipple:1:1-1:8)
 
-`initial` (lists.wipple:5:18-5:25) (VisitAs):
-  has type `(List Number) -> Maybe (List Number)` (lists.wipple:5:18-5:25)
-  is an expression
-  resolved to 1 definition(s): `initial :: (List element) -> Maybe (List element)` (list.wipple:14:1-14:50)
-
-`initial` (lists.wipple:5:18-5:25) (CallExpressionSyntax):
+`my-list . initial` (lists.wipple:5:7-5:22) (VisitAs):
   has type `Maybe (List Number)`
   is an expression
 
-`unreachable` (lists.wipple:5:30-5:41) (BlockExpressionSyntax):
-  has type `{List Number}` (lists.wipple:5:30-5:41)
-  is an expression
-  no captures
-
-`show ((my-list . tail) or unreachable . first)` (lists.wipple:6:1-6:47) (CallExpressionSyntax):
-  has type `()`
+`my-list . initial) or unreachable` (lists.wipple:5:7-5:36) (VisitAs):
+  has type `List Number`
   is an expression
 
-`show` (lists.wipple:6:1-6:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `(Maybe Number)` (`instance (Describe (Maybe value)) where (Describe value)` (io.wipple:17:1-17:57)), `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
+`my-list . initial) or unreachable . last` (lists.wipple:5:7-5:41) (OperatorExpression):
+  has type `Maybe Number`
+  is an expression
+
+`initial` (lists.wipple:5:15-5:22) (CallExpression):
+  has type `Maybe (List Number)`
+  is an expression
+
+`initial` (lists.wipple:5:15-5:22) (VisitAs):
+  has type `(List Number) -> Maybe (List Number)` (lists.wipple:5:15-5:22)
+  is an expression
+  resolved to 1 definition(s): `initial :: (List element) -> Maybe (List element)` (library/src/foundation/list.wipple:14:1-14:43)
+
+`or` (lists.wipple:5:23-5:25) (CallExpression):
+  has type `List Number`
+  is an expression
+
+`or` (lists.wipple:5:23-5:25) (VisitAs):
+  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:35:1-35:35))
+  has type `(Maybe (List Number)) {List Number} -> List Number` (lists.wipple:5:23-5:25)
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:61)
+
+`unreachable` (lists.wipple:5:25-5:36) (VisitAs):
+  has type `List Number`
+  is an expression
+  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:31:1-31:19)
+
+`unreachable` (lists.wipple:5:25-5:36) (BlockExpression):
+  has type `{List Number}` (lists.wipple:5:25-5:36)
+  is an expression
+
+`unreachable` (lists.wipple:5:25-5:36) (ExpressionStatement):
+  has type `List Number`
+
+`last` (lists.wipple:5:37-5:41) (CallExpression):
+  has type `Maybe Number`
+  is an expression
+
+`last` (lists.wipple:5:37-5:41) (VisitAs):
+  has type `(List Number) -> Maybe Number` (lists.wipple:5:37-5:41)
+  is an expression
+  resolved to 1 definition(s): `last :: (List element) -> Maybe element` (library/src/foundation/list.wipple:10:1-10:34)
+
+`show` (lists.wipple:6:1-6:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (library/src/foundation/io.wipple:17:1-17:51)), `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
   has type `(Maybe Number) -> ()` (lists.wipple:6:1-6:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`my-list . tail) or unreachable . first` (lists.wipple:6:8-6:46) (OperatorExpressionSyntax):
-  has type `Maybe Number`
-  is an expression
+`show ((my-list . tail) or unreachable . first)` (lists.wipple:6:1-6:40) (ExpressionStatement):
+  has type `()`
 
-`my-list . tail) or unreachable` (lists.wipple:6:8-6:38) (VisitAs):
-  has type `List Number`
-  is an expression
-
-`first` (lists.wipple:6:41-6:46) (VisitAs):
-  has type `(List Number) -> Maybe Number` (lists.wipple:6:41-6:46)
-  is an expression
-  resolved to 1 definition(s): `first :: (List element) -> Maybe element` (list.wipple:6:1-6:41)
-
-`first` (lists.wipple:6:41-6:46) (CallExpressionSyntax):
-  has type `Maybe Number`
-  is an expression
-
-`or` (lists.wipple:6:24-6:26) (VisitAs):
-  has bound(s) `Or` `(Maybe (List Number))` `(List Number)` `(List Number)` (`instance (Or (Maybe value) value value)` (logic.wipple:35:1-35:40))
-  has type `(Maybe (List Number)) {List Number} -> List Number` (lists.wipple:6:24-6:26)
-  is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (logic.wipple:33:1-33:73)
-
-`my-list . tail` (lists.wipple:6:8-6:22) (VisitAs):
-  has type `Maybe (List Number)`
-  is an expression
-
-`unreachable` (lists.wipple:6:27-6:38) (VisitAs):
-  has type `List Number`
-  is an expression
-  resolved to 1 definition(s): `unreachable :: value` (language.wipple:31:1-31:21)
-
-`or` (lists.wipple:6:24-6:26) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`my-list` (lists.wipple:6:8-6:15) (VisitAs):
-  has type `List Number`
-  is an expression
-  resolved to 1 definition(s): `my-list` (lists.wipple:1:1-1:8)
-
-`tail` (lists.wipple:6:18-6:22) (VisitAs):
-  has type `(List Number) -> Maybe (List Number)` (lists.wipple:6:18-6:22)
-  is an expression
-  resolved to 1 definition(s): `tail :: (List element) -> Maybe (List element)` (list.wipple:18:1-18:47)
-
-`tail` (lists.wipple:6:18-6:22) (CallExpressionSyntax):
-  has type `Maybe (List Number)`
-  is an expression
-
-`unreachable` (lists.wipple:6:27-6:38) (BlockExpressionSyntax):
-  has type `{List Number}` (lists.wipple:6:27-6:38)
-  is an expression
-  no captures
-
-`show (my-list . nth 1)` (lists.wipple:7:1-7:23) (CallExpressionSyntax):
+`show ((my-list . tail) or unreachable . first)` (lists.wipple:6:1-6:40) (CallExpression):
   has type `()`
   is an expression
 
-`show` (lists.wipple:7:1-7:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `(Maybe Number)` (`instance (Describe (Maybe value)) where (Describe value)` (io.wipple:17:1-17:57)), `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
-  has type `(Maybe Number) -> ()` (lists.wipple:7:1-7:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`my-list . nth 1` (lists.wipple:7:7-7:22) (OperatorExpressionSyntax):
-  has type `Maybe Number`
-  is an expression
-
-`my-list` (lists.wipple:7:7-7:14) (VisitAs):
+`my-list` (lists.wipple:6:7-6:14) (VisitAs):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list` (lists.wipple:1:1-1:8)
 
-`nth 1` (lists.wipple:7:17-7:22) (VisitAs):
-  has type `(List Number) -> Maybe Number` (lists.wipple:7:17-7:22)
+`my-list . tail` (lists.wipple:6:7-6:19) (VisitAs):
+  has type `Maybe (List Number)`
   is an expression
 
-`nth 1` (lists.wipple:7:17-7:22) (CallExpressionSyntax):
+`my-list . tail) or unreachable` (lists.wipple:6:7-6:33) (VisitAs):
+  has type `List Number`
+  is an expression
+
+`my-list . tail) or unreachable . first` (lists.wipple:6:7-6:39) (OperatorExpression):
   has type `Maybe Number`
   is an expression
 
-`nth` (lists.wipple:7:17-7:20) (VariableExpressionSyntax):
-  has type `Number -> (List Number) -> Maybe Number` (lists.wipple:7:17-7:20)
+`tail` (lists.wipple:6:15-6:19) (CallExpression):
+  has type `Maybe (List Number)`
   is an expression
-  resolved to 1 definition(s): `nth :: Number -> (List element) -> Maybe element` (list.wipple:22:1-22:49)
 
-`1` (lists.wipple:7:21-7:22) (NumberExpressionSyntax):
-  has type `Number` (lists.wipple:7:21-7:22)
+`tail` (lists.wipple:6:15-6:19) (VisitAs):
+  has type `(List Number) -> Maybe (List Number)` (lists.wipple:6:15-6:19)
+  is an expression
+  resolved to 1 definition(s): `tail :: (List element) -> Maybe (List element)` (library/src/foundation/list.wipple:18:1-18:40)
+
+`or` (lists.wipple:6:20-6:22) (CallExpression):
+  has type `List Number`
+  is an expression
+
+`or` (lists.wipple:6:20-6:22) (VisitAs):
+  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:35:1-35:35))
+  has type `(Maybe (List Number)) {List Number} -> List Number` (lists.wipple:6:20-6:22)
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:61)
+
+`unreachable` (lists.wipple:6:22-6:33) (VisitAs):
+  has type `List Number`
+  is an expression
+  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:31:1-31:19)
+
+`unreachable` (lists.wipple:6:22-6:33) (BlockExpression):
+  has type `{List Number}` (lists.wipple:6:22-6:33)
+  is an expression
+
+`unreachable` (lists.wipple:6:22-6:33) (ExpressionStatement):
+  has type `List Number`
+
+`first` (lists.wipple:6:34-6:39) (CallExpression):
+  has type `Maybe Number`
+  is an expression
+
+`first` (lists.wipple:6:34-6:39) (VisitAs):
+  has type `(List Number) -> Maybe Number` (lists.wipple:6:34-6:39)
+  is an expression
+  resolved to 1 definition(s): `first :: (List element) -> Maybe element` (library/src/foundation/list.wipple:6:1-6:35)
+
+`show` (lists.wipple:7:1-7:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (library/src/foundation/io.wipple:17:1-17:51)), `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
+  has type `(Maybe Number) -> ()` (lists.wipple:7:1-7:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show (my-list . nth 1)` (lists.wipple:7:1-7:19) (ExpressionStatement):
+  has type `()`
+
+`show (my-list . nth 1)` (lists.wipple:7:1-7:19) (CallExpression):
+  has type `()`
+  is an expression
+
+`my-list` (lists.wipple:7:6-7:13) (VisitAs):
+  has type `List Number`
+  is an expression
+  resolved to 1 definition(s): `my-list` (lists.wipple:1:1-1:8)
+
+`my-list . nth 1` (lists.wipple:7:6-7:18) (OperatorExpression):
+  has type `Maybe Number`
+  is an expression
+
+`nth` (lists.wipple:7:14-7:17) (VariableExpression):
+  has type `Number -> (List Number) -> Maybe Number` (lists.wipple:7:14-7:17)
+  is an expression
+  resolved to 1 definition(s): `nth :: Number -> (List element) -> Maybe element` (library/src/foundation/list.wipple:22:1-22:41)
+
+`nth 1` (lists.wipple:7:14-7:18) (CallExpression):
+  has type `Maybe Number`
+  is an expression
+
+`nth 1` (lists.wipple:7:14-7:18) (VisitAs):
+  has type `(List Number) -> Maybe Number` (lists.wipple:7:14-7:18)
+  is an expression
+
+`1` (lists.wipple:7:17-7:18) (NumberExpression):
+  has type `Number` (lists.wipple:7:17-7:18)
   is an expression
 
 

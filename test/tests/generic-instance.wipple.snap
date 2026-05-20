@@ -1,123 +1,131 @@
-Facts:
-`Box : value => type {value :: value}` (generic-instance.wipple:1:1-1:37) (TypeDefinitionSyntax):
+Facts (layer 2):
+
+`Box : value => type {value :: value}` (generic-instance.wipple:1:1-1:30) (TypeDefinition):
   has definition constraints
-  has structure fields
-  has type `Box value` (generic-instance.wipple:1:1-1:37)
+  has type `Box value` (generic-instance.wipple:1:1-1:30)
   has type parameters
   is a definition
 
-`value` (generic-instance.wipple:1:7-1:12) (TypeParameterSyntax):
-  has type `value` (generic-instance.wipple:1:7-1:12)
+`Box : value => type {value :: value}` (generic-instance.wipple:1:1-1:30) (TypeDefinition):
+  has definition constraints
+  has type `Box value` (generic-instance.wipple:1:1-1:30)
+  is a definition
+
+`value` (generic-instance.wipple:1:5-1:10) (TypeParameter):
+  has type `value` (generic-instance.wipple:1:5-1:10)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (generic-instance.wipple:1:7-1:12)
+  resolved to 1 definition(s): `value` (generic-instance.wipple:1:5-1:10)
 
-`Foo : a b => trait (a -> b)` (generic-instance.wipple:3:1-3:28) (TraitDefinitionSyntax):
+`value` (generic-instance.wipple:1:24-1:29) (TypeParameter):
+  has type `value` (generic-instance.wipple:1:5-1:10)
+  is a type
+  resolved to 1 definition(s): `value` (generic-instance.wipple:1:5-1:10)
+
+`Foo : a b => trait (a -> b)` (generic-instance.wipple:3:1-3:20) (TraitDefinition):
+  has 1 instances
   has definition constraints
-  has instances
-  has type `a -> b` (generic-instance.wipple:3:21-3:27)
+  has type `a -> b` (generic-instance.wipple:3:15-3:19)
   has type parameters
   is a definition
 
-`a` (generic-instance.wipple:3:7-3:8) (TypeParameterSyntax):
-  has type `a` (generic-instance.wipple:3:7-3:8)
+`a` (generic-instance.wipple:3:5-3:6) (TypeParameter):
+  has type `a` (generic-instance.wipple:3:5-3:6)
   is a definition
   is a type
-  resolved to 1 definition(s): `a` (generic-instance.wipple:3:7-3:8)
+  resolved to 1 definition(s): `a` (generic-instance.wipple:3:5-3:6)
 
-`b` (generic-instance.wipple:3:9-3:10) (TypeParameterSyntax):
-  has type `b` (generic-instance.wipple:3:9-3:10)
+`b` (generic-instance.wipple:3:6-3:7) (TypeParameter):
+  has type `b` (generic-instance.wipple:3:6-3:7)
   is a definition
   is a type
-  resolved to 1 definition(s): `b` (generic-instance.wipple:3:9-3:10)
+  resolved to 1 definition(s): `b` (generic-instance.wipple:3:6-3:7)
 
-`instance (Foo (Box value) value)` (generic-instance.wipple:5:1-5:33) (InstanceDefinitionSyntax):
+`a` (generic-instance.wipple:3:15-3:16) (TypeParameter):
+  has type `a` (generic-instance.wipple:3:5-3:6)
+  is a type
+  resolved to 1 definition(s): `a` (generic-instance.wipple:3:5-3:6)
+
+`a -> b` (generic-instance.wipple:3:15-3:19) (FunctionType):
+  has type `a -> b` (generic-instance.wipple:3:15-3:19)
+  is a type
+
+`b` (generic-instance.wipple:3:18-3:19) (TypeParameter):
+  has type `b` (generic-instance.wipple:3:6-3:7)
+  is a type
+  resolved to 1 definition(s): `b` (generic-instance.wipple:3:6-3:7)
+
+`instance (Foo (Box value) value)` (generic-instance.wipple:5:1-5:29) (InstanceDefinition):
   has definition constraints
-  has type `(Box value) -> value` (generic-instance.wipple:5:36-5:66)
+  has type `(Box value) -> value` (generic-instance.wipple:5:30-5:55)
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Foo : a b => trait (a -> b)` (generic-instance.wipple:3:1-3:28)
+  resolved to 1 definition(s): `Foo : a b => trait (a -> b)` (generic-instance.wipple:3:1-3:20)
 
-`value` (generic-instance.wipple:1:31-1:36) (TypeParameterSyntax):
-  has type `value` (generic-instance.wipple:1:7-1:12)
+`Box value` (generic-instance.wipple:5:14-5:22) (NamedType):
+  has type `Box value` (generic-instance.wipple:5:14-5:22)
   is a type
-  resolved to 1 definition(s): `value` (generic-instance.wipple:1:7-1:12)
+  resolved to 1 definition(s): `Box : value => type {value :: value}` (generic-instance.wipple:1:1-1:30)
 
-`Box value` (generic-instance.wipple:5:16-5:25) (NamedTypeSyntax):
-  has type `Box value` (generic-instance.wipple:5:16-5:25)
-  is a type
-  resolved to 1 definition(s): `Box : value => type {value :: value}` (generic-instance.wipple:1:1-1:37)
-
-`value` (generic-instance.wipple:5:20-5:25) (TypeParameterSyntax):
-  has type `value` (generic-instance.wipple:5:20-5:25)
+`value` (generic-instance.wipple:5:17-5:22) (TypeParameter):
+  has type `value` (generic-instance.wipple:5:17-5:22)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (generic-instance.wipple:5:20-5:25)
+  resolved to 1 definition(s): `value` (generic-instance.wipple:5:17-5:22)
 
-`value` (generic-instance.wipple:5:27-5:32) (TypeParameterSyntax):
-  has type `value` (generic-instance.wipple:5:20-5:25)
+`value` (generic-instance.wipple:5:23-5:28) (TypeParameter):
+  has type `value` (generic-instance.wipple:5:17-5:22)
   is a type
-  resolved to 1 definition(s): `value` (generic-instance.wipple:5:20-5:25)
+  resolved to 1 definition(s): `value` (generic-instance.wipple:5:17-5:22)
 
-`a -> b` (generic-instance.wipple:3:21-3:27) (FunctionTypeSyntax):
-  has type `a -> b` (generic-instance.wipple:3:21-3:27)
-  is a type
-
-`a` (generic-instance.wipple:3:21-3:22) (TypeParameterSyntax):
-  has type `a` (generic-instance.wipple:3:7-3:8)
-  is a type
-  resolved to 1 definition(s): `a` (generic-instance.wipple:3:7-3:8)
-
-`b` (generic-instance.wipple:3:26-3:27) (TypeParameterSyntax):
-  has type `b` (generic-instance.wipple:3:9-3:10)
-  is a type
-  resolved to 1 definition(s): `b` (generic-instance.wipple:3:9-3:10)
-
-`(Box {value : value}) -> value` (generic-instance.wipple:5:36-5:66) (FunctionExpressionSyntax):
-  has type `(Box value) -> value` (generic-instance.wipple:5:36-5:66)
+`(Box {value : value}) -> value` (generic-instance.wipple:5:30-5:55) (FunctionExpression):
+  has type `(Box value) -> value` (generic-instance.wipple:5:30-5:55)
   is an expression
-  no captures
 
-`Box {value : value}` (generic-instance.wipple:5:37-5:56) (StructurePatternSyntax):
-  has type `Box value` (generic-instance.wipple:5:16-5:25)
+`Box {value : value}` (generic-instance.wipple:5:31-5:47) (StructurePattern):
+  has type `Box value` (generic-instance.wipple:5:14-5:22)
   is a pattern
-  resolved to 1 definition(s): `Box : value => type {value :: value}` (generic-instance.wipple:1:1-1:37)
+  resolved to 1 definition(s): `Box : value => type {value :: value}` (generic-instance.wipple:1:1-1:30)
 
-`value` (generic-instance.wipple:5:50-5:55) (VariablePatternSyntax):
-  has type `value` (generic-instance.wipple:5:20-5:25)
+`value` (generic-instance.wipple:5:41-5:46) (VariablePattern):
+  has type `value` (generic-instance.wipple:5:17-5:22)
+  is a definition
   is a pattern
 
-`value` (generic-instance.wipple:5:61-5:66) (VariableExpressionSyntax):
-  has type `value` (generic-instance.wipple:5:20-5:25)
+`value` (generic-instance.wipple:5:50-5:55) (VariableExpression):
+  has type `value` (generic-instance.wipple:5:17-5:22)
   is an expression
-  resolved to 1 definition(s): `value` (generic-instance.wipple:5:50-5:55)
+  resolved to 1 definition(s): `value` (generic-instance.wipple:5:41-5:46)
 
-`show (Foo (Box {value : "Hello, world!"}))` (generic-instance.wipple:7:1-7:43) (CallExpressionSyntax):
+`show` (generic-instance.wipple:7:1-7:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has type `String -> ()` (generic-instance.wipple:7:1-7:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show (Foo (Box {value : "Hello, world!"}))` (generic-instance.wipple:7:1-7:38) (ExpressionStatement):
+  has type `()`
+
+`show (Foo (Box {value : "Hello, world!"}))` (generic-instance.wipple:7:1-7:38) (CallExpression):
   has type `()`
   is an expression
 
-`show` (generic-instance.wipple:7:1-7:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
-  has type `String -> ()` (generic-instance.wipple:7:1-7:5)
+`Foo` (generic-instance.wipple:7:6-7:9) (ConstructorExpression):
+  has bound(s) `Foo` (generic-instance.wipple:3:1-3:20) `(Box String)` `String` (resolved as `instance (Foo (Box value) value)` (generic-instance.wipple:5:1-5:29))
+  has type `(Box String) -> String` (generic-instance.wipple:7:6-7:9)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `Foo : a b => trait (a -> b)` (generic-instance.wipple:3:1-3:20)
 
-`Foo (Box {value : "Hello, world!"})` (generic-instance.wipple:7:7-7:42) (CallExpressionSyntax):
+`Foo (Box {value : "Hello, world!"})` (generic-instance.wipple:7:6-7:37) (CallExpression):
   has type `String`
   is an expression
 
-`Foo` (generic-instance.wipple:7:7-7:10) (ConstructorExpressionSyntax):
-  has bound(s) `Foo` `(Box String)` `String` (`instance (Foo (Box value) value)` (generic-instance.wipple:5:1-5:33))
-  has type `(Box String) -> String` (generic-instance.wipple:7:7-7:10)
-  is an expression
-  resolved to 1 definition(s): `Foo : a b => trait (a -> b)` (generic-instance.wipple:3:1-3:28)
-
-`Box {value : "Hello, world!"}` (generic-instance.wipple:7:12-7:41) (StructureExpressionSyntax):
+`Box {value : "Hello, world!"}` (generic-instance.wipple:7:10-7:36) (StructureExpression):
   has type `Box String`
   is an expression
-  resolved to 1 definition(s): `Box : value => type {value :: value}` (generic-instance.wipple:1:1-1:37)
+  resolved to 1 definition(s): `Box : value => type {value :: value}` (generic-instance.wipple:1:1-1:30)
 
-`"Hello, world!"` (generic-instance.wipple:7:25-7:40) (StringExpressionSyntax):
+`"Hello, world!"` (generic-instance.wipple:7:20-7:35) (StringExpression):
   has type `String`
   is an expression
 
