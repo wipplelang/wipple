@@ -1,6 +1,10 @@
 digraph G {
   node [shape=box, fontname=monospace]
+  node_2_6 [label="Cannot-Be-Shown"]
+  node_2_7 [label="my-variable"]
   node_2_8 [label="show my-variable"]
   node_2_9 [label="show"]
+  node_2_6 -> node_2_7 [label="value"]
+  node_2_7 -> node_2_8 [label="input"]
   node_2_9 -> node_2_8 [label="function"]
 }

@@ -289,7 +289,11 @@ impl GraphBuilder {
     }
 
     fn can_display(&self, db: &Db, node: Node) -> bool {
-        (!db.is_hidden(node) || db.contains::<Instantiated>(node)) && !db.contains::<Defined>(node)
+        (!db.is_hidden(node) || db.contains::<Instantiated>(node))
+            && db.get(node).is_none_or(|Defined(definition)| {
+                // Allow variables, but not other definitions
+                definition.downcast_ref::<VariableDefinition>().is_some()
+            })
     }
 
     fn replacement_for(&self, mut node: Node) -> Node {

@@ -1,3 +1,7 @@
 digraph G {
   node [shape=box, fontname=monospace]
+  node_2_7 [label="x -> x"]
+  node_2_8 [label="x"]
+  node_2_8 -> node_2_7 [label="input"]
+  node_2_8 -> node_2_7 [label="output"]
 }

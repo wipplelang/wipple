@@ -1,5 +1,7 @@
 digraph G {
   node [shape=box, fontname=monospace]
+  node_2_4 [label="True"]
+  node_2_5 [label="x"]
   node_2_6 [label="show (when x {\n  True -> \"Yay!\"\n  False -> \"Uh oh\"\n})"]
   node_2_7 [label="show"]
   node_2_8 [label="when x {\n  True -> \"Yay!\"\n  False -> \"Uh oh\"\n}"]
@@ -7,6 +9,10 @@ digraph G {
   node_2_11 [label="\"Yay!\""]
   node_2_13 [label="False"]
   node_2_14 [label="\"Uh oh\""]
+  node_2_4 -> node_2_5 [label="value"]
+  node_2_5 -> node_2_8 [label="input"]
+  node_2_5 -> node_2_10 [label="value"]
+  node_2_5 -> node_2_13 [label="value"]
   node_2_7 -> node_2_6 [label="function"]
   node_2_8 -> node_2_6 [label="input"]
   node_2_10 -> node_2_8 [label="pattern"]
