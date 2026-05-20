@@ -27,7 +27,7 @@ use crate::{
 };
 use arcstr::Substr;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, mem};
+use std::{collections::BTreeMap, mem};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LibraryArtifact<T> {
@@ -38,7 +38,7 @@ pub struct LibraryArtifact<T> {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TopLevel {
-    pub definitions: Vec<HashMap<Substr, Vec<(Node, Box<dyn Definition>)>>>,
+    pub definitions: Vec<BTreeMap<Substr, Vec<(Node, Box<dyn Definition>)>>>,
     pub substitutions: Vec<Substitutions>,
     pub utilities: VisitUtilities,
 }

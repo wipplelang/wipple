@@ -6,7 +6,7 @@ use crate::{
 };
 use arcstr::Substr;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Link {
@@ -15,8 +15,8 @@ pub struct Link {
     pub tys: Vec<ConstructedTy>,
 }
 
-pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> HashMap<Substr, Link> {
-    let mut links = HashMap::new();
+pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<Substr, Link> {
+    let mut links = BTreeMap::new();
 
     let Some(Defined(definition)) = db.get(definition_node) else {
         return links;

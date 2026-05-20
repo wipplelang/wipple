@@ -1,6 +1,6 @@
 use crate::{Comments, comments_without_links};
 use levenshtein::levenshtein;
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use wipple_core::{
     arcstr::Substr,
     db::{Db, Node},
@@ -113,7 +113,7 @@ pub fn documentation(db: &Db, node: Node) -> Option<Documentation> {
     })
 }
 
-pub fn scopes(db: &Db, node: Node) -> Vec<&HashMap<Substr, BTreeMap<Node, Box<dyn Definition>>>> {
+pub fn scopes(db: &Db, node: Node) -> Vec<&BTreeMap<Substr, BTreeMap<Node, Box<dyn Definition>>>> {
     std::iter::successors(Some(node), |&node| {
         db.get(node).map(|Parent(parent)| *parent)
     })

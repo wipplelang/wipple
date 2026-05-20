@@ -36,7 +36,6 @@ for (let dir of ["foundation", ...fs.readdirSync("src")]) {
         "cargo",
         [
             "run",
-            "-q",
             "--",
             "compile",
             ...(compiledFoundation
@@ -62,7 +61,7 @@ for (let dir of ["foundation", ...fs.readdirSync("src")]) {
 
     const docCmd = spawnSync(
         "cargo",
-        ["run", "-q", "--", "doc", `--lib=${path.join(__dirname, "dist", `${dir}.bin`)}`],
+        ["run", "--", "doc", `--lib=${path.join(__dirname, "dist", `${dir}.bin`)}`],
         {
             cwd: path.resolve(__dirname, ".."),
             stdio: ["ignore", "pipe", "inherit"],

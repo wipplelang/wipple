@@ -23,7 +23,7 @@ use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
 use std::{
     any::Any,
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet},
     fmt::Debug,
     mem,
 };
@@ -61,7 +61,7 @@ impl Render for Resolved {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Scope {
-    pub definitions: HashMap<Substr, BTreeMap<Node, Box<dyn Definition>>>,
+    pub definitions: BTreeMap<Substr, BTreeMap<Node, Box<dyn Definition>>>,
 }
 
 #[typetag::serde]
@@ -234,7 +234,7 @@ impl Visit for Hidden {
 
 #[derive(Debug, Default)]
 pub struct ScopeValues {
-    names: HashMap<Substr, Vec<Node>>,
+    names: BTreeMap<Substr, Vec<Node>>,
     defined: BTreeMap<Node, Box<dyn Definition>>,
     captured: BTreeSet<Node>,
 }
@@ -300,11 +300,11 @@ pub struct VisitResult {
     pub top_level_statements: Vec<Node>,
     pub constraints: Vec<Box<dyn Constraint>>,
     pub substitutions: Vec<Substitutions>,
-    pub definitions: HashMap<Substr, Vec<(Node, Box<dyn Definition>)>>,
+    pub definitions: BTreeMap<Substr, Vec<(Node, Box<dyn Definition>)>>,
     pub utilities: VisitUtilities,
 }
 
-pub type VisitUtilities = HashMap<Substr, Node>;
+pub type VisitUtilities = BTreeMap<Substr, Node>;
 
 static UTILITIES: &[&str] = &["Mismatched"];
 
@@ -323,7 +323,7 @@ impl Visitor {
     pub fn new(
         db: &mut Db,
         root: Node,
-        definitions: impl IntoIterator<Item = HashMap<Substr, Vec<(Node, Box<dyn Definition>)>>>,
+        definitions: impl IntoIterator<Item = BTreeMap<Substr, Vec<(Node, Box<dyn Definition>)>>>,
         substitutions: impl IntoIterator<Item = (BTreeMap<Node, Node>, BTreeMap<Node, Ty>)>,
     ) -> Self {
         let mut scope = ScopeValues::default();

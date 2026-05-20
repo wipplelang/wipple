@@ -11,7 +11,6 @@ const cmd = spawnSync(
     "cargo",
     [
         "run",
-        "-q",
         "--",
         "test",
         "--lib=library/src/foundation",

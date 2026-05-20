@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use std::collections::BTreeMap;
 use wipple_core::{
     arcstr::Substr,
     db::{Db, Node},
@@ -20,7 +19,7 @@ use wipple_core::{
 pub struct Comments {
     pub nodes: Vec<Node>,
     pub comments: Vec<Substr>,
-    pub links: HashMap<Substr, Link>,
+    pub links: BTreeMap<Substr, Link>,
 }
 
 pub fn comments_without_links(db: &Db, node: Node) -> Option<Comments> {
