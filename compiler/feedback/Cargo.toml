@@ -1,0 +1,13 @@
+[package]
+name = "wipple-feedback"
+version = "0.0.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+regex = "1"
+wipple-core = { path = "../core" }
+wipple-queries = { path = "../queries" }
+wipple-syntax = { path = "../syntax" }

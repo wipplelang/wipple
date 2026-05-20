@@ -1,43 +1,49 @@
-Facts:
-`repeat (4 times) {⋯}` (repeat.wipple:1:1-3:2) (CallExpressionSyntax):
+Facts (layer 2):
+
+`repeat` (repeat.wipple:1:1-1:7) (VariableExpression):
+  has bound(s) `Repeat-Predicate` (library/src/foundation/repeat.wipple:8:1-8:80) `Times` `()` `()` (resolved as `instance (Repeat-Predicate Times body ()) where (body :: ())` (library/src/foundation/repeat.wipple:44:1-44:53))
+  has type `Times {()} -> ()` (repeat.wipple:1:1-1:7)
+  is an expression
+  resolved to 1 definition(s): `repeat :: state {body} -> result where (Repeat-Predicate state body result)` (library/src/foundation/repeat.wipple:51:1-51:66)
+
+`repeat (4 times) {⋯}` (repeat.wipple:1:1-3:2) (ExpressionStatement):
+  has type `()`
+
+`repeat (4 times) {⋯}` (repeat.wipple:1:1-3:2) (CallExpression):
   has type `()`
   is an expression
 
-`repeat` (repeat.wipple:1:1-1:7) (VariableExpressionSyntax):
-  has bound(s) `Repeat-Predicate` `Times` `()` `()` (`instance (Repeat-Predicate Times body ()) where (body :: ())` (repeat.wipple:44:1-44:61))
-  has type `Times {()} -> ()` (repeat.wipple:1:1-1:7)
+`4` (repeat.wipple:1:8-1:9) (NumberExpression):
+  has type `Number` (repeat.wipple:1:8-1:9)
   is an expression
-  resolved to 1 definition(s): `repeat :: state {body} -> result where (Repeat-Predicate state body result)` (repeat.wipple:51:1-51:76)
 
-`4 times` (repeat.wipple:1:9-1:16) (CallExpressionSyntax):
+`4 times` (repeat.wipple:1:8-1:14) (CallExpression):
   has type `Times`
   is an expression
 
-`times` (repeat.wipple:1:11-1:16) (VariableExpressionSyntax):
-  has type `Number -> Times` (repeat.wipple:1:11-1:16)
+`times` (repeat.wipple:1:9-1:14) (VariableExpression):
+  has type `Number -> Times` (repeat.wipple:1:9-1:14)
   is an expression
-  resolved to 1 definition(s): `times :: Number -> Times` (repeat.wipple:47:8-47:32)
+  resolved to 1 definition(s): `times :: Number -> Times` (library/src/foundation/repeat.wipple:47:7-47:27)
 
-`4` (repeat.wipple:1:9-1:10) (NumberExpressionSyntax):
-  has type `Number` (repeat.wipple:1:9-1:10)
+`{⋯}` (repeat.wipple:1:15-3:2) (BlockExpression):
+  has type `{()}` (repeat.wipple:1:15-3:2)
   is an expression
 
-`{⋯}` (repeat.wipple:1:18-3:2) (BlockExpressionSyntax):
-  has type `{()}` (repeat.wipple:1:18-3:2)
+`show` (repeat.wipple:2:1-2:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has type `String -> ()` (repeat.wipple:2:1-2:5)
   is an expression
-  no captures
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`show "Hello, world!"` (repeat.wipple:2:3-2:23) (CallExpressionSyntax):
+`show "Hello, world!"` (repeat.wipple:2:1-2:20) (ExpressionStatement):
+  has type `()`
+
+`show "Hello, world!"` (repeat.wipple:2:1-2:20) (CallExpression):
   has type `()`
   is an expression
 
-`show` (repeat.wipple:2:3-2:7) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
-  has type `String -> ()` (repeat.wipple:2:3-2:7)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`"Hello, world!"` (repeat.wipple:2:8-2:23) (StringExpressionSyntax):
+`"Hello, world!"` (repeat.wipple:2:5-2:20) (StringExpression):
   has type `String`
   is an expression
 

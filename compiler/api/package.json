@@ -1,0 +1,13 @@
+{
+    "name": "compiler",
+    "private": true,
+    "type": "module",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "./build.sh"
+    },
+    "devDependencies": {
+        "@chialab/esbuild-plugin-meta-url": "^0.19.1",
+        "esbuild": "^0.28.0"
+    }
+}

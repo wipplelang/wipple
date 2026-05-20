@@ -1,143 +1,150 @@
-Facts:
-`T : value => trait (value -> String)` (bound.wipple:1:1-1:37) (TraitDefinitionSyntax):
+Facts (layer 2):
+
+`T : value => trait (value -> String)` (bound.wipple:1:1-1:30) (TraitDefinition):
+  has 1 instances
   has definition constraints
-  has instances
-  has type `value -> String` (bound.wipple:1:21-1:36)
+  has type `value -> String` (bound.wipple:1:16-1:29)
   has type parameters
   is a definition
 
-`value` (bound.wipple:1:5-1:10) (TypeParameterSyntax):
-  has type `value` (bound.wipple:1:5-1:10)
+`value` (bound.wipple:1:3-1:8) (TypeParameter):
+  has type `value` (bound.wipple:1:3-1:8)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (bound.wipple:1:5-1:10)
+  resolved to 1 definition(s): `value` (bound.wipple:1:3-1:8)
 
-`foo :: value -> String where (T value)` (bound.wipple:3:1-3:39) (ConstantDefinitionSyntax):
+`value` (bound.wipple:1:16-1:21) (TypeParameter):
+  has type `value` (bound.wipple:1:3-1:8)
+  is a type
+  resolved to 1 definition(s): `value` (bound.wipple:1:3-1:8)
+
+`value -> String` (bound.wipple:1:16-1:29) (FunctionType):
+  has type `value -> String` (bound.wipple:1:16-1:29)
+  is a type
+
+`String` (bound.wipple:1:23-1:29) (NamedType):
+  has type `String` (bound.wipple:1:23-1:29)
+  is a type
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
+
+`foo :: value -> String where (T value)` (bound.wipple:3:1-3:32) (ConstantDefinition):
   has definition constraints
-  has type `value -> String` (bound.wipple:3:8-3:23)
+  has type `value -> String` (bound.wipple:3:6-3:19)
   has type parameters
   is a definition
 
-`foo : x -> T x` (bound.wipple:4:1-4:15) (AssignmentStatementSyntax):
-  has type `()` (bound.wipple:4:1-4:15)
-
-`A : type` (bound.wipple:6:1-6:9) (TypeDefinitionSyntax):
-  has definition constraints
-  has type `A` (bound.wipple:6:1-6:9)
-  is a definition
-
-`instance (T A)` (bound.wipple:7:1-7:15) (InstanceDefinitionSyntax):
-  has definition constraints
-  has type `A -> String` (bound.wipple:7:18-7:38)
-  is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> String)` (bound.wipple:1:1-1:37)
-
-`value -> String` (bound.wipple:3:8-3:23) (FunctionTypeSyntax):
-  has type `value -> String` (bound.wipple:3:8-3:23)
-  is a type
-
-`value` (bound.wipple:3:8-3:13) (TypeParameterSyntax):
-  has type `value` (bound.wipple:3:8-3:13)
+`value` (bound.wipple:3:6-3:11) (TypeParameter):
+  has type `value` (bound.wipple:3:6-3:11)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (bound.wipple:3:8-3:13)
+  resolved to 1 definition(s): `value` (bound.wipple:3:6-3:11)
 
-`String` (bound.wipple:3:17-3:23) (NamedTypeSyntax):
-  has type `String` (bound.wipple:3:17-3:23)
+`value -> String` (bound.wipple:3:6-3:19) (FunctionType):
+  has type `value -> String` (bound.wipple:3:6-3:19)
   is a type
-  resolved to 1 definition(s): `String : type` (language.wipple:2:13-2:26)
 
-`(T value)` (bound.wipple:3:30-3:39) (BoundConstraintSyntax):
-  has bound(s) `T` `value` (bound.wipple:3:8-3:13) (`(T value)` (bound.wipple:3:30-3:39))
-  has definition constraints
+`String` (bound.wipple:3:13-3:19) (NamedType):
+  has type `String` (bound.wipple:3:13-3:19)
+  is a type
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
+
+`(T value)` (bound.wipple:3:24-3:32) (BoundConstraint):
+  has bound(s) `T` (bound.wipple:1:1-1:30) `value` (bound.wipple:3:6-3:11) (resolved as `(T value)` (bound.wipple:3:24-3:32))
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> String)` (bound.wipple:1:1-1:37)
+  resolved to 1 definition(s): `T : value => trait (value -> String)` (bound.wipple:1:1-1:30)
 
-`value` (bound.wipple:3:33-3:38) (TypeParameterSyntax):
-  has type `value` (bound.wipple:3:8-3:13)
+`value` (bound.wipple:3:26-3:31) (TypeParameter):
+  has type `value` (bound.wipple:3:6-3:11)
   is a type
-  resolved to 1 definition(s): `value` (bound.wipple:3:8-3:13)
+  resolved to 1 definition(s): `value` (bound.wipple:3:6-3:11)
 
-`A` (bound.wipple:7:13-7:14) (NamedTypeSyntax):
-  has type `A` (bound.wipple:7:13-7:14)
-  is a type
-  resolved to 1 definition(s): `A : type` (bound.wipple:6:1-6:9)
+`foo : x -> T x` (bound.wipple:4:1-4:10) (AssignmentStatement):
+  has type `()` (bound.wipple:4:1-4:10)
 
-`value -> String` (bound.wipple:1:21-1:36) (FunctionTypeSyntax):
-  has type `value -> String` (bound.wipple:1:21-1:36)
-  is a type
-
-`value` (bound.wipple:1:21-1:26) (TypeParameterSyntax):
-  has type `value` (bound.wipple:1:5-1:10)
-  is a type
-  resolved to 1 definition(s): `value` (bound.wipple:1:5-1:10)
-
-`String` (bound.wipple:1:30-1:36) (NamedTypeSyntax):
-  has type `String` (bound.wipple:1:30-1:36)
-  is a type
-  resolved to 1 definition(s): `String : type` (language.wipple:2:13-2:26)
-
-`x -> T x` (bound.wipple:4:7-4:15) (FunctionExpressionSyntax):
-  has type `value -> String` (bound.wipple:3:8-3:23)
-  is an expression
-  no captures
-
-`x` (bound.wipple:4:7-4:8) (VariablePatternSyntax):
-  has type `value` (bound.wipple:3:8-3:13)
+`x` (bound.wipple:4:5-4:6) (VariablePattern):
+  has type `value` (bound.wipple:3:6-3:11)
+  is a definition
   is a pattern
 
-`T x` (bound.wipple:4:12-4:15) (CallExpressionSyntax):
-  has type `String` (bound.wipple:3:17-3:23)
+`x -> T x` (bound.wipple:4:5-4:10) (FunctionExpression):
+  has type `value -> String` (bound.wipple:3:6-3:19)
   is an expression
 
-`T` (bound.wipple:4:12-4:13) (ConstructorExpressionSyntax):
-  has bound(s) `T` `value` (bound.wipple:3:8-3:13) (`(T value)` (bound.wipple:3:30-3:39))
-  has type `value -> String` (bound.wipple:4:12-4:13)
+`T` (bound.wipple:4:8-4:9) (ConstructorExpression):
+  has bound(s) `T` (bound.wipple:1:1-1:30) `value` (bound.wipple:3:6-3:11) (resolved as `(T value)` (bound.wipple:3:24-3:32))
+  has type `value -> String` (bound.wipple:4:8-4:9)
   is an expression
-  resolved to 1 definition(s): `T : value => trait (value -> String)` (bound.wipple:1:1-1:37)
+  resolved to 1 definition(s): `T : value => trait (value -> String)` (bound.wipple:1:1-1:30)
 
-`x` (bound.wipple:4:14-4:15) (VariableExpressionSyntax):
-  has type `value` (bound.wipple:3:8-3:13)
+`T x` (bound.wipple:4:8-4:10) (CallExpression):
+  has type `String` (bound.wipple:3:13-3:19)
   is an expression
-  resolved to 1 definition(s): `x` (bound.wipple:4:7-4:8)
 
-`_ -> "Hello, world!"` (bound.wipple:7:18-7:38) (FunctionExpressionSyntax):
-  has type `A -> String` (bound.wipple:7:18-7:38)
+`x` (bound.wipple:4:9-4:10) (VariableExpression):
+  has type `value` (bound.wipple:3:6-3:11)
   is an expression
-  no captures
+  resolved to 1 definition(s): `x` (bound.wipple:4:5-4:6)
 
-`_` (bound.wipple:7:18-7:19) (WildcardPatternSyntax):
-  has type `A` (bound.wipple:7:13-7:14)
+`A : type` (bound.wipple:6:1-6:7) (TypeDefinition):
+  has definition constraints
+  has type `A` (bound.wipple:6:1-6:7)
+  is a definition
+
+`A : type` (bound.wipple:6:1-6:7) (TypeDefinition):
+  has definition constraints
+  has type `A` (bound.wipple:6:1-6:7)
+  is a definition
+
+`instance (T A)` (bound.wipple:7:1-7:13) (InstanceDefinition):
+  has definition constraints
+  has type `A -> String` (bound.wipple:7:14-7:32)
+  is a definition
+  resolved to 1 definition(s): `T : value => trait (value -> String)` (bound.wipple:1:1-1:30)
+
+`A` (bound.wipple:7:11-7:12) (NamedType):
+  has type `A` (bound.wipple:7:11-7:12)
+  is a type
+  resolved to 1 definition(s): `A : type` (bound.wipple:6:1-6:7)
+
+`_` (bound.wipple:7:14-7:15) (WildcardPattern):
+  has type `A` (bound.wipple:7:11-7:12)
   is a pattern
 
-`"Hello, world!"` (bound.wipple:7:23-7:38) (StringExpressionSyntax):
-  has type `String` (bound.wipple:7:23-7:38)
+`_ -> "Hello, world!"` (bound.wipple:7:14-7:32) (FunctionExpression):
+  has type `A -> String` (bound.wipple:7:14-7:32)
   is an expression
 
-`show (foo A)` (bound.wipple:9:1-9:13) (CallExpressionSyntax):
+`"Hello, world!"` (bound.wipple:7:17-7:32) (StringExpression):
+  has type `String` (bound.wipple:7:17-7:32)
+  is an expression
+
+`show` (bound.wipple:9:1-9:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has type `String -> ()` (bound.wipple:9:1-9:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show (foo A)` (bound.wipple:9:1-9:11) (ExpressionStatement):
+  has type `()`
+
+`show (foo A)` (bound.wipple:9:1-9:11) (CallExpression):
   has type `()`
   is an expression
 
-`show` (bound.wipple:9:1-9:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
-  has type `String -> ()` (bound.wipple:9:1-9:5)
+`foo` (bound.wipple:9:6-9:9) (VariableExpression):
+  has bound(s) `T` (bound.wipple:1:1-1:30) `A` (resolved as `instance (T A)` (bound.wipple:7:1-7:13))
+  has type `A -> String` (bound.wipple:9:6-9:9)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `foo :: value -> String where (T value)` (bound.wipple:3:1-3:32)
 
-`foo A` (bound.wipple:9:7-9:12) (CallExpressionSyntax):
+`foo A` (bound.wipple:9:6-9:10) (CallExpression):
   has type `String`
   is an expression
 
-`foo` (bound.wipple:9:7-9:10) (VariableExpressionSyntax):
-  has bound(s) `T` `A` (`instance (T A)` (bound.wipple:7:1-7:15))
-  has type `A -> String` (bound.wipple:9:7-9:10)
-  is an expression
-  resolved to 1 definition(s): `foo :: value -> String where (T value)` (bound.wipple:3:1-3:39)
-
-`A` (bound.wipple:9:11-9:12) (ConstructorExpressionSyntax):
+`A` (bound.wipple:9:9-9:10) (ConstructorExpression):
   has type `A`
   is an expression
-  resolved to 1 definition(s): `A : type` (bound.wipple:6:1-6:9)
+  resolved to 1 definition(s): `A : type` (bound.wipple:6:1-6:7)
 
 
 Output:

@@ -1,71 +1,84 @@
-Facts:
-`accepts-text :: String -> ()` (mismatched-call.wipple:1:1-1:29) (ConstantDefinitionSyntax):
+Facts (layer 2):
+
+`accepts-text :: String -> ()` (mismatched-call.wipple:1:1-1:25) (ConstantDefinition):
   has definition constraints
-  has type `String -> ()` (mismatched-call.wipple:1:17-1:29)
+  has type `String -> ()` (mismatched-call.wipple:1:15-1:25)
   is a definition
 
-`accepts-text : todo` (mismatched-call.wipple:2:1-2:20) (AssignmentStatementSyntax):
-  has type `()` (mismatched-call.wipple:2:1-2:20)
+`String` (mismatched-call.wipple:1:15-1:21) (NamedType):
+  has type `String` (mismatched-call.wipple:1:15-1:21)
+  is a type
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
 
-`String -> ()` (mismatched-call.wipple:1:17-1:29) (FunctionTypeSyntax):
-  has type `String -> ()` (mismatched-call.wipple:1:17-1:29)
+`String -> ()` (mismatched-call.wipple:1:15-1:25) (FunctionType):
+  has type `String -> ()` (mismatched-call.wipple:1:15-1:25)
   is a type
 
-`String` (mismatched-call.wipple:1:17-1:23) (NamedTypeSyntax):
-  has type `String` (mismatched-call.wipple:1:17-1:23)
-  is a type
-  resolved to 1 definition(s): `String : type` (language.wipple:2:13-2:26)
-
-`()` (mismatched-call.wipple:1:27-1:29) (UnitTypeSyntax):
-  has type `()` (mismatched-call.wipple:1:27-1:29)
+`()` (mismatched-call.wipple:1:23-1:25) (UnitType):
+  has type `()` (mismatched-call.wipple:1:23-1:25)
   is a type
 
-`todo` (mismatched-call.wipple:2:16-2:20) (VariableExpressionSyntax):
-  has type `String -> ()` (mismatched-call.wipple:1:17-1:29)
+`accepts-text : todo` (mismatched-call.wipple:2:1-2:18) (AssignmentStatement):
+  has type `()` (mismatched-call.wipple:2:1-2:18)
+
+`todo` (mismatched-call.wipple:2:14-2:18) (VariableExpression):
+  has type `String -> ()` (mismatched-call.wipple:1:15-1:25)
   is an expression
-  resolved to 1 definition(s): `todo :: value` (language.wipple:25:1-25:14)
+  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:12)
 
-`accepts-text (1 + 2)` (mismatched-call.wipple:6:1-6:21) (CallExpressionSyntax):
+`-- should display 'expected `String`, found `Number`' rather than
+-- 'cannot find instance `Add Number Number String`'
+accepts-text (1 + 2)` (mismatched-call.wipple:4:1-6:18) (ExpressionStatement):
+  has type `()`
+
+`accepts-text` (mismatched-call.wipple:6:1-6:13) (VariableExpression):
+  has type `Number -> ()` (mismatched-call.wipple:6:1-6:13)
+  is an expression
+  resolved to 1 definition(s): `accepts-text :: String -> ()` (mismatched-call.wipple:1:1-1:25)
+
+`accepts-text (1 + 2)` (mismatched-call.wipple:6:1-6:18) (CallExpression):
   has type `()`
   is an expression
 
-`accepts-text` (mismatched-call.wipple:6:1-6:13) (VariableExpressionSyntax):
-  has type `Number -> ()` (mismatched-call.wipple:6:1-6:13)
-  is an expression
-  resolved to 1 definition(s): `accepts-text :: String -> ()` (mismatched-call.wipple:1:1-1:29)
-
-`1 + 2` (mismatched-call.wipple:6:15-6:20) (OperatorExpressionSyntax):
-  has type `Number` or `String`
-  is an expression
-
-`+` (mismatched-call.wipple:6:17-6:18) (VisitAs):
-  has bound(s) `Add` `Number` `Number` `Number` (`instance (Add Number Number Number)` (math.wipple:8:1-8:36))
-  has type `Number Number -> Number` (mismatched-call.wipple:6:17-6:18)
-  is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (math.wipple:7:1-7:58)
-
-`1` (mismatched-call.wipple:6:15-6:16) (VisitAs):
+`1` (mismatched-call.wipple:6:14-6:15) (NumberExpression):
   has type `Number`
   is an expression
 
-`2` (mismatched-call.wipple:6:19-6:20) (VisitAs):
-  has type `Number`
+`1 + 2` (mismatched-call.wipple:6:14-6:17) (OperatorExpression):
+  has type `Number` or `String`
   is an expression
 
-`+` (mismatched-call.wipple:6:17-6:18) (CallExpressionSyntax):
+`+` (mismatched-call.wipple:6:15-6:16) (CallExpression):
   has type `Number` or `String`
+  is an expression
+
+`+` (mismatched-call.wipple:6:15-6:16) (ConstructorExpression):
+  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `Number` `Number` `_` (resolved as `instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:32))
+  has type `Number Number -> Number` (mismatched-call.wipple:6:15-6:16)
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:47)
+
+`2` (mismatched-call.wipple:6:16-6:17) (NumberExpression):
+  has type `Number`
   is an expression
 
 
 
 Feedback:
 
-`1 + 2` (mismatched-call.wipple:6:15-6:20) (conflicting-types)
+`1 + 2` (mismatched-call.wipple:6:14-6:17) (conflicting-types)
 
-  `1 + 2` (mismatched-call.wipple:6:15-6:20) is a `Number` or a `String`, but it can only be one of these.
+  `1 + 2` is a `Number` or a `String`, but it can only be one of these.
   
-  `1 + 2` (mismatched-call.wipple:6:15-6:20) must be the same type as `+` (mismatched-call.wipple:6:17-6:18), `_`, `_`, and 5 others; double-check these.
+  `1 + 2` must be the same type as `+`; double-check these.
   
-  -  `+` (mismatched-call.wipple:6:17-6:18) requires `Add` `Number` `Number` `Number`.
+  -  `(infer sum)` must have the same type everywhere in this use of `_`.
+
+
+`+` (mismatched-call.wipple:6:15-6:16) (conflicting-types)
+
+  `+` is a `Number` or a `String`, but it can only be one of these.
   
-  -  `(infer sum)` (math.wipple:7:18-7:29) must have the same type everywhere in this use of `+` (mismatched-call.wipple:6:17-6:18).
+  `+` must be the same type as `1 + 2`; double-check these.
+  
+  -  `(infer sum)` must have the same type everywhere in this use of `_`.

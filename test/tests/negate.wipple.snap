@@ -1,43 +1,47 @@
-Facts:
-`show ((negate 3) = -3)` (negate.wipple:1:1-1:23) (CallExpressionSyntax):
+Facts (layer 2):
+
+`show` (negate.wipple:1:1-1:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
+  has type `Boolean -> ()` (negate.wipple:1:1-1:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show ((negate 3) = -3)` (negate.wipple:1:1-1:19) (ExpressionStatement):
+  has type `()`
+
+`show ((negate 3) = -3)` (negate.wipple:1:1-1:19) (CallExpression):
   has type `()`
   is an expression
 
-`show` (negate.wipple:1:1-1:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
-  has type `Boolean -> ()` (negate.wipple:1:1-1:5)
+`negate` (negate.wipple:1:7-1:13) (VariableExpression):
+  has type `Number -> Number` (negate.wipple:1:7-1:13)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `negate :: Number -> Number` (library/src/foundation/math.wipple:128:1-128:23)
 
-`negate 3) = -3` (negate.wipple:1:8-1:22) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`=` (negate.wipple:1:18-1:19) (VisitAs):
-  has bound(s) `Equal` `Number` (`instance (Equal Number)` (logic.wipple:85:1-85:24))
-  has type `Number Number -> Boolean` (negate.wipple:1:18-1:19)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
-
-`negate 3` (negate.wipple:1:8-1:16) (VisitAs):
+`negate 3` (negate.wipple:1:7-1:14) (CallExpression):
   has type `Number`
   is an expression
 
-`-3` (negate.wipple:1:20-1:22) (VisitAs):
-  has type `Number`
-  is an expression
-
-`=` (negate.wipple:1:18-1:19) (CallExpressionSyntax):
+`negate 3) = -3` (negate.wipple:1:7-1:18) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`negate` (negate.wipple:1:8-1:14) (VariableExpressionSyntax):
-  has type `Number -> Number` (negate.wipple:1:8-1:14)
+`3` (negate.wipple:1:13-1:14) (NumberExpression):
+  has type `Number` (negate.wipple:1:13-1:14)
   is an expression
-  resolved to 1 definition(s): `negate :: Number -> Number` (math.wipple:128:1-128:27)
 
-`3` (negate.wipple:1:15-1:16) (NumberExpressionSyntax):
-  has type `Number` (negate.wipple:1:15-1:16)
+`=` (negate.wipple:1:15-1:16) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (negate.wipple:1:15-1:16) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
+  has type `Number Number -> Boolean` (negate.wipple:1:15-1:16)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`-3` (negate.wipple:1:16-1:18) (NumberExpression):
+  has type `Number`
   is an expression
 
 

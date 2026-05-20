@@ -12,7 +12,7 @@ export default handler(IdeInfoRequest, async (body) => {
 
     let libraryName: string | undefined = body.library;
     while (libraryName != null) {
-        const library: Library | undefined = libraries[libraryName];
+        const library: Library | undefined = libraries[libraryName]?.[0];
         if (library == null) {
             return { statusCode: 400, body: { error: "unknown library" } };
         }

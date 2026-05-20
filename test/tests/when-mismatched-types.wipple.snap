@@ -1,53 +1,109 @@
-Facts:
-`show (when True {⋯})` (when-mismatched-types.wipple:1:1-4:3) (CallExpressionSyntax):
+Facts (layer 2):
+
+`show` (when-mismatched-types.wipple:1:1-1:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `_` (unresolved)
+  has type `Number -> ()` (when-mismatched-types.wipple:1:1-1:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show (when True {⋯})` (when-mismatched-types.wipple:1:1-4:3) (ExpressionStatement):
+  has type `()`
+
+`show (when True {⋯})` (when-mismatched-types.wipple:1:1-4:3) (CallExpression):
   has type `()`
   is an expression
 
-`show` (when-mismatched-types.wipple:1:1-1:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Number` (when-mismatched-types.wipple:2:11-2:13) (unresolved)
-  has type `Number -> ()` (when-mismatched-types.wipple:1:1-1:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`when True {⋯}` (when-mismatched-types.wipple:1:7-4:2) (WhenExpressionSyntax):
-  has type `Number` (when-mismatched-types.wipple:2:11-2:13) or `String` (when-mismatched-types.wipple:3:12-3:16)
+`when True {⋯}` (when-mismatched-types.wipple:1:6-4:2) (WhenExpression):
+  has type `Number` (when-mismatched-types.wipple:2:7-2:9) or `String` (when-mismatched-types.wipple:3:8-3:12)
   is an expression
 
-`True` (when-mismatched-types.wipple:1:12-1:16) (ConstructorExpressionSyntax):
+`True` (when-mismatched-types.wipple:1:10-1:14) (ConstructorExpression):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `True` (logic.wipple:4:3-4:7)
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:1-4:5)
 
-`True` (when-mismatched-types.wipple:2:3-2:7) (ConstructorPatternSyntax):
+`True` (when-mismatched-types.wipple:2:1-2:5) (ConstructorPattern):
   has type `Boolean`
   is a pattern
-  resolved to 1 definition(s): `True` (logic.wipple:4:3-4:7)
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:1-4:5)
 
-`42` (when-mismatched-types.wipple:2:11-2:13) (NumberExpressionSyntax):
-  has type `Number` (when-mismatched-types.wipple:2:11-2:13) or `String` (when-mismatched-types.wipple:3:12-3:16)
+`42` (when-mismatched-types.wipple:2:7-2:9) (NumberExpression):
+  has type `Number` (when-mismatched-types.wipple:2:7-2:9) or `String` (when-mismatched-types.wipple:3:8-3:12)
   is an expression
 
-`False` (when-mismatched-types.wipple:3:3-3:8) (ConstructorPatternSyntax):
+`False` (when-mismatched-types.wipple:3:1-3:6) (ConstructorPattern):
   has type `Boolean`
   is a pattern
-  resolved to 1 definition(s): `False` (logic.wipple:3:3-3:8)
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:1-3:6)
 
-`"hi"` (when-mismatched-types.wipple:3:12-3:16) (StringExpressionSyntax):
-  has type `Number` (when-mismatched-types.wipple:2:11-2:13) or `String` (when-mismatched-types.wipple:3:12-3:16)
+`"hi"` (when-mismatched-types.wipple:3:8-3:12) (StringExpression):
+  has type `Number` (when-mismatched-types.wipple:2:7-2:9) or `String` (when-mismatched-types.wipple:3:8-3:12)
   is an expression
 
 
 
 Feedback:
 
-`"hi"` (when-mismatched-types.wipple:3:12-3:16) (conflicting-types)
+`when True {⋯}` (when-mismatched-types.wipple:1:6-4:2) (conflicting-types)
 
-  `"hi"` (when-mismatched-types.wipple:3:12-3:16) is a `Number` (when-mismatched-types.wipple:2:11-2:13) or a `String` (when-mismatched-types.wipple:3:12-3:16), but it can only be one of these.
+  `when True {⋯}` is a `Number` or a `String`, but it can only be one of these.
   
-  `"hi"` (when-mismatched-types.wipple:3:12-3:16) must be the same type as `42` (when-mismatched-types.wipple:2:11-2:13), `when True {⋯}` (when-mismatched-types.wipple:1:7-4:2), `42` (when-mismatched-types.wipple:2:11-2:13), and 3 others; double-check these.
+  `when True {⋯}` must be the same type as `"hi"` and `42`; double-check these.
   
-  -  `42` (when-mismatched-types.wipple:2:11-2:13) is a `Number` (language.wipple:1:38-1:51).
+  -  `42` is a `Number`.
   
-  -  `"hi"` (when-mismatched-types.wipple:3:12-3:16) is a `String` (language.wipple:2:13-2:26).
+  -  `"hi"` is a `String`.
   
-  -  `value` (io.wipple:11:9-11:14) must have the same type everywhere in this use of `show` (when-mismatched-types.wipple:1:1-1:5).
+  -  `value` must have the same type everywhere in this use of `show`.
+
+
+`42` (when-mismatched-types.wipple:2:7-2:9) (conflicting-types)
+
+  `42` is a `Number` or a `String`, but it can only be one of these.
+  
+  `42` must be the same type as `"hi"` and `when True {⋯}`; double-check these.
+  
+  -  `42` is a `Number`.
+  
+  -  `"hi"` is a `String`.
+  
+  -  `value` must have the same type everywhere in this use of `show`.
+
+
+`42` (when-mismatched-types.wipple:2:7-2:9) (conflicting-types)
+
+  `42` is a `Number` or a `String`, but it can only be one of these.
+  
+  `42` must be the same type as `"hi"` and `when True {⋯}`; double-check these.
+  
+  -  `42` is a `Number`.
+  
+  -  `"hi"` is a `String`.
+  
+  -  `value` must have the same type everywhere in this use of `show`.
+
+
+`"hi"` (when-mismatched-types.wipple:3:8-3:12) (conflicting-types)
+
+  `"hi"` is a `Number` or a `String`, but it can only be one of these.
+  
+  `"hi"` must be the same type as `42` and `when True {⋯}`; double-check these.
+  
+  -  `42` is a `Number`.
+  
+  -  `"hi"` is a `String`.
+  
+  -  `value` must have the same type everywhere in this use of `show`.
+
+
+`"hi"` (when-mismatched-types.wipple:3:8-3:12) (conflicting-types)
+
+  `"hi"` is a `Number` or a `String`, but it can only be one of these.
+  
+  `"hi"` must be the same type as `42` and `when True {⋯}`; double-check these.
+  
+  -  `42` is a `Number`.
+  
+  -  `"hi"` is a `String`.
+  
+  -  `value` must have the same type everywhere in this use of `show`.

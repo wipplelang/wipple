@@ -1,41 +1,38 @@
-Facts:
-`show 1 2 3` (too-many-inputs.wipple:1:1-1:11) (CallExpressionSyntax):
+Facts (layer 2):
+
+`show` (too-many-inputs.wipple:1:1-1:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
+  has type `Number Number Number -> ()` (too-many-inputs.wipple:1:1-1:5) or `Number -> ()`
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show 1 2 3` (too-many-inputs.wipple:1:1-1:8) (ExpressionStatement):
+  has type `()`
+
+`show 1 2 3` (too-many-inputs.wipple:1:1-1:8) (CallExpression):
   has type `()`
   is an expression
 
-`show` (too-many-inputs.wipple:1:1-1:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
-  has type `Number Number Number -> ()` (too-many-inputs.wipple:1:1-1:5) or `Number -> ()`
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`1` (too-many-inputs.wipple:1:6-1:7) (NumberExpressionSyntax):
+`1` (too-many-inputs.wipple:1:5-1:6) (NumberExpression):
   has type `Number`
   is an expression
 
-`2` (too-many-inputs.wipple:1:8-1:9) (NumberExpressionSyntax):
-  has type `Number` (too-many-inputs.wipple:1:8-1:9)
+`2` (too-many-inputs.wipple:1:6-1:7) (NumberExpression):
+  has type `Number` (too-many-inputs.wipple:1:6-1:7)
   is an expression
 
-`3` (too-many-inputs.wipple:1:10-1:11) (NumberExpressionSyntax):
-  has type `Number` (too-many-inputs.wipple:1:10-1:11)
+`3` (too-many-inputs.wipple:1:7-1:8) (NumberExpression):
+  has type `Number` (too-many-inputs.wipple:1:7-1:8)
   is an expression
 
 
 
 Feedback:
 
-`show` (too-many-inputs.wipple:1:1-1:5) (extra-input)
-
-  `show` (too-many-inputs.wipple:1:1-1:5) only needs 1 input.
-  
-  Try removing 2 extra inputs here.
-
-
 `show` (too-many-inputs.wipple:1:1-1:5) (conflicting-types)
 
-  `show` (too-many-inputs.wipple:1:1-1:5) isn't a `Number -> ()`.
+  `show` isn't a `Number -> ()`.
   
   
   
-  -  `show` (too-many-inputs.wipple:1:1-1:5) is a `_ _ _ -> _`.
+  -  `show` is a `Number Number Number -> ()`.

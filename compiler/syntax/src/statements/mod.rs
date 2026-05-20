@@ -1,0 +1,50 @@
+pub mod assignment_statement;
+pub mod constant_definition;
+pub mod expression_statement;
+pub mod instance_definition;
+pub mod trait_definition;
+pub mod type_definition;
+
+use crate::statements::{
+    assignment_statement::parse_assignment_statement,
+    constant_definition::parse_constant_definition_statement,
+    expression_statement::parse_expression_statement,
+    instance_definition::parse_instance_definition_statement,
+    trait_definition::parse_trait_definition_statement,
+    type_definition::parse_type_definition_statement,
+};
+
+use wipple_core::{arcstr::Substr, visit::Visit};
+use wipple_parse::{
+    lexer::TokenKind,
+    parse_alt,
+    parser::{ParseError, Parser},
+};
+
+pub fn parse_statements(parser: &mut Parser) -> Result<Vec<Box<dyn Visit>>, ParseError> {
+    parser.parse_lines(0, true, |parser| {
+        let statement = parse_statement(parser)?;
+        let _ = parser.parse_optional(parse_comment)?;
+        Ok(statement)
+    })
+}
+
+pub fn parse_statement(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+    parse_alt!(parser, {
+        parse_type_definition_statement as value => Box::new(value),
+        parse_trait_definition_statement as value => Box::new(value),
+        parse_constant_definition_statement as value => Box::new(value),
+        parse_instance_definition_statement as value => Box::new(value),
+        parse_assignment_statement as value => Box::new(value),
+        parse_expression_statement as value => Box::new(value),
+        _ => "Expected statement",
+    })
+}
+
+pub fn parse_comments(parser: &mut Parser) -> Result<Vec<Substr>, ParseError> {
+    parser.parse_lines(0, true, parse_comment)
+}
+
+pub fn parse_comment(parser: &mut Parser) -> Result<Substr, ParseError> {
+    parser.token(TokenKind::Comment)
+}

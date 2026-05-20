@@ -1,79 +1,84 @@
-Facts:
-`E : type {⋯}` (nested-patterns.wipple:1:1-4:2) (TypeDefinitionSyntax):
-  has definition constraints
-  has enumeration variants
-  has type `E` (nested-patterns.wipple:1:1-4:2)
-  is a definition
+Facts (layer 2):
 
-`A` (nested-patterns.wipple:2:3-2:4) (VariantDefinitionSyntax):
+`E : type {⋯}` (nested-patterns.wipple:1:1-4:2) (TypeDefinition):
   has definition constraints
   has type `E` (nested-patterns.wipple:1:1-4:2)
   is a definition
 
-`B` (nested-patterns.wipple:3:3-3:4) (VariantDefinitionSyntax):
+`A` (nested-patterns.wipple:2:1-2:2) (VariantDefinition):
   has definition constraints
   has type `E` (nested-patterns.wipple:1:1-4:2)
   is a definition
 
-`show (when (A; B) {⋯})` (nested-patterns.wipple:6:1-9:3) (CallExpressionSyntax):
+`B` (nested-patterns.wipple:3:1-3:2) (VariantDefinition):
+  has definition constraints
+  has type `E` (nested-patterns.wipple:1:1-4:2)
+  is a definition
+
+`show` (nested-patterns.wipple:6:1-6:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
+  has type `Number -> ()` (nested-patterns.wipple:6:1-6:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show (when (A; B) {⋯})` (nested-patterns.wipple:6:1-9:3) (ExpressionStatement):
+  has type `()`
+
+`show (when (A; B) {⋯})` (nested-patterns.wipple:6:1-9:3) (CallExpression):
   has type `()`
   is an expression
 
-`show` (nested-patterns.wipple:6:1-6:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
-  has type `Number -> ()` (nested-patterns.wipple:6:1-6:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`when (A; B) {⋯}` (nested-patterns.wipple:6:7-9:2) (WhenExpressionSyntax):
+`when (A; B) {⋯}` (nested-patterns.wipple:6:6-9:2) (WhenExpression):
   has type `Number`
   is an expression
 
-`A; B` (nested-patterns.wipple:6:13-6:17) (TupleExpressionSyntax):
-  has type `(E; E)` (nested-patterns.wipple:6:13-6:17)
-  is an expression
-
-`A` (nested-patterns.wipple:6:13-6:14) (ConstructorExpressionSyntax):
+`A` (nested-patterns.wipple:6:11-6:12) (ConstructorExpression):
   has type `E`
   is an expression
-  resolved to 1 definition(s): `A` (nested-patterns.wipple:2:3-2:4)
+  resolved to 1 definition(s): `A` (nested-patterns.wipple:2:1-2:2)
 
-`B` (nested-patterns.wipple:6:16-6:17) (ConstructorExpressionSyntax):
+`A; B` (nested-patterns.wipple:6:11-6:14) (TupleExpression):
+  has type `(E; E)` (nested-patterns.wipple:6:11-6:14)
+  is an expression
+
+`B` (nested-patterns.wipple:6:13-6:14) (ConstructorExpression):
   has type `E`
   is an expression
-  resolved to 1 definition(s): `B` (nested-patterns.wipple:3:3-3:4)
+  resolved to 1 definition(s): `B` (nested-patterns.wipple:3:1-3:2)
 
-`A; A` (nested-patterns.wipple:7:4-7:8) (TuplePatternSyntax):
-  has type `(E; E)` (nested-patterns.wipple:6:13-6:17)
-  is a pattern
-
-`A` (nested-patterns.wipple:7:4-7:5) (ConstructorPatternSyntax):
+`A` (nested-patterns.wipple:7:2-7:3) (ConstructorPattern):
   has type `E`
   is a pattern
-  resolved to 1 definition(s): `A` (nested-patterns.wipple:2:3-2:4)
+  resolved to 1 definition(s): `A` (nested-patterns.wipple:2:1-2:2)
 
-`A` (nested-patterns.wipple:7:7-7:8) (ConstructorPatternSyntax):
+`A; A` (nested-patterns.wipple:7:2-7:5) (TuplePattern):
+  has type `(E; E)` (nested-patterns.wipple:6:11-6:14)
+  is a pattern
+
+`A` (nested-patterns.wipple:7:4-7:5) (ConstructorPattern):
   has type `E`
   is a pattern
-  resolved to 1 definition(s): `A` (nested-patterns.wipple:2:3-2:4)
+  resolved to 1 definition(s): `A` (nested-patterns.wipple:2:1-2:2)
 
-`1` (nested-patterns.wipple:7:13-7:14) (NumberExpressionSyntax):
+`1` (nested-patterns.wipple:7:8-7:9) (NumberExpression):
   has type `Number`
   is an expression
 
-`x; y` (nested-patterns.wipple:8:4-8:8) (TuplePatternSyntax):
-  has type `(E; E)` (nested-patterns.wipple:6:13-6:17)
-  is a pattern
-
-`x` (nested-patterns.wipple:8:4-8:5) (VariablePatternSyntax):
+`x` (nested-patterns.wipple:8:2-8:3) (VariablePattern):
   has type `E`
+  is a definition
   is a pattern
 
-`y` (nested-patterns.wipple:8:7-8:8) (VariablePatternSyntax):
+`x; y` (nested-patterns.wipple:8:2-8:5) (TuplePattern):
+  has type `(E; E)` (nested-patterns.wipple:6:11-6:14)
+  is a pattern
+
+`y` (nested-patterns.wipple:8:4-8:5) (VariablePattern):
   has type `E`
+  is a definition
   is a pattern
 
-`2` (nested-patterns.wipple:8:13-8:14) (NumberExpressionSyntax):
+`2` (nested-patterns.wipple:8:8-8:9) (NumberExpression):
   has type `Number`
   is an expression
 

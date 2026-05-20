@@ -1,0 +1,12 @@
+[package]
+name = "wipple-queries"
+version = "0.0.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+levenshtein = "1"
+wipple-core = { path = "../core" }
+wipple-syntax = { path = "../syntax" }

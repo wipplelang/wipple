@@ -8,22 +8,21 @@ process.chdir(__dirname);
 fs.rmSync("dist", { recursive: true, force: true });
 fs.mkdirSync("dist", { recursive: true });
 
-const buildCmd = spawnSync("swift", ["build", "--package-path=compiler", "--product", "wipple"], {
-    cwd: path.resolve(__dirname, ".."),
-    stdio: "inherit",
-});
+let compiledFoundation = false;
+for (let dir of ["foundation", ...fs.readdirSync("src")]) {
+    if (dir === "foundation" && compiledFoundation) {
+        continue;
+    }
 
-if (buildCmd.status !== 0) {
-    throw new Error(`build exited with status code ${buildCmd.status}`);
-}
-
-for (let dir of fs.readdirSync("src")) {
     if (!fs.statSync(path.join("src", dir)).isDirectory()) {
         fs.copyFileSync(path.join("src", dir), path.join("dist", dir));
         continue;
     }
 
-    const metadata = JSON.parse(fs.readFileSync(path.join("src", dir, "_metadata.json"), "utf8"));
+    const getMetadata = (lib) =>
+        JSON.parse(fs.readFileSync(path.join("src", lib, "_metadata.json"), "utf8"));
+
+    const metadata = getMetadata(dir);
 
     const files = fs
         .readdirSync(path.join("src", dir))
@@ -33,24 +32,50 @@ for (let dir of fs.readdirSync("src")) {
             code: fs.readFileSync(path.join("src", dir, file), "utf8"),
         }));
 
-    const cmd = spawnSync(
-        "./compiler/.build/debug/wipple",
+    const compileCmd = spawnSync(
+        "cargo",
         [
-            "doc",
-            ...files.map((file) => path.join(__dirname, "src", file.path)),
-            ...(metadata.library ? ["--lib", path.join(__dirname, "src", metadata.library)] : []),
+            "run",
+            "-q",
+            "--",
+            "compile",
+            ...(compiledFoundation
+                ? [`--lib=${path.join(__dirname, "dist", "foundation.bin")}`]
+                : []),
+            ...files.map((file) =>
+                path.relative(
+                    path.resolve(__dirname, ".."),
+                    path.join(__dirname, "src", file.path),
+                ),
+            ),
+            `--lib-artifact=${path.join(__dirname, "dist", `${dir}.bin`)}`,
         ],
+        {
+            cwd: path.resolve(__dirname, ".."),
+            stdio: "inherit",
+        },
+    );
+
+    if (compileCmd.status !== 0) {
+        throw new Error(`compiler exited with status code ${compileCmd.status}`);
+    }
+
+    const docCmd = spawnSync(
+        "cargo",
+        ["run", "-q", "--", "doc", `--lib=${path.join(__dirname, "dist", `${dir}.bin`)}`],
         {
             cwd: path.resolve(__dirname, ".."),
             stdio: ["ignore", "pipe", "inherit"],
         },
     );
 
-    if (cmd.status !== 0) {
-        throw new Error(`compiler exited with status code ${cmd.status}`);
+    if (docCmd.status !== 0) {
+        throw new Error(`compiler exited with status code ${docCmd.status}`);
     }
 
-    const docs = JSON.parse(cmd.stdout.toString("utf8"));
+    const docs = JSON.parse(docCmd.stdout.toString("utf8"));
 
-    fs.writeFileSync(path.join("dist", `${dir}.json`), JSON.stringify({ metadata, files, docs }));
+    fs.writeFileSync(path.join("dist", `${dir}.json`), JSON.stringify({ metadata, docs }));
+
+    compiledFoundation = true;
 }

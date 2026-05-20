@@ -1,5 +1,5 @@
 import * as z from "zod";
-import compiler from "compiler";
+import * as compiler from "compiler";
 import { handler } from "../handler";
 
 const FormatRequest = z.object({

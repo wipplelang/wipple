@@ -5,7 +5,7 @@ run: once
 tasks:
   compiler:
     cmds:
-      - swift run --package-path=compiler wipple {{.CLI_ARGS}}
+      - cargo run -- {{.CLI_ARGS}}
   test:
     cmds:
       - node {{.CLI_ARGS}} test
@@ -13,19 +13,17 @@ tasks:
     cmds:
       - task test -- --test-update-snapshots
   install:
-    dir: compiler
     cmds:
-      - swift build -c release --product wipple
-      - cp $(swift build -c release --show-bin-path)/wipple /usr/local/bin/
+      - cargo install --path=compiler/cli
 
   setup:
     deps:
-      - setup:compiler
+      - setup:api
       - setup:playground
       - setup:site
       - setup:server
-  setup:compiler:
-    dir: compiler
+  setup:api:
+    dir: compiler/api
     cmds:
       - npm install
   setup:playground:
@@ -80,21 +78,15 @@ tasks:
     cmds:
       - npm run build
   build:api:
-    dir: compiler
+    dir: compiler/api
     cmds:
-      - |
-        if [[ -z "$CI" ]]; then
-          export SWIFT_SDK="$(swiftc -print-target-info | jq -r '.swiftCompilerTag')_wasm"
-        fi
-        WASM_BUILD=1 swift package --build-path=".build-wasm" --swift-sdk "$SWIFT_SDK" js ${CI+"-c release"} --product API
-        npm run build
+      - npm run build
   build:server:
     dir: server
     deps:
       - build:api
       - build:library
     cmds:
-      - (cd wat-parser && ./build.sh)
       - npm run build
       - rm -rf ../netlify/functions/api && mkdir -p ../netlify/functions/api &&
         cp dist/* ../netlify/functions/api/
@@ -103,5 +95,6 @@ tasks:
     dir: vscode
     deps:
       - build:api
+      - build:library
     cmds:
       - npm run extension

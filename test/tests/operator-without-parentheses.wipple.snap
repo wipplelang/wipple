@@ -1,115 +1,127 @@
-Facts:
-`show 1 + 2` (operator-without-parentheses.wipple:1:1-1:11) (OperatorExpressionSyntax):
-  is an expression
-  missing type (group: `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:11), `+` (operator-without-parentheses.wipple:1:8-1:9), `_`, `_`, `_`, `_`, `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:11), `_`, `_`, `_`)
+Facts (layer 2):
 
-`+` (operator-without-parentheses.wipple:1:8-1:9) (VisitAs):
-  has bound(s) `Add` `()` `Number` (operator-without-parentheses.wipple:1:10-1:11) `_` (`instance (Add () right sum)` (math.wipple:19:9-19:36))
-  has type `() Number -> _` (operator-without-parentheses.wipple:1:8-1:9)
+`show` (operator-without-parentheses.wipple:1:1-1:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
+  has type `Number -> ()` (operator-without-parentheses.wipple:1:1-1:5)
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (math.wipple:7:1-7:58)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`show 1` (operator-without-parentheses.wipple:1:1-1:7) (VisitAs):
+`show 1` (operator-without-parentheses.wipple:1:1-1:6) (CallExpression):
   has type `()`
   is an expression
 
-`2` (operator-without-parentheses.wipple:1:10-1:11) (VisitAs):
-  has type `Number` (operator-without-parentheses.wipple:1:10-1:11)
-  is an expression
+`show 1 + 2` (operator-without-parentheses.wipple:1:1-1:8) (ExpressionStatement):
+  missing type (group: `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:8), `+` (operator-without-parentheses.wipple:1:6-1:7), `_`, `_`, `_`, `_`, `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:8), `_`, `_`, `_`)
 
-`+` (operator-without-parentheses.wipple:1:8-1:9) (CallExpressionSyntax):
+`show 1 + 2` (operator-without-parentheses.wipple:1:1-1:8) (OperatorExpression):
   is an expression
-  missing type (group: `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:11), `+` (operator-without-parentheses.wipple:1:8-1:9), `_`, `_`, `_`, `_`, `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:11), `_`, `_`, `_`)
+  missing type (group: `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:8), `+` (operator-without-parentheses.wipple:1:6-1:7), `_`, `_`, `_`, `_`, `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:8), `_`, `_`, `_`)
 
-`show` (operator-without-parentheses.wipple:1:1-1:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
-  has type `Number -> ()` (operator-without-parentheses.wipple:1:1-1:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`1` (operator-without-parentheses.wipple:1:6-1:7) (NumberExpressionSyntax):
+`1` (operator-without-parentheses.wipple:1:5-1:6) (NumberExpression):
   has type `Number`
   is an expression
 
-`show True or False` (operator-without-parentheses.wipple:2:1-2:19) (OperatorExpressionSyntax):
+`+` (operator-without-parentheses.wipple:1:6-1:7) (CallExpression):
   is an expression
-  missing type (group: `show True or False` (operator-without-parentheses.wipple:2:1-2:19), `or` (operator-without-parentheses.wipple:2:11-2:13), `show True or False` (operator-without-parentheses.wipple:2:1-2:19), `_`, `_`, `_`)
+  missing type (group: `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:8), `+` (operator-without-parentheses.wipple:1:6-1:7), `_`, `_`, `_`, `_`, `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:8), `_`, `_`, `_`)
 
-`or` (operator-without-parentheses.wipple:2:11-2:13) (VisitAs):
-  has bound(s) `Or` `()` `Boolean` `_` (unresolved)
-  has type `() {Boolean} -> _` (operator-without-parentheses.wipple:2:11-2:13)
+`+` (operator-without-parentheses.wipple:1:6-1:7) (ConstructorExpression):
+  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `()` `Number` (operator-without-parentheses.wipple:1:7-1:8) `_` (resolved as `instance (Add () right sum)` (library/src/foundation/math.wipple:19:8-19:31))
+  has type `() Number -> _` (operator-without-parentheses.wipple:1:6-1:7)
   is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (logic.wipple:33:1-33:73)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:47)
 
-`show True` (operator-without-parentheses.wipple:2:1-2:10) (VisitAs):
-  has type `()`
+`2` (operator-without-parentheses.wipple:1:7-1:8) (NumberExpression):
+  has type `Number` (operator-without-parentheses.wipple:1:7-1:8)
   is an expression
 
-`False` (operator-without-parentheses.wipple:2:14-2:19) (VisitAs):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `False` (logic.wipple:3:3-3:8)
-
-`or` (operator-without-parentheses.wipple:2:11-2:13) (CallExpressionSyntax):
-  is an expression
-  missing type (group: `show True or False` (operator-without-parentheses.wipple:2:1-2:19), `or` (operator-without-parentheses.wipple:2:11-2:13), `show True or False` (operator-without-parentheses.wipple:2:1-2:19), `_`, `_`, `_`)
-
-`show` (operator-without-parentheses.wipple:2:1-2:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`show` (operator-without-parentheses.wipple:2:1-2:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (operator-without-parentheses.wipple:2:1-2:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`True` (operator-without-parentheses.wipple:2:6-2:10) (ConstructorExpressionSyntax):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `True` (logic.wipple:4:3-4:7)
-
-`False` (operator-without-parentheses.wipple:2:14-2:19) (BlockExpressionSyntax):
-  has type `{Boolean}` (operator-without-parentheses.wipple:2:14-2:19)
-  is an expression
-  no captures
-
-`show (1 + "hi")` (operator-without-parentheses.wipple:3:1-3:16) (CallExpressionSyntax):
+`show True` (operator-without-parentheses.wipple:2:1-2:9) (VisitAs):
   has type `()`
   is an expression
 
-`show` (operator-without-parentheses.wipple:3:1-3:5) (VariableExpressionSyntax):
+`show True or False` (operator-without-parentheses.wipple:2:1-2:16) (ExpressionStatement):
+  missing type (group: `show True or False` (operator-without-parentheses.wipple:2:1-2:16), `or` (operator-without-parentheses.wipple:2:9-2:11), `show True or False` (operator-without-parentheses.wipple:2:1-2:16), `_`, `_`, `_`)
+
+`show True or False` (operator-without-parentheses.wipple:2:1-2:16) (OperatorExpression):
+  is an expression
+  missing type (group: `show True or False` (operator-without-parentheses.wipple:2:1-2:16), `or` (operator-without-parentheses.wipple:2:9-2:11), `show True or False` (operator-without-parentheses.wipple:2:1-2:16), `_`, `_`, `_`)
+
+`True` (operator-without-parentheses.wipple:2:5-2:9) (ConstructorExpression):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:1-4:5)
+
+`or` (operator-without-parentheses.wipple:2:9-2:11) (CallExpression):
+  is an expression
+  missing type (group: `show True or False` (operator-without-parentheses.wipple:2:1-2:16), `or` (operator-without-parentheses.wipple:2:9-2:11), `show True or False` (operator-without-parentheses.wipple:2:1-2:16), `_`, `_`, `_`)
+
+`or` (operator-without-parentheses.wipple:2:9-2:11) (VisitAs):
+  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `()` `Boolean` `_` (unresolved)
+  has type `() {Boolean} -> _` (operator-without-parentheses.wipple:2:9-2:11)
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:61)
+
+`False` (operator-without-parentheses.wipple:2:11-2:16) (VisitAs):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:1-3:6)
+
+`False` (operator-without-parentheses.wipple:2:11-2:16) (BlockExpression):
+  has type `{Boolean}` (operator-without-parentheses.wipple:2:11-2:16)
+  is an expression
+
+`False` (operator-without-parentheses.wipple:2:11-2:16) (ExpressionStatement):
+  has type `Boolean`
+
+`show` (operator-without-parentheses.wipple:3:1-3:5) (VariableExpression):
   has type `_ -> ()` (operator-without-parentheses.wipple:3:1-3:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`1 + "hi"` (operator-without-parentheses.wipple:3:7-3:15) (OperatorExpressionSyntax):
-  is an expression
-  missing type (group: `1 + "hi"` (operator-without-parentheses.wipple:3:7-3:15), `+` (operator-without-parentheses.wipple:3:9-3:10), `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+`show (1 + "hi")` (operator-without-parentheses.wipple:3:1-3:13) (ExpressionStatement):
+  has type `()`
 
-`+` (operator-without-parentheses.wipple:3:9-3:10) (VisitAs):
-  has bound(s) `Add` `Number` (operator-without-parentheses.wipple:3:7-3:8) `String` (operator-without-parentheses.wipple:3:11-3:15) `_` (`instance (Add left right sum)` (math.wipple:13:19-13:48))
-  has type `Number String -> _` (operator-without-parentheses.wipple:3:9-3:10)
-  is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (math.wipple:7:1-7:58)
-
-`1` (operator-without-parentheses.wipple:3:7-3:8) (VisitAs):
-  has type `Number` (operator-without-parentheses.wipple:3:7-3:8)
+`show (1 + "hi")` (operator-without-parentheses.wipple:3:1-3:13) (CallExpression):
+  has type `()`
   is an expression
 
-`"hi"` (operator-without-parentheses.wipple:3:11-3:15) (VisitAs):
-  has type `String` (operator-without-parentheses.wipple:3:11-3:15)
+`1` (operator-without-parentheses.wipple:3:6-3:7) (NumberExpression):
+  has type `Number` (operator-without-parentheses.wipple:3:6-3:7)
   is an expression
 
-`+` (operator-without-parentheses.wipple:3:9-3:10) (CallExpressionSyntax):
+`1 + "hi"` (operator-without-parentheses.wipple:3:6-3:12) (OperatorExpression):
   is an expression
-  missing type (group: `1 + "hi"` (operator-without-parentheses.wipple:3:7-3:15), `+` (operator-without-parentheses.wipple:3:9-3:10), `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `1 + "hi"` (operator-without-parentheses.wipple:3:6-3:12), `+` (operator-without-parentheses.wipple:3:7-3:8), `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+
+`+` (operator-without-parentheses.wipple:3:7-3:8) (CallExpression):
+  is an expression
+  missing type (group: `1 + "hi"` (operator-without-parentheses.wipple:3:6-3:12), `+` (operator-without-parentheses.wipple:3:7-3:8), `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+
+`+` (operator-without-parentheses.wipple:3:7-3:8) (ConstructorExpression):
+  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `Number` (operator-without-parentheses.wipple:3:6-3:7) `String` (operator-without-parentheses.wipple:3:8-3:12) `_` (resolved as `instance (Add left right sum)` (library/src/foundation/math.wipple:13:17-13:42))
+  has type `Number String -> _` (operator-without-parentheses.wipple:3:7-3:8)
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:47)
+
+`"hi"` (operator-without-parentheses.wipple:3:8-3:12) (StringExpression):
+  has type `String` (operator-without-parentheses.wipple:3:8-3:12)
+  is an expression
 
 
 
 Feedback:
 
-`+` (operator-without-parentheses.wipple:1:8-1:9) (error-instance)
+`+` (operator-without-parentheses.wipple:1:6-1:7) (error-instance)
 
   Missing parentheses around the inputs to `+`.
   
   Spaces group before operators do, so you need to put parentheses around just
   the inputs to `+`.
   
-  -  `+` (operator-without-parentheses.wipple:1:8-1:9) requires `Add` `()` `Number` (operator-without-parentheses.wipple:1:10-1:11) `_`.
+  -  `2` is a `Number`.

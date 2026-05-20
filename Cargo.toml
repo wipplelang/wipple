@@ -1,0 +1,17 @@
+[workspace]
+resolver = "3"
+members = ["compiler/*"]
+
+[workspace.lints.rust]
+elided_lifetimes_in_paths = "deny"
+unused_crate_dependencies = "warn"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+print_stderr = "warn"
+result_large_err = "allow"
+type_complexity = "allow"
+uninlined_format_args = "warn"
+
+[profile.dev]
+opt-level = 1

@@ -1,1 +1,1 @@
-export type Groups = { start: number; end: number; primary?: boolean }[][];
+export type Groups = { locations: { start: number; end: number; primary?: boolean }[] }[];

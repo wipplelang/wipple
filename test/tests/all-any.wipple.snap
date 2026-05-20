@@ -1,451 +1,392 @@
-Facts:
-`show ((1, 2, 3) . all? (n -> n > 0))` (all-any.wipple:1:1-1:37) (CallExpressionSyntax):
-  has type `()`
-  is an expression
+Facts (layer 2):
 
-`show` (all-any.wipple:1:1-1:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`show` (all-any.wipple:1:1-1:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (all-any.wipple:1:1-1:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`1, 2, 3) . all? (n -> n > 0)` (all-any.wipple:1:8-1:36) (OperatorExpressionSyntax):
-  has type `Boolean`
+`show ((1, 2, 3) . all? (n -> n > 0))` (all-any.wipple:1:1-1:27) (ExpressionStatement):
+  has type `()`
+
+`show ((1, 2, 3) . all? (n -> n > 0))` (all-any.wipple:1:1-1:27) (CallExpression):
+  has type `()`
   is an expression
 
-`1, 2, 3` (all-any.wipple:1:8-1:15) (VisitAs):
+`1` (all-any.wipple:1:7-1:8) (VisitAs):
+  has type `Number` (all-any.wipple:1:11-1:12)
+  is an expression
+
+`1` (all-any.wipple:1:7-1:8) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:1:11-1:12) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:1:7-1:8)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`1, 2, 3` (all-any.wipple:1:7-1:12) (VisitAs):
   has type `List Number`
   is an expression
 
-`all? (n -> n > 0)` (all-any.wipple:1:19-1:36) (VisitAs):
-  has type `(List Number) -> Boolean` (all-any.wipple:1:19-1:36)
-  is an expression
-
-`all? (n -> n > 0)` (all-any.wipple:1:19-1:36) (CallExpressionSyntax):
+`1, 2, 3) . all? (n -> n > 0)` (all-any.wipple:1:7-1:26) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`all?` (all-any.wipple:1:19-1:23) (VariableExpressionSyntax):
-  has bound(s) `As-Sequence` `(List Number)` `Number` (all-any.wipple:1:14-1:15) (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
-  has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:1:19-1:23)
-  is an expression
-  resolved to 1 definition(s): `all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (sequence.wipple:333:1-333:93)
-
-`n -> n > 0` (all-any.wipple:1:25-1:35) (FunctionExpressionSyntax):
-  has type `Number -> Boolean` (all-any.wipple:1:25-1:35)
-  is an expression
-  no captures
-
-`n` (all-any.wipple:1:25-1:26) (VariablePatternSyntax):
-  has type `Number` (all-any.wipple:1:14-1:15)
-  is a pattern
-
-`n > 0` (all-any.wipple:1:30-1:35) (OperatorExpressionSyntax):
-  has type `Boolean`
+`2` (all-any.wipple:1:9-1:10) (VisitAs):
+  has type `Number` (all-any.wipple:1:11-1:12)
   is an expression
 
-`>` (all-any.wipple:1:32-1:33) (VisitAs):
-  has bound(s) `Greater-Than` `Number` (all-any.wipple:1:14-1:15) (`instance (Greater-Than value) where (Order value)` (logic.wipple:70:1-70:50)), `Order` `Number` (all-any.wipple:1:14-1:15) (`instance (Order Number)` (logic.wipple:53:1-53:24))
-  has type `Number Number -> Boolean` (all-any.wipple:1:32-1:33)
+`2` (all-any.wipple:1:9-1:10) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:1:11-1:12) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:1:9-1:10)
   is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (logic.wipple:69:1-69:55)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
 
-`n` (all-any.wipple:1:30-1:31) (VisitAs):
-  has type `Number` (all-any.wipple:1:14-1:15)
-  is an expression
-  resolved to 1 definition(s): `n` (all-any.wipple:1:25-1:26)
-
-`0` (all-any.wipple:1:34-1:35) (VisitAs):
-  has type `Number` (all-any.wipple:1:14-1:15)
+`3` (all-any.wipple:1:11-1:12) (VisitAs):
+  has type `Number` (all-any.wipple:1:11-1:12)
   is an expression
 
-`>` (all-any.wipple:1:32-1:33) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`1` (all-any.wipple:1:8-1:9) (VisitAs):
-  has type `Number` (all-any.wipple:1:14-1:15)
-  is an expression
-
-`2` (all-any.wipple:1:11-1:12) (VisitAs):
-  has type `Number` (all-any.wipple:1:14-1:15)
-  is an expression
-
-`3` (all-any.wipple:1:14-1:15) (VisitAs):
-  has type `Number` (all-any.wipple:1:14-1:15)
-  is an expression
-
-`3` (all-any.wipple:1:14-1:15) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`3` (all-any.wipple:1:14-1:15) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:1:14-1:15) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:1:14-1:15)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`2` (all-any.wipple:1:11-1:12) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`2` (all-any.wipple:1:11-1:12) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:1:14-1:15) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
+`3` (all-any.wipple:1:11-1:12) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:1:11-1:12) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
   has type `Number (List Number) -> List Number` (all-any.wipple:1:11-1:12)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
 
-`1` (all-any.wipple:1:8-1:9) (CallExpressionSyntax):
-  has type `List Number`
+`all?` (all-any.wipple:1:14-1:18) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List Number)` `Number` (all-any.wipple:1:11-1:12) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:42))
+  has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:1:14-1:18)
+  is an expression
+  resolved to 1 definition(s): `all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:333:1-333:81)
+
+`all? (n -> n > 0)` (all-any.wipple:1:14-1:26) (CallExpression):
+  has type `Boolean`
   is an expression
 
-`1` (all-any.wipple:1:8-1:9) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:1:14-1:15) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:1:8-1:9)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`1, 2, 3` (all-any.wipple:1:8-1:15) (ConstructorExpressionSyntax):
-  has bound(s) `Initial-Collection` `Number` (all-any.wipple:1:14-1:15) `(List Number)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `Number` (all-any.wipple:1:14-1:15) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `List Number`
-  is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
-
-`show ((1, -2, 3) . all? (n -> n > 0))` (all-any.wipple:2:1-2:38) (CallExpressionSyntax):
-  has type `()`
+`all? (n -> n > 0)` (all-any.wipple:1:14-1:26) (VisitAs):
+  has type `(List Number) -> Boolean` (all-any.wipple:1:14-1:26)
   is an expression
 
-`show` (all-any.wipple:2:1-2:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`n` (all-any.wipple:1:19-1:20) (VariablePattern):
+  has type `Number` (all-any.wipple:1:11-1:12)
+  is a definition
+  is a pattern
+
+`n -> n > 0` (all-any.wipple:1:19-1:25) (FunctionExpression):
+  has type `Number -> Boolean` (all-any.wipple:1:19-1:25)
+  is an expression
+
+`n` (all-any.wipple:1:22-1:23) (VariableExpression):
+  has type `Number` (all-any.wipple:1:11-1:12)
+  is an expression
+  resolved to 1 definition(s): `n` (all-any.wipple:1:19-1:20)
+
+`n > 0` (all-any.wipple:1:22-1:25) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`>` (all-any.wipple:1:23-1:24) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`>` (all-any.wipple:1:23-1:24) (ConstructorExpression):
+  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (all-any.wipple:1:11-1:12) (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:47) `Number` (all-any.wipple:1:11-1:12) (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:45))
+  has type `Number Number -> Boolean` (all-any.wipple:1:23-1:24)
+  is an expression
+  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:69:1-69:47)
+
+`0` (all-any.wipple:1:24-1:25) (NumberExpression):
+  has type `Number` (all-any.wipple:1:11-1:12)
+  is an expression
+
+`show` (all-any.wipple:2:1-2:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (all-any.wipple:2:1-2:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`1, -2, 3) . all? (n -> n > 0)` (all-any.wipple:2:8-2:37) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show ((1, -2, 3) . all? (n -> n > 0))` (all-any.wipple:2:1-2:28) (ExpressionStatement):
+  has type `()`
 
-`1, -2, 3` (all-any.wipple:2:8-2:16) (VisitAs):
-  has type `List Number`
-  is an expression
-
-`all? (n -> n > 0)` (all-any.wipple:2:20-2:37) (VisitAs):
-  has type `(List Number) -> Boolean` (all-any.wipple:2:20-2:37)
-  is an expression
-
-`all? (n -> n > 0)` (all-any.wipple:2:20-2:37) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`all?` (all-any.wipple:2:20-2:24) (VariableExpressionSyntax):
-  has bound(s) `As-Sequence` `(List Number)` `Number` (all-any.wipple:2:15-2:16) (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
-  has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:2:20-2:24)
-  is an expression
-  resolved to 1 definition(s): `all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (sequence.wipple:333:1-333:93)
-
-`n -> n > 0` (all-any.wipple:2:26-2:36) (FunctionExpressionSyntax):
-  has type `Number -> Boolean` (all-any.wipple:2:26-2:36)
-  is an expression
-  no captures
-
-`n` (all-any.wipple:2:26-2:27) (VariablePatternSyntax):
-  has type `Number` (all-any.wipple:2:15-2:16)
-  is a pattern
-
-`n > 0` (all-any.wipple:2:31-2:36) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`>` (all-any.wipple:2:33-2:34) (VisitAs):
-  has bound(s) `Greater-Than` `Number` (all-any.wipple:2:15-2:16) (`instance (Greater-Than value) where (Order value)` (logic.wipple:70:1-70:50)), `Order` `Number` (all-any.wipple:2:15-2:16) (`instance (Order Number)` (logic.wipple:53:1-53:24))
-  has type `Number Number -> Boolean` (all-any.wipple:2:33-2:34)
-  is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (logic.wipple:69:1-69:55)
-
-`n` (all-any.wipple:2:31-2:32) (VisitAs):
-  has type `Number` (all-any.wipple:2:15-2:16)
-  is an expression
-  resolved to 1 definition(s): `n` (all-any.wipple:2:26-2:27)
-
-`0` (all-any.wipple:2:35-2:36) (VisitAs):
-  has type `Number` (all-any.wipple:2:15-2:16)
-  is an expression
-
-`>` (all-any.wipple:2:33-2:34) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`1` (all-any.wipple:2:8-2:9) (VisitAs):
-  has type `Number` (all-any.wipple:2:15-2:16)
-  is an expression
-
-`-2` (all-any.wipple:2:11-2:13) (VisitAs):
-  has type `Number` (all-any.wipple:2:15-2:16)
-  is an expression
-
-`3` (all-any.wipple:2:15-2:16) (VisitAs):
-  has type `Number` (all-any.wipple:2:15-2:16)
-  is an expression
-
-`3` (all-any.wipple:2:15-2:16) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`3` (all-any.wipple:2:15-2:16) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:2:15-2:16) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:2:15-2:16)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`-2` (all-any.wipple:2:11-2:13) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`-2` (all-any.wipple:2:11-2:13) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:2:15-2:16) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:2:11-2:13)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`1` (all-any.wipple:2:8-2:9) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`1` (all-any.wipple:2:8-2:9) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:2:15-2:16) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:2:8-2:9)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`1, -2, 3` (all-any.wipple:2:8-2:16) (ConstructorExpressionSyntax):
-  has bound(s) `Initial-Collection` `Number` (all-any.wipple:2:15-2:16) `(List Number)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `Number` (all-any.wipple:2:15-2:16) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `List Number`
-  is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
-
-`show ((1, -2, 3) . any? (n -> n > 0))` (all-any.wipple:3:1-3:38) (CallExpressionSyntax):
+`show ((1, -2, 3) . all? (n -> n > 0))` (all-any.wipple:2:1-2:28) (CallExpression):
   has type `()`
   is an expression
 
-`show` (all-any.wipple:3:1-3:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`1` (all-any.wipple:2:7-2:8) (VisitAs):
+  has type `Number` (all-any.wipple:2:12-2:13)
+  is an expression
+
+`1` (all-any.wipple:2:7-2:8) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:2:12-2:13) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:2:7-2:8)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`1, -2, 3` (all-any.wipple:2:7-2:13) (VisitAs):
+  has type `List Number`
+  is an expression
+
+`1, -2, 3) . all? (n -> n > 0)` (all-any.wipple:2:7-2:27) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`-2` (all-any.wipple:2:9-2:11) (VisitAs):
+  has type `Number` (all-any.wipple:2:12-2:13)
+  is an expression
+
+`-2` (all-any.wipple:2:9-2:11) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:2:12-2:13) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:2:9-2:11)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`3` (all-any.wipple:2:12-2:13) (VisitAs):
+  has type `Number` (all-any.wipple:2:12-2:13)
+  is an expression
+
+`3` (all-any.wipple:2:12-2:13) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:2:12-2:13) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:2:12-2:13)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`all?` (all-any.wipple:2:15-2:19) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List Number)` `Number` (all-any.wipple:2:12-2:13) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:42))
+  has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:2:15-2:19)
+  is an expression
+  resolved to 1 definition(s): `all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:333:1-333:81)
+
+`all? (n -> n > 0)` (all-any.wipple:2:15-2:27) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`all? (n -> n > 0)` (all-any.wipple:2:15-2:27) (VisitAs):
+  has type `(List Number) -> Boolean` (all-any.wipple:2:15-2:27)
+  is an expression
+
+`n` (all-any.wipple:2:20-2:21) (VariablePattern):
+  has type `Number` (all-any.wipple:2:12-2:13)
+  is a definition
+  is a pattern
+
+`n -> n > 0` (all-any.wipple:2:20-2:26) (FunctionExpression):
+  has type `Number -> Boolean` (all-any.wipple:2:20-2:26)
+  is an expression
+
+`n` (all-any.wipple:2:23-2:24) (VariableExpression):
+  has type `Number` (all-any.wipple:2:12-2:13)
+  is an expression
+  resolved to 1 definition(s): `n` (all-any.wipple:2:20-2:21)
+
+`n > 0` (all-any.wipple:2:23-2:26) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`>` (all-any.wipple:2:24-2:25) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`>` (all-any.wipple:2:24-2:25) (ConstructorExpression):
+  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (all-any.wipple:2:12-2:13) (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:47) `Number` (all-any.wipple:2:12-2:13) (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:45))
+  has type `Number Number -> Boolean` (all-any.wipple:2:24-2:25)
+  is an expression
+  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:69:1-69:47)
+
+`0` (all-any.wipple:2:25-2:26) (NumberExpression):
+  has type `Number` (all-any.wipple:2:12-2:13)
+  is an expression
+
+`show` (all-any.wipple:3:1-3:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (all-any.wipple:3:1-3:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`1, -2, 3) . any? (n -> n > 0)` (all-any.wipple:3:8-3:37) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show ((1, -2, 3) . any? (n -> n > 0))` (all-any.wipple:3:1-3:28) (ExpressionStatement):
+  has type `()`
 
-`1, -2, 3` (all-any.wipple:3:8-3:16) (VisitAs):
-  has type `List Number`
-  is an expression
-
-`any? (n -> n > 0)` (all-any.wipple:3:20-3:37) (VisitAs):
-  has type `(List Number) -> Boolean` (all-any.wipple:3:20-3:37)
-  is an expression
-
-`any? (n -> n > 0)` (all-any.wipple:3:20-3:37) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`any?` (all-any.wipple:3:20-3:24) (VariableExpressionSyntax):
-  has bound(s) `As-Sequence` `(List Number)` `Number` (all-any.wipple:3:15-3:16) (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
-  has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:3:20-3:24)
-  is an expression
-  resolved to 1 definition(s): `any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (sequence.wipple:343:1-343:93)
-
-`n -> n > 0` (all-any.wipple:3:26-3:36) (FunctionExpressionSyntax):
-  has type `Number -> Boolean` (all-any.wipple:3:26-3:36)
-  is an expression
-  no captures
-
-`n` (all-any.wipple:3:26-3:27) (VariablePatternSyntax):
-  has type `Number` (all-any.wipple:3:15-3:16)
-  is a pattern
-
-`n > 0` (all-any.wipple:3:31-3:36) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`>` (all-any.wipple:3:33-3:34) (VisitAs):
-  has bound(s) `Greater-Than` `Number` (all-any.wipple:3:15-3:16) (`instance (Greater-Than value) where (Order value)` (logic.wipple:70:1-70:50)), `Order` `Number` (all-any.wipple:3:15-3:16) (`instance (Order Number)` (logic.wipple:53:1-53:24))
-  has type `Number Number -> Boolean` (all-any.wipple:3:33-3:34)
-  is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (logic.wipple:69:1-69:55)
-
-`n` (all-any.wipple:3:31-3:32) (VisitAs):
-  has type `Number` (all-any.wipple:3:15-3:16)
-  is an expression
-  resolved to 1 definition(s): `n` (all-any.wipple:3:26-3:27)
-
-`0` (all-any.wipple:3:35-3:36) (VisitAs):
-  has type `Number` (all-any.wipple:3:15-3:16)
-  is an expression
-
-`>` (all-any.wipple:3:33-3:34) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`1` (all-any.wipple:3:8-3:9) (VisitAs):
-  has type `Number` (all-any.wipple:3:15-3:16)
-  is an expression
-
-`-2` (all-any.wipple:3:11-3:13) (VisitAs):
-  has type `Number` (all-any.wipple:3:15-3:16)
-  is an expression
-
-`3` (all-any.wipple:3:15-3:16) (VisitAs):
-  has type `Number` (all-any.wipple:3:15-3:16)
-  is an expression
-
-`3` (all-any.wipple:3:15-3:16) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`3` (all-any.wipple:3:15-3:16) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:3:15-3:16) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:3:15-3:16)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`-2` (all-any.wipple:3:11-3:13) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`-2` (all-any.wipple:3:11-3:13) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:3:15-3:16) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:3:11-3:13)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`1` (all-any.wipple:3:8-3:9) (CallExpressionSyntax):
-  has type `List Number`
-  is an expression
-
-`1` (all-any.wipple:3:8-3:9) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:3:15-3:16) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:3:8-3:9)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`1, -2, 3` (all-any.wipple:3:8-3:16) (ConstructorExpressionSyntax):
-  has bound(s) `Initial-Collection` `Number` (all-any.wipple:3:15-3:16) `(List Number)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `Number` (all-any.wipple:3:15-3:16) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `List Number`
-  is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
-
-`show ((-1, -2, -3) . any? (n -> n > 0))` (all-any.wipple:4:1-4:40) (CallExpressionSyntax):
+`show ((1, -2, 3) . any? (n -> n > 0))` (all-any.wipple:3:1-3:28) (CallExpression):
   has type `()`
   is an expression
 
-`show` (all-any.wipple:4:1-4:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
-  has type `Boolean -> ()` (all-any.wipple:4:1-4:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`-1, -2, -3) . any? (n -> n > 0)` (all-any.wipple:4:8-4:39) (OperatorExpressionSyntax):
-  has type `Boolean`
+`1` (all-any.wipple:3:7-3:8) (VisitAs):
+  has type `Number` (all-any.wipple:3:12-3:13)
   is an expression
 
-`-1, -2, -3` (all-any.wipple:4:8-4:18) (VisitAs):
+`1` (all-any.wipple:3:7-3:8) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:3:12-3:13) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:3:7-3:8)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`1, -2, 3` (all-any.wipple:3:7-3:13) (VisitAs):
   has type `List Number`
   is an expression
 
-`any? (n -> n > 0)` (all-any.wipple:4:22-4:39) (VisitAs):
-  has type `(List Number) -> Boolean` (all-any.wipple:4:22-4:39)
-  is an expression
-
-`any? (n -> n > 0)` (all-any.wipple:4:22-4:39) (CallExpressionSyntax):
+`1, -2, 3) . any? (n -> n > 0)` (all-any.wipple:3:7-3:27) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`any?` (all-any.wipple:4:22-4:26) (VariableExpressionSyntax):
-  has bound(s) `As-Sequence` `(List Number)` `Number` (all-any.wipple:4:16-4:18) (`instance (As-Sequence (List element) element)` (sequence.wipple:199:1-199:46))
-  has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:4:22-4:26)
+`-2` (all-any.wipple:3:9-3:11) (VisitAs):
+  has type `Number` (all-any.wipple:3:12-3:13)
   is an expression
-  resolved to 1 definition(s): `any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (sequence.wipple:343:1-343:93)
 
-`n -> n > 0` (all-any.wipple:4:28-4:38) (FunctionExpressionSyntax):
-  has type `Number -> Boolean` (all-any.wipple:4:28-4:38)
+`-2` (all-any.wipple:3:9-3:11) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:3:12-3:13) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:3:9-3:11)
   is an expression
-  no captures
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
 
-`n` (all-any.wipple:4:28-4:29) (VariablePatternSyntax):
-  has type `Number` (all-any.wipple:4:16-4:18)
+`3` (all-any.wipple:3:12-3:13) (VisitAs):
+  has type `Number` (all-any.wipple:3:12-3:13)
+  is an expression
+
+`3` (all-any.wipple:3:12-3:13) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:3:12-3:13) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:3:12-3:13)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`any?` (all-any.wipple:3:15-3:19) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List Number)` `Number` (all-any.wipple:3:12-3:13) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:42))
+  has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:3:15-3:19)
+  is an expression
+  resolved to 1 definition(s): `any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:343:1-343:81)
+
+`any? (n -> n > 0)` (all-any.wipple:3:15-3:27) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`any? (n -> n > 0)` (all-any.wipple:3:15-3:27) (VisitAs):
+  has type `(List Number) -> Boolean` (all-any.wipple:3:15-3:27)
+  is an expression
+
+`n` (all-any.wipple:3:20-3:21) (VariablePattern):
+  has type `Number` (all-any.wipple:3:12-3:13)
+  is a definition
   is a pattern
 
-`n > 0` (all-any.wipple:4:33-4:38) (OperatorExpressionSyntax):
+`n -> n > 0` (all-any.wipple:3:20-3:26) (FunctionExpression):
+  has type `Number -> Boolean` (all-any.wipple:3:20-3:26)
+  is an expression
+
+`n` (all-any.wipple:3:23-3:24) (VariableExpression):
+  has type `Number` (all-any.wipple:3:12-3:13)
+  is an expression
+  resolved to 1 definition(s): `n` (all-any.wipple:3:20-3:21)
+
+`n > 0` (all-any.wipple:3:23-3:26) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`>` (all-any.wipple:4:35-4:36) (VisitAs):
-  has bound(s) `Greater-Than` `Number` (all-any.wipple:4:16-4:18) (`instance (Greater-Than value) where (Order value)` (logic.wipple:70:1-70:50)), `Order` `Number` (all-any.wipple:4:16-4:18) (`instance (Order Number)` (logic.wipple:53:1-53:24))
-  has type `Number Number -> Boolean` (all-any.wipple:4:35-4:36)
-  is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (logic.wipple:69:1-69:55)
-
-`n` (all-any.wipple:4:33-4:34) (VisitAs):
-  has type `Number` (all-any.wipple:4:16-4:18)
-  is an expression
-  resolved to 1 definition(s): `n` (all-any.wipple:4:28-4:29)
-
-`0` (all-any.wipple:4:37-4:38) (VisitAs):
-  has type `Number` (all-any.wipple:4:16-4:18)
-  is an expression
-
-`>` (all-any.wipple:4:35-4:36) (CallExpressionSyntax):
+`>` (all-any.wipple:3:24-3:25) (CallExpression):
   has type `Boolean`
   is an expression
 
-`-1` (all-any.wipple:4:8-4:10) (VisitAs):
-  has type `Number` (all-any.wipple:4:16-4:18)
+`>` (all-any.wipple:3:24-3:25) (ConstructorExpression):
+  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (all-any.wipple:3:12-3:13) (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:47) `Number` (all-any.wipple:3:12-3:13) (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:45))
+  has type `Number Number -> Boolean` (all-any.wipple:3:24-3:25)
+  is an expression
+  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:69:1-69:47)
+
+`0` (all-any.wipple:3:25-3:26) (NumberExpression):
+  has type `Number` (all-any.wipple:3:12-3:13)
   is an expression
 
-`-2` (all-any.wipple:4:12-4:14) (VisitAs):
-  has type `Number` (all-any.wipple:4:16-4:18)
+`show` (all-any.wipple:4:1-4:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
+  has type `Boolean -> ()` (all-any.wipple:4:1-4:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show ((-1, -2, -3) . any? (n -> n > 0))` (all-any.wipple:4:1-4:30) (ExpressionStatement):
+  has type `()`
+
+`show ((-1, -2, -3) . any? (n -> n > 0))` (all-any.wipple:4:1-4:30) (CallExpression):
+  has type `()`
   is an expression
 
-`-3` (all-any.wipple:4:16-4:18) (VisitAs):
-  has type `Number` (all-any.wipple:4:16-4:18)
+`-1` (all-any.wipple:4:7-4:9) (VisitAs):
+  has type `Number` (all-any.wipple:4:13-4:15)
   is an expression
 
-`-3` (all-any.wipple:4:16-4:18) (CallExpressionSyntax):
+`-1` (all-any.wipple:4:7-4:9) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:4:13-4:15) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:4:7-4:9)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`-1, -2, -3` (all-any.wipple:4:7-4:15) (VisitAs):
   has type `List Number`
   is an expression
 
-`-3` (all-any.wipple:4:16-4:18) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:4:16-4:18) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:4:16-4:18)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`-2` (all-any.wipple:4:12-4:14) (CallExpressionSyntax):
-  has type `List Number`
+`-1, -2, -3) . any? (n -> n > 0)` (all-any.wipple:4:7-4:29) (OperatorExpression):
+  has type `Boolean`
   is an expression
 
-`-2` (all-any.wipple:4:12-4:14) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:4:16-4:18) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:4:12-4:14)
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
-
-`-1` (all-any.wipple:4:8-4:10) (CallExpressionSyntax):
-  has type `List Number`
+`-2` (all-any.wipple:4:10-4:12) (VisitAs):
+  has type `Number` (all-any.wipple:4:13-4:15)
   is an expression
 
-`-1` (all-any.wipple:4:8-4:10) (ConstructorExpressionSyntax):
-  has bound(s) `Build-Collection` `Number` (all-any.wipple:4:16-4:18) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `Number (List Number) -> List Number` (all-any.wipple:4:8-4:10)
+`-2` (all-any.wipple:4:10-4:12) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:4:13-4:15) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:4:10-4:12)
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (collections.wipple:1:1-1:90)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
 
-`-1, -2, -3` (all-any.wipple:4:8-4:18) (ConstructorExpressionSyntax):
-  has bound(s) `Initial-Collection` `Number` (all-any.wipple:4:16-4:18) `(List Number)` (`instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element)` (collections.wipple:10:1-10:143)), `Initial` `(List Number)` (`instance (Initial (List element))` (list.wipple:3:1-3:34)), `Build-Collection` `Number` (all-any.wipple:4:16-4:18) `(List Number)` (`instance (Build-Collection element (List element))` (collections.wipple:12:1-12:51))
-  has type `List Number`
+`-3` (all-any.wipple:4:13-4:15) (VisitAs):
+  has type `Number` (all-any.wipple:4:13-4:15)
   is an expression
-  resolved to 1 definition(s): `Initial-Collection : (infer element) collection => trait collection` (collections.wipple:9:1-9:68)
+
+`-3` (all-any.wipple:4:13-4:15) (ConstructorExpression):
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `Number` (all-any.wipple:4:13-4:15) `(List Number)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:47))
+  has type `Number (List Number) -> List Number` (all-any.wipple:4:13-4:15)
+  is an expression
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
+
+`any?` (all-any.wipple:4:17-4:21) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List Number)` `Number` (all-any.wipple:4:13-4:15) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:42))
+  has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:4:17-4:21)
+  is an expression
+  resolved to 1 definition(s): `any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:343:1-343:81)
+
+`any? (n -> n > 0)` (all-any.wipple:4:17-4:29) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`any? (n -> n > 0)` (all-any.wipple:4:17-4:29) (VisitAs):
+  has type `(List Number) -> Boolean` (all-any.wipple:4:17-4:29)
+  is an expression
+
+`n` (all-any.wipple:4:22-4:23) (VariablePattern):
+  has type `Number` (all-any.wipple:4:13-4:15)
+  is a definition
+  is a pattern
+
+`n -> n > 0` (all-any.wipple:4:22-4:28) (FunctionExpression):
+  has type `Number -> Boolean` (all-any.wipple:4:22-4:28)
+  is an expression
+
+`n` (all-any.wipple:4:25-4:26) (VariableExpression):
+  has type `Number` (all-any.wipple:4:13-4:15)
+  is an expression
+  resolved to 1 definition(s): `n` (all-any.wipple:4:22-4:23)
+
+`n > 0` (all-any.wipple:4:25-4:28) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`>` (all-any.wipple:4:26-4:27) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`>` (all-any.wipple:4:26-4:27) (ConstructorExpression):
+  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (all-any.wipple:4:13-4:15) (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:47) `Number` (all-any.wipple:4:13-4:15) (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:45))
+  has type `Number Number -> Boolean` (all-any.wipple:4:26-4:27)
+  is an expression
+  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:69:1-69:47)
+
+`0` (all-any.wipple:4:27-4:28) (NumberExpression):
+  has type `Number` (all-any.wipple:4:13-4:15)
+  is an expression
 
 
 Output:

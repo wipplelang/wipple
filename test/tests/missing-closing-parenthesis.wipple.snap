@@ -1,12 +1,10 @@
-Facts:
-`(` (missing-closing-parenthesis.wipple:1:6-1:7) (ParseErrorSyntax):
-  Unexpected `(`
+Facts (layer 2):
 
 
 
 Feedback:
 
-`(` (missing-closing-parenthesis.wipple:1:6-1:7) (syntax-error)
+`(` (missing-closing-parenthesis.wipple:1:5-1:6) (syntax-error)
 
   Unexpected `(`.
   

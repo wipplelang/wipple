@@ -1,129 +1,142 @@
-Facts:
-`show (1 + 2)` (math.wipple:1:1-1:13) (CallExpressionSyntax):
-  has type `()`
-  is an expression
+Facts (layer 2):
 
-`show` (math.wipple:1:1-1:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
+`show` (math.wipple:1:1-1:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
   has type `Number -> ()` (math.wipple:1:1-1:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`1 + 2` (math.wipple:1:7-1:12) (OperatorExpressionSyntax):
-  has type `Number`
-  is an expression
+`show (1 + 2)` (math.wipple:1:1-1:10) (ExpressionStatement):
+  has type `()`
 
-`+` (math.wipple:1:9-1:10) (VisitAs):
-  has bound(s) `Add` `Number` `Number` `Number` (`instance (Add Number Number Number)` (math.wipple:8:1-8:36))
-  has type `Number Number -> Number` (math.wipple:1:9-1:10)
-  is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (math.wipple:7:1-7:58)
-
-`1` (math.wipple:1:7-1:8) (VisitAs):
-  has type `Number`
-  is an expression
-
-`2` (math.wipple:1:11-1:12) (VisitAs):
-  has type `Number`
-  is an expression
-
-`+` (math.wipple:1:9-1:10) (CallExpressionSyntax):
-  has type `Number`
-  is an expression
-
-`show (4 - 1)` (math.wipple:2:1-2:13) (CallExpressionSyntax):
+`show (1 + 2)` (math.wipple:1:1-1:10) (CallExpression):
   has type `()`
   is an expression
 
-`show` (math.wipple:2:1-2:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
+`1` (math.wipple:1:6-1:7) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`1 + 2` (math.wipple:1:6-1:9) (OperatorExpression):
+  has type `Number`
+  is an expression
+
+`+` (math.wipple:1:7-1:8) (CallExpression):
+  has type `Number`
+  is an expression
+
+`+` (math.wipple:1:7-1:8) (ConstructorExpression):
+  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:32))
+  has type `Number Number -> Number` (math.wipple:1:7-1:8)
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:47)
+
+`2` (math.wipple:1:8-1:9) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (math.wipple:2:1-2:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
   has type `Number -> ()` (math.wipple:2:1-2:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`4 - 1` (math.wipple:2:7-2:12) (OperatorExpressionSyntax):
-  has type `Number`
-  is an expression
+`show (4 - 1)` (math.wipple:2:1-2:10) (ExpressionStatement):
+  has type `()`
 
-`-` (math.wipple:2:9-2:10) (VisitAs):
-  has bound(s) `Subtract` `Number` `Number` `Number` (`instance (Subtract Number Number Number)` (math.wipple:23:1-23:41))
-  has type `Number Number -> Number` (math.wipple:2:9-2:10)
-  is an expression
-  resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)` (math.wipple:22:1-22:77)
-
-`4` (math.wipple:2:7-2:8) (VisitAs):
-  has type `Number`
-  is an expression
-
-`1` (math.wipple:2:11-2:12) (VisitAs):
-  has type `Number`
-  is an expression
-
-`-` (math.wipple:2:9-2:10) (CallExpressionSyntax):
-  has type `Number`
-  is an expression
-
-`show (3 * 5)` (math.wipple:3:1-3:13) (CallExpressionSyntax):
+`show (4 - 1)` (math.wipple:2:1-2:10) (CallExpression):
   has type `()`
   is an expression
 
-`show` (math.wipple:3:1-3:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
+`4` (math.wipple:2:6-2:7) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`4 - 1` (math.wipple:2:6-2:9) (OperatorExpression):
+  has type `Number`
+  is an expression
+
+`-` (math.wipple:2:7-2:8) (CallExpression):
+  has type `Number`
+  is an expression
+
+`-` (math.wipple:2:7-2:8) (ConstructorExpression):
+  has bound(s) `Subtract` (library/src/foundation/math.wipple:22:1-22:66) `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)` (library/src/foundation/math.wipple:23:1-23:37))
+  has type `Number Number -> Number` (math.wipple:2:7-2:8)
+  is an expression
+  resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)` (library/src/foundation/math.wipple:22:1-22:66)
+
+`1` (math.wipple:2:8-2:9) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (math.wipple:3:1-3:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
   has type `Number -> ()` (math.wipple:3:1-3:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`3 * 5` (math.wipple:3:7-3:12) (OperatorExpressionSyntax):
-  has type `Number`
-  is an expression
+`show (3 * 5)` (math.wipple:3:1-3:10) (ExpressionStatement):
+  has type `()`
 
-`*` (math.wipple:3:9-3:10) (VisitAs):
-  has bound(s) `Multiply` `Number` `Number` `Number` (`instance (Multiply Number Number Number)` (math.wipple:38:1-38:41))
-  has type `Number Number -> Number` (math.wipple:3:9-3:10)
-  is an expression
-  resolved to 1 definition(s): `Multiply : left right (infer product) => trait (left right -> product)` (math.wipple:37:1-37:71)
-
-`3` (math.wipple:3:7-3:8) (VisitAs):
-  has type `Number`
-  is an expression
-
-`5` (math.wipple:3:11-3:12) (VisitAs):
-  has type `Number`
-  is an expression
-
-`*` (math.wipple:3:9-3:10) (CallExpressionSyntax):
-  has type `Number`
-  is an expression
-
-`show (10 / 4)` (math.wipple:4:1-4:14) (CallExpressionSyntax):
+`show (3 * 5)` (math.wipple:3:1-3:10) (CallExpression):
   has type `()`
   is an expression
 
-`show` (math.wipple:4:1-4:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Number` (`instance (Describe Number)` (io.wipple:15:1-15:27))
+`3` (math.wipple:3:6-3:7) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`3 * 5` (math.wipple:3:6-3:9) (OperatorExpression):
+  has type `Number`
+  is an expression
+
+`*` (math.wipple:3:7-3:8) (CallExpression):
+  has type `Number`
+  is an expression
+
+`*` (math.wipple:3:7-3:8) (ConstructorExpression):
+  has bound(s) `Multiply` (library/src/foundation/math.wipple:37:1-37:60) `Number` `Number` `Number` (resolved as `instance (Multiply Number Number Number)` (library/src/foundation/math.wipple:38:1-38:37))
+  has type `Number Number -> Number` (math.wipple:3:7-3:8)
+  is an expression
+  resolved to 1 definition(s): `Multiply : left right (infer product) => trait (left right -> product)` (library/src/foundation/math.wipple:37:1-37:60)
+
+`5` (math.wipple:3:8-3:9) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (math.wipple:4:1-4:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
   has type `Number -> ()` (math.wipple:4:1-4:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`10 / 4` (math.wipple:4:7-4:13) (OperatorExpressionSyntax):
+`show (10 / 4)` (math.wipple:4:1-4:11) (ExpressionStatement):
+  has type `()`
+
+`show (10 / 4)` (math.wipple:4:1-4:11) (CallExpression):
+  has type `()`
+  is an expression
+
+`10` (math.wipple:4:6-4:8) (NumberExpression):
   has type `Number`
   is an expression
 
-`/` (math.wipple:4:10-4:11) (VisitAs):
-  has bound(s) `Divide` `Number` `Number` `Number` (`instance (Divide Number Number Number)` (math.wipple:53:1-53:39))
-  has type `Number Number -> Number` (math.wipple:4:10-4:11)
-  is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (math.wipple:52:1-52:71)
-
-`10` (math.wipple:4:7-4:9) (VisitAs):
+`10 / 4` (math.wipple:4:6-4:10) (OperatorExpression):
   has type `Number`
   is an expression
 
-`4` (math.wipple:4:12-4:13) (VisitAs):
+`/` (math.wipple:4:8-4:9) (CallExpression):
   has type `Number`
   is an expression
 
-`/` (math.wipple:4:10-4:11) (CallExpressionSyntax):
+`/` (math.wipple:4:8-4:9) (ConstructorExpression):
+  has bound(s) `Divide` (library/src/foundation/math.wipple:52:1-52:60) `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:35))
+  has type `Number Number -> Number` (math.wipple:4:8-4:9)
+  is an expression
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:52:1-52:60)
+
+`4` (math.wipple:4:9-4:10) (NumberExpression):
   has type `Number`
   is an expression
 

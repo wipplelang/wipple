@@ -1,451 +1,490 @@
-Facts:
-`show (1 + 2 = 3)` (comparison.wipple:1:1-1:17) (CallExpressionSyntax):
-  has type `()`
-  is an expression
+Facts (layer 2):
 
-`show` (comparison.wipple:1:1-1:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`show` (comparison.wipple:1:1-1:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:1:1-1:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`1 + 2 = 3` (comparison.wipple:1:7-1:16) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show (1 + 2 = 3)` (comparison.wipple:1:1-1:12) (ExpressionStatement):
+  has type `()`
 
-`=` (comparison.wipple:1:13-1:14) (VisitAs):
-  has bound(s) `Equal` `Number` (`instance (Equal Number)` (logic.wipple:85:1-85:24))
-  has type `Number Number -> Boolean` (comparison.wipple:1:13-1:14)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
-
-`1 + 2` (comparison.wipple:1:7-1:12) (VisitAs):
-  has type `Number`
-  is an expression
-
-`3` (comparison.wipple:1:15-1:16) (VisitAs):
-  has type `Number`
-  is an expression
-
-`=` (comparison.wipple:1:13-1:14) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`+` (comparison.wipple:1:9-1:10) (VisitAs):
-  has bound(s) `Add` `Number` `Number` `Number` (`instance (Add Number Number Number)` (math.wipple:8:1-8:36))
-  has type `Number Number -> Number` (comparison.wipple:1:9-1:10)
-  is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (math.wipple:7:1-7:58)
-
-`1` (comparison.wipple:1:7-1:8) (VisitAs):
-  has type `Number`
-  is an expression
-
-`2` (comparison.wipple:1:11-1:12) (VisitAs):
-  has type `Number`
-  is an expression
-
-`+` (comparison.wipple:1:9-1:10) (CallExpressionSyntax):
-  has type `Number`
-  is an expression
-
-`show (1 = 2 or 1 = 1)` (comparison.wipple:2:1-2:22) (CallExpressionSyntax):
+`show (1 + 2 = 3)` (comparison.wipple:1:1-1:12) (CallExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:2:1-2:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`1` (comparison.wipple:1:6-1:7) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`1 + 2` (comparison.wipple:1:6-1:9) (OperatorExpression):
+  has type `Number`
+  is an expression
+
+`1 + 2 = 3` (comparison.wipple:1:6-1:11) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`+` (comparison.wipple:1:7-1:8) (CallExpression):
+  has type `Number`
+  is an expression
+
+`+` (comparison.wipple:1:7-1:8) (ConstructorExpression):
+  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:32))
+  has type `Number Number -> Number` (comparison.wipple:1:7-1:8)
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:47)
+
+`2` (comparison.wipple:1:8-1:9) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`=` (comparison.wipple:1:9-1:10) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:1:9-1:10) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
+  has type `Number Number -> Boolean` (comparison.wipple:1:9-1:10)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`3` (comparison.wipple:1:10-1:11) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (comparison.wipple:2:1-2:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:2:1-2:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`1 = 2 or 1 = 1` (comparison.wipple:2:7-2:21) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show (1 = 2 or 1 = 1)` (comparison.wipple:2:1-2:15) (ExpressionStatement):
+  has type `()`
 
-`or` (comparison.wipple:2:13-2:15) (VisitAs):
-  has bound(s) `Or` `Boolean` `Boolean` `Boolean` (`instance (Or Boolean Boolean Boolean)` (logic.wipple:34:1-34:38))
-  has type `Boolean {Boolean} -> Boolean` (comparison.wipple:2:13-2:15)
-  is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (logic.wipple:33:1-33:73)
-
-`1 = 2` (comparison.wipple:2:7-2:12) (VisitAs):
-  has type `Boolean`
-  is an expression
-
-`1 = 1` (comparison.wipple:2:16-2:21) (VisitAs):
-  has type `Boolean`
-  is an expression
-
-`or` (comparison.wipple:2:13-2:15) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`=` (comparison.wipple:2:9-2:10) (VisitAs):
-  has bound(s) `Equal` `Number` (`instance (Equal Number)` (logic.wipple:85:1-85:24))
-  has type `Number Number -> Boolean` (comparison.wipple:2:9-2:10)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
-
-`1` (comparison.wipple:2:7-2:8) (VisitAs):
-  has type `Number`
-  is an expression
-
-`2` (comparison.wipple:2:11-2:12) (VisitAs):
-  has type `Number`
-  is an expression
-
-`=` (comparison.wipple:2:9-2:10) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`1 = 1` (comparison.wipple:2:16-2:21) (BlockExpressionSyntax):
-  has type `{Boolean}` (comparison.wipple:2:16-2:21)
-  is an expression
-  no captures
-
-`show (2 /= 3)` (comparison.wipple:3:1-3:14) (CallExpressionSyntax):
+`show (1 = 2 or 1 = 1)` (comparison.wipple:2:1-2:15) (CallExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:3:1-3:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`1` (comparison.wipple:2:6-2:7) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`1 = 2` (comparison.wipple:2:6-2:9) (VisitAs):
+  has type `Boolean`
+  is an expression
+
+`1 = 2 or 1 = 1` (comparison.wipple:2:6-2:14) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:2:7-2:8) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:2:7-2:8) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
+  has type `Number Number -> Boolean` (comparison.wipple:2:7-2:8)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`2` (comparison.wipple:2:8-2:9) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`or` (comparison.wipple:2:9-2:11) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`or` (comparison.wipple:2:9-2:11) (VisitAs):
+  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:34:1-34:34))
+  has type `Boolean {Boolean} -> Boolean` (comparison.wipple:2:9-2:11)
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:61)
+
+`1` (comparison.wipple:2:11-2:12) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`1 = 1` (comparison.wipple:2:11-2:14) (VisitAs):
+  has type `Boolean`
+  is an expression
+
+`1 = 1` (comparison.wipple:2:11-2:14) (BlockExpression):
+  has type `{Boolean}` (comparison.wipple:2:11-2:14)
+  is an expression
+
+`1 = 1` (comparison.wipple:2:11-2:14) (ExpressionStatement):
+  has type `Boolean`
+
+`=` (comparison.wipple:2:12-2:13) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:2:12-2:13) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
+  has type `Number Number -> Boolean` (comparison.wipple:2:12-2:13)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`1` (comparison.wipple:2:13-2:14) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (comparison.wipple:3:1-3:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:3:1-3:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`2 /= 3` (comparison.wipple:3:7-3:13) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show (2 /= 3)` (comparison.wipple:3:1-3:11) (ExpressionStatement):
+  has type `()`
 
-`/=` (comparison.wipple:3:9-3:11) (VisitAs):
-  has bound(s) `Not-Equal` `Number` (`instance (Not-Equal value) where (Equal value)` (logic.wipple:97:1-97:47)), `Equal` `Number` (`instance (Equal Number)` (logic.wipple:85:1-85:24))
-  has type `Number Number -> Boolean` (comparison.wipple:3:9-3:11)
-  is an expression
-  resolved to 1 definition(s): `Not-Equal : value => trait (value value -> Boolean)` (logic.wipple:96:1-96:52)
-
-`2` (comparison.wipple:3:7-3:8) (VisitAs):
-  has type `Number`
-  is an expression
-
-`3` (comparison.wipple:3:12-3:13) (VisitAs):
-  has type `Number`
-  is an expression
-
-`/=` (comparison.wipple:3:9-3:11) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`show ("hello" = "hello")` (comparison.wipple:4:1-4:25) (CallExpressionSyntax):
+`show (2 /= 3)` (comparison.wipple:3:1-3:11) (CallExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:4:1-4:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`2` (comparison.wipple:3:6-3:7) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`2 /= 3` (comparison.wipple:3:6-3:10) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`/=` (comparison.wipple:3:7-3:9) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`/=` (comparison.wipple:3:7-3:9) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22)), `Not-Equal` (library/src/foundation/logic.wipple:96:1-96:44) `Number` (resolved as `instance (Not-Equal value) where (Equal value)` (library/src/foundation/logic.wipple:97:1-97:42))
+  has type `Number Number -> Boolean` (comparison.wipple:3:7-3:9)
+  is an expression
+  resolved to 1 definition(s): `Not-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:96:1-96:44)
+
+`3` (comparison.wipple:3:9-3:10) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (comparison.wipple:4:1-4:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:4:1-4:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`"hello" = "hello"` (comparison.wipple:4:7-4:24) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show ("hello" = "hello")` (comparison.wipple:4:1-4:22) (ExpressionStatement):
+  has type `()`
 
-`=` (comparison.wipple:4:15-4:16) (VisitAs):
-  has bound(s) `Equal` `String` (`instance (Equal String)` (logic.wipple:79:1-79:24))
-  has type `String String -> Boolean` (comparison.wipple:4:15-4:16)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
-
-`"hello"` (comparison.wipple:4:7-4:14) (VisitAs):
-  has type `String`
-  is an expression
-
-`"hello"` (comparison.wipple:4:17-4:24) (VisitAs):
-  has type `String`
-  is an expression
-
-`=` (comparison.wipple:4:15-4:16) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`show (() = ())` (comparison.wipple:5:1-5:15) (CallExpressionSyntax):
+`show ("hello" = "hello")` (comparison.wipple:4:1-4:22) (CallExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:5:1-5:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`"hello"` (comparison.wipple:4:6-4:13) (StringExpression):
+  has type `String`
+  is an expression
+
+`"hello" = "hello"` (comparison.wipple:4:6-4:21) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:4:13-4:14) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:4:13-4:14) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:22))
+  has type `String String -> Boolean` (comparison.wipple:4:13-4:14)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`"hello"` (comparison.wipple:4:14-4:21) (StringExpression):
+  has type `String`
+  is an expression
+
+`show` (comparison.wipple:5:1-5:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:5:1-5:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`() = ()` (comparison.wipple:5:7-5:14) (OperatorExpressionSyntax):
+`show (() = ())` (comparison.wipple:5:1-5:12) (ExpressionStatement):
+  has type `()`
+
+`show (() = ())` (comparison.wipple:5:1-5:12) (CallExpression):
+  has type `()`
+  is an expression
+
+`()` (comparison.wipple:5:6-5:8) (UnitExpression):
+  has type `()`
+  is an expression
+
+`() = ()` (comparison.wipple:5:6-5:11) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`=` (comparison.wipple:5:10-5:11) (VisitAs):
-  has bound(s) `Equal` `()` (`instance (Equal ())` (logic.wipple:91:1-91:20))
-  has type `() () -> Boolean` (comparison.wipple:5:10-5:11)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
-
-`()` (comparison.wipple:5:7-5:9) (VisitAs):
-  has type `()`
-  is an expression
-
-`()` (comparison.wipple:5:12-5:14) (VisitAs):
-  has type `()`
-  is an expression
-
-`=` (comparison.wipple:5:10-5:11) (CallExpressionSyntax):
+`=` (comparison.wipple:5:8-5:9) (CallExpression):
   has type `Boolean`
   is an expression
 
-`show (True = True)` (comparison.wipple:6:1-6:19) (CallExpressionSyntax):
+`=` (comparison.wipple:5:8-5:9) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `()` (resolved as `instance (Equal ())` (library/src/foundation/logic.wipple:91:1-91:18))
+  has type `() () -> Boolean` (comparison.wipple:5:8-5:9)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`()` (comparison.wipple:5:9-5:11) (UnitExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:6:1-6:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`show` (comparison.wipple:6:1-6:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:6:1-6:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`True = True` (comparison.wipple:6:7-6:18) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show (True = True)` (comparison.wipple:6:1-6:16) (ExpressionStatement):
+  has type `()`
 
-`=` (comparison.wipple:6:12-6:13) (VisitAs):
-  has bound(s) `Equal` `Boolean` (`instance (Equal Boolean)` (logic.wipple:93:1-93:25))
-  has type `Boolean Boolean -> Boolean` (comparison.wipple:6:12-6:13)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
-
-`True` (comparison.wipple:6:7-6:11) (VisitAs):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `True` (logic.wipple:4:3-4:7)
-
-`True` (comparison.wipple:6:14-6:18) (VisitAs):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `True` (logic.wipple:4:3-4:7)
-
-`=` (comparison.wipple:6:12-6:13) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`show (False = False)` (comparison.wipple:7:1-7:21) (CallExpressionSyntax):
+`show (True = True)` (comparison.wipple:6:1-6:16) (CallExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:7:1-7:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`True` (comparison.wipple:6:6-6:10) (ConstructorExpression):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:1-4:5)
+
+`True = True` (comparison.wipple:6:6-6:15) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:6:10-6:11) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:6:10-6:11) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Boolean` (resolved as `instance (Equal Boolean)` (library/src/foundation/logic.wipple:93:1-93:23))
+  has type `Boolean Boolean -> Boolean` (comparison.wipple:6:10-6:11)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`True` (comparison.wipple:6:11-6:15) (ConstructorExpression):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:1-4:5)
+
+`show` (comparison.wipple:7:1-7:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:7:1-7:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`False = False` (comparison.wipple:7:7-7:20) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show (False = False)` (comparison.wipple:7:1-7:18) (ExpressionStatement):
+  has type `()`
 
-`=` (comparison.wipple:7:13-7:14) (VisitAs):
-  has bound(s) `Equal` `Boolean` (`instance (Equal Boolean)` (logic.wipple:93:1-93:25))
-  has type `Boolean Boolean -> Boolean` (comparison.wipple:7:13-7:14)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
-
-`False` (comparison.wipple:7:7-7:12) (VisitAs):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `False` (logic.wipple:3:3-3:8)
-
-`False` (comparison.wipple:7:15-7:20) (VisitAs):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `False` (logic.wipple:3:3-3:8)
-
-`=` (comparison.wipple:7:13-7:14) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`show (True = False)` (comparison.wipple:8:1-8:20) (CallExpressionSyntax):
+`show (False = False)` (comparison.wipple:7:1-7:18) (CallExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:8:1-8:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`False` (comparison.wipple:7:6-7:11) (ConstructorExpression):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:1-3:6)
+
+`False = False` (comparison.wipple:7:6-7:17) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:7:11-7:12) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:7:11-7:12) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Boolean` (resolved as `instance (Equal Boolean)` (library/src/foundation/logic.wipple:93:1-93:23))
+  has type `Boolean Boolean -> Boolean` (comparison.wipple:7:11-7:12)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`False` (comparison.wipple:7:12-7:17) (ConstructorExpression):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:1-3:6)
+
+`show` (comparison.wipple:8:1-8:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:8:1-8:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`True = False` (comparison.wipple:8:7-8:19) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show (True = False)` (comparison.wipple:8:1-8:17) (ExpressionStatement):
+  has type `()`
 
-`=` (comparison.wipple:8:12-8:13) (VisitAs):
-  has bound(s) `Equal` `Boolean` (`instance (Equal Boolean)` (logic.wipple:93:1-93:25))
-  has type `Boolean Boolean -> Boolean` (comparison.wipple:8:12-8:13)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
-
-`True` (comparison.wipple:8:7-8:11) (VisitAs):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `True` (logic.wipple:4:3-4:7)
-
-`False` (comparison.wipple:8:14-8:19) (VisitAs):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `False` (logic.wipple:3:3-3:8)
-
-`=` (comparison.wipple:8:12-8:13) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`show (2 > 1)` (comparison.wipple:9:1-9:13) (CallExpressionSyntax):
+`show (True = False)` (comparison.wipple:8:1-8:17) (CallExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:9:1-9:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`True` (comparison.wipple:8:6-8:10) (ConstructorExpression):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:1-4:5)
+
+`True = False` (comparison.wipple:8:6-8:16) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:8:10-8:11) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`=` (comparison.wipple:8:10-8:11) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Boolean` (resolved as `instance (Equal Boolean)` (library/src/foundation/logic.wipple:93:1-93:23))
+  has type `Boolean Boolean -> Boolean` (comparison.wipple:8:10-8:11)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`False` (comparison.wipple:8:11-8:16) (ConstructorExpression):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:1-3:6)
+
+`show` (comparison.wipple:9:1-9:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:9:1-9:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`2 > 1` (comparison.wipple:9:7-9:12) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show (2 > 1)` (comparison.wipple:9:1-9:10) (ExpressionStatement):
+  has type `()`
 
-`>` (comparison.wipple:9:9-9:10) (VisitAs):
-  has bound(s) `Greater-Than` `Number` (`instance (Greater-Than value) where (Order value)` (logic.wipple:70:1-70:50)), `Order` `Number` (`instance (Order Number)` (logic.wipple:53:1-53:24))
-  has type `Number Number -> Boolean` (comparison.wipple:9:9-9:10)
-  is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (logic.wipple:69:1-69:55)
-
-`2` (comparison.wipple:9:7-9:8) (VisitAs):
-  has type `Number`
-  is an expression
-
-`1` (comparison.wipple:9:11-9:12) (VisitAs):
-  has type `Number`
-  is an expression
-
-`>` (comparison.wipple:9:9-9:10) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`show (1 >= 1)` (comparison.wipple:10:1-10:14) (CallExpressionSyntax):
+`show (2 > 1)` (comparison.wipple:9:1-9:10) (CallExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:10:1-10:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`2` (comparison.wipple:9:6-9:7) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`2 > 1` (comparison.wipple:9:6-9:9) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`>` (comparison.wipple:9:7-9:8) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`>` (comparison.wipple:9:7-9:8) (ConstructorExpression):
+  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:47) `Number` (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:45))
+  has type `Number Number -> Boolean` (comparison.wipple:9:7-9:8)
+  is an expression
+  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:69:1-69:47)
+
+`1` (comparison.wipple:9:8-9:9) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (comparison.wipple:10:1-10:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:10:1-10:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`1 >= 1` (comparison.wipple:10:7-10:13) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show (1 >= 1)` (comparison.wipple:10:1-10:11) (ExpressionStatement):
+  has type `()`
 
-`>=` (comparison.wipple:10:9-10:11) (VisitAs):
-  has bound(s) `Greater-Than-Or-Equal` `Number` (`instance (Greater-Than-Or-Equal value) where (Order value)` (logic.wipple:74:1-74:59)), `Order` `Number` (`instance (Order Number)` (logic.wipple:53:1-53:24))
-  has type `Number Number -> Boolean` (comparison.wipple:10:9-10:11)
-  is an expression
-  resolved to 1 definition(s): `Greater-Than-Or-Equal : value => trait (value value -> Boolean)` (logic.wipple:73:1-73:64)
-
-`1` (comparison.wipple:10:7-10:8) (VisitAs):
-  has type `Number`
-  is an expression
-
-`1` (comparison.wipple:10:12-10:13) (VisitAs):
-  has type `Number`
-  is an expression
-
-`>=` (comparison.wipple:10:9-10:11) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`show (4 < 3)` (comparison.wipple:11:1-11:13) (CallExpressionSyntax):
+`show (1 >= 1)` (comparison.wipple:10:1-10:11) (CallExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:11:1-11:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`1` (comparison.wipple:10:6-10:7) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`1 >= 1` (comparison.wipple:10:6-10:10) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`>=` (comparison.wipple:10:7-10:9) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`>=` (comparison.wipple:10:7-10:9) (ConstructorExpression):
+  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Greater-Than-Or-Equal` (library/src/foundation/logic.wipple:73:1-73:56) `Number` (resolved as `instance (Greater-Than-Or-Equal value) where (Order value)` (library/src/foundation/logic.wipple:74:1-74:54))
+  has type `Number Number -> Boolean` (comparison.wipple:10:7-10:9)
+  is an expression
+  resolved to 1 definition(s): `Greater-Than-Or-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:73:1-73:56)
+
+`1` (comparison.wipple:10:9-10:10) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (comparison.wipple:11:1-11:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:11:1-11:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`4 < 3` (comparison.wipple:11:7-11:12) (OperatorExpressionSyntax):
-  has type `Boolean`
-  is an expression
+`show (4 < 3)` (comparison.wipple:11:1-11:10) (ExpressionStatement):
+  has type `()`
 
-`<` (comparison.wipple:11:9-11:10) (VisitAs):
-  has bound(s) `Less-Than` `Number` (`instance (Less-Than value) where (Order value)` (logic.wipple:62:1-62:47)), `Order` `Number` (`instance (Order Number)` (logic.wipple:53:1-53:24))
-  has type `Number Number -> Boolean` (comparison.wipple:11:9-11:10)
-  is an expression
-  resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)` (logic.wipple:61:1-61:52)
-
-`4` (comparison.wipple:11:7-11:8) (VisitAs):
-  has type `Number`
-  is an expression
-
-`3` (comparison.wipple:11:11-11:12) (VisitAs):
-  has type `Number`
-  is an expression
-
-`<` (comparison.wipple:11:9-11:10) (CallExpressionSyntax):
-  has type `Boolean`
-  is an expression
-
-`show (5 <= 6)` (comparison.wipple:12:1-12:14) (CallExpressionSyntax):
+`show (4 < 3)` (comparison.wipple:11:1-11:10) (CallExpression):
   has type `()`
   is an expression
 
-`show` (comparison.wipple:12:1-12:5) (VariableExpressionSyntax):
-  has bound(s) `Describe` `Boolean` (`instance (Describe Boolean)` (io.wipple:16:1-16:28))
+`4` (comparison.wipple:11:6-11:7) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`4 < 3` (comparison.wipple:11:6-11:9) (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`<` (comparison.wipple:11:7-11:8) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`<` (comparison.wipple:11:7-11:8) (ConstructorExpression):
+  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Less-Than` (library/src/foundation/logic.wipple:61:1-61:44) `Number` (resolved as `instance (Less-Than value) where (Order value)` (library/src/foundation/logic.wipple:62:1-62:42))
+  has type `Number Number -> Boolean` (comparison.wipple:11:7-11:8)
+  is an expression
+  resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:61:1-61:44)
+
+`3` (comparison.wipple:11:8-11:9) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (comparison.wipple:12:1-12:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
   has type `Boolean -> ()` (comparison.wipple:12:1-12:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
 
-`5 <= 6` (comparison.wipple:12:7-12:13) (OperatorExpressionSyntax):
+`show (5 <= 6)` (comparison.wipple:12:1-12:11) (ExpressionStatement):
+  has type `()`
+
+`show (5 <= 6)` (comparison.wipple:12:1-12:11) (CallExpression):
+  has type `()`
+  is an expression
+
+`5` (comparison.wipple:12:6-12:7) (NumberExpression):
+  has type `Number`
+  is an expression
+
+`5 <= 6` (comparison.wipple:12:6-12:10) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`<=` (comparison.wipple:12:9-12:11) (VisitAs):
-  has bound(s) `Less-Than-Or-Equal` `Number` (`instance (Less-Than-Or-Equal value) where (Order value)` (logic.wipple:66:1-66:56)), `Order` `Number` (`instance (Order Number)` (logic.wipple:53:1-53:24))
-  has type `Number Number -> Boolean` (comparison.wipple:12:9-12:11)
-  is an expression
-  resolved to 1 definition(s): `Less-Than-Or-Equal : value => trait (value value -> Boolean)` (logic.wipple:65:1-65:61)
-
-`5` (comparison.wipple:12:7-12:8) (VisitAs):
-  has type `Number`
-  is an expression
-
-`6` (comparison.wipple:12:12-12:13) (VisitAs):
-  has type `Number`
-  is an expression
-
-`<=` (comparison.wipple:12:9-12:11) (CallExpressionSyntax):
+`<=` (comparison.wipple:12:7-12:9) (CallExpression):
   has type `Boolean`
   is an expression
 
-`=` (comparison.wipple:2:18-2:19) (VisitAs):
-  has bound(s) `Equal` `Number` (`instance (Equal Number)` (logic.wipple:85:1-85:24))
-  has type `Number Number -> Boolean` (comparison.wipple:2:18-2:19)
+`<=` (comparison.wipple:12:7-12:9) (ConstructorExpression):
+  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Less-Than-Or-Equal` (library/src/foundation/logic.wipple:65:1-65:53) `Number` (resolved as `instance (Less-Than-Or-Equal value) where (Order value)` (library/src/foundation/logic.wipple:66:1-66:51))
+  has type `Number Number -> Boolean` (comparison.wipple:12:7-12:9)
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (logic.wipple:77:1-77:48)
+  resolved to 1 definition(s): `Less-Than-Or-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:65:1-65:53)
 
-`1` (comparison.wipple:2:16-2:17) (VisitAs):
+`6` (comparison.wipple:12:9-12:10) (NumberExpression):
   has type `Number`
-  is an expression
-
-`1` (comparison.wipple:2:20-2:21) (VisitAs):
-  has type `Number`
-  is an expression
-
-`=` (comparison.wipple:2:18-2:19) (CallExpressionSyntax):
-  has type `Boolean`
   is an expression
 
 

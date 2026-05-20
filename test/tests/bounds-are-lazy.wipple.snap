@@ -1,172 +1,184 @@
-Facts:
-`T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:33) (TraitDefinitionSyntax):
+Facts (layer 2):
+
+`T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:26) (TraitDefinition):
+  has 1 instances
   has definition constraints
-  has instances
-  has type `value -> ()` (bounds-are-lazy.wipple:1:21-1:32)
+  has type `value -> ()` (bounds-are-lazy.wipple:1:16-1:25)
   has type parameters
   is a definition
 
-`value` (bounds-are-lazy.wipple:1:5-1:10) (TypeParameterSyntax):
-  has type `value` (bounds-are-lazy.wipple:1:5-1:10)
+`value` (bounds-are-lazy.wipple:1:3-1:8) (TypeParameter):
+  has type `value` (bounds-are-lazy.wipple:1:3-1:8)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (bounds-are-lazy.wipple:1:5-1:10)
+  resolved to 1 definition(s): `value` (bounds-are-lazy.wipple:1:3-1:8)
 
-`instance (T Number)` (bounds-are-lazy.wipple:3:1-3:20) (InstanceDefinitionSyntax):
+`value` (bounds-are-lazy.wipple:1:16-1:21) (TypeParameter):
+  has type `value` (bounds-are-lazy.wipple:1:3-1:8)
+  is a type
+  resolved to 1 definition(s): `value` (bounds-are-lazy.wipple:1:3-1:8)
+
+`value -> ()` (bounds-are-lazy.wipple:1:16-1:25) (FunctionType):
+  has type `value -> ()` (bounds-are-lazy.wipple:1:16-1:25)
+  is a type
+
+`()` (bounds-are-lazy.wipple:1:23-1:25) (UnitType):
+  has type `()` (bounds-are-lazy.wipple:1:23-1:25)
+  is a type
+
+`instance (T Number)` (bounds-are-lazy.wipple:3:1-3:18) (InstanceDefinition):
   has definition constraints
-  has type `Number -> ()` (bounds-are-lazy.wipple:5:3-5:10)
+  has type `Number -> ()` (bounds-are-lazy.wipple:5:1-5:6)
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:33)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:26)
 
-`f :: value -> () where (T value)` (bounds-are-lazy.wipple:8:1-8:33) (ConstantDefinitionSyntax):
+`Number` (bounds-are-lazy.wipple:3:11-3:17) (NamedType):
+  has type `Number` (bounds-are-lazy.wipple:3:11-3:17)
+  is a type
+  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:34-1:45)
+
+`do {⋯}` (bounds-are-lazy.wipple:3:19-6:2) (DoExpression):
+  has type `Number -> ()` (bounds-are-lazy.wipple:5:1-5:6)
+  is an expression
+
+`{⋯}` (bounds-are-lazy.wipple:3:21-6:2) (BlockExpression):
+  has type `{Number -> ()}` (bounds-are-lazy.wipple:3:21-6:2)
+  is an expression
+
+`show` (bounds-are-lazy.wipple:4:1-4:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has type `String -> ()` (bounds-are-lazy.wipple:4:1-4:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show "should appear second"` (bounds-are-lazy.wipple:4:1-4:27) (ExpressionStatement):
+  has type `()`
+
+`show "should appear second"` (bounds-are-lazy.wipple:4:1-4:27) (CallExpression):
+  has type `()`
+  is an expression
+
+`"should appear second"` (bounds-are-lazy.wipple:4:5-4:27) (StringExpression):
+  has type `String`
+  is an expression
+
+`_` (bounds-are-lazy.wipple:5:1-5:2) (WildcardPattern):
+  has type `Number` (bounds-are-lazy.wipple:3:11-3:17)
+  is a pattern
+
+`_ -> ()` (bounds-are-lazy.wipple:5:1-5:6) (ExpressionStatement):
+  has type `Number -> ()` (bounds-are-lazy.wipple:5:1-5:6)
+
+`_ -> ()` (bounds-are-lazy.wipple:5:1-5:6) (FunctionExpression):
+  has type `Number -> ()` (bounds-are-lazy.wipple:5:1-5:6)
+  is an expression
+
+`()` (bounds-are-lazy.wipple:5:4-5:6) (UnitExpression):
+  has type `()` (bounds-are-lazy.wipple:5:4-5:6)
+  is an expression
+
+`f :: value -> () where (T value)` (bounds-are-lazy.wipple:8:1-8:26) (ConstantDefinition):
   has definition constraints
-  has type `value -> ()` (bounds-are-lazy.wipple:8:6-8:17)
+  has type `value -> ()` (bounds-are-lazy.wipple:8:4-8:13)
   has type parameters
   is a definition
 
-`f : value -> do {⋯}` (bounds-are-lazy.wipple:9:1-12:2) (AssignmentStatementSyntax):
+`value` (bounds-are-lazy.wipple:8:4-8:9) (TypeParameter):
+  has type `value` (bounds-are-lazy.wipple:8:4-8:9)
+  is a definition
+  is a type
+  resolved to 1 definition(s): `value` (bounds-are-lazy.wipple:8:4-8:9)
+
+`value -> ()` (bounds-are-lazy.wipple:8:4-8:13) (FunctionType):
+  has type `value -> ()` (bounds-are-lazy.wipple:8:4-8:13)
+  is a type
+
+`()` (bounds-are-lazy.wipple:8:11-8:13) (UnitType):
+  has type `()` (bounds-are-lazy.wipple:8:11-8:13)
+  is a type
+
+`(T value)` (bounds-are-lazy.wipple:8:18-8:26) (BoundConstraint):
+  has bound(s) `T` (bounds-are-lazy.wipple:1:1-1:26) `value` (bounds-are-lazy.wipple:8:4-8:9) (resolved as `(T value)` (bounds-are-lazy.wipple:8:18-8:26))
+  is a constraint
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:26)
+
+`value` (bounds-are-lazy.wipple:8:20-8:25) (TypeParameter):
+  has type `value` (bounds-are-lazy.wipple:8:4-8:9)
+  is a type
+  resolved to 1 definition(s): `value` (bounds-are-lazy.wipple:8:4-8:9)
+
+`f : value -> do {⋯}` (bounds-are-lazy.wipple:9:1-12:2) (AssignmentStatement):
   has type `()` (bounds-are-lazy.wipple:9:1-12:2)
 
-`Number` (bounds-are-lazy.wipple:3:13-3:19) (NamedTypeSyntax):
-  has type `Number` (bounds-are-lazy.wipple:3:13-3:19)
-  is a type
-  resolved to 1 definition(s): `Number : type` (language.wipple:1:38-1:51)
-
-`value -> ()` (bounds-are-lazy.wipple:8:6-8:17) (FunctionTypeSyntax):
-  has type `value -> ()` (bounds-are-lazy.wipple:8:6-8:17)
-  is a type
-
-`value` (bounds-are-lazy.wipple:8:6-8:11) (TypeParameterSyntax):
-  has type `value` (bounds-are-lazy.wipple:8:6-8:11)
+`value` (bounds-are-lazy.wipple:9:3-9:8) (VariablePattern):
+  has type `value` (bounds-are-lazy.wipple:8:4-8:9)
   is a definition
-  is a type
-  resolved to 1 definition(s): `value` (bounds-are-lazy.wipple:8:6-8:11)
-
-`()` (bounds-are-lazy.wipple:8:15-8:17) (UnitTypeSyntax):
-  has type `()` (bounds-are-lazy.wipple:8:15-8:17)
-  is a type
-
-`(T value)` (bounds-are-lazy.wipple:8:24-8:33) (BoundConstraintSyntax):
-  has bound(s) `T` `value` (bounds-are-lazy.wipple:8:6-8:11) (`(T value)` (bounds-are-lazy.wipple:8:24-8:33))
-  has definition constraints
-  is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:33)
-
-`value` (bounds-are-lazy.wipple:8:27-8:32) (TypeParameterSyntax):
-  has type `value` (bounds-are-lazy.wipple:8:6-8:11)
-  is a type
-  resolved to 1 definition(s): `value` (bounds-are-lazy.wipple:8:6-8:11)
-
-`value -> ()` (bounds-are-lazy.wipple:1:21-1:32) (FunctionTypeSyntax):
-  has type `value -> ()` (bounds-are-lazy.wipple:1:21-1:32)
-  is a type
-
-`value` (bounds-are-lazy.wipple:1:21-1:26) (TypeParameterSyntax):
-  has type `value` (bounds-are-lazy.wipple:1:5-1:10)
-  is a type
-  resolved to 1 definition(s): `value` (bounds-are-lazy.wipple:1:5-1:10)
-
-`()` (bounds-are-lazy.wipple:1:30-1:32) (UnitTypeSyntax):
-  has type `()` (bounds-are-lazy.wipple:1:30-1:32)
-  is a type
-
-`do` (bounds-are-lazy.wipple:3:23-3:25) (DoExpressionSyntax):
-  has type `Number -> ()` (bounds-are-lazy.wipple:5:3-5:10)
-  is an expression
-
-`{⋯}` (bounds-are-lazy.wipple:3:26-6:2) (BlockExpressionSyntax):
-  has type `{Number -> ()}` (bounds-are-lazy.wipple:3:26-6:2)
-  is an expression
-  no captures
-
-`value -> do {⋯}` (bounds-are-lazy.wipple:9:5-12:2) (FunctionExpressionSyntax):
-  has type `value -> ()` (bounds-are-lazy.wipple:8:6-8:17)
-  is an expression
-  no captures
-
-`value` (bounds-are-lazy.wipple:9:5-9:10) (VariablePatternSyntax):
-  has type `value` (bounds-are-lazy.wipple:8:6-8:11)
   is a pattern
-  is captured
 
-`do` (bounds-are-lazy.wipple:9:14-9:16) (DoExpressionSyntax):
-  has type `()` (bounds-are-lazy.wipple:8:15-8:17)
+`value -> do {⋯}` (bounds-are-lazy.wipple:9:3-12:2) (FunctionExpression):
+  has type `value -> ()` (bounds-are-lazy.wipple:8:4-8:13)
   is an expression
 
-`{⋯}` (bounds-are-lazy.wipple:9:17-12:2) (BlockExpressionSyntax):
-  captures `value` (bounds-are-lazy.wipple:9:5-9:10)
-  has type `{()}` (bounds-are-lazy.wipple:9:17-12:2)
+`do {⋯}` (bounds-are-lazy.wipple:9:10-12:2) (DoExpression):
+  has type `()` (bounds-are-lazy.wipple:8:11-8:13)
   is an expression
 
-`f 123` (bounds-are-lazy.wipple:14:1-14:6) (CallExpressionSyntax):
+`{⋯}` (bounds-are-lazy.wipple:9:12-12:2) (BlockExpression):
+  captures `value` (bounds-are-lazy.wipple:9:3-9:8)
+  has type `{()}` (bounds-are-lazy.wipple:9:12-12:2)
+  is an expression
+
+`show` (bounds-are-lazy.wipple:10:1-10:5) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has type `String -> ()` (bounds-are-lazy.wipple:10:1-10:5)
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+
+`show "should appear first"` (bounds-are-lazy.wipple:10:1-10:26) (ExpressionStatement):
+  has type `()`
+
+`show "should appear first"` (bounds-are-lazy.wipple:10:1-10:26) (CallExpression):
   has type `()`
   is an expression
 
-`f` (bounds-are-lazy.wipple:14:1-14:2) (VariableExpressionSyntax):
-  has bound(s) `T` `Number` (`instance (T Number)` (bounds-are-lazy.wipple:3:1-3:20))
+`"should appear first"` (bounds-are-lazy.wipple:10:5-10:26) (StringExpression):
+  has type `String`
+  is an expression
+
+`T` (bounds-are-lazy.wipple:11:1-11:2) (ConstructorExpression):
+  has bound(s) `T` (bounds-are-lazy.wipple:1:1-1:26) `value` (bounds-are-lazy.wipple:8:4-8:9) (resolved as `(T value)` (bounds-are-lazy.wipple:8:18-8:26))
+  has type `value -> ()` (bounds-are-lazy.wipple:11:1-11:2)
+  is an expression
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:26)
+
+`T value` (bounds-are-lazy.wipple:11:1-11:7) (ExpressionStatement):
+  has type `()` (bounds-are-lazy.wipple:8:11-8:13)
+
+`T value` (bounds-are-lazy.wipple:11:1-11:7) (CallExpression):
+  has type `()` (bounds-are-lazy.wipple:8:11-8:13)
+  is an expression
+
+`value` (bounds-are-lazy.wipple:11:2-11:7) (VariableExpression):
+  has type `value` (bounds-are-lazy.wipple:8:4-8:9)
+  is an expression
+  resolved to 1 definition(s): `value` (bounds-are-lazy.wipple:9:3-9:8)
+
+`f` (bounds-are-lazy.wipple:14:1-14:2) (VariableExpression):
+  has bound(s) `T` (bounds-are-lazy.wipple:1:1-1:26) `Number` (resolved as `instance (T Number)` (bounds-are-lazy.wipple:3:1-3:18))
   has type `Number -> ()` (bounds-are-lazy.wipple:14:1-14:2)
   is an expression
-  resolved to 1 definition(s): `f :: value -> () where (T value)` (bounds-are-lazy.wipple:8:1-8:33)
+  resolved to 1 definition(s): `f :: value -> () where (T value)` (bounds-are-lazy.wipple:8:1-8:26)
 
-`123` (bounds-are-lazy.wipple:14:3-14:6) (NumberExpressionSyntax):
+`f 123` (bounds-are-lazy.wipple:14:1-14:5) (ExpressionStatement):
+  has type `()`
+
+`f 123` (bounds-are-lazy.wipple:14:1-14:5) (CallExpression):
+  has type `()`
+  is an expression
+
+`123` (bounds-are-lazy.wipple:14:2-14:5) (NumberExpression):
   has type `Number`
   is an expression
-
-`show "should appear second"` (bounds-are-lazy.wipple:4:3-4:30) (CallExpressionSyntax):
-  has type `()`
-  is an expression
-
-`show` (bounds-are-lazy.wipple:4:3-4:7) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
-  has type `String -> ()` (bounds-are-lazy.wipple:4:3-4:7)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`"should appear second"` (bounds-are-lazy.wipple:4:8-4:30) (StringExpressionSyntax):
-  has type `String`
-  is an expression
-
-`_ -> ()` (bounds-are-lazy.wipple:5:3-5:10) (FunctionExpressionSyntax):
-  has type `Number -> ()` (bounds-are-lazy.wipple:5:3-5:10)
-  is an expression
-  no captures
-
-`_` (bounds-are-lazy.wipple:5:3-5:4) (WildcardPatternSyntax):
-  has type `Number` (bounds-are-lazy.wipple:3:13-3:19)
-  is a pattern
-
-`()` (bounds-are-lazy.wipple:5:8-5:10) (UnitExpressionSyntax):
-  has type `()` (bounds-are-lazy.wipple:5:8-5:10)
-  is an expression
-
-`show "should appear first"` (bounds-are-lazy.wipple:10:3-10:29) (CallExpressionSyntax):
-  has type `()`
-  is an expression
-
-`show` (bounds-are-lazy.wipple:10:3-10:7) (VariableExpressionSyntax):
-  has bound(s) `Describe` `String` (`instance (Describe String)` (io.wipple:14:1-14:27))
-  has type `String -> ()` (bounds-are-lazy.wipple:10:3-10:7)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (io.wipple:11:1-11:43)
-
-`"should appear first"` (bounds-are-lazy.wipple:10:8-10:29) (StringExpressionSyntax):
-  has type `String`
-  is an expression
-
-`T value` (bounds-are-lazy.wipple:11:3-11:10) (CallExpressionSyntax):
-  has type `()` (bounds-are-lazy.wipple:8:15-8:17)
-  is an expression
-
-`T` (bounds-are-lazy.wipple:11:3-11:4) (ConstructorExpressionSyntax):
-  has bound(s) `T` `value` (bounds-are-lazy.wipple:8:6-8:11) (`(T value)` (bounds-are-lazy.wipple:8:24-8:33))
-  has type `value -> ()` (bounds-are-lazy.wipple:11:3-11:4)
-  is an expression
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-are-lazy.wipple:1:1-1:33)
-
-`value` (bounds-are-lazy.wipple:11:5-11:10) (VariableExpressionSyntax):
-  has type `value` (bounds-are-lazy.wipple:8:6-8:11)
-  is an expression
-  resolved to 1 definition(s): `value` (bounds-are-lazy.wipple:9:5-9:10)
 
 
 Output:

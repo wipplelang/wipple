@@ -1,0 +1,278 @@
+use crate::{
+    db::{Db, Fact, Node},
+    render::{Render, RenderCtx},
+    visit::attributes::{
+        ConnectionAttributeValue, StringAttributeValue, parse_attribute_named,
+        parse_attribute_with_value, parse_attributes_with_value,
+    },
+};
+use arcstr::Substr;
+use dyn_clone::DynClone;
+use serde::{Deserialize, Serialize};
+use std::{any::Any, fmt::Debug};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Defined(pub Box<dyn Definition>);
+
+#[typetag::serde]
+impl Fact for Defined {}
+
+impl Render for Defined {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+        ctx.string("is a definition");
+    }
+}
+
+#[typetag::serde]
+pub trait Definition: Debug + DynClone + Send + Sync + Any {
+    fn name(&self) -> Option<&Substr>;
+    fn comments(&self) -> &[Substr];
+}
+
+dyn_clone::clone_trait_object!(Definition);
+
+impl dyn Definition {
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        (self as &dyn Any).downcast_ref()
+    }
+
+    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+        (self as &mut dyn Any).downcast_mut()
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VariableDefinition {
+    pub name: Substr,
+    pub value: Node,
+    pub is_mutable: bool,
+}
+
+#[typetag::serde]
+impl Definition for VariableDefinition {
+    fn name(&self) -> Option<&Substr> {
+        Some(&self.name)
+    }
+
+    fn comments(&self) -> &[Substr] {
+        &[]
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConstantValue(pub Node);
+
+#[typetag::serde]
+impl Fact for ConstantValue {}
+
+impl Render for ConstantValue {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConstantDefinition {
+    pub name: Substr,
+    pub comments: Vec<Substr>,
+    pub attributes: ConstantAttributes,
+}
+
+#[typetag::serde]
+impl Definition for ConstantDefinition {
+    fn name(&self) -> Option<&Substr> {
+        Some(&self.name)
+    }
+
+    fn comments(&self) -> &[Substr] {
+        &self.comments
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ConstantAttributes {
+    pub unit: bool,
+    pub connect: Vec<ConnectionAttributeValue>,
+}
+
+impl ConstantAttributes {
+    pub fn parse(db: &mut Db, attributes: &[Node]) -> Self {
+        ConstantAttributes {
+            unit: parse_attribute_named(db, attributes, "unit"),
+            connect: parse_attributes_with_value(db, attributes, "connect"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeDefinition {
+    pub name: Substr,
+    pub comments: Vec<Substr>,
+    pub attributes: TypeDefinitionAttributes,
+    pub parameters: Vec<Node>,
+}
+
+#[typetag::serde]
+impl Definition for TypeDefinition {
+    fn name(&self) -> Option<&Substr> {
+        Some(&self.name)
+    }
+
+    fn comments(&self) -> &[Substr] {
+        &self.comments
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeDefinitionAttributes {
+    pub intrinsic: bool,
+    pub representation: Option<Substr>,
+    pub abi: Option<Substr>,
+}
+
+impl TypeDefinitionAttributes {
+    pub fn parse(db: &mut Db, attributes: &[Node]) -> Self {
+        TypeDefinitionAttributes {
+            intrinsic: parse_attribute_named(db, attributes, "intrinsic"),
+            representation: parse_attribute_with_value(db, attributes, "representation")
+                .map(|syntax: StringAttributeValue| syntax.value.clone()),
+            abi: parse_attribute_with_value(db, attributes, "abi")
+                .map(|syntax: StringAttributeValue| syntax.value.clone()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TraitDefinition {
+    pub name: Substr,
+    pub comments: Vec<Substr>,
+    pub attributes: TraitDefinitionAttributes,
+    pub parameters: Vec<Node>,
+}
+
+#[typetag::serde]
+impl Definition for TraitDefinition {
+    fn name(&self) -> Option<&Substr> {
+        Some(&self.name)
+    }
+
+    fn comments(&self) -> &[Substr] {
+        &self.comments
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TraitDefinitionAttributes {}
+
+impl TraitDefinitionAttributes {
+    pub fn parse(_db: &mut Db, _attributes: &[Node]) -> Self {
+        TraitDefinitionAttributes {}
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstanceTrait(pub Node);
+
+#[typetag::serde]
+impl Fact for InstanceTrait {}
+
+impl Render for InstanceTrait {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstanceDefinition {
+    pub comments: Vec<Substr>,
+    pub attributes: InstanceDefinitionAttributes,
+    pub value: Option<Node>,
+}
+
+#[typetag::serde]
+impl Definition for InstanceDefinition {
+    fn name(&self) -> Option<&Substr> {
+        None
+    }
+
+    fn comments(&self) -> &[Substr] {
+        &self.comments
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct InstanceDefinitionAttributes {
+    pub default: bool,
+    pub error: bool,
+}
+
+impl InstanceDefinitionAttributes {
+    pub fn parse(db: &mut Db, attributes: &[Node]) -> Self {
+        InstanceDefinitionAttributes {
+            default: parse_attribute_named(db, attributes, "default"),
+            error: parse_attribute_named(db, attributes, "error"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeParameterDefinition {
+    pub name: Option<Substr>,
+}
+
+#[typetag::serde]
+impl Definition for TypeParameterDefinition {
+    fn name(&self) -> Option<&Substr> {
+        self.name.as_ref()
+    }
+
+    fn comments(&self) -> &[Substr] {
+        &[]
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MarkerConstructorDefinition {
+    pub name: Substr,
+    pub comments: Vec<Substr>,
+}
+
+#[typetag::serde]
+impl Definition for MarkerConstructorDefinition {
+    fn name(&self) -> Option<&Substr> {
+        Some(&self.name)
+    }
+
+    fn comments(&self) -> &[Substr] {
+        &self.comments
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StructureConstructorDefinition {
+    pub name: Substr,
+    pub comments: Vec<Substr>,
+    pub fields: Vec<(Substr, Node)>,
+}
+
+#[typetag::serde]
+impl Definition for StructureConstructorDefinition {
+    fn name(&self) -> Option<&Substr> {
+        Some(&self.name)
+    }
+
+    fn comments(&self) -> &[Substr] {
+        &self.comments
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VariantConstructorDefinition {
+    pub name: Substr,
+    pub type_definition: Node,
+    pub index: usize,
+    pub elements: Vec<Node>,
+}
+
+#[typetag::serde]
+impl Definition for VariantConstructorDefinition {
+    fn name(&self) -> Option<&Substr> {
+        Some(&self.name)
+    }
+
+    fn comments(&self) -> &[Substr] {
+        &[]
+    }
+}
