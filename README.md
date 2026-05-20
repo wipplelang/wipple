@@ -15,10 +15,7 @@
   <a href="https://github.com/wipplelang/wipple/actions/workflows/test.yml">
     <img src="https://github.com/wipplelang/wipple/actions/workflows/test.yml/badge.svg" alt="Tests">
   </a>
-  <a href="https://app.netlify.com/sites/wipple/deploys">
-    <img src="https://api.netlify.com/api/v1/badges/e72cbb94-f8a4-4e15-8769-11d51bbae200/deploy-status" alt="Netlify Status">
-  </a>
-<p>
+</p>
 
 Wipple is a programming language designed for learning. With Wipple, you can explore computer science through creative projects like drawing and music. Wipple is free to use and works in your web browser, no setup required.
 
