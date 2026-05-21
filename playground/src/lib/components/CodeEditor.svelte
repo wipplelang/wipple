@@ -504,8 +504,8 @@
     }) => {
         if (
             options.start >= options.end ||
-            options.start >= editorView.state.doc.length ||
-            options.end >= editorView.state.doc.length
+            options.start > editorView.state.doc.length ||
+            options.end > editorView.state.doc.length
         ) {
             return undefined;
         }
