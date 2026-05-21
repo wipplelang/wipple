@@ -26,7 +26,7 @@ pub struct PlaceholderExpression {
 }
 
 pub fn parse_placeholder_expression(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<PlaceholderExpression, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::UnderscoreKeyword)?;
@@ -36,7 +36,7 @@ pub fn parse_placeholder_expression(
 
 #[typetag::serde]
 impl Visit for PlaceholderExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 

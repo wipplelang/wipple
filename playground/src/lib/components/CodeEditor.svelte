@@ -42,8 +42,7 @@
     import { minimalSetup } from "codemirror";
     import type { Action } from "svelte/action";
     import { type Command as CommandType } from "$lib/models/Command";
-    import * as api from "$lib/api";
-    import { context } from "$lib/context.svelte";
+    import { compilerWorker, context } from "$lib/context.svelte";
     import DiagnosticWidget from "$lib/widgets/DiagnosticWidget.svelte";
     import { nanoid } from "nanoid";
 
@@ -251,7 +250,7 @@
 
         // Format when done
         (async () => {
-            const { code: formatted } = await api.format({ code });
+            const { code: formatted } = await compilerWorker.format({ code });
 
             if (formatted == null) {
                 return;

@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use wipple_core::{
     anyhow,
-    arcstr::Substr,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         constraints::{instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint},
         groups::Typed,
@@ -26,12 +26,12 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstructorPattern {
     pub span: Span,
-    pub constructor: Substr,
-    pub elements: Vec<Box<dyn Visit>>,
+    pub constructor: Str,
+    pub elements: Vec<AstKey>,
 }
 
 pub fn parse_parameterized_constructor_pattern(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<ConstructorPattern, ParseError> {
     let span = parser.spanned();
     let constructor = parse_constructor_name(parser)?;
@@ -43,7 +43,9 @@ pub fn parse_parameterized_constructor_pattern(
     })
 }
 
-pub fn parse_constructor_pattern(parser: &mut Parser) -> Result<ConstructorPattern, ParseError> {
+pub fn parse_constructor_pattern(
+    parser: &mut Parser<'_>,
+) -> Result<ConstructorPattern, ParseError> {
     let span = parser.spanned();
     let constructor = parse_constructor_name(parser)?;
     Ok(ConstructorPattern {
@@ -55,7 +57,7 @@ pub fn parse_constructor_pattern(parser: &mut Parser) -> Result<ConstructorPatte
 
 #[typetag::serde]
 impl Visit for ConstructorPattern {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -91,7 +93,7 @@ impl Visit for ConstructorPattern {
                 visit_pattern(db, node, visitor, Some(MatchPathSegment::Match));
 
                 for element in self.elements {
-                    let (pattern, _) = visitor.visit_matching(db, element, None);
+                    let (pattern, _) = visitor.visit_matching(db, &element, None);
                     db.graph.edge(pattern, node, "element");
                     db.insert(pattern, ExtraElement);
                 }
@@ -128,7 +130,7 @@ impl Visit for ConstructorPattern {
                     .map(|(index, element)| {
                         let element = visitor.visit_matching(
                             db,
-                            element,
+                            &element,
                             MatchPathSegment::VariantElement(definition_node, index, element_count),
                         );
 

@@ -6,9 +6,9 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         bounds::Bound,
         constraints::bound_constraint::{BoundConstraint as TypecheckBoundConstraint, IsBound},
@@ -26,11 +26,11 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BoundConstraint {
     pub span: Span,
-    pub trait_name: Substr,
-    pub parameters: Vec<Box<dyn Visit>>,
+    pub trait_name: Str,
+    pub parameters: Vec<AstKey>,
 }
 
-pub fn parse_bound_constraint(parser: &mut Parser) -> Result<BoundConstraint, ParseError> {
+pub fn parse_bound_constraint(parser: &mut Parser<'_>) -> Result<BoundConstraint, ParseError> {
     let span = parser.spanned();
 
     parser
@@ -51,7 +51,7 @@ pub fn parse_bound_constraint(parser: &mut Parser) -> Result<BoundConstraint, Pa
 
 #[typetag::serde]
 impl Visit for BoundConstraint {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -68,7 +68,7 @@ impl Visit for BoundConstraint {
         let parameters = self
             .parameters
             .iter()
-            .map(|parameter| visitor.visit(db, parameter.clone()))
+            .map(|parameter| visitor.visit(db, parameter))
             .collect::<Vec<_>>();
 
         let mut bound_parameters = BTreeMap::new();

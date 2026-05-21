@@ -1,25 +1,18 @@
 use crate::{
+    ast::AstKey,
     codegen::CodegenValue,
     db::{Fact, Node},
     render::Render,
-    span::Span,
-    visit::Visit,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Syntax(pub Box<dyn Visit>);
+pub struct Syntax(pub AstKey);
 
 #[typetag::serde]
 impl Fact for Syntax {}
 
 impl Render for Syntax {}
-
-impl Syntax {
-    pub fn span(&self) -> &Span {
-        self.0.span()
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Codegen(pub Box<dyn CodegenValue>);

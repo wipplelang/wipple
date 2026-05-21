@@ -2,6 +2,7 @@ use crate::types::{parse_atomic_type, parse_type, visit_type};
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     db::{Db, Node},
     span::Span,
     typecheck::{
@@ -18,11 +19,11 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionType {
     pub span: Span,
-    pub inputs: Vec<Box<dyn Visit>>,
-    pub output: Box<dyn Visit>,
+    pub inputs: Vec<AstKey>,
+    pub output: AstKey,
 }
 
-pub fn parse_function_type(parser: &mut Parser) -> Result<FunctionType, ParseError> {
+pub fn parse_function_type(parser: &mut Parser<'_>) -> Result<FunctionType, ParseError> {
     let span = parser.spanned();
     let inputs = parse_function_type_inputs(parser)?;
     let output = parse_type(parser)?;
@@ -33,7 +34,7 @@ pub fn parse_function_type(parser: &mut Parser) -> Result<FunctionType, ParseErr
     })
 }
 
-pub fn parse_function_type_inputs(parser: &mut Parser) -> Result<Vec<Box<dyn Visit>>, ParseError> {
+pub fn parse_function_type_inputs(parser: &mut Parser<'_>) -> Result<Vec<AstKey>, ParseError> {
     let inputs = parser.parse_many(1, parse_atomic_type)?;
     parser.token(TokenKind::FunctionOperator)?;
     parser.commit("in this function type");
@@ -43,7 +44,7 @@ pub fn parse_function_type_inputs(parser: &mut Parser) -> Result<Vec<Box<dyn Vis
 
 #[typetag::serde]
 impl Visit for FunctionType {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -53,14 +54,14 @@ impl Visit for FunctionType {
         let inputs = self
             .inputs
             .into_iter()
-            .map(|input| visitor.visit(db, input))
+            .map(|input| visitor.visit(db, &input))
             .collect::<Vec<_>>();
 
         for &input in &inputs {
             db.graph.edge(input, node, "input");
         }
 
-        let output = visitor.visit(db, self.output);
+        let output = visitor.visit(db, &self.output);
         db.graph.edge(output, node, "output");
 
         visitor.constraint(

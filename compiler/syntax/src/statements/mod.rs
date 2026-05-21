@@ -14,14 +14,14 @@ use crate::statements::{
     type_definition::parse_type_definition_statement,
 };
 
-use wipple_core::{arcstr::Substr, visit::Visit};
+use wipple_core::{ast::AstKey, span::Str};
 use wipple_parse::{
     lexer::TokenKind,
     parse_alt,
     parser::{ParseError, Parser},
 };
 
-pub fn parse_statements(parser: &mut Parser) -> Result<Vec<Box<dyn Visit>>, ParseError> {
+pub fn parse_statements(parser: &mut Parser<'_>) -> Result<Vec<AstKey>, ParseError> {
     parser.parse_lines(0, true, |parser| {
         let statement = parse_statement(parser)?;
         let _ = parser.parse_optional(parse_comment)?;
@@ -29,22 +29,22 @@ pub fn parse_statements(parser: &mut Parser) -> Result<Vec<Box<dyn Visit>>, Pars
     })
 }
 
-pub fn parse_statement(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_statement(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_type_definition_statement as value => Box::new(value),
-        parse_trait_definition_statement as value => Box::new(value),
-        parse_constant_definition_statement as value => Box::new(value),
-        parse_instance_definition_statement as value => Box::new(value),
-        parse_assignment_statement as value => Box::new(value),
-        parse_expression_statement as value => Box::new(value),
+        parse_type_definition_statement as value => parser.in_ast(value),
+        parse_trait_definition_statement as value => parser.in_ast(value),
+        parse_constant_definition_statement as value => parser.in_ast(value),
+        parse_instance_definition_statement as value => parser.in_ast(value),
+        parse_assignment_statement as value => parser.in_ast(value),
+        parse_expression_statement as value => parser.in_ast(value),
         _ => "Expected statement",
     })
 }
 
-pub fn parse_comments(parser: &mut Parser) -> Result<Vec<Substr>, ParseError> {
+pub fn parse_comments(parser: &mut Parser<'_>) -> Result<Vec<Str>, ParseError> {
     parser.parse_lines(0, true, parse_comment)
 }
 
-pub fn parse_comment(parser: &mut Parser) -> Result<Substr, ParseError> {
+pub fn parse_comment(parser: &mut Parser<'_>) -> Result<Str, ParseError> {
     parser.token(TokenKind::Comment)
 }

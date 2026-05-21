@@ -8,10 +8,10 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
         ty::{ConstructedTy, Ty},
@@ -26,10 +26,10 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OperatorExpression {
     pub span: Span,
-    pub operator: Substr,
+    pub operator: Str,
     pub operator_span: Span,
-    pub left: Box<dyn Visit>,
-    pub right: Box<dyn Visit>,
+    pub left: AstKey,
+    pub right: AstKey,
 }
 
 #[derive(Clone, Copy)]
@@ -39,7 +39,7 @@ enum Associativity {
 }
 
 pub fn parse_parenthesized_operator_expression(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<ConstructorExpression, ParseError> {
     let span = parser.spanned();
     parser
@@ -58,15 +58,15 @@ pub fn parse_parenthesized_operator_expression(
 
     Ok(ConstructorExpression {
         span: span(parser),
-        constructor: Substr::from(constructor),
+        constructor: Str::from(constructor),
     })
 }
 
-pub fn parse_operator_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_operator_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_apply_expression(parser)
 }
 
-fn parse_apply_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+fn parse_apply_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_operator(
         parser,
         &[TokenKind::ApplyOperator],
@@ -75,7 +75,7 @@ fn parse_apply_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseEr
     )
 }
 
-fn parse_or_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+fn parse_or_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_operator(
         parser,
         &[TokenKind::OrOperator],
@@ -84,7 +84,7 @@ fn parse_or_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError
     )
 }
 
-fn parse_and_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+fn parse_and_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_operator(
         parser,
         &[TokenKind::AndOperator],
@@ -93,7 +93,7 @@ fn parse_and_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseErro
     )
 }
 
-fn parse_equal_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+fn parse_equal_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_operator(
         parser,
         &[TokenKind::EqualOperator, TokenKind::NotEqualOperator],
@@ -102,7 +102,7 @@ fn parse_equal_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseEr
     )
 }
 
-fn parse_compare_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+fn parse_compare_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_operator(
         parser,
         &[
@@ -116,7 +116,7 @@ fn parse_compare_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, Parse
     )
 }
 
-fn parse_add_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+fn parse_add_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_operator(
         parser,
         &[TokenKind::AddOperator, TokenKind::SubtractOperator],
@@ -125,7 +125,7 @@ fn parse_add_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseErro
     )
 }
 
-fn parse_multiply_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+fn parse_multiply_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_operator(
         parser,
         &[
@@ -138,7 +138,7 @@ fn parse_multiply_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, Pars
     )
 }
 
-fn parse_power_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+fn parse_power_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_operator(
         parser,
         &[TokenKind::PowerOperator],
@@ -147,7 +147,7 @@ fn parse_power_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseEr
     )
 }
 
-fn parse_by_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+fn parse_by_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_operator(
         parser,
         &[TokenKind::ByOperator],
@@ -156,7 +156,7 @@ fn parse_by_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError
     )
 }
 
-fn parse_to_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+fn parse_to_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_operator(
         parser,
         &[TokenKind::ToOperator],
@@ -166,11 +166,11 @@ fn parse_to_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError
 }
 
 fn parse_operator(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
     operators: &[TokenKind],
     associativity: Associativity,
-    parse_element: fn(&mut Parser) -> Result<Box<dyn Visit>, ParseError>,
-) -> Result<Box<dyn Visit>, ParseError> {
+    parse_element: fn(&mut Parser<'_>) -> Result<AstKey, ParseError>,
+) -> Result<AstKey, ParseError> {
     let elements = parser.parse_sep(1, parse_element, |parser| {
         parser.consume_line_breaks();
 
@@ -193,8 +193,11 @@ fn parse_operator(
     }
 
     for (right, (operator, operator_span)) in rest {
-        result = Box::new(OperatorExpression {
-            span: result.span().join_in(right.span(), &parser.source),
+        result = parser.in_ast(OperatorExpression {
+            span: result
+                .get(parser.db)
+                .span(parser.db)
+                .join_in(right.get(parser.db).span(parser.db), parser.source.clone()),
             operator: operator.unwrap(),
             operator_span,
             left: result,
@@ -227,7 +230,7 @@ pub fn name_for_trait_operator(operator: &str) -> Option<&'static str> {
 
 #[typetag::serde]
 impl Visit for OperatorExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -276,29 +279,36 @@ fn visit_trait_operator(
     db: &mut Db,
     visitor: &mut Visitor,
     span: Span,
-    left: Box<dyn Visit>,
-    right: Box<dyn Visit>,
+    left: AstKey,
+    right: AstKey,
     trait_name: &str,
 ) -> Node {
-    visitor.visit(
+    let function = visitor.in_ast(
+        db,
+        Box::new(ConstructorExpression {
+            span: span.clone(),
+            constructor: Str::from(trait_name),
+        }),
+    );
+
+    let call = visitor.in_ast(
         db,
         Box::new(CallExpression {
-            span: span.clone(),
-            function: Box::new(ConstructorExpression {
-                span,
-                constructor: Substr::from(trait_name),
-            }),
+            span,
+            function,
             inputs: vec![left, right],
         }),
-    )
+    );
+
+    visitor.visit(db, &call)
 }
 
 fn visit_logic_operator(
     db: &mut Db,
     visitor: &mut Visitor,
     span: Span,
-    left: Box<dyn Visit>,
-    right: Box<dyn Visit>,
+    left: AstKey,
+    right: AstKey,
     trait_name: &str,
 ) -> Node {
     let node = db.node();
@@ -320,46 +330,61 @@ fn visit_logic_operator(
         ),
     );
 
-    visitor.visit_as(
+    let function = visitor.in_ast(
+        db,
+        Box::new(ConstructorExpression {
+            span: span.clone(),
+            constructor: Str::from(trait_name),
+        }),
+    );
+
+    let left_input = visitor.in_ast(
+        db,
+        Box::new(VisitAs {
+            node: left_node,
+            syntax: left,
+        }),
+    );
+
+    let right_input = visitor.in_ast(
+        db,
+        Box::new(VisitAs {
+            node: right_node,
+            syntax: right.clone(),
+        }),
+    );
+
+    let statement = visitor.in_ast(
+        db,
+        Box::new(ExpressionStatement {
+            span: db.ast(&right).span(db).clone(),
+            expression: right_input,
+        }),
+    );
+
+    let block = visitor.in_ast(
+        db,
+        Box::new(BlockExpression {
+            span: db.ast(&right).span(db).clone(),
+            statements: vec![statement],
+        }),
+    );
+
+    let call = visitor.in_ast(
         db,
         Box::new(CallExpression {
-            span: span.clone(),
-            function: Box::new(VisitAs {
-                node: operator_node,
-                syntax: Box::new(ConstructorExpression {
-                    span: span.clone(),
-                    constructor: Substr::from(trait_name),
-                }),
-            }),
-            inputs: vec![
-                Box::new(VisitAs {
-                    node: left_node,
-                    syntax: left,
-                }),
-                Box::new(BlockExpression {
-                    span: right.span().clone(),
-                    statements: vec![Box::new(ExpressionStatement {
-                        span: right.span().clone(),
-                        expression: Box::new(VisitAs {
-                            node: right_node,
-                            syntax: right,
-                        }),
-                    })],
-                }),
-            ],
+            span,
+            function,
+            inputs: vec![left_input, block],
         }),
-        node,
     );
+
+    visitor.visit_as(db, &call, node);
 
     node
 }
 
-fn visit_apply_operator(
-    db: &mut Db,
-    visitor: &mut Visitor,
-    left: Box<dyn Visit>,
-    right: Box<dyn Visit>,
-) -> Node {
+fn visit_apply_operator(db: &mut Db, visitor: &mut Visitor, left: AstKey, right: AstKey) -> Node {
     let node = db.node();
     let left_node = db.node();
     let right_node = db.node();
@@ -372,21 +397,32 @@ fn visit_apply_operator(
         ),
     );
 
-    visitor.visit_as(
+    let function = visitor.in_ast(
+        db,
+        Box::new(VisitAs {
+            node: right_node,
+            syntax: right.clone(),
+        }),
+    );
+
+    let input = visitor.in_ast(
+        db,
+        Box::new(VisitAs {
+            node: left_node,
+            syntax: left,
+        }),
+    );
+
+    let call = visitor.in_ast(
         db,
         Box::new(CallExpression {
-            span: right.span().clone(),
-            function: Box::new(VisitAs {
-                node: right_node,
-                syntax: right,
-            }),
-            inputs: vec![Box::new(VisitAs {
-                node: left_node,
-                syntax: left,
-            })],
+            span: db.ast(&right).span(db).clone(),
+            function,
+            inputs: vec![input],
         }),
-        node,
     );
+
+    visitor.visit_as(db, &call, node);
 
     node
 }

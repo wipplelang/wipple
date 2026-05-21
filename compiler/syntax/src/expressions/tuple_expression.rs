@@ -2,6 +2,7 @@ use crate::expressions::{parse_expression_element, visit_expression};
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
@@ -19,10 +20,10 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TupleExpression {
     pub span: Span,
-    pub elements: Vec<Box<dyn Visit>>,
+    pub elements: Vec<AstKey>,
 }
 
-pub fn parse_tuple_expression(parser: &mut Parser) -> Result<TupleExpression, ParseError> {
+pub fn parse_tuple_expression(parser: &mut Parser<'_>) -> Result<TupleExpression, ParseError> {
     let span = parser.spanned();
     let elements = parser
         .parse_sep(1, parse_expression_element, |parser| {
@@ -48,7 +49,7 @@ pub fn parse_tuple_expression(parser: &mut Parser) -> Result<TupleExpression, Pa
 
 #[typetag::serde]
 impl Visit for TupleExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -58,7 +59,7 @@ impl Visit for TupleExpression {
         let elements = self
             .elements
             .into_iter()
-            .map(|element| visitor.visit(db, element))
+            .map(|element| visitor.visit(db, &element))
             .collect::<Vec<_>>();
 
         for &element in &elements {

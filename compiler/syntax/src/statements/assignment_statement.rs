@@ -5,6 +5,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
@@ -25,11 +26,13 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AssignmentStatement {
     pub span: Span,
-    pub pattern: Box<dyn Visit>,
-    pub value: Box<dyn Visit>,
+    pub pattern: AstKey,
+    pub value: AstKey,
 }
 
-pub fn parse_assignment_statement(parser: &mut Parser) -> Result<AssignmentStatement, ParseError> {
+pub fn parse_assignment_statement(
+    parser: &mut Parser<'_>,
+) -> Result<AssignmentStatement, ParseError> {
     let span = parser.spanned();
     let _ = parse_comments(parser)?;
     let pattern = parse_pattern(parser)?;
@@ -46,11 +49,11 @@ pub fn parse_assignment_statement(parser: &mut Parser) -> Result<AssignmentState
 
 #[typetag::serde]
 impl Visit for AssignmentStatement {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
-    fn is_hidden(&self) -> bool {
+    fn is_hidden(&self, _db: &Db) -> bool {
         true
     }
 
@@ -58,7 +61,7 @@ impl Visit for AssignmentStatement {
         visitor.constraint(db, TyConstraint::new(node, ConstructedTy::unit()));
 
         // Try assigning to an existing constant in the current scope if possible
-        if let Some(pattern) = self.pattern.downcast_ref::<VariablePattern>()
+        if let Some(pattern) = db.ast(&self.pattern).downcast_ref::<VariablePattern>()
             && let Some((definition_node, _)) = visitor
                 .current_scope_mut()
                 .peek_as::<ConstantDefinition>(&pattern.variable)
@@ -77,7 +80,7 @@ impl Visit for AssignmentStatement {
                     visitor.with_definition_flag(
                         |d| &mut d.within_constant_value,
                         |visitor| {
-                            let value = visitor.visit(db, self.value);
+                            let value = visitor.visit(db, &self.value);
                             visitor.constraint(db, GroupConstraint::new(value, definition_node));
                             db.insert(definition_node, ConstantValue(value));
                         },
@@ -89,7 +92,7 @@ impl Visit for AssignmentStatement {
             return;
         }
 
-        let value = visitor.visit(db, self.value);
+        let value = visitor.visit(db, &self.value);
 
         let pattern = visitor.matching(
             value,
@@ -102,7 +105,7 @@ impl Visit for AssignmentStatement {
                 let pattern = db.node();
                 current_match.arm = Some(pattern);
 
-                visitor.visit_as(db, self.pattern.clone(), pattern);
+                visitor.visit_as(db, &self.pattern, pattern);
 
                 pattern
             },

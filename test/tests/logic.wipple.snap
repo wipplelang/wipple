@@ -35,7 +35,7 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`and` (logic.wipple:1:13-1:16) (VisitAs):
+`and` (logic.wipple:1:13-1:16) (ConstructorExpression):
   has bound(s) `And` (library/src/foundation/logic.wipple:29:1-29:62) `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:35))
   has type `Boolean {Boolean} -> Boolean` (logic.wipple:1:13-1:16)
   is an expression
@@ -110,7 +110,7 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`or` (logic.wipple:2:13-2:15) (VisitAs):
+`or` (logic.wipple:2:13-2:15) (ConstructorExpression):
   has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:34:1-34:34))
   has type `Boolean {Boolean} -> Boolean` (logic.wipple:2:13-2:15)
   is an expression

@@ -93,7 +93,7 @@ impl RenderSegment {
             RenderSegment::String(s) => s.clone(),
             RenderSegment::Code(s) => s.clone(),
             RenderSegment::Node(node) => match db.get(*node) {
-                Some(Syntax(syntax)) => format_source(&syntax.span().source),
+                Some(Syntax(syntax)) => format_source(&db.ast(syntax).span(db).source),
                 None => String::from("_"),
             },
             RenderSegment::Link(label, _) => label.clone(),
@@ -109,7 +109,7 @@ impl RenderSegment {
                 let mut s = String::new();
 
                 if let Some(Syntax(syntax)) = db.get(*node) {
-                    let span = syntax.span();
+                    let span = db.ast(syntax).span(db);
 
                     write!(s, "`{}`", format_source(&span.source)).unwrap();
 
@@ -130,7 +130,7 @@ impl RenderSegment {
                 let mut s = format!("`{label}`");
 
                 if let Some(Syntax(syntax)) = db.get(*node) {
-                    let span = syntax.span();
+                    let span = db.ast(syntax).span(db);
 
                     if show_span {
                         write!(s, " ({span})").unwrap();

@@ -130,7 +130,9 @@ impl FeedbackWriter {
                 return;
             };
 
-            if syntax.span().source == Ty::Constructed(constraint.ty.clone()).display(db, true) {
+            if db.ast(syntax).span(db).source
+                == Ty::Constructed(constraint.ty.clone()).display(db, true)
+            {
                 return; // don't repeat the type if it is from the source code
             }
 

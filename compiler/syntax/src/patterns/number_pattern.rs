@@ -6,10 +6,9 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     anyhow,
-    arcstr::Substr,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::constraints::group_constraint::GroupConstraint,
     visit::{Visit, Visitor, exhaustiveness::MatchPathSegment},
 };
@@ -21,10 +20,10 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NumberPattern {
     pub span: Span,
-    pub value: Substr,
+    pub value: Str,
 }
 
-pub fn parse_number_pattern(parser: &mut Parser) -> Result<NumberPattern, ParseError> {
+pub fn parse_number_pattern(parser: &mut Parser<'_>) -> Result<NumberPattern, ParseError> {
     let span = parser.spanned();
     let value = parser.token(TokenKind::Number)?;
     Ok(NumberPattern {
@@ -35,7 +34,7 @@ pub fn parse_number_pattern(parser: &mut Parser) -> Result<NumberPattern, ParseE
 
 #[typetag::serde]
 impl Visit for NumberPattern {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -44,12 +43,15 @@ impl Visit for NumberPattern {
 
         let number_type = db.node();
         db.hide(number_type);
-        let syntax = Box::new(NamedType {
-            span: self.span.clone(),
-            name: Substr::from("Number"),
-            parameters: Vec::new(),
-        }) as Box<dyn Visit>;
-        visitor.visit_as(db, syntax, number_type);
+        let syntax = visitor.in_ast(
+            db,
+            Box::new(NamedType {
+                span: self.span.clone(),
+                name: Str::from("Number"),
+                parameters: Vec::new(),
+            }),
+        );
+        visitor.visit_as(db, &syntax, number_type);
 
         visitor.constraint(db, GroupConstraint::new(node, number_type));
 
@@ -67,7 +69,7 @@ impl Visit for NumberPattern {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct NumberPatternCodegen {
     node: Node,
-    value: Substr,
+    value: Str,
 }
 
 #[typetag::serde]

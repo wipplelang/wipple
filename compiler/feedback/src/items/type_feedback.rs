@@ -66,14 +66,15 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
 
             let from_span = db
                 .get(data.from)
-                .map(|Syntax(syntax)| syntax.span().clone());
+                .map(|Syntax(syntax)| db.ast(syntax).span(db).clone());
 
             let nodes = data
                 .nodes
                 .iter()
                 .copied()
                 .filter(|node| {
-                    db.get(*node).map(|Syntax(syntax)| syntax.span()) != from_span.as_ref()
+                    db.get(*node).map(|Syntax(syntax)| db.ast(syntax).span(db))
+                        != from_span.as_ref()
                 })
                 .collect::<Vec<_>>();
 
@@ -88,7 +89,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                     .into_iter()
                     .filter_map(|node| {
                         let Syntax(syntax) = db.get(node)?;
-                        seen.insert(syntax.span()).then_some(node)
+                        seen.insert(db.ast(syntax).span(db)).then_some(node)
                     })
                     .collect::<Vec<_>>();
 
@@ -114,7 +115,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                     continue;
                 };
 
-                let Some(parameter) = syntax.downcast_ref::<TypeParameter>() else {
+                let Some(parameter) = db.ast(syntax).downcast_ref::<TypeParameter>() else {
                     continue;
                 };
 

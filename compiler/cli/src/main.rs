@@ -18,6 +18,7 @@ use std::{
 };
 use wipple_core::{
     LibraryArtifact, TopLevel,
+    ast::AstKey,
     codegen::{self, codegen, wasm},
     db::{Db, DbRef, Node},
     default_filter,
@@ -122,7 +123,7 @@ fn setup(
         return Ok((artifact.db, artifact.top_level, artifact.statements));
     }
 
-    let mut db = Db::new();
+    let mut db = Db::new(None);
     if env::var("WIPPLE_DEBUG").is_ok() {
         db.debug_enabled = true;
     }
@@ -131,13 +132,11 @@ fn setup(
 
     let mut statements = Vec::new();
     for path in &options.lib {
-        let parent = DbRef::new(db);
-        db = Db::new();
-        db.set_parent(parent);
+        db = Db::new(Some(DbRef::new(db)));
 
         let name = path.file_name().unwrap_or_default().to_string_lossy();
 
-        let files = read_dir(path)?;
+        let files = read_dir(&mut db, path)?;
 
         let mut driver = Driver::new(options, files, &mut out);
         driver.prefix = "Compiling ";
@@ -161,12 +160,14 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
         return Ok(None);
     }
 
+    let mut db = Db::new(Some(DbRef::new(lib_db)));
+
     let files = options
         .paths
         .iter()
         .map(|path| {
             let source = fs::read_to_string(path)?;
-            Ok(parse(path.to_string_lossy(), source))
+            Ok(parse(&mut db, path.to_string_lossy(), source))
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
 
@@ -176,9 +177,6 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
         .map(|path| path.to_string_lossy())
         .collect::<Vec<_>>()
         .join(", ");
-
-    let mut db = Db::new();
-    db.set_parent(DbRef::new(lib_db));
 
     let mut driver = Driver::new(options, files, io::stdout());
     driver.prefix = "Compiling ";
@@ -282,6 +280,8 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
         .paths
         .iter()
         .map(|path| {
+            let mut db = Db::new(Some(lib_db.clone()));
+
             let file_name = path
                 .file_name()
                 .unwrap_or_default()
@@ -290,9 +290,9 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
 
             let source = fs::read_to_string(path)?;
 
-            let file = parse(&file_name, source);
+            let file = parse(&mut db, &file_name, source);
 
-            Ok((file_name, file))
+            Ok((db, file_name, file))
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
 
@@ -304,10 +304,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
     }
 
     let files_count = files.len();
-    let run = |(index, (name, file)): (usize, (String, Box<_>))| {
-        let mut db = Db::new();
-        db.set_parent(lib_db.clone());
-
+    let run = |(index, (mut db, name, file)): (usize, (Db, String, AstKey))| {
         let mut out = Vec::new();
 
         let mut driver = Driver::new(options, vec![file], &mut out);
@@ -364,12 +361,14 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
 fn doc(options: &CompileOptions) -> anyhow::Result<()> {
     let (lib_db, mut top_level, _) = setup(options, true, io::stdout())?;
 
+    let mut db = Db::new(Some(DbRef::new(lib_db)));
+
     let files = options
         .paths
         .iter()
         .map(|path| {
             let source = fs::read_to_string(path)?;
-            Ok(parse(path.to_string_lossy(), source))
+            Ok(parse(&mut db, path.to_string_lossy(), source))
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
 
@@ -379,9 +378,6 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
         .map(|path| path.to_string_lossy())
         .collect::<Vec<_>>()
         .join(", ");
-
-    let mut db = Db::new();
-    db.set_parent(DbRef::new(lib_db));
 
     let mut driver = Driver::new(options, files, io::stdout());
     driver.prefix = "Compiling ";

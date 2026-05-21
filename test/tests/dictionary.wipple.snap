@@ -242,7 +242,7 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`or` (dictionary.wipple:4:68-4:70) (VisitAs):
+`or` (dictionary.wipple:4:68-4:70) (ConstructorExpression):
   has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `(Maybe Number)` `Number` `Number` (resolved as `instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:35:1-35:35))
   has type `(Maybe Number) {Number} -> Number` (dictionary.wipple:4:68-4:70)
   is an expression

@@ -7,10 +7,10 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
         ty::{ConstructedTy, Ty},
@@ -25,11 +25,11 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AsExpression {
     pub span: Span,
-    pub left: Box<dyn Visit>,
-    pub right: Box<dyn Visit>,
+    pub left: AstKey,
+    pub right: AstKey,
 }
 
-pub fn parse_as_expression(parser: &mut Parser) -> Result<AsExpression, ParseError> {
+pub fn parse_as_expression(parser: &mut Parser<'_>) -> Result<AsExpression, ParseError> {
     let span = parser.spanned();
     let left = parse_expression_element(parser)?;
     parser.token(TokenKind::AsOperator)?;
@@ -44,24 +44,27 @@ pub fn parse_as_expression(parser: &mut Parser) -> Result<AsExpression, ParseErr
 
 #[typetag::serde]
 impl Visit for AsExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_expression(db, node, visitor);
 
-        let left = visitor.visit(db, self.left);
+        let left = visitor.visit(db, &self.left);
         db.graph.edge(left, node, "left");
 
-        let right = visitor.visit(db, self.right);
+        let right = visitor.visit(db, &self.right);
         db.graph.edge(right, node, "right");
 
-        let as_function = Box::new(ConstructorExpression {
-            span: self.span.clone(),
-            constructor: Substr::from("As"),
-        }) as Box<dyn Visit>;
-        let as_function = visitor.visit(db, as_function);
+        let as_function = visitor.in_ast(
+            db,
+            Box::new(ConstructorExpression {
+                span: self.span.clone(),
+                constructor: Str::from("As"),
+            }),
+        );
+        let as_function = visitor.visit(db, &as_function);
 
         visitor.constraint(
             db,

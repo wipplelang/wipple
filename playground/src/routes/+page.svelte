@@ -11,9 +11,8 @@
     import * as commands from "@codemirror/commands";
     import Tooltip from "$lib/components/Tooltip.svelte";
     import Commands from "$lib/components/Commands.svelte";
-    import * as api from "$lib/api";
     import type { Command } from "$lib/models/Command";
-    import { context } from "$lib/context.svelte";
+    import { compilerWorker, context } from "$lib/context.svelte";
     import Output, { type RunState } from "$lib/components/Output.svelte";
     import PrintButton from "$lib/components/PrintButton.svelte";
     import { onMount } from "svelte";
@@ -125,13 +124,17 @@
         ideInfoLibrary = metadata.library;
 
         (async () => {
-            const response = await api.ideInfo({ ...metadata });
-            ideInfo = response.info;
-        })();
+            await compilerWorker.loadLibrary({ name: metadata.library });
 
-        (async () => {
-            const response = await api.documentation({ ...metadata });
-            documentation = response.items;
+            (async () => {
+                const response = await compilerWorker.ideInfo({ ...metadata });
+                ideInfo = response.info;
+            })();
+
+            (async () => {
+                const response = await compilerWorker.documentation({ ...metadata });
+                documentation = response.items;
+            })();
         })();
     });
 

@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use wipple_core::{
-    arcstr::Substr,
     db::{Db, Node},
+    span::Str,
     typecheck::{
         bounds::{Bounds, ResolvedBound},
         constraints::Constraint,
@@ -18,8 +18,8 @@ use wipple_core::{
 #[derive(Debug, Clone)]
 pub struct Comments {
     pub nodes: Vec<Node>,
-    pub comments: Vec<Substr>,
-    pub links: BTreeMap<Substr, Link>,
+    pub comments: Vec<Str>,
+    pub links: BTreeMap<Str, Link>,
 }
 
 pub fn comments_without_links(db: &Db, node: Node) -> Option<Comments> {

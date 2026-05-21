@@ -2,7 +2,10 @@
     "name": "compiler",
     "private": true,
     "type": "module",
-    "main": "dist/index.js",
+    "exports": {
+        "node": "./index.node.js",
+        "browser": "./index.browser.js"
+    },
     "scripts": {
         "build": "./build.sh"
     },

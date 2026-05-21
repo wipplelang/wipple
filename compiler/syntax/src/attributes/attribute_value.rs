@@ -1,6 +1,6 @@
-use wipple_core::visit::{
-    Visit,
-    attributes::{ConnectionAttributeValue, StringAttributeValue},
+use wipple_core::{
+    ast::AstKey,
+    visit::attributes::{ConnectionAttributeValue, StringAttributeValue},
 };
 use wipple_parse::{
     lexer::TokenKind,
@@ -9,16 +9,16 @@ use wipple_parse::{
     parser::{ParseError, Parser},
 };
 
-pub fn parse_attribute_value(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_attribute_value(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_string_attribute_value as value => Box::new(value),
-        parse_connection_attribute_value as value => Box::new(value),
+        parse_string_attribute_value as value => parser.in_ast(value),
+        parse_connection_attribute_value as value => parser.in_ast(value),
         _ => "Expected an attribute value",
     })
 }
 
 pub fn parse_string_attribute_value(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<StringAttributeValue, ParseError> {
     let span = parser.spanned();
     let value = parser.token(TokenKind::String)?;
@@ -29,7 +29,7 @@ pub fn parse_string_attribute_value(
 }
 
 pub fn parse_connection_attribute_value(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<ConnectionAttributeValue, ParseError> {
     let span = parser.spanned();
     let left = parse_type_parameter_name(parser)?;

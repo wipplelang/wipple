@@ -12,7 +12,11 @@ pub fn unused_block(db: &Db, node: Node) -> bool {
         return false;
     };
 
-    if syntax.0.downcast_ref::<BlockExpression>().is_none() {
+    if db
+        .ast(&syntax.0)
+        .downcast_ref::<BlockExpression>()
+        .is_none()
+    {
         return false;
     }
 
@@ -24,7 +28,8 @@ pub fn unused_block(db: &Db, node: Node) -> bool {
         return false;
     };
 
-    if statement_syntax
+    if db
+        .ast(statement_syntax)
         .downcast_ref::<ExpressionStatement>()
         .is_none()
     {
@@ -39,12 +44,13 @@ pub fn unused_block(db: &Db, node: Node) -> bool {
         return false;
     };
 
-    let check_last = if statements_syntax
+    let check_last = if db
+        .ast(statements_syntax)
         .downcast_ref::<BlockExpression>()
         .is_some()
     {
         true
-    } else if statements_syntax.downcast_ref::<File>().is_some() {
+    } else if db.ast(statements_syntax).downcast_ref::<File>().is_some() {
         false
     } else {
         return false;

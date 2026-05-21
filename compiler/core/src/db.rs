@@ -1,7 +1,9 @@
 use crate::{
+    ast::{Ast, AstKey},
     facts::Syntax,
     graph::GraphBuilder,
     render::{Render, RenderCtx},
+    visit::Visit,
 };
 use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
@@ -68,10 +70,10 @@ impl dyn Fact {
     }
 }
 
-#[derive(Default)]
 pub struct Db {
     parent: Option<DbRef>,
     pub debug_enabled: bool,
+    pub(crate) ast: Ast,
     pub graph: GraphBuilder,
     nodes: Vec<NodeInfo>,                // for owned nodes
     overrides: BTreeMap<Node, NodeInfo>, // for parent nodes
@@ -127,6 +129,7 @@ struct SerializedDb {
     parent: Option<Box<SerializedDb>>,
     debug_enabled: bool,
     graph: GraphBuilder,
+    ast: Ast,
     nodes: Vec<NodeInfo>,
     overrides: BTreeMap<Node, NodeInfo>,
 }
@@ -140,6 +143,7 @@ impl From<&Db> for SerializedDb {
                 .map(|parent| Box::new(SerializedDb::from(parent.deref()))),
             debug_enabled: db.debug_enabled,
             graph: db.graph.clone(),
+            ast: db.ast.clone(),
             nodes: db.nodes.clone(),
             overrides: db.overrides.clone(),
         }
@@ -154,6 +158,7 @@ impl From<SerializedDb> for Db {
                 .map(|parent| DbRef::new(Db::from(*parent))),
             debug_enabled: serialized.debug_enabled,
             graph: serialized.graph,
+            ast: serialized.ast,
             nodes: serialized.nodes,
             overrides: serialized.overrides,
             cache: Default::default(),
@@ -226,12 +231,18 @@ impl<'de> Deserialize<'de> for Facts {
 }
 
 impl Db {
-    pub fn new() -> Self {
-        Default::default()
-    }
+    pub fn new(parent: Option<DbRef>) -> Self {
+        let layer = parent.as_ref().map_or(0, |p| p.layer() + 1);
 
-    pub fn set_parent(&mut self, parent: DbRef) {
-        self.parent = Some(parent);
+        Db {
+            parent,
+            debug_enabled: false,
+            ast: Ast::new(layer),
+            graph: Default::default(),
+            nodes: Default::default(),
+            overrides: Default::default(),
+            cache: Default::default(),
+        }
     }
 
     pub fn layer(&self) -> usize {
@@ -246,6 +257,17 @@ impl Db {
             layer: self.layer(),
             index: id,
         }
+    }
+
+    #[allow(clippy::borrowed_box, reason = "allow cloning")]
+    pub fn ast(&self, key: &AstKey) -> &Box<dyn Visit> {
+        self.ast
+            .get(key)
+            .unwrap_or_else(|| self.parent.as_ref().unwrap().ast(key))
+    }
+
+    pub fn in_ast(&mut self, value: Box<dyn Visit>) -> AstKey {
+        self.ast.insert(value)
     }
 
     fn info(&self, node: Node) -> Option<&NodeInfo> {
@@ -394,6 +416,10 @@ impl Db {
             .chain(self.overrides.iter().map(|(&node, info)| (node, info)))
     }
 
+    pub fn gc(&mut self) {
+        self.ast.gc();
+    }
+
     pub fn debug(&self, mut filter: impl FnMut(&Self, Node) -> bool) -> impl Display {
         let mut nodes = self
             .owned_nodes()
@@ -418,13 +444,14 @@ impl Db {
             })
             .collect::<Vec<_>>();
 
-        nodes.sort_by_key(|(_, _, syntax)| syntax.map(|syntax| syntax.span()));
+        nodes
+            .sort_by_key(|(_, _, syntax)| syntax.map(|Syntax(syntax)| syntax.get(self).span(self)));
 
         let mut ctx = RenderCtx::default();
         for (node, info, syntax) in nodes {
             ctx.node(node);
-            if let Some(syntax) = syntax {
-                ctx.string(format!(" ({})", syntax.0.type_name()));
+            if let Some(Syntax(syntax)) = syntax {
+                ctx.string(format!(" ({})", syntax.get(self).type_name()));
             }
             ctx.string(":\n");
 

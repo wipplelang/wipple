@@ -3,6 +3,7 @@ use crate::statements::{parse_comments, parse_statements};
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     anyhow,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, ir},
     db::{Db, Node},
     facts::Syntax,
@@ -13,7 +14,7 @@ use wipple_parse::parser::Parser;
 
 pub use wipple_parse::parser::ParseError;
 
-pub fn parse_file(parser: &mut Parser) -> Result<File, ParseError> {
+pub fn parse_file(parser: &mut Parser<'_>) -> Result<File, ParseError> {
     let span = parser.spanned();
     let statements = parse_statements(parser)?;
     let _ = parse_comments(parser)?;
@@ -27,7 +28,7 @@ pub fn parse_file(parser: &mut Parser) -> Result<File, ParseError> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct File {
     pub span: Span,
-    pub statements: Vec<Box<dyn Visit>>,
+    pub statements: Vec<AstKey>,
     pub error: Option<ParseError>,
 }
 
@@ -43,11 +44,11 @@ impl From<ParseError> for File {
 
 #[typetag::serde]
 impl Visit for File {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
-    fn is_hidden(&self) -> bool {
+    fn is_hidden(&self, _db: &Db) -> bool {
         true
     }
 
@@ -68,7 +69,7 @@ pub fn codegen_top_level_statements(
     for statement in statements {
         let span = db
             .get(statement)
-            .map(|Syntax(syntax)| syntax.span().clone())
+            .map(|Syntax(syntax)| db.ast(syntax).span(db).clone())
             .ok_or_else(|| anyhow::format_err!("missing span"))?;
 
         ctx.instruction(ir::Instruction::Trace { span });

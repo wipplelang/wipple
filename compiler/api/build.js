@@ -2,17 +2,27 @@ import * as esbuild from "esbuild";
 import * as fs from "node:fs";
 import metaUrl from "@chialab/esbuild-plugin-meta-url";
 
-const outdir = "./dist";
-
-fs.rmSync(outdir, { recursive: true, force: true });
-
-esbuild.build({
-    entryPoints: ["./index.ts"],
-    outdir,
-    platform: "node",
+const options = {
     bundle: true,
     sourcemap: true,
-    format: "esm",
     loader: { ".wasm": "file" },
     plugins: [metaUrl()],
+};
+
+fs.rmSync("dist", { recursive: true, force: true });
+
+esbuild.build({
+    entryPoints: ["./index.browser.ts"],
+    platform: "browser",
+    outdir: "dist/browser",
+    format: "esm",
+    ...options,
+});
+
+esbuild.build({
+    entryPoints: ["./index.node.ts"],
+    platform: "node",
+    outdir: "dist/node",
+    format: "cjs",
+    ...options,
 });

@@ -1,12 +1,13 @@
+use serde::{Deserialize, Serialize};
 use std::{
     any::TypeId,
     collections::{BTreeMap, HashMap},
 };
 use wipple_core::{
-    arcstr::{ArcStr, Substr},
+    ast::AstKey,
     db::{Db, Fact},
     render::{Render, RenderCtx},
-    span::Span,
+    span::{Span, Str},
     visit::Visit,
 };
 
@@ -52,7 +53,7 @@ pub use cache_token;
 
 struct CacheEntry {
     index: usize,
-    value: Box<dyn Visit>,
+    value: AstKey,
 }
 
 pub struct ParseToken {
@@ -94,20 +95,26 @@ impl ParseToken {
     }
 }
 
-pub struct Parser {
-    pub source: ArcStr,
+pub struct Parser<'a> {
+    pub db: &'a mut Db,
+    pub source: Str,
     tokens: Vec<Token>,
     index: usize,
     stack: Vec<StackEntry>,
     cache: HashMap<CacheToken, BTreeMap<usize, CacheEntry>>,
 }
 
-impl Parser {
-    pub fn new(path: impl Into<ArcStr>, source: impl Into<ArcStr>) -> Result<Self, ParseError> {
+impl<'a> Parser<'a> {
+    pub fn new(
+        db: &'a mut Db,
+        path: impl Into<Str>,
+        source: impl Into<Str>,
+    ) -> Result<Self, ParseError> {
         let source = source.into();
         let tokens = tokenize(path, source.clone())?;
 
         Ok(Parser {
+            db,
             source,
             tokens,
             index: 0,
@@ -116,13 +123,17 @@ impl Parser {
         })
     }
 
-    pub fn spanned(&self) -> impl Fn(&Self) -> Span + use<> {
+    pub fn spanned(&self) -> impl Fn(&Self) -> Span + use<'a> {
         let start = self.span_at(self.index);
 
         move |parser| {
             let end = parser.span_at(parser.index.saturating_sub(1));
-            start.join_in(&end, &parser.source)
+            start.join_in(&end, parser.source.clone())
         }
+    }
+
+    pub fn in_ast(&mut self, value: impl Visit) -> AstKey {
+        self.db.in_ast(Box::new(value))
     }
 
     pub fn error(&self, message: impl Into<String>, reason: Option<String>) -> ParseError {
@@ -136,7 +147,7 @@ impl Parser {
         }
     }
 
-    pub fn token(&mut self, parse: impl Into<ParseToken>) -> Result<Substr, ParseError> {
+    pub fn token(&mut self, parse: impl Into<ParseToken>) -> Result<Str, ParseError> {
         let parse = parse.into();
 
         let expected = parse.expected.unwrap_or_else(|| parse.name.to_string());
@@ -199,7 +210,7 @@ impl Parser {
     }
 }
 
-impl Parser {
+impl Parser<'_> {
     pub fn parse_nothing() -> Result<(), ParseError> {
         Ok(())
     }
@@ -207,8 +218,8 @@ impl Parser {
     pub fn parse_cached(
         &mut self,
         token: CacheToken,
-        parse: impl FnOnce(&mut Self) -> Result<Box<dyn Visit>, ParseError>,
-    ) -> Result<Box<dyn Visit>, ParseError> {
+        parse: impl FnOnce(&mut Self) -> Result<AstKey, ParseError>,
+    ) -> Result<AstKey, ParseError> {
         let start = self.index;
 
         if let Some(cached) = self.cache.get(&token).and_then(|cache| cache.get(&start)) {
@@ -373,23 +384,22 @@ impl Parser {
 
 #[macro_export]
 macro_rules! parse_alt {
-    ($parser:expr, {
+    ($parser:ident, {
         $($parse:ident as $x:ident => $result:expr,)*
         _ => $error:literal,
     }) => {{
         static TOKEN: $crate::parser::CacheToken = $crate::parser::cache_token!();
 
-        $parser.parse_cached(TOKEN, |parser| {
+        $parser.parse_cached(TOKEN, |$parser| {
             $(
-                if let Some($x) = parser.parse_optional($parse)? {
+                if let Some($x) = $parser.parse_optional($parse)? {
                     return Ok($result);
                 }
             )*
 
-            Err(parser.error($error, None))
+            Err($parser.error($error, None))
         })
     }};
 }
 
 pub use parse_alt;
-use serde::{Deserialize, Serialize};

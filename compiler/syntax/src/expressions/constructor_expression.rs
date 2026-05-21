@@ -3,10 +3,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
     anyhow,
-    arcstr::Substr,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         bounds::{Bound, Bounds},
         constraints::{
@@ -29,11 +28,11 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstructorExpression {
     pub span: Span,
-    pub constructor: Substr,
+    pub constructor: Str,
 }
 
 pub fn parse_constructor_expression(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<ConstructorExpression, ParseError> {
     let span = parser.spanned();
     let constructor = parse_constructor_name(parser)?;
@@ -45,7 +44,7 @@ pub fn parse_constructor_expression(
 
 #[typetag::serde]
 impl Visit for ConstructorExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 

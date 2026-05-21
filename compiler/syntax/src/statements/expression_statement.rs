@@ -2,6 +2,7 @@ use crate::{expressions::parse_expression, statements::parse_comments};
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
@@ -13,10 +14,12 @@ use wipple_parse::parser::{ParseError, Parser};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExpressionStatement {
     pub span: Span,
-    pub expression: Box<dyn Visit>,
+    pub expression: AstKey,
 }
 
-pub fn parse_expression_statement(parser: &mut Parser) -> Result<ExpressionStatement, ParseError> {
+pub fn parse_expression_statement(
+    parser: &mut Parser<'_>,
+) -> Result<ExpressionStatement, ParseError> {
     let span = parser.spanned();
     let _ = parse_comments(parser)?;
     let expression = parse_expression(parser)?;
@@ -28,18 +31,18 @@ pub fn parse_expression_statement(parser: &mut Parser) -> Result<ExpressionState
 
 #[typetag::serde]
 impl Visit for ExpressionStatement {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
-    fn is_hidden(&self) -> bool {
+    fn is_hidden(&self, _db: &Db) -> bool {
         true
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         db.insert(node, Typed::default());
 
-        let expression = visitor.visit(db, self.expression);
+        let expression = visitor.visit(db, &self.expression);
         db.graph.replace(node, expression);
         visitor.constraint(db, GroupConstraint::new(node, expression));
 

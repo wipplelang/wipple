@@ -231,7 +231,7 @@ impl GraphBuilder {
                 continue;
             }
 
-            let Some(span) = db.get(node).map(|Syntax(syntax)| syntax.span()) else {
+            let Some(span) = db.get(node).map(|Syntax(syntax)| db.ast(syntax).span(db)) else {
                 continue;
             };
 

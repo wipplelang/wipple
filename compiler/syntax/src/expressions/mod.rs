@@ -44,10 +44,11 @@ use crate::expressions::{
     when_expression::parse_when_expression,
 };
 use wipple_core::{
+    ast::AstKey,
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::groups::Typed,
-    visit::{Visit, Visitor},
+    visit::Visitor,
 };
 use wipple_parse::{
     lexer::TokenKind,
@@ -67,50 +68,50 @@ impl Render for IsExpression {
     }
 }
 
-pub fn parse_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_function_expression as value => Box::new(value),
-        parse_tuple_expression as value => Box::new(value),
-        parse_empty_collection_expression as value => Box::new(value),
-        parse_collection_expression as value => Box::new(value),
-        parse_is_expression as value => Box::new(value),
-        parse_as_expression as value => Box::new(value),
-        parse_annotate_expression as value => Box::new(value),
+        parse_function_expression as value => parser.in_ast(value),
+        parse_tuple_expression as value => parser.in_ast(value),
+        parse_empty_collection_expression as value => parser.in_ast(value),
+        parse_collection_expression as value => parser.in_ast(value),
+        parse_is_expression as value => parser.in_ast(value),
+        parse_as_expression as value => parser.in_ast(value),
+        parse_annotate_expression as value => parser.in_ast(value),
         parse_operator_expression as value => value,
         parse_expression_element as value => value,
         _ => "Expected expression",
     })
 }
 
-pub fn parse_expression_element(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_expression_element(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_format_expression as value => Box::new(value),
-        parse_structure_expression as value => Box::new(value),
-        parse_call_expression as value => Box::new(value),
-        parse_do_expression as value => Box::new(value),
-        parse_when_expression as value => Box::new(value),
-        parse_intrinsic_expression as value => Box::new(value),
+        parse_format_expression as value => parser.in_ast(value),
+        parse_structure_expression as value => parser.in_ast(value),
+        parse_call_expression as value => parser.in_ast(value),
+        parse_do_expression as value => parser.in_ast(value),
+        parse_when_expression as value => parser.in_ast(value),
+        parse_intrinsic_expression as value => parser.in_ast(value),
         parse_atomic_expression as value => value,
         _ => "Expected expression",
     })
 }
 
-pub fn parse_atomic_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_atomic_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_placeholder_expression as value => Box::new(value),
-        parse_variable_expression as value => Box::new(value),
-        parse_constructor_expression as value => Box::new(value),
-        parse_number_expression as value => Box::new(value),
-        parse_string_expression as value => Box::new(value),
-        parse_block_expression as value => Box::new(value),
-        parse_unit_expression as value => Box::new(value),
-        parse_parenthesized_operator_expression as value => Box::new(value),
+        parse_placeholder_expression as value => parser.in_ast(value),
+        parse_variable_expression as value => parser.in_ast(value),
+        parse_constructor_expression as value => parser.in_ast(value),
+        parse_number_expression as value => parser.in_ast(value),
+        parse_string_expression as value => parser.in_ast(value),
+        parse_block_expression as value => parser.in_ast(value),
+        parse_unit_expression as value => parser.in_ast(value),
+        parse_parenthesized_operator_expression as value => parser.in_ast(value),
         parse_parenthesized_expression as value => value,
         _ => "Expected expression",
     })
 }
 
-pub fn parse_parenthesized_expression(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_parenthesized_expression(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parser
         .token(ParseToken::from(TokenKind::LeftParenthesis).reason("between these parentheses"))?;
     parser.consume_line_breaks();

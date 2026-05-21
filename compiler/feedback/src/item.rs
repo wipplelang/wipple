@@ -64,6 +64,6 @@ pub fn sort_feedback(db: &Db, items: &mut Vec<FeedbackItem<'_>>) {
 
     items.sort_by_key(|item| {
         db.get(item.location.primary)
-            .map(|Syntax(syntax)| syntax.span())
+            .map(|Syntax(syntax)| db.ast(syntax).span(db))
     });
 }

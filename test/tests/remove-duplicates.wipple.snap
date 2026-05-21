@@ -154,7 +154,7 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`and` (remove-duplicates.wipple:4:39-4:42) (VisitAs):
+`and` (remove-duplicates.wipple:4:39-4:42) (ConstructorExpression):
   has bound(s) `And` (library/src/foundation/logic.wipple:29:1-29:62) `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:35))
   has type `Boolean {Boolean} -> Boolean` (remove-duplicates.wipple:4:39-4:42)
   is an expression

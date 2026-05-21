@@ -1,6 +1,6 @@
-import { PUBLIC_SERVER_URL } from "$env/static/public";
 import { makeChannel, readMessage, writeMessage, type Channel } from "sync-message";
 import "core-js/proposals/array-buffer-base64";
+import initRuntime from "./runtime";
 
 export type Env = Record<string, (input: any) => Promise<any>>;
 
@@ -35,8 +35,6 @@ export const init = (worker: Worker, env: Env) => {
     };
 };
 
-let runtimeSource: string | undefined;
-
 const run = async (channel: Channel, executable: string) => {
     const env = new Proxy(
         {},
@@ -49,21 +47,8 @@ const run = async (channel: Channel, executable: string) => {
         },
     );
 
-    if (runtimeSource == null) {
-        runtimeSource = (
-            await fetch(`${PUBLIC_SERVER_URL}/runtime`, { method: "POST", body: "{}" }).then(
-                (res) => res.json(),
-            )
-        ).runtime;
-    }
-
-    const { default: initRuntime } = await import(
-        /* @vite-ignore */ `data:text/javascript;base64,${btoa(runtimeSource!)}`
-    );
-
     const runtime = initRuntime(env);
 
-    // @ts-expect-error polyfilled via core-js above
     const data = Uint8Array.fromBase64(executable);
 
     const wasm = await WebAssembly.instantiate(data, { runtime });

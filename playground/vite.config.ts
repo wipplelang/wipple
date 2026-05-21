@@ -26,6 +26,9 @@ export default defineConfig(({ mode }) => {
         },
         server: {
             port: 8080,
+            fs: {
+                allow: [".."],
+            },
         },
     };
 });

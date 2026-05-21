@@ -15,6 +15,3 @@ uninlined_format_args = "warn"
 
 [profile.dev]
 opt-level = 1
-
-[profile.release]
-debug = 1

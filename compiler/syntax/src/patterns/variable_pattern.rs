@@ -3,10 +3,9 @@ use crate::patterns::{Matching, visit_pattern};
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     anyhow,
-    arcstr::Substr,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     visit::{
         IsMutated, Visit, Visitor, definitions::VariableDefinition,
         exhaustiveness::MatchPathSegment,
@@ -20,10 +19,10 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariablePattern {
     pub span: Span,
-    pub variable: Substr,
+    pub variable: Str,
 }
 
-pub fn parse_variable_pattern(parser: &mut Parser) -> Result<VariablePattern, ParseError> {
+pub fn parse_variable_pattern(parser: &mut Parser<'_>) -> Result<VariablePattern, ParseError> {
     let span = parser.spanned();
     let variable = parse_variable_name(parser)?;
     Ok(VariablePattern {
@@ -34,7 +33,7 @@ pub fn parse_variable_pattern(parser: &mut Parser) -> Result<VariablePattern, Pa
 
 #[typetag::serde]
 impl Visit for VariablePattern {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 

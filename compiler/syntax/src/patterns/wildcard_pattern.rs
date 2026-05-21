@@ -16,7 +16,7 @@ pub struct WildcardPattern {
     pub span: Span,
 }
 
-pub fn parse_wildcard_pattern(parser: &mut Parser) -> Result<WildcardPattern, ParseError> {
+pub fn parse_wildcard_pattern(parser: &mut Parser<'_>) -> Result<WildcardPattern, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::UnderscoreKeyword)?;
     parser.commit("in this wildcard pattern");
@@ -25,7 +25,7 @@ pub fn parse_wildcard_pattern(parser: &mut Parser) -> Result<WildcardPattern, Pa
 
 #[typetag::serde]
 impl Visit for WildcardPattern {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 

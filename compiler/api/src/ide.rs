@@ -97,7 +97,13 @@ impl Ide {
         })
         .into_iter()
         .filter_map(|item| {
-            let span = self.result.db.get::<Syntax>(item.location.primary)?.span();
+            let span = self
+                .result
+                .db
+                .get::<Syntax>(item.location.primary)?
+                .0
+                .get(&self.result.db)
+                .span(&self.result.db);
 
             let (message, _) =
                 item.display(&self.result.db, |db, segment| segment.markdown(db, false));
@@ -113,7 +119,12 @@ impl Ide {
     pub fn semantic_tokens(&self) -> Vec<IdeSemanticToken> {
         let mut tokens = HashMap::<IdeRange, String>::new();
         for node in self.result.db.owned_nodes() {
-            let Some(span) = self.result.db.get(node).map(|Syntax(syntax)| syntax.span()) else {
+            let Some(span) = self
+                .result
+                .db
+                .get(node)
+                .map(|Syntax(syntax)| syntax.get(&self.result.db).span(&self.result.db))
+            else {
                 continue;
             };
 
@@ -144,7 +155,13 @@ impl Ide {
 
     pub fn hover(&self, line: usize, column: usize) -> Option<IdeHover> {
         let node = self.node_at(line, column)?;
-        let span = self.result.db.get::<Syntax>(node)?.span();
+        let span = self
+            .result
+            .db
+            .get::<Syntax>(node)?
+            .0
+            .get(&self.result.db)
+            .span(&self.result.db);
 
         let mut contents = Vec::new();
 
@@ -220,7 +237,7 @@ impl Ide {
             .copied()
             .filter(|&related| default_filter(&self.result.db, related))
             .filter_map(|related| self.result.db.get(related))
-            .map(|Syntax(syntax)| IdeRange::from(syntax.span()))
+            .map(|Syntax(syntax)| IdeRange::from(syntax.get(&self.result.db).span(&self.result.db)))
             .collect()
     }
 
@@ -238,7 +255,7 @@ impl Ide {
         self.result
             .db
             .get(definition)
-            .map(|Syntax(syntax)| IdeRange::from(syntax.span()))
+            .map(|Syntax(syntax)| IdeRange::from(syntax.get(&self.result.db).span(&self.result.db)))
     }
 
     pub fn references(&self, line: usize, column: usize) -> Vec<IdeRange> {
@@ -255,7 +272,7 @@ impl Ide {
             .flat_map(|node| wipple_queries::references(&self.result.db, node))
             .filter(|&reference| default_filter(&self.result.db, reference))
             .filter_map(|reference| self.result.db.get(reference))
-            .map(|Syntax(syntax)| IdeRange::from(syntax.span()))
+            .map(|Syntax(syntax)| IdeRange::from(syntax.get(&self.result.db).span(&self.result.db)))
             .collect()
     }
 
@@ -270,7 +287,7 @@ impl Ide {
 
         let prefix = node_at_position
             .and_then(|node| {
-                let Syntax(syntax) = self.result.db.get(node)?;
+                let syntax = self.result.db.get::<Syntax>(node)?.0.get(&self.result.db);
 
                 let prefix = if let Some(value) = syntax.downcast_ref::<VariableExpression>() {
                     value.variable.to_string()
@@ -286,7 +303,7 @@ impl Ide {
                     String::new()
                 };
 
-                let span = syntax.span();
+                let span = syntax.span(&self.result.db);
 
                 // Ensure the cursor is actually within the prefix
                 if span.end.column > span.start.column + prefix.len() {
@@ -367,7 +384,13 @@ impl Ide {
             .db
             .owned_nodes()
             .filter_map(|node| {
-                let span = self.result.db.get::<Syntax>(node)?.span();
+                let span = self
+                    .result
+                    .db
+                    .get::<Syntax>(node)?
+                    .0
+                    .get(&self.result.db)
+                    .span(&self.result.db);
 
                 if span.start.line == line
                     && span.start.column <= column

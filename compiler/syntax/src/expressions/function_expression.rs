@@ -5,6 +5,7 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
@@ -23,11 +24,13 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FunctionExpression {
     pub span: Span,
-    pub inputs: Vec<Box<dyn Visit>>,
-    pub output: Box<dyn Visit>,
+    pub inputs: Vec<AstKey>,
+    pub output: AstKey,
 }
 
-pub fn parse_function_expression(parser: &mut Parser) -> Result<FunctionExpression, ParseError> {
+pub fn parse_function_expression(
+    parser: &mut Parser<'_>,
+) -> Result<FunctionExpression, ParseError> {
     let span = parser.spanned();
     let inputs = parse_function_expression_inputs(parser)?;
     let output = parse_expression(parser)?;
@@ -39,8 +42,8 @@ pub fn parse_function_expression(parser: &mut Parser) -> Result<FunctionExpressi
 }
 
 pub fn parse_function_expression_inputs(
-    parser: &mut Parser,
-) -> Result<Vec<Box<dyn Visit>>, ParseError> {
+    parser: &mut Parser<'_>,
+) -> Result<Vec<AstKey>, ParseError> {
     let inputs = parser.parse_many(1, parse_atomic_pattern)?;
     parser.token(TokenKind::FunctionOperator)?;
     parser.commit("in this function");
@@ -50,7 +53,7 @@ pub fn parse_function_expression_inputs(
 
 #[typetag::serde]
 impl Visit for FunctionExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -71,7 +74,7 @@ impl Visit for FunctionExpression {
                         current_match.mutable = false;
                         current_match.root = Some(input_node);
                     },
-                    |visitor| visitor.visit_as(db, input, input_node),
+                    |visitor| visitor.visit_as(db, &input, input_node),
                 );
 
                 db.graph.edge(input_node, node, "input");
@@ -79,7 +82,7 @@ impl Visit for FunctionExpression {
             })
             .collect::<Vec<_>>();
 
-        let output = visitor.visit(db, self.output);
+        let output = visitor.visit(db, &self.output);
         db.graph.edge(output, node, "output");
 
         visitor.pop_scope(db);

@@ -5,6 +5,7 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
@@ -19,11 +20,13 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnnotateExpression {
     pub span: Span,
-    pub expression: Box<dyn Visit>,
-    pub ty: Box<dyn Visit>,
+    pub expression: AstKey,
+    pub ty: AstKey,
 }
 
-pub fn parse_annotate_expression(parser: &mut Parser) -> Result<AnnotateExpression, ParseError> {
+pub fn parse_annotate_expression(
+    parser: &mut Parser<'_>,
+) -> Result<AnnotateExpression, ParseError> {
     let span = parser.spanned();
     let expression = parse_operator_expression(parser)?;
     parser.token(TokenKind::AnnotateOperator)?;
@@ -39,15 +42,15 @@ pub fn parse_annotate_expression(parser: &mut Parser) -> Result<AnnotateExpressi
 
 #[typetag::serde]
 impl Visit for AnnotateExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_expression(db, node, visitor);
 
-        let expression = visitor.visit(db, self.expression);
-        let ty = visitor.visit(db, self.ty);
+        let expression = visitor.visit(db, &self.expression);
+        let ty = visitor.visit(db, &self.ty);
         db.graph.edge(ty, expression, "type");
 
         visitor.constraint(db, GroupConstraint::new(expression, ty));

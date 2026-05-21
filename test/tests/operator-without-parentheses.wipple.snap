@@ -61,7 +61,7 @@ Facts (layer 2):
   is an expression
   missing type (group: `show True or False` (operator-without-parentheses.wipple:2:1-2:16), `or` (operator-without-parentheses.wipple:2:9-2:11), `show True or False` (operator-without-parentheses.wipple:2:1-2:16), `_`, `_`, `_`)
 
-`or` (operator-without-parentheses.wipple:2:9-2:11) (VisitAs):
+`or` (operator-without-parentheses.wipple:2:9-2:11) (ConstructorExpression):
   has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `()` `Boolean` `_` (unresolved)
   has type `() {Boolean} -> _` (operator-without-parentheses.wipple:2:9-2:11)
   is an expression

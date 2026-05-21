@@ -147,7 +147,7 @@ Facts (layer 2):
   has type `List Number`
   is an expression
 
-`or` (lists.wipple:5:23-5:25) (VisitAs):
+`or` (lists.wipple:5:23-5:25) (ConstructorExpression):
   has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:35:1-35:35))
   has type `(Maybe (List Number)) {List Number} -> List Number` (lists.wipple:5:23-5:25)
   is an expression
@@ -217,7 +217,7 @@ Facts (layer 2):
   has type `List Number`
   is an expression
 
-`or` (lists.wipple:6:20-6:22) (VisitAs):
+`or` (lists.wipple:6:20-6:22) (ConstructorExpression):
   has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:35:1-35:35))
   has type `(Maybe (List Number)) {List Number} -> List Number` (lists.wipple:6:20-6:22)
   is an expression

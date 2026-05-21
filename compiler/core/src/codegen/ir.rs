@@ -1,5 +1,8 @@
-use crate::{codegen::CodegenError, db::Node, span::Span};
-use arcstr::Substr;
+use crate::{
+    codegen::CodegenError,
+    db::Node,
+    span::{Span, Str},
+};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Default)]
@@ -28,8 +31,8 @@ pub enum Type {
         definition: Node,
         parameters: Vec<Type>,
         intrinsic: bool,
-        representation: Option<Substr>,
-        abi: Option<Substr>,
+        representation: Option<Str>,
+        abi: Option<Str>,
     },
     Tuple(Vec<Type>),
     Function(Vec<Type>, Box<Type>),

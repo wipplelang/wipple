@@ -5,6 +5,7 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
@@ -19,18 +20,18 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WhenExpression {
     pub span: Span,
-    pub input: Box<dyn Visit>,
+    pub input: AstKey,
     pub arms: Vec<WhenArm>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WhenArm {
     pub span: Span,
-    pub pattern: Box<dyn Visit>,
-    pub value: Box<dyn Visit>,
+    pub pattern: AstKey,
+    pub value: AstKey,
 }
 
-pub fn parse_when_expression(parser: &mut Parser) -> Result<WhenExpression, ParseError> {
+pub fn parse_when_expression(parser: &mut Parser<'_>) -> Result<WhenExpression, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::WhenKeyword)?;
     parser.commit("in this `when` expression");
@@ -45,7 +46,7 @@ pub fn parse_when_expression(parser: &mut Parser) -> Result<WhenExpression, Pars
     })
 }
 
-pub fn parse_arm(parser: &mut Parser) -> Result<WhenArm, ParseError> {
+pub fn parse_arm(parser: &mut Parser<'_>) -> Result<WhenArm, ParseError> {
     let span = parser.spanned();
     let pattern = parse_atomic_pattern(parser)?;
     parser.commit("in this `when` arm");
@@ -59,27 +60,27 @@ pub fn parse_arm(parser: &mut Parser) -> Result<WhenArm, ParseError> {
     })
 }
 
-pub fn parse_arms(parser: &mut Parser) -> Result<Vec<WhenArm>, ParseError> {
+pub fn parse_arms(parser: &mut Parser<'_>) -> Result<Vec<WhenArm>, ParseError> {
     parser.parse_lines(0, true, parse_arm)
 }
 
 #[typetag::serde]
 impl Visit for WhenArm {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 }
 
 #[typetag::serde]
 impl Visit for WhenExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_expression(db, node, visitor);
 
-        let input = visitor.visit(db, self.input);
+        let input = visitor.visit(db, &self.input);
         db.graph.edge(input, node, "input");
 
         let arms = self
@@ -99,10 +100,10 @@ impl Visit for WhenExpression {
 
                         visitor.push_scope(db, pattern);
 
-                        visitor.visit_as(db, arm.pattern, pattern);
+                        visitor.visit_as(db, &arm.pattern, pattern);
                         db.graph.edge(pattern, node, "pattern");
 
-                        let value = visitor.visit(db, arm.value);
+                        let value = visitor.visit(db, &arm.value);
                         db.graph.edge(value, node, "value");
 
                         visitor.pop_scope(db);

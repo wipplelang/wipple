@@ -1,17 +1,17 @@
 use crate::attributes::attribute_value::parse_attribute_value;
 
-use wipple_core::visit::{Visit, attributes::Attribute};
+use wipple_core::{ast::AstKey, visit::attributes::Attribute};
 use wipple_parse::{
     lexer::TokenKind,
     names::parse_attribute_name,
     parser::{ParseError, Parser},
 };
 
-pub fn parse_attributes(parser: &mut Parser) -> Result<Vec<Box<dyn Visit>>, ParseError> {
+pub fn parse_attributes(parser: &mut Parser<'_>) -> Result<Vec<AstKey>, ParseError> {
     parser.parse_lines(0, false, parse_attribute)
 }
 
-pub fn parse_attribute(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_attribute(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::LeftBracket)?;
 
@@ -25,7 +25,7 @@ pub fn parse_attribute(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError
 
     parser.token(TokenKind::RightBracket)?;
 
-    Ok(Box::new(Attribute {
+    Ok(parser.in_ast(Attribute {
         span: span(parser),
         name,
         value,

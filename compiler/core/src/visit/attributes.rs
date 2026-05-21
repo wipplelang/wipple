@@ -1,11 +1,11 @@
 use crate::{
+    ast::AstKey,
     db::{Db, Fact, Node},
     facts::Syntax,
     render::{Render, RenderCtx},
-    span::Span,
+    span::{Span, Str},
     visit::Visit,
 };
-use arcstr::Substr;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,17 +59,17 @@ impl Render for MissingAttributeValue {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Attribute {
     pub span: Span,
-    pub name: Substr,
-    pub value: Option<Box<dyn Visit>>,
+    pub name: Str,
+    pub value: Option<AstKey>,
 }
 
 #[typetag::serde]
 impl Visit for Attribute {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
-    fn is_hidden(&self) -> bool {
+    fn is_hidden(&self, _db: &Db) -> bool {
         true
     }
 }
@@ -77,12 +77,12 @@ impl Visit for Attribute {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StringAttributeValue {
     pub span: Span,
-    pub value: Substr,
+    pub value: Str,
 }
 
 #[typetag::serde]
 impl Visit for StringAttributeValue {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 }
@@ -90,14 +90,14 @@ impl Visit for StringAttributeValue {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConnectionAttributeValue {
     pub span: Span,
-    pub left: Substr,
-    pub right: Substr,
-    pub label: Substr,
+    pub left: Str,
+    pub right: Str,
+    pub label: Str,
 }
 
 #[typetag::serde]
 impl Visit for ConnectionAttributeValue {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 }
@@ -108,7 +108,7 @@ pub fn parse_attribute_named(db: &mut Db, attributes: &[Node], name: &str) -> bo
     for &node in attributes {
         let Some(attribute) = db
             .get(node)
-            .and_then(|Syntax(syntax)| syntax.downcast_ref::<Attribute>())
+            .and_then(|Syntax(syntax)| db.ast(syntax).downcast_ref::<Attribute>())
         else {
             continue;
         };
@@ -136,7 +136,7 @@ pub fn parse_attribute_with_value<T: Visit + Clone>(
     for &node in attributes {
         let Some(attribute) = db
             .get(node)
-            .and_then(|Syntax(syntax)| syntax.downcast_ref::<Attribute>())
+            .and_then(|Syntax(syntax)| db.ast(syntax).downcast_ref::<Attribute>())
         else {
             continue;
         };
@@ -148,7 +148,7 @@ pub fn parse_attribute_with_value<T: Visit + Clone>(
                     continue;
                 }
 
-                result = value.as_ref().downcast_ref::<T>().cloned();
+                result = db.ast(value).as_ref().downcast_ref::<T>().cloned();
 
                 if result.is_none() {
                     db.insert(node, MismatchedAttributeValue);
@@ -172,13 +172,13 @@ pub fn parse_attributes_with_value<T: Visit + Clone>(
         .filter_map(|&node| {
             let attribute = db
                 .get(node)
-                .and_then(|Syntax(syntax)| syntax.downcast_ref::<Attribute>())?;
+                .and_then(|Syntax(syntax)| db.ast(syntax).downcast_ref::<Attribute>())?;
 
             if attribute.name != name {
                 return None;
             }
 
-            let Some(result) = attribute.value.as_ref()?.downcast_ref::<T>() else {
+            let Some(result) = db.ast(attribute.value.as_ref()?).downcast_ref::<T>() else {
                 db.insert(node, MismatchedAttributeValue);
                 return None;
             };

@@ -3,9 +3,9 @@ use crate::types::{ExtraType, MissingTypes, parse_atomic_type, visit_type};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::{constraints::instantiate_constraint::InstantiateConstraint, ty::Ty},
     util::exact_for_each,
     visit::{Visit, Visitor, definitions::TypeDefinition},
@@ -18,11 +18,11 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NamedType {
     pub span: Span,
-    pub name: Substr,
-    pub parameters: Vec<Box<dyn Visit>>,
+    pub name: Str,
+    pub parameters: Vec<AstKey>,
 }
 
-pub fn parse_named_type(parser: &mut Parser) -> Result<NamedType, ParseError> {
+pub fn parse_named_type(parser: &mut Parser<'_>) -> Result<NamedType, ParseError> {
     let span = parser.spanned();
     let name = parse_type_name(parser)?;
     Ok(NamedType {
@@ -32,7 +32,7 @@ pub fn parse_named_type(parser: &mut Parser) -> Result<NamedType, ParseError> {
     })
 }
 
-pub fn parse_parameterized_type(parser: &mut Parser) -> Result<NamedType, ParseError> {
+pub fn parse_parameterized_type(parser: &mut Parser<'_>) -> Result<NamedType, ParseError> {
     let span = parser.spanned();
     let name = parse_type_name(parser)?;
     let parameters = parser.parse_many(1, parse_atomic_type)?;
@@ -45,7 +45,7 @@ pub fn parse_parameterized_type(parser: &mut Parser) -> Result<NamedType, ParseE
 
 #[typetag::serde]
 impl Visit for NamedType {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -55,7 +55,7 @@ impl Visit for NamedType {
         let parameters = self
             .parameters
             .into_iter()
-            .map(|parameter| visitor.visit(db, parameter))
+            .map(|parameter| visitor.visit(db, &parameter))
             .collect::<Vec<_>>();
 
         for &parameter in &parameters {

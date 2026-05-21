@@ -5,19 +5,20 @@ use std::{
     time::Instant,
 };
 use wipple_core::{
-    TopLevel, compile,
+    TopLevel,
+    ast::AstKey,
+    compile,
     db::{Db, Node, NodeId},
     default_filter,
     facts::Syntax,
     render::RenderCtx,
-    visit::Visit,
 };
 use wipple_feedback::collect_feedback;
 use wipple_syntax::{GroupOrder, checks::run_checks};
 
 pub struct Driver<'a, Out> {
     pub compile_options: &'a CompileOptions,
-    pub files: Vec<Box<dyn Visit>>,
+    pub files: Vec<AstKey>,
     pub out: Out,
     pub prefix: &'static str,
     pub time: bool,
@@ -26,7 +27,7 @@ pub struct Driver<'a, Out> {
 }
 
 impl<'a, Out: io::Write> Driver<'a, Out> {
-    pub fn new(compile_options: &'a CompileOptions, files: Vec<Box<dyn Visit>>, out: Out) -> Self {
+    pub fn new(compile_options: &'a CompileOptions, files: Vec<AstKey>, out: Out) -> Self {
         Driver {
             compile_options,
             files,
@@ -56,7 +57,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
 
         let start = Instant::now();
 
-        let (_, statements) = compile(db, top_level, self.files, run_checks, GroupOrder::new);
+        let (_, statements) = compile(db, top_level, &self.files, run_checks, GroupOrder::new);
 
         if self.time {
             eprint!(" done ({:.0?})", start.elapsed());

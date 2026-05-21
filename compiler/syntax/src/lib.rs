@@ -9,14 +9,14 @@ pub mod types;
 
 use crate::{expressions::IsExpression, file::parse_file, patterns::IsPattern, types::IsType};
 use wipple_core::{
-    arcstr::ArcStr,
+    ast::AstKey,
     db::{Db, Node},
-    visit::Visit,
+    span::Str,
 };
 use wipple_parse::parser::Parser;
 
-pub fn parse(path: impl Into<ArcStr>, source: impl Into<ArcStr>) -> Box<dyn Visit> {
-    let file = Parser::new(path, source)
+pub fn parse(db: &mut Db, path: impl Into<Str>, source: impl Into<Str>) -> AstKey {
+    let file = Parser::new(db, path, source)
         .and_then(|mut parser| {
             let file = parse_file(&mut parser)?;
             parser.finish()?;
@@ -24,7 +24,11 @@ pub fn parse(path: impl Into<ArcStr>, source: impl Into<ArcStr>) -> Box<dyn Visi
         })
         .unwrap_or_else(|error| error.into());
 
-    Box::new(file)
+    let key = db.in_ast(Box::new(file));
+
+    db.gc();
+
+    key
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]

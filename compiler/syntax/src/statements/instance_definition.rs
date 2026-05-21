@@ -11,10 +11,10 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     db::{Db, Fact, Node},
     render::Render,
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         bounds::{Instance, Instances},
         constraints::{
@@ -54,15 +54,15 @@ impl Render for ExtraInstanceValue {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstanceDefinition {
     pub span: Span,
-    pub comments: Vec<Substr>,
-    pub attributes: Vec<Box<dyn Visit>>,
+    pub comments: Vec<Str>,
+    pub attributes: Vec<AstKey>,
     pub bound: BoundConstraint,
-    pub constraints: Vec<Box<dyn Visit>>,
-    pub value: Option<Box<dyn Visit>>,
+    pub constraints: Vec<AstKey>,
+    pub value: Option<AstKey>,
 }
 
 pub fn parse_instance_definition_statement(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<InstanceDefinition, ParseError> {
     let comments = parse_comments(parser)?;
     let attributes = parse_attributes(parser)?;
@@ -86,8 +86,8 @@ pub fn parse_instance_definition_statement(
 }
 
 pub fn parse_instance_constraints(
-    parser: &mut Parser,
-) -> Result<(BoundConstraint, Vec<Box<dyn Visit>>), ParseError> {
+    parser: &mut Parser<'_>,
+) -> Result<(BoundConstraint, Vec<AstKey>), ParseError> {
     parser.token(TokenKind::InstanceKeyword)?;
     parser.commit("in this instance definition");
     let bound = parse_bound_constraint(parser)?;
@@ -99,7 +99,7 @@ pub fn parse_instance_constraints(
 
 #[typetag::serde]
 impl Visit for InstanceDefinition {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -112,7 +112,7 @@ impl Visit for InstanceDefinition {
         let attributes = self
             .attributes
             .iter()
-            .map(|attribute| visitor.visit(db, attribute.clone()))
+            .map(|attribute| visitor.visit(db, &attribute.clone()))
             .collect::<Vec<_>>();
 
         vec![(
@@ -148,7 +148,7 @@ impl Visit for InstanceDefinition {
                             {
                                 let parameters = parameters
                                     .into_iter()
-                                    .map(|parameter| visitor.visit(db, parameter))
+                                    .map(|parameter| visitor.visit(db, &parameter))
                                     .collect::<Vec<_>>();
 
                                 let (missing, extra) = exact_for_each(
@@ -170,7 +170,7 @@ impl Visit for InstanceDefinition {
                             }
 
                             for constraint in constraints {
-                                let constraint = visitor.visit(db, constraint);
+                                let constraint = visitor.visit(db, &constraint);
                                 db.graph.edge(constraint, node, "constraint");
                             }
 
@@ -198,7 +198,7 @@ impl Visit for InstanceDefinition {
                             |visitor| {
                                 let instance_value_node = definition.value.unwrap();
 
-                                visitor.visit_as(db, instance_value, instance_value_node);
+                                visitor.visit_as(db, &instance_value, instance_value_node);
 
                                 db.graph.edge(instance_value_node, node, "value");
 

@@ -3,11 +3,12 @@ pub mod definitions;
 pub mod exhaustiveness;
 
 use crate::{
+    ast::AstKey,
     codegen::CodegenValue,
     db::{Db, Fact, Node},
     facts::{Children, Codegen, Parent, Syntax},
     render::{Render, RenderCtx},
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         constraints::{Constraint, generic_constraint::GenericConstraint},
         solver::{Substitutions, SubstitutionsKey},
@@ -18,7 +19,6 @@ use crate::{
         exhaustiveness::{MatchPath, MatchPathSegment, Matches},
     },
 };
-use arcstr::Substr;
 use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -30,7 +30,7 @@ use std::{
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Resolved {
-    pub name: Substr,
+    pub name: Str,
     pub definitions: BTreeSet<Node>,
 }
 
@@ -61,7 +61,7 @@ impl Render for Resolved {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Scope {
-    pub definitions: BTreeMap<Substr, BTreeMap<Node, Box<dyn Definition>>>,
+    pub definitions: BTreeMap<Str, BTreeMap<Node, Box<dyn Definition>>>,
 }
 
 #[typetag::serde]
@@ -138,9 +138,10 @@ impl Render for IsMutated {
 
 #[typetag::serde]
 pub trait Visit: Debug + DynClone + Any + Send + Sync {
-    fn span(&self) -> &Span;
+    fn span<'a>(&'a self, db: &'a Db) -> &'a Span;
 
-    fn is_hidden(&self) -> bool {
+    fn is_hidden(&self, db: &Db) -> bool {
+        let _ = db;
         false
     }
 
@@ -188,22 +189,22 @@ impl dyn Visit {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VisitAs {
     pub node: Node,
-    pub syntax: Box<dyn Visit>,
+    pub syntax: AstKey,
 }
 
 #[typetag::serde]
 impl Visit for VisitAs {
-    fn span(&self) -> &Span {
-        self.syntax.span()
+    fn span<'a>(&'a self, db: &'a Db) -> &'a Span {
+        db.ast(&self.syntax).span(db)
     }
 
-    fn is_hidden(&self) -> bool {
-        self.syntax.is_hidden()
+    fn is_hidden(&self, db: &Db) -> bool {
+        db.ast(&self.syntax).is_hidden(db)
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         assert_eq!(self.node, node);
-        self.syntax.visit(db, node, visitor);
+        db.ast(&self.syntax).clone().visit(db, node, visitor);
     }
 }
 
@@ -219,11 +220,11 @@ impl Hidden {
 
 #[typetag::serde]
 impl Visit for Hidden {
-    fn span(&self) -> &Span {
-        self.0.span()
+    fn span<'a>(&'a self, db: &'a Db) -> &'a Span {
+        self.0.span(db)
     }
 
-    fn is_hidden(&self) -> bool {
+    fn is_hidden(&self, _db: &Db) -> bool {
         true
     }
 
@@ -234,13 +235,13 @@ impl Visit for Hidden {
 
 #[derive(Debug, Default)]
 pub struct ScopeValues {
-    names: BTreeMap<Substr, Vec<Node>>,
+    names: BTreeMap<Str, Vec<Node>>,
     defined: BTreeMap<Node, Box<dyn Definition>>,
     captured: BTreeSet<Node>,
 }
 
 impl ScopeValues {
-    pub fn peek_as<T: Definition + Clone>(&self, name: &Substr) -> Vec<(Node, T)> {
+    pub fn peek_as<T: Definition + Clone>(&self, name: &Str) -> Vec<(Node, T)> {
         self.peek_matching(name, |_, definition| {
             definition.downcast_ref::<T>().cloned()
         })
@@ -248,7 +249,7 @@ impl ScopeValues {
 
     fn peek_matching<T>(
         &self,
-        name: &Substr,
+        name: &Str,
         mut f: impl FnMut(Node, &dyn Definition) -> Option<T>,
     ) -> Vec<(Node, T)> {
         self.names
@@ -300,11 +301,11 @@ pub struct VisitResult {
     pub top_level_statements: Vec<Node>,
     pub constraints: Vec<Box<dyn Constraint>>,
     pub substitutions: Vec<Substitutions>,
-    pub definitions: BTreeMap<Substr, Vec<(Node, Box<dyn Definition>)>>,
+    pub definitions: BTreeMap<Str, Vec<(Node, Box<dyn Definition>)>>,
     pub utilities: VisitUtilities,
 }
 
-pub type VisitUtilities = BTreeMap<Substr, Node>;
+pub type VisitUtilities = BTreeMap<Str, Node>;
 
 static UTILITIES: &[&str] = &["Mismatched"];
 
@@ -314,7 +315,7 @@ pub struct Visitor {
     pub current_definition: Option<CurrentDefinition>,
     pub current_match: Option<CurrentMatch>,
     scopes: Vec<(Option<Node>, ScopeValues)>,
-    top_level_statements: Vec<(Node, Box<dyn Visit>)>,
+    top_level_statements: Vec<(Node, AstKey)>,
     constraints: Vec<Box<dyn Constraint>>,
     substitutions: Vec<Substitutions>,
 }
@@ -323,7 +324,7 @@ impl Visitor {
     pub fn new(
         db: &mut Db,
         root: Node,
-        definitions: impl IntoIterator<Item = BTreeMap<Substr, Vec<(Node, Box<dyn Definition>)>>>,
+        definitions: impl IntoIterator<Item = BTreeMap<Str, Vec<(Node, Box<dyn Definition>)>>>,
         substitutions: impl IntoIterator<Item = (BTreeMap<Node, Node>, BTreeMap<Node, Ty>)>,
     ) -> Self {
         let mut scope = ScopeValues::default();
@@ -362,12 +363,18 @@ impl Visitor {
         visitor
     }
 
-    pub fn visit(&mut self, db: &mut Db, value: Box<dyn Visit>) -> Node {
-        let node = value
+    pub fn in_ast(&mut self, db: &mut Db, syntax: Box<dyn Visit>) -> AstKey {
+        db.ast.insert(syntax)
+    }
+
+    pub fn visit(&mut self, db: &mut Db, value: &AstKey) -> Node {
+        let node = db
+            .ast(value)
+            .clone()
             .downcast_ref::<VisitAs>()
             .map_or_else(|| db.node(), |value| value.node);
 
-        if value.is_hidden() {
+        if db.ast(value).is_hidden(db) {
             db.hide(node);
         }
 
@@ -376,7 +383,7 @@ impl Visitor {
         node
     }
 
-    pub fn visit_as(&mut self, db: &mut Db, value: Box<dyn Visit>, node: Node) {
+    pub fn visit_as(&mut self, db: &mut Db, value: &AstKey, node: Node) {
         let parent = mem::replace(&mut self.current_node, node);
 
         db.insert(node, Parent(parent));
@@ -384,7 +391,7 @@ impl Visitor {
 
         db.insert(node, Syntax(value.clone()));
 
-        value.visit(db, node, self);
+        db.ast(value).clone().visit(db, node, self);
 
         self.current_node = parent;
     }
@@ -393,14 +400,16 @@ impl Visitor {
     pub fn visit_statements(
         &mut self,
         db: &mut Db,
-        statements: impl IntoIterator<Item = Box<dyn Visit>>,
-    ) -> Vec<(Node, Box<dyn Visit>)> {
+        statements: impl IntoIterator<Item = AstKey>,
+    ) -> Vec<(Node, AstKey)> {
         statements
             .into_iter()
             .map(|statement| {
                 let node = db.node();
 
-                for (node, definition) in statement.visit_definitions(db, node, self) {
+                for (node, definition) in
+                    db.ast(&statement).clone().visit_definitions(db, node, self)
+                {
                     self.define(db, node, definition);
                 }
 
@@ -409,7 +418,7 @@ impl Visitor {
             .collect()
     }
 
-    pub fn top_level_statement(&mut self, node: Node, statement: Box<dyn Visit>) {
+    pub fn top_level_statement(&mut self, node: Node, statement: AstKey) {
         self.top_level_statements.push((node, statement));
     }
 
@@ -461,8 +470,8 @@ impl Visitor {
         &mut self,
         db: &mut Db,
         owner: impl Into<Option<Node>>,
-        statements: impl IntoIterator<Item = Box<dyn Visit>>,
-    ) -> Vec<(Node, Box<dyn Visit>)> {
+        statements: impl IntoIterator<Item = AstKey>,
+    ) -> Vec<(Node, AstKey)> {
         self.scopes.push((owner.into(), ScopeValues::default()));
         self.visit_statements(db, statements)
     }
@@ -493,7 +502,7 @@ impl Visitor {
         scope
     }
 
-    pub fn peek_as<T: Definition + Clone>(&mut self, name: &Substr) -> Vec<(Node, T)> {
+    pub fn peek_as<T: Definition + Clone>(&mut self, name: &Str) -> Vec<(Node, T)> {
         self.peek_matching(name, |_, definition| {
             definition.downcast_ref::<T>().cloned()
         })
@@ -501,7 +510,7 @@ impl Visitor {
 
     pub fn peek_matching<T>(
         &mut self,
-        name: &Substr,
+        name: &Str,
         mut f: impl FnMut(Node, &dyn Definition) -> Option<T>,
     ) -> Vec<(Node, T)> {
         self.scopes
@@ -517,7 +526,7 @@ impl Visitor {
     pub fn resolve_as<T: Definition + Clone>(
         &mut self,
         db: &mut Db,
-        name: &Substr,
+        name: &Str,
         node: Node,
     ) -> Option<(Node, T)> {
         self.resolve_matching(db, name, node, |_, definition| {
@@ -528,7 +537,7 @@ impl Visitor {
     pub fn resolve_matching<T>(
         &mut self,
         db: &mut Db,
-        name: &Substr,
+        name: &Str,
         node: Node,
         f: impl FnMut(Node, &dyn Definition) -> Option<T>,
     ) -> Option<(Node, T)> {
@@ -672,7 +681,7 @@ impl Visitor {
     pub fn visit_matching(
         &mut self,
         db: &mut Db,
-        pattern: Box<dyn Visit>,
+        pattern: &AstKey,
         segment: impl Into<Option<MatchPathSegment>>,
     ) -> (Node, Node) {
         let temporary = db.node();
@@ -721,7 +730,7 @@ impl Visitor {
         let mut result = VisitResult::default();
 
         for (statement_node, statement) in mem::take(&mut self.top_level_statements) {
-            self.visit_as(db, statement, statement_node);
+            self.visit_as(db, &statement, statement_node);
             result.top_level_statements.push(statement_node);
         }
 
@@ -729,7 +738,7 @@ impl Visitor {
         result.substitutions.append(&mut self.substitutions);
 
         for &name in UTILITIES {
-            let name = Substr::from(name);
+            let name = Str::from(name);
 
             let utilities = self.peek_matching(&name, |_, _| Some(()));
 

@@ -6,6 +6,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     anyhow,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     facts::Syntax,
@@ -24,10 +25,10 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct BlockExpression {
     pub span: Span,
-    pub statements: Vec<Box<dyn Visit>>,
+    pub statements: Vec<AstKey>,
 }
 
-pub fn parse_block_expression(parser: &mut Parser) -> Result<BlockExpression, ParseError> {
+pub fn parse_block_expression(parser: &mut Parser<'_>) -> Result<BlockExpression, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::LeftBrace)?;
     let statements = parse_statements(parser)?;
@@ -41,7 +42,7 @@ pub fn parse_block_expression(parser: &mut Parser) -> Result<BlockExpression, Pa
 
 #[typetag::serde]
 impl Visit for BlockExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -53,7 +54,7 @@ impl Visit for BlockExpression {
         let statements = statements
             .into_iter()
             .map(|(statement_node, statement)| {
-                visitor.visit_as(db, statement, statement_node);
+                visitor.visit_as(db, &statement, statement_node);
                 db.graph.edge(statement_node, node, "statement");
                 statement_node
             })
@@ -106,7 +107,7 @@ impl CodegenValue for BlockExpressionCodegen {
             for (index, &statement) in self.statements.iter().enumerate() {
                 let span = db
                     .get(statement)
-                    .map(|Syntax(syntax)| syntax.span().clone())
+                    .map(|Syntax(syntax)| db.ast(syntax).span(db).clone())
                     .ok_or_else(|| anyhow::format_err!("missing span"))?;
 
                 ctx.instruction(ir::Instruction::Trace { span });

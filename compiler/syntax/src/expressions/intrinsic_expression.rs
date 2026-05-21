@@ -2,10 +2,10 @@ use crate::expressions::{parse_atomic_expression, visit_expression};
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -16,11 +16,13 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IntrinsicExpression {
     pub span: Span,
-    pub name: Substr,
-    pub inputs: Vec<Box<dyn Visit>>,
+    pub name: Str,
+    pub inputs: Vec<AstKey>,
 }
 
-pub fn parse_intrinsic_expression(parser: &mut Parser) -> Result<IntrinsicExpression, ParseError> {
+pub fn parse_intrinsic_expression(
+    parser: &mut Parser<'_>,
+) -> Result<IntrinsicExpression, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::IntrinsicKeyword)?;
     parser.commit("in this `intrinsic` expression");
@@ -35,7 +37,7 @@ pub fn parse_intrinsic_expression(parser: &mut Parser) -> Result<IntrinsicExpres
 
 #[typetag::serde]
 impl Visit for IntrinsicExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -46,7 +48,7 @@ impl Visit for IntrinsicExpression {
             .inputs
             .into_iter()
             .map(|input| {
-                let input = visitor.visit(db, input);
+                let input = visitor.visit(db, &input);
                 db.graph.edge(input, node, "input");
                 input
             })
@@ -67,7 +69,7 @@ impl Visit for IntrinsicExpression {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct IntrinsicExpressionCodegen {
     node: Node,
-    name: Substr,
+    name: Str,
     inputs: Vec<Node>,
 }
 

@@ -5,10 +5,10 @@ use crate::expressions::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::{constraints::group_constraint::GroupConstraint, groups::Typed},
     visit::{Hidden, Visit, VisitAs, Visitor},
 };
@@ -20,11 +20,11 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CollectionExpression {
     pub span: Span,
-    pub elements: Vec<Box<dyn Visit>>,
+    pub elements: Vec<AstKey>,
 }
 
 pub fn parse_empty_collection_expression(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<CollectionExpression, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::CollectionOperator)?;
@@ -35,7 +35,7 @@ pub fn parse_empty_collection_expression(
 }
 
 pub fn parse_collection_expression(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<CollectionExpression, ParseError> {
     let span = parser.spanned();
     let elements = parser
@@ -62,7 +62,7 @@ pub fn parse_collection_expression(
 
 #[typetag::serde]
 impl Visit for CollectionExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -73,33 +73,46 @@ impl Visit for CollectionExpression {
         db.hide(element_type);
         db.insert(element_type, Typed::default());
 
-        let mut collection = Hidden::new(ConstructorExpression {
-            span: self.span.clone(),
-            constructor: Substr::from("Initial-Collection"),
-        });
+        let mut collection = visitor.in_ast(
+            db,
+            Hidden::new(ConstructorExpression {
+                span: self.span.clone(),
+                constructor: Str::from("Initial-Collection"),
+            }),
+        );
 
         for element in &self.elements {
             let element_node = db.node();
             db.graph.edge(element_node, node, "element");
             visitor.constraint(db, GroupConstraint::new(element_node, element_type));
 
-            collection = Hidden::new(CallExpression {
-                span: element.span().clone(),
-                function: Box::new(ConstructorExpression {
-                    span: element.span().clone(),
-                    constructor: Substr::from("Build-Collection"),
+            let function = visitor.in_ast(
+                db,
+                Box::new(ConstructorExpression {
+                    span: db.ast(element).span(db).clone(),
+                    constructor: Str::from("Build-Collection"),
                 }),
-                inputs: vec![
-                    Box::new(VisitAs {
-                        node: element_node,
-                        syntax: element.clone(),
-                    }),
-                    collection,
-                ],
-            });
+            );
+
+            let input = visitor.in_ast(
+                db,
+                Box::new(VisitAs {
+                    node: element_node,
+                    syntax: element.clone(),
+                }),
+            );
+
+            collection = visitor.in_ast(
+                db,
+                Hidden::new(CallExpression {
+                    span: db.ast(element).span(db).clone(),
+                    function,
+                    inputs: vec![input, collection],
+                }),
+            );
         }
 
-        let collection_node = visitor.visit(db, collection);
+        let collection_node = visitor.visit(db, &collection);
         db.graph.edge(collection_node, node, "collection");
         visitor.constraint(db, GroupConstraint::new(collection_node, node));
 

@@ -5,9 +5,9 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::constraints::group_constraint::GroupConstraint,
     visit::{
         Visit, Visitor,
@@ -23,15 +23,15 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstantDefinition {
     pub span: Span,
-    pub comments: Vec<Substr>,
-    pub attributes: Vec<Box<dyn Visit>>,
-    pub name: Substr,
-    pub ty: Box<dyn Visit>,
-    pub constraints: Vec<Box<dyn Visit>>,
+    pub comments: Vec<Str>,
+    pub attributes: Vec<AstKey>,
+    pub name: Str,
+    pub ty: AstKey,
+    pub constraints: Vec<AstKey>,
 }
 
 pub fn parse_constant_definition_statement(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<ConstantDefinition, ParseError> {
     let comments = parse_comments(parser)?;
     let attributes = parse_attributes(parser)?;
@@ -49,8 +49,8 @@ pub fn parse_constant_definition_statement(
 }
 
 pub fn parse_constant_constraints(
-    parser: &mut Parser,
-) -> Result<(Box<dyn Visit>, Vec<Box<dyn Visit>>), ParseError> {
+    parser: &mut Parser<'_>,
+) -> Result<(AstKey, Vec<AstKey>), ParseError> {
     parser.token(TokenKind::AnnotateOperator)?;
     parser.commit("in this constant definition");
     parser.consume_line_breaks();
@@ -63,7 +63,7 @@ pub fn parse_constant_constraints(
 
 #[typetag::serde]
 impl Visit for ConstantDefinition {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -76,7 +76,7 @@ impl Visit for ConstantDefinition {
         let attributes = self
             .attributes
             .iter()
-            .map(|attribute| visitor.visit(db, attribute.clone()))
+            .map(|attribute| visitor.visit(db, &attribute.clone()))
             .collect::<Vec<_>>();
 
         vec![(
@@ -96,11 +96,11 @@ impl Visit for ConstantDefinition {
             visitor.with_definition_flag(
                 |d| &mut d.implicit_type_parameters,
                 |visitor| {
-                    let ty = visitor.visit(db, self.ty);
+                    let ty = visitor.visit(db, &self.ty);
                     db.graph.edge(ty, node, "type");
 
                     for constraint in self.constraints {
-                        let constraint = visitor.visit(db, constraint);
+                        let constraint = visitor.visit(db, &constraint);
                         db.graph.edge(constraint, node, "constraint");
                     }
 

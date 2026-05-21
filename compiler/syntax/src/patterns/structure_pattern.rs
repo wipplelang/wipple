@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use wipple_core::{
     anyhow,
-    arcstr::Substr,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::constraints::instantiate_constraint::InstantiateConstraint,
     visit::{
         Visit, Visitor, definitions::StructureConstructorDefinition,
@@ -22,18 +22,18 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructurePattern {
     pub span: Span,
-    pub name: Substr,
+    pub name: Str,
     pub fields: Vec<StructurePatternField>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructurePatternField {
     pub span: Span,
-    pub name: Substr,
-    pub pattern: Box<dyn Visit>,
+    pub name: Str,
+    pub pattern: AstKey,
 }
 
-pub fn parse_structure_pattern(parser: &mut Parser) -> Result<StructurePattern, ParseError> {
+pub fn parse_structure_pattern(parser: &mut Parser<'_>) -> Result<StructurePattern, ParseError> {
     let span = parser.spanned();
     let name = parse_type_name(parser)?;
     parser.token(TokenKind::LeftBrace)?;
@@ -47,7 +47,7 @@ pub fn parse_structure_pattern(parser: &mut Parser) -> Result<StructurePattern, 
 }
 
 pub fn parse_structure_pattern_field(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<StructurePatternField, ParseError> {
     let span = parser.spanned();
     let name = parse_variable_name(parser)?;
@@ -63,14 +63,14 @@ pub fn parse_structure_pattern_field(
 
 #[typetag::serde]
 impl Visit for StructurePatternField {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 }
 
 #[typetag::serde]
 impl Visit for StructurePattern {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -91,7 +91,7 @@ impl Visit for StructurePattern {
                 .find(|(name, _)| name == &field.name)
                 .map(|(_, ty)| MatchPathSegment::Field(*ty));
 
-            let (pattern, temporary) = visitor.visit_matching(db, field.pattern.clone(), segment);
+            let (pattern, temporary) = visitor.visit_matching(db, &field.pattern.clone(), segment);
             db.graph.edge(pattern, node, "field");
 
             field_patterns.push((field_patterns.len(), field.name.clone(), pattern, temporary));
@@ -153,7 +153,7 @@ impl Visit for StructurePattern {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StructurePatternCodegen {
     node: Node,
-    fields: Vec<(Option<usize>, Substr, Node, Node)>,
+    fields: Vec<(Option<usize>, Str, Node, Node)>,
 }
 
 #[typetag::serde]

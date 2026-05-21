@@ -11,6 +11,19 @@ use wipple_core::{
 };
 use wipple_syntax::{GroupOrder, checks::run_checks, parse};
 
+#[cfg(target_family = "wasm")]
+unsafe extern "C" {
+    fn __wasm_call_ctors();
+}
+
+#[cfg(target_family = "wasm")]
+#[wasm_bindgen(start)]
+pub fn start() {
+    unsafe {
+        __wasm_call_ctors();
+    }
+}
+
 #[wasm_bindgen]
 pub struct CompileResult {
     db: Db,
@@ -50,20 +63,19 @@ pub fn compile(files: Vec<File>, library_name: Option<String>) -> Option<Compile
     let library = library_name
         .and_then(|name| LIBRARIES.with(|libraries| libraries.borrow().get(&name).cloned()))?;
 
-    let mut db = Db::new();
-    db.set_parent(library.db.clone());
+    let mut db = Db::new(Some(library.db.clone()));
 
     let path = files[0].path.to_string();
 
     let files = files
         .into_iter()
-        .map(|file| parse(file.path, file.code))
+        .map(|file| parse(&mut db, file.path, file.code))
         .collect::<Vec<_>>();
 
     let (root, statements) = wipple_core::compile(
         &mut db,
         &mut library.top_level.clone(),
-        files,
+        &files,
         run_checks,
         GroupOrder::new,
     );

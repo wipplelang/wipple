@@ -1,3 +1,5 @@
+// @ts-nocheck
+
 const fromMaybe = (value) => (value !== undefined ? [value, 1] : [null, 0]);
 
 const isValidListIndex = (index, list, includeEnd = false) =>

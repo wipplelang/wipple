@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import * as compiler from "compiler";
 import { debounce } from "./util";
 
-const foundationBin = readFileSync(new URL("../../library/dist/math.bin", import.meta.url));
+const foundationBin = readFileSync(new URL("../../library/dist/foundation.bin", import.meta.url));
 compiler.register_library("foundation", foundationBin);
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("wipple");

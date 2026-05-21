@@ -7,9 +7,10 @@ use crate::constraints::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
-    visit::{Visit, Visitor},
+    visit::Visitor,
 };
 use wipple_parse::{
     lexer::TokenKind,
@@ -29,17 +30,17 @@ impl Render for IsConstraint {
     }
 }
 
-pub fn parse_constraints(parser: &mut Parser) -> Result<Vec<Box<dyn Visit>>, ParseError> {
+pub fn parse_constraints(parser: &mut Parser<'_>) -> Result<Vec<AstKey>, ParseError> {
     parser.token(TokenKind::WhereKeyword)?;
     parser.commit("in these constraints");
 
     parser.parse_many(0, parse_constraint)
 }
 
-pub fn parse_constraint(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_constraint(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_bound_constraint as constraint => Box::new(constraint),
-        parse_default_constraint as constraint => Box::new(constraint),
+        parse_bound_constraint as value => parser.in_ast(value),
+        parse_default_constraint as value => parser.in_ast(value),
         _ => "Expected a constraint",
     })
 }

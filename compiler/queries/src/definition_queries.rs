@@ -5,9 +5,9 @@ use std::{
     ops::ControlFlow,
 };
 use wipple_core::{
-    arcstr::Substr,
     db::{Db, Node},
     facts::{Parent, Syntax},
+    span::Str,
     visit::{
         Resolved, Scope,
         definitions::{
@@ -35,7 +35,7 @@ pub fn references(db: &Db, node: Node) -> Vec<Node> {
     references
 }
 
-pub fn unresolved(db: &Db, node: Node) -> Option<(&Substr, Option<(Node, Substr)>)> {
+pub fn unresolved(db: &Db, node: Node) -> Option<(Str, Option<(Node, Str)>)> {
     let resolved = db.get::<Resolved>(node)?;
 
     if !resolved.definitions.is_empty() {
@@ -45,7 +45,7 @@ pub fn unresolved(db: &Db, node: Node) -> Option<(&Substr, Option<(Node, Substr)
     let mut suggestion = None;
     db.for_each_fact::<Defined, ()>(&mut |_, node, Defined(definition)| {
         if let Some(name) = definition.name() {
-            let distance = levenshtein(&resolved.name, name);
+            let distance = levenshtein(&resolved.name, &name);
 
             if distance < 3
                 && suggestion
@@ -61,17 +61,17 @@ pub fn unresolved(db: &Db, node: Node) -> Option<(&Substr, Option<(Node, Substr)
 
     let suggestion = suggestion.map(|(node, name, _)| (node, name));
 
-    Some((&resolved.name, suggestion))
+    Some((resolved.name.clone(), suggestion))
 }
 
-pub fn ambiguous(db: &Db, node: Node) -> Option<(Node, Substr, &BTreeSet<Node>)> {
+pub fn ambiguous(db: &Db, node: Node) -> Option<(Node, Str, &BTreeSet<Node>)> {
     let resolved = db.get::<Resolved>(node)?;
     (resolved.definitions.len() > 1).then_some((node, resolved.name.clone(), &resolved.definitions))
 }
 
 #[derive(Debug, Clone)]
 pub struct Documentation {
-    pub name: Option<Substr>,
+    pub name: Option<Str>,
     pub kind: &'static str,
     pub declaration: String,
     pub comments: Comments,
@@ -79,7 +79,7 @@ pub struct Documentation {
 
 pub fn documentation(db: &Db, node: Node) -> Option<Documentation> {
     let Defined(definition) = db.get(node)?;
-    let source = &db.get::<Syntax>(node)?.span().source;
+    let source = &db.ast(&db.get::<Syntax>(node)?.0).span(db).source;
 
     let kind = if definition.downcast_ref::<VariableDefinition>().is_some() {
         "variable"
@@ -106,7 +106,7 @@ pub fn documentation(db: &Db, node: Node) -> Option<Documentation> {
         .filter_map(|reference| {
             let Defined(definition) = db.get(reference)?;
             let definition = definition.downcast_ref::<InstanceDefinition>()?;
-            let source = &db.get::<Syntax>(reference)?.span().source;
+            let source = &db.ast(&db.get::<Syntax>(reference)?.0).span(db).source;
 
             let default = definition.attributes.default.then_some("[default] ");
             let error = definition.attributes.error.then_some("[error] ");
@@ -121,14 +121,14 @@ pub fn documentation(db: &Db, node: Node) -> Option<Documentation> {
         .collect::<String>();
 
     Some(Documentation {
-        name: definition.name().cloned(),
+        name: definition.name(),
         kind,
         declaration: format!("{source}{instance_declarations}"),
         comments,
     })
 }
 
-pub fn scopes(db: &Db, node: Node) -> Vec<&BTreeMap<Substr, BTreeMap<Node, Box<dyn Definition>>>> {
+pub fn scopes(db: &Db, node: Node) -> Vec<&BTreeMap<Str, BTreeMap<Node, Box<dyn Definition>>>> {
     std::iter::successors(Some(node), |&node| {
         db.get(node).map(|Parent(parent)| *parent)
     })

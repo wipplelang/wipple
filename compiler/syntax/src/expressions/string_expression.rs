@@ -2,10 +2,9 @@ use crate::{expressions::visit_expression, types::named_type::NamedType};
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    arcstr::Substr,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::constraints::group_constraint::GroupConstraint,
     visit::{Visit, Visitor},
 };
@@ -17,10 +16,10 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StringExpression {
     pub span: Span,
-    pub value: Substr,
+    pub value: Str,
 }
 
-pub fn parse_string_expression(parser: &mut Parser) -> Result<StringExpression, ParseError> {
+pub fn parse_string_expression(parser: &mut Parser<'_>) -> Result<StringExpression, ParseError> {
     let span = parser.spanned();
     let value = parser.token(TokenKind::String)?;
     Ok(StringExpression {
@@ -31,7 +30,7 @@ pub fn parse_string_expression(parser: &mut Parser) -> Result<StringExpression, 
 
 #[typetag::serde]
 impl Visit for StringExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -40,12 +39,15 @@ impl Visit for StringExpression {
 
         let string_type = db.node();
         db.hide(string_type);
-        let syntax = Box::new(NamedType {
-            span: self.span.clone(),
-            name: Substr::from("String"),
-            parameters: Vec::new(),
-        }) as Box<dyn Visit>;
-        visitor.visit_as(db, syntax, string_type);
+        let syntax = visitor.in_ast(
+            db,
+            Box::new(NamedType {
+                span: self.span.clone(),
+                name: Str::from("String"),
+                parameters: Vec::new(),
+            }),
+        );
+        visitor.visit_as(db, &syntax, string_type);
 
         visitor.constraint(db, GroupConstraint::new(node, string_type));
         visitor.codegen(
@@ -62,7 +64,7 @@ impl Visit for StringExpression {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StringExpressionCodegen {
     node: Node,
-    value: Substr,
+    value: Str,
 }
 
 #[typetag::serde]

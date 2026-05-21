@@ -2,10 +2,9 @@ use crate::expressions::visit_expression;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
-    arcstr::Substr,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         bounds::Bounds,
         constraints::{
@@ -26,10 +25,12 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariableExpression {
     pub span: Span,
-    pub variable: Substr,
+    pub variable: Str,
 }
 
-pub fn parse_variable_expression(parser: &mut Parser) -> Result<VariableExpression, ParseError> {
+pub fn parse_variable_expression(
+    parser: &mut Parser<'_>,
+) -> Result<VariableExpression, ParseError> {
     let span = parser.spanned();
     let variable = parse_variable_name(parser)?;
     Ok(VariableExpression {
@@ -40,7 +41,7 @@ pub fn parse_variable_expression(parser: &mut Parser) -> Result<VariableExpressi
 
 #[typetag::serde]
 impl Visit for VariableExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 

@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use wipple_core::{
     anyhow,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
@@ -20,10 +21,10 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TuplePattern {
     pub span: Span,
-    pub elements: Vec<Box<dyn Visit>>,
+    pub elements: Vec<AstKey>,
 }
 
-pub fn parse_tuple_pattern(parser: &mut Parser) -> Result<TuplePattern, ParseError> {
+pub fn parse_tuple_pattern(parser: &mut Parser<'_>) -> Result<TuplePattern, ParseError> {
     let span = parser.spanned();
     let elements = parser
         .parse_sep(1, parse_pattern_element, |parser| {
@@ -49,7 +50,7 @@ pub fn parse_tuple_pattern(parser: &mut Parser) -> Result<TuplePattern, ParseErr
 
 #[typetag::serde]
 impl Visit for TuplePattern {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -64,7 +65,7 @@ impl Visit for TuplePattern {
             .map(|(index, element)| {
                 let element = visitor.visit_matching(
                     db,
-                    element,
+                    &element,
                     MatchPathSegment::TupleElement(index, element_count),
                 );
 

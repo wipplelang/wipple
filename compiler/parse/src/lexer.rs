@@ -1,15 +1,12 @@
 use crate::parser::ParseError;
 use logos::Logos;
 use std::ops::Range;
-use wipple_core::{
-    arcstr::{ArcStr, Substr},
-    span::{Location, Span},
-};
+use wipple_core::span::{Location, Span, Str};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Token {
     pub kind: TokenKind,
-    pub value: Substr,
+    pub value: Str,
     pub span: Span,
 }
 
@@ -113,10 +110,7 @@ pub enum TokenKind {
     LowercaseName,
 }
 
-pub fn tokenize(
-    path: impl Into<ArcStr>,
-    source: impl Into<ArcStr>,
-) -> Result<Vec<Token>, ParseError> {
+pub fn tokenize(path: impl Into<Str>, source: impl Into<Str>) -> Result<Vec<Token>, ParseError> {
     let path = path.into();
     let source = source.into();
 
@@ -161,7 +155,7 @@ pub fn tokenize(
                         path: path.clone(),
                         start,
                         end,
-                        source: Substr::new(),
+                        source: Str::new_static(""),
                     },
                 });
             }
@@ -169,12 +163,12 @@ pub fn tokenize(
 
         let token = Token {
             kind,
-            value: source.substr(trim(kind, range.clone())),
+            value: Str::new(&source[trim(kind, range.clone())]),
             span: Span {
                 path: path.clone(),
                 start,
                 end,
-                source: source.substr(range),
+                source: Str::new(&source[range]),
             },
         };
 

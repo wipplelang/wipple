@@ -5,6 +5,7 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue},
     db::{Db, Node},
     span::Span,
@@ -19,11 +20,11 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AnnotatePattern {
     pub span: Span,
-    pub pattern: Box<dyn Visit>,
-    pub ty: Box<dyn Visit>,
+    pub pattern: AstKey,
+    pub ty: AstKey,
 }
 
-pub fn parse_annotate_pattern(parser: &mut Parser) -> Result<AnnotatePattern, ParseError> {
+pub fn parse_annotate_pattern(parser: &mut Parser<'_>) -> Result<AnnotatePattern, ParseError> {
     let span = parser.spanned();
     let pattern = parse_pattern_element(parser)?;
     parser.token(TokenKind::AnnotateOperator)?;
@@ -39,17 +40,17 @@ pub fn parse_annotate_pattern(parser: &mut Parser) -> Result<AnnotatePattern, Pa
 
 #[typetag::serde]
 impl Visit for AnnotatePattern {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_pattern(db, node, visitor, None);
 
-        let pattern = visitor.visit(db, self.pattern);
+        let pattern = visitor.visit(db, &self.pattern);
         db.graph.edge(pattern, node, "pattern");
 
-        let ty = visitor.visit(db, self.ty);
+        let ty = visitor.visit(db, &self.ty);
         db.graph.edge(ty, node, "type");
 
         visitor.constraint(db, GroupConstraint::new(pattern, ty));

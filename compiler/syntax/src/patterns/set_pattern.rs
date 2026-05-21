@@ -2,10 +2,9 @@ use crate::patterns::{InvalidSetPattern, Matching, visit_pattern};
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     anyhow,
-    arcstr::Substr,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::constraints::group_constraint::GroupConstraint,
     visit::{
         IsCaptured, IsMutated, Visit, Visitor, definitions::VariableDefinition,
@@ -21,10 +20,10 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SetPattern {
     pub span: Span,
-    pub variable: Substr,
+    pub variable: Str,
 }
 
-pub fn parse_set_pattern(parser: &mut Parser) -> Result<SetPattern, ParseError> {
+pub fn parse_set_pattern(parser: &mut Parser<'_>) -> Result<SetPattern, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::SetKeyword)?;
     parser.commit("in this `set` pattern");
@@ -37,7 +36,7 @@ pub fn parse_set_pattern(parser: &mut Parser) -> Result<SetPattern, ParseError> 
 
 #[typetag::serde]
 impl Visit for SetPattern {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 

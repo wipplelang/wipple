@@ -3,11 +3,11 @@ use crate::expressions::{parse_expression, visit_expression};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Fact, Node},
     render::Render,
-    span::Span,
+    span::{Span, Str},
     typecheck::constraints::instantiate_constraint::InstantiateConstraint,
     visit::{Visit, Visitor, definitions::StructureConstructorDefinition},
 };
@@ -44,18 +44,20 @@ impl Render for DuplicateField {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructureExpressionField {
     pub span: Span,
-    pub name: Substr,
-    pub value: Box<dyn Visit>,
+    pub name: Str,
+    pub value: AstKey,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructureExpression {
     pub span: Span,
-    pub name: Substr,
+    pub name: Str,
     pub fields: Vec<StructureExpressionField>,
 }
 
-pub fn parse_structure_expression(parser: &mut Parser) -> Result<StructureExpression, ParseError> {
+pub fn parse_structure_expression(
+    parser: &mut Parser<'_>,
+) -> Result<StructureExpression, ParseError> {
     let span = parser.spanned();
     let name = parse_type_name(parser)?;
     parser.token(TokenKind::LeftBrace)?;
@@ -70,7 +72,7 @@ pub fn parse_structure_expression(parser: &mut Parser) -> Result<StructureExpres
 }
 
 pub fn parse_structure_expression_field(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<StructureExpressionField, ParseError> {
     let span = parser.spanned();
     let name = parse_variable_name(parser)?;
@@ -85,21 +87,21 @@ pub fn parse_structure_expression_field(
 }
 
 pub fn parse_structure_expression_fields(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<Vec<StructureExpressionField>, ParseError> {
     parser.parse_lines(1, true, parse_structure_expression_field)
 }
 
 #[typetag::serde]
 impl Visit for StructureExpressionField {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 }
 
 #[typetag::serde]
 impl Visit for StructureExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -114,7 +116,7 @@ impl Visit for StructureExpression {
 
         let mut field_values = Vec::new();
         for field in self.fields {
-            let value = visitor.visit(db, field.value);
+            let value = visitor.visit(db, &field.value);
             db.graph.edge(value, node, "field");
 
             field_values.push((field_values.len(), field.name.clone(), value));
@@ -165,7 +167,7 @@ impl Visit for StructureExpression {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct StructureExpressionCodegen {
     node: Node,
-    fields: Vec<(usize, Substr, Node)>,
+    fields: Vec<(usize, Str, Node)>,
 }
 
 #[typetag::serde]

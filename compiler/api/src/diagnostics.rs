@@ -52,7 +52,11 @@ impl CompileResult {
         let mut groups = BTreeMap::<Vec<Node>, (usize, Vec<DiagnosticLocation>)>::new();
 
         for node in self.db.owned_nodes() {
-            let Some(span) = self.db.get(node).map(|Syntax(syntax)| syntax.span()) else {
+            let Some(span) = self
+                .db
+                .get(node)
+                .map(|Syntax(syntax)| syntax.get(&self.db).span(&self.db))
+            else {
                 continue;
             };
 
@@ -165,7 +169,11 @@ impl CompileResult {
             .into_iter()
             .chain(location.secondary.iter().copied())
         {
-            let Some(span) = self.db.get::<Syntax>(node).map(|syntax| syntax.span()) else {
+            let Some(span) = self
+                .db
+                .get(node)
+                .map(|Syntax(syntax)| syntax.get(&self.db).span(&self.db))
+            else {
                 continue;
             };
 
@@ -225,10 +233,10 @@ impl CompileResult {
             }
 
             let Some(source) = self.db.owned_nodes().find_map(|file_node| {
-                let syntax = self.db.get::<Syntax>(file_node)?;
-                syntax.0.downcast_ref::<FileSyntax>()?;
+                let syntax = self.db.get::<Syntax>(file_node)?.0.get(&self.db);
+                syntax.downcast_ref::<FileSyntax>()?;
 
-                let file_span = syntax.span();
+                let file_span = syntax.span(&self.db);
                 (file_span.path == span.path).then_some(file_span.source.as_str())
             }) else {
                 continue;

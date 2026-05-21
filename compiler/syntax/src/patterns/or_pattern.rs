@@ -2,6 +2,7 @@ use crate::patterns::{InvalidOrPattern, parse_pattern_element, visit_pattern};
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
@@ -16,10 +17,10 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrPattern {
     pub span: Span,
-    pub patterns: Vec<Box<dyn Visit>>,
+    pub patterns: Vec<AstKey>,
 }
 
-pub fn parse_or_pattern(parser: &mut Parser) -> Result<OrPattern, ParseError> {
+pub fn parse_or_pattern(parser: &mut Parser<'_>) -> Result<OrPattern, ParseError> {
     let span = parser.spanned();
     let patterns = parser
         .parse_sep(2, parse_pattern_element, |parser| {
@@ -38,7 +39,7 @@ pub fn parse_or_pattern(parser: &mut Parser) -> Result<OrPattern, ParseError> {
 
 #[typetag::serde]
 impl Visit for OrPattern {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -60,7 +61,7 @@ impl Visit for OrPattern {
                     visitor.current_match.as_mut().unwrap().arm = Some(pattern_node);
                 }
 
-                visitor.visit_as(db, pattern, pattern_node);
+                visitor.visit_as(db, &pattern, pattern_node);
                 db.graph.edge(pattern_node, node, "pattern");
                 visitor.constraint(db, GroupConstraint::new(node, pattern_node));
 

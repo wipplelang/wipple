@@ -19,11 +19,12 @@ use crate::types::{
 };
 
 use wipple_core::{
+    ast::AstKey,
     db::{Db, Fact, Node},
     facts::GraphType,
     render::{Render, RenderCtx},
     typecheck::groups::Typed,
-    visit::{Visit, Visitor},
+    visit::Visitor,
 };
 use wipple_parse::{
     lexer::TokenKind,
@@ -67,37 +68,37 @@ impl Render for ExtraType {
     }
 }
 
-pub fn parse_type(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_type(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_tuple_type as value => Box::new(value),
-        parse_function_type as value => Box::new(value),
-        parse_annotated_type_parameter as value => Box::new(value),
+        parse_tuple_type as value => parser.in_ast(value),
+        parse_function_type as value => parser.in_ast(value),
+        parse_annotated_type_parameter as value => parser.in_ast(value),
         parse_type_element as value => value,
         _ => "Expected type",
     })
 }
 
-pub fn parse_type_element(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_type_element(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_parameterized_type as value => Box::new(value),
+        parse_parameterized_type as value => parser.in_ast(value),
         parse_atomic_type as value => value,
         _ => "Expected type",
     })
 }
 
-pub fn parse_atomic_type(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_atomic_type(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_placeholder_type as value => Box::new(value),
+        parse_placeholder_type as value => parser.in_ast(value),
         parse_type_parameter as value => value,
-        parse_named_type as value => Box::new(value),
-        parse_block_type as value => Box::new(value),
-        parse_unit_type as value => Box::new(value),
+        parse_named_type as value => parser.in_ast(value),
+        parse_block_type as value => parser.in_ast(value),
+        parse_unit_type as value => parser.in_ast(value),
         parse_parenthesized_type as value => value,
         _ => "Expected type",
     })
 }
 
-pub fn parse_parenthesized_type(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_parenthesized_type(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parser
         .token(ParseToken::from(TokenKind::LeftParenthesis).reason("between these parentheses"))?;
     parser.consume_line_breaks();

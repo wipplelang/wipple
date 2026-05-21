@@ -1,3 +1,4 @@
+pub mod ast;
 pub mod codegen;
 pub mod db;
 pub mod facts;
@@ -9,11 +10,12 @@ pub mod util;
 pub mod visit;
 
 pub use anyhow;
-pub use arcstr;
 
 use crate::{
+    ast::AstKey,
     db::{Db, Node},
     facts::Syntax,
+    span::Str,
     typecheck::{
         bounds::{Instance, Instances},
         constraints::bound_constraint::{BoundConstraint, IsBound},
@@ -21,11 +23,10 @@ use crate::{
         solver::{Solver, Substitutions},
     },
     visit::{
-        DefinitionConstraints, Visit, VisitUtilities, Visitor, definitions::Definition,
+        DefinitionConstraints, VisitUtilities, Visitor, definitions::Definition,
         exhaustiveness::check_exhaustiveness,
     },
 };
-use arcstr::Substr;
 use serde::{Deserialize, Serialize};
 use std::{collections::BTreeMap, mem, ops::ControlFlow};
 
@@ -38,7 +39,7 @@ pub struct LibraryArtifact<T> {
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TopLevel {
-    pub definitions: Vec<BTreeMap<Substr, Vec<(Node, Box<dyn Definition>)>>>,
+    pub definitions: Vec<BTreeMap<Str, Vec<(Node, Box<dyn Definition>)>>>,
     pub substitutions: Vec<Substitutions>,
     pub utilities: VisitUtilities,
 }
@@ -47,10 +48,10 @@ pub fn default_filter(db: &Db, node: Node) -> bool {
     db.owned_nodes().any(|owned| owned == node) && db.contains::<Syntax>(node)
 }
 
-pub fn compile<K: Ord>(
+pub fn compile<'a, K: Ord>(
     db: &mut Db,
     top_level: &mut TopLevel,
-    files: impl IntoIterator<Item = Box<dyn Visit>>,
+    files: impl IntoIterator<Item = &'a AstKey>,
     mut checks: impl FnMut(&mut Db, &TopLevel),
     mut group_order: impl FnMut(&Db, Node) -> K,
 ) -> (Node, Vec<Node>) {

@@ -1,13 +1,15 @@
-use arcstr::{ArcStr, Substr};
 use serde::{Deserialize, Serialize};
+use smol_str::SmolStr;
 use std::fmt::Display;
+
+pub type Str = SmolStr;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Span {
-    pub path: ArcStr,
+    pub path: Str,
     pub start: Location,
     pub end: Location,
-    pub source: Substr,
+    pub source: Str,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -18,8 +20,8 @@ pub struct Location {
 }
 
 impl Span {
-    pub fn new_in(path: ArcStr, start: Location, end: Location, source: &ArcStr) -> Self {
-        let source = source.substr(start.index..start.index.max(end.index));
+    pub fn new_in(path: Str, start: Location, end: Location, source: Str) -> Self {
+        let source = Str::new(&source[start.index..start.index.max(end.index)]);
 
         Span {
             path,
@@ -31,14 +33,14 @@ impl Span {
 
     pub fn empty() -> Self {
         Span::new_in(
-            ArcStr::new(),
+            Str::new_static(""),
             Location::empty(),
             Location::empty(),
-            &ArcStr::new(),
+            Str::new_static(""),
         )
     }
 
-    pub fn join_in(&self, other: &Self, source: &ArcStr) -> Self {
+    pub fn join_in(&self, other: &Self, source: Str) -> Self {
         Span::new_in(
             self.path.clone(),
             self.start.clone(),

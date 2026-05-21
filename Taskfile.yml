@@ -21,7 +21,6 @@ tasks:
       - setup:api
       - setup:playground
       - setup:site
-      - setup:server
   setup:api:
     dir: compiler/api
     cmds:
@@ -34,10 +33,6 @@ tasks:
     dir: site
     cmds:
       - npm install
-  setup:server:
-    dir: server
-    cmds:
-      - npm install
 
   serve:site:
     dir: site
@@ -45,24 +40,16 @@ tasks:
       - npm run dev -- --open
   serve:playground:
     deps:
-      - serve:server
-      - serve:playground:watch
-  serve:playground:watch:
+      - build:api
+      - build:library
     dir: playground
     cmds:
       - npm run dev -- --open
-  serve:server:
-    dir: server
-    deps:
-      - build:server
-    cmds:
-      - PORT=9000 npm run dev
 
   build:
     deps:
       - build:library
       - build:playground
-      - build:server
     dir: site
     cmds:
       - rm -rf dist
@@ -74,6 +61,9 @@ tasks:
     cmds:
       - node build.js
   build:playground:
+    deps:
+      - build:api
+      - build:library
     dir: playground
     cmds:
       - npm run build
@@ -81,15 +71,6 @@ tasks:
     dir: compiler/api
     cmds:
       - npm run build
-  build:server:
-    dir: server
-    deps:
-      - build:api
-      - build:library
-    cmds:
-      - npm run build
-      - rm -rf ../netlify/functions/api && mkdir -p ../netlify/functions/api &&
-        cp dist/* ../netlify/functions/api/
 
   vscode:
     dir: vscode

@@ -6,11 +6,11 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     db::{Db, Fact, Node},
     facts::Syntax,
     render::Render,
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
         groups::Typed,
@@ -51,11 +51,11 @@ impl Render for DuplicateVariantDefinition {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeDefinition {
     pub span: Span,
-    pub comments: Vec<Substr>,
-    pub attributes: Vec<Box<dyn Visit>>,
-    pub name: Substr,
-    pub parameters: Vec<Box<dyn Visit>>,
-    pub representation: Box<dyn Visit>,
+    pub comments: Vec<Str>,
+    pub attributes: Vec<AstKey>,
+    pub name: Str,
+    pub parameters: Vec<AstKey>,
+    pub representation: AstKey,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,8 +67,8 @@ pub struct StructureTypeRepresentation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FieldDefinition {
     pub span: Span,
-    pub name: Substr,
-    pub ty: Box<dyn Visit>,
+    pub name: Str,
+    pub ty: AstKey,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,11 +85,13 @@ pub struct MarkerTypeRepresentation {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariantDefinition {
     pub span: Span,
-    pub name: Substr,
-    pub elements: Vec<Box<dyn Visit>>,
+    pub name: Str,
+    pub elements: Vec<AstKey>,
 }
 
-pub fn parse_type_definition_statement(parser: &mut Parser) -> Result<TypeDefinition, ParseError> {
+pub fn parse_type_definition_statement(
+    parser: &mut Parser<'_>,
+) -> Result<TypeDefinition, ParseError> {
     let comments = parse_comments(parser)?;
     let attributes = parse_attributes(parser)?;
     let span = parser.spanned();
@@ -109,17 +111,17 @@ pub fn parse_type_definition_statement(parser: &mut Parser) -> Result<TypeDefini
     })
 }
 
-pub fn parse_type_representation(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_type_representation(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_structure_type_representation as value => Box::new(value),
-        parse_enumeration_type_representation as value => Box::new(value),
-        parse_marker_type_representation as value => Box::new(value),
+        parse_structure_type_representation as value => parser.in_ast(value),
+        parse_enumeration_type_representation as value => parser.in_ast(value),
+        parse_marker_type_representation as value => parser.in_ast(value),
         _ => "Expected type representation",
     })
 }
 
 pub fn parse_structure_type_representation(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<StructureTypeRepresentation, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::LeftBrace)?;
@@ -131,7 +133,7 @@ pub fn parse_structure_type_representation(
     })
 }
 
-pub fn parse_field_definition(parser: &mut Parser) -> Result<FieldDefinition, ParseError> {
+pub fn parse_field_definition(parser: &mut Parser<'_>) -> Result<FieldDefinition, ParseError> {
     let span = parser.spanned();
     let name = parse_variable_name(parser)?;
     parser.token(TokenKind::AnnotateOperator)?;
@@ -146,7 +148,7 @@ pub fn parse_field_definition(parser: &mut Parser) -> Result<FieldDefinition, Pa
 }
 
 pub fn parse_enumeration_type_representation(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<EnumerationTypeRepresentation, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::LeftBrace)?;
@@ -159,14 +161,14 @@ pub fn parse_enumeration_type_representation(
 }
 
 pub fn parse_marker_type_representation(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<MarkerTypeRepresentation, ParseError> {
     let span = parser.spanned();
     parser.commit("in this type definition");
     Ok(MarkerTypeRepresentation { span: span(parser) })
 }
 
-pub fn parse_variant_definition(parser: &mut Parser) -> Result<VariantDefinition, ParseError> {
+pub fn parse_variant_definition(parser: &mut Parser<'_>) -> Result<VariantDefinition, ParseError> {
     let span = parser.spanned();
     let name = parse_constructor_name(parser)?;
     let elements = parser.parse_many(0, parse_atomic_type)?;
@@ -179,7 +181,7 @@ pub fn parse_variant_definition(parser: &mut Parser) -> Result<VariantDefinition
 
 #[typetag::serde]
 impl Visit for TypeDefinition {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -192,7 +194,7 @@ impl Visit for TypeDefinition {
         let attributes = self
             .attributes
             .iter()
-            .map(|attribute| visitor.visit(db, attribute.clone()))
+            .map(|attribute| visitor.visit(db, &attribute.clone()))
             .collect::<Vec<_>>();
 
         let mut definitions: Vec<(Node, Box<dyn Definition>)> = vec![(
@@ -205,8 +207,8 @@ impl Visit for TypeDefinition {
             }),
         )];
 
-        if self
-            .representation
+        if db
+            .ast(&self.representation)
             .downcast_ref::<MarkerTypeRepresentation>()
             .is_some()
         {
@@ -221,9 +223,10 @@ impl Visit for TypeDefinition {
             ));
 
             db.insert(node, MarkerType { constructor });
-        } else if let Some(representation) = self
-            .representation
+        } else if let Some(representation) = db
+            .ast(&self.representation)
             .downcast_ref::<StructureTypeRepresentation>()
+            .cloned()
         {
             let constructor = db.node();
 
@@ -253,9 +256,10 @@ impl Visit for TypeDefinition {
                     fields,
                 },
             );
-        } else if let Some(representation) = self
-            .representation
+        } else if let Some(representation) = db
+            .ast(&self.representation)
             .downcast_ref::<EnumerationTypeRepresentation>()
+            .cloned()
         {
             let constructors = representation
                 .variants
@@ -304,7 +308,7 @@ impl Visit for TypeDefinition {
                         for (&parameter_node, parameter) in
                             definition.parameters.iter().zip(parameters)
                         {
-                            visitor.visit_as(db, parameter, parameter_node)
+                            visitor.visit_as(db, &parameter, parameter_node)
                         }
                     },
                 );
@@ -333,8 +337,8 @@ impl Visit for TypeDefinition {
                     .to_vec();
 
                 if !definition.attributes.intrinsic {
-                    if self
-                        .representation
+                    if db
+                        .ast(&self.representation)
                         .downcast_ref::<MarkerTypeRepresentation>()
                         .is_some()
                     {
@@ -359,9 +363,10 @@ impl Visit for TypeDefinition {
                         );
 
                         visitor.pop_scope(db);
-                    } else if let Some(representation) =
-                        self.representation
-                            .downcast_ref::<StructureTypeRepresentation>()
+                    } else if let Some(representation) = db
+                        .ast(&self.representation)
+                        .downcast_ref::<StructureTypeRepresentation>()
+                        .cloned()
                     {
                         let StructureFields { constructor, .. } = db.get(node).cloned().unwrap();
 
@@ -374,7 +379,7 @@ impl Visit for TypeDefinition {
                                 for (&(_, field_node), field) in
                                     definition.fields.iter().zip(&representation.fields)
                                 {
-                                    visitor.visit_as(db, field.ty.clone(), field_node);
+                                    visitor.visit_as(db, &field.ty.clone(), field_node);
                                     db.graph.edge(field_node, node, "field");
 
                                     if fields.iter().any(|(name, _)| name == &field.name) {
@@ -400,9 +405,10 @@ impl Visit for TypeDefinition {
                         );
 
                         visitor.pop_scope(db);
-                    } else if let Some(representation) =
-                        self.representation
-                            .downcast_ref::<EnumerationTypeRepresentation>()
+                    } else if let Some(representation) = db
+                        .ast(&self.representation)
+                        .downcast_ref::<EnumerationTypeRepresentation>()
+                        .cloned()
                     {
                         let EnumerationVariants(variants) = db.get(node).cloned().unwrap();
 
@@ -423,14 +429,16 @@ impl Visit for TypeDefinition {
                                         return;
                                     }
 
-                                    db.insert(
-                                        constructor,
-                                        Syntax(Box::new(VariantDefinition {
+                                    let variant_definition = visitor.in_ast(
+                                        db,
+                                        Box::new(VariantDefinition {
                                             span: variant.span.clone(),
                                             name: variant.name.clone(),
                                             elements: variant.elements.clone(),
-                                        })),
+                                        }),
                                     );
+
+                                    db.insert(constructor, Syntax(variant_definition));
 
                                     visitor.within_definition::<VariantConstructorDefinition>(
                                         db,
@@ -439,7 +447,11 @@ impl Visit for TypeDefinition {
                                             for (&element_node, element) in
                                                 definition.elements.iter().zip(&variant.elements)
                                             {
-                                                visitor.visit_as(db, element.clone(), element_node);
+                                                visitor.visit_as(
+                                                    db,
+                                                    &element.clone(),
+                                                    element_node,
+                                                );
                                                 db.graph.edge(element_node, constructor, "element");
                                             }
 
@@ -494,35 +506,35 @@ impl Visit for TypeDefinition {
 
 #[typetag::serde]
 impl Visit for StructureTypeRepresentation {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 }
 
 #[typetag::serde]
 impl Visit for FieldDefinition {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 }
 
 #[typetag::serde]
 impl Visit for EnumerationTypeRepresentation {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 }
 
 #[typetag::serde]
 impl Visit for MarkerTypeRepresentation {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 }
 
 #[typetag::serde]
 impl Visit for VariantDefinition {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 }

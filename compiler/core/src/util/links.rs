@@ -1,10 +1,10 @@
 use crate::{
     db::{Db, Node},
     facts::Syntax,
+    span::Str,
     typecheck::{groups::Typed, instantiate::Instantiated, solver::GroupedWith, ty::ConstructedTy},
     visit::{TypeParameters, definitions::Defined},
 };
-use arcstr::Substr;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -18,7 +18,7 @@ pub struct Link {
     pub tys: Vec<ConstructedTy>,
 }
 
-pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<Substr, Link> {
+pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<Str, Link> {
     let mut links = BTreeMap::new();
 
     let Some(Defined(definition)) = db.get(definition_node) else {

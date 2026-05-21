@@ -7,9 +7,9 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::constraints::group_constraint::GroupConstraint,
     visit::{
         Visit, Visitor,
@@ -25,16 +25,16 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraitDefinition {
     pub span: Span,
-    pub comments: Vec<Substr>,
-    pub attributes: Vec<Box<dyn Visit>>,
-    pub name: Substr,
-    pub parameters: Vec<Box<dyn Visit>>,
-    pub ty: Box<dyn Visit>,
-    pub constraints: Vec<Box<dyn Visit>>,
+    pub comments: Vec<Str>,
+    pub attributes: Vec<AstKey>,
+    pub name: Str,
+    pub parameters: Vec<AstKey>,
+    pub ty: AstKey,
+    pub constraints: Vec<AstKey>,
 }
 
 pub fn parse_trait_definition_statement(
-    parser: &mut Parser,
+    parser: &mut Parser<'_>,
 ) -> Result<TraitDefinition, ParseError> {
     let comments = parse_comments(parser)?;
     let attributes = parse_attributes(parser)?;
@@ -58,8 +58,8 @@ pub fn parse_trait_definition_statement(
 }
 
 pub fn parse_trait_constraints(
-    parser: &mut Parser,
-) -> Result<(Box<dyn Visit>, Vec<Box<dyn Visit>>), ParseError> {
+    parser: &mut Parser<'_>,
+) -> Result<(AstKey, Vec<AstKey>), ParseError> {
     let ty = parse_atomic_type(parser)?;
     let constraints = parser
         .parse_optional(parse_constraints)?
@@ -69,7 +69,7 @@ pub fn parse_trait_constraints(
 
 #[typetag::serde]
 impl Visit for TraitDefinition {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -82,7 +82,7 @@ impl Visit for TraitDefinition {
         let attributes = self
             .attributes
             .iter()
-            .map(|attribute| visitor.visit(db, attribute.clone()))
+            .map(|attribute| visitor.visit(db, &attribute.clone()))
             .collect::<Vec<_>>();
 
         vec![(
@@ -110,18 +110,18 @@ impl Visit for TraitDefinition {
                         for (&parameter_node, parameter) in
                             definition.parameters.iter().zip(parameters)
                         {
-                            visitor.visit_as(db, parameter, parameter_node);
+                            visitor.visit_as(db, &parameter, parameter_node);
                         }
                     },
                 );
 
-                let ty = visitor.visit(db, self.ty);
+                let ty = visitor.visit(db, &self.ty);
                 db.graph.edge(ty, node, "type");
 
                 visitor.constraint(db, GroupConstraint::new(node, ty));
 
                 for constraint in self.constraints {
-                    let constraint = visitor.visit(db, constraint);
+                    let constraint = visitor.visit(db, &constraint);
                     db.graph.edge(constraint, node, "constraint");
                 }
 

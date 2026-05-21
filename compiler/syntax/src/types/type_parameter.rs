@@ -2,9 +2,9 @@ use crate::types::{parse_type, visit_type};
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     db::{Db, Node},
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         constraints::{
             bound_constraint::InferredParameter, group_constraint::GroupConstraint,
@@ -24,20 +24,22 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeParameter {
     pub span: Span,
-    pub name: Substr,
+    pub name: Str,
     pub infer: bool,
-    pub value: Option<Box<dyn Visit>>,
+    pub value: Option<AstKey>,
 }
 
-pub fn parse_type_parameter(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_type_parameter(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_named_type_parameter as value => Box::new(value),
-        parse_infer_type_parameter as value => Box::new(value),
+        parse_named_type_parameter as value => parser.in_ast(value),
+        parse_infer_type_parameter as value => parser.in_ast(value),
         _ => "Expected type parameter",
     })
 }
 
-pub fn parse_annotated_type_parameter(parser: &mut Parser) -> Result<TypeParameter, ParseError> {
+pub fn parse_annotated_type_parameter(
+    parser: &mut Parser<'_>,
+) -> Result<TypeParameter, ParseError> {
     let span = parser.spanned();
     let name = parse_type_parameter_name(parser)?;
     parser.token(TokenKind::AnnotateOperator)?;
@@ -52,7 +54,7 @@ pub fn parse_annotated_type_parameter(parser: &mut Parser) -> Result<TypeParamet
     })
 }
 
-pub fn parse_named_type_parameter(parser: &mut Parser) -> Result<TypeParameter, ParseError> {
+pub fn parse_named_type_parameter(parser: &mut Parser<'_>) -> Result<TypeParameter, ParseError> {
     let span = parser.spanned();
     let name = parse_type_parameter_name(parser)?;
     Ok(TypeParameter {
@@ -63,7 +65,7 @@ pub fn parse_named_type_parameter(parser: &mut Parser) -> Result<TypeParameter, 
     })
 }
 
-pub fn parse_infer_type_parameter(parser: &mut Parser) -> Result<TypeParameter, ParseError> {
+pub fn parse_infer_type_parameter(parser: &mut Parser<'_>) -> Result<TypeParameter, ParseError> {
     let span = parser.spanned();
     parser
         .token(ParseToken::from(TokenKind::LeftParenthesis).reason("between these parentheses"))?;
@@ -78,7 +80,7 @@ pub fn parse_infer_type_parameter(parser: &mut Parser) -> Result<TypeParameter, 
     })
 }
 
-pub fn parse_type_parameters(parser: &mut Parser) -> Result<Vec<Box<dyn Visit>>, ParseError> {
+pub fn parse_type_parameters(parser: &mut Parser<'_>) -> Result<Vec<AstKey>, ParseError> {
     let parameters = parser.parse_many(0, parse_type_parameter)?;
 
     if !parameters.is_empty() {
@@ -91,7 +93,7 @@ pub fn parse_type_parameters(parser: &mut Parser) -> Result<Vec<Box<dyn Visit>>,
 
 #[typetag::serde]
 impl Visit for TypeParameter {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -118,7 +120,7 @@ impl Visit for TypeParameter {
             );
 
             if let Some(value) = self.value {
-                let value = visitor.visit(db, value);
+                let value = visitor.visit(db, &value);
                 db.graph.edge(value, node, "value");
 
                 visitor.constraint(db, GroupConstraint::new(node, value));

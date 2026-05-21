@@ -7,11 +7,11 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    arcstr::Substr,
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Fact, Node},
     render::Render,
-    span::Span,
+    span::{Span, Str},
     typecheck::{
         constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
         ty::{ConstructedTy, Ty},
@@ -42,11 +42,11 @@ impl Render for ExtraFormatInput {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct FormatExpression {
     pub span: Span,
-    pub string: Substr,
-    pub inputs: Vec<Box<dyn Visit>>,
+    pub string: Str,
+    pub inputs: Vec<AstKey>,
 }
 
-pub fn parse_format_expression(parser: &mut Parser) -> Result<FormatExpression, ParseError> {
+pub fn parse_format_expression(parser: &mut Parser<'_>) -> Result<FormatExpression, ParseError> {
     let span = parser.spanned();
     let string = parser.token(TokenKind::String)?;
     let inputs = parser.parse_many(1, parse_atomic_expression)?;
@@ -59,7 +59,7 @@ pub fn parse_format_expression(parser: &mut Parser) -> Result<FormatExpression, 
 
 #[typetag::serde]
 impl Visit for FormatExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
@@ -73,30 +73,36 @@ impl Visit for FormatExpression {
             .collect::<Vec<_>>();
         let trailing = segments.pop().unwrap_or_default();
 
-        let string_type = Box::new(NamedType {
-            span: self.span.clone(),
-            name: Substr::from("String"),
-            parameters: Vec::new(),
-        }) as Box<dyn Visit>;
-        let string_type = visitor.visit(db, string_type);
+        let string_type = visitor.in_ast(
+            db,
+            Box::new(NamedType {
+                span: self.span.clone(),
+                name: Str::from("String"),
+                parameters: Vec::new(),
+            }),
+        );
+        let string_type = visitor.visit(db, &string_type);
 
         visitor.constraint(db, GroupConstraint::new(node, string_type));
 
         let inputs = self
             .inputs
             .into_iter()
-            .map(|input| visitor.visit(db, input))
+            .map(|input| visitor.visit(db, &input))
             .collect::<Vec<_>>();
 
         let mut format_segments = Vec::new();
         for (segment, input) in segments.iter().zip(&inputs) {
             db.graph.edge(*input, node, "input");
 
-            let describe_node = Box::new(ConstructorExpression {
-                span: self.span.clone(),
-                constructor: Substr::from("Describe"),
-            }) as Box<dyn Visit>;
-            let describe_node = visitor.visit(db, describe_node);
+            let describe_node = visitor.in_ast(
+                db,
+                Box::new(ConstructorExpression {
+                    span: self.span.clone(),
+                    constructor: Str::from("Describe"),
+                }),
+            );
+            let describe_node = visitor.visit(db, &describe_node);
 
             visitor.constraint(
                 db,

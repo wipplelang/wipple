@@ -27,10 +27,11 @@ use crate::patterns::{
 };
 use std::collections::BTreeSet;
 use wipple_core::{
+    ast::AstKey,
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{constraints::group_constraint::GroupConstraint, groups::Typed},
-    visit::{Visit, Visitor, exhaustiveness::MatchPathSegment},
+    visit::{Visitor, exhaustiveness::MatchPathSegment},
 };
 use wipple_parse::{
     lexer::TokenKind,
@@ -93,40 +94,40 @@ impl Fact for Matching {}
 
 impl Render for Matching {}
 
-pub fn parse_pattern(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_pattern(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_tuple_pattern as value => Box::new(value),
-        parse_or_pattern as value => Box::new(value),
-        parse_annotate_pattern as value => Box::new(value),
+        parse_tuple_pattern as value => parser.in_ast(value),
+        parse_or_pattern as value => parser.in_ast(value),
+        parse_annotate_pattern as value => parser.in_ast(value),
         parse_pattern_element as value => value,
         _ => "Expected pattern",
     })
 }
 
-pub fn parse_pattern_element(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_pattern_element(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_structure_pattern as value => Box::new(value),
-        parse_parameterized_constructor_pattern as value => Box::new(value),
-        parse_set_pattern as value => Box::new(value),
+        parse_structure_pattern as value => parser.in_ast(value),
+        parse_parameterized_constructor_pattern as value => parser.in_ast(value),
+        parse_set_pattern as value => parser.in_ast(value),
         parse_atomic_pattern as value => value,
         _ => "Expected pattern",
     })
 }
 
-pub fn parse_atomic_pattern(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_atomic_pattern(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parse_alt!(parser, {
-        parse_constructor_pattern as value => Box::new(value),
-        parse_wildcard_pattern as value => Box::new(value),
-        parse_variable_pattern as value => Box::new(value),
-        parse_number_pattern as value => Box::new(value),
-        parse_string_pattern as value => Box::new(value),
-        parse_unit_pattern as value => Box::new(value),
+        parse_constructor_pattern as value => parser.in_ast(value),
+        parse_wildcard_pattern as value => parser.in_ast(value),
+        parse_variable_pattern as value => parser.in_ast(value),
+        parse_number_pattern as value => parser.in_ast(value),
+        parse_string_pattern as value => parser.in_ast(value),
+        parse_unit_pattern as value => parser.in_ast(value),
         parse_parenthesized_pattern as value => value,
         _ => "Expected pattern",
     })
 }
 
-pub fn parse_parenthesized_pattern(parser: &mut Parser) -> Result<Box<dyn Visit>, ParseError> {
+pub fn parse_parenthesized_pattern(parser: &mut Parser<'_>) -> Result<AstKey, ParseError> {
     parser
         .token(ParseToken::from(TokenKind::LeftParenthesis).reason("between these parentheses"))?;
     parser.consume_line_breaks();

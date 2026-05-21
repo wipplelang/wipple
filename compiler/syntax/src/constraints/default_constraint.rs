@@ -5,6 +5,7 @@ use crate::{
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     db::{Db, Node},
     span::Span,
     typecheck::constraints::default_constraint::DefaultConstraint as TypecheckDefaultConstraint,
@@ -18,17 +19,17 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DefaultConstraint {
     pub span: Span,
-    pub parameter: Box<dyn Visit>,
-    pub value: Box<dyn Visit>,
+    pub parameter: AstKey,
+    pub value: AstKey,
 }
 
-pub fn parse_default_constraint(parser: &mut Parser) -> Result<DefaultConstraint, ParseError> {
+pub fn parse_default_constraint(parser: &mut Parser<'_>) -> Result<DefaultConstraint, ParseError> {
     let span = parser.spanned();
 
     parser
         .token(ParseToken::from(TokenKind::LeftParenthesis).reason("between these parentheses"))?;
 
-    let parameter = Box::new(parse_named_type_parameter(parser)?);
+    let parameter = parse_named_type_parameter(parser)?;
     parser.token(TokenKind::AnnotateOperator)?;
     parser.commit("in this type annotation");
     parser.consume_line_breaks();
@@ -37,22 +38,22 @@ pub fn parse_default_constraint(parser: &mut Parser) -> Result<DefaultConstraint
 
     Ok(DefaultConstraint {
         span: span(parser),
-        parameter,
+        parameter: parser.in_ast(parameter),
         value,
     })
 }
 
 #[typetag::serde]
 impl Visit for DefaultConstraint {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_constraint(db, node, visitor);
 
-        let parameter = visitor.visit(db, self.parameter);
-        let value = visitor.visit(db, self.value);
+        let parameter = visitor.visit(db, &self.parameter);
+        let value = visitor.visit(db, &self.value);
 
         db.graph.edge(value, node, "value");
 

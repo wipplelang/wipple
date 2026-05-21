@@ -17,7 +17,7 @@ pub struct UnitPattern {
     pub span: Span,
 }
 
-pub fn parse_unit_pattern(parser: &mut Parser) -> Result<UnitPattern, ParseError> {
+pub fn parse_unit_pattern(parser: &mut Parser<'_>) -> Result<UnitPattern, ParseError> {
     let span = parser.spanned();
     parser
         .token(ParseToken::from(TokenKind::LeftParenthesis).reason("between these parentheses"))?;
@@ -27,7 +27,7 @@ pub fn parse_unit_pattern(parser: &mut Parser) -> Result<UnitPattern, ParseError
 
 #[typetag::serde]
 impl Visit for UnitPattern {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 

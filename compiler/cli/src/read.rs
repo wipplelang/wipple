@@ -1,8 +1,8 @@
 use std::{fs, io, path::Path};
-use wipple_core::visit::Visit;
+use wipple_core::{ast::AstKey, db::Db};
 use wipple_syntax::parse;
 
-pub fn read_dir(path: impl AsRef<Path>) -> io::Result<Vec<Box<dyn Visit>>> {
+pub fn read_dir(db: &mut Db, path: impl AsRef<Path>) -> io::Result<Vec<AstKey>> {
     fs::read_dir(path)?.try_fold(Vec::new(), |mut files, entry| {
         let entry = entry?;
 
@@ -18,7 +18,7 @@ pub fn read_dir(path: impl AsRef<Path>) -> io::Result<Vec<Box<dyn Visit>>> {
 
         let source = fs::read_to_string(entry.path())?;
 
-        files.push(parse(path, source));
+        files.push(parse(db, path, source));
 
         Ok(files)
     })

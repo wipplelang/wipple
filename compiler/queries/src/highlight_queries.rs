@@ -19,7 +19,7 @@ pub fn highlight_type(db: &Db, node: Node) -> bool {
 
     !db.is_hidden(node)
         && db.contains::<IsType>(node)
-        && syntax.downcast_ref::<TypeParameter>().is_none()
+        && db.ast(syntax).downcast_ref::<TypeParameter>().is_none()
 }
 
 pub fn highlight_trait(db: &Db, node: Node) -> bool {

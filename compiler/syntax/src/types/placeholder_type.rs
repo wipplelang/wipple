@@ -15,7 +15,7 @@ pub struct PlaceholderType {
     pub span: Span,
 }
 
-pub fn parse_placeholder_type(parser: &mut Parser) -> Result<PlaceholderType, ParseError> {
+pub fn parse_placeholder_type(parser: &mut Parser<'_>) -> Result<PlaceholderType, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::UnderscoreKeyword)?;
     Ok(PlaceholderType { span: span(parser) })
@@ -23,7 +23,7 @@ pub fn parse_placeholder_type(parser: &mut Parser) -> Result<PlaceholderType, Pa
 
 #[typetag::serde]
 impl Visit for PlaceholderType {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 

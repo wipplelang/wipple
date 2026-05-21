@@ -2,6 +2,7 @@ use crate::expressions::{parse_atomic_expression, visit_expression};
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
@@ -19,10 +20,10 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DoExpression {
     pub span: Span,
-    pub input: Box<dyn Visit>,
+    pub input: AstKey,
 }
 
-pub fn parse_do_expression(parser: &mut Parser) -> Result<DoExpression, ParseError> {
+pub fn parse_do_expression(parser: &mut Parser<'_>) -> Result<DoExpression, ParseError> {
     let span = parser.spanned();
     parser.token(TokenKind::DoKeyword)?;
     parser.commit("in this `do` expression");
@@ -35,14 +36,14 @@ pub fn parse_do_expression(parser: &mut Parser) -> Result<DoExpression, ParseErr
 
 #[typetag::serde]
 impl Visit for DoExpression {
-    fn span(&self) -> &Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_expression(db, node, visitor);
 
-        let input = visitor.visit(db, self.input);
+        let input = visitor.visit(db, &self.input);
         db.graph.edge(input, node, "input");
 
         visitor.constraint(

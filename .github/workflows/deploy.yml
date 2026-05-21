@@ -31,7 +31,6 @@ jobs:
 
             - run: task build
               env:
-                  PUBLIC_SERVER_URL: ${{ vars.PUBLIC_SERVER_URL }}
                   PUBLIC_VISUALIZER_URL: ${{ vars.PUBLIC_VISUALIZER_URL }}
                   PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}

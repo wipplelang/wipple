@@ -1,12 +1,12 @@
 use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
+    span::Str,
     visit::attributes::{
         ConnectionAttributeValue, StringAttributeValue, parse_attribute_named,
         parse_attribute_with_value, parse_attributes_with_value,
     },
 };
-use arcstr::Substr;
 use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
 use std::{any::Any, fmt::Debug};
@@ -25,8 +25,8 @@ impl Render for Defined {
 
 #[typetag::serde]
 pub trait Definition: Debug + DynClone + Send + Sync + Any {
-    fn name(&self) -> Option<&Substr>;
-    fn comments(&self) -> &[Substr];
+    fn name(&self) -> Option<Str>;
+    fn comments(&self) -> &[Str];
 }
 
 dyn_clone::clone_trait_object!(Definition);
@@ -43,18 +43,18 @@ impl dyn Definition {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariableDefinition {
-    pub name: Substr,
+    pub name: Str,
     pub value: Node,
     pub is_mutable: bool,
 }
 
 #[typetag::serde]
 impl Definition for VariableDefinition {
-    fn name(&self) -> Option<&Substr> {
-        Some(&self.name)
+    fn name(&self) -> Option<Str> {
+        Some(self.name.clone())
     }
 
-    fn comments(&self) -> &[Substr] {
+    fn comments(&self) -> &[Str] {
         &[]
     }
 }
@@ -69,18 +69,18 @@ impl Render for ConstantValue {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstantDefinition {
-    pub name: Substr,
-    pub comments: Vec<Substr>,
+    pub name: Str,
+    pub comments: Vec<Str>,
     pub attributes: ConstantAttributes,
 }
 
 #[typetag::serde]
 impl Definition for ConstantDefinition {
-    fn name(&self) -> Option<&Substr> {
-        Some(&self.name)
+    fn name(&self) -> Option<Str> {
+        Some(self.name.clone())
     }
 
-    fn comments(&self) -> &[Substr] {
+    fn comments(&self) -> &[Str] {
         &self.comments
     }
 }
@@ -102,19 +102,19 @@ impl ConstantAttributes {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeDefinition {
-    pub name: Substr,
-    pub comments: Vec<Substr>,
+    pub name: Str,
+    pub comments: Vec<Str>,
     pub attributes: TypeDefinitionAttributes,
     pub parameters: Vec<Node>,
 }
 
 #[typetag::serde]
 impl Definition for TypeDefinition {
-    fn name(&self) -> Option<&Substr> {
-        Some(&self.name)
+    fn name(&self) -> Option<Str> {
+        Some(self.name.clone())
     }
 
-    fn comments(&self) -> &[Substr] {
+    fn comments(&self) -> &[Str] {
         &self.comments
     }
 }
@@ -122,8 +122,8 @@ impl Definition for TypeDefinition {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeDefinitionAttributes {
     pub intrinsic: bool,
-    pub representation: Option<Substr>,
-    pub abi: Option<Substr>,
+    pub representation: Option<Str>,
+    pub abi: Option<Str>,
 }
 
 impl TypeDefinitionAttributes {
@@ -140,19 +140,19 @@ impl TypeDefinitionAttributes {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraitDefinition {
-    pub name: Substr,
-    pub comments: Vec<Substr>,
+    pub name: Str,
+    pub comments: Vec<Str>,
     pub attributes: TraitDefinitionAttributes,
     pub parameters: Vec<Node>,
 }
 
 #[typetag::serde]
 impl Definition for TraitDefinition {
-    fn name(&self) -> Option<&Substr> {
-        Some(&self.name)
+    fn name(&self) -> Option<Str> {
+        Some(self.name.clone())
     }
 
-    fn comments(&self) -> &[Substr] {
+    fn comments(&self) -> &[Str] {
         &self.comments
     }
 }
@@ -176,18 +176,18 @@ impl Render for InstanceTrait {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstanceDefinition {
-    pub comments: Vec<Substr>,
+    pub comments: Vec<Str>,
     pub attributes: InstanceDefinitionAttributes,
     pub value: Option<Node>,
 }
 
 #[typetag::serde]
 impl Definition for InstanceDefinition {
-    fn name(&self) -> Option<&Substr> {
+    fn name(&self) -> Option<Str> {
         None
     }
 
-    fn comments(&self) -> &[Substr] {
+    fn comments(&self) -> &[Str] {
         &self.comments
     }
 }
@@ -209,58 +209,58 @@ impl InstanceDefinitionAttributes {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeParameterDefinition {
-    pub name: Option<Substr>,
+    pub name: Option<Str>,
 }
 
 #[typetag::serde]
 impl Definition for TypeParameterDefinition {
-    fn name(&self) -> Option<&Substr> {
-        self.name.as_ref()
+    fn name(&self) -> Option<Str> {
+        self.name.clone()
     }
 
-    fn comments(&self) -> &[Substr] {
+    fn comments(&self) -> &[Str] {
         &[]
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarkerConstructorDefinition {
-    pub name: Substr,
-    pub comments: Vec<Substr>,
+    pub name: Str,
+    pub comments: Vec<Str>,
 }
 
 #[typetag::serde]
 impl Definition for MarkerConstructorDefinition {
-    fn name(&self) -> Option<&Substr> {
-        Some(&self.name)
+    fn name(&self) -> Option<Str> {
+        Some(self.name.clone())
     }
 
-    fn comments(&self) -> &[Substr] {
+    fn comments(&self) -> &[Str] {
         &self.comments
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructureConstructorDefinition {
-    pub name: Substr,
-    pub comments: Vec<Substr>,
-    pub fields: Vec<(Substr, Node)>,
+    pub name: Str,
+    pub comments: Vec<Str>,
+    pub fields: Vec<(Str, Node)>,
 }
 
 #[typetag::serde]
 impl Definition for StructureConstructorDefinition {
-    fn name(&self) -> Option<&Substr> {
-        Some(&self.name)
+    fn name(&self) -> Option<Str> {
+        Some(self.name.clone())
     }
 
-    fn comments(&self) -> &[Substr] {
+    fn comments(&self) -> &[Str] {
         &self.comments
     }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VariantConstructorDefinition {
-    pub name: Substr,
+    pub name: Str,
     pub type_definition: Node,
     pub index: usize,
     pub elements: Vec<Node>,
@@ -268,11 +268,11 @@ pub struct VariantConstructorDefinition {
 
 #[typetag::serde]
 impl Definition for VariantConstructorDefinition {
-    fn name(&self) -> Option<&Substr> {
-        Some(&self.name)
+    fn name(&self) -> Option<Str> {
+        Some(self.name.clone())
     }
 
-    fn comments(&self) -> &[Substr] {
+    fn comments(&self) -> &[Str] {
         &[]
     }
 }

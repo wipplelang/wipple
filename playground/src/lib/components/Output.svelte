@@ -1,17 +1,15 @@
 <script lang="ts">
     import Box from "./Box.svelte";
-    import * as api from "$lib/api";
-    import { context } from "$lib/context.svelte";
+    import type { CompilerWorkerResponse } from "$lib/workers/compiler.worker";
+    import { compilerWorker, context } from "$lib/context.svelte";
     import runtimes from "$lib/runtimes";
-    import * as runner from "$lib/runner.worker";
-    import RunnerWorker from "$lib/runner.worker?worker";
+    import * as runner from "$lib/workers/runner.worker";
+    import RunnerWorker from "$lib/workers/runner.worker?worker";
     import type { OutputItem, PromptOutputItem } from "$lib/models/OutputItem";
     import type { Groups } from "$lib/models/Groups";
     import Markdown from "./Markdown.svelte";
     import Prompt from "./Prompt.svelte";
     import Visualizer from "./Visualizer.svelte";
-
-    const throttleMs = 500;
 
     export type RunState = "compiling" | "running";
 
@@ -36,23 +34,16 @@
     const playground = $derived(context.playground);
     const runtime = $derived(playground && runtimes[playground.runtime]);
 
-    const throttle = () =>
-        new Promise<void>((resolve) => {
-            setTimeout(() => resolve(), throttleMs);
-        });
-
     let graph = $state<any>();
     let output = $state<OutputItem[]>([]);
     let runtimeOutput = $state<any>();
 
     let abortController: AbortController | undefined;
 
-    export const run = () =>
-        Promise.allSettled([throttle(), runInner()]).then(() => (runState = undefined));
-
-    const runInner = async () => {
+    export const run = async () => {
         if (playground == null || runState != null) {
             await stopRunning(true);
+            runState = undefined;
             return;
         }
 
@@ -66,35 +57,30 @@
 
         const { library, visualizerEnabled } = runtimes[playground.runtime];
 
-        let response: api.CompileResponse;
+        let response: CompilerWorkerResponse<"compile">;
         try {
-            response = await api.compile(
-                {
-                    code: playground.code,
-                    library,
-                    groups: visualizerEnabled,
-                    graph: visualizerEnabled,
-                },
-                {
-                    signal: abortController.signal,
-                },
-            );
+            response = await compilerWorker.compile({
+                code: playground.code,
+                library,
+                groups: visualizerEnabled,
+                graph: visualizerEnabled,
+            });
         } catch (error) {
             console.error(error);
             abortController = undefined;
             return;
+        } finally {
+            runState = undefined;
         }
 
         graph = response.graph;
 
-        if ("diagnostics" in response) {
+        if ("diagnostics" in response && response.diagnostics != null) {
             ondiagnostics(response.diagnostics);
             return;
         }
 
-        response satisfies api.CompileResponseSuccess;
-
-        if ("groups" in response) {
+        if ("groups" in response && response.groups != null) {
             ongroups(response.groups);
         }
 
@@ -169,11 +155,11 @@
             await run(response.executable);
         } finally {
             await stopRunning(false);
-            return;
         }
     };
 
     const stopRunning = async (force: boolean) => {
+        runState = undefined;
         abortController?.abort();
 
         runnerWorker?.terminate();
