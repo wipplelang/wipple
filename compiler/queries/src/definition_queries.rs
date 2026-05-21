@@ -1,6 +1,9 @@
 use crate::{Comments, comments_without_links};
 use levenshtein::levenshtein;
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::ControlFlow,
+};
 use wipple_core::{
     arcstr::Substr,
     db::{Db, Node},
@@ -20,11 +23,16 @@ pub fn definitions(db: &Db, node: Node) -> Option<&BTreeSet<Node>> {
 }
 
 pub fn references(db: &Db, node: Node) -> Vec<Node> {
-    db.collect_facts::<Resolved>()
-        .into_iter()
-        .filter(|(_, resolved)| resolved.definitions.contains(&node))
-        .map(|(other, _)| other)
-        .collect()
+    let mut references = Vec::new();
+    db.for_each_fact::<Resolved, ()>(&mut |_, other, resolved| {
+        if resolved.definitions.contains(&node) {
+            references.push(other);
+        }
+
+        ControlFlow::Continue(())
+    });
+
+    references
 }
 
 pub fn unresolved(db: &Db, node: Node) -> Option<(&Substr, Option<(Node, Substr)>)> {
@@ -34,17 +42,24 @@ pub fn unresolved(db: &Db, node: Node) -> Option<(&Substr, Option<(Node, Substr)
         return None;
     }
 
-    let suggestion = db
-        .collect_facts::<Defined>()
-        .into_iter()
-        .filter_map(|(node, Defined(definition))| {
-            let name = definition.name()?;
+    let mut suggestion = None;
+    db.for_each_fact::<Defined, ()>(&mut |_, node, Defined(definition)| {
+        if let Some(name) = definition.name() {
             let distance = levenshtein(&resolved.name, name);
 
-            (distance < 3).then_some((node, name.clone(), distance))
-        })
-        .min_by_key(|(_, _, distance)| *distance)
-        .map(|(node, name, _)| (node, name));
+            if distance < 3
+                && suggestion
+                    .as_ref()
+                    .is_none_or(|(_, _, current)| distance < *current)
+            {
+                suggestion = Some((node, name.clone(), distance));
+            }
+        }
+
+        ControlFlow::Continue(())
+    });
+
+    let suggestion = suggestion.map(|(node, name, _)| (node, name));
 
     Some((&resolved.name, suggestion))
 }

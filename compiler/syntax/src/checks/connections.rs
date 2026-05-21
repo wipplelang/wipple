@@ -1,4 +1,5 @@
 use crate::expressions::call_expression::ResolvedCall;
+use std::ops::ControlFlow;
 use wipple_core::{
     db::{Db, Node},
     util::get_links,
@@ -9,13 +10,16 @@ use wipple_core::{
 };
 
 pub fn create_connections(db: &mut Db, mut filter: impl FnMut(&Db, Node) -> bool) {
-    for (node, call) in db
-        .collect_facts::<ResolvedCall>()
-        .into_iter()
-        .filter(|(node, _)| filter(db, *node))
-        .map(|(node, call)| (node, call.clone()))
-        .collect::<Vec<_>>()
-    {
+    let mut calls = Vec::new();
+    db.for_each_fact::<ResolvedCall, ()>(&mut |db, node, call| {
+        if filter(db, node) {
+            calls.push((node, call.clone()));
+        }
+
+        ControlFlow::Continue(())
+    });
+
+    for (node, call) in calls {
         let mut has_custom_edges = false;
         if let Some(Resolved { definitions, .. }) = db.get(call.function)
             && definitions.len() == 1

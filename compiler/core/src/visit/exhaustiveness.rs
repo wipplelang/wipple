@@ -9,7 +9,7 @@ use crate::{
 };
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, ops::ControlFlow};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarkerType {
@@ -193,7 +193,7 @@ impl Render for MissingPatterns {
 pub fn check_exhaustiveness(db: &mut Db) {
     let mut values: BTreeMap<Node, BTreeMap<Node, Vec<MatchPath>>> = Default::default();
 
-    for (_, Matches { value, arm, path }) in db.collect_facts::<Matches>() {
+    db.for_each_fact::<Matches, ()>(&mut |_, _, Matches { value, arm, path }| {
         if let Some(arm) = arm
             && let Some(path) = path
         {
@@ -204,7 +204,9 @@ pub fn check_exhaustiveness(db: &mut Db) {
                 .or_default()
                 .push(path.clone());
         }
-    }
+
+        ControlFlow::Continue(())
+    });
 
     for (value, groups) in values {
         let actual = groups

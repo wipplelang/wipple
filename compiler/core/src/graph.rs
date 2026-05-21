@@ -30,7 +30,7 @@ pub struct GraphBuilderGroup {
     pub tys: Vec<ConstructedTy>,
 }
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GraphBuilder {
     replacements: BTreeMap<Node, Node>,
     edges: Vec<GraphBuilderEdge>,

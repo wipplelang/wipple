@@ -7,9 +7,9 @@ use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
 use std::{
     any::{Any, TypeId},
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fmt::{Debug, Display},
-    ops::Deref,
+    ops::{ControlFlow, Deref},
     str::FromStr,
     sync::Arc,
 };
@@ -68,13 +68,14 @@ impl dyn Fact {
     }
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct Db {
     parent: Option<DbRef>,
     pub debug_enabled: bool,
     pub graph: GraphBuilder,
     nodes: Vec<NodeInfo>,                // for owned nodes
     overrides: BTreeMap<Node, NodeInfo>, // for parent nodes
+    cache: BTreeMap<TypeId, BTreeSet<Node>>,
 }
 
 #[derive(Debug, Clone)]
@@ -118,6 +119,77 @@ impl Debug for Db {
             .field("layer", &self.layer())
             .field("parent", &self.parent)
             .finish_non_exhaustive()
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct SerializedDb {
+    parent: Option<Box<SerializedDb>>,
+    debug_enabled: bool,
+    graph: GraphBuilder,
+    nodes: Vec<NodeInfo>,
+    overrides: BTreeMap<Node, NodeInfo>,
+}
+
+impl From<&Db> for SerializedDb {
+    fn from(db: &Db) -> Self {
+        SerializedDb {
+            parent: db
+                .parent
+                .as_ref()
+                .map(|parent| Box::new(SerializedDb::from(parent.deref()))),
+            debug_enabled: db.debug_enabled,
+            graph: db.graph.clone(),
+            nodes: db.nodes.clone(),
+            overrides: db.overrides.clone(),
+        }
+    }
+}
+
+impl From<SerializedDb> for Db {
+    fn from(serialized: SerializedDb) -> Self {
+        let mut db = Db {
+            parent: serialized
+                .parent
+                .map(|parent| DbRef::new(Db::from(*parent))),
+            debug_enabled: serialized.debug_enabled,
+            graph: serialized.graph,
+            nodes: serialized.nodes,
+            overrides: serialized.overrides,
+            cache: Default::default(),
+        };
+
+        let mut cache = BTreeMap::<TypeId, BTreeSet<Node>>::new();
+        for (node, info) in db.owned_nodes_with_info() {
+            for fact in info.facts.0.values() {
+                cache
+                    .entry(fact.as_ref().type_id())
+                    .or_default()
+                    .insert(node);
+            }
+        }
+
+        db.cache = cache;
+
+        db
+    }
+}
+
+impl Serialize for Db {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        SerializedDb::from(self).serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for Db {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Ok(Db::from(SerializedDb::deserialize(deserializer)?))
     }
 }
 
@@ -246,6 +318,11 @@ impl Db {
     }
 
     pub fn get_mut_or_default<T: Fact + Default>(&mut self, node: Node) -> &mut T {
+        self.cache
+            .entry(TypeId::of::<T>())
+            .or_default()
+            .insert(node);
+
         self.info_mut(node)
             .facts
             .0
@@ -256,48 +333,65 @@ impl Db {
     }
 
     pub fn insert<T: Fact>(&mut self, node: Node, fact: T) {
+        self.cache
+            .entry(TypeId::of::<T>())
+            .or_default()
+            .insert(node);
+
         self.info_mut(node)
             .facts
             .0
             .insert(TypeId::of::<T>(), Box::new(fact));
     }
 
-    pub fn collect_facts<T: Fact>(&self) -> BTreeMap<Node, &T> {
-        let mut facts = self
-            .parent
-            .as_ref()
-            .map(|parent| parent.collect_facts::<T>())
-            .unwrap_or_default();
+    pub fn for_each_fact<T: Fact, U>(
+        &self,
+        f: &mut dyn FnMut(&Self, Node, &T) -> ControlFlow<U>,
+    ) -> Option<U> {
+        if let Some(parent) = self.parent.as_ref()
+            && let Some(result) = parent.for_each_fact(f)
+        {
+            return Some(result);
+        }
 
-        for (&node, info) in &self.overrides {
-            if let Some(fact) = info.facts.0.get(&TypeId::of::<T>()) {
-                facts.insert(node, fact.downcast_ref::<T>().unwrap());
+        let nodes = self.cache.get(&TypeId::of::<T>())?;
+
+        for &node in nodes {
+            let fact = self
+                .info(node)
+                .unwrap()
+                .facts
+                .0
+                .get(&TypeId::of::<T>())
+                .unwrap()
+                .downcast_ref::<T>()
+                .unwrap();
+
+            if let ControlFlow::Break(result) = f(self, node, fact) {
+                return Some(result);
             }
         }
 
-        for (index, info) in self.nodes.iter().enumerate() {
-            if let Some(fact) = info.facts.0.get(&TypeId::of::<T>()) {
+        None
+    }
+
+    pub fn owned_nodes(&self) -> impl Iterator<Item = Node> {
+        self.owned_nodes_with_info().map(|(node, _)| node)
+    }
+
+    fn owned_nodes_with_info(&self) -> impl Iterator<Item = (Node, &NodeInfo)> {
+        self.nodes
+            .iter()
+            .enumerate()
+            .map(|(index, info)| {
                 let node = Node {
                     layer: self.layer(),
                     index,
                 };
 
-                facts.insert(node, fact.downcast_ref::<T>().unwrap());
-            }
-        }
-
-        facts
-    }
-
-    pub fn owned_nodes(&self) -> impl Iterator<Item = Node> {
-        self.nodes
-            .iter()
-            .enumerate()
-            .map(|(index, _)| Node {
-                layer: self.layer(),
-                index,
+                (node, info)
             })
-            .chain(self.overrides.keys().copied())
+            .chain(self.overrides.iter().map(|(&node, info)| (node, info)))
     }
 
     pub fn debug(&self, mut filter: impl FnMut(&Self, Node) -> bool) -> impl Display {

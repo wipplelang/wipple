@@ -12,6 +12,7 @@ use std::{
     collections::{BTreeSet, HashMap},
     env, fs,
     io::{self, Write},
+    ops::ControlFlow,
     path::{Path, PathBuf},
     process,
 };
@@ -391,15 +392,15 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
         .ok_or_else(|| anyhow::format_err!("compilation failed"))?;
 
     let mut items = HashMap::new();
-    for (node, _) in db.collect_facts::<Defined>() {
-        if let Some(documentation) = wipple_queries::documentation(&db, node) {
+    db.for_each_fact::<Defined, ()>(&mut |db, node, _| {
+        if let Some(documentation) = wipple_queries::documentation(db, node) {
             let Some(name) = documentation.name else {
-                continue;
+                return ControlFlow::Continue(());
             };
 
             let mut writer = FeedbackWriter::default();
-            writer.comments(&db, &documentation.comments);
-            let (docs, _) = writer.finish(&db, |db, segment| segment.markdown(db, false));
+            writer.comments(db, &documentation.comments);
+            let (docs, _) = writer.finish(db, |db, segment| segment.markdown(db, false));
 
             items.insert(
                 name.to_string(),
@@ -410,7 +411,8 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
                 }),
             );
         }
-    }
+        ControlFlow::Continue(())
+    });
 
     println!("{}", serde_json::to_string_pretty(&items)?);
 

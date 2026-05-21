@@ -8,6 +8,7 @@ use crate::{
         instances::{check_for_overlapping_instances, run_mismatched_trait},
     },
 };
+use std::ops::ControlFlow;
 use wipple_core::{
     TopLevel,
     db::Db,
@@ -19,12 +20,13 @@ use wipple_core::{
 pub fn run_checks(db: &mut Db, top_level: &TopLevel) {
     // Check for overlapping instances
 
-    for (trait_node, instances) in db
-        .collect_facts()
-        .into_iter()
-        .map(|(trait_node, Instances(instances))| (trait_node, instances.clone()))
-        .collect::<Vec<_>>()
-    {
+    let mut all_instances = Vec::new();
+    db.for_each_fact::<Instances, ()>(&mut |_, trait_node, Instances(instances)| {
+        all_instances.push((trait_node, instances.clone()));
+        ControlFlow::Continue(())
+    });
+
+    for (trait_node, instances) in all_instances {
         let mut solver = Solver::default();
         solver.substitutions.extend(top_level.substitutions.clone());
         check_for_overlapping_instances(db, &mut solver, trait_node, instances);

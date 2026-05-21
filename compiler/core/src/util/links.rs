@@ -6,7 +6,10 @@ use crate::{
 };
 use arcstr::Substr;
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::ControlFlow,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Link {
@@ -52,12 +55,14 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
     }
 
     for (name, name_node) in nodes {
-        let Some((instantiated_node, _)) =
-            db.collect_facts::<Instantiated>()
-                .into_iter()
-                .find(|(_, instantiated)| {
-                    instantiated.from == name_node && instantiated.source_node == source_node
-                })
+        let Some(instantiated_node) =
+            db.for_each_fact::<Instantiated, _>(&mut |_, node, instantiated| {
+                if instantiated.from == name_node && instantiated.source_node == source_node {
+                    ControlFlow::Break(node)
+                } else {
+                    ControlFlow::Continue(())
+                }
+            })
         else {
             continue;
         };

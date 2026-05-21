@@ -27,7 +27,7 @@ use crate::{
 };
 use arcstr::Substr;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, mem};
+use std::{collections::BTreeMap, mem, ops::ControlFlow};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LibraryArtifact<T> {
@@ -102,14 +102,15 @@ pub fn compile<K: Ord>(
         solver.substitutions.extend(top_level.substitutions.clone());
 
         // If the definition is an instance, imply it inside itself
-        for (_, Instances(instances)) in db.collect_facts() {
+        db.for_each_fact::<Instances, ()>(&mut |_, _, Instances(instances)| {
             for instance in instances {
                 if instance.node == definition_node {
                     solver.imply(instance.clone());
                     break;
                 }
             }
-        }
+            ControlFlow::Continue(())
+        });
 
         // Also imply all of the definition's bounds (so they remain generic
         // while resolving the definition)

@@ -1,6 +1,6 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::{any::TypeId, collections::BTreeMap};
+use std::{any::TypeId, collections::BTreeMap, ops::ControlFlow};
 use wipple_core::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
@@ -101,21 +101,23 @@ pub fn run_mismatched_trait(
     mut filter: impl FnMut(&Db, Node) -> bool,
     init: impl Fn(&mut Solver),
 ) -> Vec<Solver> {
-    let mut solvers = Vec::new();
-    for (node, group) in db
-        .collect_facts()
-        .into_iter()
-        .map(|(node, Typed(group))| (node, group.clone()))
-        .collect::<Vec<_>>()
-    {
-        let Some(group) = group else {
-            continue;
+    let mut groups = Vec::new();
+    db.for_each_fact::<Typed, ()>(&mut |_, node, Typed(group)| {
+        let Some(group) = group.as_ref() else {
+            return ControlFlow::Continue(());
         };
 
         if !filter(db, node) || group.tys.len() <= 1 {
-            continue;
+            return ControlFlow::Continue(());
         }
 
+        groups.push((node, group.clone()));
+
+        ControlFlow::Continue(())
+    });
+
+    let mut solvers = Vec::new();
+    for (node, group) in groups {
         for permutations in group.tys.clone().into_iter().permutations(2) {
             let mut permutations = permutations.into_iter();
             let left = permutations.next().unwrap();
