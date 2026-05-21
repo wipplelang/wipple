@@ -2,12 +2,17 @@
     import Box from "$lib/components/Box.svelte";
     import { onMount } from "svelte";
     // @ts-expect-error
-    import { default as RealTurtle } from "real-turtle";
+    import RealTurtle from "real-turtle";
     import turtleImage from "$lib/assets/turtle.png";
     import { animalSvgUrl } from "$lib/assets/animals";
     import { getColor } from "$lib/assets/colors";
     import type { Action } from "svelte/action";
     import { scale } from "svelte/transition";
+
+    let RealTurtleConstructor = RealTurtle;
+    while (typeof RealTurtleConstructor === "object" && "default" in RealTurtleConstructor) {
+        RealTurtleConstructor = RealTurtleConstructor.default;
+    }
 
     const canvasSize = 400;
     const canvasPixelRatio = 2.5;
@@ -16,7 +21,7 @@
     let turtle: RealTurtle;
 
     const initializeTurtle = async (canvas: HTMLCanvasElement) => {
-        const turtle = new RealTurtle.default(canvas, {
+        const turtle = new RealTurtleConstructor(canvas, {
             async: true,
             image: turtleImage,
             state: {
