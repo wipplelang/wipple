@@ -1,5 +1,4 @@
 import { makeChannel, readMessage, writeMessage, type Channel } from "sync-message";
-import "core-js/proposals/array-buffer-base64";
 import initRuntime from "./runtime";
 
 export type Env = Record<string, (input: any) => Promise<any>>;
@@ -28,14 +27,14 @@ export const init = (worker: Worker, env: Env) => {
     });
 
     return {
-        run: async (executable: string) => {
-            worker.postMessage({ type: "run", channel, executable });
+        run: async (executable: ArrayBuffer) => {
+            worker.postMessage({ type: "run", channel, executable }, [executable]);
             await done;
         },
     };
 };
 
-const run = async (channel: Channel, executable: string) => {
+const run = async (channel: Channel, executable: ArrayBuffer) => {
     const env = new Proxy(
         {},
         {
@@ -49,9 +48,7 @@ const run = async (channel: Channel, executable: string) => {
 
     const runtime = initRuntime(env);
 
-    const data = Uint8Array.fromBase64(executable);
-
-    const wasm = await WebAssembly.instantiate(data, { runtime });
+    const wasm = await WebAssembly.instantiate(executable, { runtime });
 
     const { main, memory } = wasm.instance.exports as any;
 

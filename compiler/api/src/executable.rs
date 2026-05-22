@@ -1,12 +1,11 @@
 use crate::CompileResult;
-use base64::prelude::*;
 use wasm_bindgen::prelude::*;
 use wipple_core::codegen::{self, codegen, wasm};
 
 #[wasm_bindgen]
 impl CompileResult {
     #[wasm_bindgen]
-    pub fn executable(&self) -> Option<String> {
+    pub fn executable(&self) -> Option<Box<[u8]>> {
         let program = codegen(&self.db, &self.statements, &self.lib_statements).ok()?;
 
         let wat = wasm::write_to_string(
@@ -21,6 +20,6 @@ impl CompileResult {
 
         let wasm = wat::parse_str(wat).ok()?;
 
-        Some(BASE64_STANDARD.encode(wasm))
+        Some(wasm.into_boxed_slice())
     }
 }

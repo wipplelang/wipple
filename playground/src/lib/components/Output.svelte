@@ -22,14 +22,70 @@
 
     let { runState = $bindable(), ondiagnostics, ongroups, onchangeline }: Props = $props();
 
-    let runnerWorker: Worker | undefined = undefined;
+    let runnerWorker = $state(new RunnerWorker());
 
-    const createRunnerWorker = (env: runner.Env) => {
-        runnerWorker?.terminate();
-        runnerWorker = new RunnerWorker();
+    const runnerMethods = $derived.by(() => {
+        let currentPrompt: {
+            index: number;
+            firstSubmission: boolean;
+            input: Promise<string>;
+        };
+
+        const env: runner.Env = {
+            trace: async (trace: any) => {
+                onchangeline(trace.line);
+            },
+            display: async (message: string) => {
+                output.push({
+                    type: "display",
+                    value: message,
+                });
+            },
+            beginPrompt: async (message: string) => {
+                currentPrompt = {
+                    index: output.length,
+                    firstSubmission: true,
+                    input: new Promise<string>((resolve) => {
+                        output.push({
+                            type: "prompt",
+                            prompt: message,
+                            onsubmit: resolve,
+                            valid: true,
+                        });
+                    }),
+                };
+            },
+            getPrompt: async () => {
+                const item = output[currentPrompt.index] as PromptOutputItem;
+
+                if (!currentPrompt.firstSubmission) {
+                    item.valid = false;
+                } else {
+                    currentPrompt.firstSubmission = false;
+                }
+
+                const input = await currentPrompt.input;
+
+                currentPrompt.input = new Promise<string>((resolve) => {
+                    item.onsubmit = resolve;
+                });
+
+                return input;
+            },
+            endPrompt: async () => {
+                const item = output[currentPrompt.index] as PromptOutputItem;
+                item.onsubmit = undefined;
+                item.valid = true;
+            },
+        };
+
+        // Wrap runtime functions (which are Svelte proxy objects)
+        for (const key in runtimeOutput) {
+            env[key] = (...args) => runtimeOutput[key](...args);
+        }
 
         return runner.init(runnerWorker, env);
-    };
+    });
 
     const playground = $derived(context.playground);
     const runtime = $derived(playground && runtimes[playground.runtime]);
@@ -90,69 +146,7 @@
 
         try {
             await runtimeOutput?._initialize?.();
-
-            let currentPrompt: {
-                index: number;
-                firstSubmission: boolean;
-                input: Promise<string>;
-            };
-
-            const env: runner.Env = {
-                trace: async (trace: any) => {
-                    onchangeline(trace.line);
-                },
-                display: async (message: string) => {
-                    output.push({
-                        type: "display",
-                        value: message,
-                    });
-                },
-                beginPrompt: async (message: string) => {
-                    currentPrompt = {
-                        index: output.length,
-                        firstSubmission: true,
-                        input: new Promise<string>((resolve) => {
-                            output.push({
-                                type: "prompt",
-                                prompt: message,
-                                onsubmit: resolve,
-                                valid: true,
-                            });
-                        }),
-                    };
-                },
-                getPrompt: async () => {
-                    const item = output[currentPrompt.index] as PromptOutputItem;
-
-                    if (!currentPrompt.firstSubmission) {
-                        item.valid = false;
-                    } else {
-                        currentPrompt.firstSubmission = false;
-                    }
-
-                    const input = await currentPrompt.input;
-
-                    currentPrompt.input = new Promise<string>((resolve) => {
-                        item.onsubmit = resolve;
-                    });
-
-                    return input;
-                },
-                endPrompt: async () => {
-                    const item = output[currentPrompt.index] as PromptOutputItem;
-                    item.onsubmit = undefined;
-                    item.valid = true;
-                },
-            };
-
-            // Wrap runtime functions (which are Svelte proxy objects)
-            for (const key in runtimeOutput) {
-                env[key] = (...args) => runtimeOutput[key](...args);
-            }
-
-            const { run } = createRunnerWorker(env);
-
-            await run(response.executable);
+            await runnerMethods.run(response.executable!);
         } finally {
             await stopRunning(false);
         }
@@ -162,8 +156,10 @@
         runState = undefined;
         abortController?.abort();
 
-        runnerWorker?.terminate();
-        runnerWorker = undefined;
+        if (force) {
+            runnerWorker?.terminate();
+            runnerWorker = new RunnerWorker();
+        }
 
         await runtimeOutput?._cleanup?.(force);
 

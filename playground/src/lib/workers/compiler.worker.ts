@@ -86,12 +86,12 @@ const compile = (
 
     const groups = options.groups ? result.groups() : undefined;
 
-    const executableBase64 = result.executable();
-    if (executableBase64 == null) {
+    const executable = result.executable()?.buffer;
+    if (executable == null) {
         throw new Error("missing executable");
     }
 
-    return { groups, graph, executable: executableBase64 };
+    return { groups, graph, executable, transfer: [executable] };
 };
 
 const documentation = (options: PlaygroundMetadata) => {
@@ -113,7 +113,7 @@ const methods = { loadLibrary, ideInfo, compile, documentation, format };
 export type CompilerWorkerMethods = {
     [K in keyof typeof methods]: (
         ...options: Parameters<(typeof methods)[K]>
-    ) => Promise<ReturnType<(typeof methods)[K]>>;
+    ) => Promise<Omit<ReturnType<(typeof methods)[K]>, "transfer">>;
 };
 
 export type CompilerWorkerResponse<K extends keyof CompilerWorkerMethods> = Awaited<
@@ -157,16 +157,45 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
         }
 
         let result = await methods[method](e.data[method]);
+        console.log({ result });
+        let transfer: any[] = [];
         if (result != null) {
-            // Internally calls `toJSON`, which exposes the Wasm object properties
-            result = JSON.parse(JSON.stringify(result));
+            if ("transfer" in result) {
+                transfer = result.transfer as any[];
+                delete result.transfer;
+            }
+
+            const convert = (obj: any): any => {
+                if (transfer.includes(obj)) {
+                    return obj;
+                }
+
+                if (typeof obj === "object" && obj != null) {
+                    // Expose the Wasm object properties
+                    if ("toJSON" in obj) {
+                        return obj.toJSON();
+                    }
+
+                    if (Array.isArray(obj)) {
+                        return obj.map(convert);
+                    }
+
+                    return Object.fromEntries(
+                        Object.entries(obj).map(([key, value]) => [key, convert(value)]),
+                    );
+                } else {
+                    return obj;
+                }
+            };
+
+            result = convert(result);
         }
 
         if (import.meta.env.DEV) {
             console.log(`compiler(${method}) response:`, result);
         }
 
-        postMessage(result);
+        postMessage(result, transfer);
     };
 
     postMessage("ready");

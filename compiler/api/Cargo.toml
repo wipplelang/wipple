@@ -10,7 +10,6 @@ crate-type = ["cdylib"]
 workspace = true
 
 [dependencies]
-base64 = "0.22"
 rmp-serde = "1"
 wasm-bindgen = "0.2"
 wat = "1"
