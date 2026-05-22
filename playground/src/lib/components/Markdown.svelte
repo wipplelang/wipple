@@ -21,9 +21,12 @@
             {@const ast = getAstNode().current}
             {@const group = parseFloat((ast.properties?.dataGroup as string) ?? "-1")}
             {@const code = ast.children?.[0]?.value ?? ""}
-            {@const groups = highlightGroups
-                ? createGroups(context.diagnostic!.groups, [{ start: 0, end: code.length, group }])
-                : []}
+            {@const groups =
+                highlightGroups && context.diagnostic != null
+                    ? createGroups(context.diagnostic.groups, [
+                          { start: 0, end: code.length, group },
+                      ])
+                    : []}
 
             <span class="inline-flex size-fit">
                 <CodeEditor

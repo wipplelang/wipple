@@ -2,17 +2,19 @@
 
 import * as vscode from "vscode";
 import { readFileSync } from "node:fs";
-import * as compiler from "compiler";
+import initWipple, * as wipple from "wipple";
 import { debounce } from "./util";
 
 const foundationBin = readFileSync(new URL("../../library/dist/foundation.bin", import.meta.url));
-compiler.register_library("foundation", foundationBin);
 
 const diagnosticCollection = vscode.languages.createDiagnosticCollection("wipple");
 
 const log = vscode.window.createOutputChannel("wipple");
 
-export const activate = (context: vscode.ExtensionContext) => {
+export const activate = async (context: vscode.ExtensionContext) => {
+    await initWipple({ module_or_path: readFileSync(wipple.modulePath) });
+    wipple.register_library("foundation", foundationBin);
+
     context.subscriptions.push(diagnosticCollection);
 
     vscode.workspace.textDocuments.forEach(update);
@@ -41,7 +43,7 @@ export const activate = (context: vscode.ExtensionContext) => {
     vscode.languages.registerCompletionItemProvider("wipple", { provideCompletionItems });
 };
 
-const documents = new Map<vscode.TextDocument, compiler.Ide>();
+const documents = new Map<vscode.TextDocument, wipple.Ide>();
 
 const update = debounce(150, (document: vscode.TextDocument) => {
     if (document.languageId !== "wipple") return;
@@ -49,15 +51,15 @@ const update = debounce(150, (document: vscode.TextDocument) => {
     documents.get(document)?.[Symbol.dispose]();
     documents.delete(document);
 
-    let ide: compiler.Ide | null = null;
-    using result = compiler.compile(
-        [new compiler.File(document.uri.fsPath, document.getText())],
+    let ide: wipple.Ide | null = null;
+    using result = wipple.compile(
+        [new wipple.File(document.uri.fsPath, document.getText())],
         "foundation",
     );
 
     if (result == null) return;
 
-    ide = new compiler.Ide(result);
+    ide = new wipple.Ide(result);
 
     diagnosticCollection.set(
         document.uri,
@@ -178,7 +180,7 @@ const provideDocumentFormattingEdits = (
 ): vscode.ProviderResult<vscode.TextEdit[]> => {
     if (document.languageId !== "wipple") return;
 
-    const formatted = compiler.format(document.getText());
+    const formatted = wipple.format(document.getText());
 
     if (formatted == null) return [];
 
@@ -222,7 +224,7 @@ const provideCompletionItems = (
     });
 };
 
-const convertRange = (range: compiler.IdeRange) =>
+const convertRange = (range: wipple.IdeRange) =>
     new vscode.Range(
         new vscode.Position(range.start.line - 1, range.start.column - 1),
         new vscode.Position(range.end.line - 1, range.end.column - 1),

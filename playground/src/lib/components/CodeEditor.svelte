@@ -1,8 +1,8 @@
 <script module lang="ts">
-    import type * as compiler from "compiler";
+    import type * as wipple from "wipple";
     import type { Groups } from "$lib/models/Groups";
 
-    export const createGroups = (count: number, locations: compiler.DiagnosticLocation[]) => {
+    export const createGroups = (count: number, locations: wipple.DiagnosticLocation[]) => {
         const groups: Groups = new Array(count).fill(undefined).map(() => ({ locations: [] }));
 
         for (const [index, { start, end, group }] of (locations ?? []).entries()) {
@@ -52,7 +52,7 @@
         groups?: Groups;
         highlightedGroup?: number;
         diagnostic?: {
-            value: compiler.Diagnostic;
+            value: { locations: wipple.DiagnosticLocation[] };
             hideWidget?: boolean;
             onclose?: () => void;
         };
@@ -336,12 +336,6 @@
             },
         );
 
-    $effect(() => {
-        editorView.dispatch({
-            effects: markNumbers.reconfigure(createMarkNumbers()),
-        });
-    });
-
     // MARK: - Highlight assets
 
     const markAssets = markRegex(
@@ -439,12 +433,6 @@
             ];
         });
 
-    $effect(() => {
-        editorView.dispatch({
-            effects: markNames.reconfigure(createMarkNames(highlights)),
-        });
-    });
-
     // MARK: - Highlight running line
 
     const markRunningLine = new Compartment();
@@ -458,12 +446,6 @@
 
         return [markRange(from, from, () => lineDecoration("running-line"))];
     };
-
-    $effect(() => {
-        editorView.dispatch({
-            effects: markRunningLine.reconfigure(createMarkRunningLine(runningLine)),
-        });
-    });
 
     // MARK: - Display diagnostic
 
@@ -585,18 +567,9 @@
         });
     };
 
-    $effect(() => {
-        code; // required to update the position of the diagnostic
-        groups;
-
-        editorView.dispatch({
-            effects: markDiagnostic.reconfigure(createMarkGroups(diagnostic?.hideWidget ?? true)),
-        });
-    });
-
-    $effect(() => {
+    const createMarkDiagnostic = () => {
         if (diagnostic != null) {
-            return;
+            return createMarkGroups(diagnostic.hideWidget ?? true);
         }
 
         const decoration =
@@ -609,16 +582,12 @@
                   })
                 : undefined;
 
-        editorView.dispatch({
-            effects: markDiagnostic.reconfigure(
-                decoration != null
-                    ? ViewPlugin.fromClass(class {}, {
-                          decorations: () => RangeSet.of([decoration], true),
-                      })
-                    : [],
-            ),
-        });
-    });
+        return decoration != null
+            ? ViewPlugin.fromClass(class {}, {
+                  decorations: () => RangeSet.of([decoration], true),
+              })
+            : [];
+    };
 
     const diagnosticWidget = new Compartment();
 
@@ -652,16 +621,27 @@
     };
 
     let prevDiagnostic = diagnostic?.value;
+
     $effect(() => {
         code; // required to update the position of the diagnostic
+        groups;
+        highlightedGroup;
         diagnostic;
+        runningLine;
+        highlights;
 
         editorView.dispatch({
-            effects: diagnosticWidget.reconfigure(
-                diagnostic
-                    ? createDiagnosticWidget(diagnostic, diagnostic.value !== prevDiagnostic)
-                    : [],
-            ),
+            effects: [
+                markNumbers.reconfigure(createMarkNumbers()),
+                markNames.reconfigure(createMarkNames(highlights)),
+                markRunningLine.reconfigure(createMarkRunningLine(runningLine)),
+                markDiagnostic.reconfigure(createMarkDiagnostic()),
+                diagnosticWidget.reconfigure(
+                    diagnostic
+                        ? createDiagnosticWidget(diagnostic, diagnostic.value !== prevDiagnostic)
+                        : [],
+                ),
+            ],
         });
 
         prevDiagnostic = diagnostic?.value;

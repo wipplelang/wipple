@@ -1,11 +1,7 @@
 {
-    "name": "compiler",
+    "name": "wipple",
     "private": true,
-    "type": "module",
-    "exports": {
-        "node": "./index.node.js",
-        "browser": "./index.browser.js"
-    },
+    "main": "dist/index.js",
     "scripts": {
         "build": "./build.sh"
     },

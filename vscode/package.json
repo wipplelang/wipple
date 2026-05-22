@@ -3,12 +3,11 @@
     "displayName": "Wipple",
     "description": "",
     "version": "0.0.0",
-    "type": "module",
     "engines": {
         "vscode": "^1.118.0"
     },
     "scripts": {
-        "build": "node build.js",
+        "build": "node build.mjs",
         "extension": "npm run build && vsce package --no-dependencies --allow-missing-repository --skip-license && code --install-extension wipple-vscode-0.0.0.vsix"
     },
     "activationEvents": [],
@@ -40,7 +39,7 @@
         "configuration": {}
     },
     "dependencies": {
-        "compiler": "file:../compiler/api"
+        "wipple": "file:../compiler/api"
     },
     "devDependencies": {
         "@chialab/esbuild-plugin-meta-url": "^0.19.1",

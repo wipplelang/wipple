@@ -34,8 +34,7 @@
         "tailwindcss": "^4.3.0",
         "typescript": "^6.0.3",
         "typescript-eslint": "^8.59.4",
-        "vite": "^8.0.14",
-        "compiler": "file:../compiler/api"
+        "vite": "^8.0.14"
     },
     "dependencies": {
         "@codemirror/commands": "^6.10.3",
@@ -68,6 +67,7 @@
         "sync-message": "^0.0.12",
         "tailwindcss-animated": "^2.1.0",
         "tonal": "^6.4.3",
-        "tone": "^15.1.22"
+        "tone": "^15.1.22",
+        "wipple": "file:../compiler/api"
     }
 }

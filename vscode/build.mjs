@@ -12,7 +12,7 @@ esbuild.build({
     platform: "node",
     bundle: true,
     sourcemap: true,
-    format: "esm",
+    format: "cjs",
     loader: { ".wasm": "file" },
     external: ["vscode"],
     plugins: [metaUrl()],

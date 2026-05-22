@@ -27,7 +27,7 @@ export const init = (worker: Worker, env: Env) => {
     });
 
     return {
-        run: async (executable: ArrayBuffer) => {
+        run: async (executable: ArrayBufferLike) => {
             worker.postMessage({ type: "run", channel, executable }, [executable]);
             await done;
         },

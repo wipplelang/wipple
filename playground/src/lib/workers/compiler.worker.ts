@@ -1,6 +1,8 @@
 import type { PlaygroundMetadata } from "$lib/models/Playground";
-import * as compiler from "compiler";
+import initWipple, * as wipple from "wipple";
 import { Mutex } from "async-mutex";
+
+await initWipple({ module_or_path: fetch(wipple.modulePath) });
 
 interface LibraryMetadata {
     library?: string;
@@ -46,7 +48,7 @@ const loadLibrary = async (options: { name: string }) => {
     }
 
     if (!loadedLibraries.has(options.name)) {
-        compiler.register_library(options.name, bin);
+        wipple.register_library(options.name, bin);
         loadedLibraries.set(options.name, [library, bin]);
     }
 };
@@ -72,7 +74,7 @@ const ideInfo = (options: PlaygroundMetadata) => {
 const compile = (
     options: PlaygroundMetadata & { code: string; groups?: boolean; graph?: boolean },
 ) => {
-    using result = compiler.compile([new compiler.File("input", options.code)], options.library);
+    using result = wipple.compile([new wipple.File("input", options.code)], options.library);
     if (result == null) {
         throw new Error("compilation failed");
     }
@@ -104,7 +106,7 @@ const documentation = (options: PlaygroundMetadata) => {
 };
 
 const format = (options: { code: string }) => {
-    const formatted = compiler.format(options.code);
+    const formatted = wipple.format(options.code);
     return { code: formatted };
 };
 
