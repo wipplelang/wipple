@@ -157,7 +157,6 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
         }
 
         let result = await methods[method](e.data[method]);
-        console.log({ result });
         let transfer: any[] = [];
         if (result != null) {
             if ("transfer" in result) {
