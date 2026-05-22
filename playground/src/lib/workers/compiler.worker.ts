@@ -171,8 +171,8 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
 
                 if (typeof obj === "object" && obj != null) {
                     // Expose the Wasm object properties
-                    if ("toJSON" in obj) {
-                        return obj.toJSON();
+                    if (obj.toJSON != null) {
+                        return convert(obj.toJSON());
                     }
 
                     if (Array.isArray(obj)) {
