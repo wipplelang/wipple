@@ -8,11 +8,7 @@
 
     const { graph, showFunctionsAndStatements }: Props = $props();
 
-    const visualizationUrl = $derived.by(() => {
-        if (!graph) {
-            return undefined;
-        }
-
+    const visualizationUrl = (() => {
         const base = PUBLIC_VISUALIZER_URL;
         if (!base) {
             return undefined;
@@ -27,7 +23,11 @@
         }
 
         return url.toString();
-    });
+    })();
+
+    const sendEmbed = (visualizationWindow: Window) => {
+        visualizationWindow.postMessage({ embed: $state.snapshot(graph) }, "*");
+    };
 
     let visualizationIFrame = $state<HTMLIFrameElement>();
     $effect(() => {
@@ -44,18 +44,31 @@
                 }
 
                 if (event.data === "requestEmbed") {
-                    visualizationWindow.postMessage({ embed: $state.snapshot(graph) }, "*");
+                    sendEmbed(visualizationWindow);
                 }
             });
         });
     });
+
+    $effect(() => {
+        graph;
+
+        if (visualizationIFrame == null) {
+            return;
+        }
+
+        const visualizationWindow = visualizationIFrame.contentWindow;
+        if (!visualizationWindow) {
+            return;
+        }
+
+        sendEmbed(visualizationWindow);
+    });
 </script>
 
-{#key graph}
-    <iframe
-        bind:this={visualizationIFrame}
-        title="Visualization"
-        class="aspect-[3/2] flex-1 rounded-xl border-[1.5px] border-black/5 dark:bg-gray-800"
-        src={visualizationUrl}
-    ></iframe>
-{/key}
+<iframe
+    bind:this={visualizationIFrame}
+    title="Visualization"
+    class="aspect-[3/2] flex-1 rounded-xl border-[1.5px] border-black/5 dark:bg-gray-800"
+    src={visualizationUrl}
+></iframe>
