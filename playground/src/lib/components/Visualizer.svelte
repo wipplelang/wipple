@@ -1,8 +1,9 @@
 <script lang="ts">
     import { PUBLIC_VISUALIZER_URL } from "$env/static/public";
+    import type * as wipple from "wipple";
 
     interface Props {
-        graph: any;
+        graph: wipple.Graph | undefined;
         showFunctionsAndStatements?: boolean;
     }
 
@@ -26,7 +27,12 @@
     })();
 
     const sendEmbed = (visualizationWindow: Window) => {
-        visualizationWindow.postMessage({ embed: $state.snapshot(graph) }, "*");
+        const embed = $state.snapshot(graph);
+        if (embed == null) {
+            return;
+        }
+
+        visualizationWindow.postMessage({ embed }, "*");
     };
 
     let visualizationIFrame = $state<HTMLIFrameElement>();
@@ -69,6 +75,6 @@
 <iframe
     bind:this={visualizationIFrame}
     title="Visualization"
-    class="aspect-[3/2] flex-1 rounded-xl border-[1.5px] border-black/5 dark:bg-gray-800"
+    class="w-full h-full"
     src={visualizationUrl}
 ></iframe>

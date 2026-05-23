@@ -2,7 +2,7 @@ import { preset } from "./models/Preset";
 import turtlePresetIcon from "./assets/turtle-preset-icon.png";
 import musicPresetIcon from "./assets/music-preset-icon.png";
 import mathPresetIcon from "./assets/math-preset-icon.png";
-import blankPresetIcon from "./assets/blank-preset-icon.png";
+import typeCircuitsPresetIcon from "./assets/type-circuits-icon.png";
 
 const presets = [
     preset({
@@ -24,9 +24,9 @@ const presets = [
         runtime: "math",
     }),
     preset({
-        icon: blankPresetIcon,
-        name: "No template",
-        description: "Run and visualize your code",
+        icon: typeCircuitsPresetIcon,
+        name: "Visualizer",
+        description: "Visualize your code with Type Circuits",
         runtime: "foundation",
     }),
 ];

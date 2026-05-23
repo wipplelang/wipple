@@ -18,6 +18,8 @@
     import { onMount } from "svelte";
     import Footer from "$lib/components/Footer.svelte";
     import type { DocumentationItem } from "$lib/models/Documentation";
+    import Visualizer from "$lib/components/Visualizer.svelte";
+    import { debounce } from "$lib/util";
 
     const loadPlayground = (): Playground | undefined => {
         const json = window.localStorage.getItem("playground");
@@ -161,10 +163,15 @@
 
     let runState = $state<RunState>();
 
+    const compile = debounce(250, () => {
+        output?.compile();
+    });
+
     $effect(() => {
         playground?.code;
         context.diagnostic = undefined;
         context.groups = [];
+        compile();
     });
 
     const groups = $derived(
@@ -254,7 +261,9 @@
                         <CodeEditor
                             bind:this={editor}
                             bind:code={playground.code}
-                            {groups}
+                            groups={runtime?.visualizerEnabled || context.diagnostic != null
+                                ? groups
+                                : undefined}
                             diagnostic={dragInfo == null && context.diagnostic != null
                                 ? {
                                       value: context.diagnostic,
@@ -281,6 +290,12 @@
                         {/if}
                     </div>
                 </Box>
+
+                {#if runtime?.visualizerEnabled}
+                    <Box class="flex-1">
+                        <Visualizer graph={context.graph} />
+                    </Box>
+                {/if}
             </div>
 
             <div class="flex max-w-[550px] flex-1 flex-col gap-[10px] overflow-auto">
@@ -325,6 +340,9 @@
                     }}
                     ongroups={(groups) => {
                         context.groups = groups;
+                    }}
+                    ongraph={(graph) => {
+                        context.graph = graph;
                     }}
                 />
             </div>

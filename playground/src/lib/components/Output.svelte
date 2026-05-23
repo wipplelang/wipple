@@ -9,18 +9,25 @@
     import type { Groups } from "$lib/models/Groups";
     import Markdown from "./Markdown.svelte";
     import Prompt from "./Prompt.svelte";
-    import Visualizer from "./Visualizer.svelte";
+    import type * as wipple from "wipple";
 
     export type RunState = "compiling" | "running";
 
     interface Props {
         runState: RunState | undefined;
-        ondiagnostics: (diagnostics: any[]) => void;
+        ondiagnostics: (diagnostics: wipple.Diagnostic[]) => void;
+        ongraph: (graph: wipple.Graph) => void;
         ongroups: (groups: Groups) => void;
         onchangeline: (line: number | undefined) => void;
     }
 
-    let { runState = $bindable(), ondiagnostics, ongroups, onchangeline }: Props = $props();
+    let {
+        runState = $bindable(),
+        ondiagnostics,
+        ongraph,
+        ongroups,
+        onchangeline,
+    }: Props = $props();
 
     let runnerWorker = $state(new RunnerWorker());
 
@@ -90,11 +97,55 @@
     const playground = $derived(context.playground);
     const runtime = $derived(playground && runtimes[playground.runtime]);
 
-    let graph = $state<any>();
     let output = $state<OutputItem[]>([]);
     let runtimeOutput = $state<any>();
 
-    let abortController: AbortController | undefined;
+    let isCompiling = false;
+    export const compile = async ({ executable = false } = {}) => {
+        if (playground == null) {
+            return undefined;
+        }
+
+        if (isCompiling) {
+            terminateRunnerWorker();
+        }
+
+        const { library, visualizerEnabled } = runtimes[playground.runtime];
+
+        let response: CompilerWorkerResponse<"compile">;
+        try {
+            response = await compilerWorker.compile({
+                code: playground.code,
+                library,
+                groups: visualizerEnabled,
+                graph: visualizerEnabled,
+                executable,
+            });
+        } catch (error) {
+            console.error(error);
+            return;
+        } finally {
+            runState = undefined;
+        }
+
+        if ("graph" in response && response.graph != null) {
+            ongraph(response.graph);
+        }
+
+        if ("groups" in response && response.groups != null) {
+            ongroups(response.groups);
+        }
+
+        if ("diagnostics" in response && response.diagnostics != null) {
+            if (executable) {
+                ondiagnostics(response.diagnostics);
+            }
+
+            return;
+        }
+
+        return response.executable;
+    };
 
     export const run = async () => {
         if (playground == null || runState != null) {
@@ -109,35 +160,9 @@
         // Needed for runtimes that perform setup within a user event
         await runtimeOutput?._initializeOnClick?.();
 
-        abortController = new AbortController();
-
-        const { library, visualizerEnabled } = runtimes[playground.runtime];
-
-        let response: CompilerWorkerResponse<"compile">;
-        try {
-            response = await compilerWorker.compile({
-                code: playground.code,
-                library,
-                groups: visualizerEnabled,
-                graph: visualizerEnabled,
-            });
-        } catch (error) {
-            console.error(error);
-            abortController = undefined;
+        const executable = await compile({ executable: true });
+        if (executable == null) {
             return;
-        } finally {
-            runState = undefined;
-        }
-
-        graph = response.graph;
-
-        if ("diagnostics" in response && response.diagnostics != null) {
-            ondiagnostics(response.diagnostics);
-            return;
-        }
-
-        if ("groups" in response && response.groups != null) {
-            ongroups(response.groups);
         }
 
         runState = "running";
@@ -146,19 +171,22 @@
 
         try {
             await runtimeOutput?._initialize?.();
-            await runnerMethods.run(response.executable!);
+            await runnerMethods.run(executable);
         } finally {
             await stopRunning(false);
         }
     };
 
+    const terminateRunnerWorker = () => {
+        runnerWorker?.terminate();
+        runnerWorker = new RunnerWorker();
+    };
+
     const stopRunning = async (force: boolean) => {
         runState = undefined;
-        abortController?.abort();
 
         if (force) {
-            runnerWorker?.terminate();
-            runnerWorker = new RunnerWorker();
+            terminateRunnerWorker();
         }
 
         await runtimeOutput?._cleanup?.(force);
@@ -170,12 +198,6 @@
 <div class="flex h-full flex-col gap-[10px] overflow-auto">
     {#if runtime?.Output}
         <runtime.Output bind:this={runtimeOutput} />
-    {/if}
-
-    {#if runtime?.visualizerEnabled && graph != null}
-        <div class="aspect-[3/2] max-h-[400px]">
-            <Visualizer {graph} />
-        </div>
     {/if}
 
     {#if runtime?.Output == null && output.length === 0}

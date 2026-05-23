@@ -72,7 +72,12 @@ const ideInfo = (options: PlaygroundMetadata) => {
 };
 
 const compile = (
-    options: PlaygroundMetadata & { code: string; groups?: boolean; graph?: boolean },
+    options: PlaygroundMetadata & {
+        code: string;
+        groups?: boolean;
+        graph?: boolean;
+        executable?: boolean;
+    },
 ) => {
     using result = wipple.compile([new wipple.File("input", options.code)], options.library);
     if (result == null) {
@@ -88,12 +93,15 @@ const compile = (
 
     const groups = options.groups ? result.groups() : undefined;
 
-    const executable = result.executable()?.buffer;
-    if (executable == null) {
-        throw new Error("missing executable");
+    let executable: ArrayBufferLike | undefined;
+    if (options.executable) {
+        executable = result.executable()?.buffer;
+        if (executable == null) {
+            throw new Error("missing executable");
+        }
     }
 
-    return { groups, graph, executable, transfer: [executable] };
+    return { groups, graph, executable, transfer: executable ? [executable] : [] };
 };
 
 const documentation = (options: PlaygroundMetadata) => {

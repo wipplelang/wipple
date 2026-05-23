@@ -548,7 +548,7 @@
         return decoration.range(options.start, options.end);
     };
 
-    const createMarkGroups = (hideWidget: boolean) => {
+    const createMarkGroups = (hideWidget = true) => {
         const decorations = groups.flatMap(({ locations }, group) =>
             locations.flatMap(({ start, end, primary }) => {
                 const decoration = getMarkGroupDecoration({
@@ -568,10 +568,6 @@
     };
 
     const createMarkDiagnostic = () => {
-        if (diagnostic != null) {
-            return createMarkGroups(diagnostic.hideWidget ?? true);
-        }
-
         const decoration =
             highlightedGroup != null
                 ? getMarkGroupDecoration({
@@ -635,11 +631,17 @@
                 markNumbers.reconfigure(createMarkNumbers()),
                 markNames.reconfigure(createMarkNames(highlights)),
                 markRunningLine.reconfigure(createMarkRunningLine(runningLine)),
-                markDiagnostic.reconfigure(createMarkDiagnostic()),
+                markDiagnostic.reconfigure([createMarkDiagnostic()]),
                 diagnosticWidget.reconfigure(
                     diagnostic
-                        ? createDiagnosticWidget(diagnostic, diagnostic.value !== prevDiagnostic)
-                        : [],
+                        ? [
+                              createMarkGroups(diagnostic.hideWidget),
+                              createDiagnosticWidget(
+                                  diagnostic,
+                                  diagnostic.value !== prevDiagnostic,
+                              ),
+                          ]
+                        : [createMarkGroups()],
                 ),
             ],
         });
