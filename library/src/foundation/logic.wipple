@@ -49,7 +49,7 @@ Order : value => trait (value value -> Ordering)
 -- Cannot put items that are [`value`] into order.
 -- You can't use comparison operators like `>` or `<` with [`value`]
 -- because it doesn't support ordering.
-[default] [error] instance (Order value)
+default error instance (Order value)
 instance (Order Number) : a b -> when (intrinsic "number-ordering" a b) {
   -1 -> Is-Less-Than
   0 -> Is-Equal-To

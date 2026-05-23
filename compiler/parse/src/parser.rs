@@ -173,6 +173,18 @@ impl<'a> Parser<'a> {
         Ok(token.value.clone())
     }
 
+    pub fn soft_keyword(&mut self, keyword: &'static str) -> Result<bool, ParseError> {
+        self.parse_optional(|parser| {
+            let token = parser.token(TokenKind::LowercaseName)?;
+            if token != keyword {
+                return Err(parser.error(format!("Expected `{keyword}`"), None));
+            }
+
+            Ok(())
+        })
+        .map(|result| result.is_some())
+    }
+
     pub fn commit(&mut self, trace: &'static str) {
         self.stack.last_mut().unwrap().trace = Some(trace);
     }

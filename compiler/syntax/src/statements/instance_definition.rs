@@ -56,6 +56,8 @@ pub struct InstanceDefinition {
     pub span: Span,
     pub comments: Vec<Str>,
     pub attributes: Vec<AstKey>,
+    pub is_default: bool,
+    pub is_error: bool,
     pub bound: BoundConstraint,
     pub constraints: Vec<AstKey>,
     pub value: Option<AstKey>,
@@ -67,6 +69,8 @@ pub fn parse_instance_definition_statement(
     let comments = parse_comments(parser)?;
     let attributes = parse_attributes(parser)?;
     let span = parser.spanned();
+    let is_default = parser.soft_keyword("default")?;
+    let is_error = parser.soft_keyword("error")?;
     let (bound, constraints) = parse_instance_constraints(parser)?;
     let instance_span = span(parser);
     let value = parser.parse_optional(|parser| {
@@ -79,6 +83,8 @@ pub fn parse_instance_definition_statement(
         span: instance_span,
         comments,
         attributes,
+        is_default,
+        is_error,
         bound,
         constraints,
         value,
@@ -120,6 +126,8 @@ impl Visit for InstanceDefinition {
             Box::new(definitions::InstanceDefinition {
                 comments: self.comments.clone(),
                 attributes: InstanceDefinitionAttributes::parse(db, &attributes),
+                default: self.is_default,
+                error: self.is_error,
                 value: self.value.as_ref().map(|_| db.node()),
             }),
         )]
@@ -209,10 +217,10 @@ impl Visit for InstanceDefinition {
                             },
                         );
 
-                        if definition.attributes.error {
+                        if definition.error {
                             db.insert(node, ExtraInstanceValue);
                         }
-                    } else if !definition.attributes.error {
+                    } else if !definition.error {
                         db.insert(node, MissingInstanceValue);
                     }
                 }

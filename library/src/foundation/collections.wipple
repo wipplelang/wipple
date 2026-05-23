@@ -4,7 +4,7 @@ Build-Collection : (infer element) collection => trait (element collection -> co
 --
 -- Creating [`collection`] from these items isn't supported. Double-check that
 -- you're providing the right kinds of items here.
-[default] [error] instance (Build-Collection element collection)
+default error instance (Build-Collection element collection)
 
 Initial-Collection : (infer element) collection => trait collection
 instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element) : Initial

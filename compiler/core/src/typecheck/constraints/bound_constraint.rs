@@ -281,10 +281,10 @@ pub fn group_instances(
             continue;
         };
 
-        match (definition.attributes.error, definition.attributes.default) {
+        match (definition.default, definition.error) {
             (false, false) => regular_instances.push(instance),
-            (true, false) => error_instances.push(instance),
-            (false, true) => default_instances.push(instance),
+            (true, false) => default_instances.push(instance),
+            (false, true) => error_instances.push(instance),
             (true, true) => default_error_instances.push(instance),
         }
     }

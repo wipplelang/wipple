@@ -24,7 +24,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Cannot-Be-Shown : type` (show-variable.wipple:1:1-1:21)
 
 `show` (show-variable.wipple:4:1-4:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Cannot-Be-Shown` (resolved as `instance (Describe value)` (library/src/foundation/io.wipple:8:17-8:40))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Cannot-Be-Shown` (resolved as `default error instance (Describe value)` (library/src/foundation/io.wipple:8:1-8:36))
   has type `Cannot-Be-Shown -> ()` (show-variable.wipple:4:1-4:5)
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)

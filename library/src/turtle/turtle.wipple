@@ -8,7 +8,7 @@ pixels : pixels -> Distance {pixels : pixels}
 -- Missing `pixels` after [`n`].
 --
 -- Double-check your parentheses.
-[error] instance (Mismatched (n :: Number) Distance)
+error instance (Mismatched (n :: Number) Distance)
 
 -- Move the turtle forward by a distance.
 forward :: Distance -> ()

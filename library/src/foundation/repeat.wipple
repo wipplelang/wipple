@@ -39,7 +39,7 @@ Times : type {times :: Number}
 -- Missing `times` after [`state`].
 --
 -- Try rewriting this code as `([`state`] times)`, or double-check your parentheses.
-[error] instance (Repeat-Predicate (state :: Number) body result)
+error instance (Repeat-Predicate (state :: Number) body result)
 
 instance (Repeat-Predicate Times body ()) where (body :: ()) : (Times {times : n}) -> if (n > 0) {Continue (_ -> (n - 1) times)} {Stop ()}
 

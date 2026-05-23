@@ -104,19 +104,8 @@ pub fn documentation(db: &Db, node: Node) -> Option<Documentation> {
     let instance_declarations = references(db, node)
         .into_iter()
         .filter_map(|reference| {
-            let Defined(definition) = db.get(reference)?;
-            let definition = definition.downcast_ref::<InstanceDefinition>()?;
             let source = &db.ast(&db.get::<Syntax>(reference)?.0).span(db).source;
-
-            let default = definition.attributes.default.then_some("[default] ");
-            let error = definition.attributes.error.then_some("[error] ");
-
-            Some(format!(
-                "\n{}{}{}",
-                default.unwrap_or_default(),
-                error.unwrap_or_default(),
-                source
-            ))
+            Some(format!("\n{source}"))
         })
         .collect::<String>();
 

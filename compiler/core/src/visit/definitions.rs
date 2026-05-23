@@ -178,6 +178,8 @@ impl Render for InstanceTrait {}
 pub struct InstanceDefinition {
     pub comments: Vec<Str>,
     pub attributes: InstanceDefinitionAttributes,
+    pub default: bool,
+    pub error: bool,
     pub value: Option<Node>,
 }
 
@@ -193,17 +195,11 @@ impl Definition for InstanceDefinition {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct InstanceDefinitionAttributes {
-    pub default: bool,
-    pub error: bool,
-}
+pub struct InstanceDefinitionAttributes {}
 
 impl InstanceDefinitionAttributes {
-    pub fn parse(db: &mut Db, attributes: &[Node]) -> Self {
-        InstanceDefinitionAttributes {
-            default: parse_attribute_named(db, attributes, "default"),
-            error: parse_attribute_named(db, attributes, "error"),
-        }
+    pub fn parse(_db: &mut Db, _attributes: &[Node]) -> Self {
+        InstanceDefinitionAttributes {}
     }
 }
 

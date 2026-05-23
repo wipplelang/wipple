@@ -459,18 +459,18 @@ In Wipple, you're encouraged to provide custom feedback when your API is used in
 
 ### Error instances
 
-An _error instance_ is an instance with the `[error]` attribute and has no value. When a trait resolves to an error instances, Wipple will replace the default error message with the instance's comment:
+An _error instance_ is an instance marked with the `error` keyword and has no value. When a trait resolves to an error instances, Wipple will replace the default error message with the instance's comment:
 
 ```wipple
 -- Can't count the contents of a block. Are you missing `do`?
-[error] instance (Count {output})
+error instance (Count {output})
 ```
 
-You can combine `[error]` with `[default]` to customize the error displayed when no other instances match:
+You can combine `error` with `default` to customize the error displayed when no other instances match:
 
 ```wipple
 -- Can't count the contents of [`value`].
-[default] [error] instance (Count value)
+default error instance (Count value)
 ```
 
 The example above uses a link to reference the `value` parameter. Wipple will automatically replace the link with the first member of the group `value` belongs to:
@@ -486,7 +486,7 @@ To list all members of the group, use `` [`value@related`] ``, and to display th
 
 ```wipple
 -- Can't count the contents of [`value`] (a [`value@type`] value).
-[default] [error] instance (Count value)
+default error instance (Count value)
 
 x : Uncountable
 Count x -- Can't count the contents of `x` (a `Uncountable` value).
@@ -499,7 +499,7 @@ Count : value => trait (value -> Number)
 
 -- Can't count the contents of [`block`]. Try adding `do` to count the
 -- inner [`output`].
-[error] instance (Count (block :: {output}))
+error instance (Count (block :: {output}))
 
 number : {123}
 Count number
@@ -519,7 +519,7 @@ m : value -> Distance {m : value}
 cm : value -> (value / 100) m
 
 -- Missing a unit for distance. Try adding `m` or `cm` after [`n`].
-[error] instance (Mismatched (n :: Number) Distance)
+error instance (Mismatched (n :: Number) Distance)
 
 forward :: Distance -> ()
 forward : todo

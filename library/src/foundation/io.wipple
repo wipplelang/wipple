@@ -5,7 +5,7 @@ Describe : value => trait (value -> String)
 --
 -- You can't display [`value`] on the screen or use it in placeholders because
 -- it can't be converted into a string.
-[default] [error] instance (Describe value)
+default error instance (Describe value)
 
 -- Display a value on the screen.
 show :: value -> () where (Describe value)
@@ -26,7 +26,7 @@ Read : value => trait (String -> Maybe value)
 --
 -- You can't use `prompt` with [`value`] because there's no way to convert the
 -- contents of a text field into [`value`].
-[default] [error] instance (Read value)
+default error instance (Read value)
 
 instance (Read String) : Some
 instance (Read Number) : string -> intrinsic "string-to-number" string

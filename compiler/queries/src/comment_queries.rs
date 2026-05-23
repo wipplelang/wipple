@@ -74,7 +74,7 @@ pub fn error_instances<'a>(db: &'a Db, node: Node) -> Vec<ErrorInstance<'a>> {
                 .get(bound.instance.node)
                 .and_then(|Defined(definition)| definition.downcast_ref::<InstanceDefinition>())?;
 
-            if !instance.attributes.error {
+            if !instance.error {
                 return None;
             }
 
@@ -109,7 +109,7 @@ pub fn error_instances<'a>(db: &'a Db, node: Node) -> Vec<ErrorInstance<'a>> {
 
             Some(ErrorInstance {
                 bound,
-                is_default: instance.attributes.default,
+                is_default: instance.default,
                 comments,
                 trace,
             })

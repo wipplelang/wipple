@@ -11,7 +11,7 @@ As : input output => trait (input -> output)
 -- Can't convert [`input`] to [`output`].
 --
 -- Converting [`input`] into [`output`] isn't supported.
-[default] [error] instance (As input output)
+default error instance (As input output)
 
 instance (As value value) : value -> value
 
@@ -38,7 +38,7 @@ Initial : value => trait value
 --
 -- This code only works with lists, maybes, and other types that have an
 -- initial value.
-[default] [error] instance (Initial value)
+default error instance (Initial value)
 
 instance (Initial Number) : 0
 instance (Initial String) : ""

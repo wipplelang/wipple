@@ -6,10 +6,10 @@ instance (Add Number Number Number) : _
 instance (Add String String String) : _
 
 -- Missing parentheses around the inputs to `+`.
-[error] instance (Add () right sum)
+error instance (Add () right sum)
 
 -- Cannot add [`left`] and [`right`].
-[default] [error] instance (Add left right sum)
+default error instance (Add left right sum)
 
 _ : 1 + 2
 _ : "a" + "b"

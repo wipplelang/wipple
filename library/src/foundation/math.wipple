@@ -10,13 +10,13 @@ instance (Add Number Number Number) : left right -> intrinsic "f64.add" left rig
 -- Can't add [`left`] and [`right`].
 --
 -- Adding these two items together isn't supported.
-[default] [error] instance (Add left right sum)
+default error instance (Add left right sum)
 
 -- Missing parentheses around the inputs to `+`.
 --
 -- Spaces group before operators do, so you need to put parentheses around just
 -- the inputs to `+`.
-[error] instance (Add () right sum)
+error instance (Add () right sum)
 
 -- Subtract one value from another, returning the difference.
 Subtract : left right (infer difference) => trait (left right -> difference)
@@ -25,13 +25,13 @@ instance (Subtract Number Number Number) : left right -> intrinsic "f64.sub" lef
 -- Can't subtract [`right`] from [`left`].
 --
 -- Subtracting these two items isn't supported.
-[default] [error] instance (Subtract left right difference)
+default error instance (Subtract left right difference)
 
 -- Missing parentheses around the inputs to `-`.
 --
 -- Spaces group before operators do, so you need to put parentheses around just
 -- the inputs to `-`.
-[error] instance (Subtract () right difference)
+error instance (Subtract () right difference)
 
 -- Multiply two values together, returning the product.
 Multiply : left right (infer product) => trait (left right -> product)
@@ -40,13 +40,13 @@ instance (Multiply Number Number Number) : left right -> intrinsic "f64.mul" lef
 -- Can't multiply [`left`] and [`right`].
 --
 -- Multiplying these two items together isn't supported.
-[default] [error] instance (Multiply left right product)
+default error instance (Multiply left right product)
 
 -- Missing parentheses around the inputs to `*`.
 --
 -- Spaces group before operators do, so you need to put parentheses around just
 -- the inputs to `*`.
-[error] instance (Multiply () right product)
+error instance (Multiply () right product)
 
 -- Divide two numbers, returning the quotient.
 Divide : left right (infer quotient) => trait (left right -> quotient)
@@ -55,13 +55,13 @@ instance (Divide Number Number Number) : left right -> intrinsic "f64.div" left 
 -- Can't divide [`left`] by [`right`].
 --
 -- Dividing these two items isn't supported.
-[default] [error] instance (Divide left right quotient)
+default error instance (Divide left right quotient)
 
 -- Missing parentheses around the inputs to `/`.
 --
 -- Spaces group before operators do, so you need to put parentheses around just
 -- the inputs to `/`.
-[error] instance (Divide () right quotient)
+error instance (Divide () right quotient)
 
 -- Divide two numbers, returning the remainder.
 Remainder : left right (infer remainder) => trait (left right -> remainder)
@@ -70,13 +70,13 @@ instance (Remainder Number Number Number) : left right -> intrinsic "rem" left r
 -- Can't divide [`left`] by [`right`] and get the remainder.
 --
 -- Dividing these two items with remainder isn't supported.
-[default] [error] instance (Remainder left right remainder)
+default error instance (Remainder left right remainder)
 
 -- Missing parentheses around the inputs to `%`.
 --
 -- Spaces group before operators do, so you need to put parentheses around just
 -- the inputs to `%`.
-[error] instance (Remainder () right remainder)
+error instance (Remainder () right remainder)
 
 -- Raise one number to the power of the other number.
 Power : left right (infer power) => trait (left right -> power)
@@ -85,13 +85,13 @@ instance (Power Number Number Number) : left right -> intrinsic "pow" left right
 -- Can't raise [`left`] to the power of [`right`].
 --
 -- Exponentiating these two items isn't supported.
-[default] [error] instance (Power left right power)
+default error instance (Power left right power)
 
 -- Missing parentheses around the inputs to `^`.
 --
 -- Spaces group before operators do, so you need to put parentheses around just
 -- the inputs to `^`.
-[error] instance (Power () right power)
+error instance (Power () right power)
 
 -- Round down a number to the nearest integer.
 floor :: Number -> Number

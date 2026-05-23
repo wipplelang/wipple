@@ -21,7 +21,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
         .rank(|_| FeedbackRank::Syntax)
         .display(|_db, writer, _, _| {
             writer.string("This instance doesn't need a value because it is marked with ");
-            writer.code("[error]");
+            writer.code("error");
             writer.string(".");
             writer.line_break();
             writer.string("Remove this code.");

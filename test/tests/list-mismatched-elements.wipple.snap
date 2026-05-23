@@ -13,7 +13,7 @@ Facts (layer 2):
   is an expression
 
 `1` (list-mismatched-elements.wipple:1:9-1:10) (ConstructorExpression):
-  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `_` `(List ())` (resolved as `instance (Build-Collection element collection)` (library/src/foundation/collections.wipple:7:17-7:60))
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `_` `(List ())` (resolved as `default error instance (Build-Collection element collection)` (library/src/foundation/collections.wipple:7:1-7:56))
   has type `() (List ()) -> List ()` (list-mismatched-elements.wipple:1:9-1:10)
   is an expression
   resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
@@ -27,7 +27,7 @@ Facts (layer 2):
   is an expression
 
 `"hi"` (list-mismatched-elements.wipple:1:11-1:15) (ConstructorExpression):
-  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `_` `(List ())` (resolved as `instance (Build-Collection element collection)` (library/src/foundation/collections.wipple:7:17-7:60))
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:80) `_` `(List ())` (resolved as `default error instance (Build-Collection element collection)` (library/src/foundation/collections.wipple:7:1-7:56))
   has type `() (List ()) -> List ()` (list-mismatched-elements.wipple:1:11-1:15)
   is an expression
   resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:80)
@@ -55,7 +55,7 @@ Facts (layer 2):
   is an expression
 
 `each` (list-mismatched-elements.wipple:2:9-2:13) (VariableExpression):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List ())` `_` (resolved as `instance (As-Sequence container element)` (library/src/foundation/sequence.wipple:52:17-52:54))
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List ())` `_` (resolved as `default error instance (As-Sequence container element)` (library/src/foundation/sequence.wipple:52:1-52:50))
   has type `(_ -> ()) -> (List ()) -> ()` (list-mismatched-elements.wipple:2:9-2:13)
   is an expression
   resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:69)

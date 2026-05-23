@@ -26,7 +26,7 @@ Facts (layer 2):
   missing type (group: `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:8), `+` (operator-without-parentheses.wipple:1:6-1:7), `_`, `_`, `_`, `_`, `show 1 + 2` (operator-without-parentheses.wipple:1:1-1:8), `_`, `_`, `_`)
 
 `+` (operator-without-parentheses.wipple:1:6-1:7) (ConstructorExpression):
-  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `()` `Number` (operator-without-parentheses.wipple:1:7-1:8) `_` (resolved as `instance (Add () right sum)` (library/src/foundation/math.wipple:19:8-19:31))
+  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `()` `Number` (operator-without-parentheses.wipple:1:7-1:8) `_` (resolved as `error instance (Add () right sum)` (library/src/foundation/math.wipple:19:1-19:29))
   has type `() Number -> _` (operator-without-parentheses.wipple:1:6-1:7)
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:47)
@@ -104,7 +104,7 @@ Facts (layer 2):
   missing type (group: `1 + "hi"` (operator-without-parentheses.wipple:3:6-3:12), `+` (operator-without-parentheses.wipple:3:7-3:8), `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
 `+` (operator-without-parentheses.wipple:3:7-3:8) (ConstructorExpression):
-  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `Number` (operator-without-parentheses.wipple:3:6-3:7) `String` (operator-without-parentheses.wipple:3:8-3:12) `_` (resolved as `instance (Add left right sum)` (library/src/foundation/math.wipple:13:17-13:42))
+  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `Number` (operator-without-parentheses.wipple:3:6-3:7) `String` (operator-without-parentheses.wipple:3:8-3:12) `_` (resolved as `default error instance (Add left right sum)` (library/src/foundation/math.wipple:13:1-13:38))
   has type `Number String -> _` (operator-without-parentheses.wipple:3:7-3:8)
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:47)

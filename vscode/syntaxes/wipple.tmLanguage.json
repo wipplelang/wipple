@@ -33,7 +33,7 @@
         },
         "keyword": {
             "name": "keyword.other.wipple",
-            "match": "\\b(?:do|infer|instance|intrinsic|set|trait|type|when|where)\\b"
+            "match": "\\b(?:default|do|error|infer|instance|intrinsic|set|trait|type|when|where)\\b"
         },
         "keyword.operator": {
             "name": "keyword.operator.wipple",

@@ -1,7 +1,7 @@
 Facts (layer 2):
 
 `repeat` (repeat-missing-times.wipple:1:1-1:7) (VariableExpression):
-  has bound(s) `Repeat-Predicate` (library/src/foundation/repeat.wipple:8:1-8:80) `Number` `()` `_` (resolved as `instance (Repeat-Predicate (state :: Number) body result)` (library/src/foundation/repeat.wipple:42:8-42:59))
+  has bound(s) `Repeat-Predicate` (library/src/foundation/repeat.wipple:8:1-8:80) `Number` `()` `_` (resolved as `error instance (Repeat-Predicate (state :: Number) body result)` (library/src/foundation/repeat.wipple:42:1-42:57))
   has type `Number {()} -> _` (repeat-missing-times.wipple:1:1-1:7)
   is an expression
   resolved to 1 definition(s): `repeat :: state {body} -> result where (Repeat-Predicate state body result)` (library/src/foundation/repeat.wipple:51:1-51:66)

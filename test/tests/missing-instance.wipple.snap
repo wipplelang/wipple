@@ -11,7 +11,7 @@ Facts (layer 2):
   is a definition
 
 `show` (missing-instance.wipple:2:1-2:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Foo` (resolved as `instance (Describe value)` (library/src/foundation/io.wipple:8:17-8:40))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Foo` (resolved as `default error instance (Describe value)` (library/src/foundation/io.wipple:8:1-8:36))
   has type `Foo -> ()` (missing-instance.wipple:2:1-2:5)
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)

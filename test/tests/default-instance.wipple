@@ -1,6 +1,6 @@
 Do-Something : value => trait (value -> ())
 
-[default] instance (Do-Something value) : _ -> show "using default instance"
+default instance (Do-Something value) : _ -> show "using default instance"
 instance (Do-Something String) : text -> show ("using specific instance: _" text)
 
 Do-Something 42

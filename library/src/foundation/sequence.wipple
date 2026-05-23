@@ -49,7 +49,7 @@ As-Sequence : container (infer element) => trait (container -> Sequence element)
 -- Can't make a sequence from [`container`].
 --
 -- You can't use [`container`] as a sequence. Try using a list instead.
-[default] [error] instance (As-Sequence container element)
+default error instance (As-Sequence container element)
 
 instance (As-Sequence (Sequence element) element) : sequence -> sequence
 
@@ -174,7 +174,7 @@ From-Sequence : element container => trait ((Sequence element) -> container)
 -- Can't create [`container`] from [`element`] items.
 --
 -- You can't use `collect` to create [`container`] from these items.
-[default] [error] instance (From-Sequence element container)
+default error instance (From-Sequence element container)
 
 -- Collect a sequence into a single container, like a list.
 collect :: input -> output where (As-Sequence input element) (From-Sequence element output) (output :: List element)
