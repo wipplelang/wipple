@@ -121,6 +121,16 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
+`seen . (not contains?) item) and (do {⋯}` (remove-duplicates.wipple:4:15-7:2) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`seen . (not contains?) item) and (do {⋯}` (remove-duplicates.wipple:4:15-7:2) (ConstructorExpression):
+  has bound(s) `And` (library/src/foundation/logic.wipple:29:1-29:62) `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:35))
+  has type `Boolean {Boolean} -> Boolean` (remove-duplicates.wipple:4:15-7:2)
+  is an expression
+  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:29:1-29:62)
+
 `(not contains?) item` (remove-duplicates.wipple:4:20-4:38) (CallExpression):
   has type `Boolean`
   is an expression
@@ -149,16 +159,6 @@ Facts (layer 2):
   has type `element` (remove-duplicates.wipple:1:25-1:32)
   is an expression
   resolved to 1 definition(s): `item` (remove-duplicates.wipple:4:8-4:12)
-
-`and` (remove-duplicates.wipple:4:39-4:42) (CallExpression):
-  has type `Boolean`
-  is an expression
-
-`and` (remove-duplicates.wipple:4:39-4:42) (ConstructorExpression):
-  has bound(s) `And` (library/src/foundation/logic.wipple:29:1-29:62) `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:35))
-  has type `Boolean {Boolean} -> Boolean` (remove-duplicates.wipple:4:39-4:42)
-  is an expression
-  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:29:1-29:62)
 
 `do {⋯}` (remove-duplicates.wipple:4:43-7:2) (VisitAs):
   has type `Boolean`

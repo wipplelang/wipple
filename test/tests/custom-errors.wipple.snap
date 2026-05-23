@@ -168,13 +168,13 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`+` (custom-errors.wipple:14:4-14:5) (CallExpression):
+`1 + 2` (custom-errors.wipple:14:3-14:6) (CallExpression):
   has type `Number`
   is an expression
 
-`+` (custom-errors.wipple:14:4-14:5) (ConstructorExpression):
+`1 + 2` (custom-errors.wipple:14:3-14:6) (ConstructorExpression):
   has bound(s) `Add` (custom-errors.wipple:4:1-4:47) `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)` (custom-errors.wipple:5:1-5:32))
-  has type `Number Number -> Number` (custom-errors.wipple:14:4-14:5)
+  has type `Number Number -> Number` (custom-errors.wipple:14:3-14:6)
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:47)
 
@@ -197,13 +197,13 @@ Facts (layer 2):
   has type `String`
   is an expression
 
-`+` (custom-errors.wipple:15:6-15:7) (CallExpression):
+`"a" + "b"` (custom-errors.wipple:15:3-15:10) (CallExpression):
   has type `String`
   is an expression
 
-`+` (custom-errors.wipple:15:6-15:7) (ConstructorExpression):
+`"a" + "b"` (custom-errors.wipple:15:3-15:10) (ConstructorExpression):
   has bound(s) `Add` (custom-errors.wipple:4:1-4:47) `String` `String` `String` (resolved as `instance (Add String String String)` (custom-errors.wipple:6:1-6:32))
-  has type `String String -> String` (custom-errors.wipple:15:6-15:7)
+  has type `String String -> String` (custom-errors.wipple:15:3-15:10)
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:47)
 
@@ -213,7 +213,7 @@ Facts (layer 2):
 
 `_` (custom-errors.wipple:16:1-16:2) (WildcardPattern):
   is a pattern
-  missing type (group: `_` (custom-errors.wipple:16:1-16:2), `1 + "a"` (custom-errors.wipple:16:3-16:8), `+` (custom-errors.wipple:16:4-16:5), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_` (custom-errors.wipple:16:1-16:2), `1 + "a"` (custom-errors.wipple:16:3-16:8), `1 + "a"` (custom-errors.wipple:16:3-16:8), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
 `_ : 1 + "a"` (custom-errors.wipple:16:1-16:8) (AssignmentStatement):
   has type `()` (custom-errors.wipple:16:1-16:8)
@@ -224,15 +224,15 @@ Facts (layer 2):
 
 `1 + "a"` (custom-errors.wipple:16:3-16:8) (OperatorExpression):
   is an expression
-  missing type (group: `_` (custom-errors.wipple:16:1-16:2), `1 + "a"` (custom-errors.wipple:16:3-16:8), `+` (custom-errors.wipple:16:4-16:5), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_` (custom-errors.wipple:16:1-16:2), `1 + "a"` (custom-errors.wipple:16:3-16:8), `1 + "a"` (custom-errors.wipple:16:3-16:8), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
-`+` (custom-errors.wipple:16:4-16:5) (CallExpression):
+`1 + "a"` (custom-errors.wipple:16:3-16:8) (CallExpression):
   is an expression
-  missing type (group: `_` (custom-errors.wipple:16:1-16:2), `1 + "a"` (custom-errors.wipple:16:3-16:8), `+` (custom-errors.wipple:16:4-16:5), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_` (custom-errors.wipple:16:1-16:2), `1 + "a"` (custom-errors.wipple:16:3-16:8), `1 + "a"` (custom-errors.wipple:16:3-16:8), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
-`+` (custom-errors.wipple:16:4-16:5) (ConstructorExpression):
+`1 + "a"` (custom-errors.wipple:16:3-16:8) (ConstructorExpression):
   has bound(s) `Add` (custom-errors.wipple:4:1-4:47) `Number` (custom-errors.wipple:16:3-16:4) `String` (custom-errors.wipple:16:5-16:8) `_` (resolved as `default error instance (Add left right sum)` (custom-errors.wipple:12:1-12:38))
-  has type `Number String -> _` (custom-errors.wipple:16:4-16:5)
+  has type `Number String -> _` (custom-errors.wipple:16:3-16:8)
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:47)
 
@@ -242,7 +242,7 @@ Facts (layer 2):
 
 `_` (custom-errors.wipple:17:1-17:2) (WildcardPattern):
   is a pattern
-  missing type (group: `_` (custom-errors.wipple:17:1-17:2), `() + 2` (custom-errors.wipple:17:3-17:7), `+` (custom-errors.wipple:17:5-17:6), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_` (custom-errors.wipple:17:1-17:2), `() + 2` (custom-errors.wipple:17:3-17:7), `() + 2` (custom-errors.wipple:17:3-17:7), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
 `_ : () + 2` (custom-errors.wipple:17:1-17:7) (AssignmentStatement):
   has type `()` (custom-errors.wipple:17:1-17:7)
@@ -253,15 +253,15 @@ Facts (layer 2):
 
 `() + 2` (custom-errors.wipple:17:3-17:7) (OperatorExpression):
   is an expression
-  missing type (group: `_` (custom-errors.wipple:17:1-17:2), `() + 2` (custom-errors.wipple:17:3-17:7), `+` (custom-errors.wipple:17:5-17:6), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_` (custom-errors.wipple:17:1-17:2), `() + 2` (custom-errors.wipple:17:3-17:7), `() + 2` (custom-errors.wipple:17:3-17:7), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
-`+` (custom-errors.wipple:17:5-17:6) (CallExpression):
+`() + 2` (custom-errors.wipple:17:3-17:7) (CallExpression):
   is an expression
-  missing type (group: `_` (custom-errors.wipple:17:1-17:2), `() + 2` (custom-errors.wipple:17:3-17:7), `+` (custom-errors.wipple:17:5-17:6), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_` (custom-errors.wipple:17:1-17:2), `() + 2` (custom-errors.wipple:17:3-17:7), `() + 2` (custom-errors.wipple:17:3-17:7), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
-`+` (custom-errors.wipple:17:5-17:6) (ConstructorExpression):
+`() + 2` (custom-errors.wipple:17:3-17:7) (ConstructorExpression):
   has bound(s) `Add` (custom-errors.wipple:4:1-4:47) `()` `Number` (custom-errors.wipple:17:6-17:7) `_` (resolved as `error instance (Add () right sum)` (custom-errors.wipple:9:1-9:29))
-  has type `() Number -> _` (custom-errors.wipple:17:5-17:6)
+  has type `() Number -> _` (custom-errors.wipple:17:3-17:7)
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:47)
 
@@ -273,7 +273,7 @@ Facts (layer 2):
 
 Feedback:
 
-`+` (custom-errors.wipple:17:5-17:6) (error-instance)
+`() + 2` (custom-errors.wipple:17:3-17:7) (error-instance)
 
   Missing parentheses around the inputs to `+`.
   

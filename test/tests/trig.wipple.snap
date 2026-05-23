@@ -26,6 +26,16 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
+`sin (0 degrees) = 0` (trig.wipple:1:6-1:21) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`sin (0 degrees) = 0` (trig.wipple:1:6-1:21) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
+  has type `Number Number -> Boolean` (trig.wipple:1:6-1:21)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
 `0` (trig.wipple:1:10-1:11) (NumberExpression):
   has type `Number` (trig.wipple:1:10-1:11)
   is an expression
@@ -38,16 +48,6 @@ Facts (layer 2):
   has type `Number -> Angle` (trig.wipple:1:11-1:18)
   is an expression
   resolved to 1 definition(s): `degrees :: Number -> Angle` (library/src/foundation/math.wipple:112:7-112:29)
-
-`=` (trig.wipple:1:19-1:20) (CallExpression):
-  has type `Boolean`
-  is an expression
-
-`=` (trig.wipple:1:19-1:20) (ConstructorExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
-  has type `Number Number -> Boolean` (trig.wipple:1:19-1:20)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
 
 `0` (trig.wipple:1:20-1:21) (NumberExpression):
   has type `Number`
@@ -79,6 +79,16 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
+`cos (0 degrees) = 1` (trig.wipple:2:6-2:21) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`cos (0 degrees) = 1` (trig.wipple:2:6-2:21) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
+  has type `Number Number -> Boolean` (trig.wipple:2:6-2:21)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
 `0` (trig.wipple:2:10-2:11) (NumberExpression):
   has type `Number` (trig.wipple:2:10-2:11)
   is an expression
@@ -91,16 +101,6 @@ Facts (layer 2):
   has type `Number -> Angle` (trig.wipple:2:11-2:18)
   is an expression
   resolved to 1 definition(s): `degrees :: Number -> Angle` (library/src/foundation/math.wipple:112:7-112:29)
-
-`=` (trig.wipple:2:19-2:20) (CallExpression):
-  has type `Boolean`
-  is an expression
-
-`=` (trig.wipple:2:19-2:20) (ConstructorExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
-  has type `Number Number -> Boolean` (trig.wipple:2:19-2:20)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
 
 `1` (trig.wipple:2:20-2:21) (NumberExpression):
   has type `Number`
@@ -132,9 +132,29 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
+`sin (45 degrees) / cos (45 degrees)` (trig.wipple:3:6-3:35) (CallExpression):
+  has type `Number`
+  is an expression
+
+`sin (45 degrees) / cos (45 degrees)` (trig.wipple:3:6-3:35) (ConstructorExpression):
+  has bound(s) `Divide` (library/src/foundation/math.wipple:52:1-52:60) `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:35))
+  has type `Number Number -> Number` (trig.wipple:3:6-3:35)
+  is an expression
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:52:1-52:60)
+
 `sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (trig.wipple:3:6-3:50) (OperatorExpression):
   has type `Boolean`
   is an expression
+
+`sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (trig.wipple:3:6-3:50) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (trig.wipple:3:6-3:50) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
+  has type `Number Number -> Boolean` (trig.wipple:3:6-3:50)
+  is an expression
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
 
 `45` (trig.wipple:3:10-3:12) (NumberExpression):
   has type `Number` (trig.wipple:3:10-3:12)
@@ -148,16 +168,6 @@ Facts (layer 2):
   has type `Number -> Angle` (trig.wipple:3:12-3:19)
   is an expression
   resolved to 1 definition(s): `degrees :: Number -> Angle` (library/src/foundation/math.wipple:112:7-112:29)
-
-`/` (trig.wipple:3:20-3:21) (CallExpression):
-  has type `Number`
-  is an expression
-
-`/` (trig.wipple:3:20-3:21) (ConstructorExpression):
-  has bound(s) `Divide` (library/src/foundation/math.wipple:52:1-52:60) `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:35))
-  has type `Number Number -> Number` (trig.wipple:3:20-3:21)
-  is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:52:1-52:60)
 
 `cos` (trig.wipple:3:21-3:24) (VariableExpression):
   has type `Angle -> Number` (trig.wipple:3:21-3:24)
@@ -180,16 +190,6 @@ Facts (layer 2):
   has type `Number -> Angle` (trig.wipple:3:27-3:34)
   is an expression
   resolved to 1 definition(s): `degrees :: Number -> Angle` (library/src/foundation/math.wipple:112:7-112:29)
-
-`=` (trig.wipple:3:35-3:36) (CallExpression):
-  has type `Boolean`
-  is an expression
-
-`=` (trig.wipple:3:35-3:36) (ConstructorExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
-  has type `Number Number -> Boolean` (trig.wipple:3:35-3:36)
-  is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
 
 `tan` (trig.wipple:3:36-3:39) (VariableExpression):
   has type `Angle -> Number` (trig.wipple:3:36-3:39)

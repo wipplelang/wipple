@@ -116,20 +116,20 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
+`count name < 5` (infer.wipple:3:36-3:47) (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`count name < 5` (infer.wipple:3:36-3:47) (ConstructorExpression):
+  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Less-Than` (library/src/foundation/logic.wipple:61:1-61:44) `Number` (resolved as `instance (Less-Than value) where (Order value)` (library/src/foundation/logic.wipple:62:1-62:42))
+  has type `Number Number -> Boolean` (infer.wipple:3:36-3:47)
+  is an expression
+  resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:61:1-61:44)
+
 `name` (infer.wipple:3:41-3:45) (VariableExpression):
   has type `String`
   is an expression
   resolved to 1 definition(s): `name` (infer.wipple:3:30-3:34)
-
-`<` (infer.wipple:3:45-3:46) (CallExpression):
-  has type `Boolean`
-  is an expression
-
-`<` (infer.wipple:3:45-3:46) (ConstructorExpression):
-  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Less-Than` (library/src/foundation/logic.wipple:61:1-61:44) `Number` (resolved as `instance (Less-Than value) where (Order value)` (library/src/foundation/logic.wipple:62:1-62:42))
-  has type `Number Number -> Boolean` (infer.wipple:3:45-3:46)
-  is an expression
-  resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:61:1-61:44)
 
 `5` (infer.wipple:3:46-3:47) (NumberExpression):
   has type `Number`

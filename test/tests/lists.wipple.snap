@@ -130,6 +130,16 @@ Facts (layer 2):
   has type `List Number`
   is an expression
 
+`my-list . initial) or unreachable` (lists.wipple:5:7-5:36) (CallExpression):
+  has type `List Number`
+  is an expression
+
+`my-list . initial) or unreachable` (lists.wipple:5:7-5:36) (ConstructorExpression):
+  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:35:1-35:35))
+  has type `(Maybe (List Number)) {List Number} -> List Number` (lists.wipple:5:7-5:36)
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:61)
+
 `my-list . initial) or unreachable . last` (lists.wipple:5:7-5:41) (OperatorExpression):
   has type `Maybe Number`
   is an expression
@@ -142,16 +152,6 @@ Facts (layer 2):
   has type `(List Number) -> Maybe (List Number)` (lists.wipple:5:15-5:22)
   is an expression
   resolved to 1 definition(s): `initial :: (List element) -> Maybe (List element)` (library/src/foundation/list.wipple:14:1-14:43)
-
-`or` (lists.wipple:5:23-5:25) (CallExpression):
-  has type `List Number`
-  is an expression
-
-`or` (lists.wipple:5:23-5:25) (ConstructorExpression):
-  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:35:1-35:35))
-  has type `(Maybe (List Number)) {List Number} -> List Number` (lists.wipple:5:23-5:25)
-  is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:61)
 
 `unreachable` (lists.wipple:5:25-5:36) (VisitAs):
   has type `List Number`
@@ -200,6 +200,16 @@ Facts (layer 2):
   has type `List Number`
   is an expression
 
+`my-list . tail) or unreachable` (lists.wipple:6:7-6:33) (CallExpression):
+  has type `List Number`
+  is an expression
+
+`my-list . tail) or unreachable` (lists.wipple:6:7-6:33) (ConstructorExpression):
+  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:35:1-35:35))
+  has type `(Maybe (List Number)) {List Number} -> List Number` (lists.wipple:6:7-6:33)
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:61)
+
 `my-list . tail) or unreachable . first` (lists.wipple:6:7-6:39) (OperatorExpression):
   has type `Maybe Number`
   is an expression
@@ -212,16 +222,6 @@ Facts (layer 2):
   has type `(List Number) -> Maybe (List Number)` (lists.wipple:6:15-6:19)
   is an expression
   resolved to 1 definition(s): `tail :: (List element) -> Maybe (List element)` (library/src/foundation/list.wipple:18:1-18:40)
-
-`or` (lists.wipple:6:20-6:22) (CallExpression):
-  has type `List Number`
-  is an expression
-
-`or` (lists.wipple:6:20-6:22) (ConstructorExpression):
-  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:35:1-35:35))
-  has type `(Maybe (List Number)) {List Number} -> List Number` (lists.wipple:6:20-6:22)
-  is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:61)
 
 `unreachable` (lists.wipple:6:22-6:33) (VisitAs):
   has type `List Number`

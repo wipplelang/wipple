@@ -83,13 +83,13 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`>` (all-any.wipple:1:23-1:24) (CallExpression):
+`n > 0` (all-any.wipple:1:22-1:25) (CallExpression):
   has type `Boolean`
   is an expression
 
-`>` (all-any.wipple:1:23-1:24) (ConstructorExpression):
+`n > 0` (all-any.wipple:1:22-1:25) (ConstructorExpression):
   has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (all-any.wipple:1:11-1:12) (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:47) `Number` (all-any.wipple:1:11-1:12) (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:45))
-  has type `Number Number -> Boolean` (all-any.wipple:1:23-1:24)
+  has type `Number Number -> Boolean` (all-any.wipple:1:22-1:25)
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:69:1-69:47)
 
@@ -180,13 +180,13 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`>` (all-any.wipple:2:24-2:25) (CallExpression):
+`n > 0` (all-any.wipple:2:23-2:26) (CallExpression):
   has type `Boolean`
   is an expression
 
-`>` (all-any.wipple:2:24-2:25) (ConstructorExpression):
+`n > 0` (all-any.wipple:2:23-2:26) (ConstructorExpression):
   has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (all-any.wipple:2:12-2:13) (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:47) `Number` (all-any.wipple:2:12-2:13) (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:45))
-  has type `Number Number -> Boolean` (all-any.wipple:2:24-2:25)
+  has type `Number Number -> Boolean` (all-any.wipple:2:23-2:26)
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:69:1-69:47)
 
@@ -277,13 +277,13 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`>` (all-any.wipple:3:24-3:25) (CallExpression):
+`n > 0` (all-any.wipple:3:23-3:26) (CallExpression):
   has type `Boolean`
   is an expression
 
-`>` (all-any.wipple:3:24-3:25) (ConstructorExpression):
+`n > 0` (all-any.wipple:3:23-3:26) (ConstructorExpression):
   has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (all-any.wipple:3:12-3:13) (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:47) `Number` (all-any.wipple:3:12-3:13) (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:45))
-  has type `Number Number -> Boolean` (all-any.wipple:3:24-3:25)
+  has type `Number Number -> Boolean` (all-any.wipple:3:23-3:26)
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:69:1-69:47)
 
@@ -374,13 +374,13 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`>` (all-any.wipple:4:26-4:27) (CallExpression):
+`n > 0` (all-any.wipple:4:25-4:28) (CallExpression):
   has type `Boolean`
   is an expression
 
-`>` (all-any.wipple:4:26-4:27) (ConstructorExpression):
+`n > 0` (all-any.wipple:4:25-4:28) (ConstructorExpression):
   has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:41) `Number` (all-any.wipple:4:13-4:15) (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:22)), `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:47) `Number` (all-any.wipple:4:13-4:15) (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:45))
-  has type `Number Number -> Boolean` (all-any.wipple:4:26-4:27)
+  has type `Number Number -> Boolean` (all-any.wipple:4:25-4:28)
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:69:1-69:47)
 

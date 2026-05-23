@@ -48,13 +48,13 @@ accepts-text (1 + 2)` (mismatched-call.wipple:4:1-6:18) (ExpressionStatement):
   has type `Number` or `String`
   is an expression
 
-`+` (mismatched-call.wipple:6:15-6:16) (CallExpression):
+`1 + 2` (mismatched-call.wipple:6:14-6:17) (CallExpression):
   has type `Number` or `String`
   is an expression
 
-`+` (mismatched-call.wipple:6:15-6:16) (ConstructorExpression):
+`1 + 2` (mismatched-call.wipple:6:14-6:17) (ConstructorExpression):
   has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `Number` `Number` `_` (resolved as `instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:32))
-  has type `Number Number -> Number` (mismatched-call.wipple:6:15-6:16)
+  has type `Number Number -> Number` (mismatched-call.wipple:6:14-6:17)
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:47)
 
@@ -70,15 +70,15 @@ Feedback:
 
   `1 + 2` is a `Number` or a `String`, but it can only be one of these.
   
-  `1 + 2` must be the same type as `+`; double-check these.
+  `1 + 2` must be the same type as ; double-check these.
   
   -  `(infer sum)` must have the same type everywhere in this use of `_`.
 
 
-`+` (mismatched-call.wipple:6:15-6:16) (conflicting-types)
+`1 + 2` (mismatched-call.wipple:6:14-6:17) (conflicting-types)
 
-  `+` is a `Number` or a `String`, but it can only be one of these.
+  `1 + 2` is a `Number` or a `String`, but it can only be one of these.
   
-  `+` must be the same type as `1 + 2`; double-check these.
+  `1 + 2` must be the same type as ; double-check these.
   
   -  `(infer sum)` must have the same type everywhere in this use of `_`.

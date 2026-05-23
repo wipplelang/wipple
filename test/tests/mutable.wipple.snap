@@ -30,13 +30,13 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`+` (mutable.wipple:2:7-2:8) (CallExpression):
+`x + 1` (mutable.wipple:2:6-2:9) (CallExpression):
   has type `Number`
   is an expression
 
-`+` (mutable.wipple:2:7-2:8) (ConstructorExpression):
+`x + 1` (mutable.wipple:2:6-2:9) (ConstructorExpression):
   has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:32))
-  has type `Number Number -> Number` (mutable.wipple:2:7-2:8)
+  has type `Number Number -> Number` (mutable.wipple:2:6-2:9)
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:47)
 

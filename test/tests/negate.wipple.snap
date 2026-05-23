@@ -26,19 +26,19 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`3` (negate.wipple:1:13-1:14) (NumberExpression):
-  has type `Number` (negate.wipple:1:13-1:14)
-  is an expression
-
-`=` (negate.wipple:1:15-1:16) (CallExpression):
+`negate 3) = -3` (negate.wipple:1:7-1:18) (CallExpression):
   has type `Boolean`
   is an expression
 
-`=` (negate.wipple:1:15-1:16) (ConstructorExpression):
+`negate 3) = -3` (negate.wipple:1:7-1:18) (ConstructorExpression):
   has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
-  has type `Number Number -> Boolean` (negate.wipple:1:15-1:16)
+  has type `Number Number -> Boolean` (negate.wipple:1:7-1:18)
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+
+`3` (negate.wipple:1:13-1:14) (NumberExpression):
+  has type `Number` (negate.wipple:1:13-1:14)
+  is an expression
 
 `-3` (negate.wipple:1:16-1:18) (NumberExpression):
   has type `Number`

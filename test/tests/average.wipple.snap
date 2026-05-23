@@ -31,20 +31,20 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
+`sum numbers / count numbers` (average.wipple:1:18-1:41) (CallExpression):
+  has type `Number`
+  is an expression
+
+`sum numbers / count numbers` (average.wipple:1:18-1:41) (ConstructorExpression):
+  has bound(s) `Divide` (library/src/foundation/math.wipple:52:1-52:60) `Number` (average.wipple:2:22-2:23) `Number` `Number` (resolved as `instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:35))
+  has type `Number Number -> Number` (average.wipple:1:18-1:41)
+  is an expression
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:52:1-52:60)
+
 `numbers` (average.wipple:1:21-1:28) (VariableExpression):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `numbers` (average.wipple:1:9-1:16)
-
-`/` (average.wipple:1:28-1:29) (CallExpression):
-  has type `Number`
-  is an expression
-
-`/` (average.wipple:1:28-1:29) (ConstructorExpression):
-  has bound(s) `Divide` (library/src/foundation/math.wipple:52:1-52:60) `Number` (average.wipple:2:22-2:23) `Number` `Number` (resolved as `instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:35))
-  has type `Number Number -> Number` (average.wipple:1:28-1:29)
-  is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:52:1-52:60)
 
 `count` (average.wipple:1:29-1:34) (VariableExpression):
   has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(List Number)` `Number` (average.wipple:2:22-2:23) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:42))

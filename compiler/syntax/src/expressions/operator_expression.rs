@@ -241,7 +241,7 @@ impl Visit for OperatorExpression {
             visit_trait_operator(
                 db,
                 visitor,
-                self.operator_span.clone(),
+                self.span.clone(),
                 self.left.clone(),
                 self.right.clone(),
                 trait_name,
@@ -251,7 +251,7 @@ impl Visit for OperatorExpression {
                 "and" => visit_logic_operator(
                     db,
                     visitor,
-                    self.operator_span.clone(),
+                    self.span.clone(),
                     self.left.clone(),
                     self.right.clone(),
                     "And",
@@ -259,7 +259,7 @@ impl Visit for OperatorExpression {
                 "or" => visit_logic_operator(
                     db,
                     visitor,
-                    self.operator_span.clone(),
+                    self.span.clone(),
                     self.left.clone(),
                     self.right.clone(),
                     "Or",
