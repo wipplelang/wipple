@@ -186,11 +186,14 @@ impl<'a> Backend<'a> {
         types: &'a BTreeMap<Node, ir::Type>,
         declare: &dyn Fn(Node) -> bool,
     ) -> Result<(), CodegenError> {
-        for node in instructions
-            .iter()
-            .flat_map(|instruction| instruction.nodes(false))
-            .collect::<BTreeSet<_>>()
-        {
+        let mut nodes = BTreeSet::new();
+        for instruction in instructions {
+            instruction.clone().for_each_node(false, &mut |node| {
+                nodes.insert(*node);
+            });
+        }
+
+        for node in nodes {
             if declare(node) {
                 write!(w, "(local ${}", node.mangle())?;
 
@@ -263,6 +266,9 @@ impl<'a> Backend<'a> {
                 ir::Instruction::Return { value } => {
                     writeln!(w, "(return (local.get ${}))", value.mangle())?;
                 }
+                ir::Instruction::ReturnCall { function, inputs } => {
+                    self.write_call(w, *function, inputs, true, types)?;
+                }
                 ir::Instruction::Value { node, value } => {
                     write!(w, "(local.set ${} ", node.mangle())?;
                     self.write_value(w, Some(*node), value, definition, types)?;
@@ -294,27 +300,7 @@ impl<'a> Backend<'a> {
                 return Err(anyhow::format_err!("bound {node:?} not resolved"));
             }
             ir::Value::Call { function, inputs } => {
-                let ty = self.ty(*function, types)?;
-                write!(w, "(call_ref $impl")?;
-                write!(w, "_{}", ty.mangle_nominal())?;
-
-                write!(
-                    w,
-                    "(struct.get ${} 1 (local.get ${}))",
-                    ty.mangle_nominal(),
-                    function.mangle()
-                )?;
-
-                for input in inputs {
-                    write!(w, "(local.get ${})", input.mangle())?;
-                }
-
-                write!(
-                    w,
-                    "(struct.get ${} 0 (local.get ${})))",
-                    ty.mangle_nominal(),
-                    function.mangle(),
-                )?;
+                self.write_call(w, *function, inputs, false, types)?;
             }
             ir::Value::Concat { segments, trailing } => {
                 for (string, node) in segments {
@@ -542,6 +528,39 @@ impl<'a> Backend<'a> {
                 )?;
             }
         }
+
+        Ok(())
+    }
+
+    fn write_call(
+        &mut self,
+        w: &mut Writer,
+        function: Node,
+        inputs: &[Node],
+        tail: bool,
+        types: &'a BTreeMap<Node, ir::Type>,
+    ) -> Result<(), anyhow::Error> {
+        let op = if tail { "return_call_ref" } else { "call_ref" };
+        let ty = self.ty(function, types)?;
+        write!(w, "({} $impl_{}", op, ty.mangle_nominal())?;
+
+        write!(
+            w,
+            "(struct.get ${} 1 (local.get ${}))",
+            ty.mangle_nominal(),
+            function.mangle()
+        )?;
+
+        for input in inputs {
+            write!(w, "(local.get ${})", input.mangle())?;
+        }
+
+        write!(
+            w,
+            "(struct.get ${} 0 (local.get ${})))",
+            ty.mangle_nominal(),
+            function.mangle(),
+        )?;
 
         Ok(())
     }

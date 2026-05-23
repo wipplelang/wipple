@@ -63,6 +63,10 @@ pub enum Instruction {
     Return {
         value: Node,
     },
+    ReturnCall {
+        function: Node,
+        inputs: Vec<Node>,
+    },
     Trace {
         span: Span,
     },
@@ -149,40 +153,54 @@ pub enum Condition {
 }
 
 impl Instruction {
-    pub fn nodes(&self, traverse_functions: bool) -> Vec<Node> {
+    pub fn for_each_node(&mut self, traverse_functions: bool, f: &mut dyn FnMut(&mut Node)) {
         match self {
             Instruction::If {
                 node,
                 branches,
                 else_branch,
             } => {
-                node.iter()
-                    .copied()
-                    .chain(
-                        branches
-                            .iter()
-                            .flat_map(|(conditions, instructions, then_node)| {
-                                conditions
-                                    .iter()
-                                    .flat_map(|condition| condition.nodes())
-                                    .chain(instructions.iter().flat_map(|instruction| {
-                                        instruction.nodes(traverse_functions)
-                                    }))
-                                    .chain(*then_node)
-                            })
-                            .chain(else_branch.iter().flat_map(|(instructions, else_node)| {
-                                instructions
-                                    .iter()
-                                    .flat_map(|instruction| instruction.nodes(traverse_functions))
-                                    .chain(*else_node)
-                            })),
-                    )
-                    .collect()
+                if let Some(node) = node {
+                    f(node);
+                }
+
+                for (conditions, instructions, then_node) in branches {
+                    for condition in conditions {
+                        for node in condition.nodes_mut() {
+                            f(node);
+                        }
+                    }
+
+                    for instruction in instructions {
+                        instruction.for_each_node(traverse_functions, f);
+                    }
+
+                    if let Some(node) = then_node {
+                        f(node);
+                    }
+                }
+
+                if let Some((instructions, else_node)) = else_branch {
+                    for instruction in instructions {
+                        instruction.for_each_node(traverse_functions, f);
+                    }
+
+                    if let Some(node) = else_node {
+                        f(node);
+                    }
+                }
             }
-            Instruction::Return { value } => vec![*value],
-            Instruction::Trace { .. } => Vec::new(),
+            Instruction::Return { value } => f(value),
+            Instruction::ReturnCall { function, inputs } => {
+                f(function);
+
+                for input in inputs {
+                    f(input);
+                }
+            }
+            Instruction::Trace { .. } => {}
             Instruction::Value { node, value } => {
-                let mut nodes = vec![*node];
+                f(node);
 
                 if traverse_functions
                     && let Value::Function {
@@ -191,14 +209,14 @@ impl Instruction {
                         ..
                     } = value
                 {
-                    nodes.extend(inputs);
+                    for input in inputs {
+                        f(input);
+                    }
 
                     for instruction in instructions {
-                        nodes.extend(instruction.nodes(true));
+                        instruction.for_each_node(true, f);
                     }
                 }
-
-                nodes
             }
         }
     }
@@ -228,6 +246,7 @@ impl Instruction {
                 }
             }
             Instruction::Return { .. } => {}
+            Instruction::ReturnCall { .. } => {}
             Instruction::Trace { .. } => {}
             Instruction::Value { value, .. } => {
                 if let Value::Function { instructions, .. } = value {
@@ -242,13 +261,48 @@ impl Instruction {
     }
 }
 
+pub fn traverse_instructions(
+    instructions: &mut Vec<Instruction>,
+    f: &mut dyn FnMut(&mut Vec<Instruction>) -> Result<(), CodegenError>,
+) -> Result<(), CodegenError> {
+    f(instructions)?;
+
+    for instruction in instructions {
+        match instruction {
+            Instruction::If {
+                branches,
+                else_branch,
+                ..
+            } => {
+                for (_, instructions, _) in branches {
+                    traverse_instructions(instructions, f)?;
+                }
+
+                if let Some((instructions, _)) = else_branch {
+                    traverse_instructions(instructions, f)?;
+                }
+            }
+            Instruction::Return { .. } => {}
+            Instruction::ReturnCall { .. } => {}
+            Instruction::Trace { .. } => {}
+            Instruction::Value { value, .. } => {
+                if let Value::Function { instructions, .. } = value {
+                    traverse_instructions(instructions, f)?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 impl Condition {
-    pub fn nodes(&self) -> Vec<Node> {
-        match *self {
-            Condition::Or(ref conditions) => conditions
-                .iter()
+    pub fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        match self {
+            Condition::Or(conditions) => conditions
+                .iter_mut()
                 .flatten()
-                .flat_map(|condition| condition.nodes())
+                .flat_map(|condition| condition.nodes_mut())
                 .collect(),
             Condition::EqualToNumber { input, .. } => vec![input],
             Condition::EqualToString { input, .. } => vec![input],

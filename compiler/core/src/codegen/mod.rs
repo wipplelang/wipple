@@ -1,11 +1,12 @@
 pub mod ir;
 pub mod mangle;
 pub mod monomorphize;
+mod optimize;
 pub mod types;
 pub mod wasm;
 
 use crate::{
-    codegen::{monomorphize::MonomorphizeCtx, types::ir_type},
+    codegen::{monomorphize::MonomorphizeCtx, optimize::optimize, types::ir_type},
     db::{Db, Node},
     facts::Codegen,
     typecheck::{
@@ -146,15 +147,17 @@ pub fn codegen(db: &Db, statements: &[Node], lib: &[Node]) -> Result<ir::Program
 
     program.top_level.instructions = ctx.pop_instructions();
 
-    for instruction in &program.top_level.instructions {
-        for node in instruction.nodes(true) {
-            if let Some(ty) = ir_type(db, Ty::Node(node)) {
-                program.top_level.types.insert(node, ty);
+    for instruction in &mut program.top_level.instructions {
+        instruction.for_each_node(true, &mut |node| {
+            if let Some(ty) = ir_type(db, Ty::Node(*node)) {
+                program.top_level.types.insert(*node, ty);
             }
-        }
+        });
     }
 
     program.definitions = ctx.monomorphize_ctx.monomorphize_definitions(db)?.collect();
+
+    optimize(&mut program);
 
     Ok(program)
 }

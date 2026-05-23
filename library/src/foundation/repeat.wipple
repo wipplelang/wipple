@@ -14,9 +14,9 @@ with-control-flow : With-Control-Flow {current : Continue ()}
 With-Control-Flow : result => type {current :: Control-Flow () result}
 
 instance (Repeat-Predicate (With-Control-Flow result) (Control-Flow () result) result) : (With-Control-Flow {current : current}) -> when current {
-    (Continue ()) -> Continue (new -> With-Control-Flow {current : new})
-    (Stop result) -> Stop result
-  }
+  (Continue ()) -> Continue (new -> With-Control-Flow {current : new})
+  (Stop result) -> Stop result
+}
 
 -- Repeat so long as the provided condition is `True`.
 while :: {Boolean} -> While

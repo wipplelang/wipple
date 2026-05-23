@@ -107,12 +107,12 @@ impl MonomorphizeCtx {
         let mut types = BTreeMap::new();
         for instruction in &mut instructions {
             instruction.traverse_mut(&mut |instruction| {
-                for node in instruction.nodes(true) {
-                    if let Some(mut ty) = ir_type(db, Ty::Node(node)) {
+                instruction.for_each_node(true, &mut |node| {
+                    if let Some(mut ty) = ir_type(db, Ty::Node(*node)) {
                         ty.substitute(&key.substitutions);
-                        types.insert(node, ty);
+                        types.insert(*node, ty);
                     }
-                }
+                });
 
                 if let ir::Instruction::Value { value, .. } = instruction {
                     match value {

@@ -233,10 +233,11 @@ impl<'de> Deserialize<'de> for Facts {
 impl Db {
     pub fn new(parent: Option<DbRef>) -> Self {
         let layer = parent.as_ref().map_or(0, |p| p.layer() + 1);
+        let debug_enabled = parent.as_ref().is_some_and(|parent| parent.debug_enabled);
 
         Db {
             parent,
-            debug_enabled: false,
+            debug_enabled,
             ast: Ast::new(layer),
             graph: Default::default(),
             nodes: Default::default(),
