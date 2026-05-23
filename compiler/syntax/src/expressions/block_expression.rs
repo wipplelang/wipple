@@ -62,21 +62,31 @@ impl Visit for BlockExpression {
 
         visitor.pop_scope(db);
 
+        let unit_value = statements.is_empty().then(|| {
+            let node = db.node();
+            visitor.constraint(db, TyConstraint::new(node, ConstructedTy::unit()));
+            node
+        });
+
         visitor.constraint(
             db,
             TyConstraint::new(
                 node,
-                ConstructedTy::block(
-                    statements
-                        .last()
-                        .copied()
-                        .map(Ty::Node)
-                        .unwrap_or_else(|| Ty::Constructed(ConstructedTy::unit())),
-                ),
+                ConstructedTy::block(Ty::Node(
+                    unit_value.or_else(|| statements.last().copied()).unwrap(),
+                )),
             ),
         );
 
-        visitor.codegen(db, node, BlockExpressionCodegen { node, statements });
+        visitor.codegen(
+            db,
+            node,
+            BlockExpressionCodegen {
+                node,
+                statements,
+                unit_value,
+            },
+        );
     }
 }
 
@@ -84,6 +94,7 @@ impl Visit for BlockExpression {
 struct BlockExpressionCodegen {
     node: Node,
     statements: Vec<Node>,
+    unit_value: Option<Node>,
 }
 
 #[typetag::serde]
@@ -96,13 +107,13 @@ impl CodegenValue for BlockExpressionCodegen {
 
         ctx.push_instructions();
 
-        if self.statements.is_empty() {
+        if let Some(unit_value) = self.unit_value {
             ctx.instruction(ir::Instruction::Value {
-                node: self.node,
+                node: unit_value,
                 value: ir::Value::Tuple(Vec::new()),
             });
 
-            ctx.instruction(ir::Instruction::Return { value: self.node });
+            ctx.instruction(ir::Instruction::Return { value: unit_value });
         } else {
             for (index, &statement) in self.statements.iter().enumerate() {
                 let span = db
