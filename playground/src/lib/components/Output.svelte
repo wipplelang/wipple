@@ -39,8 +39,8 @@
         };
 
         const env: runner.Env = {
-            trace: async (trace: any) => {
-                onchangeline(trace.line);
+            trace: async (trace: string) => {
+                onchangeline(JSON.parse(trace).line);
             },
             display: async (message: string) => {
                 output.push({
