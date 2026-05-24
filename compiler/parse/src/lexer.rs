@@ -12,7 +12,7 @@ pub struct Token {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Logos)]
 pub enum TokenKind {
-    #[regex(r#"[ \t]+"#, logos::skip)]
+    #[regex(r#"[ \t]+"#)]
     Space,
     #[regex(r#"\n+"#)]
     LineBreak,
@@ -160,6 +160,10 @@ pub fn tokenize(path: impl Into<Str>, source: impl Into<Str>) -> Result<Vec<Toke
                 });
             }
         };
+
+        if let TokenKind::Space = kind {
+            continue;
+        }
 
         let token = Token {
             kind,

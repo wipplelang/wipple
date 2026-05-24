@@ -1,198 +1,198 @@
 Facts (layer 2):
 
-`Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40) (TraitDefinition):
+`Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:48) (TraitDefinition):
   has 5 instances
   has definition constraints
-  has type `value value -> Boolean` (library/src/foundation/logic.wipple:77:20-77:39)
+  has type `value value -> Boolean` (library/src/foundation/logic.wipple:77:25-77:47)
   has type parameters
   is a definition
 
-`value` (library/src/foundation/logic.wipple:77:7-77:12) (TypeParameter):
-  has type `value` (library/src/foundation/logic.wipple:77:7-77:12)
+`value` (library/src/foundation/logic.wipple:77:9-77:14) (TypeParameter):
+  has type `value` (library/src/foundation/logic.wipple:77:9-77:14)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (library/src/foundation/logic.wipple:77:7-77:12)
-
-`value` (library/src/foundation/logic.wipple:77:20-77:25) (TypeParameter):
-  has type `value` (library/src/foundation/logic.wipple:77:7-77:12)
-  is a type
-  resolved to 1 definition(s): `value` (library/src/foundation/logic.wipple:77:7-77:12)
-
-`value value -> Boolean` (library/src/foundation/logic.wipple:77:20-77:39) (FunctionType):
-  has type `value value -> Boolean` (library/src/foundation/logic.wipple:77:20-77:39)
-  is a type
+  resolved to 1 definition(s): `value` (library/src/foundation/logic.wipple:77:9-77:14)
 
 `value` (library/src/foundation/logic.wipple:77:25-77:30) (TypeParameter):
-  has type `value` (library/src/foundation/logic.wipple:77:7-77:12)
+  has type `value` (library/src/foundation/logic.wipple:77:9-77:14)
   is a type
-  resolved to 1 definition(s): `value` (library/src/foundation/logic.wipple:77:7-77:12)
+  resolved to 1 definition(s): `value` (library/src/foundation/logic.wipple:77:9-77:14)
 
-`Elephants : type {count :: Number}` (number-units.wipple:1:1-1:30) (TypeDefinition):
+`value value -> Boolean` (library/src/foundation/logic.wipple:77:25-77:47) (FunctionType):
+  has type `value value -> Boolean` (library/src/foundation/logic.wipple:77:25-77:47)
+  is a type
+
+`value` (library/src/foundation/logic.wipple:77:31-77:36) (TypeParameter):
+  has type `value` (library/src/foundation/logic.wipple:77:9-77:14)
+  is a type
+  resolved to 1 definition(s): `value` (library/src/foundation/logic.wipple:77:9-77:14)
+
+`Elephants : type {count :: Number}` (number-units.wipple:1:1-1:35) (TypeDefinition):
   has definition constraints
-  has type `Elephants` (number-units.wipple:1:1-1:30)
+  has type `Elephants` (number-units.wipple:1:1-1:35)
   is a definition
 
-`Elephants : type {count :: Number}` (number-units.wipple:1:1-1:30) (TypeDefinition):
+`Elephants : type {count :: Number}` (number-units.wipple:1:1-1:35) (TypeDefinition):
   has definition constraints
-  has type `Elephants` (number-units.wipple:1:1-1:30)
+  has type `Elephants` (number-units.wipple:1:1-1:35)
   is a definition
 
-`Number` (number-units.wipple:1:23-1:29) (NamedType):
-  has type `Number` (number-units.wipple:1:23-1:29)
+`Number` (number-units.wipple:1:28-1:34) (NamedType):
+  has type `Number` (number-units.wipple:1:28-1:34)
   is a type
-  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:34-1:45)
+  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:38-1:51)
 
-`instance (Equal Elephants)` (number-units.wipple:3:1-3:25) (InstanceDefinition):
+`instance (Equal Elephants)` (number-units.wipple:3:1-3:27) (InstanceDefinition):
   has definition constraints
-  has type `Elephants Elephants -> Boolean` (number-units.wipple:3:26-3:71)
+  has type `Elephants Elephants -> Boolean` (number-units.wipple:3:30-3:86)
   is a definition
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:48)
 
-`Elephants` (number-units.wipple:3:15-3:24) (NamedType):
-  has type `Elephants` (number-units.wipple:3:15-3:24)
+`Elephants` (number-units.wipple:3:17-3:26) (NamedType):
+  has type `Elephants` (number-units.wipple:3:17-3:26)
   is a type
-  resolved to 1 definition(s): `Elephants : type {count :: Number}` (number-units.wipple:1:1-1:30)
+  resolved to 1 definition(s): `Elephants : type {count :: Number}` (number-units.wipple:1:1-1:35)
 
-`(Elephants {count : a}) (Elephants {count : b}) -> a = b` (number-units.wipple:3:26-3:71) (FunctionExpression):
-  has type `Elephants Elephants -> Boolean` (number-units.wipple:3:26-3:71)
+`(Elephants {count : a}) (Elephants {count : b}) -> a = b` (number-units.wipple:3:30-3:86) (FunctionExpression):
+  has type `Elephants Elephants -> Boolean` (number-units.wipple:3:30-3:86)
   is an expression
 
-`Elephants {count : a}` (number-units.wipple:3:27-3:45) (StructurePattern):
-  has type `Elephants` (number-units.wipple:3:15-3:24)
+`Elephants {count : a}` (number-units.wipple:3:31-3:52) (StructurePattern):
+  has type `Elephants` (number-units.wipple:3:17-3:26)
   is a pattern
-  resolved to 1 definition(s): `Elephants : type {count :: Number}` (number-units.wipple:1:1-1:30)
+  resolved to 1 definition(s): `Elephants : type {count :: Number}` (number-units.wipple:1:1-1:35)
 
-`a` (number-units.wipple:3:43-3:44) (VariablePattern):
+`a` (number-units.wipple:3:50-3:51) (VariablePattern):
   has type `Number`
   is a definition
   is a pattern
 
-`Elephants {count : b}` (number-units.wipple:3:47-3:65) (StructurePattern):
-  has type `Elephants` (number-units.wipple:3:15-3:24)
+`Elephants {count : b}` (number-units.wipple:3:55-3:76) (StructurePattern):
+  has type `Elephants` (number-units.wipple:3:17-3:26)
   is a pattern
-  resolved to 1 definition(s): `Elephants : type {count :: Number}` (number-units.wipple:1:1-1:30)
+  resolved to 1 definition(s): `Elephants : type {count :: Number}` (number-units.wipple:1:1-1:35)
 
-`b` (number-units.wipple:3:63-3:64) (VariablePattern):
+`b` (number-units.wipple:3:74-3:75) (VariablePattern):
   has type `Number`
   is a definition
   is a pattern
 
-`a` (number-units.wipple:3:68-3:69) (VariableExpression):
+`a` (number-units.wipple:3:81-3:82) (VariableExpression):
   has type `Number`
   is an expression
-  resolved to 1 definition(s): `a` (number-units.wipple:3:43-3:44)
+  resolved to 1 definition(s): `a` (number-units.wipple:3:50-3:51)
 
-`a = b` (number-units.wipple:3:68-3:71) (OperatorExpression):
+`a = b` (number-units.wipple:3:81-3:86) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`a = b` (number-units.wipple:3:68-3:71) (CallExpression):
+`a = b` (number-units.wipple:3:81-3:86) (CallExpression):
   has type `Boolean`
   is an expression
 
-`a = b` (number-units.wipple:3:68-3:71) (ConstructorExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:22))
-  has type `Number Number -> Boolean` (number-units.wipple:3:68-3:71)
+`a = b` (number-units.wipple:3:81-3:86) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:24))
+  has type `Number Number -> Boolean` (number-units.wipple:3:81-3:86)
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:48)
 
-`b` (number-units.wipple:3:70-3:71) (VariableExpression):
+`b` (number-units.wipple:3:85-3:86) (VariableExpression):
   has type `Number`
   is an expression
-  resolved to 1 definition(s): `b` (number-units.wipple:3:63-3:64)
+  resolved to 1 definition(s): `b` (number-units.wipple:3:74-3:75)
 
-`elephants :: Number -> Elephants` (number-units.wipple:5:7-5:35) (ConstantDefinition):
+`elephants :: Number -> Elephants` (number-units.wipple:5:8-5:40) (ConstantDefinition):
   has definition constraints
-  has type `Number -> Elephants` (number-units.wipple:5:18-5:35)
+  has type `Number -> Elephants` (number-units.wipple:5:21-5:40)
   is a definition
 
-`Number` (number-units.wipple:5:18-5:24) (NamedType):
-  has type `Number` (number-units.wipple:5:18-5:24)
+`Number` (number-units.wipple:5:21-5:27) (NamedType):
+  has type `Number` (number-units.wipple:5:21-5:27)
   is a type
-  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:34-1:45)
+  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:38-1:51)
 
-`Number -> Elephants` (number-units.wipple:5:18-5:35) (FunctionType):
-  has type `Number -> Elephants` (number-units.wipple:5:18-5:35)
+`Number -> Elephants` (number-units.wipple:5:21-5:40) (FunctionType):
+  has type `Number -> Elephants` (number-units.wipple:5:21-5:40)
   is a type
 
-`Elephants` (number-units.wipple:5:26-5:35) (NamedType):
-  has type `Elephants` (number-units.wipple:5:26-5:35)
+`Elephants` (number-units.wipple:5:31-5:40) (NamedType):
+  has type `Elephants` (number-units.wipple:5:31-5:40)
   is a type
-  resolved to 1 definition(s): `Elephants : type {count :: Number}` (number-units.wipple:1:1-1:30)
+  resolved to 1 definition(s): `Elephants : type {count :: Number}` (number-units.wipple:1:1-1:35)
 
-`elephants : count -> Elephants {count : count}` (number-units.wipple:6:1-6:40) (AssignmentStatement):
-  has type `()` (number-units.wipple:6:1-6:40)
+`elephants : count -> Elephants {count : count}` (number-units.wipple:6:1-6:47) (AssignmentStatement):
+  has type `()` (number-units.wipple:6:1-6:47)
 
-`count` (number-units.wipple:6:11-6:16) (VariablePattern):
-  has type `Number` (number-units.wipple:5:18-5:24)
+`count` (number-units.wipple:6:13-6:18) (VariablePattern):
+  has type `Number` (number-units.wipple:5:21-5:27)
   is a definition
   is a pattern
 
-`count -> Elephants {count : count}` (number-units.wipple:6:11-6:40) (FunctionExpression):
-  has type `Number -> Elephants` (number-units.wipple:5:18-5:35)
+`count -> Elephants {count : count}` (number-units.wipple:6:13-6:47) (FunctionExpression):
+  has type `Number -> Elephants` (number-units.wipple:5:21-5:40)
   is an expression
 
-`Elephants {count : count}` (number-units.wipple:6:18-6:40) (StructureExpression):
-  has type `Elephants` (number-units.wipple:5:26-5:35)
+`Elephants {count : count}` (number-units.wipple:6:22-6:47) (StructureExpression):
+  has type `Elephants` (number-units.wipple:5:31-5:40)
   is an expression
-  resolved to 1 definition(s): `Elephants : type {count :: Number}` (number-units.wipple:1:1-1:30)
+  resolved to 1 definition(s): `Elephants : type {count :: Number}` (number-units.wipple:1:1-1:35)
 
-`count` (number-units.wipple:6:34-6:39) (VariableExpression):
-  has type `Number` (number-units.wipple:5:18-5:24)
+`count` (number-units.wipple:6:41-6:46) (VariableExpression):
+  has type `Number` (number-units.wipple:5:21-5:27)
   is an expression
-  resolved to 1 definition(s): `count` (number-units.wipple:6:11-6:16)
+  resolved to 1 definition(s): `count` (number-units.wipple:6:13-6:18)
 
 `show` (number-units.wipple:8:1-8:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:26))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:28))
   has type `Boolean -> ()` (number-units.wipple:8:1-8:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
-`show (42 elephants = elephants 42)` (number-units.wipple:8:1-8:30) (ExpressionStatement):
+`show (42 elephants = elephants 42)` (number-units.wipple:8:1-8:35) (ExpressionStatement):
   has type `()`
 
-`show (42 elephants = elephants 42)` (number-units.wipple:8:1-8:30) (CallExpression):
+`show (42 elephants = elephants 42)` (number-units.wipple:8:1-8:35) (CallExpression):
   has type `()`
   is an expression
 
-`42` (number-units.wipple:8:6-8:8) (NumberExpression):
-  has type `Number` (number-units.wipple:8:6-8:8)
+`42` (number-units.wipple:8:7-8:9) (NumberExpression):
+  has type `Number` (number-units.wipple:8:7-8:9)
   is an expression
 
-`42 elephants` (number-units.wipple:8:6-8:17) (CallExpression):
+`42 elephants` (number-units.wipple:8:7-8:19) (CallExpression):
   has type `Elephants`
   is an expression
 
-`42 elephants = elephants 42` (number-units.wipple:8:6-8:29) (OperatorExpression):
+`42 elephants = elephants 42` (number-units.wipple:8:7-8:34) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`42 elephants = elephants 42` (number-units.wipple:8:6-8:29) (CallExpression):
+`42 elephants = elephants 42` (number-units.wipple:8:7-8:34) (CallExpression):
   has type `Boolean`
   is an expression
 
-`42 elephants = elephants 42` (number-units.wipple:8:6-8:29) (ConstructorExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:40) `Elephants` (resolved as `instance (Equal Elephants)` (number-units.wipple:3:1-3:25))
-  has type `Elephants Elephants -> Boolean` (number-units.wipple:8:6-8:29)
+`42 elephants = elephants 42` (number-units.wipple:8:7-8:34) (ConstructorExpression):
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `Elephants` (resolved as `instance (Equal Elephants)` (number-units.wipple:3:1-3:27))
+  has type `Elephants Elephants -> Boolean` (number-units.wipple:8:7-8:34)
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:40)
+  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:48)
 
-`elephants` (number-units.wipple:8:8-8:17) (VariableExpression):
-  has type `Number -> Elephants` (number-units.wipple:8:8-8:17)
+`elephants` (number-units.wipple:8:10-8:19) (VariableExpression):
+  has type `Number -> Elephants` (number-units.wipple:8:10-8:19)
   is an expression
-  resolved to 1 definition(s): `elephants :: Number -> Elephants` (number-units.wipple:5:7-5:35)
+  resolved to 1 definition(s): `elephants :: Number -> Elephants` (number-units.wipple:5:8-5:40)
 
-`elephants` (number-units.wipple:8:18-8:27) (VariableExpression):
-  has type `Number -> Elephants` (number-units.wipple:8:18-8:27)
+`elephants` (number-units.wipple:8:22-8:31) (VariableExpression):
+  has type `Number -> Elephants` (number-units.wipple:8:22-8:31)
   is an expression
-  resolved to 1 definition(s): `elephants :: Number -> Elephants` (number-units.wipple:5:7-5:35)
+  resolved to 1 definition(s): `elephants :: Number -> Elephants` (number-units.wipple:5:8-5:40)
 
-`elephants 42` (number-units.wipple:8:18-8:29) (CallExpression):
+`elephants 42` (number-units.wipple:8:22-8:34) (CallExpression):
   has type `Elephants`
   is an expression
 
-`42` (number-units.wipple:8:27-8:29) (NumberExpression):
-  has type `Number` (number-units.wipple:8:27-8:29)
+`42` (number-units.wipple:8:32-8:34) (NumberExpression):
+  has type `Number` (number-units.wipple:8:32-8:34)
   is an expression
 
 

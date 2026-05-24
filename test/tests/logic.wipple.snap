@@ -1,152 +1,152 @@
 Facts (layer 2):
 
 `show` (logic.wipple:1:1-1:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
   has type `String -> ()` (logic.wipple:1:1-1:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
-`show (if (True and False) {"a"} {"b"})` (logic.wipple:1:1-1:33) (ExpressionStatement):
+`show (if (True and False) {"a"} {"b"})` (logic.wipple:1:1-1:39) (ExpressionStatement):
   has type `()`
 
-`show (if (True and False) {"a"} {"b"})` (logic.wipple:1:1-1:33) (CallExpression):
+`show (if (True and False) {"a"} {"b"})` (logic.wipple:1:1-1:39) (CallExpression):
   has type `()`
   is an expression
 
-`if` (logic.wipple:1:6-1:8) (VariableExpression):
-  has type `Boolean {String} {String} -> String` (logic.wipple:1:6-1:8)
+`if` (logic.wipple:1:7-1:9) (VariableExpression):
+  has type `Boolean {String} {String} -> String` (logic.wipple:1:7-1:9)
   is an expression
-  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (library/src/foundation/logic.wipple:12:1-12:72)
+  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (library/src/foundation/logic.wipple:12:1-12:86)
 
-`if (True and False) {"a"} {"b"}` (logic.wipple:1:6-1:32) (CallExpression):
+`if (True and False) {"a"} {"b"}` (logic.wipple:1:7-1:38) (CallExpression):
   has type `String`
   is an expression
 
-`True` (logic.wipple:1:9-1:13) (VisitAs):
+`True` (logic.wipple:1:11-1:15) (VisitAs):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:1-4:5)
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
 
-`True and False` (logic.wipple:1:9-1:21) (OperatorExpression):
-  has type `Boolean`
-  is an expression
-
-`True and False` (logic.wipple:1:9-1:21) (CallExpression):
+`True and False` (logic.wipple:1:11-1:25) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`True and False` (logic.wipple:1:9-1:21) (ConstructorExpression):
-  has bound(s) `And` (library/src/foundation/logic.wipple:29:1-29:62) `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:35))
-  has type `Boolean {Boolean} -> Boolean` (logic.wipple:1:9-1:21)
-  is an expression
-  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:29:1-29:62)
-
-`False` (logic.wipple:1:16-1:21) (VisitAs):
+`True and False` (logic.wipple:1:11-1:25) (CallExpression):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:1-3:6)
 
-`False` (logic.wipple:1:16-1:21) (BlockExpression):
-  has type `{Boolean}` (logic.wipple:1:16-1:21)
+`True and False` (logic.wipple:1:11-1:25) (ConstructorExpression):
+  has bound(s) `And` (library/src/foundation/logic.wipple:29:1-29:74) `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:39))
+  has type `Boolean {Boolean} -> Boolean` (logic.wipple:1:11-1:25)
+  is an expression
+  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:29:1-29:74)
+
+`False` (logic.wipple:1:20-1:25) (VisitAs):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
+
+`False` (logic.wipple:1:20-1:25) (BlockExpression):
+  has type `{Boolean}` (logic.wipple:1:20-1:25)
   is an expression
 
-`False` (logic.wipple:1:16-1:21) (ExpressionStatement):
+`False` (logic.wipple:1:20-1:25) (ExpressionStatement):
   has type `Boolean`
 
-`{"a"}` (logic.wipple:1:22-1:27) (BlockExpression):
-  has type `{String}` (logic.wipple:1:22-1:27)
-  is an expression
-
-`"a"` (logic.wipple:1:23-1:26) (ExpressionStatement):
-  has type `String`
-
-`"a"` (logic.wipple:1:23-1:26) (StringExpression):
-  has type `String`
-  is an expression
-
-`{"b"}` (logic.wipple:1:27-1:32) (BlockExpression):
+`{"a"}` (logic.wipple:1:27-1:32) (BlockExpression):
   has type `{String}` (logic.wipple:1:27-1:32)
   is an expression
 
-`"b"` (logic.wipple:1:28-1:31) (ExpressionStatement):
+`"a"` (logic.wipple:1:28-1:31) (ExpressionStatement):
   has type `String`
 
-`"b"` (logic.wipple:1:28-1:31) (StringExpression):
+`"a"` (logic.wipple:1:28-1:31) (StringExpression):
+  has type `String`
+  is an expression
+
+`{"b"}` (logic.wipple:1:33-1:38) (BlockExpression):
+  has type `{String}` (logic.wipple:1:33-1:38)
+  is an expression
+
+`"b"` (logic.wipple:1:34-1:37) (ExpressionStatement):
+  has type `String`
+
+`"b"` (logic.wipple:1:34-1:37) (StringExpression):
   has type `String`
   is an expression
 
 `show` (logic.wipple:2:1-2:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
   has type `String -> ()` (logic.wipple:2:1-2:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
-`show (if (True or False) {"a"} {"b"})` (logic.wipple:2:1-2:32) (ExpressionStatement):
+`show (if (True or False) {"a"} {"b"})` (logic.wipple:2:1-2:38) (ExpressionStatement):
   has type `()`
 
-`show (if (True or False) {"a"} {"b"})` (logic.wipple:2:1-2:32) (CallExpression):
+`show (if (True or False) {"a"} {"b"})` (logic.wipple:2:1-2:38) (CallExpression):
   has type `()`
   is an expression
 
-`if` (logic.wipple:2:6-2:8) (VariableExpression):
-  has type `Boolean {String} {String} -> String` (logic.wipple:2:6-2:8)
+`if` (logic.wipple:2:7-2:9) (VariableExpression):
+  has type `Boolean {String} {String} -> String` (logic.wipple:2:7-2:9)
   is an expression
-  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (library/src/foundation/logic.wipple:12:1-12:72)
+  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (library/src/foundation/logic.wipple:12:1-12:86)
 
-`if (True or False) {"a"} {"b"}` (logic.wipple:2:6-2:31) (CallExpression):
+`if (True or False) {"a"} {"b"}` (logic.wipple:2:7-2:37) (CallExpression):
   has type `String`
   is an expression
 
-`True` (logic.wipple:2:9-2:13) (VisitAs):
+`True` (logic.wipple:2:11-2:15) (VisitAs):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:1-4:5)
+  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
 
-`True or False` (logic.wipple:2:9-2:20) (OperatorExpression):
-  has type `Boolean`
-  is an expression
-
-`True or False` (logic.wipple:2:9-2:20) (CallExpression):
+`True or False` (logic.wipple:2:11-2:24) (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`True or False` (logic.wipple:2:9-2:20) (ConstructorExpression):
-  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:61) `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:34:1-34:34))
-  has type `Boolean {Boolean} -> Boolean` (logic.wipple:2:9-2:20)
-  is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:61)
-
-`False` (logic.wipple:2:15-2:20) (VisitAs):
+`True or False` (logic.wipple:2:11-2:24) (CallExpression):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:1-3:6)
 
-`False` (logic.wipple:2:15-2:20) (BlockExpression):
-  has type `{Boolean}` (logic.wipple:2:15-2:20)
+`True or False` (logic.wipple:2:11-2:24) (ConstructorExpression):
+  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:73) `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:34:1-34:38))
+  has type `Boolean {Boolean} -> Boolean` (logic.wipple:2:11-2:24)
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:73)
+
+`False` (logic.wipple:2:19-2:24) (VisitAs):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
+
+`False` (logic.wipple:2:19-2:24) (BlockExpression):
+  has type `{Boolean}` (logic.wipple:2:19-2:24)
   is an expression
 
-`False` (logic.wipple:2:15-2:20) (ExpressionStatement):
+`False` (logic.wipple:2:19-2:24) (ExpressionStatement):
   has type `Boolean`
 
-`{"a"}` (logic.wipple:2:21-2:26) (BlockExpression):
-  has type `{String}` (logic.wipple:2:21-2:26)
-  is an expression
-
-`"a"` (logic.wipple:2:22-2:25) (ExpressionStatement):
-  has type `String`
-
-`"a"` (logic.wipple:2:22-2:25) (StringExpression):
-  has type `String`
-  is an expression
-
-`{"b"}` (logic.wipple:2:26-2:31) (BlockExpression):
+`{"a"}` (logic.wipple:2:26-2:31) (BlockExpression):
   has type `{String}` (logic.wipple:2:26-2:31)
   is an expression
 
-`"b"` (logic.wipple:2:27-2:30) (ExpressionStatement):
+`"a"` (logic.wipple:2:27-2:30) (ExpressionStatement):
   has type `String`
 
-`"b"` (logic.wipple:2:27-2:30) (StringExpression):
+`"a"` (logic.wipple:2:27-2:30) (StringExpression):
+  has type `String`
+  is an expression
+
+`{"b"}` (logic.wipple:2:32-2:37) (BlockExpression):
+  has type `{String}` (logic.wipple:2:32-2:37)
+  is an expression
+
+`"b"` (logic.wipple:2:33-2:36) (ExpressionStatement):
+  has type `String`
+
+`"b"` (logic.wipple:2:33-2:36) (StringExpression):
   has type `String`
   is an expression
 

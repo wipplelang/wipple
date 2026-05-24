@@ -1,242 +1,242 @@
 Facts (layer 2):
 
-`Greet : value => trait (value -> String)` (greet.wipple:2:1-2:34) (TraitDefinition):
+`Greet : value => trait (value -> String)` (greet.wipple:2:1-2:41) (TraitDefinition):
   has 2 instances
   has definition constraints
-  has type `value -> String` (greet.wipple:2:20-2:33)
+  has type `value -> String` (greet.wipple:2:25-2:40)
   has type parameters
   is a definition
 
-`value` (greet.wipple:2:7-2:12) (TypeParameter):
-  has type `value` (greet.wipple:2:7-2:12)
+`value` (greet.wipple:2:9-2:14) (TypeParameter):
+  has type `value` (greet.wipple:2:9-2:14)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (greet.wipple:2:7-2:12)
+  resolved to 1 definition(s): `value` (greet.wipple:2:9-2:14)
 
-`value` (greet.wipple:2:20-2:25) (TypeParameter):
-  has type `value` (greet.wipple:2:7-2:12)
+`value` (greet.wipple:2:25-2:30) (TypeParameter):
+  has type `value` (greet.wipple:2:9-2:14)
   is a type
-  resolved to 1 definition(s): `value` (greet.wipple:2:7-2:12)
+  resolved to 1 definition(s): `value` (greet.wipple:2:9-2:14)
 
-`value -> String` (greet.wipple:2:20-2:33) (FunctionType):
-  has type `value -> String` (greet.wipple:2:20-2:33)
+`value -> String` (greet.wipple:2:25-2:40) (FunctionType):
+  has type `value -> String` (greet.wipple:2:25-2:40)
   is a type
 
-`String` (greet.wipple:2:27-2:33) (NamedType):
-  has type `String` (greet.wipple:2:27-2:33)
+`String` (greet.wipple:2:34-2:40) (NamedType):
+  has type `String` (greet.wipple:2:34-2:40)
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
 
-`greet :: value -> String where (Greet value)` (greet.wipple:5:1-5:38) (ConstantDefinition):
+`greet :: value -> String where (Greet value)` (greet.wipple:5:1-5:45) (ConstantDefinition):
   has definition constraints
-  has type `value -> String` (greet.wipple:5:8-5:21)
+  has type `value -> String` (greet.wipple:5:10-5:25)
   has type parameters
   is a definition
 
-`value` (greet.wipple:5:8-5:13) (TypeParameter):
-  has type `value` (greet.wipple:5:8-5:13)
+`value` (greet.wipple:5:10-5:15) (TypeParameter):
+  has type `value` (greet.wipple:5:10-5:15)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (greet.wipple:5:8-5:13)
+  resolved to 1 definition(s): `value` (greet.wipple:5:10-5:15)
 
-`value -> String` (greet.wipple:5:8-5:21) (FunctionType):
-  has type `value -> String` (greet.wipple:5:8-5:21)
+`value -> String` (greet.wipple:5:10-5:25) (FunctionType):
+  has type `value -> String` (greet.wipple:5:10-5:25)
   is a type
 
-`String` (greet.wipple:5:15-5:21) (NamedType):
-  has type `String` (greet.wipple:5:15-5:21)
+`String` (greet.wipple:5:19-5:25) (NamedType):
+  has type `String` (greet.wipple:5:19-5:25)
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
 
-`(Greet value)` (greet.wipple:5:26-5:38) (BoundConstraint):
-  has bound(s) `Greet` (greet.wipple:2:1-2:34) `value` (greet.wipple:5:8-5:13) (resolved as `(Greet value)` (greet.wipple:5:26-5:38))
+`(Greet value)` (greet.wipple:5:32-5:45) (BoundConstraint):
+  has bound(s) `Greet` (greet.wipple:2:1-2:41) `value` (greet.wipple:5:10-5:15) (resolved as `(Greet value)` (greet.wipple:5:32-5:45))
   is a constraint
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:34)
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:41)
 
-`value` (greet.wipple:5:32-5:37) (TypeParameter):
-  has type `value` (greet.wipple:5:8-5:13)
+`value` (greet.wipple:5:39-5:44) (TypeParameter):
+  has type `value` (greet.wipple:5:10-5:15)
   is a type
-  resolved to 1 definition(s): `value` (greet.wipple:5:8-5:13)
+  resolved to 1 definition(s): `value` (greet.wipple:5:10-5:15)
 
-`greet : x -> "Hello, _!" (Greet x)` (greet.wipple:6:1-6:29) (AssignmentStatement):
-  has type `()` (greet.wipple:6:1-6:29)
+`greet : x -> "Hello, _!" (Greet x)` (greet.wipple:6:1-6:35) (AssignmentStatement):
+  has type `()` (greet.wipple:6:1-6:35)
 
-`x` (greet.wipple:6:7-6:8) (VariablePattern):
-  has type `value` (greet.wipple:5:8-5:13)
+`x` (greet.wipple:6:9-6:10) (VariablePattern):
+  has type `value` (greet.wipple:5:10-5:15)
   is a definition
   is a pattern
 
-`x -> "Hello, _!" (Greet x)` (greet.wipple:6:7-6:29) (FunctionExpression):
-  has type `value -> String` (greet.wipple:5:8-5:21)
+`x -> "Hello, _!" (Greet x)` (greet.wipple:6:9-6:35) (FunctionExpression):
+  has type `value -> String` (greet.wipple:5:10-5:25)
   is an expression
 
-`"Hello, _!" (Greet x)` (greet.wipple:6:10-6:29) (FormatExpression):
-  has type `String` (greet.wipple:5:15-5:21)
+`"Hello, _!" (Greet x)` (greet.wipple:6:14-6:35) (FormatExpression):
+  has type `String` (greet.wipple:5:19-5:25)
   is an expression
 
-`"Hello, _!" (Greet x)` (greet.wipple:6:10-6:29) (NamedType):
-  has type `String` (greet.wipple:5:15-5:21)
+`"Hello, _!" (Greet x)` (greet.wipple:6:14-6:35) (NamedType):
+  has type `String` (greet.wipple:5:19-5:25)
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
 
-`"Hello, _!" (Greet x)` (greet.wipple:6:10-6:29) (ConstructorExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
-  has type `String -> String` (greet.wipple:6:10-6:29)
+`"Hello, _!" (Greet x)` (greet.wipple:6:14-6:35) (ConstructorExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
+  has type `String -> String` (greet.wipple:6:14-6:35)
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:37)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44)
 
-`Greet` (greet.wipple:6:22-6:27) (ConstructorExpression):
-  has bound(s) `Greet` (greet.wipple:2:1-2:34) `value` (greet.wipple:5:8-5:13) (resolved as `(Greet value)` (greet.wipple:5:26-5:38))
-  has type `value -> String` (greet.wipple:6:22-6:27)
+`Greet` (greet.wipple:6:27-6:32) (ConstructorExpression):
+  has bound(s) `Greet` (greet.wipple:2:1-2:41) `value` (greet.wipple:5:10-5:15) (resolved as `(Greet value)` (greet.wipple:5:32-5:45))
+  has type `value -> String` (greet.wipple:6:27-6:32)
   is an expression
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:34)
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:41)
 
-`Greet x` (greet.wipple:6:22-6:28) (CallExpression):
+`Greet x` (greet.wipple:6:27-6:34) (CallExpression):
   has type `String`
   is an expression
 
-`x` (greet.wipple:6:27-6:28) (VariableExpression):
-  has type `value` (greet.wipple:5:8-5:13)
+`x` (greet.wipple:6:33-6:34) (VariableExpression):
+  has type `value` (greet.wipple:5:10-5:15)
   is an expression
-  resolved to 1 definition(s): `x` (greet.wipple:6:7-6:8)
+  resolved to 1 definition(s): `x` (greet.wipple:6:9-6:10)
 
-`Person : type {name :: String}` (greet.wipple:8:1-8:26) (TypeDefinition):
+`Person : type {name :: String}` (greet.wipple:8:1-8:31) (TypeDefinition):
   has definition constraints
-  has type `Person` (greet.wipple:8:1-8:26)
+  has type `Person` (greet.wipple:8:1-8:31)
   is a definition
 
-`Person : type {name :: String}` (greet.wipple:8:1-8:26) (TypeDefinition):
+`Person : type {name :: String}` (greet.wipple:8:1-8:31) (TypeDefinition):
   has definition constraints
-  has type `Person` (greet.wipple:8:1-8:26)
+  has type `Person` (greet.wipple:8:1-8:31)
   is a definition
 
-`String` (greet.wipple:8:19-8:25) (NamedType):
-  has type `String` (greet.wipple:8:19-8:25)
+`String` (greet.wipple:8:24-8:30) (NamedType):
+  has type `String` (greet.wipple:8:24-8:30)
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
 
-`instance (Greet Person)` (greet.wipple:11:1-11:22) (InstanceDefinition):
+`instance (Greet Person)` (greet.wipple:11:1-11:24) (InstanceDefinition):
   has definition constraints
-  has type `Person -> String` (greet.wipple:11:23-11:48)
+  has type `Person -> String` (greet.wipple:11:27-11:57)
   is a definition
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:34)
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:41)
 
-`Person` (greet.wipple:11:15-11:21) (NamedType):
-  has type `Person` (greet.wipple:11:15-11:21)
+`Person` (greet.wipple:11:17-11:23) (NamedType):
+  has type `Person` (greet.wipple:11:17-11:23)
   is a type
-  resolved to 1 definition(s): `Person : type {name :: String}` (greet.wipple:8:1-8:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (greet.wipple:8:1-8:31)
 
-`(Person {name : name}) -> name` (greet.wipple:11:23-11:48) (FunctionExpression):
-  has type `Person -> String` (greet.wipple:11:23-11:48)
+`(Person {name : name}) -> name` (greet.wipple:11:27-11:57) (FunctionExpression):
+  has type `Person -> String` (greet.wipple:11:27-11:57)
   is an expression
 
-`Person {name : name}` (greet.wipple:11:24-11:41) (StructurePattern):
-  has type `Person` (greet.wipple:11:15-11:21)
+`Person {name : name}` (greet.wipple:11:28-11:48) (StructurePattern):
+  has type `Person` (greet.wipple:11:17-11:23)
   is a pattern
-  resolved to 1 definition(s): `Person : type {name :: String}` (greet.wipple:8:1-8:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (greet.wipple:8:1-8:31)
 
-`name` (greet.wipple:11:36-11:40) (VariablePattern):
+`name` (greet.wipple:11:43-11:47) (VariablePattern):
   has type `String`
   is a definition
   is a pattern
 
-`name` (greet.wipple:11:44-11:48) (VariableExpression):
+`name` (greet.wipple:11:53-11:57) (VariableExpression):
   has type `String`
   is an expression
-  resolved to 1 definition(s): `name` (greet.wipple:11:36-11:40)
+  resolved to 1 definition(s): `name` (greet.wipple:11:43-11:47)
 
-`Earth : type` (greet.wipple:13:1-13:11) (TypeDefinition):
+`Earth : type` (greet.wipple:13:1-13:13) (TypeDefinition):
   has definition constraints
-  has type `Earth` (greet.wipple:13:1-13:11)
+  has type `Earth` (greet.wipple:13:1-13:13)
   is a definition
 
-`Earth : type` (greet.wipple:13:1-13:11) (TypeDefinition):
+`Earth : type` (greet.wipple:13:1-13:13) (TypeDefinition):
   has definition constraints
-  has type `Earth` (greet.wipple:13:1-13:11)
+  has type `Earth` (greet.wipple:13:1-13:13)
   is a definition
 
-`instance (Greet Earth)` (greet.wipple:16:1-16:21) (InstanceDefinition):
+`instance (Greet Earth)` (greet.wipple:16:1-16:23) (InstanceDefinition):
   has definition constraints
-  has type `Earth -> String` (greet.wipple:16:22-16:32)
+  has type `Earth -> String` (greet.wipple:16:26-16:38)
   is a definition
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:34)
+  resolved to 1 definition(s): `Greet : value => trait (value -> String)` (greet.wipple:2:1-2:41)
 
-`Earth` (greet.wipple:16:15-16:20) (NamedType):
-  has type `Earth` (greet.wipple:16:15-16:20)
+`Earth` (greet.wipple:16:17-16:22) (NamedType):
+  has type `Earth` (greet.wipple:16:17-16:22)
   is a type
-  resolved to 1 definition(s): `Earth : type` (greet.wipple:13:1-13:11)
+  resolved to 1 definition(s): `Earth : type` (greet.wipple:13:1-13:13)
 
-`_` (greet.wipple:16:22-16:23) (WildcardPattern):
-  has type `Earth` (greet.wipple:16:15-16:20)
+`_` (greet.wipple:16:26-16:27) (WildcardPattern):
+  has type `Earth` (greet.wipple:16:17-16:22)
   is a pattern
 
-`_ -> "world"` (greet.wipple:16:22-16:32) (FunctionExpression):
-  has type `Earth -> String` (greet.wipple:16:22-16:32)
+`_ -> "world"` (greet.wipple:16:26-16:38) (FunctionExpression):
+  has type `Earth -> String` (greet.wipple:16:26-16:38)
   is an expression
 
-`"world"` (greet.wipple:16:25-16:32) (StringExpression):
-  has type `String` (greet.wipple:16:25-16:32)
+`"world"` (greet.wipple:16:31-16:38) (StringExpression):
+  has type `String` (greet.wipple:16:31-16:38)
   is an expression
 
 `show` (greet.wipple:18:1-18:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
   has type `String -> ()` (greet.wipple:18:1-18:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
-`show (greet (Person {name : "Bob"}))` (greet.wipple:18:1-18:32) (ExpressionStatement):
+`show (greet (Person {name : "Bob"}))` (greet.wipple:18:1-18:37) (ExpressionStatement):
   has type `()`
 
-`show (greet (Person {name : "Bob"}))` (greet.wipple:18:1-18:32) (CallExpression):
+`show (greet (Person {name : "Bob"}))` (greet.wipple:18:1-18:37) (CallExpression):
   has type `()`
   is an expression
 
-`greet` (greet.wipple:18:6-18:11) (VariableExpression):
-  has bound(s) `Greet` (greet.wipple:2:1-2:34) `Person` (resolved as `instance (Greet Person)` (greet.wipple:11:1-11:22))
-  has type `Person -> String` (greet.wipple:18:6-18:11)
+`greet` (greet.wipple:18:7-18:12) (VariableExpression):
+  has bound(s) `Greet` (greet.wipple:2:1-2:41) `Person` (resolved as `instance (Greet Person)` (greet.wipple:11:1-11:24))
+  has type `Person -> String` (greet.wipple:18:7-18:12)
   is an expression
-  resolved to 1 definition(s): `greet :: value -> String where (Greet value)` (greet.wipple:5:1-5:38)
+  resolved to 1 definition(s): `greet :: value -> String where (Greet value)` (greet.wipple:5:1-5:45)
 
-`greet (Person {name : "Bob"})` (greet.wipple:18:6-18:31) (CallExpression):
+`greet (Person {name : "Bob"})` (greet.wipple:18:7-18:36) (CallExpression):
   has type `String`
   is an expression
 
-`Person {name : "Bob"}` (greet.wipple:18:12-18:30) (StructureExpression):
+`Person {name : "Bob"}` (greet.wipple:18:14-18:35) (StructureExpression):
   has type `Person`
   is an expression
-  resolved to 1 definition(s): `Person : type {name :: String}` (greet.wipple:8:1-8:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (greet.wipple:8:1-8:31)
 
-`"Bob"` (greet.wipple:18:24-18:29) (StringExpression):
-  has type `String` (greet.wipple:18:24-18:29)
+`"Bob"` (greet.wipple:18:29-18:34) (StringExpression):
+  has type `String` (greet.wipple:18:29-18:34)
   is an expression
 
 `show` (greet.wipple:19:1-19:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
   has type `String -> ()` (greet.wipple:19:1-19:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
-`show (greet Earth)` (greet.wipple:19:1-19:17) (ExpressionStatement):
+`show (greet Earth)` (greet.wipple:19:1-19:19) (ExpressionStatement):
   has type `()`
 
-`show (greet Earth)` (greet.wipple:19:1-19:17) (CallExpression):
+`show (greet Earth)` (greet.wipple:19:1-19:19) (CallExpression):
   has type `()`
   is an expression
 
-`greet` (greet.wipple:19:6-19:11) (VariableExpression):
-  has bound(s) `Greet` (greet.wipple:2:1-2:34) `Earth` (resolved as `instance (Greet Earth)` (greet.wipple:16:1-16:21))
-  has type `Earth -> String` (greet.wipple:19:6-19:11)
+`greet` (greet.wipple:19:7-19:12) (VariableExpression):
+  has bound(s) `Greet` (greet.wipple:2:1-2:41) `Earth` (resolved as `instance (Greet Earth)` (greet.wipple:16:1-16:23))
+  has type `Earth -> String` (greet.wipple:19:7-19:12)
   is an expression
-  resolved to 1 definition(s): `greet :: value -> String where (Greet value)` (greet.wipple:5:1-5:38)
+  resolved to 1 definition(s): `greet :: value -> String where (Greet value)` (greet.wipple:5:1-5:45)
 
-`greet Earth` (greet.wipple:19:6-19:16) (CallExpression):
+`greet Earth` (greet.wipple:19:7-19:18) (CallExpression):
   has type `String`
   is an expression
 
-`Earth` (greet.wipple:19:11-19:16) (ConstructorExpression):
+`Earth` (greet.wipple:19:13-19:18) (ConstructorExpression):
   has type `Earth`
   is an expression
-  resolved to 1 definition(s): `Earth : type` (greet.wipple:13:1-13:11)
+  resolved to 1 definition(s): `Earth : type` (greet.wipple:13:1-13:13)
 
 
 Output:

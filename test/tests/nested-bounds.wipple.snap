@@ -1,173 +1,173 @@
 Facts (layer 2):
 
-`Number : type` (nested-bounds.wipple:1:12-1:23) (TypeDefinition):
+`Number : type` (nested-bounds.wipple:1:13-1:26) (TypeDefinition):
   has definition constraints
-  has type `Number` (nested-bounds.wipple:1:12-1:23)
+  has type `Number` (nested-bounds.wipple:1:13-1:26)
   is a definition
 
-`String : type` (nested-bounds.wipple:2:12-2:23) (TypeDefinition):
+`String : type` (nested-bounds.wipple:2:13-2:26) (TypeDefinition):
   has definition constraints
-  has type `String` (nested-bounds.wipple:2:12-2:23)
+  has type `String` (nested-bounds.wipple:2:13-2:26)
   is a definition
 
-`A : value => trait (value -> ())` (nested-bounds.wipple:4:1-4:26) (TraitDefinition):
+`A : value => trait (value -> ())` (nested-bounds.wipple:4:1-4:33) (TraitDefinition):
   has 2 instances
   has definition constraints
-  has type `value -> ()` (nested-bounds.wipple:4:16-4:25)
+  has type `value -> ()` (nested-bounds.wipple:4:21-4:32)
   has type parameters
   is a definition
 
-`value` (nested-bounds.wipple:4:3-4:8) (TypeParameter):
-  has type `value` (nested-bounds.wipple:4:3-4:8)
+`value` (nested-bounds.wipple:4:5-4:10) (TypeParameter):
+  has type `value` (nested-bounds.wipple:4:5-4:10)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (nested-bounds.wipple:4:3-4:8)
+  resolved to 1 definition(s): `value` (nested-bounds.wipple:4:5-4:10)
 
-`value` (nested-bounds.wipple:4:16-4:21) (TypeParameter):
-  has type `value` (nested-bounds.wipple:4:3-4:8)
+`value` (nested-bounds.wipple:4:21-4:26) (TypeParameter):
+  has type `value` (nested-bounds.wipple:4:5-4:10)
   is a type
-  resolved to 1 definition(s): `value` (nested-bounds.wipple:4:3-4:8)
+  resolved to 1 definition(s): `value` (nested-bounds.wipple:4:5-4:10)
 
-`value -> ()` (nested-bounds.wipple:4:16-4:25) (FunctionType):
-  has type `value -> ()` (nested-bounds.wipple:4:16-4:25)
-  is a type
-
-`()` (nested-bounds.wipple:4:23-4:25) (UnitType):
-  has type `()` (nested-bounds.wipple:4:23-4:25)
+`value -> ()` (nested-bounds.wipple:4:21-4:32) (FunctionType):
+  has type `value -> ()` (nested-bounds.wipple:4:21-4:32)
   is a type
 
-`instance (A Number)` (nested-bounds.wipple:5:1-5:18) (InstanceDefinition):
+`()` (nested-bounds.wipple:4:30-4:32) (UnitType):
+  has type `()` (nested-bounds.wipple:4:30-4:32)
+  is a type
+
+`instance (A Number)` (nested-bounds.wipple:5:1-5:20) (InstanceDefinition):
   has definition constraints
   has type `Number -> ()`
   is a definition
-  resolved to 1 definition(s): `A : value => trait (value -> ())` (nested-bounds.wipple:4:1-4:26)
+  resolved to 1 definition(s): `A : value => trait (value -> ())` (nested-bounds.wipple:4:1-4:33)
 
-`Number` (nested-bounds.wipple:5:11-5:17) (NamedType):
-  has type `Number` (nested-bounds.wipple:5:11-5:17)
+`Number` (nested-bounds.wipple:5:13-5:19) (NamedType):
+  has type `Number` (nested-bounds.wipple:5:13-5:19)
   is a type
-  resolved to 1 definition(s): `Number : type` (nested-bounds.wipple:1:12-1:23)
+  resolved to 1 definition(s): `Number : type` (nested-bounds.wipple:1:13-1:26)
 
-`_` (nested-bounds.wipple:5:19-5:20) (PlaceholderExpression):
+`_` (nested-bounds.wipple:5:23-5:24) (PlaceholderExpression):
   has type `Number -> ()`
   is an expression
 
-`instance (A String)` (nested-bounds.wipple:6:1-6:18) (InstanceDefinition):
+`instance (A String)` (nested-bounds.wipple:6:1-6:20) (InstanceDefinition):
   has definition constraints
   has type `String -> ()`
   is a definition
-  resolved to 1 definition(s): `A : value => trait (value -> ())` (nested-bounds.wipple:4:1-4:26)
+  resolved to 1 definition(s): `A : value => trait (value -> ())` (nested-bounds.wipple:4:1-4:33)
 
-`String` (nested-bounds.wipple:6:11-6:17) (NamedType):
-  has type `String` (nested-bounds.wipple:6:11-6:17)
+`String` (nested-bounds.wipple:6:13-6:19) (NamedType):
+  has type `String` (nested-bounds.wipple:6:13-6:19)
   is a type
-  resolved to 1 definition(s): `String : type` (nested-bounds.wipple:2:12-2:23)
+  resolved to 1 definition(s): `String : type` (nested-bounds.wipple:2:13-2:26)
 
-`_` (nested-bounds.wipple:6:19-6:20) (PlaceholderExpression):
+`_` (nested-bounds.wipple:6:23-6:24) (PlaceholderExpression):
   has type `String -> ()`
   is an expression
 
-`B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:26) (TraitDefinition):
+`B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:33) (TraitDefinition):
   has 1 instances
   has definition constraints
-  has type `value -> ()` (nested-bounds.wipple:8:16-8:25)
+  has type `value -> ()` (nested-bounds.wipple:8:21-8:32)
   has type parameters
   is a definition
 
-`value` (nested-bounds.wipple:8:3-8:8) (TypeParameter):
-  has type `value` (nested-bounds.wipple:8:3-8:8)
+`value` (nested-bounds.wipple:8:5-8:10) (TypeParameter):
+  has type `value` (nested-bounds.wipple:8:5-8:10)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (nested-bounds.wipple:8:3-8:8)
+  resolved to 1 definition(s): `value` (nested-bounds.wipple:8:5-8:10)
 
-`value` (nested-bounds.wipple:8:16-8:21) (TypeParameter):
-  has type `value` (nested-bounds.wipple:8:3-8:8)
+`value` (nested-bounds.wipple:8:21-8:26) (TypeParameter):
+  has type `value` (nested-bounds.wipple:8:5-8:10)
   is a type
-  resolved to 1 definition(s): `value` (nested-bounds.wipple:8:3-8:8)
+  resolved to 1 definition(s): `value` (nested-bounds.wipple:8:5-8:10)
 
-`value -> ()` (nested-bounds.wipple:8:16-8:25) (FunctionType):
-  has type `value -> ()` (nested-bounds.wipple:8:16-8:25)
-  is a type
-
-`()` (nested-bounds.wipple:8:23-8:25) (UnitType):
-  has type `()` (nested-bounds.wipple:8:23-8:25)
+`value -> ()` (nested-bounds.wipple:8:21-8:32) (FunctionType):
+  has type `value -> ()` (nested-bounds.wipple:8:21-8:32)
   is a type
 
-`instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:30) (InstanceDefinition):
+`()` (nested-bounds.wipple:8:30-8:32) (UnitType):
+  has type `()` (nested-bounds.wipple:8:30-8:32)
+  is a type
+
+`instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:35) (InstanceDefinition):
   has definition constraints
   has type `value -> ()`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:26)
+  resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:33)
 
-`value` (nested-bounds.wipple:9:11-9:16) (TypeParameter):
-  has type `value` (nested-bounds.wipple:9:11-9:16)
+`value` (nested-bounds.wipple:9:13-9:18) (TypeParameter):
+  has type `value` (nested-bounds.wipple:9:13-9:18)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (nested-bounds.wipple:9:11-9:16)
+  resolved to 1 definition(s): `value` (nested-bounds.wipple:9:13-9:18)
 
-`(A value)` (nested-bounds.wipple:9:22-9:30) (BoundConstraint):
-  has bound(s) `A` (nested-bounds.wipple:4:1-4:26) `value` (nested-bounds.wipple:9:11-9:16) (resolved as `(A value)` (nested-bounds.wipple:9:22-9:30))
+`(A value)` (nested-bounds.wipple:9:26-9:35) (BoundConstraint):
+  has bound(s) `A` (nested-bounds.wipple:4:1-4:33) `value` (nested-bounds.wipple:9:13-9:18) (resolved as `(A value)` (nested-bounds.wipple:9:26-9:35))
   is a constraint
-  resolved to 1 definition(s): `A : value => trait (value -> ())` (nested-bounds.wipple:4:1-4:26)
+  resolved to 1 definition(s): `A : value => trait (value -> ())` (nested-bounds.wipple:4:1-4:33)
 
-`value` (nested-bounds.wipple:9:24-9:29) (TypeParameter):
-  has type `value` (nested-bounds.wipple:9:11-9:16)
+`value` (nested-bounds.wipple:9:29-9:34) (TypeParameter):
+  has type `value` (nested-bounds.wipple:9:13-9:18)
   is a type
-  resolved to 1 definition(s): `value` (nested-bounds.wipple:9:11-9:16)
+  resolved to 1 definition(s): `value` (nested-bounds.wipple:9:13-9:18)
 
-`_` (nested-bounds.wipple:9:31-9:32) (PlaceholderExpression):
+`_` (nested-bounds.wipple:9:38-9:39) (PlaceholderExpression):
   has type `value -> ()`
   is an expression
 
 `B` (nested-bounds.wipple:11:1-11:2) (ConstructorExpression):
-  has bound(s) `A` (nested-bounds.wipple:4:1-4:26) `Number` (resolved as `instance (A Number)` (nested-bounds.wipple:5:1-5:18)), `B` (nested-bounds.wipple:8:1-8:26) `Number` (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:30))
+  has bound(s) `A` (nested-bounds.wipple:4:1-4:33) `Number` (resolved as `instance (A Number)` (nested-bounds.wipple:5:1-5:20)), `B` (nested-bounds.wipple:8:1-8:33) `Number` (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:35))
   has type `Number -> ()` (nested-bounds.wipple:11:1-11:2)
   is an expression
-  resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:26)
+  resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:33)
 
-`B 123` (nested-bounds.wipple:11:1-11:5) (ExpressionStatement):
+`B 123` (nested-bounds.wipple:11:1-11:6) (ExpressionStatement):
   has type `()`
 
-`B 123` (nested-bounds.wipple:11:1-11:5) (CallExpression):
+`B 123` (nested-bounds.wipple:11:1-11:6) (CallExpression):
   has type `()`
   is an expression
 
-`123` (nested-bounds.wipple:11:2-11:5) (NumberExpression):
+`123` (nested-bounds.wipple:11:3-11:6) (NumberExpression):
   has type `Number`
   is an expression
 
 `B` (nested-bounds.wipple:12:1-12:2) (ConstructorExpression):
-  has bound(s) `A` (nested-bounds.wipple:4:1-4:26) `String` (resolved as `instance (A String)` (nested-bounds.wipple:6:1-6:18)), `B` (nested-bounds.wipple:8:1-8:26) `String` (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:30))
+  has bound(s) `A` (nested-bounds.wipple:4:1-4:33) `String` (resolved as `instance (A String)` (nested-bounds.wipple:6:1-6:20)), `B` (nested-bounds.wipple:8:1-8:33) `String` (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:35))
   has type `String -> ()` (nested-bounds.wipple:12:1-12:2)
   is an expression
-  resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:26)
+  resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:33)
 
-`B "abc"` (nested-bounds.wipple:12:1-12:7) (ExpressionStatement):
+`B "abc"` (nested-bounds.wipple:12:1-12:8) (ExpressionStatement):
   has type `()`
 
-`B "abc"` (nested-bounds.wipple:12:1-12:7) (CallExpression):
+`B "abc"` (nested-bounds.wipple:12:1-12:8) (CallExpression):
   has type `()`
   is an expression
 
-`"abc"` (nested-bounds.wipple:12:2-12:7) (StringExpression):
+`"abc"` (nested-bounds.wipple:12:3-12:8) (StringExpression):
   has type `String`
   is an expression
 
 `B` (nested-bounds.wipple:13:1-13:2) (ConstructorExpression):
-  has bound(s) `A` (nested-bounds.wipple:4:1-4:26) `()` (nested-bounds.wipple:13:2-13:4) (unresolved), `B` (nested-bounds.wipple:8:1-8:26) `()` (nested-bounds.wipple:13:2-13:4) (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:30))
+  has bound(s) `A` (nested-bounds.wipple:4:1-4:33) `()` (nested-bounds.wipple:13:3-13:5) (unresolved), `B` (nested-bounds.wipple:8:1-8:33) `()` (nested-bounds.wipple:13:3-13:5) (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:35))
   has type `() -> ()` (nested-bounds.wipple:13:1-13:2)
   is an expression
-  resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:26)
+  resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:33)
 
-`B ()` (nested-bounds.wipple:13:1-13:4) (ExpressionStatement):
+`B ()` (nested-bounds.wipple:13:1-13:5) (ExpressionStatement):
   has type `()`
 
-`B ()` (nested-bounds.wipple:13:1-13:4) (CallExpression):
+`B ()` (nested-bounds.wipple:13:1-13:5) (CallExpression):
   has type `()`
   is an expression
 
-`()` (nested-bounds.wipple:13:2-13:4) (UnitExpression):
-  has type `()` (nested-bounds.wipple:13:2-13:4)
+`()` (nested-bounds.wipple:13:3-13:5) (UnitExpression):
+  has type `()` (nested-bounds.wipple:13:3-13:5)
   is an expression
 
 

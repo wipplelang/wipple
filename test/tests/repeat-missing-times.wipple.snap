@@ -1,10 +1,10 @@
 Facts (layer 2):
 
 `repeat` (repeat-missing-times.wipple:1:1-1:7) (VariableExpression):
-  has bound(s) `Repeat-Predicate` (library/src/foundation/repeat.wipple:8:1-8:80) `Number` `()` `_` (resolved as `error instance (Repeat-Predicate (state :: Number) body result)` (library/src/foundation/repeat.wipple:42:1-42:57))
+  has bound(s) `Repeat-Predicate` (library/src/foundation/repeat.wipple:8:1-8:93) `Number` `()` `_` (resolved as `error instance (Repeat-Predicate (state :: Number) body result)` (library/src/foundation/repeat.wipple:42:1-42:64))
   has type `Number {()} -> _` (repeat-missing-times.wipple:1:1-1:7)
   is an expression
-  resolved to 1 definition(s): `repeat :: state {body} -> result where (Repeat-Predicate state body result)` (library/src/foundation/repeat.wipple:51:1-51:66)
+  resolved to 1 definition(s): `repeat :: state {body} -> result where (Repeat-Predicate state body result)` (library/src/foundation/repeat.wipple:51:1-51:76)
 
 `repeat 5 {⋯}` (repeat-missing-times.wipple:1:1-3:2) (ExpressionStatement):
   missing type (group: `repeat 5 {⋯}` (repeat-missing-times.wipple:1:1-3:2), `_`, `_`, `_`, `_`, `_`, `repeat 5 {⋯}` (repeat-missing-times.wipple:1:1-3:2), `_`, `_`, `_`)
@@ -13,28 +13,28 @@ Facts (layer 2):
   is an expression
   missing type (group: `repeat 5 {⋯}` (repeat-missing-times.wipple:1:1-3:2), `_`, `_`, `_`, `_`, `_`, `repeat 5 {⋯}` (repeat-missing-times.wipple:1:1-3:2), `_`, `_`, `_`)
 
-`5` (repeat-missing-times.wipple:1:7-1:8) (NumberExpression):
+`5` (repeat-missing-times.wipple:1:8-1:9) (NumberExpression):
   has type `Number`
   is an expression
 
-`{⋯}` (repeat-missing-times.wipple:1:8-3:2) (BlockExpression):
-  has type `{()}` (repeat-missing-times.wipple:1:8-3:2)
+`{⋯}` (repeat-missing-times.wipple:1:10-3:2) (BlockExpression):
+  has type `{()}` (repeat-missing-times.wipple:1:10-3:2)
   is an expression
 
-`show` (repeat-missing-times.wipple:2:1-2:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
-  has type `String -> ()` (repeat-missing-times.wipple:2:1-2:5)
+`show` (repeat-missing-times.wipple:2:3-2:7) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
+  has type `String -> ()` (repeat-missing-times.wipple:2:3-2:7)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
-`show "Hello, world!"` (repeat-missing-times.wipple:2:1-2:20) (ExpressionStatement):
+`show "Hello, world!"` (repeat-missing-times.wipple:2:3-2:23) (ExpressionStatement):
   has type `()`
 
-`show "Hello, world!"` (repeat-missing-times.wipple:2:1-2:20) (CallExpression):
+`show "Hello, world!"` (repeat-missing-times.wipple:2:3-2:23) (CallExpression):
   has type `()`
   is an expression
 
-`"Hello, world!"` (repeat-missing-times.wipple:2:5-2:20) (StringExpression):
+`"Hello, world!"` (repeat-missing-times.wipple:2:8-2:23) (StringExpression):
   has type `String`
   is an expression
 

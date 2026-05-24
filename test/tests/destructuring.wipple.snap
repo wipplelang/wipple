@@ -1,243 +1,243 @@
 Facts (layer 2):
 
-`Person : type {name :: String}` (destructuring.wipple:1:1-1:26) (TypeDefinition):
+`Person : type {name :: String}` (destructuring.wipple:1:1-1:31) (TypeDefinition):
   has definition constraints
-  has type `Person` (destructuring.wipple:1:1-1:26)
+  has type `Person` (destructuring.wipple:1:1-1:31)
   is a definition
 
-`Person : type {name :: String}` (destructuring.wipple:1:1-1:26) (TypeDefinition):
+`Person : type {name :: String}` (destructuring.wipple:1:1-1:31) (TypeDefinition):
   has definition constraints
-  has type `Person` (destructuring.wipple:1:1-1:26)
+  has type `Person` (destructuring.wipple:1:1-1:31)
   is a definition
 
-`String` (destructuring.wipple:1:19-1:25) (NamedType):
-  has type `String` (destructuring.wipple:1:19-1:25)
+`String` (destructuring.wipple:1:24-1:30) (NamedType):
+  has type `String` (destructuring.wipple:1:24-1:30)
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
 
 `alice` (destructuring.wipple:3:1-3:6) (VariablePattern):
   has type `Person`
   is a definition
   is a pattern
 
-`alice : Person {name : "Alice"}` (destructuring.wipple:3:1-3:27) (AssignmentStatement):
-  has type `()` (destructuring.wipple:3:1-3:27)
+`alice : Person {name : "Alice"}` (destructuring.wipple:3:1-3:32) (AssignmentStatement):
+  has type `()` (destructuring.wipple:3:1-3:32)
 
-`Person {name : "Alice"}` (destructuring.wipple:3:7-3:27) (StructureExpression):
+`Person {name : "Alice"}` (destructuring.wipple:3:9-3:32) (StructureExpression):
   has type `Person`
   is an expression
-  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
-`"Alice"` (destructuring.wipple:3:19-3:26) (StringExpression):
-  has type `String` (destructuring.wipple:3:19-3:26)
+`"Alice"` (destructuring.wipple:3:24-3:31) (StringExpression):
+  has type `String` (destructuring.wipple:3:24-3:31)
   is an expression
 
-`Person {name : name}` (destructuring.wipple:4:1-4:18) (StructurePattern):
+`Person {name : name}` (destructuring.wipple:4:1-4:21) (StructurePattern):
   has type `Person`
   is a pattern
-  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
-`Person {name : name} : alice` (destructuring.wipple:4:1-4:24) (AssignmentStatement):
-  has type `()` (destructuring.wipple:4:1-4:24)
+`Person {name : name} : alice` (destructuring.wipple:4:1-4:29) (AssignmentStatement):
+  has type `()` (destructuring.wipple:4:1-4:29)
 
-`name` (destructuring.wipple:4:13-4:17) (VariablePattern):
+`name` (destructuring.wipple:4:16-4:20) (VariablePattern):
   has type `String`
   is a definition
   is a pattern
 
-`alice` (destructuring.wipple:4:19-4:24) (VariableExpression):
+`alice` (destructuring.wipple:4:24-4:29) (VariableExpression):
   has type `Person`
   is an expression
   resolved to 1 definition(s): `alice` (destructuring.wipple:3:1-3:6)
 
 `show` (destructuring.wipple:5:1-5:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
   has type `String -> ()` (destructuring.wipple:5:1-5:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
-`show name` (destructuring.wipple:5:1-5:9) (ExpressionStatement):
+`show name` (destructuring.wipple:5:1-5:10) (ExpressionStatement):
   has type `()`
 
-`show name` (destructuring.wipple:5:1-5:9) (CallExpression):
+`show name` (destructuring.wipple:5:1-5:10) (CallExpression):
   has type `()`
   is an expression
 
-`name` (destructuring.wipple:5:5-5:9) (VariableExpression):
+`name` (destructuring.wipple:5:6-5:10) (VariableExpression):
   has type `String`
   is an expression
-  resolved to 1 definition(s): `name` (destructuring.wipple:4:13-4:17)
+  resolved to 1 definition(s): `name` (destructuring.wipple:4:16-4:20)
 
-`get-name :: Person -> String` (destructuring.wipple:7:1-7:25) (ConstantDefinition):
+`get-name :: Person -> String` (destructuring.wipple:7:1-7:29) (ConstantDefinition):
   has definition constraints
-  has type `Person -> String` (destructuring.wipple:7:11-7:25)
+  has type `Person -> String` (destructuring.wipple:7:13-7:29)
   is a definition
 
-`Person` (destructuring.wipple:7:11-7:17) (NamedType):
-  has type `Person` (destructuring.wipple:7:11-7:17)
+`Person` (destructuring.wipple:7:13-7:19) (NamedType):
+  has type `Person` (destructuring.wipple:7:13-7:19)
   is a type
-  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
-`Person -> String` (destructuring.wipple:7:11-7:25) (FunctionType):
-  has type `Person -> String` (destructuring.wipple:7:11-7:25)
+`Person -> String` (destructuring.wipple:7:13-7:29) (FunctionType):
+  has type `Person -> String` (destructuring.wipple:7:13-7:29)
   is a type
 
-`String` (destructuring.wipple:7:19-7:25) (NamedType):
-  has type `String` (destructuring.wipple:7:19-7:25)
+`String` (destructuring.wipple:7:23-7:29) (NamedType):
+  has type `String` (destructuring.wipple:7:23-7:29)
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
 
-`get-name : (Person {name : name}) -> name` (destructuring.wipple:8:1-8:35) (AssignmentStatement):
-  has type `()` (destructuring.wipple:8:1-8:35)
+`get-name : (Person {name : name}) -> name` (destructuring.wipple:8:1-8:42) (AssignmentStatement):
+  has type `()` (destructuring.wipple:8:1-8:42)
 
-`(Person {name : name}) -> name` (destructuring.wipple:8:10-8:35) (FunctionExpression):
-  has type `Person -> String` (destructuring.wipple:7:11-7:25)
+`(Person {name : name}) -> name` (destructuring.wipple:8:12-8:42) (FunctionExpression):
+  has type `Person -> String` (destructuring.wipple:7:13-7:29)
   is an expression
 
-`Person {name : name}` (destructuring.wipple:8:11-8:28) (StructurePattern):
-  has type `Person` (destructuring.wipple:7:11-7:17)
+`Person {name : name}` (destructuring.wipple:8:13-8:33) (StructurePattern):
+  has type `Person` (destructuring.wipple:7:13-7:19)
   is a pattern
-  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
-`name` (destructuring.wipple:8:23-8:27) (VariablePattern):
-  has type `String` (destructuring.wipple:7:19-7:25)
+`name` (destructuring.wipple:8:28-8:32) (VariablePattern):
+  has type `String` (destructuring.wipple:7:23-7:29)
   is a definition
   is a pattern
 
-`name` (destructuring.wipple:8:31-8:35) (VariableExpression):
-  has type `String` (destructuring.wipple:7:19-7:25)
+`name` (destructuring.wipple:8:38-8:42) (VariableExpression):
+  has type `String` (destructuring.wipple:7:23-7:29)
   is an expression
-  resolved to 1 definition(s): `name` (destructuring.wipple:8:23-8:27)
+  resolved to 1 definition(s): `name` (destructuring.wipple:8:28-8:32)
 
 `bob` (destructuring.wipple:10:1-10:4) (VariablePattern):
   has type `Person`
   is a definition
   is a pattern
 
-`bob : Person {name : "Bob"}` (destructuring.wipple:10:1-10:23) (AssignmentStatement):
-  has type `()` (destructuring.wipple:10:1-10:23)
+`bob : Person {name : "Bob"}` (destructuring.wipple:10:1-10:28) (AssignmentStatement):
+  has type `()` (destructuring.wipple:10:1-10:28)
 
-`Person {name : "Bob"}` (destructuring.wipple:10:5-10:23) (StructureExpression):
+`Person {name : "Bob"}` (destructuring.wipple:10:7-10:28) (StructureExpression):
   has type `Person`
   is an expression
-  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
-`"Bob"` (destructuring.wipple:10:17-10:22) (StringExpression):
-  has type `String` (destructuring.wipple:10:17-10:22)
+`"Bob"` (destructuring.wipple:10:22-10:27) (StringExpression):
+  has type `String` (destructuring.wipple:10:22-10:27)
   is an expression
 
 `show` (destructuring.wipple:11:1-11:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
   has type `String -> ()` (destructuring.wipple:11:1-11:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
-`show (get-name bob)` (destructuring.wipple:11:1-11:18) (ExpressionStatement):
+`show (get-name bob)` (destructuring.wipple:11:1-11:20) (ExpressionStatement):
   has type `()`
 
-`show (get-name bob)` (destructuring.wipple:11:1-11:18) (CallExpression):
+`show (get-name bob)` (destructuring.wipple:11:1-11:20) (CallExpression):
   has type `()`
   is an expression
 
-`get-name` (destructuring.wipple:11:6-11:14) (VariableExpression):
-  has type `Person -> String` (destructuring.wipple:11:6-11:14)
+`get-name` (destructuring.wipple:11:7-11:15) (VariableExpression):
+  has type `Person -> String` (destructuring.wipple:11:7-11:15)
   is an expression
-  resolved to 1 definition(s): `get-name :: Person -> String` (destructuring.wipple:7:1-7:25)
+  resolved to 1 definition(s): `get-name :: Person -> String` (destructuring.wipple:7:1-7:29)
 
-`get-name bob` (destructuring.wipple:11:6-11:17) (CallExpression):
+`get-name bob` (destructuring.wipple:11:7-11:19) (CallExpression):
   has type `String`
   is an expression
 
-`bob` (destructuring.wipple:11:14-11:17) (VariableExpression):
+`bob` (destructuring.wipple:11:16-11:19) (VariableExpression):
   has type `Person`
   is an expression
   resolved to 1 definition(s): `bob` (destructuring.wipple:10:1-10:4)
 
-`instance (Describe Person)` (destructuring.wipple:13:1-13:25) (InstanceDefinition):
+`instance (Describe Person)` (destructuring.wipple:13:1-13:27) (InstanceDefinition):
   has definition constraints
-  has type `Person -> String` (destructuring.wipple:13:26-13:51)
+  has type `Person -> String` (destructuring.wipple:13:30-13:60)
   is a definition
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:37)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44)
 
-`Person` (destructuring.wipple:13:18-13:24) (NamedType):
-  has type `Person` (destructuring.wipple:13:18-13:24)
+`Person` (destructuring.wipple:13:20-13:26) (NamedType):
+  has type `Person` (destructuring.wipple:13:20-13:26)
   is a type
-  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
-`(Person {name : name}) -> name` (destructuring.wipple:13:26-13:51) (FunctionExpression):
-  has type `Person -> String` (destructuring.wipple:13:26-13:51)
+`(Person {name : name}) -> name` (destructuring.wipple:13:30-13:60) (FunctionExpression):
+  has type `Person -> String` (destructuring.wipple:13:30-13:60)
   is an expression
 
-`Person {name : name}` (destructuring.wipple:13:27-13:44) (StructurePattern):
-  has type `Person` (destructuring.wipple:13:18-13:24)
+`Person {name : name}` (destructuring.wipple:13:31-13:51) (StructurePattern):
+  has type `Person` (destructuring.wipple:13:20-13:26)
   is a pattern
-  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
-`name` (destructuring.wipple:13:39-13:43) (VariablePattern):
+`name` (destructuring.wipple:13:46-13:50) (VariablePattern):
   has type `String`
   is a definition
   is a pattern
 
-`name` (destructuring.wipple:13:47-13:51) (VariableExpression):
+`name` (destructuring.wipple:13:56-13:60) (VariableExpression):
   has type `String`
   is an expression
-  resolved to 1 definition(s): `name` (destructuring.wipple:13:39-13:43)
+  resolved to 1 definition(s): `name` (destructuring.wipple:13:46-13:50)
 
 `charlie` (destructuring.wipple:15:1-15:8) (VariablePattern):
   has type `Person`
   is a definition
   is a pattern
 
-`charlie : Person {name : "Charlie"}` (destructuring.wipple:15:1-15:31) (AssignmentStatement):
-  has type `()` (destructuring.wipple:15:1-15:31)
+`charlie : Person {name : "Charlie"}` (destructuring.wipple:15:1-15:36) (AssignmentStatement):
+  has type `()` (destructuring.wipple:15:1-15:36)
 
-`Person {name : "Charlie"}` (destructuring.wipple:15:9-15:31) (StructureExpression):
+`Person {name : "Charlie"}` (destructuring.wipple:15:11-15:36) (StructureExpression):
   has type `Person`
   is an expression
-  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:26)
+  resolved to 1 definition(s): `Person : type {name :: String}` (destructuring.wipple:1:1-1:31)
 
-`"Charlie"` (destructuring.wipple:15:21-15:30) (StringExpression):
-  has type `String` (destructuring.wipple:15:21-15:30)
+`"Charlie"` (destructuring.wipple:15:26-15:35) (StringExpression):
+  has type `String` (destructuring.wipple:15:26-15:35)
   is an expression
 
 `show` (destructuring.wipple:16:1-16:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Person` (resolved as `instance (Describe Person)` (destructuring.wipple:13:1-13:25))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Person` (resolved as `instance (Describe Person)` (destructuring.wipple:13:1-13:27))
   has type `Person -> ()` (destructuring.wipple:16:1-16:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
-`show charlie` (destructuring.wipple:16:1-16:12) (ExpressionStatement):
+`show charlie` (destructuring.wipple:16:1-16:13) (ExpressionStatement):
   has type `()`
 
-`show charlie` (destructuring.wipple:16:1-16:12) (CallExpression):
+`show charlie` (destructuring.wipple:16:1-16:13) (CallExpression):
   has type `()`
   is an expression
 
-`charlie` (destructuring.wipple:16:5-16:12) (VariableExpression):
+`charlie` (destructuring.wipple:16:6-16:13) (VariableExpression):
   has type `Person`
   is an expression
   resolved to 1 definition(s): `charlie` (destructuring.wipple:15:1-15:8)
 
-`Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:37) (TraitDefinition):
+`Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44) (TraitDefinition):
   has 6 instances
   has definition constraints
-  has type `value -> String` (library/src/foundation/io.wipple:2:23-2:36)
+  has type `value -> String` (library/src/foundation/io.wipple:2:28-2:43)
   has type parameters
   is a definition
 
-`value` (library/src/foundation/io.wipple:2:10-2:15) (TypeParameter):
-  has type `value` (library/src/foundation/io.wipple:2:10-2:15)
+`value` (library/src/foundation/io.wipple:2:12-2:17) (TypeParameter):
+  has type `value` (library/src/foundation/io.wipple:2:12-2:17)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (library/src/foundation/io.wipple:2:10-2:15)
+  resolved to 1 definition(s): `value` (library/src/foundation/io.wipple:2:12-2:17)
 
-`value` (library/src/foundation/io.wipple:2:23-2:28) (TypeParameter):
-  has type `value` (library/src/foundation/io.wipple:2:10-2:15)
+`value` (library/src/foundation/io.wipple:2:28-2:33) (TypeParameter):
+  has type `value` (library/src/foundation/io.wipple:2:12-2:17)
   is a type
-  resolved to 1 definition(s): `value` (library/src/foundation/io.wipple:2:10-2:15)
+  resolved to 1 definition(s): `value` (library/src/foundation/io.wipple:2:12-2:17)
 
-`value -> String` (library/src/foundation/io.wipple:2:23-2:36) (FunctionType):
-  has type `value -> String` (library/src/foundation/io.wipple:2:23-2:36)
+`value -> String` (library/src/foundation/io.wipple:2:28-2:43) (FunctionType):
+  has type `value -> String` (library/src/foundation/io.wipple:2:28-2:43)
   is a type
 
 

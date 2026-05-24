@@ -1,128 +1,128 @@
 Facts (layer 2):
 
-`T : value => trait ()` (colliding-instances.wipple:1:1-1:17) (TraitDefinition):
+`T : value => trait ()` (colliding-instances.wipple:1:1-1:22) (TraitDefinition):
   has 4 instances
   has 4 overlapping instances
   has definition constraints
-  has type `()` (colliding-instances.wipple:1:15-1:17)
+  has type `()` (colliding-instances.wipple:1:20-1:22)
   has type parameters
   is a definition
 
-`value` (colliding-instances.wipple:1:3-1:8) (TypeParameter):
-  has type `value` (colliding-instances.wipple:1:3-1:8)
+`value` (colliding-instances.wipple:1:5-1:10) (TypeParameter):
+  has type `value` (colliding-instances.wipple:1:5-1:10)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (colliding-instances.wipple:1:3-1:8)
+  resolved to 1 definition(s): `value` (colliding-instances.wipple:1:5-1:10)
 
-`()` (colliding-instances.wipple:1:15-1:17) (UnitType):
-  has type `()` (colliding-instances.wipple:1:15-1:17)
+`()` (colliding-instances.wipple:1:20-1:22) (UnitType):
+  has type `()` (colliding-instances.wipple:1:20-1:22)
   is a type
 
-`X : type` (colliding-instances.wipple:3:1-3:7) (TypeDefinition):
+`X : type` (colliding-instances.wipple:3:1-3:9) (TypeDefinition):
   has definition constraints
-  has type `X` (colliding-instances.wipple:3:1-3:7)
+  has type `X` (colliding-instances.wipple:3:1-3:9)
   is a definition
 
-`X : type` (colliding-instances.wipple:3:1-3:7) (TypeDefinition):
+`X : type` (colliding-instances.wipple:3:1-3:9) (TypeDefinition):
   has definition constraints
-  has type `X` (colliding-instances.wipple:3:1-3:7)
+  has type `X` (colliding-instances.wipple:3:1-3:9)
   is a definition
 
-`instance (T X)` (colliding-instances.wipple:4:1-4:13) (InstanceDefinition):
+`instance (T X)` (colliding-instances.wipple:4:1-4:15) (InstanceDefinition):
   has definition constraints
-  has type `()` (colliding-instances.wipple:4:14-4:16)
+  has type `()` (colliding-instances.wipple:4:18-4:20)
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:17)
+  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:22)
 
-`X` (colliding-instances.wipple:4:11-4:12) (NamedType):
-  has type `X` (colliding-instances.wipple:4:11-4:12)
+`X` (colliding-instances.wipple:4:13-4:14) (NamedType):
+  has type `X` (colliding-instances.wipple:4:13-4:14)
   is a type
-  resolved to 1 definition(s): `X : type` (colliding-instances.wipple:3:1-3:7)
+  resolved to 1 definition(s): `X : type` (colliding-instances.wipple:3:1-3:9)
 
-`()` (colliding-instances.wipple:4:14-4:16) (UnitExpression):
-  has type `()` (colliding-instances.wipple:4:14-4:16)
+`()` (colliding-instances.wipple:4:18-4:20) (UnitExpression):
+  has type `()` (colliding-instances.wipple:4:18-4:20)
   is an expression
 
-`instance (T X)` (colliding-instances.wipple:5:1-5:13) (InstanceDefinition):
+`instance (T X)` (colliding-instances.wipple:5:1-5:15) (InstanceDefinition):
   has definition constraints
-  has type `()` (colliding-instances.wipple:5:14-5:16)
+  has type `()` (colliding-instances.wipple:5:18-5:20)
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:17)
+  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:22)
 
-`X` (colliding-instances.wipple:5:11-5:12) (NamedType):
-  has type `X` (colliding-instances.wipple:5:11-5:12)
+`X` (colliding-instances.wipple:5:13-5:14) (NamedType):
+  has type `X` (colliding-instances.wipple:5:13-5:14)
   is a type
-  resolved to 1 definition(s): `X : type` (colliding-instances.wipple:3:1-3:7)
+  resolved to 1 definition(s): `X : type` (colliding-instances.wipple:3:1-3:9)
 
-`()` (colliding-instances.wipple:5:14-5:16) (UnitExpression):
-  has type `()` (colliding-instances.wipple:5:14-5:16)
+`()` (colliding-instances.wipple:5:18-5:20) (UnitExpression):
+  has type `()` (colliding-instances.wipple:5:18-5:20)
   is an expression
 
-`instance (T value)` (colliding-instances.wipple:7:1-7:17) (InstanceDefinition):
+`instance (T value)` (colliding-instances.wipple:7:1-7:19) (InstanceDefinition):
   has definition constraints
-  has type `()` (colliding-instances.wipple:7:18-7:20)
+  has type `()` (colliding-instances.wipple:7:22-7:24)
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:17)
+  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:22)
 
-`value` (colliding-instances.wipple:7:11-7:16) (TypeParameter):
-  has type `value` (colliding-instances.wipple:7:11-7:16)
+`value` (colliding-instances.wipple:7:13-7:18) (TypeParameter):
+  has type `value` (colliding-instances.wipple:7:13-7:18)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (colliding-instances.wipple:7:11-7:16)
+  resolved to 1 definition(s): `value` (colliding-instances.wipple:7:13-7:18)
 
-`()` (colliding-instances.wipple:7:18-7:20) (UnitExpression):
-  has type `()` (colliding-instances.wipple:7:18-7:20)
+`()` (colliding-instances.wipple:7:22-7:24) (UnitExpression):
+  has type `()` (colliding-instances.wipple:7:22-7:24)
   is an expression
 
-`U : value => trait ()` (colliding-instances.wipple:9:1-9:17) (TraitDefinition):
+`U : value => trait ()` (colliding-instances.wipple:9:1-9:22) (TraitDefinition):
   has definition constraints
-  has type `()` (colliding-instances.wipple:9:15-9:17)
+  has type `()` (colliding-instances.wipple:9:20-9:22)
   has type parameters
   is a definition
 
-`value` (colliding-instances.wipple:9:3-9:8) (TypeParameter):
-  has type `value` (colliding-instances.wipple:9:3-9:8)
+`value` (colliding-instances.wipple:9:5-9:10) (TypeParameter):
+  has type `value` (colliding-instances.wipple:9:5-9:10)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (colliding-instances.wipple:9:3-9:8)
+  resolved to 1 definition(s): `value` (colliding-instances.wipple:9:5-9:10)
 
-`()` (colliding-instances.wipple:9:15-9:17) (UnitType):
-  has type `()` (colliding-instances.wipple:9:15-9:17)
+`()` (colliding-instances.wipple:9:20-9:22) (UnitType):
+  has type `()` (colliding-instances.wipple:9:20-9:22)
   is a type
 
-`instance (T a) where (U a)` (colliding-instances.wipple:10:1-10:22) (InstanceDefinition):
+`instance (T a) where (U a)` (colliding-instances.wipple:10:1-10:27) (InstanceDefinition):
   has definition constraints
-  has type `()` (colliding-instances.wipple:10:23-10:25)
+  has type `()` (colliding-instances.wipple:10:30-10:32)
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:17)
+  resolved to 1 definition(s): `T : value => trait ()` (colliding-instances.wipple:1:1-1:22)
 
-`a` (colliding-instances.wipple:10:11-10:12) (TypeParameter):
-  has type `a` (colliding-instances.wipple:10:11-10:12)
+`a` (colliding-instances.wipple:10:13-10:14) (TypeParameter):
+  has type `a` (colliding-instances.wipple:10:13-10:14)
   is a definition
   is a type
-  resolved to 1 definition(s): `a` (colliding-instances.wipple:10:11-10:12)
+  resolved to 1 definition(s): `a` (colliding-instances.wipple:10:13-10:14)
 
-`(U a)` (colliding-instances.wipple:10:18-10:22) (BoundConstraint):
-  has bound(s) `U` (colliding-instances.wipple:9:1-9:17) `a` (colliding-instances.wipple:10:11-10:12) (resolved as `(U a)` (colliding-instances.wipple:10:18-10:22))
+`(U a)` (colliding-instances.wipple:10:22-10:27) (BoundConstraint):
+  has bound(s) `U` (colliding-instances.wipple:9:1-9:22) `a` (colliding-instances.wipple:10:13-10:14) (resolved as `(U a)` (colliding-instances.wipple:10:22-10:27))
   is a constraint
-  resolved to 1 definition(s): `U : value => trait ()` (colliding-instances.wipple:9:1-9:17)
+  resolved to 1 definition(s): `U : value => trait ()` (colliding-instances.wipple:9:1-9:22)
 
-`a` (colliding-instances.wipple:10:20-10:21) (TypeParameter):
-  has type `a` (colliding-instances.wipple:10:11-10:12)
+`a` (colliding-instances.wipple:10:25-10:26) (TypeParameter):
+  has type `a` (colliding-instances.wipple:10:13-10:14)
   is a type
-  resolved to 1 definition(s): `a` (colliding-instances.wipple:10:11-10:12)
+  resolved to 1 definition(s): `a` (colliding-instances.wipple:10:13-10:14)
 
-`()` (colliding-instances.wipple:10:23-10:25) (UnitExpression):
-  has type `()` (colliding-instances.wipple:10:23-10:25)
+`()` (colliding-instances.wipple:10:30-10:32) (UnitExpression):
+  has type `()` (colliding-instances.wipple:10:30-10:32)
   is an expression
 
 
 
 Feedback:
 
-`T : value => trait ()` (colliding-instances.wipple:1:1-1:17) (conflicting-instances)
+`T : value => trait ()` (colliding-instances.wipple:1:1-1:22) (conflicting-instances)
 
   `T : value => trait ()` has multiple overlapping instances: `instance (T X)`, `instance (T X)`, `instance (T value)`, and 1 other.
   

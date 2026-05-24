@@ -6,7 +6,7 @@ Facts (layer 2):
 `show` (missing-inputs.wipple:1:1-1:5) (VariableExpression):
   has type `_ -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
 
 

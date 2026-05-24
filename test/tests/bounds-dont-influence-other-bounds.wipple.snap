@@ -1,160 +1,160 @@
 Facts (layer 2):
 
-`T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:26) (TraitDefinition):
+`T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:33) (TraitDefinition):
   has 2 instances
   has definition constraints
-  has type `value -> ()` (bounds-dont-influence-other-bounds.wipple:1:16-1:25)
+  has type `value -> ()` (bounds-dont-influence-other-bounds.wipple:1:21-1:32)
   has type parameters
   is a definition
 
-`value` (bounds-dont-influence-other-bounds.wipple:1:3-1:8) (TypeParameter):
-  has type `value` (bounds-dont-influence-other-bounds.wipple:1:3-1:8)
+`value` (bounds-dont-influence-other-bounds.wipple:1:5-1:10) (TypeParameter):
+  has type `value` (bounds-dont-influence-other-bounds.wipple:1:5-1:10)
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (bounds-dont-influence-other-bounds.wipple:1:3-1:8)
+  resolved to 1 definition(s): `value` (bounds-dont-influence-other-bounds.wipple:1:5-1:10)
 
-`value` (bounds-dont-influence-other-bounds.wipple:1:16-1:21) (TypeParameter):
-  has type `value` (bounds-dont-influence-other-bounds.wipple:1:3-1:8)
+`value` (bounds-dont-influence-other-bounds.wipple:1:21-1:26) (TypeParameter):
+  has type `value` (bounds-dont-influence-other-bounds.wipple:1:5-1:10)
   is a type
-  resolved to 1 definition(s): `value` (bounds-dont-influence-other-bounds.wipple:1:3-1:8)
+  resolved to 1 definition(s): `value` (bounds-dont-influence-other-bounds.wipple:1:5-1:10)
 
-`value -> ()` (bounds-dont-influence-other-bounds.wipple:1:16-1:25) (FunctionType):
-  has type `value -> ()` (bounds-dont-influence-other-bounds.wipple:1:16-1:25)
-  is a type
-
-`()` (bounds-dont-influence-other-bounds.wipple:1:23-1:25) (UnitType):
-  has type `()` (bounds-dont-influence-other-bounds.wipple:1:23-1:25)
+`value -> ()` (bounds-dont-influence-other-bounds.wipple:1:21-1:32) (FunctionType):
+  has type `value -> ()` (bounds-dont-influence-other-bounds.wipple:1:21-1:32)
   is a type
 
-`instance (T Number)` (bounds-dont-influence-other-bounds.wipple:3:1-3:18) (InstanceDefinition):
+`()` (bounds-dont-influence-other-bounds.wipple:1:30-1:32) (UnitType):
+  has type `()` (bounds-dont-influence-other-bounds.wipple:1:30-1:32)
+  is a type
+
+`instance (T Number)` (bounds-dont-influence-other-bounds.wipple:3:1-3:20) (InstanceDefinition):
   has definition constraints
-  has type `Number -> ()` (bounds-dont-influence-other-bounds.wipple:3:19-3:24)
+  has type `Number -> ()` (bounds-dont-influence-other-bounds.wipple:3:23-3:30)
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:26)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:33)
 
-`Number` (bounds-dont-influence-other-bounds.wipple:3:11-3:17) (NamedType):
-  has type `Number` (bounds-dont-influence-other-bounds.wipple:3:11-3:17)
+`Number` (bounds-dont-influence-other-bounds.wipple:3:13-3:19) (NamedType):
+  has type `Number` (bounds-dont-influence-other-bounds.wipple:3:13-3:19)
   is a type
-  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:34-1:45)
+  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:38-1:51)
 
-`_` (bounds-dont-influence-other-bounds.wipple:3:19-3:20) (WildcardPattern):
-  has type `Number` (bounds-dont-influence-other-bounds.wipple:3:11-3:17)
+`_` (bounds-dont-influence-other-bounds.wipple:3:23-3:24) (WildcardPattern):
+  has type `Number` (bounds-dont-influence-other-bounds.wipple:3:13-3:19)
   is a pattern
 
-`_ -> ()` (bounds-dont-influence-other-bounds.wipple:3:19-3:24) (FunctionExpression):
-  has type `Number -> ()` (bounds-dont-influence-other-bounds.wipple:3:19-3:24)
+`_ -> ()` (bounds-dont-influence-other-bounds.wipple:3:23-3:30) (FunctionExpression):
+  has type `Number -> ()` (bounds-dont-influence-other-bounds.wipple:3:23-3:30)
   is an expression
 
-`()` (bounds-dont-influence-other-bounds.wipple:3:22-3:24) (UnitExpression):
-  has type `()` (bounds-dont-influence-other-bounds.wipple:3:22-3:24)
+`()` (bounds-dont-influence-other-bounds.wipple:3:28-3:30) (UnitExpression):
+  has type `()` (bounds-dont-influence-other-bounds.wipple:3:28-3:30)
   is an expression
 
-`instance (T String)` (bounds-dont-influence-other-bounds.wipple:4:1-4:18) (InstanceDefinition):
+`instance (T String)` (bounds-dont-influence-other-bounds.wipple:4:1-4:20) (InstanceDefinition):
   has definition constraints
-  has type `String -> ()` (bounds-dont-influence-other-bounds.wipple:4:19-4:24)
+  has type `String -> ()` (bounds-dont-influence-other-bounds.wipple:4:23-4:30)
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:26)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:33)
 
-`String` (bounds-dont-influence-other-bounds.wipple:4:11-4:17) (NamedType):
-  has type `String` (bounds-dont-influence-other-bounds.wipple:4:11-4:17)
+`String` (bounds-dont-influence-other-bounds.wipple:4:13-4:19) (NamedType):
+  has type `String` (bounds-dont-influence-other-bounds.wipple:4:13-4:19)
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
 
-`_` (bounds-dont-influence-other-bounds.wipple:4:19-4:20) (WildcardPattern):
-  has type `String` (bounds-dont-influence-other-bounds.wipple:4:11-4:17)
+`_` (bounds-dont-influence-other-bounds.wipple:4:23-4:24) (WildcardPattern):
+  has type `String` (bounds-dont-influence-other-bounds.wipple:4:13-4:19)
   is a pattern
 
-`_ -> ()` (bounds-dont-influence-other-bounds.wipple:4:19-4:24) (FunctionExpression):
-  has type `String -> ()` (bounds-dont-influence-other-bounds.wipple:4:19-4:24)
+`_ -> ()` (bounds-dont-influence-other-bounds.wipple:4:23-4:30) (FunctionExpression):
+  has type `String -> ()` (bounds-dont-influence-other-bounds.wipple:4:23-4:30)
   is an expression
 
-`()` (bounds-dont-influence-other-bounds.wipple:4:22-4:24) (UnitExpression):
-  has type `()` (bounds-dont-influence-other-bounds.wipple:4:22-4:24)
+`()` (bounds-dont-influence-other-bounds.wipple:4:28-4:30) (UnitExpression):
+  has type `()` (bounds-dont-influence-other-bounds.wipple:4:28-4:30)
   is an expression
 
-`f :: (a; b) where (T a) (T b)` (bounds-dont-influence-other-bounds.wipple:6:1-6:22) (ConstantDefinition):
+`f :: (a; b) where (T a) (T b)` (bounds-dont-influence-other-bounds.wipple:6:1-6:30) (ConstantDefinition):
   has definition constraints
-  has type `(a; b)` (bounds-dont-influence-other-bounds.wipple:6:5-6:8)
+  has type `(a; b)` (bounds-dont-influence-other-bounds.wipple:6:7-6:11)
   has type parameters
   is a definition
 
-`a` (bounds-dont-influence-other-bounds.wipple:6:5-6:6) (TypeParameter):
-  has type `a` (bounds-dont-influence-other-bounds.wipple:6:5-6:6)
+`a` (bounds-dont-influence-other-bounds.wipple:6:7-6:8) (TypeParameter):
+  has type `a` (bounds-dont-influence-other-bounds.wipple:6:7-6:8)
   is a definition
   is a type
-  resolved to 1 definition(s): `a` (bounds-dont-influence-other-bounds.wipple:6:5-6:6)
+  resolved to 1 definition(s): `a` (bounds-dont-influence-other-bounds.wipple:6:7-6:8)
 
-`a; b` (bounds-dont-influence-other-bounds.wipple:6:5-6:8) (TupleType):
-  has type `(a; b)` (bounds-dont-influence-other-bounds.wipple:6:5-6:8)
+`a; b` (bounds-dont-influence-other-bounds.wipple:6:7-6:11) (TupleType):
+  has type `(a; b)` (bounds-dont-influence-other-bounds.wipple:6:7-6:11)
   is a type
 
-`b` (bounds-dont-influence-other-bounds.wipple:6:7-6:8) (TypeParameter):
-  has type `b` (bounds-dont-influence-other-bounds.wipple:6:7-6:8)
+`b` (bounds-dont-influence-other-bounds.wipple:6:10-6:11) (TypeParameter):
+  has type `b` (bounds-dont-influence-other-bounds.wipple:6:10-6:11)
   is a definition
   is a type
-  resolved to 1 definition(s): `b` (bounds-dont-influence-other-bounds.wipple:6:7-6:8)
+  resolved to 1 definition(s): `b` (bounds-dont-influence-other-bounds.wipple:6:10-6:11)
 
-`(T a)` (bounds-dont-influence-other-bounds.wipple:6:14-6:18) (BoundConstraint):
-  has bound(s) `T` (bounds-dont-influence-other-bounds.wipple:1:1-1:26) `a` (bounds-dont-influence-other-bounds.wipple:6:5-6:6) (resolved as `(T a)` (bounds-dont-influence-other-bounds.wipple:6:14-6:18))
+`(T a)` (bounds-dont-influence-other-bounds.wipple:6:19-6:24) (BoundConstraint):
+  has bound(s) `T` (bounds-dont-influence-other-bounds.wipple:1:1-1:33) `a` (bounds-dont-influence-other-bounds.wipple:6:7-6:8) (resolved as `(T a)` (bounds-dont-influence-other-bounds.wipple:6:19-6:24))
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:26)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:33)
 
-`a` (bounds-dont-influence-other-bounds.wipple:6:16-6:17) (TypeParameter):
-  has type `a` (bounds-dont-influence-other-bounds.wipple:6:5-6:6)
+`a` (bounds-dont-influence-other-bounds.wipple:6:22-6:23) (TypeParameter):
+  has type `a` (bounds-dont-influence-other-bounds.wipple:6:7-6:8)
   is a type
-  resolved to 1 definition(s): `a` (bounds-dont-influence-other-bounds.wipple:6:5-6:6)
+  resolved to 1 definition(s): `a` (bounds-dont-influence-other-bounds.wipple:6:7-6:8)
 
-`(T b)` (bounds-dont-influence-other-bounds.wipple:6:18-6:22) (BoundConstraint):
-  has bound(s) `T` (bounds-dont-influence-other-bounds.wipple:1:1-1:26) `b` (bounds-dont-influence-other-bounds.wipple:6:7-6:8) (resolved as `(T b)` (bounds-dont-influence-other-bounds.wipple:6:18-6:22))
+`(T b)` (bounds-dont-influence-other-bounds.wipple:6:25-6:30) (BoundConstraint):
+  has bound(s) `T` (bounds-dont-influence-other-bounds.wipple:1:1-1:33) `b` (bounds-dont-influence-other-bounds.wipple:6:10-6:11) (resolved as `(T b)` (bounds-dont-influence-other-bounds.wipple:6:25-6:30))
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:26)
+  resolved to 1 definition(s): `T : value => trait (value -> ())` (bounds-dont-influence-other-bounds.wipple:1:1-1:33)
 
-`b` (bounds-dont-influence-other-bounds.wipple:6:20-6:21) (TypeParameter):
-  has type `b` (bounds-dont-influence-other-bounds.wipple:6:7-6:8)
+`b` (bounds-dont-influence-other-bounds.wipple:6:28-6:29) (TypeParameter):
+  has type `b` (bounds-dont-influence-other-bounds.wipple:6:10-6:11)
   is a type
-  resolved to 1 definition(s): `b` (bounds-dont-influence-other-bounds.wipple:6:7-6:8)
+  resolved to 1 definition(s): `b` (bounds-dont-influence-other-bounds.wipple:6:10-6:11)
 
-`f : todo` (bounds-dont-influence-other-bounds.wipple:7:1-7:7) (AssignmentStatement):
-  has type `()` (bounds-dont-influence-other-bounds.wipple:7:1-7:7)
+`f : todo` (bounds-dont-influence-other-bounds.wipple:7:1-7:9) (AssignmentStatement):
+  has type `()` (bounds-dont-influence-other-bounds.wipple:7:1-7:9)
 
-`todo` (bounds-dont-influence-other-bounds.wipple:7:3-7:7) (VariableExpression):
-  has type `(a; b)` (bounds-dont-influence-other-bounds.wipple:6:5-6:8)
+`todo` (bounds-dont-influence-other-bounds.wipple:7:5-7:9) (VariableExpression):
+  has type `(a; b)` (bounds-dont-influence-other-bounds.wipple:6:7-6:11)
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:12)
+  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:14)
 
 `-- `B` should not be inferred to be `Number`
-(f :: (Number; _))` (bounds-dont-influence-other-bounds.wipple:9:1-10:16) (ExpressionStatement):
-  has type `(Number; _)` (bounds-dont-influence-other-bounds.wipple:10:6-10:14)
+(f :: (Number; _))` (bounds-dont-influence-other-bounds.wipple:9:1-10:19) (ExpressionStatement):
+  has type `(Number; _)` (bounds-dont-influence-other-bounds.wipple:10:8-10:17)
 
 `f` (bounds-dont-influence-other-bounds.wipple:10:2-10:3) (VariableExpression):
-  has bound(s) `T` (bounds-dont-influence-other-bounds.wipple:1:1-1:26) `Number` (resolved as `instance (T Number)` (bounds-dont-influence-other-bounds.wipple:3:1-3:18))
-  has type `(Number; _)` (bounds-dont-influence-other-bounds.wipple:10:6-10:14)
+  has bound(s) `T` (bounds-dont-influence-other-bounds.wipple:1:1-1:33) `Number` (resolved as `instance (T Number)` (bounds-dont-influence-other-bounds.wipple:3:1-3:20))
+  has type `(Number; _)` (bounds-dont-influence-other-bounds.wipple:10:8-10:17)
   is an expression
-  resolved to 1 definition(s): `f :: (a; b) where (T a) (T b)` (bounds-dont-influence-other-bounds.wipple:6:1-6:22)
+  resolved to 1 definition(s): `f :: (a; b) where (T a) (T b)` (bounds-dont-influence-other-bounds.wipple:6:1-6:30)
 
-`f :: (Number; _)` (bounds-dont-influence-other-bounds.wipple:10:2-10:15) (AnnotateExpression):
-  has type `(Number; _)` (bounds-dont-influence-other-bounds.wipple:10:6-10:14)
+`f :: (Number; _)` (bounds-dont-influence-other-bounds.wipple:10:2-10:18) (AnnotateExpression):
+  has type `(Number; _)` (bounds-dont-influence-other-bounds.wipple:10:8-10:17)
   is an expression
 
-`Number` (bounds-dont-influence-other-bounds.wipple:10:6-10:12) (NamedType):
+`Number` (bounds-dont-influence-other-bounds.wipple:10:8-10:14) (NamedType):
   has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:34-1:45)
+  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:38-1:51)
 
-`Number; _` (bounds-dont-influence-other-bounds.wipple:10:6-10:14) (TupleType):
-  has type `(Number; _)` (bounds-dont-influence-other-bounds.wipple:10:6-10:14)
+`Number; _` (bounds-dont-influence-other-bounds.wipple:10:8-10:17) (TupleType):
+  has type `(Number; _)` (bounds-dont-influence-other-bounds.wipple:10:8-10:17)
   is a type
 
-`_` (bounds-dont-influence-other-bounds.wipple:10:13-10:14) (PlaceholderType):
+`_` (bounds-dont-influence-other-bounds.wipple:10:16-10:17) (PlaceholderType):
   is a type
-  missing type (group: `_` (bounds-dont-influence-other-bounds.wipple:10:13-10:14), `_`, `_`, `_`)
+  missing type (group: `_` (bounds-dont-influence-other-bounds.wipple:10:16-10:17), `_`, `_`, `_`)
 
 
 
 Feedback:
 
 `-- `B` should not be inferred to be `Number`
-(f :: (Number; _))` (bounds-dont-influence-other-bounds.wipple:9:1-10:16) (incomplete-type)
+(f :: (Number; _))` (bounds-dont-influence-other-bounds.wipple:9:1-10:19) (incomplete-type)
 
   Missing information for the type of `-- `B` should not be inferred to be `Number`
   (f :: (Number; _))`.
@@ -169,21 +169,21 @@ Feedback:
   Wipple determined this code is `(Number; _)`, but it needs some more information for the `_` placeholders.
 
 
-`f :: (Number; _)` (bounds-dont-influence-other-bounds.wipple:10:2-10:15) (incomplete-type)
+`f :: (Number; _)` (bounds-dont-influence-other-bounds.wipple:10:2-10:18) (incomplete-type)
 
   Missing information for the type of `f :: (Number; _)`.
   
   Wipple determined this code is `(Number; _)`, but it needs some more information for the `_` placeholders.
 
 
-`Number; _` (bounds-dont-influence-other-bounds.wipple:10:6-10:14) (incomplete-type)
+`Number; _` (bounds-dont-influence-other-bounds.wipple:10:8-10:17) (incomplete-type)
 
   Missing information for the type of `Number; _`.
   
   Wipple determined this code is `(Number; _)`, but it needs some more information for the `_` placeholders.
 
 
-`_` (bounds-dont-influence-other-bounds.wipple:10:13-10:14) (unknown-type)
+`_` (bounds-dont-influence-other-bounds.wipple:10:16-10:17) (unknown-type)
 
   Could not determine the type of `_`.
   

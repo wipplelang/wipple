@@ -4,53 +4,53 @@ Facts (layer 2):
   has type `String`
   is an expression
 
-`"abc" . replicate 3` (replicate.wipple:1:1-1:17) (VisitAs):
+`"abc" . replicate 3` (replicate.wipple:1:1-1:20) (VisitAs):
   has type `Sequence String`
   is an expression
 
-`"abc" . replicate 3 . each show` (replicate.wipple:1:1-1:26) (ExpressionStatement):
+`"abc" . replicate 3 . each show` (replicate.wipple:1:1-1:32) (ExpressionStatement):
   has type `()`
 
-`"abc" . replicate 3 . each show` (replicate.wipple:1:1-1:26) (OperatorExpression):
+`"abc" . replicate 3 . each show` (replicate.wipple:1:1-1:32) (OperatorExpression):
   has type `()`
   is an expression
 
-`replicate` (replicate.wipple:1:7-1:16) (VariableExpression):
-  has type `Number -> String -> Sequence String` (replicate.wipple:1:7-1:16)
+`replicate` (replicate.wipple:1:9-1:18) (VariableExpression):
+  has type `Number -> String -> Sequence String` (replicate.wipple:1:9-1:18)
   is an expression
-  resolved to 1 definition(s): `replicate :: Number -> element -> Sequence element` (library/src/foundation/sequence.wipple:27:1-27:44)
+  resolved to 1 definition(s): `replicate :: Number -> element -> Sequence element` (library/src/foundation/sequence.wipple:27:1-27:51)
 
-`replicate 3` (replicate.wipple:1:7-1:17) (CallExpression):
+`replicate 3` (replicate.wipple:1:9-1:20) (CallExpression):
   has type `Sequence String`
   is an expression
 
-`replicate 3` (replicate.wipple:1:7-1:17) (VisitAs):
-  has type `String -> Sequence String` (replicate.wipple:1:7-1:17)
+`replicate 3` (replicate.wipple:1:9-1:20) (VisitAs):
+  has type `String -> Sequence String` (replicate.wipple:1:9-1:20)
   is an expression
 
-`3` (replicate.wipple:1:16-1:17) (NumberExpression):
-  has type `Number` (replicate.wipple:1:16-1:17)
+`3` (replicate.wipple:1:19-1:20) (NumberExpression):
+  has type `Number` (replicate.wipple:1:19-1:20)
   is an expression
 
-`each` (replicate.wipple:1:18-1:22) (VariableExpression):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(Sequence String)` `String` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:46))
-  has type `(String -> ()) -> (Sequence String) -> ()` (replicate.wipple:1:18-1:22)
+`each` (replicate.wipple:1:23-1:27) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(Sequence String)` `String` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:50))
+  has type `(String -> ()) -> (Sequence String) -> ()` (replicate.wipple:1:23-1:27)
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:69)
+  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:81)
 
-`each show` (replicate.wipple:1:18-1:26) (CallExpression):
+`each show` (replicate.wipple:1:23-1:32) (CallExpression):
   has type `()`
   is an expression
 
-`each show` (replicate.wipple:1:18-1:26) (VisitAs):
-  has type `(Sequence String) -> ()` (replicate.wipple:1:18-1:26)
+`each show` (replicate.wipple:1:23-1:32) (VisitAs):
+  has type `(Sequence String) -> ()` (replicate.wipple:1:23-1:32)
   is an expression
 
-`show` (replicate.wipple:1:22-1:26) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:25))
+`show` (replicate.wipple:1:28-1:32) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
 
 Output:

@@ -1,26 +1,26 @@
 Facts (layer 2):
 
-`(42 :: String)` (mismatched-types.wipple:1:1-1:13) (ExpressionStatement):
-  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:6-1:12)
+`(42 :: String)` (mismatched-types.wipple:1:1-1:15) (ExpressionStatement):
+  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:8-1:14)
 
 `42` (mismatched-types.wipple:1:2-1:4) (NumberExpression):
-  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:6-1:12)
+  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:8-1:14)
   is an expression
 
-`42 :: String` (mismatched-types.wipple:1:2-1:12) (AnnotateExpression):
-  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:6-1:12)
+`42 :: String` (mismatched-types.wipple:1:2-1:14) (AnnotateExpression):
+  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:8-1:14)
   is an expression
 
-`String` (mismatched-types.wipple:1:6-1:12) (NamedType):
-  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:6-1:12)
+`String` (mismatched-types.wipple:1:8-1:14) (NamedType):
+  has type `Number` (mismatched-types.wipple:1:2-1:4) or `String` (mismatched-types.wipple:1:8-1:14)
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:12-2:23)
+  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
 
 
 
 Feedback:
 
-`(42 :: String)` (mismatched-types.wipple:1:1-1:13) (conflicting-types)
+`(42 :: String)` (mismatched-types.wipple:1:1-1:15) (conflicting-types)
 
   `(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
   
@@ -47,7 +47,7 @@ Feedback:
   -  `42` is a `Number`.
 
 
-`42 :: String` (mismatched-types.wipple:1:2-1:12) (conflicting-types)
+`42 :: String` (mismatched-types.wipple:1:2-1:14) (conflicting-types)
 
   `42 :: String` is a `Number` or a `String`, but it can only be one of these.
   
@@ -56,7 +56,7 @@ Feedback:
   -  `42` is a `Number`.
 
 
-`String` (mismatched-types.wipple:1:6-1:12) (conflicting-types)
+`String` (mismatched-types.wipple:1:8-1:14) (conflicting-types)
 
   `String` is a `Number` or a `String`, but it can only be one of these.
   

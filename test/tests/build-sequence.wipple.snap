@@ -5,69 +5,69 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`numbers : build-sequence (Some 0) (n -> Some (n + 1))` (build-sequence.wipple:1:1-1:44) (AssignmentStatement):
-  has type `()` (build-sequence.wipple:1:1-1:44)
+`numbers : build-sequence (Some 0) (n -> Some (n + 1))` (build-sequence.wipple:1:1-1:54) (AssignmentStatement):
+  has type `()` (build-sequence.wipple:1:1-1:54)
 
-`build-sequence` (build-sequence.wipple:1:9-1:23) (VariableExpression):
-  has type `(Maybe Number) (Number -> Maybe Number) -> Sequence Number` (build-sequence.wipple:1:9-1:23)
+`build-sequence` (build-sequence.wipple:1:11-1:25) (VariableExpression):
+  has type `(Maybe Number) (Number -> Maybe Number) -> Sequence Number` (build-sequence.wipple:1:11-1:25)
   is an expression
-  resolved to 1 definition(s): `build-sequence :: (Maybe element) (element -> Maybe element) -> Sequence element` (library/src/foundation/sequence.wipple:31:1-31:71)
+  resolved to 1 definition(s): `build-sequence :: (Maybe element) (element -> Maybe element) -> Sequence element` (library/src/foundation/sequence.wipple:31:1-31:81)
 
-`build-sequence (Some 0) (n -> Some (n + 1))` (build-sequence.wipple:1:9-1:44) (CallExpression):
+`build-sequence (Some 0) (n -> Some (n + 1))` (build-sequence.wipple:1:11-1:54) (CallExpression):
   has type `Sequence Number`
   is an expression
 
-`Some` (build-sequence.wipple:1:24-1:28) (ConstructorExpression):
-  has type `Number -> Maybe Number` (build-sequence.wipple:1:24-1:28)
+`Some` (build-sequence.wipple:1:27-1:31) (ConstructorExpression):
+  has type `Number -> Maybe Number` (build-sequence.wipple:1:27-1:31)
   is an expression
-  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:1-6:10)
+  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:3-6:13)
 
-`Some 0` (build-sequence.wipple:1:24-1:29) (CallExpression):
+`Some 0` (build-sequence.wipple:1:27-1:33) (CallExpression):
   has type `Maybe Number`
   is an expression
 
-`0` (build-sequence.wipple:1:28-1:29) (NumberExpression):
+`0` (build-sequence.wipple:1:32-1:33) (NumberExpression):
   has type `Number`
   is an expression
 
-`n` (build-sequence.wipple:1:31-1:32) (VariablePattern):
+`n` (build-sequence.wipple:1:36-1:37) (VariablePattern):
   has type `Number`
   is a definition
   is a pattern
 
-`n -> Some (n + 1)` (build-sequence.wipple:1:31-1:43) (FunctionExpression):
-  has type `Number -> Maybe Number` (build-sequence.wipple:1:31-1:43)
+`n -> Some (n + 1)` (build-sequence.wipple:1:36-1:53) (FunctionExpression):
+  has type `Number -> Maybe Number` (build-sequence.wipple:1:36-1:53)
   is an expression
 
-`Some` (build-sequence.wipple:1:34-1:38) (ConstructorExpression):
-  has type `Number -> Maybe Number` (build-sequence.wipple:1:34-1:38)
+`Some` (build-sequence.wipple:1:41-1:45) (ConstructorExpression):
+  has type `Number -> Maybe Number` (build-sequence.wipple:1:41-1:45)
   is an expression
-  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:1-6:10)
+  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:3-6:13)
 
-`Some (n + 1)` (build-sequence.wipple:1:34-1:43) (CallExpression):
+`Some (n + 1)` (build-sequence.wipple:1:41-1:53) (CallExpression):
   has type `Maybe Number`
   is an expression
 
-`n` (build-sequence.wipple:1:39-1:40) (VariableExpression):
+`n` (build-sequence.wipple:1:47-1:48) (VariableExpression):
   has type `Number`
   is an expression
-  resolved to 1 definition(s): `n` (build-sequence.wipple:1:31-1:32)
+  resolved to 1 definition(s): `n` (build-sequence.wipple:1:36-1:37)
 
-`n + 1` (build-sequence.wipple:1:39-1:42) (OperatorExpression):
-  has type `Number`
-  is an expression
-
-`n + 1` (build-sequence.wipple:1:39-1:42) (CallExpression):
+`n + 1` (build-sequence.wipple:1:47-1:52) (OperatorExpression):
   has type `Number`
   is an expression
 
-`n + 1` (build-sequence.wipple:1:39-1:42) (ConstructorExpression):
-  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:47) `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:32))
-  has type `Number Number -> Number` (build-sequence.wipple:1:39-1:42)
+`n + 1` (build-sequence.wipple:1:47-1:52) (CallExpression):
+  has type `Number`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:47)
 
-`1` (build-sequence.wipple:1:41-1:42) (NumberExpression):
+`n + 1` (build-sequence.wipple:1:47-1:52) (ConstructorExpression):
+  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:58) `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:36))
+  has type `Number Number -> Number` (build-sequence.wipple:1:47-1:52)
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:58)
+
+`1` (build-sequence.wipple:1:51-1:52) (NumberExpression):
   has type `Number`
   is an expression
 
@@ -76,54 +76,54 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `numbers` (build-sequence.wipple:1:1-1:8)
 
-`numbers . take 5` (build-sequence.wipple:2:1-2:14) (VisitAs):
+`numbers . take 5` (build-sequence.wipple:2:1-2:17) (VisitAs):
   has type `Sequence Number`
   is an expression
 
-`numbers . take 5 . each show` (build-sequence.wipple:2:1-2:23) (ExpressionStatement):
+`numbers . take 5 . each show` (build-sequence.wipple:2:1-2:29) (ExpressionStatement):
   has type `()`
 
-`numbers . take 5 . each show` (build-sequence.wipple:2:1-2:23) (OperatorExpression):
+`numbers . take 5 . each show` (build-sequence.wipple:2:1-2:29) (OperatorExpression):
   has type `()`
   is an expression
 
-`take` (build-sequence.wipple:2:9-2:13) (VariableExpression):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:46))
-  has type `Number -> (Sequence Number) -> Sequence Number` (build-sequence.wipple:2:9-2:13)
+`take` (build-sequence.wipple:2:11-2:15) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:50))
+  has type `Number -> (Sequence Number) -> Sequence Number` (build-sequence.wipple:2:11-2:15)
   is an expression
-  resolved to 1 definition(s): `take :: Number -> collection -> Sequence element where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:285:1-285:77)
+  resolved to 1 definition(s): `take :: Number -> collection -> Sequence element where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:285:1-285:88)
 
-`take 5` (build-sequence.wipple:2:9-2:14) (CallExpression):
+`take 5` (build-sequence.wipple:2:11-2:17) (CallExpression):
   has type `Sequence Number`
   is an expression
 
-`take 5` (build-sequence.wipple:2:9-2:14) (VisitAs):
-  has type `(Sequence Number) -> Sequence Number` (build-sequence.wipple:2:9-2:14)
+`take 5` (build-sequence.wipple:2:11-2:17) (VisitAs):
+  has type `(Sequence Number) -> Sequence Number` (build-sequence.wipple:2:11-2:17)
   is an expression
 
-`5` (build-sequence.wipple:2:13-2:14) (NumberExpression):
-  has type `Number` (build-sequence.wipple:2:13-2:14)
+`5` (build-sequence.wipple:2:16-2:17) (NumberExpression):
+  has type `Number` (build-sequence.wipple:2:16-2:17)
   is an expression
 
-`each` (build-sequence.wipple:2:15-2:19) (VariableExpression):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:71) `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:46))
-  has type `(Number -> ()) -> (Sequence Number) -> ()` (build-sequence.wipple:2:15-2:19)
+`each` (build-sequence.wipple:2:20-2:24) (VariableExpression):
+  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:50))
+  has type `(Number -> ()) -> (Sequence Number) -> ()` (build-sequence.wipple:2:20-2:24)
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:69)
+  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:81)
 
-`each show` (build-sequence.wipple:2:15-2:23) (CallExpression):
+`each show` (build-sequence.wipple:2:20-2:29) (CallExpression):
   has type `()`
   is an expression
 
-`each show` (build-sequence.wipple:2:15-2:23) (VisitAs):
-  has type `(Sequence Number) -> ()` (build-sequence.wipple:2:15-2:23)
+`each show` (build-sequence.wipple:2:20-2:29) (VisitAs):
+  has type `(Sequence Number) -> ()` (build-sequence.wipple:2:20-2:29)
   is an expression
 
-`show` (build-sequence.wipple:2:19-2:23) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:25))
+`show` (build-sequence.wipple:2:25-2:29) (VariableExpression):
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
 
 Output:

@@ -1,70 +1,70 @@
 Facts (layer 2):
 
-`transmute :: a -> b` (transmute.wipple:1:1-1:16) (ConstantDefinition):
+`transmute :: a -> b` (transmute.wipple:1:1-1:20) (ConstantDefinition):
   has definition constraints
-  has type `a -> a` (transmute.wipple:1:12-1:16)
+  has type `a -> a` (transmute.wipple:1:14-1:20)
   has type parameters
   is a definition
 
-`a` (transmute.wipple:1:12-1:13) (TypeParameter):
-  has type `a` (transmute.wipple:1:12-1:13) or `b` (transmute.wipple:1:15-1:16)
+`a` (transmute.wipple:1:14-1:15) (TypeParameter):
+  has type `a` (transmute.wipple:1:14-1:15) or `b` (transmute.wipple:1:19-1:20)
   is a definition
   is a type
-  resolved to 1 definition(s): `a` (transmute.wipple:1:12-1:13)
+  resolved to 1 definition(s): `a` (transmute.wipple:1:14-1:15)
 
-`a -> b` (transmute.wipple:1:12-1:16) (FunctionType):
-  has type `a -> a` (transmute.wipple:1:12-1:16)
+`a -> b` (transmute.wipple:1:14-1:20) (FunctionType):
+  has type `a -> a` (transmute.wipple:1:14-1:20)
   is a type
 
-`b` (transmute.wipple:1:15-1:16) (TypeParameter):
-  has type `a` (transmute.wipple:1:12-1:13) or `b` (transmute.wipple:1:15-1:16)
+`b` (transmute.wipple:1:19-1:20) (TypeParameter):
+  has type `a` (transmute.wipple:1:14-1:15) or `b` (transmute.wipple:1:19-1:20)
   is a definition
   is a type
-  resolved to 1 definition(s): `b` (transmute.wipple:1:15-1:16)
+  resolved to 1 definition(s): `b` (transmute.wipple:1:19-1:20)
 
-`transmute : x -> x` (transmute.wipple:2:1-2:15) (AssignmentStatement):
-  has type `()` (transmute.wipple:2:1-2:15)
+`transmute : x -> x` (transmute.wipple:2:1-2:19) (AssignmentStatement):
+  has type `()` (transmute.wipple:2:1-2:19)
 
-`x` (transmute.wipple:2:11-2:12) (VariablePattern):
-  has type `a` (transmute.wipple:1:12-1:13) or `b` (transmute.wipple:1:15-1:16)
+`x` (transmute.wipple:2:13-2:14) (VariablePattern):
+  has type `a` (transmute.wipple:1:14-1:15) or `b` (transmute.wipple:1:19-1:20)
   is a definition
   is a pattern
 
-`x -> x` (transmute.wipple:2:11-2:15) (FunctionExpression):
-  has type `a -> a` (transmute.wipple:1:12-1:16)
+`x -> x` (transmute.wipple:2:13-2:19) (FunctionExpression):
+  has type `a -> a` (transmute.wipple:1:14-1:20)
   is an expression
 
-`x` (transmute.wipple:2:14-2:15) (VariableExpression):
-  has type `a` (transmute.wipple:1:12-1:13) or `b` (transmute.wipple:1:15-1:16)
+`x` (transmute.wipple:2:18-2:19) (VariableExpression):
+  has type `a` (transmute.wipple:1:14-1:15) or `b` (transmute.wipple:1:19-1:20)
   is an expression
-  resolved to 1 definition(s): `x` (transmute.wipple:2:11-2:12)
+  resolved to 1 definition(s): `x` (transmute.wipple:2:13-2:14)
 
 
 
 Feedback:
 
-`a` (transmute.wipple:1:12-1:13) (conflicting-types)
+`a` (transmute.wipple:1:14-1:15) (conflicting-types)
 
   `a` is a `a` or a `b`, but it can only be one of these.
   
   `a` must be the same type as `x`, `x`, and `b`; double-check these.
 
 
-`b` (transmute.wipple:1:15-1:16) (conflicting-types)
+`b` (transmute.wipple:1:19-1:20) (conflicting-types)
 
   `b` is a `a` or a `b`, but it can only be one of these.
   
   `b` must be the same type as `x`, `x`, and `a`; double-check these.
 
 
-`x` (transmute.wipple:2:11-2:12) (conflicting-types)
+`x` (transmute.wipple:2:13-2:14) (conflicting-types)
 
   `x` is a `a` or a `b`, but it can only be one of these.
   
   `x` must be the same type as `x`, `a`, and `b`; double-check these.
 
 
-`x` (transmute.wipple:2:14-2:15) (conflicting-types)
+`x` (transmute.wipple:2:18-2:19) (conflicting-types)
 
   `x` is a `a` or a `b`, but it can only be one of these.
   

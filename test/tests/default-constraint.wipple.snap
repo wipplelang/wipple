@@ -1,262 +1,262 @@
 Facts (layer 2):
 
-`Number : type` (default-constraint.wipple:1:12-1:23) (TypeDefinition):
+`Number : type` (default-constraint.wipple:1:13-1:26) (TypeDefinition):
   has definition constraints
-  has type `Number` (default-constraint.wipple:1:12-1:23)
+  has type `Number` (default-constraint.wipple:1:13-1:26)
   is a definition
 
-`String : type` (default-constraint.wipple:2:12-2:23) (TypeDefinition):
+`String : type` (default-constraint.wipple:2:13-2:26) (TypeDefinition):
   has definition constraints
-  has type `String` (default-constraint.wipple:2:12-2:23)
+  has type `String` (default-constraint.wipple:2:13-2:26)
   is a definition
 
-`List : element => type` (default-constraint.wipple:3:12-3:30) (TypeDefinition):
+`List : element => type` (default-constraint.wipple:3:13-3:35) (TypeDefinition):
   has definition constraints
-  has type `List element` (default-constraint.wipple:3:12-3:30)
+  has type `List element` (default-constraint.wipple:3:13-3:35)
   has type parameters
   is a definition
 
-`element` (default-constraint.wipple:3:17-3:24) (TypeParameter):
-  has type `element` (default-constraint.wipple:3:17-3:24)
+`element` (default-constraint.wipple:3:20-3:27) (TypeParameter):
+  has type `element` (default-constraint.wipple:3:20-3:27)
   is a definition
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:3:17-3:24)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:3:20-3:27)
 
-`Set : element => type` (default-constraint.wipple:4:12-4:29) (TypeDefinition):
+`Set : element => type` (default-constraint.wipple:4:13-4:34) (TypeDefinition):
   has definition constraints
-  has type `Set element` (default-constraint.wipple:4:12-4:29)
+  has type `Set element` (default-constraint.wipple:4:13-4:34)
   has type parameters
   is a definition
 
-`element` (default-constraint.wipple:4:16-4:23) (TypeParameter):
-  has type `element` (default-constraint.wipple:4:16-4:23)
+`element` (default-constraint.wipple:4:19-4:26) (TypeParameter):
+  has type `element` (default-constraint.wipple:4:19-4:26)
   is a definition
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:4:16-4:23)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:4:19-4:26)
 
-`Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1-6:54) (TraitDefinition):
+`Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1-6:62) (TraitDefinition):
   has 2 instances
   has definition constraints
-  has type `element -> collection` (default-constraint.wipple:6:34-6:53)
+  has type `element -> collection` (default-constraint.wipple:6:40-6:61)
   has type parameters
   is a definition
 
-`element` (default-constraint.wipple:6:9-6:16) (TypeParameter):
-  has type `element` (default-constraint.wipple:6:9-6:16)
+`element` (default-constraint.wipple:6:11-6:18) (TypeParameter):
+  has type `element` (default-constraint.wipple:6:11-6:18)
   is a definition
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:6:9-6:16)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:6:11-6:18)
 
-`collection` (default-constraint.wipple:6:16-6:26) (TypeParameter):
-  has type `collection` (default-constraint.wipple:6:16-6:26)
+`collection` (default-constraint.wipple:6:19-6:29) (TypeParameter):
+  has type `collection` (default-constraint.wipple:6:19-6:29)
   is a definition
   is a type
-  resolved to 1 definition(s): `collection` (default-constraint.wipple:6:16-6:26)
+  resolved to 1 definition(s): `collection` (default-constraint.wipple:6:19-6:29)
 
-`element` (default-constraint.wipple:6:34-6:41) (TypeParameter):
-  has type `element` (default-constraint.wipple:6:9-6:16)
+`element` (default-constraint.wipple:6:40-6:47) (TypeParameter):
+  has type `element` (default-constraint.wipple:6:11-6:18)
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:6:9-6:16)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:6:11-6:18)
 
-`element -> collection` (default-constraint.wipple:6:34-6:53) (FunctionType):
-  has type `element -> collection` (default-constraint.wipple:6:34-6:53)
+`element -> collection` (default-constraint.wipple:6:40-6:61) (FunctionType):
+  has type `element -> collection` (default-constraint.wipple:6:40-6:61)
   is a type
 
-`collection` (default-constraint.wipple:6:43-6:53) (TypeParameter):
-  has type `collection` (default-constraint.wipple:6:16-6:26)
+`collection` (default-constraint.wipple:6:51-6:61) (TypeParameter):
+  has type `collection` (default-constraint.wipple:6:19-6:29)
   is a type
-  resolved to 1 definition(s): `collection` (default-constraint.wipple:6:16-6:26)
+  resolved to 1 definition(s): `collection` (default-constraint.wipple:6:19-6:29)
 
-`instance (Collect element (List element))` (default-constraint.wipple:7:1-7:38) (InstanceDefinition):
+`instance (Collect element (List element))` (default-constraint.wipple:7:1-7:42) (InstanceDefinition):
   has definition constraints
   has type `element -> List element`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1-6:54)
+  resolved to 1 definition(s): `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1-6:62)
 
-`element` (default-constraint.wipple:7:17-7:24) (TypeParameter):
-  has type `element` (default-constraint.wipple:7:17-7:24)
+`element` (default-constraint.wipple:7:19-7:26) (TypeParameter):
+  has type `element` (default-constraint.wipple:7:19-7:26)
   is a definition
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:7:17-7:24)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:7:19-7:26)
 
-`List element` (default-constraint.wipple:7:25-7:36) (NamedType):
-  has type `List element` (default-constraint.wipple:7:25-7:36)
+`List element` (default-constraint.wipple:7:28-7:40) (NamedType):
+  has type `List element` (default-constraint.wipple:7:28-7:40)
   is a type
-  resolved to 1 definition(s): `List : element => type` (default-constraint.wipple:3:12-3:30)
+  resolved to 1 definition(s): `List : element => type` (default-constraint.wipple:3:13-3:35)
 
-`element` (default-constraint.wipple:7:29-7:36) (TypeParameter):
-  has type `element` (default-constraint.wipple:7:17-7:24)
+`element` (default-constraint.wipple:7:33-7:40) (TypeParameter):
+  has type `element` (default-constraint.wipple:7:19-7:26)
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:7:17-7:24)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:7:19-7:26)
 
-`_` (default-constraint.wipple:7:39-7:40) (PlaceholderExpression):
+`_` (default-constraint.wipple:7:45-7:46) (PlaceholderExpression):
   has type `element -> List element`
   is an expression
 
-`instance (Collect element (Set element))` (default-constraint.wipple:8:1-8:37) (InstanceDefinition):
+`instance (Collect element (Set element))` (default-constraint.wipple:8:1-8:41) (InstanceDefinition):
   has definition constraints
   has type `element -> Set element`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1-6:54)
+  resolved to 1 definition(s): `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1-6:62)
 
-`element` (default-constraint.wipple:8:17-8:24) (TypeParameter):
-  has type `element` (default-constraint.wipple:8:17-8:24)
+`element` (default-constraint.wipple:8:19-8:26) (TypeParameter):
+  has type `element` (default-constraint.wipple:8:19-8:26)
   is a definition
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:8:17-8:24)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:8:19-8:26)
 
-`Set element` (default-constraint.wipple:8:25-8:35) (NamedType):
-  has type `Set element` (default-constraint.wipple:8:25-8:35)
+`Set element` (default-constraint.wipple:8:28-8:39) (NamedType):
+  has type `Set element` (default-constraint.wipple:8:28-8:39)
   is a type
-  resolved to 1 definition(s): `Set : element => type` (default-constraint.wipple:4:12-4:29)
+  resolved to 1 definition(s): `Set : element => type` (default-constraint.wipple:4:13-4:34)
 
-`element` (default-constraint.wipple:8:28-8:35) (TypeParameter):
-  has type `element` (default-constraint.wipple:8:17-8:24)
+`element` (default-constraint.wipple:8:32-8:39) (TypeParameter):
+  has type `element` (default-constraint.wipple:8:19-8:26)
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:8:17-8:24)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:8:19-8:26)
 
-`_` (default-constraint.wipple:8:38-8:39) (PlaceholderExpression):
+`_` (default-constraint.wipple:8:44-8:45) (PlaceholderExpression):
   has type `element -> Set element`
   is an expression
 
-`collect :: element -> output where (output :: List element) (Collect element output)` (default-constraint.wipple:11:1-11:73) (ConstantDefinition):
+`collect :: element -> output where (output :: List element) (Collect element output)` (default-constraint.wipple:11:1-11:85) (ConstantDefinition):
   has definition constraints
-  has type `element -> output` (default-constraint.wipple:11:10-11:25)
+  has type `element -> output` (default-constraint.wipple:11:12-11:29)
   has type parameters
   is a definition
 
-`element` (default-constraint.wipple:11:10-11:17) (TypeParameter):
-  has type `element` (default-constraint.wipple:11:10-11:17)
+`element` (default-constraint.wipple:11:12-11:19) (TypeParameter):
+  has type `element` (default-constraint.wipple:11:12-11:19)
   is a definition
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:11:10-11:17)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:11:12-11:19)
 
-`element -> output` (default-constraint.wipple:11:10-11:25) (FunctionType):
-  has type `element -> output` (default-constraint.wipple:11:10-11:25)
+`element -> output` (default-constraint.wipple:11:12-11:29) (FunctionType):
+  has type `element -> output` (default-constraint.wipple:11:12-11:29)
   is a type
 
-`output` (default-constraint.wipple:11:19-11:25) (TypeParameter):
-  has type `output` (default-constraint.wipple:11:19-11:25)
+`output` (default-constraint.wipple:11:23-11:29) (TypeParameter):
+  has type `output` (default-constraint.wipple:11:23-11:29)
   is a definition
   is a type
-  resolved to 1 definition(s): `output` (default-constraint.wipple:11:19-11:25)
+  resolved to 1 definition(s): `output` (default-constraint.wipple:11:23-11:29)
 
-`(output :: List element)` (default-constraint.wipple:11:30-11:51) (DefaultConstraint):
+`(output :: List element)` (default-constraint.wipple:11:36-11:60) (DefaultConstraint):
   is a constraint
 
-`output` (default-constraint.wipple:11:31-11:37) (TypeParameter):
-  has type `output` (default-constraint.wipple:11:19-11:25)
+`output` (default-constraint.wipple:11:37-11:43) (TypeParameter):
+  has type `output` (default-constraint.wipple:11:23-11:29)
   is a type
-  resolved to 1 definition(s): `output` (default-constraint.wipple:11:19-11:25)
+  resolved to 1 definition(s): `output` (default-constraint.wipple:11:23-11:29)
 
-`List element` (default-constraint.wipple:11:39-11:50) (NamedType):
-  has type `List element` (default-constraint.wipple:11:39-11:50)
+`List element` (default-constraint.wipple:11:47-11:59) (NamedType):
+  has type `List element` (default-constraint.wipple:11:47-11:59)
   is a type
-  resolved to 1 definition(s): `List : element => type` (default-constraint.wipple:3:12-3:30)
+  resolved to 1 definition(s): `List : element => type` (default-constraint.wipple:3:13-3:35)
 
-`element` (default-constraint.wipple:11:43-11:50) (TypeParameter):
-  has type `element` (default-constraint.wipple:11:10-11:17)
+`element` (default-constraint.wipple:11:52-11:59) (TypeParameter):
+  has type `element` (default-constraint.wipple:11:12-11:19)
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:11:10-11:17)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:11:12-11:19)
 
-`(Collect element output)` (default-constraint.wipple:11:51-11:73) (BoundConstraint):
-  has bound(s) `Collect` (default-constraint.wipple:6:1-6:54) `element` (default-constraint.wipple:11:10-11:17) `output` (default-constraint.wipple:11:19-11:25) (resolved as `(Collect element output)` (default-constraint.wipple:11:51-11:73))
+`(Collect element output)` (default-constraint.wipple:11:61-11:85) (BoundConstraint):
+  has bound(s) `Collect` (default-constraint.wipple:6:1-6:62) `element` (default-constraint.wipple:11:12-11:19) `output` (default-constraint.wipple:11:23-11:29) (resolved as `(Collect element output)` (default-constraint.wipple:11:61-11:85))
   is a constraint
-  resolved to 1 definition(s): `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1-6:54)
+  resolved to 1 definition(s): `Collect : element collection => trait (element -> collection)` (default-constraint.wipple:6:1-6:62)
 
-`element` (default-constraint.wipple:11:59-11:66) (TypeParameter):
-  has type `element` (default-constraint.wipple:11:10-11:17)
+`element` (default-constraint.wipple:11:70-11:77) (TypeParameter):
+  has type `element` (default-constraint.wipple:11:12-11:19)
   is a type
-  resolved to 1 definition(s): `element` (default-constraint.wipple:11:10-11:17)
+  resolved to 1 definition(s): `element` (default-constraint.wipple:11:12-11:19)
 
-`output` (default-constraint.wipple:11:66-11:72) (TypeParameter):
-  has type `output` (default-constraint.wipple:11:19-11:25)
+`output` (default-constraint.wipple:11:78-11:84) (TypeParameter):
+  has type `output` (default-constraint.wipple:11:23-11:29)
   is a type
-  resolved to 1 definition(s): `output` (default-constraint.wipple:11:19-11:25)
+  resolved to 1 definition(s): `output` (default-constraint.wipple:11:23-11:29)
 
-`collect : _` (default-constraint.wipple:12:1-12:10) (AssignmentStatement):
-  has type `()` (default-constraint.wipple:12:1-12:10)
+`collect : _` (default-constraint.wipple:12:1-12:12) (AssignmentStatement):
+  has type `()` (default-constraint.wipple:12:1-12:12)
 
-`_` (default-constraint.wipple:12:9-12:10) (PlaceholderExpression):
-  has type `element -> output` (default-constraint.wipple:11:10-11:25)
+`_` (default-constraint.wipple:12:11-12:12) (PlaceholderExpression):
+  has type `element -> output` (default-constraint.wipple:11:12-11:29)
   is an expression
 
 `_` (default-constraint.wipple:14:1-14:2) (WildcardPattern):
   has type `List String`
   is a pattern
 
-`_ : collect "hi"` (default-constraint.wipple:14:1-14:14) (AssignmentStatement):
-  has type `()` (default-constraint.wipple:14:1-14:14)
+`_ : collect "hi"` (default-constraint.wipple:14:1-14:17) (AssignmentStatement):
+  has type `()` (default-constraint.wipple:14:1-14:17)
 
-`collect` (default-constraint.wipple:14:3-14:10) (VariableExpression):
-  has bound(s) `Collect` (default-constraint.wipple:6:1-6:54) `String` (default-constraint.wipple:14:10-14:14) `(List String)` (resolved as `instance (Collect element (List element))` (default-constraint.wipple:7:1-7:38))
-  has type `String -> List String` (default-constraint.wipple:14:3-14:10)
+`collect` (default-constraint.wipple:14:5-14:12) (VariableExpression):
+  has bound(s) `Collect` (default-constraint.wipple:6:1-6:62) `String` (default-constraint.wipple:14:13-14:17) `(List String)` (resolved as `instance (Collect element (List element))` (default-constraint.wipple:7:1-7:42))
+  has type `String -> List String` (default-constraint.wipple:14:5-14:12)
   is an expression
-  resolved to 1 definition(s): `collect :: element -> output where (output :: List element) (Collect element output)` (default-constraint.wipple:11:1-11:73)
+  resolved to 1 definition(s): `collect :: element -> output where (output :: List element) (Collect element output)` (default-constraint.wipple:11:1-11:85)
 
-`collect "hi"` (default-constraint.wipple:14:3-14:14) (CallExpression):
+`collect "hi"` (default-constraint.wipple:14:5-14:17) (CallExpression):
   has type `List String`
   is an expression
 
-`"hi"` (default-constraint.wipple:14:10-14:14) (StringExpression):
-  has type `String` (default-constraint.wipple:14:10-14:14)
+`"hi"` (default-constraint.wipple:14:13-14:17) (StringExpression):
+  has type `String` (default-constraint.wipple:14:13-14:17)
   is an expression
 
 `_` (default-constraint.wipple:15:1-15:2) (WildcardPattern):
   has type `Set String`
   is a pattern
 
-`_ : (collect "hi" :: Set _)` (default-constraint.wipple:15:1-15:22) (AssignmentStatement):
-  has type `()` (default-constraint.wipple:15:1-15:22)
+`_ : (collect "hi" :: Set _)` (default-constraint.wipple:15:1-15:28) (AssignmentStatement):
+  has type `()` (default-constraint.wipple:15:1-15:28)
 
-`collect` (default-constraint.wipple:15:4-15:11) (VariableExpression):
-  has bound(s) `Collect` (default-constraint.wipple:6:1-6:54) `String` (default-constraint.wipple:15:11-15:15) `(Set String)` (resolved as `instance (Collect element (Set element))` (default-constraint.wipple:8:1-8:37))
-  has type `String -> Set String` (default-constraint.wipple:15:4-15:11)
+`collect` (default-constraint.wipple:15:6-15:13) (VariableExpression):
+  has bound(s) `Collect` (default-constraint.wipple:6:1-6:62) `String` (default-constraint.wipple:15:14-15:18) `(Set String)` (resolved as `instance (Collect element (Set element))` (default-constraint.wipple:8:1-8:41))
+  has type `String -> Set String` (default-constraint.wipple:15:6-15:13)
   is an expression
-  resolved to 1 definition(s): `collect :: element -> output where (output :: List element) (Collect element output)` (default-constraint.wipple:11:1-11:73)
+  resolved to 1 definition(s): `collect :: element -> output where (output :: List element) (Collect element output)` (default-constraint.wipple:11:1-11:85)
 
-`collect "hi"` (default-constraint.wipple:15:4-15:15) (CallExpression):
+`collect "hi"` (default-constraint.wipple:15:6-15:18) (CallExpression):
   has type `Set String`
   is an expression
 
-`collect "hi" :: Set _` (default-constraint.wipple:15:4-15:21) (AnnotateExpression):
+`collect "hi" :: Set _` (default-constraint.wipple:15:6-15:27) (AnnotateExpression):
   has type `Set String`
   is an expression
 
-`"hi"` (default-constraint.wipple:15:11-15:15) (StringExpression):
-  has type `String` (default-constraint.wipple:15:11-15:15)
+`"hi"` (default-constraint.wipple:15:14-15:18) (StringExpression):
+  has type `String` (default-constraint.wipple:15:14-15:18)
   is an expression
 
-`Set _` (default-constraint.wipple:15:17-15:21) (NamedType):
+`Set _` (default-constraint.wipple:15:22-15:27) (NamedType):
   has type `Set String`
   is a type
-  resolved to 1 definition(s): `Set : element => type` (default-constraint.wipple:4:12-4:29)
+  resolved to 1 definition(s): `Set : element => type` (default-constraint.wipple:4:13-4:34)
 
-`_` (default-constraint.wipple:15:20-15:21) (PlaceholderType):
-  has type `String` (default-constraint.wipple:15:11-15:15)
+`_` (default-constraint.wipple:15:26-15:27) (PlaceholderType):
+  has type `String` (default-constraint.wipple:15:14-15:18)
   is a type
 
 
 
 Feedback:
 
-`_` (default-constraint.wipple:7:39-7:40) (placeholder)
+`_` (default-constraint.wipple:7:45-7:46) (placeholder)
 
   Found a placeholder of type `element -> List element`.
   
   Add a `element -> List element` value here before running your program.
 
 
-`_` (default-constraint.wipple:8:38-8:39) (placeholder)
+`_` (default-constraint.wipple:8:44-8:45) (placeholder)
 
   Found a placeholder of type `element -> Set element`.
   
   Add a `element -> Set element` value here before running your program.
 
 
-`_` (default-constraint.wipple:12:9-12:10) (placeholder)
+`_` (default-constraint.wipple:12:11-12:12) (placeholder)
 
   Found a placeholder of type `element -> output`.
   

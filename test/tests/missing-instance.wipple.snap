@@ -1,32 +1,32 @@
 Facts (layer 2):
 
-`Foo : type` (missing-instance.wipple:1:1-1:9) (TypeDefinition):
+`Foo : type` (missing-instance.wipple:1:1-1:11) (TypeDefinition):
   has definition constraints
-  has type `Foo` (missing-instance.wipple:1:1-1:9)
+  has type `Foo` (missing-instance.wipple:1:1-1:11)
   is a definition
 
-`Foo : type` (missing-instance.wipple:1:1-1:9) (TypeDefinition):
+`Foo : type` (missing-instance.wipple:1:1-1:11) (TypeDefinition):
   has definition constraints
-  has type `Foo` (missing-instance.wipple:1:1-1:9)
+  has type `Foo` (missing-instance.wipple:1:1-1:11)
   is a definition
 
 `show` (missing-instance.wipple:2:1-2:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:37) `Foo` (resolved as `default error instance (Describe value)` (library/src/foundation/io.wipple:8:1-8:36))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Foo` (resolved as `default error instance (Describe value)` (library/src/foundation/io.wipple:8:1-8:40))
   has type `Foo -> ()` (missing-instance.wipple:2:1-2:5)
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:36)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
 
-`show Foo` (missing-instance.wipple:2:1-2:8) (ExpressionStatement):
+`show Foo` (missing-instance.wipple:2:1-2:9) (ExpressionStatement):
   has type `()`
 
-`show Foo` (missing-instance.wipple:2:1-2:8) (CallExpression):
+`show Foo` (missing-instance.wipple:2:1-2:9) (CallExpression):
   has type `()`
   is an expression
 
-`Foo` (missing-instance.wipple:2:5-2:8) (ConstructorExpression):
+`Foo` (missing-instance.wipple:2:6-2:9) (ConstructorExpression):
   has type `Foo`
   is an expression
-  resolved to 1 definition(s): `Foo : type` (missing-instance.wipple:1:1-1:9)
+  resolved to 1 definition(s): `Foo : type` (missing-instance.wipple:1:1-1:11)
 
 
 
