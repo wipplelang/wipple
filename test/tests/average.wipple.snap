@@ -47,10 +47,10 @@ Facts (layer 2):
   resolved to 1 definition(s): `numbers` (average.wipple:1:11-1:18)
 
 `count` (average.wipple:1:36-1:41) (VariableExpression):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(List Number)` `Number` (average.wipple:2:28-2:29) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:46))
+  has bound(s) `Count` (library/src/foundation/sequence.wipple:267:1-267:51) `(List Number)` (resolved as `instance (Count (List element))` (library/src/foundation/sequence.wipple:271:1-271:32))
   has type `(List Number) -> Number` (average.wipple:1:36-1:41)
   is an expression
-  resolved to 1 definition(s): `count :: collection -> Number where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:264:1-264:69)
+  resolved to 1 definition(s): `count :: collection -> Number where (Count collection)` (library/src/foundation/sequence.wipple:264:1-264:55)
 
 `count numbers` (average.wipple:1:36-1:49) (CallExpression):
   has type `Number`

@@ -150,10 +150,10 @@ Facts (layer 2):
   is an expression
 
 `contains?` (remove-duplicates.wipple:4:32-4:41) (VariableExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `(Equal element)` (remove-duplicates.wipple:1:82-1:97)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `(Hash element)` (remove-duplicates.wipple:1:98-1:112)), `Container` (library/src/foundation/sequence.wipple:398:1-398:83) `(Set element)` `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80))
+  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `(Equal element)` (remove-duplicates.wipple:1:82-1:97)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `(Hash element)` (remove-duplicates.wipple:1:98-1:112)), `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set element)` `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80))
   has type `element -> (Set element) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)` (library/src/foundation/sequence.wipple:401:1-401:83)
+  resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)` (library/src/foundation/sequence.wipple:407:1-407:83)
 
 `item` (remove-duplicates.wipple:4:43-4:47) (VariableExpression):
   has type `element` (remove-duplicates.wipple:1:28-1:35)

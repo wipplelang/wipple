@@ -40,7 +40,7 @@
 
         const env: runner.Env = {
             trace: async (trace: string) => {
-                onchangeline(JSON.parse(trace).line);
+                onchangeline(JSON.parse(trace).start.line);
             },
             display: async (message: string) => {
                 output.push({

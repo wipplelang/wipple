@@ -4,6 +4,7 @@ import initRuntime from "./runtime.js";
 
 const runtime = initRuntime({
     display: (message) => console.log(message),
+    trace: (message) => process.stderr.write(`trace: ${message}\n`),
 });
 
 const data = readFileSync(join(import.meta.dirname, "./main.wasm"));

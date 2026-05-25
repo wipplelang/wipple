@@ -91,7 +91,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:50))
   has type `Number -> (Sequence Number) -> Sequence Number` (build-sequence.wipple:2:11-2:15)
   is an expression
-  resolved to 1 definition(s): `take :: Number -> collection -> Sequence element where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:285:1-285:88)
+  resolved to 1 definition(s): `take :: Number -> collection -> Sequence element where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:291:1-291:88)
 
 `take 5` (build-sequence.wipple:2:11-2:17) (CallExpression):
   has type `Sequence Number`

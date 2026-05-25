@@ -120,10 +120,10 @@ Facts (layer 2):
   resolved to 1 definition(s): `sport` (dictionary.wipple:2:39-2:44)
 
 `count` (dictionary.wipple:2:77-2:82) (VariableExpression):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `String` `String` (resolved as `instance (As-Sequence String String)` (library/src/foundation/sequence.wipple:417:1-417:37))
+  has bound(s) `Count` (library/src/foundation/sequence.wipple:267:1-267:51) `String` (resolved as `instance (Count String)` (library/src/foundation/sequence.wipple:269:1-269:24))
   has type `String -> Number` (dictionary.wipple:2:77-2:82)
   is an expression
-  resolved to 1 definition(s): `count :: collection -> Number where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:264:1-264:69)
+  resolved to 1 definition(s): `count :: collection -> Number where (Count collection)` (library/src/foundation/sequence.wipple:264:1-264:55)
 
 `count sport` (dictionary.wipple:2:77-2:88) (CallExpression):
   has type `Number`

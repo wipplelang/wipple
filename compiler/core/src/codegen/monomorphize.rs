@@ -154,6 +154,7 @@ impl MonomorphizeCtx {
             ty: types.get(&body).cloned(),
             instructions,
             types,
+            imports: Vec::new(), // will be populated via `collect_imports`
         });
 
         Ok(())

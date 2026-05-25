@@ -1,3 +1,4 @@
+mod imports;
 pub mod ir;
 pub mod mangle;
 pub mod monomorphize;
@@ -6,7 +7,9 @@ pub mod types;
 pub mod wasm;
 
 use crate::{
-    codegen::{monomorphize::MonomorphizeCtx, optimize::optimize, types::ir_type},
+    codegen::{
+        imports::collect_imports, monomorphize::MonomorphizeCtx, optimize::optimize, types::ir_type,
+    },
     db::{Db, Node},
     facts::Codegen,
     typecheck::{
@@ -20,7 +23,15 @@ use std::{collections::BTreeMap, fmt::Debug};
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Options<'a> {
     pub sourcemap: bool,
-    pub trace: &'a [&'a str],
+    pub trace: TraceOptions<'a>,
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub enum TraceOptions<'a> {
+    #[default]
+    None,
+    All,
+    Files(&'a [&'a str]),
 }
 
 #[typetag::serde]
@@ -156,6 +167,13 @@ pub fn codegen(db: &Db, statements: &[Node], lib: &[Node]) -> Result<ir::Program
     }
 
     program.definitions = ctx.monomorphize_ctx.monomorphize_definitions(db)?.collect();
+
+    for definition in [&mut program.top_level]
+        .into_iter()
+        .chain(program.definitions.values_mut())
+    {
+        collect_imports(definition)?;
+    }
 
     optimize(&mut program);
 

@@ -12,7 +12,7 @@ impl CompileResult {
             &self.db,
             &program,
             codegen::Options {
-                trace: &[&self.path],
+                trace: codegen::TraceOptions::Files(&[&self.path]),
                 ..Default::default()
             },
         )

@@ -29,7 +29,11 @@ Read : value => trait (String -> Maybe value)
 default error instance (Read value)
 
 instance (Read String) : Some
-instance (Read Number) : string -> intrinsic "string-to-number" string
+
+instance (Read Number) : string -> do {
+  n : intrinsic "string-to-number" string
+  if (intrinsic "is-nan" n) {None} {Some n}
+}
 
 -- Ask the user to enter a value.
 prompt :: String -> value where (value :: String) (Read value)

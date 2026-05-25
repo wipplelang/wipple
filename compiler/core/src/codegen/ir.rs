@@ -23,6 +23,14 @@ pub struct Definition {
     pub ty: Option<Type>,
     pub instructions: Vec<Instruction>,
     pub types: BTreeMap<Node, Type>,
+    pub imports: Vec<Import>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Import {
+    pub name: String,
+    pub inputs: Vec<Type>,
+    pub output: Type,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
@@ -32,7 +40,6 @@ pub enum Type {
         parameters: Vec<Type>,
         intrinsic: bool,
         representation: Option<Str>,
-        abi: Option<Str>,
     },
     Tuple(Vec<Type>),
     Function(Vec<Type>, Box<Type>),
@@ -82,10 +89,6 @@ pub enum Value {
     Call {
         function: Node,
         inputs: Vec<Node>,
-    },
-    Concat {
-        segments: Vec<(String, Node)>,
-        trailing: String,
     },
     Constant(DefinitionKey),
     Function {

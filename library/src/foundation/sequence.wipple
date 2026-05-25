@@ -261,13 +261,19 @@ split :: element -> collection -> Sequence (List element) where (As-Sequence col
 split : separator -> split-by (item -> item = separator)
 
 -- Count the number of items in a sequence.
-count :: collection -> Number where (As-Sequence collection element)
-count : collection -> do {
-  base : As-Sequence collection
+count :: collection -> Number where (Count collection)
+count : Count
 
+Count : collection => trait (collection -> Number)
+
+instance (Count String) : string -> intrinsic "string-count" string
+
+instance (Count (List element)) : list -> intrinsic "list-count" list
+
+instance (Count (Sequence element)) : sequence -> do {
   count : 0
   repeat with-control-flow {
-    when (next base) {
+    when (next sequence) {
       (Some _) -> do {
         set count : count + 1
         Continue ()

@@ -55,7 +55,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(List Number)` `Number` (all-any.wipple:1:14-1:15) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:46))
   has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:1:19-1:23)
   is an expression
-  resolved to 1 definition(s): `all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:333:1-333:93)
+  resolved to 1 definition(s): `all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:339:1-339:93)
 
 `all? (n -> n > 0)` (all-any.wipple:1:19-1:36) (CallExpression):
   has type `Boolean`
@@ -152,7 +152,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(List Number)` `Number` (all-any.wipple:2:15-2:16) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:46))
   has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:2:20-2:24)
   is an expression
-  resolved to 1 definition(s): `all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:333:1-333:93)
+  resolved to 1 definition(s): `all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:339:1-339:93)
 
 `all? (n -> n > 0)` (all-any.wipple:2:20-2:37) (CallExpression):
   has type `Boolean`
@@ -249,7 +249,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(List Number)` `Number` (all-any.wipple:3:15-3:16) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:46))
   has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:3:20-3:24)
   is an expression
-  resolved to 1 definition(s): `any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:343:1-343:93)
+  resolved to 1 definition(s): `any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:349:1-349:93)
 
 `any? (n -> n > 0)` (all-any.wipple:3:20-3:37) (CallExpression):
   has type `Boolean`
@@ -346,7 +346,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(List Number)` `Number` (all-any.wipple:4:16-4:18) (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:46))
   has type `(Number -> Boolean) -> (List Number) -> Boolean` (all-any.wipple:4:22-4:26)
   is an expression
-  resolved to 1 definition(s): `any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:343:1-343:93)
+  resolved to 1 definition(s): `any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:349:1-349:93)
 
 `any? (n -> n > 0)` (all-any.wipple:4:22-4:39) (CallExpression):
   has type `Boolean`

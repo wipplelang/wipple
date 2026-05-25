@@ -38,7 +38,6 @@ fn ir_type_inner(db: &Db, ty: Ty, substitutions: &BTreeMap<Node, ir::Type>) -> O
                 parameters,
                 intrinsic: attributes.intrinsic,
                 representation: attributes.representation.clone(),
-                abi: attributes.abi.clone(),
             })
         }
         TyTag::Function => {
@@ -121,7 +120,7 @@ impl ir::Type {
 pub fn ir_named_type_representation(
     db: &Db,
     definition: Node,
-    parameters: &[ir::Type],
+    parameters: Vec<ir::Type>,
 ) -> Option<ir::TypeRepresentation> {
     let TypeDefinition {
         attributes,
@@ -134,7 +133,7 @@ pub fn ir_named_type_representation(
     let substitutions = type_parameters
         .iter()
         .copied()
-        .zip(parameters.iter().cloned())
+        .zip(parameters)
         .collect::<BTreeMap<_, _>>();
 
     Some(if attributes.intrinsic {

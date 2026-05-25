@@ -1,12 +1,5 @@
 // @ts-nocheck
 
-const fromMaybe = (value) => (value !== undefined ? [value, 1] : [null, 0]);
-
-const isValidListIndex = (index, list, includeEnd = false) =>
-    index === Math.floor(index) &&
-    index >= 0 &&
-    (includeEnd ? index <= list.length : index < list.length);
-
 export default (env) => {
     let memory;
 
@@ -40,6 +33,10 @@ export default (env) => {
             return new TextDecoder("utf8").decode(new Uint8Array(memory, ptr, len));
         },
 
+        "string-count": (string) => {
+            return string.length;
+        },
+
         concat: (a, b) => {
             return a + b;
         },
@@ -61,12 +58,7 @@ export default (env) => {
         },
 
         "string-to-number": (string) => {
-            if (string.toLowerCase() === "nan") {
-                return fromMaybe(NaN);
-            } else {
-                const number = parseFloat(string);
-                return fromMaybe(isNaN(number) ? undefined : number);
-            }
+            return parseFloat(string);
         },
 
         rem: (left, right) => {
@@ -121,24 +113,28 @@ export default (env) => {
             return [];
         },
 
+        "list-count": (list) => {
+            return list.length;
+        },
+
         "list-first": (list) => {
-            return fromMaybe(list.length > 0 ? list[0] : undefined);
+            return list[0];
         },
 
         "list-last": (list) => {
-            return fromMaybe(list.length > 0 ? list[list.length - 1] : undefined);
+            return list[list.length - 1];
         },
 
         "list-initial": (list) => {
-            return fromMaybe(list.length > 0 ? list.slice(0, -1) : undefined);
+            return list.slice(0, -1);
         },
 
         "list-tail": (list) => {
-            return fromMaybe(list.length > 0 ? list.slice(1) : undefined);
+            return list.slice(1);
         },
 
         "list-nth": (list, index) => {
-            return fromMaybe(isValidListIndex(index, list) ? list[index] : undefined);
+            return list[index];
         },
 
         "list-append": (list, element) => {
@@ -150,19 +146,11 @@ export default (env) => {
         },
 
         "list-insert-at": (list, index, element) => {
-            return fromMaybe(
-                isValidListIndex(index, list, true)
-                    ? [...list.slice(0, index), element, ...list.slice(index)]
-                    : undefined,
-            );
+            return [...list.slice(0, index), element, ...list.slice(index)];
         },
 
         "list-remove-at": (list, index) => {
-            return fromMaybe(
-                isValidListIndex(index, list)
-                    ? [...list.slice(0, index), ...list.slice(index + 1)]
-                    : undefined,
-            );
+            return [...list.slice(0, index), ...list.slice(index + 1)];
         },
 
         "list-count": (list) => {
@@ -170,11 +158,7 @@ export default (env) => {
         },
 
         "list-slice": (list, start, end) => {
-            return fromMaybe(
-                isValidListIndex(start, list) && isValidListIndex(end, list, true) && start <= end
-                    ? list.slice(start, end)
-                    : undefined,
-            );
+            return list.slice(start, end);
         },
 
         "string-characters": (string) => {
@@ -187,6 +171,10 @@ export default (env) => {
 
         nan: () => {
             return NaN;
+        },
+
+        "is-nan": (number) => {
+            return isNaN(number) ? 1 : 0;
         },
 
         "hash-string": (string) => {

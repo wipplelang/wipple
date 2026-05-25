@@ -4,9 +4,9 @@ use crate::{
     },
     types::named_type::NamedType,
 };
-
 use serde::{Deserialize, Serialize};
 use wipple_core::{
+    anyhow,
     ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Fact, Node},
@@ -112,14 +112,26 @@ impl Visit for FormatExpression {
                 ),
             );
 
-            let temporary = db.node();
-            visitor.constraint(db, GroupConstraint::new(temporary, string_type));
+            let string_temporary = db.node();
+            visitor.constraint(db, GroupConstraint::new(string_temporary, string_type));
+
+            let described_temporary = db.node();
+            visitor.constraint(db, GroupConstraint::new(described_temporary, string_type));
+
+            let concat_temporary = db.node();
+            visitor.constraint(db, GroupConstraint::new(concat_temporary, string_type));
+
+            let output_temporary = db.node();
+            visitor.constraint(db, GroupConstraint::new(output_temporary, string_type));
 
             format_segments.push(FormatExpressionSegment {
                 string: segment.clone(),
+                string_temporary,
                 describe_node,
-                input: *input,
-                temporary,
+                describe_input: *input,
+                described_temporary,
+                concat_temporary,
+                output_temporary,
             });
         }
 
@@ -131,6 +143,9 @@ impl Visit for FormatExpression {
             db.insert(input, ExtraFormatInput);
         }
 
+        let trailing_temporary = db.node();
+        visitor.constraint(db, GroupConstraint::new(trailing_temporary, string_type));
+
         visitor.codegen(
             db,
             node,
@@ -138,6 +153,7 @@ impl Visit for FormatExpression {
                 node,
                 segments: format_segments,
                 trailing,
+                trailing_temporary,
             },
         );
     }
@@ -146,46 +162,77 @@ impl Visit for FormatExpression {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct FormatExpressionSegment {
     string: String,
+    string_temporary: Node,
     describe_node: Node,
-    input: Node,
-    temporary: Node,
+    describe_input: Node,
+    described_temporary: Node,
+    concat_temporary: Node,
+    output_temporary: Node,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct FormatExpressionCodegen {
     node: Node,
     segments: Vec<FormatExpressionSegment>,
+    trailing_temporary: Node,
     trailing: String,
 }
 
 #[typetag::serde]
 impl CodegenValue for FormatExpressionCodegen {
     fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
-        let segments = self
-            .segments
-            .iter()
-            .map(|segment| {
-                ctx.codegen(db, segment.describe_node)?;
+        let mut prev = None;
+        for segment in &self.segments {
+            ctx.instruction(ir::Instruction::Value {
+                node: segment.string_temporary,
+                value: ir::Value::String(segment.string.clone()),
+            });
 
-                ctx.codegen(db, segment.input)?;
+            ctx.codegen(db, segment.describe_node)?;
+            ctx.codegen(db, segment.describe_input)?;
 
-                ctx.instruction(ir::Instruction::Value {
-                    node: segment.temporary,
-                    value: ir::Value::Call {
-                        function: segment.describe_node,
-                        inputs: vec![segment.input],
+            ctx.instruction(ir::Instruction::Value {
+                node: segment.described_temporary,
+                value: ir::Value::Call {
+                    function: segment.describe_node,
+                    inputs: vec![segment.describe_input],
+                },
+            });
+
+            ctx.instruction(ir::Instruction::Value {
+                node: segment.concat_temporary,
+                value: ir::Value::Runtime {
+                    name: String::from("concat"),
+                    inputs: vec![segment.string_temporary, segment.described_temporary],
+                },
+            });
+
+            ctx.instruction(ir::Instruction::Value {
+                node: segment.output_temporary,
+                value: match prev {
+                    Some(prev) => ir::Value::Runtime {
+                        name: String::from("concat"),
+                        inputs: vec![prev, segment.concat_temporary],
                     },
-                });
+                    None => ir::Value::Variable(segment.concat_temporary),
+                },
+            });
 
-                Ok((segment.string.clone(), segment.temporary))
-            })
-            .collect::<Result<Vec<_>, CodegenError>>()?;
+            prev = Some(segment.output_temporary);
+        }
+
+        let prev = prev.ok_or_else(|| anyhow::format_err!("no inputs to format string"))?;
+
+        ctx.instruction(ir::Instruction::Value {
+            node: self.trailing_temporary,
+            value: ir::Value::String(self.trailing.clone()),
+        });
 
         ctx.instruction(ir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Concat {
-                segments,
-                trailing: self.trailing.clone(),
+            value: ir::Value::Runtime {
+                name: String::from("concat"),
+                inputs: vec![prev, self.trailing_temporary],
             },
         });
 

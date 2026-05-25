@@ -15,6 +15,7 @@ use std::{
     ops::ControlFlow,
     path::{Path, PathBuf},
     process,
+    sync::atomic::{self, AtomicUsize},
 };
 use wipple_core::{
     LibraryArtifact, TopLevel,
@@ -78,6 +79,9 @@ struct CompileOptions {
 
     #[clap(long)]
     filter_feedback: Vec<String>,
+
+    #[clap(long)]
+    trace: bool,
 
     paths: Vec<PathBuf>,
 }
@@ -188,7 +192,18 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
 
     let program = codegen(&db, &statements, &lib_statements)?;
 
-    let wat = wasm::write_to_string(&db, &program, codegen::Options::default())?;
+    let wat = wasm::write_to_string(
+        &db,
+        &program,
+        codegen::Options {
+            trace: if options.trace {
+                codegen::TraceOptions::All
+            } else {
+                codegen::TraceOptions::None
+            },
+            ..Default::default()
+        },
+    )?;
 
     if let Some(output_path) = output_path {
         fs::write(output_path, &wat)?;
@@ -304,11 +319,12 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
     }
 
     let files_count = files.len();
-    let run = |(index, (mut db, name, file)): (usize, (Db, String, AstKey))| {
+    let counter = AtomicUsize::new(0);
+    let run = |(mut db, name, file): (Db, String, AstKey)| {
         let mut out = Vec::new();
 
         let mut driver = Driver::new(options, vec![file], &mut out);
-        driver.progress = Some((index, files_count));
+        driver.progress = Some((counter.fetch_add(1, atomic::Ordering::Relaxed), files_count));
 
         if let Some(statements) = driver.run(&mut db, &mut top_level.clone(), &name)? {
             let program = codegen(&db, &statements, &lib_statements)?;
@@ -344,7 +360,6 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
 
     let results = files
         .into_par_iter()
-        .enumerate()
         .by_uniform_blocks(block_size)
         .map(run)
         .collect::<anyhow::Result<Vec<_>>>();

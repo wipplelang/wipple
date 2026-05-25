@@ -1,7 +1,7 @@
 [intrinsic] [representation : "f64"] Number : type
 [intrinsic] String : type
 
-[abi : "maybe"] Maybe : value => type {
+Maybe : value => type {
   None
   Some value
 }

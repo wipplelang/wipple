@@ -66,7 +66,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:46))
   has type `(List String) -> Sequence (Number; String)` (enumerate.wipple:2:8-2:17)
   is an expression
-  resolved to 1 definition(s): `enumerate :: collection -> Sequence (Number; element) where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:369:1-369:93)
+  resolved to 1 definition(s): `enumerate :: collection -> Sequence (Number; element) where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:375:1-375:93)
 
 `each` (enumerate.wipple:2:20-2:24) (VariableExpression):
   has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(Sequence (Number; String))` `(Number; String)` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:50))

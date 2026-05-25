@@ -123,7 +123,6 @@ impl Definition for TypeDefinition {
 pub struct TypeDefinitionAttributes {
     pub intrinsic: bool,
     pub representation: Option<Str>,
-    pub abi: Option<Str>,
 }
 
 impl TypeDefinitionAttributes {
@@ -131,8 +130,6 @@ impl TypeDefinitionAttributes {
         TypeDefinitionAttributes {
             intrinsic: parse_attribute_named(db, attributes, "intrinsic"),
             representation: parse_attribute_with_value(db, attributes, "representation")
-                .map(|syntax: StringAttributeValue| syntax.value.clone()),
-            abi: parse_attribute_with_value(db, attributes, "abi")
                 .map(|syntax: StringAttributeValue| syntax.value.clone()),
         }
     }

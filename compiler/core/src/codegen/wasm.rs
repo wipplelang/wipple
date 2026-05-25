@@ -1,12 +1,17 @@
 #![allow(clippy::too_many_arguments)]
 
+use super::TraceOptions;
 use crate::{
-    codegen::{CodegenError, Options, ir, mangle::Mangle, types::ir_named_type_representation},
+    codegen::{
+        CodegenError, Options, imports::import_is_wasm_instruction, ir,
+        types::ir_named_type_representation,
+    },
     db::{Db, Node},
     span::Span,
     visit::IsMutated,
 };
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, BTreeSet},
     fmt::{self, Write as _},
     mem,
@@ -25,20 +30,84 @@ pub fn write_to_string(
 pub struct Backend<'a> {
     output: &'a mut (dyn fmt::Write + 'a),
     options: Options<'a>,
-    types: BTreeSet<ir::Type>,
-    functions: BTreeMap<
-        Option<&'a ir::DefinitionKey>,
-        BTreeMap<Node, (&'a ir::Value, &'a BTreeMap<Node, ir::Type>)>,
+    types: Vec<Ty<'a>>,
+    functions: Vec<Func<'a>>,
+    impls: BTreeMap<
+        (Option<&'a ir::DefinitionKey>, Node),
+        (&'a ir::Value, &'a BTreeMap<Node, ir::Type>),
     >,
     strings: Vec<(usize, String)>,
-    runtime_functions: BTreeMap<
-        String,
-        BTreeSet<(
-            String,
-            Vec<Result<ir::Type, &'static str>>,
-            Vec<Result<ir::Type, &'static str>>,
-        )>,
-    >,
+    locals: Vec<Local>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct Import<'a> {
+    name: &'a str,
+    inputs: Vec<Result<&'a ir::Type, &'static str>>,
+    output: Option<Result<&'a ir::Type, &'static str>>,
+}
+
+impl Import<'static> {
+    fn trace() -> Self {
+        Import {
+            name: "trace",
+            inputs: vec![Err("externref")],
+            output: None,
+        }
+    }
+
+    fn make_string() -> Self {
+        Import {
+            name: "make-string",
+            inputs: vec![Err("i32"), Err("i32")],
+            output: Some(Err("externref")),
+        }
+    }
+
+    fn string_equality() -> Self {
+        Import {
+            name: "string-equality",
+            inputs: vec![Err("externref"), Err("externref")],
+            output: Some(Err("i32")),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum Ty<'a> {
+    Number,
+    Box,
+    Env(Option<&'a ir::DefinitionKey>, Node),
+    Nominal(Cow<'a, ir::Type>),
+    Variant(&'a ir::Type, usize),
+    Impl(Cow<'a, ir::Type>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum Local {
+    Node(Node),
+    Env,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+enum Func<'a> {
+    Import(Import<'a>),
+    Declared(DeclaredFunc<'a>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum DeclaredFunc<'a> {
+    Definition(&'a ir::DefinitionKey),
+    Closure {
+        definition: Option<&'a ir::DefinitionKey>,
+        node: Node,
+    },
+}
+
+impl<'a> From<&'a ir::DefinitionKey> for Func<'a> {
+    fn from(definition: &'a ir::DefinitionKey) -> Self {
+        Func::Declared(DeclaredFunc::Definition(definition))
+    }
 }
 
 struct Writer {
@@ -59,105 +128,127 @@ impl Writer {
 
 impl<'a> Backend<'a> {
     pub fn new(w: &'a mut (dyn fmt::Write + 'a), options: Options<'a>) -> Self {
+        let mut types = Vec::new();
+        offset(&mut types, Ty::Number);
+        offset(&mut types, Ty::Box);
+
+        let mut functions = Vec::new();
+        offset(&mut functions, Func::Import(Import::trace()));
+        offset(&mut functions, Func::Import(Import::make_string()));
+        offset(&mut functions, Func::Import(Import::string_equality()));
+
         Backend {
             output: w,
             options,
-            types: Default::default(),
-            functions: Default::default(),
+            types,
+            functions,
+            impls: Default::default(),
             strings: Default::default(),
-            runtime_functions: Default::default(),
+            locals: Default::default(),
         }
     }
 
     pub fn write(mut self, db: &Db, program: &'a ir::Program) -> Result<(), CodegenError> {
-        let mut imports = Writer::new();
         let mut decls = Writer::new();
         let mut funcs = Writer::new();
+        let mut main = Writer::new();
 
-        writeln!(imports, "(module")?;
+        writeln!(decls, "(module")?;
+
+        for definition in [&program.top_level]
+            .into_iter()
+            .chain(program.definitions.values())
+        {
+            for import in &definition.imports {
+                let import = Import {
+                    name: &import.name,
+                    inputs: import.inputs.iter().map(Ok).collect(),
+                    output: Some(Ok(&import.output)),
+                };
+
+                self.import(import.clone());
+            }
+        }
+
+        writeln!(main, "(func (export \"main\")")?;
+        self.write_definition(db, &mut main, None, &program.top_level)?;
+        writeln!(main, "(return)")?;
+        writeln!(main, ")")?;
+
+        let mut visited_functions = BTreeSet::new();
+        loop {
+            let mut progress = false;
+            for (index, func) in self.functions.clone().into_iter().enumerate() {
+                if !visited_functions.insert(func.clone()) {
+                    continue;
+                }
+
+                match func {
+                    Func::Import(import) => {
+                        writeln!(decls, "(elem declare func {index})")?;
+
+                        write!(funcs, "(func (import \"runtime\" {:?})", import.name)?;
+
+                        for ty in import.inputs {
+                            let ty = match ty {
+                                Ok(ty) => self.structural_ty(Cow::Borrowed(ty)),
+                                Err(s) => s.to_string(),
+                            };
+
+                            write!(funcs, " (param {ty})")?;
+                        }
+
+                        if let Some(ty) = import.output {
+                            let ty = match ty {
+                                Ok(ty) => self.structural_ty(Cow::Borrowed(ty)),
+                                Err(s) => s.to_string(),
+                            };
+
+                            write!(funcs, " (result {ty})")?;
+                        }
+
+                        writeln!(funcs, ")")?;
+                    }
+                    Func::Declared(func) => {
+                        self.write_function(db, &mut decls, &mut funcs, index, func, program)?;
+                    }
+                }
+
+                progress = true;
+            }
+
+            if !progress {
+                break;
+            }
+        }
+
         writeln!(decls, "(rec")?;
 
-        writeln!(funcs, "(func $main (export \"main\")")?;
-        self.write_definition(db, &mut funcs, None, &program.top_level)?;
-        writeln!(funcs, "(return)")?;
-        writeln!(funcs, ")")?;
-
-        for (key, definition) in &program.definitions {
-            let ty = definition
-                .ty
-                .as_ref()
-                .ok_or_else(|| anyhow::format_err!("unresolved definition type: {key:?}"))?;
-
-            writeln!(
-                funcs,
-                "(func ${} (result {})",
-                key.mangle(),
-                self.structural_ty(ty)
-            )?;
-
-            self.write_definition(db, &mut funcs, Some(key), definition)?;
-
-            writeln!(funcs, ")")?;
-        }
-
-        while !self.functions.is_empty() {
-            for (definition, functions) in mem::take(&mut self.functions) {
-                for (node, (value, types)) in functions {
-                    self.write_function(
-                        db,
-                        &mut imports,
-                        &mut decls,
-                        &mut funcs,
-                        node,
-                        value,
-                        definition,
-                        types,
-                    )?;
+        let mut visited_tys = BTreeSet::new();
+        loop {
+            let mut progress = false;
+            for ty in self.types.clone() {
+                if !visited_tys.insert(ty.clone()) {
+                    continue;
                 }
+
+                self.write_type(db, &mut decls, ty)?;
+                progress = true;
+            }
+
+            if !progress {
+                break;
             }
         }
 
-        writeln!(decls, "(type $number (struct (field f64)))")?;
-        writeln!(decls, "(type $box (struct (field (mut anyref))))")?;
-
-        for ty in mem::take(&mut self.types) {
-            self.write_type(db, &mut decls, ty)?;
-        }
         writeln!(decls, ")")?;
 
-        self.write_memory(&mut decls)?;
-
-        for (name, runtime_functions) in mem::take(&mut self.runtime_functions) {
-            for (mangled, inputs, outputs) in runtime_functions {
-                write!(imports, "(func ${mangled} (import \"runtime\" \"{name}\")")?;
-                for input in inputs {
-                    let input = match input {
-                        Ok(ty) => &self.structural_ty(&ty),
-                        Err(s) => s,
-                    };
-
-                    write!(imports, " (param {input})")?;
-                }
-                for output in outputs {
-                    let output = match output {
-                        Ok(ty) => &self.structural_ty(&ty),
-                        Err(s) => s,
-                    };
-
-                    write!(imports, " (result {output})")?;
-                }
-                writeln!(imports, ")")?;
-            }
-        }
+        self.write_memory(&mut funcs)?;
 
         // TODO
         // let line_offset = imports.line + decls.line + type_decls.line;
 
-        writeln!(
-            self.output,
-            "{}{}{})",
-            imports.inner, decls.inner, funcs.inner
-        )?;
+        writeln!(self.output, "{}{}{})", decls.inner, funcs.inner, main.inner)?;
 
         Ok(())
     }
@@ -169,11 +260,15 @@ impl<'a> Backend<'a> {
         key: Option<&'a ir::DefinitionKey>,
         definition: &'a ir::Definition,
     ) -> Result<(), CodegenError> {
+        let locals = mem::take(&mut self.locals);
+
         self.write_locals(db, w, &definition.instructions, &definition.types, &|_| {
             true
         })?;
 
         self.write_instructions(w, &definition.instructions, key, &definition.types)?;
+
+        self.locals = locals;
 
         Ok(())
     }
@@ -195,13 +290,15 @@ impl<'a> Backend<'a> {
 
         for node in nodes {
             if declare(node) {
-                write!(w, "(local ${}", node.mangle())?;
+                offset(&mut self.locals, Local::Node(node));
+
+                write!(w, "(local")?;
 
                 if db.get::<IsMutated>(node).is_some() {
-                    write!(w, " (ref null $box)")?;
+                    write!(w, " (ref null {})", offset(&mut self.types, Ty::Box))?;
                 } else {
                     let ty = self.ty(node, types)?;
-                    write!(w, " {}", self.structural_ty(&ty))?;
+                    write!(w, " {}", self.structural_ty(Cow::Borrowed(ty)))?;
                 }
 
                 writeln!(w, ")")?;
@@ -235,9 +332,9 @@ impl<'a> Backend<'a> {
                         {
                             writeln!(
                                 w,
-                                "(local.set ${} (local.get ${}))",
-                                node.mangle(),
-                                then_node.mangle()
+                                "(local.set {} (local.get {}))",
+                                offset(&mut self.locals, Local::Node(*node)),
+                                offset(&mut self.locals, Local::Node(*then_node)),
                             )?;
                         }
                         write!(w, ") (else")?;
@@ -250,9 +347,9 @@ impl<'a> Backend<'a> {
                         {
                             writeln!(
                                 w,
-                                "(local.set ${} (local.get ${}))",
-                                node.mangle(),
-                                else_node.mangle()
+                                "(local.set {} (local.get {}))",
+                                offset(&mut self.locals, Local::Node(*node)),
+                                offset(&mut self.locals, Local::Node(*else_node)),
                             )?;
                         }
                     } else {
@@ -264,21 +361,38 @@ impl<'a> Backend<'a> {
                     }
                 }
                 ir::Instruction::Return { value } => {
-                    writeln!(w, "(return (local.get ${}))", value.mangle())?;
+                    writeln!(
+                        w,
+                        "(return (local.get {}))",
+                        offset(&mut self.locals, Local::Node(*value))
+                    )?;
                 }
                 ir::Instruction::ReturnCall { function, inputs } => {
                     self.write_call(w, *function, inputs, true, types)?;
                 }
                 ir::Instruction::Value { node, value } => {
-                    write!(w, "(local.set ${} ", node.mangle())?;
+                    write!(
+                        w,
+                        "(local.set {} ",
+                        offset(&mut self.locals, Local::Node(*node))
+                    )?;
                     self.write_value(w, Some(*node), value, definition, types)?;
                     writeln!(w, ")")?;
                 }
                 ir::Instruction::Trace { span } => {
                     if self.can_trace(span) {
-                        let name = self.runtime("trace", vec![Err("externref")], vec![])?;
-                        let string = self.string(&serde_json::json!(span.start).to_string())?;
-                        writeln!(w, "(call ${name} {string})")?;
+                        let index = self.import(Import::trace());
+
+                        let string = self.string(
+                            &serde_json::json!({
+                                "path": span.path,
+                                "start": span.start,
+                                "end": span.end,
+                            })
+                            .to_string(),
+                        )?;
+
+                        writeln!(w, "(call {index} {string})")?;
                     }
                 }
             }
@@ -302,54 +416,36 @@ impl<'a> Backend<'a> {
             ir::Value::Call { function, inputs } => {
                 self.write_call(w, *function, inputs, false, types)?;
             }
-            ir::Value::Concat { segments, trailing } => {
-                for (string, node) in segments {
-                    let name = self.runtime(
-                        "concat",
-                        vec![Err("externref"), Err("externref")],
-                        vec![Err("externref")],
-                    )?;
-
-                    let string = self.string(string)?;
-                    write!(w, "(call ${name} {string} ")?;
-                    write!(w, "(call ${name} (local.get ${})", node.mangle())?;
-                }
-
-                let trailing = self.string(trailing)?;
-                write!(w, "{trailing}")?;
-
-                for _ in segments {
-                    write!(w, "))")?;
-                }
-            }
             ir::Value::Constant(key) => {
-                write!(w, "(call ${})", key.mangle())?;
+                write!(w, "(call {})", offset(&mut self.functions, Func::from(key)))?;
             }
             ir::Value::Function { captures, .. } => {
                 let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
 
                 let ty = self.ty(node, types)?;
 
-                self.functions
-                    .entry(definition)
-                    .or_default()
-                    .insert(node, (value, types));
+                let env_ty = offset(&mut self.types, Ty::Env(definition, node));
 
-                let mut env_ty = String::from("$env");
-                if let Some(definition) = definition {
-                    write!(env_ty, "{}", definition.mangle())?;
-                }
-                write!(env_ty, "{}", node.mangle())?;
+                let index = offset(
+                    &mut self.functions,
+                    Func::Declared(DeclaredFunc::Closure { definition, node }),
+                );
 
-                write!(w, "(struct.new ${}", ty.mangle_nominal())?;
-                write!(w, "(ref.func $")?;
-                if let Some(definition) = definition {
-                    write!(w, "{}", definition.mangle())?;
-                }
-                write!(w, "{})", node.mangle())?;
-                write!(w, "(struct.new {env_ty}")?;
+                self.impls.insert((definition, node), (value, types));
+
+                write!(
+                    w,
+                    "(struct.new {}",
+                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)))
+                )?;
+                write!(w, "(ref.func {index})")?;
+                write!(w, " (struct.new {env_ty}")?;
                 for capture in captures {
-                    write!(w, "(local.get ${})", capture.mangle())?;
+                    write!(
+                        w,
+                        "(local.get {})",
+                        offset(&mut self.locals, Local::Node(*capture))
+                    )?;
                 }
                 write!(w, "))")?;
             }
@@ -359,33 +455,50 @@ impl<'a> Backend<'a> {
                 let ty = self.ty(*input, types)?;
                 write!(
                     w,
-                    "(struct.get ${} {} (local.get ${}))",
-                    ty.mangle_nominal(),
+                    "(struct.get {} {} (local.get {}))",
+                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
                     field_index,
-                    input.mangle()
+                    offset(&mut self.locals, Local::Node(*input))
                 )?;
             }
             ir::Value::Tuple(elements) => {
                 let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
                 let ty = self.ty(node, types)?;
-                write!(w, "(struct.new ${}", ty.mangle_nominal())?;
+                write!(
+                    w,
+                    "(struct.new {}",
+                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)))
+                )?;
                 for element in elements {
-                    write!(w, "(local.get ${})", element.mangle())?;
+                    write!(
+                        w,
+                        "(local.get {})",
+                        offset(&mut self.locals, Local::Node(*element))
+                    )?;
                 }
                 write!(w, ")")?;
             }
             ir::Value::Marker => {
                 let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
                 let ty = self.ty(node, types)?;
-                write!(w, "(struct.new ${})", ty.mangle_nominal())?;
+                write!(
+                    w,
+                    "(struct.new {})",
+                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)))
+                )?;
             }
             ir::Value::MutableVariable(variable) => {
                 let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
                 let ty = self.ty(node, types)?;
 
-                write!(w, "(struct.get $box 0 (local.get ${}))", variable.mangle())?;
+                write!(
+                    w,
+                    "(struct.get {} 0 (local.get {}))",
+                    offset(&mut self.types, Ty::Box),
+                    offset(&mut self.locals, Local::Node(*variable))
+                )?;
 
-                if let (Some(from), _) = self.conversions(&ty) {
+                if let (Some(from), _) = self.conversions(ty) {
                     write!(w, "{from}")?;
                 }
             }
@@ -393,80 +506,32 @@ impl<'a> Backend<'a> {
                 write!(w, "(f64.const {number})")?;
             }
             ir::Value::Runtime { name, inputs } => {
-                if name.contains(".") {
-                    // Treat as a Wasm instruction
-
+                if import_is_wasm_instruction(name) {
                     write!(w, "({name}")?;
 
                     for input in inputs {
-                        write!(w, " (local.get ${})", input.mangle())?;
+                        write!(
+                            w,
+                            " (local.get {})",
+                            offset(&mut self.locals, Local::Node(*input))
+                        )?;
                     }
 
                     write!(w, ")")?;
                 } else {
-                    // Treat as an external function call
-
                     let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-                    let output_ty = self.ty(node, types)?;
 
-                    let input_tys = inputs
-                        .iter()
-                        .map(|node| self.ty(*node, types))
-                        .collect::<Result<Vec<_>, _>>()?;
+                    let index = self.import_for(name, inputs, node, types)?;
 
-                    let maybe_output_ty = match &output_ty {
-                        ir::Type::Named {
-                            parameters, abi, ..
-                        } if abi.as_deref() == Some("maybe") => parameters.first(),
-                        _ => None,
-                    };
-
-                    let name = if let Some(maybe_output_ty) = maybe_output_ty {
-                        self.runtime(
-                            name,
-                            input_tys.into_iter().map(Ok).collect(),
-                            vec![Ok(maybe_output_ty.clone()), Err("i32")],
-                        )?
-                    } else {
-                        self.runtime(
-                            name,
-                            input_tys.into_iter().map(Ok).collect(),
-                            vec![Ok(output_ty.clone())],
-                        )?
-                    };
-
-                    write!(w, "(call ${name}")?;
+                    write!(w, "(call {index}")?;
                     for input in inputs {
-                        write!(w, "(local.get ${})", input.mangle())?;
+                        write!(
+                            w,
+                            "(local.get {})",
+                            offset(&mut self.locals, Local::Node(*input))
+                        )?;
                     }
                     write!(w, ")")?;
-
-                    if maybe_output_ty.is_some() {
-                        write!(
-                            w,
-                            "(if (param {}) (result {}) (then ",
-                            self.structural_ty(maybe_output_ty.unwrap_or(&output_ty)),
-                            self.structural_ty(&output_ty)
-                        )?;
-
-                        write!(
-                            w,
-                            "(struct.new ${} (struct.new ${}_variant1) (i32.const 1))",
-                            output_ty.mangle_nominal(),
-                            output_ty.mangle_nominal(),
-                        )?;
-
-                        write!(w, ") (else ")?;
-
-                        write!(
-                            w,
-                            "(drop) (struct.new ${} (struct.new ${}_variant0) (i32.const 0))",
-                            output_ty.mangle_nominal(),
-                            output_ty.mangle_nominal(),
-                        )?;
-
-                        write!(w, "))")?;
-                    }
                 }
             }
             ir::Value::String(string) => {
@@ -476,9 +541,17 @@ impl<'a> Backend<'a> {
             ir::Value::Structure(fields) => {
                 let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
                 let ty = self.ty(node, types)?;
-                write!(w, "(struct.new ${}", ty.mangle_nominal())?;
+                write!(
+                    w,
+                    "(struct.new {}",
+                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)))
+                )?;
                 for (_, value) in fields {
-                    write!(w, " (local.get ${})", value.mangle())?;
+                    write!(
+                        w,
+                        " (local.get {})",
+                        offset(&mut self.locals, Local::Node(*value))
+                    )?;
                 }
                 write!(w, ")")?;
             }
@@ -486,25 +559,42 @@ impl<'a> Backend<'a> {
                 let ty = self.ty(*input, types)?;
                 write!(
                     w,
-                    "(struct.get ${} {} (local.get ${}))",
-                    ty.mangle_nominal(),
+                    "(struct.get {} {} (local.get {}))",
+                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
                     index,
-                    input.mangle()
+                    offset(&mut self.locals, Local::Node(*input))
                 )?;
             }
             ir::Value::Unreachable => {
                 write!(w, "(unreachable)")?;
             }
             ir::Value::Variable(node) => {
-                write!(w, "(local.get ${})", node.mangle())?;
+                write!(
+                    w,
+                    "(local.get {})",
+                    offset(&mut self.locals, Local::Node(*node))
+                )?;
             }
             ir::Value::Variant { index, elements } => {
                 let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
                 let ty = self.ty(node, types)?;
-                write!(w, "(struct.new ${} ", ty.mangle_nominal())?;
-                write!(w, "(struct.new ${}_variant{}", ty.mangle_nominal(), index)?;
+                write!(
+                    w,
+                    "(struct.new {} ",
+                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)))
+                )?;
+                offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)));
+                write!(
+                    w,
+                    "(struct.new {}",
+                    offset(&mut self.types, Ty::Variant(ty, *index))
+                )?;
                 for element in elements {
-                    write!(w, " (local.get ${})", element.mangle())?;
+                    write!(
+                        w,
+                        " (local.get {})",
+                        offset(&mut self.locals, Local::Node(*element))
+                    )?;
                 }
                 write!(w, ") (i32.const {index}))")?;
             }
@@ -514,17 +604,17 @@ impl<'a> Backend<'a> {
                 index,
             } => {
                 let ty = self.ty(*input, types)?;
+                offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)));
+                let variant_ty = offset(&mut self.types, Ty::Variant(ty, *variant));
 
                 write!(
                     w,
-                    "(struct.get ${}_variant{} {} (ref.cast (ref null ${}_variant{}) (struct.get ${} 0 (local.get ${}))))",
-                    ty.mangle_nominal(),
-                    variant,
+                    "(struct.get {} {} (ref.cast (ref null {}) (struct.get {} 0 (local.get {}))))",
+                    variant_ty,
                     index,
-                    ty.mangle_nominal(),
-                    variant,
-                    ty.mangle_nominal(),
-                    input.mangle()
+                    variant_ty,
+                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
+                    offset(&mut self.locals, Local::Node(*input))
                 )?;
             }
         }
@@ -542,24 +632,33 @@ impl<'a> Backend<'a> {
     ) -> Result<(), anyhow::Error> {
         let op = if tail { "return_call_ref" } else { "call_ref" };
         let ty = self.ty(function, types)?;
-        write!(w, "({} $impl_{}", op, ty.mangle_nominal())?;
+        write!(
+            w,
+            "({} {}",
+            op,
+            offset(&mut self.types, Ty::Impl(Cow::Borrowed(ty)))
+        )?;
 
         write!(
             w,
-            "(struct.get ${} 1 (local.get ${}))",
-            ty.mangle_nominal(),
-            function.mangle()
+            "(struct.get {} 1 (local.get {}))",
+            offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
+            offset(&mut self.locals, Local::Node(function))
         )?;
 
         for input in inputs {
-            write!(w, "(local.get ${})", input.mangle())?;
+            write!(
+                w,
+                "(local.get {})",
+                offset(&mut self.locals, Local::Node(*input))
+            )?;
         }
 
         write!(
             w,
-            "(struct.get ${} 0 (local.get ${})))",
-            ty.mangle_nominal(),
-            function.mangle(),
+            "(struct.get {} 0 (local.get {})))",
+            offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
+            offset(&mut self.locals, Local::Node(function)),
         )?;
 
         Ok(())
@@ -625,23 +724,19 @@ impl<'a> Backend<'a> {
             ir::Condition::EqualToNumber { input, value } => {
                 write!(
                     w,
-                    "(f64.eq (local.get ${}) (f64.const {}))",
-                    input.mangle(),
+                    "(f64.eq (local.get {}) (f64.const {}))",
+                    offset(&mut self.locals, Local::Node(*input)),
                     value
                 )?;
             }
             ir::Condition::EqualToString { input, value } => {
-                let name = self.runtime(
-                    "string-equality",
-                    vec![Err("externref"), Err("externref")],
-                    vec![Err("i32")],
-                )?;
+                let index = self.import(Import::string_equality());
 
                 let string = self.string(value)?;
                 write!(
                     w,
-                    "(call ${name} (local.get ${}) {})",
-                    input.mangle(),
+                    "(call {index} (local.get {}) {})",
+                    offset(&mut self.locals, Local::Node(*input)),
                     string
                 )?;
             }
@@ -649,9 +744,9 @@ impl<'a> Backend<'a> {
                 let ty = self.ty(*input, types)?;
                 write!(
                     w,
-                    "(i32.eq (struct.get ${} 1 (local.get ${})) (i32.const {}))",
-                    ty.mangle_nominal(),
-                    input.mangle(),
+                    "(i32.eq (struct.get {} 1 (local.get {})) (i32.const {}))",
+                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
+                    offset(&mut self.locals, Local::Node(*input)),
                     variant
                 )?;
             }
@@ -661,10 +756,14 @@ impl<'a> Backend<'a> {
                 value,
                 mutable,
             } => {
-                write!(w, "(block (result i32) (local.set ${} ", variable.mangle())?;
+                write!(
+                    w,
+                    "(block (result i32) (local.set {} ",
+                    offset(&mut self.locals, Local::Node(*variable))
+                )?;
                 let mut to = None;
                 if *mutable {
-                    write!(w, "(struct.new $box ")?;
+                    write!(w, "(struct.new {} ", offset(&mut self.types, Ty::Box))?;
 
                     let node = node
                         .as_ref()
@@ -672,7 +771,7 @@ impl<'a> Backend<'a> {
 
                     let value_ty = self.ty(*node, types)?;
 
-                    (_, to) = self.conversions(&value_ty);
+                    (_, to) = self.conversions(value_ty);
                 }
 
                 self.write_value(w, *node, value, definition, types)?;
@@ -691,11 +790,16 @@ impl<'a> Backend<'a> {
 
                 write!(
                     w,
-                    "(block (result i32) (struct.set $box 0 (local.get ${}) ",
-                    variable.mangle()
+                    "(block (result i32) (struct.set {} 0 (local.get {}) ",
+                    offset(&mut self.types, Ty::Box),
+                    offset(&mut self.locals, Local::Node(*variable))
                 )?;
-                write!(w, "(local.get ${})", input.mangle())?;
-                if let (_, Some(to)) = self.conversions(&ty) {
+                write!(
+                    w,
+                    "(local.get {})",
+                    offset(&mut self.locals, Local::Node(*input))
+                )?;
+                if let (_, Some(to)) = self.conversions(ty) {
                     write!(w, "{to}")?;
                 }
                 write!(w, ") (i32.const 1))")?;
@@ -708,176 +812,240 @@ impl<'a> Backend<'a> {
     fn write_function(
         &mut self,
         db: &Db,
-        imports: &mut Writer,
         decls: &mut Writer,
         funcs: &mut Writer,
-        node: Node,
-        value: &'a ir::Value,
-        definition: Option<&'a ir::DefinitionKey>,
-        types: &'a BTreeMap<Node, ir::Type>,
+        index: usize,
+        func: DeclaredFunc<'a>,
+        program: &'a ir::Program,
     ) -> Result<(), CodegenError> {
-        let ir::Value::Function {
-            inputs,
-            captures,
-            instructions,
-        } = value
-        else {
-            unreachable!()
-        };
+        match func {
+            DeclaredFunc::Definition(key) => {
+                let definition = program
+                    .definitions
+                    .get(key)
+                    .ok_or_else(|| anyhow::format_err!("missing definition: {key:?}"))?;
 
-        let ty = self.ty(node, types)?;
+                let ty = definition
+                    .ty
+                    .as_ref()
+                    .ok_or_else(|| anyhow::format_err!("unresolved definition type: {key:?}"))?;
 
-        let ir::Type::Function(input_types, output_type) = &ty else {
-            return Err(anyhow::format_err!("{node:?} is not a function"));
-        };
+                offset(&mut self.functions, Func::from(key));
 
-        let mut env_ty = String::from("$env");
-        if let Some(definition) = definition {
-            write!(env_ty, "{}", definition.mangle())?;
-        }
-        write!(env_ty, "{}", node.mangle())?;
+                writeln!(
+                    funcs,
+                    "(func (result {})",
+                    self.structural_ty(Cow::Borrowed(ty))
+                )?;
 
-        write!(decls, "(type {env_ty} (struct")?;
-        for &capture in captures {
-            if db.get::<IsMutated>(capture).is_some() {
-                write!(decls, "(field (ref null $box))")?;
-            } else {
-                let ty = self.ty(capture, types)?;
-                write!(decls, "(field {})", self.structural_ty(&ty))?;
+                self.write_definition(db, funcs, Some(key), definition)?;
+
+                writeln!(funcs, ")")?;
+            }
+            DeclaredFunc::Closure { definition, node } => {
+                writeln!(decls, "(elem declare func {index})")?;
+
+                let (value, types) = self
+                    .impls
+                    .get(&(definition, node))
+                    .copied()
+                    .ok_or_else(|| anyhow::format_err!("missing implementation"))?;
+
+                let ir::Value::Function {
+                    inputs,
+                    captures,
+                    instructions,
+                } = value
+                else {
+                    unreachable!()
+                };
+
+                let ty = self.ty(node, types)?;
+
+                let ir::Type::Function(input_types, output_type) = &ty else {
+                    return Err(anyhow::format_err!("{node:?} is not a function"));
+                };
+
+                let locals = mem::take(&mut self.locals);
+
+                offset(&mut self.locals, Local::Env);
+
+                for input in inputs {
+                    offset(&mut self.locals, Local::Node(*input));
+                }
+
+                writeln!(
+                    funcs,
+                    "(func (type {}) (param anyref)",
+                    offset(&mut self.types, Ty::Impl(Cow::Borrowed(ty)))
+                )?;
+
+                for ty in input_types {
+                    writeln!(funcs, "(param {})", self.structural_ty(Cow::Borrowed(ty)))?;
+                }
+
+                writeln!(
+                    funcs,
+                    "(result {})",
+                    self.structural_ty(Cow::Borrowed(output_type))
+                )?;
+
+                for &capture in captures {
+                    offset(&mut self.locals, Local::Node(capture));
+
+                    write!(funcs, "(local ")?;
+                    if db.get::<IsMutated>(capture).is_some() {
+                        let box_ref = offset(&mut self.types, Ty::Box);
+                        write!(funcs, "(ref null {box_ref})")?;
+                    } else {
+                        let ty = self.ty(capture, types)?;
+                        write!(funcs, "{}", self.structural_ty(Cow::Borrowed(ty)))?;
+                    }
+                    writeln!(funcs, ")")?;
+                }
+
+                self.write_locals(db, funcs, instructions, types, &|child| {
+                    !inputs.contains(&child) && !captures.contains(&child)
+                })?;
+
+                let env_ty = offset(&mut self.types, Ty::Env(definition, node));
+                for (index, capture) in captures.iter().enumerate() {
+                    writeln!(
+                        funcs,
+                        "(local.set {} (struct.get {} {} (ref.cast (ref null {}) (local.get {}))))",
+                        offset(&mut self.locals, Local::Node(*capture)),
+                        env_ty,
+                        index,
+                        env_ty,
+                        offset(&mut self.locals, Local::Env)
+                    )?;
+                }
+
+                self.write_instructions(funcs, instructions, definition, types)?;
+
+                writeln!(funcs, ")")?;
+
+                self.locals = locals;
             }
         }
-        writeln!(decls, "))")?;
-
-        write!(imports, "(elem declare func $")?;
-        if let Some(definition) = definition {
-            write!(imports, "{}", definition.mangle())?;
-        }
-        writeln!(imports, "{})", node.mangle())?;
-
-        write!(funcs, "(func $")?;
-        if let Some(definition) = definition {
-            write!(funcs, "{}", definition.mangle())?;
-        }
-        write!(funcs, "{}", node.mangle())?;
-        writeln!(
-            funcs,
-            "(type $impl_{}) (param $env anyref)",
-            ty.mangle_nominal()
-        )?;
-
-        for (input, ty) in inputs.iter().zip(input_types.iter()) {
-            writeln!(
-                funcs,
-                "(param ${} {})",
-                input.mangle(),
-                self.structural_ty(ty)
-            )?;
-        }
-
-        writeln!(funcs, "(result {})", self.structural_ty(output_type))?;
-
-        for &capture in captures {
-            write!(funcs, "(local ${} ", capture.mangle())?;
-            if db.get::<IsMutated>(capture).is_some() {
-                write!(funcs, "(ref null $box)")?;
-            } else {
-                let ty = self.ty(capture, types)?;
-                write!(funcs, "{}", self.structural_ty(&ty))?;
-            }
-            writeln!(funcs, ")")?;
-        }
-
-        self.write_locals(db, funcs, instructions, types, &|child| {
-            !inputs.contains(&child) && !captures.contains(&child)
-        })?;
-
-        for (index, capture) in captures.iter().enumerate() {
-            let mut env_ty = String::from("$env");
-            if let Some(definition) = definition {
-                write!(env_ty, "{}", definition.mangle())?;
-            }
-            write!(env_ty, "{}", node.mangle())?;
-
-            writeln!(
-                funcs,
-                "(local.set ${} (struct.get {} {} (ref.cast (ref null {}) (local.get $env))))",
-                capture.mangle(),
-                env_ty,
-                index,
-                env_ty
-            )?;
-        }
-
-        self.write_instructions(funcs, instructions, definition, types)?;
-
-        writeln!(funcs, ")")?;
 
         Ok(())
     }
 
-    fn write_type(&mut self, db: &Db, w: &mut Writer, ty: ir::Type) -> Result<(), CodegenError> {
-        match &ty {
-            ir::Type::Named {
-                definition,
-                parameters,
-                ..
-            } => {
-                let representation = ir_named_type_representation(db, *definition, parameters)
-                    .ok_or_else(|| anyhow::format_err!("no representation for {ty:?}"))?;
-
-                match representation {
-                    ir::TypeRepresentation::Intrinsic => {}
-                    ir::TypeRepresentation::Marker => {
-                        writeln!(w, "(type ${} (struct))", ty.mangle_nominal())?;
-                    }
-                    ir::TypeRepresentation::Structure(fields) => {
-                        write!(w, "(type ${} (struct", ty.mangle_nominal())?;
-                        for field in fields {
-                            write!(w, " (field {})", self.structural_ty(&field))?;
-                        }
-                        writeln!(w, "))")?;
-                    }
-                    ir::TypeRepresentation::Enumeration(variants) => {
-                        writeln!(
-                            w,
-                            "(type ${} (struct (field anyref) (field i32)))",
-                            ty.mangle_nominal()
-                        )?;
-
-                        for (index, elements) in variants.iter().enumerate() {
-                            write!(w, "(type ${}_variant{} (struct", ty.mangle_nominal(), index)?;
-                            for element in elements {
-                                write!(w, " (field {})", self.structural_ty(element))?;
-                            }
-                            writeln!(w, "))")?;
-                        }
-                    }
-                }
+    fn write_type(&mut self, db: &Db, w: &mut Writer, ty: Ty<'a>) -> Result<(), CodegenError> {
+        match ty {
+            Ty::Number => {
+                writeln!(w, "(type (struct (field f64)))")?;
             }
-            ir::Type::Tuple(elements) => {
-                write!(w, "(type ${} (struct", ty.mangle_nominal())?;
-                for element in elements {
-                    write!(w, " (field {})", self.structural_ty(element))?;
+            Ty::Box => {
+                writeln!(w, "(type (struct (field (mut anyref))))")?;
+            }
+            Ty::Env(definition, node) => {
+                let (value, types) = *self
+                    .impls
+                    .get(&(definition, node))
+                    .ok_or_else(|| anyhow::format_err!("missing implementation"))?;
+
+                let ir::Value::Function { captures, .. } = value else {
+                    unreachable!()
+                };
+
+                write!(w, "(type (struct")?;
+                for &capture in captures {
+                    if db.get::<IsMutated>(capture).is_some() {
+                        write!(w, "(field (ref null {}))", offset(&mut self.types, Ty::Box))?;
+                    } else {
+                        let ty = self.ty(capture, types)?;
+                        write!(w, "(field {})", self.structural_ty(Cow::Borrowed(ty)))?;
+                    }
                 }
                 writeln!(w, "))")?;
             }
-            ir::Type::Function(inputs, output) => {
-                write!(
-                    w,
-                    "(type ${} (struct (field (ref null $impl",
-                    ty.mangle_nominal(),
-                )?;
-                writeln!(w, "_{})) (field anyref)))", ty.mangle_nominal())?;
+            Ty::Nominal(ty) => match ty.into_owned() {
+                ir::Type::Named {
+                    definition,
+                    parameters,
+                    ..
+                } => {
+                    let representation =
+                        ir_named_type_representation(db, definition, parameters)
+                            .ok_or_else(|| anyhow::format_err!("missing representation"))?;
 
-                write!(w, "(type $impl_{} (func", ty.mangle_nominal())?;
+                    match representation {
+                        ir::TypeRepresentation::Intrinsic => {}
+                        ir::TypeRepresentation::Marker => {
+                            writeln!(w, "(type (struct))")?;
+                        }
+                        ir::TypeRepresentation::Structure(fields) => {
+                            write!(w, "(type (struct")?;
+                            for field in fields {
+                                write!(w, " (field {})", self.structural_ty(Cow::Owned(field)))?;
+                            }
+                            writeln!(w, "))")?;
+                        }
+                        ir::TypeRepresentation::Enumeration(_) => {
+                            writeln!(w, "(type (struct (field anyref) (field i32)))")?;
+                        }
+                    }
+                }
+                ir::Type::Tuple(elements) => {
+                    write!(w, "(type (struct")?;
+                    for element in elements {
+                        write!(w, " (field {})", self.structural_ty(Cow::Owned(element)))?;
+                    }
+                    writeln!(w, "))")?;
+                }
+                ty @ ir::Type::Function(_, _) => {
+                    write!(
+                        w,
+                        "(type (struct (field (ref null {})) (field anyref)))",
+                        offset(&mut self.types, Ty::Impl(Cow::Owned(ty))),
+                    )?;
+                    writeln!(w)?;
+                }
+                ir::Type::Parameter(node) => {
+                    return Err(anyhow::format_err!("parameter {node:?} not resolved"));
+                }
+            },
+            Ty::Variant(ty, index) => {
+                let ir::Type::Named {
+                    definition,
+                    parameters,
+                    ..
+                } = ty.clone()
+                else {
+                    return Err(anyhow::format_err!("variant type for non-enum {ty:?}"));
+                };
+
+                let ir::TypeRepresentation::Enumeration(variants) =
+                    ir_named_type_representation(db, definition, parameters)
+                        .ok_or_else(|| anyhow::format_err!("no representation for {ty:?}"))?
+                else {
+                    return Err(anyhow::format_err!("variant type for non-enum {ty:?}"));
+                };
+
+                let elements = variants
+                    .get(index)
+                    .ok_or_else(|| anyhow::format_err!("missing variant {index} for {ty:?}"))?
+                    .clone();
+
+                write!(w, "(type (struct")?;
+                for element in elements {
+                    write!(w, " (field {})", self.structural_ty(Cow::Owned(element)))?;
+                }
+                writeln!(w, "))")?;
+            }
+            Ty::Impl(ty) => {
+                let ir::Type::Function(inputs, output) = ty.into_owned() else {
+                    return Err(anyhow::format_err!("expected a function"));
+                };
+
+                write!(w, "(type (func")?;
                 write!(w, " (param anyref)")?;
                 for input in inputs {
-                    write!(w, " (param {})", self.structural_ty(input))?;
+                    write!(w, " (param {})", self.structural_ty(Cow::Owned(input)))?;
                 }
-                writeln!(w, " (result {})))", self.structural_ty(output))?;
-            }
-            ir::Type::Parameter(node) => {
-                return Err(anyhow::format_err!("parameter {node:?} not resolved"));
+                writeln!(w, " (result {})))", self.structural_ty(Cow::Owned(*output)))?;
             }
         }
 
@@ -885,30 +1053,27 @@ impl<'a> Backend<'a> {
     }
 
     fn can_trace(&self, span: &Span) -> bool {
-        self.options.trace.contains(&span.path.as_str())
+        match self.options.trace {
+            TraceOptions::None => false,
+            TraceOptions::All => true,
+            TraceOptions::Files(files) => files.contains(&span.path.as_str()),
+        }
     }
 
     fn ty(
         &mut self,
         node: Node,
-        types: &BTreeMap<Node, ir::Type>,
-    ) -> Result<ir::Type, CodegenError> {
-        let mut ty = types
+        types: &'a BTreeMap<Node, ir::Type>,
+    ) -> Result<&'a ir::Type, CodegenError> {
+        types
             .get(&node)
-            .cloned()
-            .ok_or_else(|| anyhow::format_err!("missing type for node {node:?}"))?;
-
-        ty.traverse_mut(&mut |ty| {
-            self.types.insert(ty.clone());
-        });
-
-        Ok(ty)
+            .ok_or_else(|| anyhow::format_err!("missing type for node {node:?}"))
     }
 
-    fn structural_ty(&self, ty: &ir::Type) -> String {
+    fn structural_ty(&mut self, ty: Cow<'a, ir::Type>) -> String {
         match ty.mangle_structural() {
-            Some(ty) => format!("(ref null ${ty})"),
-            None => match ty {
+            Some(_) => format!("(ref null {})", offset(&mut self.types, Ty::Nominal(ty))),
+            None => match ty.as_ref() {
                 ir::Type::Named {
                     intrinsic,
                     representation,
@@ -927,7 +1092,7 @@ impl<'a> Backend<'a> {
         }
     }
 
-    fn conversions(&self, ty: &ir::Type) -> (Option<String>, Option<String>) {
+    fn conversions(&mut self, ty: &'a ir::Type) -> (Option<String>, Option<String>) {
         if let ir::Type::Named {
             intrinsic,
             representation,
@@ -935,11 +1100,12 @@ impl<'a> Backend<'a> {
         } = ty
         {
             if let Some("f64") = representation.as_deref() {
+                let number = offset(&mut self.types, Ty::Number);
                 return (
-                    Some(String::from(
-                        "(ref.cast (ref null $number)) (struct.get $number 0)",
+                    Some(format!(
+                        "(ref.cast (ref null {number})) (struct.get {number} 0)"
                     )),
-                    Some(String::from("(struct.new $number)")),
+                    Some(format!("(struct.new {number})")),
                 );
             } else if *intrinsic {
                 return (
@@ -949,26 +1115,43 @@ impl<'a> Backend<'a> {
             }
         }
 
-        (Some(format!("(ref.cast {})", self.structural_ty(ty))), None)
+        (
+            Some(format!(
+                "(ref.cast {})",
+                self.structural_ty(Cow::Borrowed(ty))
+            )),
+            None,
+        )
     }
 
-    fn runtime(
+    fn import(&mut self, import: Import<'a>) -> usize {
+        offset(&mut self.functions, Func::Import(import))
+    }
+
+    fn import_for(
         &mut self,
         name: &str,
-        inputs: Vec<Result<ir::Type, &'static str>>,
-        outputs: Vec<Result<ir::Type, &'static str>>,
-    ) -> Result<String, CodegenError> {
-        let mut mangled = name.to_string();
-        for ty in inputs.iter().chain(&outputs).flatten() {
-            write!(mangled, "_{}", ty.mangle_nominal())?;
-        }
+        inputs: &[Node],
+        output: Node,
+        types: &'a BTreeMap<Node, ir::Type>,
+    ) -> Result<usize, CodegenError> {
+        let inputs = inputs
+            .iter()
+            .map(|input| self.ty(*input, types).map(Ok))
+            .collect::<Result<Vec<_>, _>>()?;
 
-        self.runtime_functions
-            .entry(name.to_string())
-            .or_default()
-            .insert((mangled.clone(), inputs, outputs));
+        let output = Ok(self.ty(output, types)?);
 
-        Ok(mangled)
+        self.functions
+            .iter()
+            .position(|func| {
+                let Func::Import(import) = func else {
+                    return false;
+                };
+
+                import.name == name && import.inputs == inputs && import.output == Some(output)
+            })
+            .ok_or_else(|| anyhow::format_err!("missing import"))
     }
 
     fn string(&mut self, string: &str) -> Result<String, CodegenError> {
@@ -985,14 +1168,10 @@ impl<'a> Backend<'a> {
             offset
         };
 
-        let name = self.runtime(
-            "make-string",
-            vec![Err("i32"), Err("i32")],
-            vec![Err("externref")],
-        )?;
+        let index = self.import(Import::make_string());
 
         Ok(format!(
-            "(call ${name} (i32.const {}) (i32.const {}))",
+            "(call {index} (i32.const {}) (i32.const {}))",
             offset,
             string.len()
         ))
@@ -1028,5 +1207,15 @@ impl fmt::Write for Writer {
         }
 
         self.inner.write_str(s)
+    }
+}
+
+fn offset<T: Eq>(map: &mut Vec<T>, value: T) -> usize {
+    if let Some(index) = map.iter().position(|x| *x == value) {
+        index
+    } else {
+        let index = map.len();
+        map.push(value);
+        index
     }
 }
