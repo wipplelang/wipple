@@ -89,11 +89,13 @@ struct CompileOptions {
 fn main() -> anyhow::Result<()> {
     match Args::parse() {
         Args::Compile { output, options } => {
-            compile(&options, output.as_deref())?;
+            if let Some(wasm) = compile(&options, output.as_deref())? {
+                wasm::validate(&wasm)?;
+            }
         }
         Args::Run { output, options } => {
-            if let Some(wat) = compile(&options, None)? {
-                run(&wat, output.as_deref(), |cmd| cmd)?;
+            if let Some(wasm) = compile(&options, None)? {
+                run(&wasm, output.as_deref(), |cmd| cmd)?;
             }
         }
         Args::Test { options } => {
@@ -157,7 +159,10 @@ fn setup(
     Ok((db, top_level, statements))
 }
 
-fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Result<Option<String>> {
+fn compile(
+    options: &CompileOptions,
+    output_path: Option<&Path>,
+) -> anyhow::Result<Option<Vec<u8>>> {
     let (lib_db, mut top_level, lib_statements) = setup(options, true, io::stdout())?;
 
     if options.paths.is_empty() {
@@ -192,7 +197,7 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
 
     let program = codegen(&db, &statements, &lib_statements)?;
 
-    let wat = wasm::write_to_string(
+    let wasm = wasm::to_bytes(
         &db,
         &program,
         codegen::Options {
@@ -206,7 +211,7 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
     )?;
 
     if let Some(output_path) = output_path {
-        fs::write(output_path, &wat)?;
+        fs::write(output_path, &wasm)?;
     }
 
     if let Some(path) = &options.lib_artifact {
@@ -226,11 +231,11 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
         fs::write(path, bytes)?;
     }
 
-    Ok(Some(wat))
+    Ok(Some(wasm))
 }
 
 fn run(
-    wat: &str,
+    wasm: &[u8],
     path: Option<&Path>,
     setup: impl FnOnce(&mut process::Command) -> &mut process::Command,
 ) -> anyhow::Result<process::Output> {
@@ -245,6 +250,10 @@ fn run(
         }
     };
 
+    fs::write(path.join("main.wasm"), wasm)?;
+
+    wasm::validate(wasm)?;
+
     macro_rules! copy {
         ($name:literal) => {
             fs::write(
@@ -257,11 +266,6 @@ fn run(
     copy!("package.json");
     copy!("runtime.js");
     copy!("index.js");
-
-    fs::write(path.join("main.wat"), wat)?;
-
-    let wasm = wat::parse_str(wat)?;
-    fs::write(path.join("main.wasm"), wasm)?;
 
     let output = setup(process::Command::new("/usr/bin/env").args([
         "node".as_ref(),
@@ -329,9 +333,10 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
         if let Some(statements) = driver.run(&mut db, &mut top_level.clone(), &name)? {
             let program = codegen(&db, &statements, &lib_statements)?;
 
-            let wat = wasm::write_to_string(&db, &program, codegen::Options::default())?;
+            let wasm = wasm::to_bytes(&db, &program, codegen::Options::default())?;
+            wasm::validate(&wasm)?;
 
-            let output = run(&wat, None, |cmd| cmd.stdout(process::Stdio::piped()))?.stdout;
+            let output = run(&wasm, None, |cmd| cmd.stdout(process::Stdio::piped()))?.stdout;
 
             writeln!(out, "Output:")?;
             out.write_all(&output)?;

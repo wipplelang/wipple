@@ -1,9 +1,8 @@
 #![allow(clippy::too_many_arguments)]
 
-use super::TraceOptions;
 use crate::{
     codegen::{
-        CodegenError, Options, imports::import_is_wasm_instruction, ir,
+        CodegenError, Options, TraceOptions, imports::import_is_wasm_instruction, ir,
         types::ir_named_type_representation,
     },
     db::{Db, Node},
@@ -12,1210 +11,1917 @@ use crate::{
 };
 use std::{
     borrow::Cow,
-    collections::{BTreeMap, BTreeSet},
-    fmt::{self, Write as _},
-    mem,
+    collections::{BTreeMap, HashMap},
 };
 
-pub fn write_to_string(
+pub use wasmparser::validate;
+
+#[derive(Default)]
+struct Module {
+    types: Types,
+    imports: Imports,
+    functions: Functions,
+    strings: Strings,
+    exports: Exports,
+    implementations: Implementations,
+}
+
+pub fn to_bytes(
     db: &Db,
     program: &ir::Program,
     options: Options<'_>,
-) -> Result<String, CodegenError> {
-    let mut script = String::new();
-    Backend::new(&mut script, options).write(db, program)?;
-    Ok(script)
+) -> Result<Vec<u8>, CodegenError> {
+    let mut module = Module::default();
+    collect_types(db, program, &mut module.types)?;
+    collect_imports(
+        db,
+        program,
+        &mut module.types,
+        &mut module.imports,
+        &mut module.functions,
+    )?;
+    collect_functions(db, program, &mut module.types, &mut module.functions)?;
+    collect_strings(db, program, &mut module.strings)?;
+
+    module.types.finish();
+    module.strings.finish();
+
+    for (key, node, function, _) in &module.functions.entries {
+        let definition = program
+            .definitions
+            .get(key)
+            .ok_or_else(|| anyhow::format_err!("missing definition"))?;
+
+        let mut locals = Locals::default();
+        collect_locals(
+            db,
+            program,
+            key,
+            definition,
+            function,
+            &module.types,
+            &mut locals,
+        )?;
+
+        let mut wasm = wasm_encoder::Function::new(locals.locals.iter().map(|&ty| (1, ty)));
+        write_function(
+            db, program, key, definition, function, &module, &locals, &mut wasm, options,
+        )?;
+        module.implementations.insert(key, *node, wasm)?;
+    }
+
+    let main_index = module
+        .functions
+        .get(&ir::DefinitionKey::TopLevel, None)
+        .ok_or_else(|| anyhow::format_err!("missing top level"))?;
+
+    collect_exports(db, program, main_index, &mut module.exports)?;
+
+    let mut wasm = wasm_encoder::Module::new();
+    wasm.section(&module.types.type_section);
+    wasm.section(&module.imports.import_section);
+    wasm.section(&module.functions.function_section);
+    wasm.section(&module.strings.memory_section);
+    wasm.section(&module.exports.export_section);
+    wasm.section(&module.functions.elem_section);
+    wasm.section(&module.implementations.code_section);
+    wasm.section(&module.strings.data_section);
+
+    Ok(wasm.finish())
 }
 
-pub struct Backend<'a> {
-    output: &'a mut (dyn fmt::Write + 'a),
-    options: Options<'a>,
-    types: Vec<Ty<'a>>,
-    functions: Vec<Func<'a>>,
-    impls: BTreeMap<
-        (Option<&'a ir::DefinitionKey>, Node),
-        (&'a ir::Value, &'a BTreeMap<Node, ir::Type>),
-    >,
-    strings: Vec<(usize, String)>,
-    locals: Vec<Local>,
-}
+fn write_function(
+    db: &Db,
+    program: &ir::Program,
+    key: &ir::DefinitionKey,
+    definition: &ir::Definition,
+    function: &ir::Function,
+    module: &Module,
+    locals: &Locals,
+    wasm: &mut wasm_encoder::Function,
+    options: Options<'_>,
+) -> Result<(), CodegenError> {
+    if let Some((closure, captures)) = &function.closure {
+        for (index, &capture) in captures.iter().enumerate() {
+            let env_index = 0;
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-struct Import<'a> {
-    name: &'a str,
-    inputs: Vec<Result<&'a ir::Type, &'static str>>,
-    output: Option<Result<&'a ir::Type, &'static str>>,
-}
+            let env_ty_index = module
+                .types
+                .get_env(key, *closure)
+                .ok_or_else(|| anyhow::format_err!("missing env"))?;
 
-impl Import<'static> {
-    fn trace() -> Self {
-        Import {
-            name: "trace",
-            inputs: vec![Err("externref")],
-            output: None,
+            wasm.instruction(&wasm_encoder::Instruction::LocalGet(env_index));
+
+            wasm.instruction(&wasm_encoder::Instruction::RefCastNullable(
+                wasm_encoder::HeapType::Concrete(env_ty_index),
+            ));
+
+            wasm.instruction(&wasm_encoder::Instruction::StructGet {
+                struct_type_index: env_ty_index,
+                field_index: index as u32,
+            });
+
+            wasm.instruction(&wasm_encoder::Instruction::LocalSet(
+                locals
+                    .get(capture)
+                    .ok_or_else(|| anyhow::format_err!("missing capture"))?,
+            ));
         }
     }
 
-    fn make_string() -> Self {
-        Import {
-            name: "make-string",
-            inputs: vec![Err("i32"), Err("i32")],
-            output: Some(Err("externref")),
-        }
-    }
+    write_instructions(
+        db,
+        program,
+        key,
+        definition,
+        &function.instructions,
+        module,
+        locals,
+        wasm,
+        options,
+    )?;
 
-    fn string_equality() -> Self {
-        Import {
-            name: "string-equality",
-            inputs: vec![Err("externref"), Err("externref")],
-            output: Some(Err("i32")),
-        }
-    }
+    wasm.instruction(&wasm_encoder::Instruction::Return);
+    wasm.instruction(&wasm_encoder::Instruction::End);
+
+    Ok(())
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum Ty<'a> {
-    Number,
-    Box,
-    Env(Option<&'a ir::DefinitionKey>, Node),
-    Nominal(Cow<'a, ir::Type>),
-    Variant(&'a ir::Type, usize),
-    Impl(Cow<'a, ir::Type>),
-}
+fn write_instructions(
+    db: &Db,
+    program: &ir::Program,
+    key: &ir::DefinitionKey,
+    definition: &ir::Definition,
+    instructions: &[ir::Instruction],
+    module: &Module,
+    locals: &Locals,
+    wasm: &mut wasm_encoder::Function,
+    options: Options<'_>,
+) -> Result<(), CodegenError> {
+    for instruction in instructions {
+        match instruction {
+            ir::Instruction::If {
+                node,
+                branches,
+                else_branch,
+            } => {
+                for (conditions, instructions, then_node) in branches {
+                    write_conditions(
+                        db, program, key, definition, conditions, module, locals, wasm, options,
+                    )?;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum Local {
-    Node(Node),
-    Env,
-}
+                    wasm.instruction(&wasm_encoder::Instruction::If(
+                        wasm_encoder::BlockType::Empty,
+                    ));
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-enum Func<'a> {
-    Import(Import<'a>),
-    Declared(DeclaredFunc<'a>),
-}
+                    write_instructions(
+                        db,
+                        program,
+                        key,
+                        definition,
+                        instructions,
+                        module,
+                        locals,
+                        wasm,
+                        options,
+                    )?;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-enum DeclaredFunc<'a> {
-    Definition(&'a ir::DefinitionKey),
-    Closure {
-        definition: Option<&'a ir::DefinitionKey>,
-        node: Node,
-    },
-}
+                    if let Some(node) = *node
+                        && let Some(then_node) = *then_node
+                    {
+                        wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                            locals
+                                .get(then_node)
+                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                        ));
 
-impl<'a> From<&'a ir::DefinitionKey> for Func<'a> {
-    fn from(definition: &'a ir::DefinitionKey) -> Self {
-        Func::Declared(DeclaredFunc::Definition(definition))
-    }
-}
+                        wasm.instruction(&wasm_encoder::Instruction::LocalSet(
+                            locals
+                                .get(node)
+                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                        ));
+                    }
 
-struct Writer {
-    inner: String,
-    line: usize,
-    column: usize,
-}
+                    wasm.instruction(&wasm_encoder::Instruction::Else);
+                }
 
-impl Writer {
-    pub fn new() -> Self {
-        Writer {
-            inner: String::new(),
-            line: 0,
-            column: 0,
-        }
-    }
-}
+                if let Some((instructions, else_node)) = else_branch {
+                    write_instructions(
+                        db,
+                        program,
+                        key,
+                        definition,
+                        instructions,
+                        module,
+                        locals,
+                        wasm,
+                        options,
+                    )?;
 
-impl<'a> Backend<'a> {
-    pub fn new(w: &'a mut (dyn fmt::Write + 'a), options: Options<'a>) -> Self {
-        let mut types = Vec::new();
-        offset(&mut types, Ty::Number);
-        offset(&mut types, Ty::Box);
+                    if let Some(node) = *node
+                        && let Some(else_node) = *else_node
+                    {
+                        wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                            locals
+                                .get(else_node)
+                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                        ));
 
-        let mut functions = Vec::new();
-        offset(&mut functions, Func::Import(Import::trace()));
-        offset(&mut functions, Func::Import(Import::make_string()));
-        offset(&mut functions, Func::Import(Import::string_equality()));
+                        wasm.instruction(&wasm_encoder::Instruction::LocalSet(
+                            locals
+                                .get(node)
+                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                        ));
+                    }
+                } else {
+                    wasm.instruction(&wasm_encoder::Instruction::Unreachable);
+                }
 
-        Backend {
-            output: w,
-            options,
-            types,
-            functions,
-            impls: Default::default(),
-            strings: Default::default(),
-            locals: Default::default(),
-        }
-    }
+                for _ in branches {
+                    wasm.instruction(&wasm_encoder::Instruction::End);
+                }
+            }
+            ir::Instruction::Return { value } => {
+                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                    locals
+                        .get(*value)
+                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                ));
 
-    pub fn write(mut self, db: &Db, program: &'a ir::Program) -> Result<(), CodegenError> {
-        let mut decls = Writer::new();
-        let mut funcs = Writer::new();
-        let mut main = Writer::new();
-
-        writeln!(decls, "(module")?;
-
-        for definition in [&program.top_level]
-            .into_iter()
-            .chain(program.definitions.values())
-        {
-            for import in &definition.imports {
-                let import = Import {
-                    name: &import.name,
-                    inputs: import.inputs.iter().map(Ok).collect(),
-                    output: Some(Ok(&import.output)),
+                wasm.instruction(&wasm_encoder::Instruction::Return);
+            }
+            ir::Instruction::ReturnCall {
+                function,
+                inputs,
+                value: node,
+            } => {
+                write_call(
+                    db, program, key, definition, *function, inputs, *node, true, module, locals,
+                    wasm,
+                )?;
+            }
+            ir::Instruction::Trace { span } => {
+                let can_trace = match options.trace {
+                    TraceOptions::None => false,
+                    TraceOptions::All => true,
+                    TraceOptions::Files(files) => files.contains(&span.path.as_str()),
                 };
 
-                self.import(import.clone());
+                if can_trace {
+                    write_string(db, program, &format_trace(span), module, wasm)?;
+
+                    wasm.instruction(&wasm_encoder::Instruction::Call(
+                        module
+                            .imports
+                            .get("trace", &[wasm_encoder::ValType::EXTERNREF], &[])
+                            .ok_or_else(|| anyhow::format_err!("missing import"))?,
+                    ));
+                }
+            }
+            ir::Instruction::Value { node, value } => {
+                write_value(
+                    db,
+                    program,
+                    key,
+                    definition,
+                    Some(*node),
+                    value,
+                    module,
+                    locals,
+                    wasm,
+                    options,
+                )?;
+
+                wasm.instruction(&wasm_encoder::Instruction::LocalSet(
+                    locals
+                        .get(*node)
+                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                ));
             }
         }
+    }
 
-        writeln!(main, "(func (export \"main\")")?;
-        self.write_definition(db, &mut main, None, &program.top_level)?;
-        writeln!(main, "(return)")?;
-        writeln!(main, ")")?;
+    Ok(())
+}
 
-        let mut visited_functions = BTreeSet::new();
-        loop {
-            let mut progress = false;
-            for (index, func) in self.functions.clone().into_iter().enumerate() {
-                if !visited_functions.insert(func.clone()) {
-                    continue;
-                }
+fn write_conditions(
+    db: &Db,
+    program: &ir::Program,
+    key: &ir::DefinitionKey,
+    definition: &ir::Definition,
+    conditions: &[ir::Condition],
+    module: &Module,
+    locals: &Locals,
+    wasm: &mut wasm_encoder::Function,
+    options: Options<'_>,
+) -> Result<(), CodegenError> {
+    if conditions.is_empty() {
+        wasm.instruction(&wasm_encoder::Instruction::I32Const(1));
+    } else {
+        for (index, condition) in conditions.iter().enumerate() {
+            match condition {
+                ir::Condition::Or(branches) => {
+                    if branches.is_empty() {
+                        wasm.instruction(&wasm_encoder::Instruction::I32Const(0));
+                    } else {
+                        for (index, conditions) in branches.iter().enumerate() {
+                            write_conditions(
+                                db, program, key, definition, conditions, module, locals, wasm,
+                                options,
+                            )?;
 
-                match func {
-                    Func::Import(import) => {
-                        writeln!(decls, "(elem declare func {index})")?;
+                            wasm.instruction(&wasm_encoder::Instruction::If(
+                                wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
+                            ));
+                            wasm.instruction(&wasm_encoder::Instruction::I32Const(1));
+                            wasm.instruction(&wasm_encoder::Instruction::Else);
 
-                        write!(funcs, "(func (import \"runtime\" {:?})", import.name)?;
-
-                        for ty in import.inputs {
-                            let ty = match ty {
-                                Ok(ty) => self.structural_ty(Cow::Borrowed(ty)),
-                                Err(s) => s.to_string(),
-                            };
-
-                            write!(funcs, " (param {ty})")?;
+                            if index + 1 == branches.len() {
+                                wasm.instruction(&wasm_encoder::Instruction::I32Const(0));
+                            }
                         }
 
-                        if let Some(ty) = import.output {
-                            let ty = match ty {
-                                Ok(ty) => self.structural_ty(Cow::Borrowed(ty)),
-                                Err(s) => s.to_string(),
-                            };
-
-                            write!(funcs, " (result {ty})")?;
+                        for _ in branches {
+                            wasm.instruction(&wasm_encoder::Instruction::End);
                         }
-
-                        writeln!(funcs, ")")?;
-                    }
-                    Func::Declared(func) => {
-                        self.write_function(db, &mut decls, &mut funcs, index, func, program)?;
                     }
                 }
+                ir::Condition::EqualToNumber { input, value } => {
+                    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                        locals
+                            .get(*input)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
 
-                progress = true;
+                    wasm.instruction(&wasm_encoder::Instruction::F64Const(
+                        value.parse::<f64>()?.into(),
+                    ));
+
+                    wasm.instruction(&wasm_encoder::Instruction::F64Eq);
+                }
+                ir::Condition::EqualToString { input, value } => {
+                    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                        locals
+                            .get(*input)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+
+                    write_string(db, program, value, module, wasm)?;
+
+                    wasm.instruction(&wasm_encoder::Instruction::Call(
+                        module
+                            .imports
+                            .get(
+                                "string-equality",
+                                &[
+                                    wasm_encoder::ValType::EXTERNREF,
+                                    wasm_encoder::ValType::EXTERNREF,
+                                ],
+                                &[wasm_encoder::ValType::I32],
+                            )
+                            .ok_or_else(|| anyhow::format_err!("missing import"))?,
+                    ));
+                }
+                ir::Condition::EqualToVariant { input, variant } => {
+                    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                        locals
+                            .get(*input)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+
+                    wasm.instruction(&wasm_encoder::Instruction::StructGet {
+                        struct_type_index: module
+                            .types
+                            .get_as_index(
+                                definition
+                                    .types
+                                    .get(input)
+                                    .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                            )
+                            .ok_or_else(|| anyhow::format_err!("unresolved input type"))?,
+                        field_index: 1,
+                    });
+
+                    wasm.instruction(&wasm_encoder::Instruction::I32Const(*variant as i32));
+
+                    wasm.instruction(&wasm_encoder::Instruction::I32Eq);
+                }
+                ir::Condition::Initialize {
+                    variable,
+                    node,
+                    value,
+                    mutable,
+                } => {
+                    wasm.instruction(&wasm_encoder::Instruction::Block(
+                        wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
+                    ));
+
+                    write_value(
+                        db, program, key, definition, *node, value, module, locals, wasm, options,
+                    )?;
+
+                    if *mutable {
+                        let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+
+                        wasm.instruction(&wasm_encoder::Instruction::StructNew(
+                            module
+                                .types
+                                .get_box(
+                                    &module
+                                        .types
+                                        .get(
+                                            definition.types.get(&node).ok_or_else(|| {
+                                                anyhow::format_err!("missing type")
+                                            })?,
+                                        )
+                                        .ok_or_else(|| {
+                                            anyhow::format_err!("unresolved variable type")
+                                        })?,
+                                )
+                                .ok_or_else(|| anyhow::format_err!("unresolved box type"))?,
+                        ));
+                    }
+
+                    wasm.instruction(&wasm_encoder::Instruction::LocalSet(
+                        locals
+                            .get(*variable)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+
+                    wasm.instruction(&wasm_encoder::Instruction::I32Const(1));
+
+                    wasm.instruction(&wasm_encoder::Instruction::End);
+                }
+                ir::Condition::Mutate { input, variable } => {
+                    wasm.instruction(&wasm_encoder::Instruction::Block(
+                        wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
+                    ));
+
+                    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                        locals
+                            .get(*variable)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+
+                    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                        locals
+                            .get(*input)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+
+                    wasm.instruction(&wasm_encoder::Instruction::StructSet {
+                        struct_type_index: module
+                            .types
+                            .get_box(
+                                &module
+                                    .types
+                                    .get(
+                                        definition
+                                            .types
+                                            .get(variable)
+                                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                                    )
+                                    .ok_or_else(|| {
+                                        anyhow::format_err!("unresolved variable type")
+                                    })?,
+                            )
+                            .ok_or_else(|| anyhow::format_err!("unresolved box type"))?,
+                        field_index: 0,
+                    });
+
+                    wasm.instruction(&wasm_encoder::Instruction::I32Const(1));
+
+                    wasm.instruction(&wasm_encoder::Instruction::End);
+                }
             }
 
-            if !progress {
-                break;
+            wasm.instruction(&wasm_encoder::Instruction::If(
+                wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
+            ));
+
+            if index + 1 == conditions.len() {
+                wasm.instruction(&wasm_encoder::Instruction::I32Const(1));
             }
         }
 
-        writeln!(decls, "(rec")?;
+        for _ in conditions {
+            wasm.instruction(&wasm_encoder::Instruction::Else);
+            wasm.instruction(&wasm_encoder::Instruction::I32Const(0));
+            wasm.instruction(&wasm_encoder::Instruction::End);
+        }
+    }
 
-        let mut visited_tys = BTreeSet::new();
-        loop {
-            let mut progress = false;
-            for ty in self.types.clone() {
-                if !visited_tys.insert(ty.clone()) {
-                    continue;
-                }
+    Ok(())
+}
 
-                self.write_type(db, &mut decls, ty)?;
-                progress = true;
+fn write_value(
+    db: &Db,
+    program: &ir::Program,
+    key: &ir::DefinitionKey,
+    definition: &ir::Definition,
+    node: Option<Node>,
+    value: &ir::Value,
+    module: &Module,
+    locals: &Locals,
+    wasm: &mut wasm_encoder::Function,
+    _options: Options<'_>,
+) -> Result<(), CodegenError> {
+    match value {
+        ir::Value::Bound(node) => {
+            return Err(anyhow::format_err!("bound {node:?} not resolved"));
+        }
+        ir::Value::Call { function, inputs } => {
+            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+
+            write_call(
+                db, program, key, definition, *function, inputs, node, false, module, locals, wasm,
+            )?;
+        }
+        ir::Value::Constant(key) => {
+            wasm.instruction(&wasm_encoder::Instruction::Call(
+                module
+                    .functions
+                    .get(key, None)
+                    .ok_or_else(|| anyhow::format_err!("missing function"))?,
+            ));
+        }
+        ir::Value::Function(function) => {
+            let (closure, captures) = function
+                .closure
+                .as_ref()
+                .ok_or_else(|| anyhow::format_err!("missing closure"))?;
+
+            wasm.instruction(&wasm_encoder::Instruction::RefFunc(
+                module
+                    .functions
+                    .get(key, Some(*closure))
+                    .ok_or_else(|| anyhow::format_err!("missing function"))?,
+            ));
+
+            let env_ty_index = module
+                .types
+                .get_env(key, *closure)
+                .ok_or_else(|| anyhow::format_err!("missing env"))?;
+
+            for &capture in captures {
+                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                    locals
+                        .get(capture)
+                        .ok_or_else(|| anyhow::format_err!("missing capture"))?,
+                ));
             }
 
-            if !progress {
-                break;
+            wasm.instruction(&wasm_encoder::Instruction::StructNew(env_ty_index));
+
+            wasm.instruction(&wasm_encoder::Instruction::StructNew(
+                module
+                    .types
+                    .get_as_index(
+                        definition
+                            .types
+                            .get(closure)
+                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                    )
+                    .ok_or_else(|| anyhow::format_err!("missing closure type"))?,
+            ));
+        }
+        ir::Value::Field {
+            input, field_index, ..
+        } => {
+            wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                locals
+                    .get(*input)
+                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
+            ));
+
+            wasm.instruction(&wasm_encoder::Instruction::StructGet {
+                struct_type_index: module
+                    .types
+                    .get_as_index(
+                        definition
+                            .types
+                            .get(input)
+                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                    )
+                    .ok_or_else(|| anyhow::format_err!("unresolved input type"))?,
+                field_index: *field_index as u32,
+            });
+        }
+        ir::Value::Tuple(elements) => {
+            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+
+            for &element in elements {
+                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                    locals
+                        .get(element)
+                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                ));
+            }
+
+            wasm.instruction(&wasm_encoder::Instruction::StructNew(
+                module
+                    .types
+                    .get_as_index(
+                        definition
+                            .types
+                            .get(&node)
+                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                    )
+                    .ok_or_else(|| anyhow::format_err!("unresolved tuple type"))?,
+            ));
+        }
+        ir::Value::Marker => {
+            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+
+            wasm.instruction(&wasm_encoder::Instruction::StructNew(
+                module
+                    .types
+                    .get_as_index(
+                        definition
+                            .types
+                            .get(&node)
+                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                    )
+                    .ok_or_else(|| anyhow::format_err!("unresolved marker type"))?,
+            ));
+        }
+        ir::Value::MutableVariable(node) => {
+            wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                locals
+                    .get(*node)
+                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
+            ));
+
+            wasm.instruction(&wasm_encoder::Instruction::StructGet {
+                struct_type_index: module
+                    .types
+                    .get_box(
+                        &module
+                            .types
+                            .get(
+                                definition
+                                    .types
+                                    .get(node)
+                                    .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                            )
+                            .ok_or_else(|| anyhow::format_err!("unresolved variable type"))?,
+                    )
+                    .ok_or_else(|| anyhow::format_err!("unresolved box type"))?,
+                field_index: 0,
+            });
+        }
+        ir::Value::Number(number) => {
+            wasm.instruction(&wasm_encoder::Instruction::F64Const(
+                number.parse::<f64>()?.into(),
+            ));
+        }
+        ir::Value::Runtime { name, inputs } => {
+            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+
+            for input in inputs {
+                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                    locals
+                        .get(*input)
+                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                ));
+            }
+
+            if import_is_wasm_instruction(name) {
+                write_wasm_instruction(name, wasm)?;
+            } else {
+                let input_tys = inputs
+                    .iter()
+                    .map(|input| {
+                        module
+                            .types
+                            .get(
+                                definition
+                                    .types
+                                    .get(input)
+                                    .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                            )
+                            .ok_or_else(|| anyhow::format_err!("unresolved input type"))
+                    })
+                    .collect::<Result<Vec<_>, CodegenError>>()?;
+
+                let output_ty = module
+                    .types
+                    .get(
+                        definition
+                            .types
+                            .get(&node)
+                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                    )
+                    .ok_or_else(|| anyhow::format_err!("unresolved output type"))?;
+
+                wasm.instruction(&wasm_encoder::Instruction::Call(
+                    module
+                        .imports
+                        .get(name, &input_tys, &[output_ty])
+                        .ok_or_else(|| anyhow::format_err!("missing import"))?,
+                ));
             }
         }
+        ir::Value::String(string) => {
+            write_string(db, program, string, module, wasm)?;
+        }
+        ir::Value::Structure(fields) => {
+            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
 
-        writeln!(decls, ")")?;
+            for (_, value) in fields {
+                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                    locals
+                        .get(*value)
+                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                ));
+            }
 
-        self.write_memory(&mut funcs)?;
+            wasm.instruction(&wasm_encoder::Instruction::StructNew(
+                module
+                    .types
+                    .get_as_index(
+                        definition
+                            .types
+                            .get(&node)
+                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                    )
+                    .ok_or_else(|| anyhow::format_err!("unresolved structure type"))?,
+            ));
+        }
+        ir::Value::TupleElement { input, index } => {
+            wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                locals
+                    .get(*input)
+                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
+            ));
 
-        // TODO
-        // let line_offset = imports.line + decls.line + type_decls.line;
+            wasm.instruction(&wasm_encoder::Instruction::StructGet {
+                struct_type_index: module
+                    .types
+                    .get_as_index(
+                        definition
+                            .types
+                            .get(input)
+                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                    )
+                    .ok_or_else(|| anyhow::format_err!("unresolved input type"))?,
+                field_index: *index as u32,
+            });
+        }
+        ir::Value::Unreachable => {
+            wasm.instruction(&wasm_encoder::Instruction::Unreachable);
+        }
+        ir::Value::Variable(node) => {
+            wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                locals
+                    .get(*node)
+                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
+            ));
+        }
+        ir::Value::Variant { index, elements } => {
+            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
 
-        writeln!(self.output, "{}{}{})", decls.inner, funcs.inner, main.inner)?;
+            let enumeration_ty_index = module
+                .types
+                .get_as_index(
+                    definition
+                        .types
+                        .get(&node)
+                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                )
+                .ok_or_else(|| anyhow::format_err!("missing enumeration type"))?;
 
+            for &element in elements {
+                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                    locals
+                        .get(element)
+                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                ));
+            }
+
+            wasm.instruction(&wasm_encoder::Instruction::StructNew(
+                module
+                    .types
+                    .get_variant(enumeration_ty_index, *index)
+                    .ok_or_else(|| anyhow::format_err!("missing variant type"))?,
+            ));
+
+            wasm.instruction(&wasm_encoder::Instruction::I32Const(*index as i32));
+
+            wasm.instruction(&wasm_encoder::Instruction::StructNew(enumeration_ty_index));
+        }
+        ir::Value::VariantElement {
+            input,
+            variant,
+            index,
+        } => {
+            let enumeration_ty_index = module
+                .types
+                .get_as_index(
+                    definition
+                        .types
+                        .get(input)
+                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                )
+                .ok_or_else(|| anyhow::format_err!("missing enumeration type"))?;
+
+            let variant_ty_index = module
+                .types
+                .get_variant(enumeration_ty_index, *variant)
+                .ok_or_else(|| anyhow::format_err!("unresolved variant type"))?;
+
+            wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+                locals
+                    .get(*input)
+                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
+            ));
+
+            wasm.instruction(&wasm_encoder::Instruction::StructGet {
+                struct_type_index: enumeration_ty_index,
+                field_index: 0,
+            });
+
+            wasm.instruction(&wasm_encoder::Instruction::RefCastNonNull(
+                wasm_encoder::HeapType::Concrete(variant_ty_index),
+            ));
+
+            wasm.instruction(&wasm_encoder::Instruction::StructGet {
+                struct_type_index: variant_ty_index,
+                field_index: *index as u32,
+            });
+        }
+    }
+
+    Ok(())
+}
+
+fn write_call(
+    _db: &Db,
+    _program: &ir::Program,
+    _key: &ir::DefinitionKey,
+    definition: &ir::Definition,
+    function: Node,
+    inputs: &[Node],
+    output: Node,
+    tail: bool,
+    module: &Module,
+    locals: &Locals,
+    wasm: &mut wasm_encoder::Function,
+) -> Result<(), CodegenError> {
+    let closure_ty_index = module
+        .types
+        .get_as_index(
+            definition
+                .types
+                .get(&function)
+                .ok_or_else(|| anyhow::format_err!("missing type"))?,
+        )
+        .ok_or_else(|| anyhow::format_err!("unresolved closure type"))?;
+
+    let mut input_tys = inputs
+        .iter()
+        .map(|input| {
+            module
+                .types
+                .get(
+                    definition
+                        .types
+                        .get(input)
+                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                )
+                .ok_or_else(|| anyhow::format_err!("unresolved input type"))
+        })
+        .collect::<Result<Vec<_>, CodegenError>>()?;
+
+    let output_ty = module
+        .types
+        .get(
+            definition
+                .types
+                .get(&output)
+                .ok_or_else(|| anyhow::format_err!("missing type"))?,
+        )
+        .ok_or_else(|| anyhow::format_err!("unresolved output type"))?;
+
+    let env_ty = wasm_encoder::ValType::Ref(wasm_encoder::RefType::ANYREF);
+    input_tys.insert(0, env_ty);
+
+    let func_ty_index = module
+        .types
+        .get_function(&wasm_encoder::FuncType::new(input_tys, vec![output_ty]))
+        .ok_or_else(|| anyhow::format_err!("missing function type"))?;
+
+    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+        locals
+            .get(function)
+            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+    ));
+
+    wasm.instruction(&wasm_encoder::Instruction::StructGet {
+        struct_type_index: closure_ty_index,
+        field_index: 1,
+    });
+
+    for input in inputs {
+        wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+            locals
+                .get(*input)
+                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+        ));
+    }
+
+    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
+        locals
+            .get(function)
+            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+    ));
+
+    wasm.instruction(&wasm_encoder::Instruction::StructGet {
+        struct_type_index: closure_ty_index,
+        field_index: 0,
+    });
+
+    if tail {
+        wasm.instruction(&wasm_encoder::Instruction::ReturnCallRef(func_ty_index));
+    } else {
+        wasm.instruction(&wasm_encoder::Instruction::CallRef(func_ty_index));
+    }
+
+    Ok(())
+}
+
+fn write_wasm_instruction(
+    name: &str,
+    wasm: &mut wasm_encoder::Function,
+) -> Result<(), CodegenError> {
+    let instruction = match name {
+        "f64.add" => wasm_encoder::Instruction::F64Add,
+        "f64.sub" => wasm_encoder::Instruction::F64Sub,
+        "f64.mul" => wasm_encoder::Instruction::F64Mul,
+        "f64.div" => wasm_encoder::Instruction::F64Div,
+        "f64.floor" => wasm_encoder::Instruction::F64Floor,
+        "f64.ceil" => wasm_encoder::Instruction::F64Ceil,
+        "f64.sqrt" => wasm_encoder::Instruction::F64Sqrt,
+        "f64.neg" => wasm_encoder::Instruction::F64Neg,
+        _ => return Err(anyhow::format_err!("unsupported wasm instruction {name:?}")),
+    };
+
+    wasm.instruction(&instruction);
+
+    Ok(())
+}
+
+fn write_string(
+    _db: &Db,
+    _program: &ir::Program,
+    string: &str,
+    module: &Module,
+    wasm: &mut wasm_encoder::Function,
+) -> Result<(), CodegenError> {
+    let offset = module
+        .strings
+        .get(string)
+        .ok_or_else(|| anyhow::format_err!("missing trace"))?;
+
+    wasm.instruction(&wasm_encoder::Instruction::I32Const(offset));
+    wasm.instruction(&wasm_encoder::Instruction::I32Const(string.len() as i32));
+
+    wasm.instruction(&wasm_encoder::Instruction::Call(
+        module
+            .imports
+            .get(
+                "make-string",
+                &[wasm_encoder::ValType::I32, wasm_encoder::ValType::I32],
+                &[wasm_encoder::ValType::EXTERNREF],
+            )
+            .ok_or_else(|| anyhow::format_err!("missing import"))?,
+    ));
+
+    Ok(())
+}
+
+#[derive(Default)]
+struct Types {
+    next_index: u32,
+    type_section: wasm_encoder::TypeSection,
+    type_entries: HashMap<ir::Type, wasm_encoder::ValType>,
+    func_type_entries: HashMap<wasm_encoder::FuncType, u32>,
+    variant_type_entries: HashMap<(u32, usize), u32>,
+    box_type_entries: HashMap<wasm_encoder::ValType, u32>,
+    env_type_entries: HashMap<(ir::DefinitionKey, Node), u32>,
+    queue: Vec<(u32, wasm_encoder::SubType)>,
+}
+
+fn subtype(ty: wasm_encoder::CompositeInnerType) -> wasm_encoder::SubType {
+    wasm_encoder::SubType {
+        is_final: false,
+        supertype_idx: None,
+        composite_type: wasm_encoder::CompositeType {
+            inner: ty,
+            shared: false,
+            descriptor: None,
+            describes: None,
+        },
+    }
+}
+
+impl Types {
+    fn insert_function(&mut self, func_type: wasm_encoder::FuncType) -> Result<u32, CodegenError> {
+        if let Some(&index) = self.func_type_entries.get(&func_type) {
+            return Ok(index);
+        }
+
+        let index = self.next_index;
+        self.next_index += 1;
+
+        self.func_type_entries.insert(func_type.clone(), index);
+
+        self.queue.push((
+            index,
+            subtype(wasm_encoder::CompositeInnerType::Func(func_type)),
+        ));
+
+        Ok(index)
+    }
+
+    fn insert_box(
+        &mut self,
+        box_type: wasm_encoder::ValType,
+    ) -> Result<wasm_encoder::ValType, CodegenError> {
+        if let Some(&index) = self.box_type_entries.get(&box_type) {
+            return Ok(wasm_encoder::ValType::Ref(wasm_encoder::RefType {
+                nullable: true,
+                heap_type: wasm_encoder::HeapType::Concrete(index),
+            }));
+        }
+
+        let index = self.next_index;
+        self.next_index += 1;
+
+        self.queue.push((
+            index,
+            subtype(wasm_encoder::CompositeInnerType::Struct(
+                wasm_encoder::StructType {
+                    fields: Box::new([wasm_encoder::FieldType {
+                        element_type: wasm_encoder::StorageType::Val(box_type),
+                        mutable: true,
+                    }]),
+                },
+            )),
+        ));
+
+        self.box_type_entries.insert(box_type, index);
+
+        Ok(wasm_encoder::ValType::Ref(wasm_encoder::RefType {
+            nullable: true,
+            heap_type: wasm_encoder::HeapType::Concrete(index),
+        }))
+    }
+
+    fn insert_env(
+        &mut self,
+        key: &ir::DefinitionKey,
+        node: Node,
+        captures: Vec<wasm_encoder::ValType>,
+    ) -> Result<wasm_encoder::ValType, CodegenError> {
+        if let Some(&index) = self.env_type_entries.get(&(key.clone(), node)) {
+            return Ok(wasm_encoder::ValType::Ref(wasm_encoder::RefType {
+                nullable: true,
+                heap_type: wasm_encoder::HeapType::Concrete(index),
+            }));
+        }
+
+        let index = self.next_index;
+        self.next_index += 1;
+
+        self.queue.push((
+            index,
+            subtype(wasm_encoder::CompositeInnerType::Struct(
+                wasm_encoder::StructType {
+                    fields: captures
+                        .into_iter()
+                        .map(|ty| wasm_encoder::FieldType {
+                            element_type: wasm_encoder::StorageType::Val(ty),
+                            mutable: false,
+                        })
+                        .collect(),
+                },
+            )),
+        ));
+
+        self.env_type_entries.insert((key.clone(), node), index);
+
+        Ok(wasm_encoder::ValType::Ref(wasm_encoder::RefType {
+            nullable: true,
+            heap_type: wasm_encoder::HeapType::Concrete(index),
+        }))
+    }
+
+    fn insert(&mut self, db: &Db, ty: &ir::Type) -> Result<wasm_encoder::ValType, CodegenError> {
+        if let Some(existing) = self.type_entries.get(ty) {
+            return Ok(*existing);
+        }
+
+        let encoded = match ty {
+            ir::Type::Named {
+                definition,
+                parameters,
+            } => {
+                let representation =
+                    ir_named_type_representation(db, *definition, parameters.clone())?;
+
+                if let ir::TypeRepresentation::Intrinsic { representation } = representation {
+                    match representation.as_deref() {
+                        Some("f64") => wasm_encoder::ValType::F64,
+                        Some(_) => {
+                            return Err(anyhow::format_err!("unsupported intrinsic type"));
+                        }
+                        None => wasm_encoder::ValType::Ref(wasm_encoder::RefType::EXTERNREF),
+                    }
+                } else {
+                    let index = self.next_index;
+                    self.next_index += 1;
+
+                    let encoded = wasm_encoder::ValType::Ref(wasm_encoder::RefType {
+                        nullable: true,
+                        heap_type: wasm_encoder::HeapType::Concrete(index),
+                    });
+
+                    // Insert before traversing members to prevent infinite recursion
+                    self.type_entries.insert(ty.clone(), encoded);
+
+                    match representation {
+                        ir::TypeRepresentation::Intrinsic { .. } => unreachable!(),
+                        ir::TypeRepresentation::Marker => {
+                            self.queue.push((
+                                index,
+                                subtype(wasm_encoder::CompositeInnerType::Struct(
+                                    wasm_encoder::StructType {
+                                        fields: Box::new([]),
+                                    },
+                                )),
+                            ));
+                        }
+                        ir::TypeRepresentation::Structure(fields) => {
+                            let fields = fields
+                                .iter()
+                                .map(|field| {
+                                    let ty = self.insert(db, field)?;
+
+                                    Ok(wasm_encoder::FieldType {
+                                        element_type: wasm_encoder::StorageType::Val(ty),
+                                        mutable: false,
+                                    })
+                                })
+                                .collect::<Result<Vec<_>, CodegenError>>()?;
+
+                            self.queue.push((
+                                index,
+                                subtype(wasm_encoder::CompositeInnerType::Struct(
+                                    wasm_encoder::StructType {
+                                        fields: fields.into_boxed_slice(),
+                                    },
+                                )),
+                            ));
+                        }
+                        ir::TypeRepresentation::Enumeration(variants) => {
+                            self.queue.push((
+                                index,
+                                subtype(wasm_encoder::CompositeInnerType::Struct(
+                                    wasm_encoder::StructType {
+                                        fields: Box::new([
+                                            wasm_encoder::FieldType {
+                                                element_type: wasm_encoder::StorageType::Val(
+                                                    wasm_encoder::ValType::Ref(
+                                                        wasm_encoder::RefType::ANYREF,
+                                                    ),
+                                                ),
+                                                mutable: false,
+                                            },
+                                            wasm_encoder::FieldType {
+                                                element_type: wasm_encoder::StorageType::Val(
+                                                    wasm_encoder::ValType::I32,
+                                                ),
+                                                mutable: false,
+                                            },
+                                        ]),
+                                    },
+                                )),
+                            ));
+
+                            for (variant, elements) in variants.into_iter().enumerate() {
+                                let elements = elements
+                                    .iter()
+                                    .map(|element| self.insert(db, element))
+                                    .collect::<Result<Vec<_>, CodegenError>>()?;
+
+                                let variant_index = self.next_index;
+                                self.next_index += 1;
+
+                                self.queue.push((
+                                    variant_index,
+                                    subtype(wasm_encoder::CompositeInnerType::Struct(
+                                        wasm_encoder::StructType {
+                                            fields: elements
+                                                .into_iter()
+                                                .map(|ty| wasm_encoder::FieldType {
+                                                    element_type: wasm_encoder::StorageType::Val(
+                                                        ty,
+                                                    ),
+                                                    mutable: false,
+                                                })
+                                                .collect::<Vec<_>>()
+                                                .into_boxed_slice(),
+                                        },
+                                    )),
+                                ));
+
+                                self.variant_type_entries
+                                    .insert((index, variant), variant_index);
+                            }
+                        }
+                    }
+
+                    encoded
+                }
+            }
+            ir::Type::Tuple(elements) => {
+                let elements = elements
+                    .iter()
+                    .map(|element| self.insert(db, element))
+                    .collect::<Result<Vec<_>, CodegenError>>()?;
+
+                let index = self.next_index;
+                self.next_index += 1;
+
+                self.queue.push((
+                    index,
+                    subtype(wasm_encoder::CompositeInnerType::Struct(
+                        wasm_encoder::StructType {
+                            fields: elements
+                                .into_iter()
+                                .map(|element| wasm_encoder::FieldType {
+                                    element_type: wasm_encoder::StorageType::Val(element),
+                                    mutable: false,
+                                })
+                                .collect::<Vec<_>>()
+                                .into_boxed_slice(),
+                        },
+                    )),
+                ));
+
+                wasm_encoder::ValType::Ref(wasm_encoder::RefType {
+                    nullable: true,
+                    heap_type: wasm_encoder::HeapType::Concrete(index),
+                })
+            }
+            ir::Type::Function(inputs, output) => {
+                let mut inputs = inputs
+                    .iter()
+                    .map(|input| self.insert(db, input))
+                    .collect::<Result<Vec<_>, CodegenError>>()?;
+
+                let output = self.insert(db, output)?;
+
+                let env_ty = wasm_encoder::ValType::Ref(wasm_encoder::RefType::ANYREF);
+                inputs.insert(0, env_ty);
+
+                let func_ty_index =
+                    self.insert_function(wasm_encoder::FuncType::new(inputs, [output]))?;
+
+                let index = self.next_index;
+                self.next_index += 1;
+
+                self.queue.push((
+                    index,
+                    subtype(wasm_encoder::CompositeInnerType::Struct(
+                        wasm_encoder::StructType {
+                            fields: Box::new([
+                                wasm_encoder::FieldType {
+                                    element_type: wasm_encoder::StorageType::Val(
+                                        wasm_encoder::ValType::Ref(wasm_encoder::RefType {
+                                            nullable: true,
+                                            heap_type: wasm_encoder::HeapType::Concrete(
+                                                func_ty_index,
+                                            ),
+                                        }),
+                                    ),
+                                    mutable: false,
+                                },
+                                wasm_encoder::FieldType {
+                                    element_type: wasm_encoder::StorageType::Val(env_ty),
+                                    mutable: false,
+                                },
+                            ]),
+                        },
+                    )),
+                ));
+
+                wasm_encoder::ValType::Ref(wasm_encoder::RefType {
+                    nullable: true,
+                    heap_type: wasm_encoder::HeapType::Concrete(index),
+                })
+            }
+            ir::Type::Parameter(node) => {
+                return Err(anyhow::format_err!("parameter {node:?} not resolved"));
+            }
+        };
+
+        self.type_entries.insert(ty.clone(), encoded);
+
+        Ok(encoded)
+    }
+
+    fn get(&self, ty: &ir::Type) -> Option<wasm_encoder::ValType> {
+        self.type_entries.get(ty).cloned()
+    }
+
+    fn get_function(&self, func_type: &wasm_encoder::FuncType) -> Option<u32> {
+        self.func_type_entries.get(func_type).copied()
+    }
+
+    fn get_variant(&self, ty_index: u32, variant: usize) -> Option<u32> {
+        self.variant_type_entries.get(&(ty_index, variant)).copied()
+    }
+
+    fn get_box(&self, ty: &wasm_encoder::ValType) -> Option<u32> {
+        self.box_type_entries.get(ty).copied()
+    }
+
+    fn get_env(&self, key: &ir::DefinitionKey, node: Node) -> Option<u32> {
+        self.env_type_entries.get(&(key.clone(), node)).copied()
+    }
+
+    fn get_as_index(&self, ty: &ir::Type) -> Option<u32> {
+        self.get(ty).and_then(|encoded| match encoded {
+            wasm_encoder::ValType::Ref(wasm_encoder::RefType {
+                heap_type: wasm_encoder::HeapType::Concrete(index),
+                ..
+            }) => Some(index),
+            _ => None,
+        })
+    }
+
+    fn finish(&mut self) {
+        self.queue.sort_by_key(|(index, _)| *index);
+
+        self.type_section
+            .ty()
+            .rec(self.queue.drain(..).map(|(_, subtype)| subtype));
+    }
+}
+
+fn collect_types(db: &Db, program: &ir::Program, types: &mut Types) -> Result<(), CodegenError> {
+    for definition in program.definitions.values() {
+        for ty in definition.types.values().chain(&definition.ty) {
+            ty.clone().traverse_mut(&mut |ty| {
+                types.insert(db, ty)?;
+                Ok(())
+            })?;
+        }
+
+        for instruction in &definition.instructions {
+            instruction.clone().traverse_mut(&mut |instruction| {
+                if let ir::Instruction::If { branches, .. } = instruction {
+                    for (conditions, _, _) in branches {
+                        for condition in conditions {
+                            if let ir::Condition::Initialize {
+                                node: Some(node),
+                                mutable,
+                                ..
+                            } = *condition
+                                && mutable
+                            {
+                                let ty = types.insert(
+                                    db,
+                                    definition
+                                        .types
+                                        .get(&node)
+                                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                                )?;
+                                types.insert_box(ty)?;
+                            }
+                        }
+                    }
+                }
+
+                Ok(())
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Default)]
+struct Functions {
+    imports_offset: u32,
+    function_section: wasm_encoder::FunctionSection,
+    elem_section: wasm_encoder::ElementSection,
+    entries: Vec<(ir::DefinitionKey, Option<Node>, ir::Function, u32)>,
+}
+
+impl Functions {
+    fn insert(
+        &mut self,
+        key: &ir::DefinitionKey,
+        node: Option<Node>,
+        inputs: &[wasm_encoder::ValType],
+        outputs: &[wasm_encoder::ValType],
+        function: ir::Function,
+        types: &mut Types,
+    ) -> Result<u32, CodegenError> {
+        if let Some(existing) = self.get(key, node) {
+            return Ok(existing);
+        }
+
+        let ty_index = types.insert_function(wasm_encoder::FuncType::new(
+            inputs.to_vec(),
+            outputs.to_vec(),
+        ))?;
+
+        let index = self.imports_offset + self.function_section.len();
+        self.function_section.function(ty_index);
+        self.elem_section
+            .declared(wasm_encoder::Elements::Functions(Cow::Borrowed(&[index])));
+        self.entries.push((key.clone(), node, function, index));
+
+        Ok(index)
+    }
+
+    fn get(&self, key: &ir::DefinitionKey, node: Option<Node>) -> Option<u32> {
+        self.entries
+            .iter()
+            .position(|(other_key, other_node, _, _)| other_key == key && *other_node == node)
+            .map(|index| self.imports_offset + index as u32)
+    }
+}
+
+fn collect_functions(
+    db: &Db,
+    program: &ir::Program,
+    types: &mut Types,
+    functions: &mut Functions,
+) -> Result<(), CodegenError> {
+    for (key, definition) in &program.definitions {
+        functions.insert(
+            key,
+            None,
+            &[],
+            &Vec::from_iter(
+                definition
+                    .ty
+                    .as_ref()
+                    .map(|ty| {
+                        types
+                            .get(ty)
+                            .ok_or_else(|| anyhow::format_err!("unresolved definition type"))
+                    })
+                    .transpose()?,
+            ),
+            ir::Function {
+                inputs: Vec::new(),
+                instructions: definition.instructions.clone(),
+                closure: None,
+            },
+            types,
+        )?;
+
+        for instruction in &definition.instructions {
+            instruction.clone().traverse_mut(&mut |instruction| {
+                if let ir::Instruction::Value {
+                    node,
+                    value: ir::Value::Function(function),
+                } = instruction
+                {
+                    let ir::Type::Function(inputs, output) = definition
+                        .types
+                        .get(node)
+                        .ok_or_else(|| anyhow::format_err!("missing type"))?
+                    else {
+                        return Err(anyhow::format_err!("not a function"));
+                    };
+
+                    let mut input_tys = inputs
+                        .iter()
+                        .map(|input| {
+                            types
+                                .get(input)
+                                .ok_or_else(|| anyhow::format_err!("unresolved input type"))
+                        })
+                        .collect::<Result<Vec<_>, CodegenError>>()?;
+
+                    let output_ty = types
+                        .get(output)
+                        .ok_or_else(|| anyhow::format_err!("unresolved output type"))?;
+
+                    let mut node = *node;
+                    if let Some((closure, captures)) = &function.closure {
+                        let captures = captures
+                            .iter()
+                            .map(|&capture| {
+                                let mut ty = definition
+                                    .types
+                                    .get(&capture)
+                                    .ok_or_else(|| anyhow::format_err!("missing type"))
+                                    .and_then(|ty| types.insert(db, ty))?;
+
+                                if db.get::<IsMutated>(capture).is_some() {
+                                    ty = types.insert_box(ty)?;
+                                }
+
+                                Ok(ty)
+                            })
+                            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+                        types.insert_env(key, *closure, captures)?;
+
+                        input_tys
+                            .insert(0, wasm_encoder::ValType::Ref(wasm_encoder::RefType::ANYREF));
+
+                        node = *closure;
+                    }
+
+                    functions.insert(
+                        key,
+                        Some(node),
+                        &input_tys,
+                        &[output_ty],
+                        function.clone(),
+                        types,
+                    )?;
+                }
+
+                Ok(())
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Default)]
+struct Imports {
+    import_section: wasm_encoder::ImportSection,
+    entries: HashMap<
+        (
+            String,
+            Vec<wasm_encoder::ValType>,
+            Vec<wasm_encoder::ValType>,
+        ),
+        u32,
+    >,
+}
+
+impl Imports {
+    fn insert(
+        &mut self,
+        name: &str,
+        inputs: Vec<wasm_encoder::ValType>,
+        outputs: Vec<wasm_encoder::ValType>,
+        types: &mut Types,
+        functions: &mut Functions,
+    ) -> Result<u32, CodegenError> {
+        if let Some(existing) = self.get(name, &inputs, &outputs) {
+            return Ok(existing);
+        }
+
+        let func_ty_index =
+            types.insert_function(wasm_encoder::FuncType::new(inputs.clone(), outputs.clone()))?;
+
+        let index = self.import_section.len();
+
+        self.import_section.import(
+            "runtime",
+            name,
+            wasm_encoder::EntityType::Function(func_ty_index),
+        );
+
+        self.entries
+            .insert((name.to_string(), inputs, outputs), index);
+
+        functions.imports_offset += 1;
+
+        Ok(index)
+    }
+
+    fn get(
+        &self,
+        name: &str,
+        inputs: &[wasm_encoder::ValType],
+        outputs: &[wasm_encoder::ValType],
+    ) -> Option<u32> {
+        self.entries
+            .get(&(name.to_string(), inputs.to_vec(), outputs.to_vec()))
+            .copied()
+    }
+}
+
+fn collect_imports(
+    db: &Db,
+    program: &ir::Program,
+    types: &mut Types,
+    imports: &mut Imports,
+    functions: &mut Functions,
+) -> Result<(), CodegenError> {
+    imports.insert(
+        "trace",
+        vec![wasm_encoder::ValType::EXTERNREF],
+        vec![],
+        types,
+        functions,
+    )?;
+
+    imports.insert(
+        "make-string",
+        vec![wasm_encoder::ValType::I32, wasm_encoder::ValType::I32],
+        vec![wasm_encoder::ValType::EXTERNREF],
+        types,
+        functions,
+    )?;
+
+    imports.insert(
+        "string-equality",
+        vec![
+            wasm_encoder::ValType::EXTERNREF,
+            wasm_encoder::ValType::EXTERNREF,
+        ],
+        vec![wasm_encoder::ValType::I32],
+        types,
+        functions,
+    )?;
+
+    for definition in program.definitions.values() {
+        for instruction in &definition.instructions {
+            instruction.clone().traverse_mut(&mut |instruction| {
+                if let ir::Instruction::Value {
+                    node,
+                    value: ir::Value::Runtime { name, inputs },
+                } = instruction
+                {
+                    if import_is_wasm_instruction(name) {
+                        return Ok(());
+                    }
+
+                    let inputs = inputs
+                        .iter()
+                        .map(|&input| {
+                            definition
+                                .types
+                                .get(&input)
+                                .ok_or_else(|| anyhow::format_err!("missing type"))
+                                .and_then(|ty| types.insert(db, ty))
+                        })
+                        .collect::<Result<Vec<_>, CodegenError>>()?;
+
+                    let output = definition
+                        .types
+                        .get(node)
+                        .ok_or_else(|| anyhow::format_err!("missing type"))
+                        .and_then(|ty| types.insert(db, ty))?;
+
+                    imports.insert(name, inputs, vec![output], types, functions)?;
+                }
+
+                Ok(())
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Default)]
+struct Exports {
+    export_section: wasm_encoder::ExportSection,
+}
+
+impl Exports {
+    fn insert_func(&mut self, name: &str, index: u32) {
+        self.export_section
+            .export(name, wasm_encoder::ExportKind::Func, index);
+    }
+
+    fn insert_memory(&mut self, name: &str, index: u32) {
+        self.export_section
+            .export(name, wasm_encoder::ExportKind::Memory, index);
+    }
+}
+
+fn collect_exports(
+    _db: &Db,
+    _program: &ir::Program,
+    main_index: u32,
+    exports: &mut Exports,
+) -> Result<(), CodegenError> {
+    exports.insert_func("main", main_index);
+    exports.insert_memory("memory", 0);
+
+    Ok(())
+}
+
+#[derive(Default)]
+struct Strings {
+    memory_section: wasm_encoder::MemorySection,
+    data_section: wasm_encoder::DataSection,
+    entries: Vec<(u64, String)>,
+}
+
+impl Strings {
+    fn insert(&mut self, string: &str) -> Result<i32, CodegenError> {
+        if let Some(existing) = self.get(string) {
+            return Ok(existing);
+        }
+
+        let offset = self
+            .entries
+            .last()
+            .map_or(0, |(offset, s)| *offset + s.len() as u64);
+
+        self.entries.push((offset, string.to_string()));
+
+        self.data_section.active(
+            0,
+            &wasm_encoder::ConstExpr::i32_const(offset as i32),
+            string.bytes(),
+        );
+
+        Ok(offset as i32)
+    }
+
+    fn get(&self, string: &str) -> Option<i32> {
+        self.entries
+            .iter()
+            .find(|(_, s)| s == string)
+            .map(|(offset, _)| *offset as i32)
+    }
+
+    fn finish(&mut self) {
+        const PAGE_SIZE: u64 = 64 * 1024;
+
+        let pages = self.entries.last().map_or(1, |(offset, s)| {
+            (*offset + s.len() as u64).div_ceil(PAGE_SIZE)
+        });
+
+        self.memory_section.memory(wasm_encoder::MemoryType {
+            minimum: pages,
+            maximum: None,
+            memory64: false,
+            shared: false,
+            page_size_log2: None,
+        });
+    }
+}
+
+fn collect_strings(
+    _db: &Db,
+    program: &ir::Program,
+    strings: &mut Strings,
+) -> Result<(), CodegenError> {
+    for definition in program.definitions.values() {
+        for instruction in &definition.instructions {
+            instruction.clone().traverse_mut(&mut |instruction| {
+                match instruction {
+                    ir::Instruction::Trace { span } => {
+                        strings.insert(&format_trace(span))?;
+                    }
+                    ir::Instruction::Value {
+                        value: ir::Value::String(string),
+                        ..
+                    } => {
+                        strings.insert(string)?;
+                    }
+                    _ => {}
+                }
+
+                Ok(())
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
+#[derive(Default)]
+struct Implementations {
+    code_section: wasm_encoder::CodeSection,
+    entries: HashMap<(ir::DefinitionKey, Option<Node>), u32>,
+}
+
+impl Implementations {
+    fn insert(
+        &mut self,
+        key: &ir::DefinitionKey,
+        node: Option<Node>,
+        function: wasm_encoder::Function,
+    ) -> Result<u32, CodegenError> {
+        let index = self.code_section.len();
+        self.code_section.function(&function);
+        self.entries.insert((key.clone(), node), index);
+
+        Ok(index)
+    }
+}
+
+#[derive(Default)]
+struct Locals {
+    locals: Vec<wasm_encoder::ValType>,
+    entries: BTreeMap<Node, u32>,
+}
+
+impl Locals {
+    fn insert(&mut self, node: Node, ty: wasm_encoder::ValType) -> Result<u32, CodegenError> {
+        if let Some(existing) = self.get(node) {
+            return Ok(existing);
+        }
+
+        let index = self.entries.len() as u32;
+        self.locals.push(ty);
+        self.entries.insert(node, index);
+
+        Ok(index)
+    }
+
+    fn insert_param(&mut self, node: Node, index: u32) -> Result<(), CodegenError> {
+        self.entries.insert(node, index);
         Ok(())
     }
 
-    fn write_definition(
-        &mut self,
-        db: &Db,
-        w: &mut Writer,
-        key: Option<&'a ir::DefinitionKey>,
-        definition: &'a ir::Definition,
-    ) -> Result<(), CodegenError> {
-        let locals = mem::take(&mut self.locals);
+    fn get(&self, node: Node) -> Option<u32> {
+        self.entries.get(&node).copied()
+    }
+}
 
-        self.write_locals(db, w, &definition.instructions, &definition.types, &|_| {
-            true
+fn collect_locals(
+    db: &Db,
+    _program: &ir::Program,
+    _key: &ir::DefinitionKey,
+    definition: &ir::Definition,
+    function: &ir::Function,
+    types: &Types,
+    locals: &mut Locals,
+) -> Result<(), CodegenError> {
+    for (index, &node) in function
+        .closure
+        .iter()
+        .map(|(node, _)| node)
+        .chain(&function.inputs)
+        .enumerate()
+    {
+        locals.insert_param(node, index as u32)?;
+    }
+
+    let mut nodes = Vec::new();
+
+    if let Some((_, captures)) = &function.closure {
+        for &capture in captures {
+            nodes.push(capture);
+        }
+    }
+
+    for instruction in &function.instructions {
+        instruction.clone().for_each_node(false, &mut |node| {
+            nodes.push(*node);
+            Ok(())
         })?;
-
-        self.write_instructions(w, &definition.instructions, key, &definition.types)?;
-
-        self.locals = locals;
-
-        Ok(())
     }
 
-    fn write_locals(
-        &mut self,
-        db: &Db,
-        w: &mut Writer,
-        instructions: &'a [ir::Instruction],
-        types: &'a BTreeMap<Node, ir::Type>,
-        declare: &dyn Fn(Node) -> bool,
-    ) -> Result<(), CodegenError> {
-        let mut nodes = BTreeSet::new();
-        for instruction in instructions {
-            instruction.clone().for_each_node(false, &mut |node| {
-                nodes.insert(*node);
+    for node in nodes {
+        if locals.get(node).is_some() {
+            continue;
+        }
+
+        let mut ty = types
+            .get(
+                definition
+                    .types
+                    .get(&node)
+                    .ok_or_else(|| anyhow::format_err!("missing type"))?,
+            )
+            .ok_or_else(|| anyhow::format_err!("missing type"))?;
+
+        if db.get::<IsMutated>(node).is_some() {
+            ty = wasm_encoder::ValType::Ref(wasm_encoder::RefType {
+                nullable: true,
+                heap_type: wasm_encoder::HeapType::Concrete(
+                    types
+                        .get_box(&ty)
+                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                ),
             });
         }
 
-        for node in nodes {
-            if declare(node) {
-                offset(&mut self.locals, Local::Node(node));
-
-                write!(w, "(local")?;
-
-                if db.get::<IsMutated>(node).is_some() {
-                    write!(w, " (ref null {})", offset(&mut self.types, Ty::Box))?;
-                } else {
-                    let ty = self.ty(node, types)?;
-                    write!(w, " {}", self.structural_ty(Cow::Borrowed(ty)))?;
-                }
-
-                writeln!(w, ")")?;
-            }
-        }
-
-        Ok(())
+        locals.insert(node, ty)?;
     }
 
-    fn write_instructions(
-        &mut self,
-        w: &mut Writer,
-        instructions: &'a [ir::Instruction],
-        definition: Option<&'a ir::DefinitionKey>,
-        types: &'a BTreeMap<Node, ir::Type>,
-    ) -> Result<(), CodegenError> {
-        for instruction in instructions {
-            match instruction {
-                ir::Instruction::If {
-                    node,
-                    branches,
-                    else_branch,
-                } => {
-                    for (conditions, instructions, then_node) in branches {
-                        write!(w, "(if ")?;
-                        self.write_conditions(w, conditions, definition, types)?;
-                        writeln!(w, " (then")?;
-                        self.write_instructions(w, instructions, definition, types)?;
-                        if let Some(node) = node
-                            && let Some(then_node) = then_node
-                        {
-                            writeln!(
-                                w,
-                                "(local.set {} (local.get {}))",
-                                offset(&mut self.locals, Local::Node(*node)),
-                                offset(&mut self.locals, Local::Node(*then_node)),
-                            )?;
-                        }
-                        write!(w, ") (else")?;
-                    }
-
-                    if let Some((instructions, else_node)) = else_branch {
-                        self.write_instructions(w, instructions, definition, types)?;
-                        if let Some(node) = node
-                            && let Some(else_node) = else_node
-                        {
-                            writeln!(
-                                w,
-                                "(local.set {} (local.get {}))",
-                                offset(&mut self.locals, Local::Node(*node)),
-                                offset(&mut self.locals, Local::Node(*else_node)),
-                            )?;
-                        }
-                    } else {
-                        write!(w, "(unreachable)")?;
-                    }
-
-                    for _ in branches {
-                        writeln!(w, "))")?;
-                    }
-                }
-                ir::Instruction::Return { value } => {
-                    writeln!(
-                        w,
-                        "(return (local.get {}))",
-                        offset(&mut self.locals, Local::Node(*value))
-                    )?;
-                }
-                ir::Instruction::ReturnCall { function, inputs } => {
-                    self.write_call(w, *function, inputs, true, types)?;
-                }
-                ir::Instruction::Value { node, value } => {
-                    write!(
-                        w,
-                        "(local.set {} ",
-                        offset(&mut self.locals, Local::Node(*node))
-                    )?;
-                    self.write_value(w, Some(*node), value, definition, types)?;
-                    writeln!(w, ")")?;
-                }
-                ir::Instruction::Trace { span } => {
-                    if self.can_trace(span) {
-                        let index = self.import(Import::trace());
-
-                        let string = self.string(
-                            &serde_json::json!({
-                                "path": span.path,
-                                "start": span.start,
-                                "end": span.end,
-                            })
-                            .to_string(),
-                        )?;
-
-                        writeln!(w, "(call {index} {string})")?;
-                    }
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn write_value(
-        &mut self,
-        w: &mut Writer,
-        node: Option<Node>,
-        value: &'a ir::Value,
-        definition: Option<&'a ir::DefinitionKey>,
-        types: &'a BTreeMap<Node, ir::Type>,
-    ) -> Result<(), CodegenError> {
-        match value {
-            ir::Value::Bound(node) => {
-                return Err(anyhow::format_err!("bound {node:?} not resolved"));
-            }
-            ir::Value::Call { function, inputs } => {
-                self.write_call(w, *function, inputs, false, types)?;
-            }
-            ir::Value::Constant(key) => {
-                write!(w, "(call {})", offset(&mut self.functions, Func::from(key)))?;
-            }
-            ir::Value::Function { captures, .. } => {
-                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-
-                let ty = self.ty(node, types)?;
-
-                let env_ty = offset(&mut self.types, Ty::Env(definition, node));
-
-                let index = offset(
-                    &mut self.functions,
-                    Func::Declared(DeclaredFunc::Closure { definition, node }),
-                );
-
-                self.impls.insert((definition, node), (value, types));
-
-                write!(
-                    w,
-                    "(struct.new {}",
-                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)))
-                )?;
-                write!(w, "(ref.func {index})")?;
-                write!(w, " (struct.new {env_ty}")?;
-                for capture in captures {
-                    write!(
-                        w,
-                        "(local.get {})",
-                        offset(&mut self.locals, Local::Node(*capture))
-                    )?;
-                }
-                write!(w, "))")?;
-            }
-            ir::Value::Field {
-                input, field_index, ..
-            } => {
-                let ty = self.ty(*input, types)?;
-                write!(
-                    w,
-                    "(struct.get {} {} (local.get {}))",
-                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
-                    field_index,
-                    offset(&mut self.locals, Local::Node(*input))
-                )?;
-            }
-            ir::Value::Tuple(elements) => {
-                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-                let ty = self.ty(node, types)?;
-                write!(
-                    w,
-                    "(struct.new {}",
-                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)))
-                )?;
-                for element in elements {
-                    write!(
-                        w,
-                        "(local.get {})",
-                        offset(&mut self.locals, Local::Node(*element))
-                    )?;
-                }
-                write!(w, ")")?;
-            }
-            ir::Value::Marker => {
-                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-                let ty = self.ty(node, types)?;
-                write!(
-                    w,
-                    "(struct.new {})",
-                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)))
-                )?;
-            }
-            ir::Value::MutableVariable(variable) => {
-                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-                let ty = self.ty(node, types)?;
-
-                write!(
-                    w,
-                    "(struct.get {} 0 (local.get {}))",
-                    offset(&mut self.types, Ty::Box),
-                    offset(&mut self.locals, Local::Node(*variable))
-                )?;
-
-                if let (Some(from), _) = self.conversions(ty) {
-                    write!(w, "{from}")?;
-                }
-            }
-            ir::Value::Number(number) => {
-                write!(w, "(f64.const {number})")?;
-            }
-            ir::Value::Runtime { name, inputs } => {
-                if import_is_wasm_instruction(name) {
-                    write!(w, "({name}")?;
-
-                    for input in inputs {
-                        write!(
-                            w,
-                            " (local.get {})",
-                            offset(&mut self.locals, Local::Node(*input))
-                        )?;
-                    }
-
-                    write!(w, ")")?;
-                } else {
-                    let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-
-                    let index = self.import_for(name, inputs, node, types)?;
-
-                    write!(w, "(call {index}")?;
-                    for input in inputs {
-                        write!(
-                            w,
-                            "(local.get {})",
-                            offset(&mut self.locals, Local::Node(*input))
-                        )?;
-                    }
-                    write!(w, ")")?;
-                }
-            }
-            ir::Value::String(string) => {
-                let string = self.string(string)?;
-                write!(w, "{string}")?;
-            }
-            ir::Value::Structure(fields) => {
-                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-                let ty = self.ty(node, types)?;
-                write!(
-                    w,
-                    "(struct.new {}",
-                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)))
-                )?;
-                for (_, value) in fields {
-                    write!(
-                        w,
-                        " (local.get {})",
-                        offset(&mut self.locals, Local::Node(*value))
-                    )?;
-                }
-                write!(w, ")")?;
-            }
-            ir::Value::TupleElement { input, index } => {
-                let ty = self.ty(*input, types)?;
-                write!(
-                    w,
-                    "(struct.get {} {} (local.get {}))",
-                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
-                    index,
-                    offset(&mut self.locals, Local::Node(*input))
-                )?;
-            }
-            ir::Value::Unreachable => {
-                write!(w, "(unreachable)")?;
-            }
-            ir::Value::Variable(node) => {
-                write!(
-                    w,
-                    "(local.get {})",
-                    offset(&mut self.locals, Local::Node(*node))
-                )?;
-            }
-            ir::Value::Variant { index, elements } => {
-                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-                let ty = self.ty(node, types)?;
-                write!(
-                    w,
-                    "(struct.new {} ",
-                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)))
-                )?;
-                offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)));
-                write!(
-                    w,
-                    "(struct.new {}",
-                    offset(&mut self.types, Ty::Variant(ty, *index))
-                )?;
-                for element in elements {
-                    write!(
-                        w,
-                        " (local.get {})",
-                        offset(&mut self.locals, Local::Node(*element))
-                    )?;
-                }
-                write!(w, ") (i32.const {index}))")?;
-            }
-            ir::Value::VariantElement {
-                input,
-                variant,
-                index,
-            } => {
-                let ty = self.ty(*input, types)?;
-                offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty)));
-                let variant_ty = offset(&mut self.types, Ty::Variant(ty, *variant));
-
-                write!(
-                    w,
-                    "(struct.get {} {} (ref.cast (ref null {}) (struct.get {} 0 (local.get {}))))",
-                    variant_ty,
-                    index,
-                    variant_ty,
-                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
-                    offset(&mut self.locals, Local::Node(*input))
-                )?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn write_call(
-        &mut self,
-        w: &mut Writer,
-        function: Node,
-        inputs: &[Node],
-        tail: bool,
-        types: &'a BTreeMap<Node, ir::Type>,
-    ) -> Result<(), anyhow::Error> {
-        let op = if tail { "return_call_ref" } else { "call_ref" };
-        let ty = self.ty(function, types)?;
-        write!(
-            w,
-            "({} {}",
-            op,
-            offset(&mut self.types, Ty::Impl(Cow::Borrowed(ty)))
-        )?;
-
-        write!(
-            w,
-            "(struct.get {} 1 (local.get {}))",
-            offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
-            offset(&mut self.locals, Local::Node(function))
-        )?;
-
-        for input in inputs {
-            write!(
-                w,
-                "(local.get {})",
-                offset(&mut self.locals, Local::Node(*input))
-            )?;
-        }
-
-        write!(
-            w,
-            "(struct.get {} 0 (local.get {})))",
-            offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
-            offset(&mut self.locals, Local::Node(function)),
-        )?;
-
-        Ok(())
-    }
-
-    fn write_conditions(
-        &mut self,
-        w: &mut Writer,
-        conditions: &'a [ir::Condition],
-        definition: Option<&'a ir::DefinitionKey>,
-        types: &'a BTreeMap<Node, ir::Type>,
-    ) -> Result<(), CodegenError> {
-        if conditions.is_empty() {
-            write!(w, "(i32.const 1)")?;
-        } else {
-            for (index, condition) in conditions.iter().enumerate() {
-                write!(w, "(if (result i32) ")?;
-
-                self.write_condition(w, condition, definition, types)?;
-
-                write!(w, "(then ")?;
-
-                if index + 1 == conditions.len() {
-                    write!(w, "(i32.const 1)")?;
-                }
-            }
-
-            for _ in conditions {
-                write!(w, ") (else (i32.const 0)))")?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn write_condition(
-        &mut self,
-        w: &mut Writer,
-        condition: &'a ir::Condition,
-        definition: Option<&'a ir::DefinitionKey>,
-        types: &'a BTreeMap<Node, ir::Type>,
-    ) -> Result<(), CodegenError> {
-        match condition {
-            ir::Condition::Or(branches) => {
-                if branches.is_empty() {
-                    write!(w, "(i32.const 1)")?;
-                } else {
-                    for (index, conditions) in branches.iter().enumerate() {
-                        write!(w, "(if (result i32) ")?;
-                        self.write_conditions(w, conditions, definition, types)?;
-                        write!(w, "(then (i32.const 1)) (else ")?;
-
-                        if index + 1 == branches.len() {
-                            write!(w, "(i32.const 0)")?;
-                        }
-                    }
-
-                    for _ in branches {
-                        write!(w, "))")?;
-                    }
-                }
-            }
-            ir::Condition::EqualToNumber { input, value } => {
-                write!(
-                    w,
-                    "(f64.eq (local.get {}) (f64.const {}))",
-                    offset(&mut self.locals, Local::Node(*input)),
-                    value
-                )?;
-            }
-            ir::Condition::EqualToString { input, value } => {
-                let index = self.import(Import::string_equality());
-
-                let string = self.string(value)?;
-                write!(
-                    w,
-                    "(call {index} (local.get {}) {})",
-                    offset(&mut self.locals, Local::Node(*input)),
-                    string
-                )?;
-            }
-            ir::Condition::EqualToVariant { input, variant } => {
-                let ty = self.ty(*input, types)?;
-                write!(
-                    w,
-                    "(i32.eq (struct.get {} 1 (local.get {})) (i32.const {}))",
-                    offset(&mut self.types, Ty::Nominal(Cow::Borrowed(ty))),
-                    offset(&mut self.locals, Local::Node(*input)),
-                    variant
-                )?;
-            }
-            ir::Condition::Initialize {
-                variable,
-                node,
-                value,
-                mutable,
-            } => {
-                write!(
-                    w,
-                    "(block (result i32) (local.set {} ",
-                    offset(&mut self.locals, Local::Node(*variable))
-                )?;
-                let mut to = None;
-                if *mutable {
-                    write!(w, "(struct.new {} ", offset(&mut self.types, Ty::Box))?;
-
-                    let node = node
-                        .as_ref()
-                        .ok_or_else(|| anyhow::format_err!("missing node"))?;
-
-                    let value_ty = self.ty(*node, types)?;
-
-                    (_, to) = self.conversions(value_ty);
-                }
-
-                self.write_value(w, *node, value, definition, types)?;
-
-                if let Some(to) = to {
-                    write!(w, "{to}")?;
-                }
-
-                if *mutable {
-                    write!(w, ")")?;
-                }
-                write!(w, ") (i32.const 1))")?;
-            }
-            ir::Condition::Mutate { input, variable } => {
-                let ty = self.ty(*variable, types)?;
-
-                write!(
-                    w,
-                    "(block (result i32) (struct.set {} 0 (local.get {}) ",
-                    offset(&mut self.types, Ty::Box),
-                    offset(&mut self.locals, Local::Node(*variable))
-                )?;
-                write!(
-                    w,
-                    "(local.get {})",
-                    offset(&mut self.locals, Local::Node(*input))
-                )?;
-                if let (_, Some(to)) = self.conversions(ty) {
-                    write!(w, "{to}")?;
-                }
-                write!(w, ") (i32.const 1))")?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn write_function(
-        &mut self,
-        db: &Db,
-        decls: &mut Writer,
-        funcs: &mut Writer,
-        index: usize,
-        func: DeclaredFunc<'a>,
-        program: &'a ir::Program,
-    ) -> Result<(), CodegenError> {
-        match func {
-            DeclaredFunc::Definition(key) => {
-                let definition = program
-                    .definitions
-                    .get(key)
-                    .ok_or_else(|| anyhow::format_err!("missing definition: {key:?}"))?;
-
-                let ty = definition
-                    .ty
-                    .as_ref()
-                    .ok_or_else(|| anyhow::format_err!("unresolved definition type: {key:?}"))?;
-
-                offset(&mut self.functions, Func::from(key));
-
-                writeln!(
-                    funcs,
-                    "(func (result {})",
-                    self.structural_ty(Cow::Borrowed(ty))
-                )?;
-
-                self.write_definition(db, funcs, Some(key), definition)?;
-
-                writeln!(funcs, ")")?;
-            }
-            DeclaredFunc::Closure { definition, node } => {
-                writeln!(decls, "(elem declare func {index})")?;
-
-                let (value, types) = self
-                    .impls
-                    .get(&(definition, node))
-                    .copied()
-                    .ok_or_else(|| anyhow::format_err!("missing implementation"))?;
-
-                let ir::Value::Function {
-                    inputs,
-                    captures,
-                    instructions,
-                } = value
-                else {
-                    unreachable!()
-                };
-
-                let ty = self.ty(node, types)?;
-
-                let ir::Type::Function(input_types, output_type) = &ty else {
-                    return Err(anyhow::format_err!("{node:?} is not a function"));
-                };
-
-                let locals = mem::take(&mut self.locals);
-
-                offset(&mut self.locals, Local::Env);
-
-                for input in inputs {
-                    offset(&mut self.locals, Local::Node(*input));
-                }
-
-                writeln!(
-                    funcs,
-                    "(func (type {}) (param anyref)",
-                    offset(&mut self.types, Ty::Impl(Cow::Borrowed(ty)))
-                )?;
-
-                for ty in input_types {
-                    writeln!(funcs, "(param {})", self.structural_ty(Cow::Borrowed(ty)))?;
-                }
-
-                writeln!(
-                    funcs,
-                    "(result {})",
-                    self.structural_ty(Cow::Borrowed(output_type))
-                )?;
-
-                for &capture in captures {
-                    offset(&mut self.locals, Local::Node(capture));
-
-                    write!(funcs, "(local ")?;
-                    if db.get::<IsMutated>(capture).is_some() {
-                        let box_ref = offset(&mut self.types, Ty::Box);
-                        write!(funcs, "(ref null {box_ref})")?;
-                    } else {
-                        let ty = self.ty(capture, types)?;
-                        write!(funcs, "{}", self.structural_ty(Cow::Borrowed(ty)))?;
-                    }
-                    writeln!(funcs, ")")?;
-                }
-
-                self.write_locals(db, funcs, instructions, types, &|child| {
-                    !inputs.contains(&child) && !captures.contains(&child)
-                })?;
-
-                let env_ty = offset(&mut self.types, Ty::Env(definition, node));
-                for (index, capture) in captures.iter().enumerate() {
-                    writeln!(
-                        funcs,
-                        "(local.set {} (struct.get {} {} (ref.cast (ref null {}) (local.get {}))))",
-                        offset(&mut self.locals, Local::Node(*capture)),
-                        env_ty,
-                        index,
-                        env_ty,
-                        offset(&mut self.locals, Local::Env)
-                    )?;
-                }
-
-                self.write_instructions(funcs, instructions, definition, types)?;
-
-                writeln!(funcs, ")")?;
-
-                self.locals = locals;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn write_type(&mut self, db: &Db, w: &mut Writer, ty: Ty<'a>) -> Result<(), CodegenError> {
-        match ty {
-            Ty::Number => {
-                writeln!(w, "(type (struct (field f64)))")?;
-            }
-            Ty::Box => {
-                writeln!(w, "(type (struct (field (mut anyref))))")?;
-            }
-            Ty::Env(definition, node) => {
-                let (value, types) = *self
-                    .impls
-                    .get(&(definition, node))
-                    .ok_or_else(|| anyhow::format_err!("missing implementation"))?;
-
-                let ir::Value::Function { captures, .. } = value else {
-                    unreachable!()
-                };
-
-                write!(w, "(type (struct")?;
-                for &capture in captures {
-                    if db.get::<IsMutated>(capture).is_some() {
-                        write!(w, "(field (ref null {}))", offset(&mut self.types, Ty::Box))?;
-                    } else {
-                        let ty = self.ty(capture, types)?;
-                        write!(w, "(field {})", self.structural_ty(Cow::Borrowed(ty)))?;
-                    }
-                }
-                writeln!(w, "))")?;
-            }
-            Ty::Nominal(ty) => match ty.into_owned() {
-                ir::Type::Named {
-                    definition,
-                    parameters,
-                    ..
-                } => {
-                    let representation =
-                        ir_named_type_representation(db, definition, parameters)
-                            .ok_or_else(|| anyhow::format_err!("missing representation"))?;
-
-                    match representation {
-                        ir::TypeRepresentation::Intrinsic => {}
-                        ir::TypeRepresentation::Marker => {
-                            writeln!(w, "(type (struct))")?;
-                        }
-                        ir::TypeRepresentation::Structure(fields) => {
-                            write!(w, "(type (struct")?;
-                            for field in fields {
-                                write!(w, " (field {})", self.structural_ty(Cow::Owned(field)))?;
-                            }
-                            writeln!(w, "))")?;
-                        }
-                        ir::TypeRepresentation::Enumeration(_) => {
-                            writeln!(w, "(type (struct (field anyref) (field i32)))")?;
-                        }
-                    }
-                }
-                ir::Type::Tuple(elements) => {
-                    write!(w, "(type (struct")?;
-                    for element in elements {
-                        write!(w, " (field {})", self.structural_ty(Cow::Owned(element)))?;
-                    }
-                    writeln!(w, "))")?;
-                }
-                ty @ ir::Type::Function(_, _) => {
-                    write!(
-                        w,
-                        "(type (struct (field (ref null {})) (field anyref)))",
-                        offset(&mut self.types, Ty::Impl(Cow::Owned(ty))),
-                    )?;
-                    writeln!(w)?;
-                }
-                ir::Type::Parameter(node) => {
-                    return Err(anyhow::format_err!("parameter {node:?} not resolved"));
-                }
-            },
-            Ty::Variant(ty, index) => {
-                let ir::Type::Named {
-                    definition,
-                    parameters,
-                    ..
-                } = ty.clone()
-                else {
-                    return Err(anyhow::format_err!("variant type for non-enum {ty:?}"));
-                };
-
-                let ir::TypeRepresentation::Enumeration(variants) =
-                    ir_named_type_representation(db, definition, parameters)
-                        .ok_or_else(|| anyhow::format_err!("no representation for {ty:?}"))?
-                else {
-                    return Err(anyhow::format_err!("variant type for non-enum {ty:?}"));
-                };
-
-                let elements = variants
-                    .get(index)
-                    .ok_or_else(|| anyhow::format_err!("missing variant {index} for {ty:?}"))?
-                    .clone();
-
-                write!(w, "(type (struct")?;
-                for element in elements {
-                    write!(w, " (field {})", self.structural_ty(Cow::Owned(element)))?;
-                }
-                writeln!(w, "))")?;
-            }
-            Ty::Impl(ty) => {
-                let ir::Type::Function(inputs, output) = ty.into_owned() else {
-                    return Err(anyhow::format_err!("expected a function"));
-                };
-
-                write!(w, "(type (func")?;
-                write!(w, " (param anyref)")?;
-                for input in inputs {
-                    write!(w, " (param {})", self.structural_ty(Cow::Owned(input)))?;
-                }
-                writeln!(w, " (result {})))", self.structural_ty(Cow::Owned(*output)))?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn can_trace(&self, span: &Span) -> bool {
-        match self.options.trace {
-            TraceOptions::None => false,
-            TraceOptions::All => true,
-            TraceOptions::Files(files) => files.contains(&span.path.as_str()),
-        }
-    }
-
-    fn ty(
-        &mut self,
-        node: Node,
-        types: &'a BTreeMap<Node, ir::Type>,
-    ) -> Result<&'a ir::Type, CodegenError> {
-        types
-            .get(&node)
-            .ok_or_else(|| anyhow::format_err!("missing type for node {node:?}"))
-    }
-
-    fn structural_ty(&mut self, ty: Cow<'a, ir::Type>) -> String {
-        match ty.mangle_structural() {
-            Some(_) => format!("(ref null {})", offset(&mut self.types, Ty::Nominal(ty))),
-            None => match ty.as_ref() {
-                ir::Type::Named {
-                    intrinsic,
-                    representation,
-                    ..
-                } => {
-                    if let Some(representation) = representation {
-                        representation.to_string()
-                    } else if *intrinsic {
-                        String::from("externref")
-                    } else {
-                        unreachable!()
-                    }
-                }
-                _ => unreachable!(),
-            },
-        }
-    }
-
-    fn conversions(&mut self, ty: &'a ir::Type) -> (Option<String>, Option<String>) {
-        if let ir::Type::Named {
-            intrinsic,
-            representation,
-            ..
-        } = ty
-        {
-            if let Some("f64") = representation.as_deref() {
-                let number = offset(&mut self.types, Ty::Number);
-                return (
-                    Some(format!(
-                        "(ref.cast (ref null {number})) (struct.get {number} 0)"
-                    )),
-                    Some(format!("(struct.new {number})")),
-                );
-            } else if *intrinsic {
-                return (
-                    Some(String::from("(extern.convert_any)")),
-                    Some(String::from("(any.convert_extern)")),
-                );
-            }
-        }
-
-        (
-            Some(format!(
-                "(ref.cast {})",
-                self.structural_ty(Cow::Borrowed(ty))
-            )),
-            None,
-        )
-    }
-
-    fn import(&mut self, import: Import<'a>) -> usize {
-        offset(&mut self.functions, Func::Import(import))
-    }
-
-    fn import_for(
-        &mut self,
-        name: &str,
-        inputs: &[Node],
-        output: Node,
-        types: &'a BTreeMap<Node, ir::Type>,
-    ) -> Result<usize, CodegenError> {
-        let inputs = inputs
-            .iter()
-            .map(|input| self.ty(*input, types).map(Ok))
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let output = Ok(self.ty(output, types)?);
-
-        self.functions
-            .iter()
-            .position(|func| {
-                let Func::Import(import) = func else {
-                    return false;
-                };
-
-                import.name == name && import.inputs == inputs && import.output == Some(output)
-            })
-            .ok_or_else(|| anyhow::format_err!("missing import"))
-    }
-
-    fn string(&mut self, string: &str) -> Result<String, CodegenError> {
-        let offset = if let Some(&(offset, _)) = self.strings.iter().find(|(_, s)| string == *s) {
-            offset
-        } else {
-            let offset = self
-                .strings
-                .last()
-                .map_or(0, |(offset, s)| *offset + s.len());
-
-            self.strings.push((offset, string.to_string()));
-
-            offset
-        };
-
-        let index = self.import(Import::make_string());
-
-        Ok(format!(
-            "(call {index} (i32.const {}) (i32.const {}))",
-            offset,
-            string.len()
-        ))
-    }
-
-    fn write_memory(&self, w: &mut Writer) -> Result<(), CodegenError> {
-        const PAGE_SIZE: usize = 64 * 1024;
-
-        let pages = self
-            .strings
-            .last()
-            .map_or(1, |(offset, s)| (*offset + s.len()).div_ceil(PAGE_SIZE));
-
-        writeln!(w, "(memory (export \"memory\") {pages})")?;
-
-        for (offset, s) in &self.strings {
-            writeln!(w, "(data (i32.const {offset}) {s:?})")?;
-        }
-
-        Ok(())
-    }
+    Ok(())
 }
 
-impl fmt::Write for Writer {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        for c in s.chars() {
-            if c == '\n' {
-                self.line += 1;
-                self.column = 0;
-            } else {
-                self.column += 1;
-            }
-        }
-
-        self.inner.write_str(s)
-    }
-}
-
-fn offset<T: Eq>(map: &mut Vec<T>, value: T) -> usize {
-    if let Some(index) = map.iter().position(|x| *x == value) {
-        index
-    } else {
-        let index = map.len();
-        map.push(value);
-        index
-    }
+fn format_trace(span: &Span) -> String {
+    serde_json::json!({
+        "path": span.path,
+        "start": span.start,
+        "end": span.end,
+    })
+    .to_string()
 }

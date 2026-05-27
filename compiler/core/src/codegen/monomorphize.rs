@@ -11,7 +11,7 @@ use std::{
 
 #[derive(Debug, Default)]
 pub struct MonomorphizeCtx {
-    definitions: BTreeSet<ir::DefinitionKey>,
+    definitions: BTreeSet<ir::ConstantDefinitionKey>,
 }
 
 impl MonomorphizeCtx {
@@ -22,8 +22,8 @@ impl MonomorphizeCtx {
         parameters: &BTreeMap<Node, Ty>,
         bounds: BTreeMap<Node, ir::Instance>,
         generic: bool,
-    ) -> Result<ir::DefinitionKey, CodegenError> {
-        let key = ir::DefinitionKey {
+    ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
+        let key = ir::ConstantDefinitionKey {
             node: definition,
             substitutions: convert_substitutions(db, parameters)?,
             bounds,
@@ -36,7 +36,7 @@ impl MonomorphizeCtx {
         Ok(key)
     }
 
-    pub fn insert_monomorphized_key(&mut self, key: ir::DefinitionKey) {
+    pub fn insert_monomorphized_key(&mut self, key: ir::ConstantDefinitionKey) {
         self.definitions.insert(key);
     }
 }
@@ -47,13 +47,7 @@ fn convert_substitutions(
 ) -> Result<BTreeMap<Node, ir::Type>, CodegenError> {
     substitutions
         .iter()
-        .map(|(&parameter, ty)| {
-            Ok((
-                parameter,
-                ir_type(db, ty.clone())
-                    .ok_or_else(|| anyhow::format_err!("cannot codegen type {ty:?}"))?,
-            ))
-        })
+        .map(|(&parameter, ty)| Ok((parameter, ir_type(db, ty.clone())?)))
         .collect()
 }
 
@@ -61,8 +55,10 @@ impl MonomorphizeCtx {
     pub fn monomorphize_definitions(
         &mut self,
         db: &Db,
-    ) -> Result<impl Iterator<Item = (ir::DefinitionKey, ir::Definition)> + use<>, CodegenError>
-    {
+    ) -> Result<
+        impl Iterator<Item = (ir::ConstantDefinitionKey, ir::Definition)> + use<>,
+        CodegenError,
+    > {
         let mut cache = BTreeMap::new();
 
         for key in mem::take(&mut self.definitions) {
@@ -77,8 +73,8 @@ impl MonomorphizeCtx {
     fn monomorphize_definition(
         &mut self,
         db: &Db,
-        key: &ir::DefinitionKey,
-        cache: &mut BTreeMap<ir::DefinitionKey, Option<ir::Definition>>,
+        key: &ir::ConstantDefinitionKey,
+        cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Definition>>,
     ) -> Result<(), CodegenError> {
         if cache.contains_key(key) {
             return Ok(());
@@ -108,15 +104,21 @@ impl MonomorphizeCtx {
         for instruction in &mut instructions {
             instruction.traverse_mut(&mut |instruction| {
                 instruction.for_each_node(true, &mut |node| {
-                    if let Some(mut ty) = ir_type(db, Ty::Node(*node)) {
-                        ty.substitute(&key.substitutions);
-                        types.insert(*node, ty);
-                    }
-                });
+                    let mut ty = ir_type(db, Ty::Node(*node))?;
+                    ty.substitute(&key.substitutions);
+                    types.insert(*node, ty);
+                    Ok(())
+                })?;
 
                 if let ir::Instruction::Value { value, .. } = instruction {
                     match value {
                         ir::Value::Constant(constant_key) => {
+                            let ir::DefinitionKey::Constant(constant_key) = constant_key else {
+                                return Err(anyhow::format_err!(
+                                    "expected constant for definition key {constant_key:?}"
+                                ))?;
+                            };
+
                             self.monomorphize_key(
                                 db,
                                 constant_key,
@@ -140,7 +142,7 @@ impl MonomorphizeCtx {
                                 cache,
                             )?;
 
-                            *value = ir::Value::Constant(resolved_key);
+                            *value = ir::Value::Constant(ir::DefinitionKey::Constant(resolved_key));
                         }
                         _ => {}
                     }
@@ -163,10 +165,10 @@ impl MonomorphizeCtx {
     fn monomorphize_key(
         &mut self,
         db: &Db,
-        key: &mut ir::DefinitionKey,
+        key: &mut ir::ConstantDefinitionKey,
         substitutions: &BTreeMap<Node, ir::Type>,
         bounds: &BTreeMap<Node, ir::Instance>,
-        cache: &mut BTreeMap<ir::DefinitionKey, Option<ir::Definition>>,
+        cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Definition>>,
     ) -> Result<(), CodegenError> {
         for ty in key.substitutions.values_mut() {
             self.monomorphize_type(ty, substitutions)?;
@@ -186,26 +188,17 @@ impl MonomorphizeCtx {
         ty: &mut ir::Type,
         substitutions: &BTreeMap<Node, ir::Type>,
     ) -> Result<(), CodegenError> {
-        let mut success = true;
         ty.traverse_mut(&mut |ty| {
-            if !success {
-                return;
-            }
-
             if let ir::Type::Parameter(ref parameter) = *ty {
                 if let Some(substitution) = substitutions.get(parameter) {
                     *ty = substitution.clone();
                 } else {
-                    success = false;
+                    return Err(anyhow::format_err!("could not monomorphize {ty:?}"));
                 }
             }
-        });
 
-        if !success {
-            return Err(anyhow::format_err!("could not monomorphize {ty:?}"))?;
-        }
-
-        Ok(())
+            Ok(())
+        })
     }
 
     fn monomorphize_instance(
@@ -214,7 +207,7 @@ impl MonomorphizeCtx {
         instance: &mut ir::Instance,
         substitutions: &BTreeMap<Node, ir::Type>,
         bounds: &BTreeMap<Node, ir::Instance>,
-        cache: &mut BTreeMap<ir::DefinitionKey, Option<ir::Definition>>,
+        cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Definition>>,
     ) -> Result<(), CodegenError> {
         match instance {
             ir::Instance::Bound(bound) => {

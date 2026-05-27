@@ -148,11 +148,11 @@ impl CodegenValue for FunctionExpressionCodegen {
 
         ctx.instruction(ir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Function {
+            value: ir::Value::Function(ir::Function {
                 inputs: self.inputs.clone(),
-                captures,
                 instructions,
-            },
+                closure: Some((self.node, captures)),
+            }),
         });
 
         Ok(())

@@ -8,8 +8,6 @@ pub fn optimize(program: &mut ir::Program) {
     for definition in program.definitions.values_mut() {
         ctx.optimize_definition(definition);
     }
-
-    ctx.optimize_definition(&mut program.top_level);
 }
 
 #[derive(Debug, Default)]
@@ -56,11 +54,15 @@ impl OptimizeCtx {
 
                     // Update references to `second_node`
                     for statement in statements.iter_mut() {
-                        statement.for_each_node(true, &mut |node| {
-                            if *node == second_node {
-                                *node = first_node;
-                            }
-                        });
+                        statement
+                            .for_each_node(true, &mut |node| {
+                                if *node == second_node {
+                                    *node = first_node;
+                                }
+
+                                Ok(())
+                            })
+                            .unwrap();
                     }
 
                     self.progress = true;
@@ -128,11 +130,11 @@ impl OptimizeCtx {
                 let &mut ir::Instruction::Value {
                     node: function,
                     value:
-                        ir::Value::Function {
+                        ir::Value::Function(ir::Function {
                             ref inputs,
-                            captures: _,
                             ref mut instructions,
-                        },
+                            ..
+                        }),
                 } = first
                 else {
                     break;
@@ -149,16 +151,21 @@ impl OptimizeCtx {
                 | &mut ir::Instruction::ReturnCall {
                     function: called_function,
                     inputs: ref called_inputs,
+                    ..
                 } = second
                     && called_function == function
                 {
                     for instruction in instructions.iter_mut() {
                         // Update references to inputs
-                        instruction.for_each_node(true, &mut |node| {
-                            if let Some(index) = inputs.iter().position(|input| input == node) {
-                                *node = called_inputs[index];
-                            }
-                        });
+                        instruction
+                            .for_each_node(true, &mut |node| {
+                                if let Some(index) = inputs.iter().position(|input| input == node) {
+                                    *node = called_inputs[index];
+                                }
+
+                                Ok(())
+                            })
+                            .unwrap();
 
                         // Update references to return value
                         if let ir::Instruction::Value { node, .. } = *second
@@ -198,7 +205,11 @@ impl OptimizeCtx {
         {
             statements.pop();
             statements.pop();
-            statements.push(ir::Instruction::ReturnCall { function, inputs });
+            statements.push(ir::Instruction::ReturnCall {
+                function,
+                inputs,
+                value,
+            });
             self.progress = true;
         }
     }

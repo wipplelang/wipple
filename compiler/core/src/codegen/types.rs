@@ -1,5 +1,5 @@
 use crate::{
-    codegen::ir,
+    codegen::{CodegenError, ir},
     db::{Db, Node},
     typecheck::{
         groups::update_type,
@@ -12,8 +12,8 @@ use crate::{
 };
 use std::collections::BTreeMap;
 
-pub fn ir_type(db: &Db, ty: Ty) -> Option<ir::Type> {
-    ir_type_inner(db, ty, &BTreeMap::new())
+pub fn ir_type(db: &Db, ty: Ty) -> Result<ir::Type, CodegenError> {
+    ir_type_inner(db, ty, &BTreeMap::new()).ok_or_else(|| anyhow::format_err!("missing IR type"))
 }
 
 fn ir_type_inner(db: &Db, ty: Ty, substitutions: &BTreeMap<Node, ir::Type>) -> Option<ir::Type> {
@@ -29,15 +29,9 @@ fn ir_type_inner(db: &Db, ty: Ty, substitutions: &BTreeMap<Node, ir::Type>) -> O
                 .map(|ty| ir_type_inner(db, ty, substitutions))
                 .collect::<Option<_>>()?;
 
-            let TypeDefinition { attributes, .. } = db
-                .get(definition)
-                .and_then(|Defined(definition)| definition.downcast_ref())?;
-
             Some(ir::Type::Named {
                 definition,
                 parameters,
-                intrinsic: attributes.intrinsic,
-                representation: attributes.representation.clone(),
             })
         }
         TyTag::Function => {
@@ -81,29 +75,34 @@ fn ir_type_inner(db: &Db, ty: Ty, substitutions: &BTreeMap<Node, ir::Type>) -> O
 }
 
 impl ir::Type {
-    pub fn traverse_mut(&mut self, f: &mut dyn FnMut(&mut Self)) {
-        f(self);
+    pub fn traverse_mut(
+        &mut self,
+        f: &mut dyn FnMut(&mut Self) -> Result<(), CodegenError>,
+    ) -> Result<(), CodegenError> {
+        f(self)?;
 
         match self {
             ir::Type::Named { parameters, .. } => {
                 for parameter in parameters {
-                    parameter.traverse_mut(f);
+                    parameter.traverse_mut(f)?;
                 }
             }
             ir::Type::Tuple(elements) => {
                 for element in elements {
-                    element.traverse_mut(f);
+                    element.traverse_mut(f)?;
                 }
             }
             ir::Type::Function(inputs, output) => {
                 for input in inputs {
-                    input.traverse_mut(f);
+                    input.traverse_mut(f)?;
                 }
 
-                output.traverse_mut(f);
+                output.traverse_mut(f)?;
             }
             ir::Type::Parameter(_) => {}
         }
+
+        Ok(())
     }
 
     pub fn substitute(&mut self, substitutions: &BTreeMap<Node, ir::Type>) {
@@ -113,7 +112,10 @@ impl ir::Type {
             {
                 *ty = substitution.clone();
             }
-        });
+
+            Ok(())
+        })
+        .unwrap();
     }
 }
 
@@ -121,14 +123,15 @@ pub fn ir_named_type_representation(
     db: &Db,
     definition: Node,
     parameters: Vec<ir::Type>,
-) -> Option<ir::TypeRepresentation> {
+) -> Result<ir::TypeRepresentation, CodegenError> {
     let TypeDefinition {
         attributes,
         parameters: type_parameters,
         ..
     } = db
         .get(definition)
-        .and_then(|Defined(definition)| definition.downcast_ref())?;
+        .and_then(|Defined(definition)| definition.downcast_ref())
+        .ok_or_else(|| anyhow::format_err!("not a type definition"))?;
 
     let substitutions = type_parameters
         .iter()
@@ -136,8 +139,10 @@ pub fn ir_named_type_representation(
         .zip(parameters)
         .collect::<BTreeMap<_, _>>();
 
-    Some(if attributes.intrinsic {
-        ir::TypeRepresentation::Intrinsic
+    Ok(if attributes.intrinsic {
+        ir::TypeRepresentation::Intrinsic {
+            representation: attributes.representation.clone(),
+        }
     } else if let Some(StructureFields { fields, .. }) = db.get(definition) {
         ir::TypeRepresentation::Structure(
             fields
@@ -145,9 +150,9 @@ pub fn ir_named_type_representation(
                 .map(|field| {
                     let mut ty = ir_type(db, Ty::Node(*field))?;
                     ty.substitute(&substitutions);
-                    Some(ty)
+                    Ok(ty)
                 })
-                .collect::<Option<_>>()?,
+                .collect::<Result<Vec<_>, CodegenError>>()?,
         )
     } else if let Some(EnumerationVariants(variants)) = db.get(definition) {
         ir::TypeRepresentation::Enumeration(
@@ -159,11 +164,11 @@ pub fn ir_named_type_representation(
                         .map(|element| {
                             let mut ty = ir_type(db, Ty::Node(*element))?;
                             ty.substitute(&substitutions);
-                            Some(ty)
+                            Ok(ty)
                         })
                         .collect()
                 })
-                .collect::<Option<_>>()?,
+                .collect::<Result<Vec<_>, CodegenError>>()?,
         )
     } else {
         ir::TypeRepresentation::Marker

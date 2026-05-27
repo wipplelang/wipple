@@ -158,7 +158,7 @@ impl CodegenValue for VariableExpressionCodegen {
 
                 ctx.instruction(ir::Instruction::Value {
                     node: *node,
-                    value: ir::Value::Constant(key),
+                    value: ir::Value::Constant(ir::DefinitionKey::Constant(key)),
                 });
             }
         }

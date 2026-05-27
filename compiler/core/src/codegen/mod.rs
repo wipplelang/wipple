@@ -1,6 +1,5 @@
 mod imports;
 pub mod ir;
-pub mod mangle;
 pub mod monomorphize;
 mod optimize;
 pub mod types;
@@ -97,7 +96,7 @@ impl CodegenCtx {
         parameters: &BTreeMap<Node, Ty>,
         bounds: BTreeMap<Node, ir::Instance>,
         generic: bool,
-    ) -> Result<ir::DefinitionKey, CodegenError> {
+    ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
         self.monomorphize_ctx
             .get_or_insert(db, definition, parameters, bounds, generic)
     }
@@ -109,7 +108,7 @@ impl CodegenCtx {
         parameters: &BTreeMap<Node, Ty>,
         bounds: BTreeMap<Node, Result<ResolvedBound, UnresolvedBound>>,
         generic: bool,
-    ) -> Result<ir::DefinitionKey, CodegenError> {
+    ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
         let bounds = bounds
             .into_iter()
             .map(|(node, bound)| {
@@ -156,22 +155,29 @@ pub fn codegen(db: &Db, statements: &[Node], lib: &[Node]) -> Result<ir::Program
         ctx.codegen(db, statement)?;
     }
 
-    program.top_level.instructions = ctx.pop_instructions();
+    let mut top_level = ir::Definition {
+        instructions: ctx.pop_instructions(),
+        ..Default::default()
+    };
 
-    for instruction in &mut program.top_level.instructions {
+    for instruction in &mut top_level.instructions {
         instruction.for_each_node(true, &mut |node| {
-            if let Some(ty) = ir_type(db, Ty::Node(*node)) {
-                program.top_level.types.insert(*node, ty);
-            }
-        });
+            top_level.types.insert(*node, ir_type(db, Ty::Node(*node))?);
+            Ok(())
+        })?;
     }
 
-    program.definitions = ctx.monomorphize_ctx.monomorphize_definitions(db)?.collect();
+    for (key, definition) in ctx.monomorphize_ctx.monomorphize_definitions(db)? {
+        program
+            .definitions
+            .insert(ir::DefinitionKey::Constant(key), definition);
+    }
 
-    for definition in [&mut program.top_level]
-        .into_iter()
-        .chain(program.definitions.values_mut())
-    {
+    program
+        .definitions
+        .insert(ir::DefinitionKey::TopLevel, top_level);
+
+    for definition in program.definitions.values_mut() {
         collect_imports(definition)?;
     }
 

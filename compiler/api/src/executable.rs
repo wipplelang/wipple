@@ -8,7 +8,7 @@ impl CompileResult {
     pub fn executable(&self) -> Option<Box<[u8]>> {
         let program = codegen(&self.db, &self.statements, &self.lib_statements).ok()?;
 
-        let wat = wasm::write_to_string(
+        let wasm = wasm::to_bytes(
             &self.db,
             &program,
             codegen::Options {
@@ -18,7 +18,7 @@ impl CompileResult {
         )
         .ok()?;
 
-        let wasm = wat::parse_str(wat).ok()?;
+        wasm::validate(&wasm).ok()?;
 
         Some(wasm.into_boxed_slice())
     }

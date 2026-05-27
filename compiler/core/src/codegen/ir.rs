@@ -7,12 +7,17 @@ use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct Program {
-    pub top_level: Definition,
     pub definitions: BTreeMap<DefinitionKey, Definition>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct DefinitionKey {
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum DefinitionKey {
+    TopLevel,
+    Constant(ConstantDefinitionKey),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct ConstantDefinitionKey {
     pub node: Node,
     pub substitutions: BTreeMap<Node, Type>,
     pub bounds: BTreeMap<Node, Instance>,
@@ -33,31 +38,29 @@ pub struct Import {
     pub output: Type,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Type {
     Named {
         definition: Node,
         parameters: Vec<Type>,
-        intrinsic: bool,
-        representation: Option<Str>,
     },
     Tuple(Vec<Type>),
     Function(Vec<Type>, Box<Type>),
     Parameter(Node),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TypeRepresentation {
-    Intrinsic,
+    Intrinsic { representation: Option<Str> },
     Marker,
     Structure(Vec<Type>),
     Enumeration(Vec<Vec<Type>>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Instance {
     Bound(Node),
-    Definition(DefinitionKey),
+    Definition(ConstantDefinitionKey),
 }
 
 #[derive(Debug, Clone)]
@@ -73,6 +76,7 @@ pub enum Instruction {
     ReturnCall {
         function: Node,
         inputs: Vec<Node>,
+        value: Node,
     },
     Trace {
         span: Span,
@@ -91,11 +95,7 @@ pub enum Value {
         inputs: Vec<Node>,
     },
     Constant(DefinitionKey),
-    Function {
-        inputs: Vec<Node>,
-        captures: Vec<Node>,
-        instructions: Vec<Instruction>,
-    },
+    Function(Function),
     Field {
         input: Node,
         field_name: String,
@@ -129,6 +129,13 @@ pub enum Value {
 }
 
 #[derive(Debug, Clone)]
+pub struct Function {
+    pub inputs: Vec<Node>,
+    pub instructions: Vec<Instruction>,
+    pub closure: Option<(Node, Vec<Node>)>,
+}
+
+#[derive(Debug, Clone)]
 pub enum Condition {
     Or(Vec<Vec<Condition>>),
     EqualToNumber {
@@ -156,7 +163,11 @@ pub enum Condition {
 }
 
 impl Instruction {
-    pub fn for_each_node(&mut self, traverse_functions: bool, f: &mut dyn FnMut(&mut Node)) {
+    pub fn for_each_node(
+        &mut self,
+        traverse_functions: bool,
+        f: &mut dyn FnMut(&mut Node) -> Result<(), CodegenError>,
+    ) -> Result<(), CodegenError> {
         match self {
             Instruction::If {
                 node,
@@ -164,64 +175,66 @@ impl Instruction {
                 else_branch,
             } => {
                 if let Some(node) = node {
-                    f(node);
+                    f(node)?;
                 }
 
                 for (conditions, instructions, then_node) in branches {
                     for condition in conditions {
                         for node in condition.nodes_mut() {
-                            f(node);
+                            f(node)?;
                         }
                     }
 
                     for instruction in instructions {
-                        instruction.for_each_node(traverse_functions, f);
+                        instruction.for_each_node(traverse_functions, f)?;
                     }
 
                     if let Some(node) = then_node {
-                        f(node);
+                        f(node)?;
                     }
                 }
 
                 if let Some((instructions, else_node)) = else_branch {
                     for instruction in instructions {
-                        instruction.for_each_node(traverse_functions, f);
+                        instruction.for_each_node(traverse_functions, f)?;
                     }
 
                     if let Some(node) = else_node {
-                        f(node);
+                        f(node)?;
                     }
                 }
             }
-            Instruction::Return { value } => f(value),
-            Instruction::ReturnCall { function, inputs } => {
-                f(function);
+            Instruction::Return { value } => f(value)?,
+            Instruction::ReturnCall {
+                function,
+                inputs,
+                value: node,
+            } => {
+                f(function)?;
 
                 for input in inputs {
-                    f(input);
+                    f(input)?;
                 }
+
+                f(node)?;
             }
             Instruction::Trace { .. } => {}
             Instruction::Value { node, value } => {
-                f(node);
+                f(node)?;
 
-                if traverse_functions
-                    && let Value::Function {
-                        inputs,
-                        instructions,
-                        ..
-                    } = value
-                {
-                    for input in inputs {
-                        f(input);
+                if traverse_functions && let Value::Function(function) = value {
+                    for input in &mut function.inputs {
+                        f(input)?;
                     }
 
-                    for instruction in instructions {
-                        instruction.for_each_node(true, f);
+                    for instruction in &mut function.instructions {
+                        instruction.for_each_node(true, f)?;
                     }
                 }
             }
         }
+
+        Ok(())
     }
 
     pub fn traverse_mut(
@@ -252,8 +265,8 @@ impl Instruction {
             Instruction::ReturnCall { .. } => {}
             Instruction::Trace { .. } => {}
             Instruction::Value { value, .. } => {
-                if let Value::Function { instructions, .. } = value {
-                    for instruction in instructions {
+                if let Value::Function(function) = value {
+                    for instruction in &mut function.instructions {
                         instruction.traverse_mut(f)?;
                     }
                 }
@@ -289,8 +302,8 @@ pub fn traverse_instructions(
             Instruction::ReturnCall { .. } => {}
             Instruction::Trace { .. } => {}
             Instruction::Value { value, .. } => {
-                if let Value::Function { instructions, .. } = value {
-                    traverse_instructions(instructions, f)?;
+                if let Value::Function(function) = value {
+                    traverse_instructions(&mut function.instructions, f)?;
                 }
             }
         }

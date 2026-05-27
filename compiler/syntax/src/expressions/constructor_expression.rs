@@ -217,7 +217,7 @@ impl CodegenValue for ConstructorExpressionCodegen {
                     ir::Instance::Definition(key) => {
                         ctx.instruction(ir::Instruction::Value {
                             node: *node,
-                            value: ir::Value::Constant(key),
+                            value: ir::Value::Constant(ir::DefinitionKey::Constant(key)),
                         });
                     }
                 }
@@ -239,9 +239,8 @@ impl CodegenValue for ConstructorExpressionCodegen {
                 } else {
                     ctx.instruction(ir::Instruction::Value {
                         node: *node,
-                        value: ir::Value::Function {
+                        value: ir::Value::Function(ir::Function {
                             inputs: elements.clone(),
-                            captures: Vec::new(),
                             instructions: vec![
                                 ir::Instruction::Value {
                                     node: *result,
@@ -252,7 +251,8 @@ impl CodegenValue for ConstructorExpressionCodegen {
                                 },
                                 ir::Instruction::Return { value: *result },
                             ],
-                        },
+                            closure: Some((*node, Vec::new())),
+                        }),
                     });
                 }
             }

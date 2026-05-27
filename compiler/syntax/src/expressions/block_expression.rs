@@ -134,11 +134,11 @@ impl CodegenValue for BlockExpressionCodegen {
         let instructions = ctx.pop_instructions();
         ctx.instruction(ir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Function {
+            value: ir::Value::Function(ir::Function {
                 inputs: Vec::new(),
-                captures,
                 instructions,
-            },
+                closure: Some((self.node, captures)),
+            }),
         });
 
         Ok(())
