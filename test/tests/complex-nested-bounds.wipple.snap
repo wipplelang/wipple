@@ -46,7 +46,7 @@ Facts (layer 2):
 `todo` (complex-nested-bounds.wipple:4:26-4:30) (VariableExpression):
   has type `Boolean -> Boolean`
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:14)
+  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:27:1-27:14)
 
 `instance (Not (a -> b)) where (Not b)` (complex-nested-bounds.wipple:5:1-5:38) (InstanceDefinition):
   has definition constraints

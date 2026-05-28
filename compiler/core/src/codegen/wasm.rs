@@ -1,12 +1,11 @@
-#![allow(clippy::too_many_arguments)]
-
 use crate::{
     codegen::{
-        CodegenError, Options, TraceOptions, imports::import_is_wasm_instruction, ir,
+        CodegenError, Options, TraceOptions, imports::import_as_wasm_instruction, ir,
         types::ir_named_type_representation,
     },
     db::{Db, Node},
-    span::Span,
+    facts::Syntax,
+    span::{Span, Str},
     visit::IsMutated,
 };
 use std::{
@@ -17,20 +16,15 @@ use std::{
 pub use wasmparser::validate;
 
 #[derive(Debug, Default)]
-struct Module {
-    types: Types,
-    imports: Imports,
-    functions: Functions,
-    strings: Strings,
-    exports: Exports,
-    implementations: Implementations,
+pub struct WasmResult {
+    pub wasm: Vec<u8>,
 }
 
-pub fn to_bytes(
+pub fn to_wasm(
     db: &Db,
     program: &ir::Program,
     options: Options<'_>,
-) -> Result<Vec<u8>, CodegenError> {
+) -> Result<WasmResult, CodegenError> {
     let mut module = Module::default();
     collect_types(db, program, &mut module.types)?;
     collect_imports(
@@ -53,6 +47,57 @@ pub fn to_bytes(
     module.types.finish();
     module.strings.finish();
 
+    let mut wasm = wasm_encoder::Module::new();
+    wasm.section(&module.types.type_section);
+    wasm.section(&module.imports.import_section);
+    wasm.section(&module.functions.function_section);
+    wasm.section(&module.strings.memory_section);
+    wasm.section(&module.exports.export_section);
+    wasm.section(&module.functions.elem_section);
+
+    let mut dwarf = gimli::write::Dwarf::new();
+
+    let dwarf_encoding = gimli::Encoding {
+        address_size: 4,
+        format: gimli::Format::Dwarf32,
+        version: 5,
+    };
+
+    let mut dwarf_units = HashMap::new();
+    for &file in &program.source_files {
+        if let Some(Syntax(syntax)) = db.get(file) {
+            let span = syntax.get(db).span(db);
+
+            if dwarf_units.contains_key(&span.path) {
+                continue;
+            }
+
+            let file_string = gimli::write::LineString::String(span.path.as_bytes().to_vec());
+
+            let mut unit = gimli::write::Unit::new(
+                dwarf_encoding,
+                gimli::write::LineProgram::new(
+                    dwarf_encoding,
+                    gimli::LineEncoding::default(),
+                    gimli::write::LineString::String(Vec::from(b".")),
+                    None,
+                    file_string.clone(),
+                    None,
+                ),
+            );
+
+            let file_id = unit.line_program.add_file(
+                file_string,
+                unit.line_program.default_directory(),
+                None,
+            );
+
+            let unit_id = dwarf.units.add(unit);
+
+            dwarf_units.insert(span.path.clone(), (file_id, unit_id));
+        }
+    }
+
     for (key, node, function, _) in &module.functions.entries {
         let definition = program
             .definitions
@@ -73,48 +118,76 @@ pub fn to_bytes(
         let mut wasm = wasm_encoder::Function::new(locals.locals.iter().map(|&ty| (1, ty)));
 
         let mut ctx = WriteContext {
+            db,
             key,
             definition,
             module: &module,
             locals: &locals,
             options,
-            wasm: &mut wasm,
+            offset: module.implementations.code_section.byte_len(),
+            instructions: &mut wasm,
+            dwarf: &mut dwarf,
+            dwarf_units: &mut dwarf_units,
+            span: None,
+            dwarf_lines: None,
         };
 
-        ctx.write_function(function)?;
+        ctx.write(function)?;
         module.implementations.insert(key, *node, wasm)?;
     }
 
-    let mut wasm = wasm_encoder::Module::new();
-    wasm.section(&module.types.type_section);
-    wasm.section(&module.imports.import_section);
-    wasm.section(&module.functions.function_section);
-    wasm.section(&module.strings.memory_section);
-    wasm.section(&module.exports.export_section);
-    wasm.section(&module.functions.elem_section);
     wasm.section(&module.implementations.code_section);
     wasm.section(&module.strings.data_section);
 
-    Ok(wasm.finish())
+    let mut sections =
+        gimli::write::Sections::new(gimli::write::EndianVec::new(gimli::LittleEndian));
+
+    dwarf.write(&mut sections)?;
+
+    sections
+        .for_each(|section, data| {
+            wasm.section(&wasm_encoder::CustomSection {
+                name: Cow::Borrowed(section.name()),
+                data: Cow::Borrowed(data.slice()),
+            });
+
+            Ok::<_, ()>(())
+        })
+        .unwrap();
+
+    Ok(WasmResult {
+        wasm: wasm.finish(),
+    })
+}
+
+#[derive(Debug, Default)]
+struct Module {
+    types: Types,
+    imports: Imports,
+    functions: Functions,
+    strings: Strings,
+    exports: Exports,
+    implementations: Implementations,
 }
 
 #[derive(Debug)]
 struct WriteContext<'a> {
+    db: &'a Db,
     key: &'a ir::DefinitionKey,
     definition: &'a ir::Definition,
     module: &'a Module,
     locals: &'a Locals,
     options: Options<'a>,
-    wasm: &'a mut wasm_encoder::Function,
+    offset: usize,
+    instructions: &'a mut wasm_encoder::Function,
+    dwarf: &'a mut gimli::write::Dwarf,
+    dwarf_units: &'a mut HashMap<Str, (gimli::write::FileId, gimli::write::UnitId)>,
+    dwarf_lines: Option<(gimli::write::UnitId, gimli::write::UnitEntryId, u64)>,
+    span: Option<&'a Span>,
 }
 
 impl WriteContext<'_> {
-    fn write_instruction(&mut self, instruction: &wasm_encoder::Instruction<'_>) {
-        let _offset = self.wasm.byte_len(); // TODO
-        self.wasm.instruction(instruction);
-    }
-
-    fn write_function(&mut self, function: &ir::Function) -> Result<(), CodegenError> {
+    fn write(&mut self, function: &ir::Function) -> Result<(), CodegenError> {
         if let Some((closure, captures)) = &function.closure {
             for (index, &capture) in captures.iter().enumerate() {
                 let env_index = 0;
@@ -148,11 +221,72 @@ impl WriteContext<'_> {
         self.write_instruction(&wasm_encoder::Instruction::Return);
         self.write_instruction(&wasm_encoder::Instruction::End);
 
+        // End the DWARF entry
+        if let Some((unit_id, subprogram, start_offset)) = self.dwarf_lines.take() {
+            let unit = self.dwarf.units.get_mut(unit_id);
+
+            let offset = self.offset + self.instructions.byte_len();
+            unit.line_program.end_sequence(offset as u64);
+            unit.get_mut(subprogram).set(
+                gimli::DW_AT_high_pc,
+                gimli::write::AttributeValue::Data8(offset as u64 - start_offset),
+            );
+        }
+
         Ok(())
+    }
+
+    fn get_dwarf(&mut self, span: &Span) -> Option<(gimli::write::FileId, gimli::write::UnitId)> {
+        let &(file_id, unit_id) = self.dwarf_units.get(&span.path)?;
+
+        // Add a DWARF entry for the surrounding function if needed
+        if self.dwarf_lines.is_none() {
+            let unit = self.dwarf.units.get_mut(unit_id);
+            let root_id = unit.root();
+            let subprogram = unit.add(root_id, gimli::DW_TAG_subprogram);
+
+            let start_offset = (self.offset + self.instructions.byte_len()) as u64;
+
+            let entry = unit.get_mut(subprogram);
+            entry.set(
+                gimli::DW_AT_low_pc,
+                gimli::write::AttributeValue::Address(gimli::write::Address::Constant(
+                    start_offset,
+                )),
+            );
+
+            self.dwarf_lines = Some((unit_id, subprogram, start_offset));
+        }
+
+        Some((file_id, unit_id))
+    }
+
+    fn write_instruction(&mut self, instruction: &wasm_encoder::Instruction<'_>) {
+        // Write DWARF line info
+        if let Some(span) = self.span
+            && let Some((file_id, unit_id)) = self.get_dwarf(span)
+        {
+            let offset = (self.offset + self.instructions.byte_len()) as u64;
+
+            let unit = self.dwarf.units.get_mut(unit_id);
+            unit.line_program.row().address_offset = offset;
+            unit.line_program.row().file = file_id;
+            unit.line_program.row().line = span.start.line as u64;
+            unit.line_program.row().column = span.start.column as u64;
+            unit.line_program.generate_row();
+        }
+
+        self.instructions.instruction(instruction);
     }
 
     fn write_instructions(&mut self, instructions: &[ir::Instruction]) -> Result<(), CodegenError> {
         for instruction in instructions {
+            if let Some(node) = instruction.primary_node()
+                && let Some(Syntax(syntax)) = self.db.get(node)
+            {
+                self.span = Some(syntax.get(self.db).span(self.db));
+            }
+
             match instruction {
                 ir::Instruction::If {
                     node,
@@ -623,9 +757,7 @@ impl WriteContext<'_> {
                     ));
                 }
 
-                if import_is_wasm_instruction(name) {
-                    self.write_wasm_instruction(name)?;
-                } else {
+                if !self.write_wasm_instruction(name)? {
                     let input_tys = inputs
                         .iter()
                         .map(|input| {
@@ -889,22 +1021,13 @@ impl WriteContext<'_> {
         Ok(())
     }
 
-    fn write_wasm_instruction(&mut self, name: &str) -> Result<(), CodegenError> {
-        let instruction = match name {
-            "f64.add" => wasm_encoder::Instruction::F64Add,
-            "f64.sub" => wasm_encoder::Instruction::F64Sub,
-            "f64.mul" => wasm_encoder::Instruction::F64Mul,
-            "f64.div" => wasm_encoder::Instruction::F64Div,
-            "f64.floor" => wasm_encoder::Instruction::F64Floor,
-            "f64.ceil" => wasm_encoder::Instruction::F64Ceil,
-            "f64.sqrt" => wasm_encoder::Instruction::F64Sqrt,
-            "f64.neg" => wasm_encoder::Instruction::F64Neg,
-            _ => return Err(anyhow::format_err!("unsupported wasm instruction {name:?}")),
-        };
-
-        self.write_instruction(&instruction);
-
-        Ok(())
+    fn write_wasm_instruction(&mut self, name: &str) -> Result<bool, CodegenError> {
+        if let Some(instruction) = import_as_wasm_instruction(name) {
+            self.write_instruction(&instruction);
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 
     fn write_string(&mut self, string: &str) -> Result<(), CodegenError> {
@@ -1591,7 +1714,7 @@ fn collect_imports(
                     value: ir::Value::Runtime { name, inputs },
                 } = instruction
                 {
-                    if import_is_wasm_instruction(name) {
+                    if import_as_wasm_instruction(name).is_some() {
                         return Ok(());
                     }
 

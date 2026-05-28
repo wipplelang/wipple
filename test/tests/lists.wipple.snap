@@ -156,7 +156,7 @@ Facts (layer 2):
 `unreachable` (lists.wipple:5:30-5:41) (VisitAs):
   has type `List Number`
   is an expression
-  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:31:1-31:21)
+  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:33:1-33:21)
 
 `unreachable` (lists.wipple:5:30-5:41) (BlockExpression):
   has type `{List Number}` (lists.wipple:5:30-5:41)
@@ -226,7 +226,7 @@ Facts (layer 2):
 `unreachable` (lists.wipple:6:27-6:38) (VisitAs):
   has type `List Number`
   is an expression
-  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:31:1-31:21)
+  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:33:1-33:21)
 
 `unreachable` (lists.wipple:6:27-6:38) (BlockExpression):
   has type `{List Number}` (lists.wipple:6:27-6:38)

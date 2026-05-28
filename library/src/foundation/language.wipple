@@ -17,8 +17,10 @@ instance (As value value) : value -> value
 
 error :: String -> value
 error : message -> do {
+  show ("error: _" message)
+
   [intrinsic] Error : type
-  (intrinsic "crash" message) :: Error
+  (intrinsic "unreachable") :: Error
   error message -- will never be reached
 }
 

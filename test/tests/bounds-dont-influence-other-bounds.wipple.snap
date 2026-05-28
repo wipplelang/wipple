@@ -120,7 +120,7 @@ Facts (layer 2):
 `todo` (bounds-dont-influence-other-bounds.wipple:7:5-7:9) (VariableExpression):
   has type `(a; b)` (bounds-dont-influence-other-bounds.wipple:6:7-6:11)
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:14)
+  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:27:1-27:14)
 
 `-- `B` should not be inferred to be `Number`
 (f :: (Number; _))` (bounds-dont-influence-other-bounds.wipple:9:1-10:19) (ExpressionStatement):

@@ -21,7 +21,6 @@ use std::{collections::BTreeMap, fmt::Debug};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Options<'a> {
-    pub sourcemap: bool,
     pub trace: TraceOptions<'a>,
 }
 
@@ -150,6 +149,9 @@ pub fn codegen(db: &Db, statements: &[Node], lib: &[Node]) -> Result<ir::Program
     let mut ctx = CodegenCtx::new();
 
     let mut program = ir::Program::default();
+    program
+        .source_files
+        .extend(statements.iter().chain(lib).copied());
 
     for &statement in statements.iter().chain(lib) {
         ctx.codegen(db, statement)?;

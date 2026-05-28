@@ -8,15 +8,15 @@ impl CompileResult {
     pub fn executable(&self) -> Option<Box<[u8]>> {
         let program = codegen(&self.db, &self.statements, &self.lib_statements).ok()?;
 
-        let wasm = wasm::to_bytes(
+        let wasm = wasm::to_wasm(
             &self.db,
             &program,
             codegen::Options {
                 trace: codegen::TraceOptions::Files(&[&self.path]),
-                ..Default::default()
             },
         )
-        .ok()?;
+        .ok()?
+        .wasm;
 
         wasm::validate(&wasm).ok()?;
 

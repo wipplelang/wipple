@@ -20,7 +20,10 @@ use std::{
 use wipple_core::{
     LibraryArtifact, TopLevel,
     ast::AstKey,
-    codegen::{self, codegen, wasm},
+    codegen::{
+        self, codegen,
+        wasm::{self, WasmResult},
+    },
     db::{Db, DbRef, Node},
     default_filter,
     visit::definitions::Defined,
@@ -83,19 +86,33 @@ struct CompileOptions {
     #[clap(long)]
     trace: bool,
 
+    #[clap(long)]
+    source_map: bool,
+
     paths: Vec<PathBuf>,
+}
+
+fn make_temp_dir() -> io::Result<PathBuf> {
+    Ok(tempfile::Builder::new().prefix("wipple").tempdir()?.keep())
 }
 
 fn main() -> anyhow::Result<()> {
     match Args::parse() {
         Args::Compile { output, options } => {
-            if let Some(wasm) = compile(&options, output.as_deref())? {
-                wasm::validate(&wasm)?;
-            }
+            compile(&options, output.as_deref())?;
         }
         Args::Run { output, options } => {
-            if let Some(wasm) = compile(&options, None)? {
-                run(&wasm, output.as_deref(), |cmd| cmd)?;
+            let (output, cleanup) = match output.as_deref() {
+                Some(path) => (path.to_path_buf(), false),
+                None => (make_temp_dir()?, true),
+            };
+
+            if compile(&options, Some(&output))? {
+                run(&output, |cmd| cmd)?;
+            }
+
+            if cleanup {
+                fs::remove_dir_all(&output)?;
             }
         }
         Args::Test { options } => {
@@ -159,14 +176,11 @@ fn setup(
     Ok((db, top_level, statements))
 }
 
-fn compile(
-    options: &CompileOptions,
-    output_path: Option<&Path>,
-) -> anyhow::Result<Option<Vec<u8>>> {
+fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Result<bool> {
     let (lib_db, mut top_level, lib_statements) = setup(options, true, io::stdout())?;
 
     if options.paths.is_empty() {
-        return Ok(None);
+        return Ok(false);
     }
 
     let mut db = Db::new(Some(DbRef::new(lib_db)));
@@ -197,7 +211,7 @@ fn compile(
 
     let program = codegen(&db, &statements, &lib_statements)?;
 
-    let wasm = wasm::to_bytes(
+    let wasm_result = wasm::to_wasm(
         &db,
         &program,
         codegen::Options {
@@ -206,13 +220,8 @@ fn compile(
             } else {
                 codegen::TraceOptions::None
             },
-            ..Default::default()
         },
     )?;
-
-    if let Some(output_path) = output_path {
-        fs::write(output_path, &wasm)?;
-    }
 
     if let Some(path) = &options.lib_artifact {
         if path.extension().and_then(|ext| ext.to_str()) != Some("bin") {
@@ -231,46 +240,44 @@ fn compile(
         fs::write(path, bytes)?;
     }
 
-    Ok(Some(wasm))
+    write_wasm(&wasm_result, output_path)?;
+
+    Ok(true)
+}
+
+fn write_wasm(wasm_result: &WasmResult, output_path: Option<&Path>) -> anyhow::Result<()> {
+    if let Some(path) = output_path {
+        fs::create_dir_all(path)?;
+
+        fs::write(path.join("main.wasm"), &wasm_result.wasm)?;
+
+        macro_rules! copy {
+            ($name:literal) => {
+                fs::write(
+                    path.join($name),
+                    include_bytes!(concat!("../node-runtime/", $name)),
+                )?;
+            };
+        }
+
+        copy!("package.json");
+        copy!("runtime.js");
+        copy!("index.js");
+    }
+
+    wasm::validate(&wasm_result.wasm)?;
+
+    Ok(())
 }
 
 fn run(
-    wasm: &[u8],
-    path: Option<&Path>,
+    path: &Path,
     setup: impl FnOnce(&mut process::Command) -> &mut process::Command,
 ) -> anyhow::Result<process::Output> {
-    let (path, cleanup) = match path {
-        Some(path) => {
-            fs::create_dir_all(path)?;
-            (path.to_path_buf(), false)
-        }
-        None => {
-            let tempdir = tempfile::Builder::new().prefix("wipple").tempdir()?;
-            (tempdir.keep(), true)
-        }
-    };
-
-    fs::write(path.join("main.wasm"), wasm)?;
-
-    wasm::validate(wasm)?;
-
-    macro_rules! copy {
-        ($name:literal) => {
-            fs::write(
-                path.join($name),
-                include_bytes!(concat!("../node-runtime/", $name)),
-            )?;
-        };
-    }
-
-    copy!("package.json");
-    copy!("runtime.js");
-    copy!("index.js");
-
     let output = setup(process::Command::new("/usr/bin/env").args([
         "node".as_ref(),
         "--enable-source-maps".as_ref(),
-        path.as_path(),
+        path,
     ]))
     .spawn()?
     .wait_with_output()?;
@@ -280,10 +287,6 @@ fn run(
             "script exited with status {}",
             output.status
         ));
-    }
-
-    if cleanup {
-        fs::remove_dir_all(&path)?;
     }
 
     Ok(output)
@@ -333,13 +336,15 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
         if let Some(statements) = driver.run(&mut db, &mut top_level.clone(), &name)? {
             let program = codegen(&db, &statements, &lib_statements)?;
 
-            let wasm = wasm::to_bytes(&db, &program, codegen::Options::default())?;
-            wasm::validate(&wasm)?;
+            let wasm_result = wasm::to_wasm(&db, &program, codegen::Options::default())?;
+            let output_path = make_temp_dir()?;
+            write_wasm(&wasm_result, Some(&output_path))?;
 
-            let output = run(&wasm, None, |cmd| cmd.stdout(process::Stdio::piped()))?.stdout;
-
+            let output = run(&output_path, |cmd| cmd.stdout(process::Stdio::piped()))?.stdout;
             writeln!(out, "Output:")?;
             out.write_all(&output)?;
+
+            fs::remove_dir_all(output_path)?;
         }
 
         let mask = db

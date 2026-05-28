@@ -251,7 +251,7 @@ Facts (layer 2):
 `unreachable` (dictionary.wipple:4:83-4:94) (VisitAs):
   has type `Number`
   is an expression
-  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:31:1-31:21)
+  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:33:1-33:21)
 
 `unreachable` (dictionary.wipple:4:83-4:94) (BlockExpression):
   has type `{Number}` (dictionary.wipple:4:83-4:94)

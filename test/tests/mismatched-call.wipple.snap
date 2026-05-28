@@ -24,7 +24,7 @@ Facts (layer 2):
 `todo` (mismatched-call.wipple:2:16-2:20) (VariableExpression):
   has type `String -> ()` (mismatched-call.wipple:1:17-1:29)
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:25:1-25:14)
+  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:27:1-27:14)
 
 `-- should display 'expected `String`, found `Number`' rather than
 -- 'cannot find instance `Add Number Number String`'

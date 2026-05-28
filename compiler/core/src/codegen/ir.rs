@@ -7,6 +7,7 @@ use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct Program {
+    pub source_files: Vec<Node>,
     pub definitions: BTreeMap<DefinitionKey, Definition>,
 }
 
@@ -163,6 +164,16 @@ pub enum Condition {
 }
 
 impl Instruction {
+    pub fn primary_node(&self) -> Option<Node> {
+        match *self {
+            Instruction::If { node, .. } => node,
+            Instruction::Return { value } => Some(value),
+            Instruction::ReturnCall { function, .. } => Some(function),
+            Instruction::Trace { .. } => None,
+            Instruction::Value { node, .. } => Some(node),
+        }
+    }
+
     pub fn for_each_node(
         &mut self,
         traverse_functions: bool,

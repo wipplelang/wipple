@@ -17,10 +17,6 @@ export default (env) => {
             env.trace?.(trace);
         },
 
-        crash: (message) => {
-            throw new Error(message);
-        },
-
         bridge: (value) => {
             return value;
         },

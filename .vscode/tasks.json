@@ -1,0 +1,10 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compile test.wipple",
+            "type": "shell",
+            "command": "task compiler -- compile test.wipple --lib library/src/foundation -o out"
+        }
+    ]
+}
