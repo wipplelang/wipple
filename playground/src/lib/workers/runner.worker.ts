@@ -1,4 +1,5 @@
 import { makeChannel, readMessage, writeMessage, type Channel } from "sync-message";
+import * as Sentry from "@sentry/browser";
 import initRuntime from "./runtime";
 
 export type Env = Record<string, (input: any) => Promise<any>>;
@@ -57,6 +58,7 @@ const run = async (channel: Channel, executable: ArrayBuffer) => {
         main(runtime);
     } catch (e) {
         console.error(e);
+        Sentry.captureException(e);
     }
 
     postMessage({ type: "done" });
