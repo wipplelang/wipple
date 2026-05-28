@@ -16,7 +16,7 @@ use std::{
 
 pub use wasmparser::validate;
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Module {
     types: Types,
     imports: Imports,
@@ -43,6 +43,13 @@ pub fn to_bytes(
     collect_functions(db, program, &mut module.types, &mut module.functions)?;
     collect_strings(db, program, &mut module.strings)?;
 
+    let main_index = module
+        .functions
+        .get(&ir::DefinitionKey::TopLevel, None)
+        .ok_or_else(|| anyhow::format_err!("missing top level"))?;
+
+    collect_exports(db, program, main_index, &mut module.exports)?;
+
     module.types.finish();
     module.strings.finish();
 
@@ -64,18 +71,19 @@ pub fn to_bytes(
         )?;
 
         let mut wasm = wasm_encoder::Function::new(locals.locals.iter().map(|&ty| (1, ty)));
-        write_function(
-            db, program, key, definition, function, &module, &locals, &mut wasm, options,
-        )?;
+
+        let mut ctx = WriteContext {
+            key,
+            definition,
+            module: &module,
+            locals: &locals,
+            options,
+            wasm: &mut wasm,
+        };
+
+        ctx.write_function(function)?;
         module.implementations.insert(key, *node, wasm)?;
     }
-
-    let main_index = module
-        .functions
-        .get(&ir::DefinitionKey::TopLevel, None)
-        .ok_or_else(|| anyhow::format_err!("missing top level"))?;
-
-    collect_exports(db, program, main_index, &mut module.exports)?;
 
     let mut wasm = wasm_encoder::Module::new();
     wasm.section(&module.types.type_section);
@@ -90,917 +98,841 @@ pub fn to_bytes(
     Ok(wasm.finish())
 }
 
-fn write_function(
-    db: &Db,
-    program: &ir::Program,
-    key: &ir::DefinitionKey,
-    definition: &ir::Definition,
-    function: &ir::Function,
-    module: &Module,
-    locals: &Locals,
-    wasm: &mut wasm_encoder::Function,
-    options: Options<'_>,
-) -> Result<(), CodegenError> {
-    if let Some((closure, captures)) = &function.closure {
-        for (index, &capture) in captures.iter().enumerate() {
-            let env_index = 0;
-
-            let env_ty_index = module
-                .types
-                .get_env(key, *closure)
-                .ok_or_else(|| anyhow::format_err!("missing env"))?;
-
-            wasm.instruction(&wasm_encoder::Instruction::LocalGet(env_index));
-
-            wasm.instruction(&wasm_encoder::Instruction::RefCastNullable(
-                wasm_encoder::HeapType::Concrete(env_ty_index),
-            ));
-
-            wasm.instruction(&wasm_encoder::Instruction::StructGet {
-                struct_type_index: env_ty_index,
-                field_index: index as u32,
-            });
-
-            wasm.instruction(&wasm_encoder::Instruction::LocalSet(
-                locals
-                    .get(capture)
-                    .ok_or_else(|| anyhow::format_err!("missing capture"))?,
-            ));
-        }
-    }
-
-    write_instructions(
-        db,
-        program,
-        key,
-        definition,
-        &function.instructions,
-        module,
-        locals,
-        wasm,
-        options,
-    )?;
-
-    wasm.instruction(&wasm_encoder::Instruction::Return);
-    wasm.instruction(&wasm_encoder::Instruction::End);
-
-    Ok(())
+#[derive(Debug)]
+struct WriteContext<'a> {
+    key: &'a ir::DefinitionKey,
+    definition: &'a ir::Definition,
+    module: &'a Module,
+    locals: &'a Locals,
+    options: Options<'a>,
+    wasm: &'a mut wasm_encoder::Function,
 }
 
-fn write_instructions(
-    db: &Db,
-    program: &ir::Program,
-    key: &ir::DefinitionKey,
-    definition: &ir::Definition,
-    instructions: &[ir::Instruction],
-    module: &Module,
-    locals: &Locals,
-    wasm: &mut wasm_encoder::Function,
-    options: Options<'_>,
-) -> Result<(), CodegenError> {
-    for instruction in instructions {
-        match instruction {
-            ir::Instruction::If {
-                node,
-                branches,
-                else_branch,
-            } => {
-                for (conditions, instructions, then_node) in branches {
-                    write_conditions(
-                        db, program, key, definition, conditions, module, locals, wasm, options,
-                    )?;
+impl WriteContext<'_> {
+    fn write_instruction(&mut self, instruction: &wasm_encoder::Instruction<'_>) {
+        let _offset = self.wasm.byte_len(); // TODO
+        self.wasm.instruction(instruction);
+    }
 
-                    wasm.instruction(&wasm_encoder::Instruction::If(
-                        wasm_encoder::BlockType::Empty,
-                    ));
+    fn write_function(&mut self, function: &ir::Function) -> Result<(), CodegenError> {
+        if let Some((closure, captures)) = &function.closure {
+            for (index, &capture) in captures.iter().enumerate() {
+                let env_index = 0;
 
-                    write_instructions(
-                        db,
-                        program,
-                        key,
-                        definition,
-                        instructions,
-                        module,
-                        locals,
-                        wasm,
-                        options,
-                    )?;
+                let env_ty_index = self
+                    .module
+                    .types
+                    .get_env(self.key, *closure)
+                    .ok_or_else(|| anyhow::format_err!("missing env"))?;
 
-                    if let Some(node) = *node
-                        && let Some(then_node) = *then_node
-                    {
-                        wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                            locals
-                                .get(then_node)
-                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
-                        ));
+                self.write_instruction(&wasm_encoder::Instruction::LocalGet(env_index));
 
-                        wasm.instruction(&wasm_encoder::Instruction::LocalSet(
-                            locals
-                                .get(node)
-                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
-                        ));
-                    }
-
-                    wasm.instruction(&wasm_encoder::Instruction::Else);
-                }
-
-                if let Some((instructions, else_node)) = else_branch {
-                    write_instructions(
-                        db,
-                        program,
-                        key,
-                        definition,
-                        instructions,
-                        module,
-                        locals,
-                        wasm,
-                        options,
-                    )?;
-
-                    if let Some(node) = *node
-                        && let Some(else_node) = *else_node
-                    {
-                        wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                            locals
-                                .get(else_node)
-                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
-                        ));
-
-                        wasm.instruction(&wasm_encoder::Instruction::LocalSet(
-                            locals
-                                .get(node)
-                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
-                        ));
-                    }
-                } else {
-                    wasm.instruction(&wasm_encoder::Instruction::Unreachable);
-                }
-
-                for _ in branches {
-                    wasm.instruction(&wasm_encoder::Instruction::End);
-                }
-            }
-            ir::Instruction::Return { value } => {
-                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                    locals
-                        .get(*value)
-                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                self.write_instruction(&wasm_encoder::Instruction::RefCastNullable(
+                    wasm_encoder::HeapType::Concrete(env_ty_index),
                 ));
 
-                wasm.instruction(&wasm_encoder::Instruction::Return);
-            }
-            ir::Instruction::ReturnCall {
-                function,
-                inputs,
-                value: node,
-            } => {
-                write_call(
-                    db, program, key, definition, *function, inputs, *node, true, module, locals,
-                    wasm,
-                )?;
-            }
-            ir::Instruction::Trace { span } => {
-                let can_trace = match options.trace {
-                    TraceOptions::None => false,
-                    TraceOptions::All => true,
-                    TraceOptions::Files(files) => files.contains(&span.path.as_str()),
-                };
+                self.write_instruction(&wasm_encoder::Instruction::StructGet {
+                    struct_type_index: env_ty_index,
+                    field_index: index as u32,
+                });
 
-                if can_trace {
-                    write_string(db, program, &format_trace(span), module, wasm)?;
-
-                    wasm.instruction(&wasm_encoder::Instruction::Call(
-                        module
-                            .imports
-                            .get("trace", &[wasm_encoder::ValType::EXTERNREF], &[])
-                            .ok_or_else(|| anyhow::format_err!("missing import"))?,
-                    ));
-                }
-            }
-            ir::Instruction::Value { node, value } => {
-                write_value(
-                    db,
-                    program,
-                    key,
-                    definition,
-                    Some(*node),
-                    value,
-                    module,
-                    locals,
-                    wasm,
-                    options,
-                )?;
-
-                wasm.instruction(&wasm_encoder::Instruction::LocalSet(
-                    locals
-                        .get(*node)
-                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                self.write_instruction(&wasm_encoder::Instruction::LocalSet(
+                    self.locals
+                        .get(capture)
+                        .ok_or_else(|| anyhow::format_err!("missing capture"))?,
                 ));
             }
         }
+
+        self.write_instructions(&function.instructions)?;
+        self.write_instruction(&wasm_encoder::Instruction::Return);
+        self.write_instruction(&wasm_encoder::Instruction::End);
+
+        Ok(())
     }
 
-    Ok(())
-}
+    fn write_instructions(&mut self, instructions: &[ir::Instruction]) -> Result<(), CodegenError> {
+        for instruction in instructions {
+            match instruction {
+                ir::Instruction::If {
+                    node,
+                    branches,
+                    else_branch,
+                } => {
+                    for (conditions, instructions, then_node) in branches {
+                        self.write_conditions(conditions)?;
 
-fn write_conditions(
-    db: &Db,
-    program: &ir::Program,
-    key: &ir::DefinitionKey,
-    definition: &ir::Definition,
-    conditions: &[ir::Condition],
-    module: &Module,
-    locals: &Locals,
-    wasm: &mut wasm_encoder::Function,
-    options: Options<'_>,
-) -> Result<(), CodegenError> {
-    if conditions.is_empty() {
-        wasm.instruction(&wasm_encoder::Instruction::I32Const(1));
-    } else {
-        for (index, condition) in conditions.iter().enumerate() {
-            match condition {
-                ir::Condition::Or(branches) => {
-                    if branches.is_empty() {
-                        wasm.instruction(&wasm_encoder::Instruction::I32Const(0));
-                    } else {
-                        for (index, conditions) in branches.iter().enumerate() {
-                            write_conditions(
-                                db, program, key, definition, conditions, module, locals, wasm,
-                                options,
-                            )?;
+                        self.write_instruction(&wasm_encoder::Instruction::If(
+                            wasm_encoder::BlockType::Empty,
+                        ));
 
-                            wasm.instruction(&wasm_encoder::Instruction::If(
-                                wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
+                        self.write_instructions(instructions)?;
+
+                        if let Some(node) = *node
+                            && let Some(then_node) = *then_node
+                        {
+                            self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                                self.locals
+                                    .get(then_node)
+                                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
                             ));
-                            wasm.instruction(&wasm_encoder::Instruction::I32Const(1));
-                            wasm.instruction(&wasm_encoder::Instruction::Else);
 
-                            if index + 1 == branches.len() {
-                                wasm.instruction(&wasm_encoder::Instruction::I32Const(0));
+                            self.write_instruction(&wasm_encoder::Instruction::LocalSet(
+                                self.locals
+                                    .get(node)
+                                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                            ));
+                        }
+
+                        self.write_instruction(&wasm_encoder::Instruction::Else);
+                    }
+
+                    if let Some((instructions, else_node)) = else_branch {
+                        self.write_instructions(instructions)?;
+
+                        if let Some(node) = *node
+                            && let Some(else_node) = *else_node
+                        {
+                            self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                                self.locals
+                                    .get(else_node)
+                                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                            ));
+
+                            self.write_instruction(&wasm_encoder::Instruction::LocalSet(
+                                self.locals
+                                    .get(node)
+                                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                            ));
+                        }
+                    } else {
+                        self.write_instruction(&wasm_encoder::Instruction::Unreachable);
+                    }
+
+                    for _ in branches {
+                        self.write_instruction(&wasm_encoder::Instruction::End);
+                    }
+                }
+                ir::Instruction::Return { value } => {
+                    self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                        self.locals
+                            .get(*value)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+
+                    self.write_instruction(&wasm_encoder::Instruction::Return);
+                }
+                ir::Instruction::ReturnCall {
+                    function,
+                    inputs,
+                    value: node,
+                } => {
+                    self.write_call(*function, inputs, *node, true)?;
+                }
+                ir::Instruction::Trace { span } => {
+                    let can_trace = match self.options.trace {
+                        TraceOptions::None => false,
+                        TraceOptions::All => true,
+                        TraceOptions::Files(files) => files.contains(&span.path.as_str()),
+                    };
+
+                    if can_trace {
+                        self.write_string(&format_trace(span))?;
+
+                        self.write_instruction(&wasm_encoder::Instruction::Call(
+                            self.module
+                                .imports
+                                .get("trace", &[wasm_encoder::ValType::EXTERNREF], &[])
+                                .ok_or_else(|| anyhow::format_err!("missing import"))?,
+                        ));
+                    }
+                }
+                ir::Instruction::Value { node, value } => {
+                    self.write_value(Some(*node), value)?;
+
+                    self.write_instruction(&wasm_encoder::Instruction::LocalSet(
+                        self.locals
+                            .get(*node)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn write_conditions(&mut self, conditions: &[ir::Condition]) -> Result<(), CodegenError> {
+        if conditions.is_empty() {
+            self.write_instruction(&wasm_encoder::Instruction::I32Const(1));
+        } else {
+            for (index, condition) in conditions.iter().enumerate() {
+                match condition {
+                    ir::Condition::Or(branches) => {
+                        if branches.is_empty() {
+                            self.write_instruction(&wasm_encoder::Instruction::I32Const(0));
+                        } else {
+                            for (index, conditions) in branches.iter().enumerate() {
+                                self.write_conditions(conditions)?;
+
+                                self.write_instruction(&wasm_encoder::Instruction::If(
+                                    wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
+                                ));
+                                self.write_instruction(&wasm_encoder::Instruction::I32Const(1));
+                                self.write_instruction(&wasm_encoder::Instruction::Else);
+
+                                if index + 1 == branches.len() {
+                                    self.write_instruction(&wasm_encoder::Instruction::I32Const(0));
+                                }
+                            }
+
+                            for _ in branches {
+                                self.write_instruction(&wasm_encoder::Instruction::End);
                             }
                         }
-
-                        for _ in branches {
-                            wasm.instruction(&wasm_encoder::Instruction::End);
-                        }
                     }
-                }
-                ir::Condition::EqualToNumber { input, value } => {
-                    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                        locals
-                            .get(*input)
-                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
-                    ));
+                    ir::Condition::EqualToNumber { input, value } => {
+                        self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                            self.locals
+                                .get(*input)
+                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                        ));
 
-                    wasm.instruction(&wasm_encoder::Instruction::F64Const(
-                        value.parse::<f64>()?.into(),
-                    ));
+                        self.write_instruction(&wasm_encoder::Instruction::F64Const(
+                            value.parse::<f64>()?.into(),
+                        ));
 
-                    wasm.instruction(&wasm_encoder::Instruction::F64Eq);
-                }
-                ir::Condition::EqualToString { input, value } => {
-                    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                        locals
-                            .get(*input)
-                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
-                    ));
+                        self.write_instruction(&wasm_encoder::Instruction::F64Eq);
+                    }
+                    ir::Condition::EqualToString { input, value } => {
+                        self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                            self.locals
+                                .get(*input)
+                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                        ));
 
-                    write_string(db, program, value, module, wasm)?;
+                        self.write_string(value)?;
 
-                    wasm.instruction(&wasm_encoder::Instruction::Call(
-                        module
-                            .imports
-                            .get(
-                                "string-equality",
-                                &[
-                                    wasm_encoder::ValType::EXTERNREF,
-                                    wasm_encoder::ValType::EXTERNREF,
-                                ],
-                                &[wasm_encoder::ValType::I32],
-                            )
-                            .ok_or_else(|| anyhow::format_err!("missing import"))?,
-                    ));
-                }
-                ir::Condition::EqualToVariant { input, variant } => {
-                    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                        locals
-                            .get(*input)
-                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
-                    ));
+                        self.write_instruction(&wasm_encoder::Instruction::Call(
+                            self.module
+                                .imports
+                                .get(
+                                    "string-equality",
+                                    &[
+                                        wasm_encoder::ValType::EXTERNREF,
+                                        wasm_encoder::ValType::EXTERNREF,
+                                    ],
+                                    &[wasm_encoder::ValType::I32],
+                                )
+                                .ok_or_else(|| anyhow::format_err!("missing import"))?,
+                        ));
+                    }
+                    ir::Condition::EqualToVariant { input, variant } => {
+                        self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                            self.locals
+                                .get(*input)
+                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                        ));
 
-                    wasm.instruction(&wasm_encoder::Instruction::StructGet {
-                        struct_type_index: module
-                            .types
-                            .get_as_index(
-                                definition
+                        self.write_instruction(&wasm_encoder::Instruction::StructGet {
+                            struct_type_index: self
+                                .module
+                                .types
+                                .get_as_index(
+                                    self.definition
+                                        .types
+                                        .get(input)
+                                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                                )
+                                .ok_or_else(|| anyhow::format_err!("unresolved input type"))?,
+                            field_index: 1,
+                        });
+
+                        self.write_instruction(&wasm_encoder::Instruction::I32Const(
+                            *variant as i32,
+                        ));
+
+                        self.write_instruction(&wasm_encoder::Instruction::I32Eq);
+                    }
+                    ir::Condition::Initialize {
+                        variable,
+                        node,
+                        value,
+                        mutable,
+                    } => {
+                        self.write_instruction(&wasm_encoder::Instruction::Block(
+                            wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
+                        ));
+
+                        self.write_value(*node, value)?;
+
+                        if *mutable {
+                            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+
+                            self.write_instruction(&wasm_encoder::Instruction::StructNew(
+                                self.module
                                     .types
-                                    .get(input)
-                                    .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                            )
-                            .ok_or_else(|| anyhow::format_err!("unresolved input type"))?,
-                        field_index: 1,
-                    });
+                                    .get_box(
+                                        &self
+                                            .module
+                                            .types
+                                            .get(self.definition.types.get(&node).ok_or_else(
+                                                || anyhow::format_err!("missing type"),
+                                            )?)
+                                            .ok_or_else(|| {
+                                                anyhow::format_err!("unresolved variable type")
+                                            })?,
+                                    )
+                                    .ok_or_else(|| anyhow::format_err!("unresolved box type"))?,
+                            ));
+                        }
 
-                    wasm.instruction(&wasm_encoder::Instruction::I32Const(*variant as i32));
+                        self.write_instruction(&wasm_encoder::Instruction::LocalSet(
+                            self.locals
+                                .get(*variable)
+                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                        ));
 
-                    wasm.instruction(&wasm_encoder::Instruction::I32Eq);
-                }
-                ir::Condition::Initialize {
-                    variable,
-                    node,
-                    value,
-                    mutable,
-                } => {
-                    wasm.instruction(&wasm_encoder::Instruction::Block(
-                        wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
-                    ));
+                        self.write_instruction(&wasm_encoder::Instruction::I32Const(1));
 
-                    write_value(
-                        db, program, key, definition, *node, value, module, locals, wasm, options,
-                    )?;
+                        self.write_instruction(&wasm_encoder::Instruction::End);
+                    }
+                    ir::Condition::Mutate { input, variable } => {
+                        self.write_instruction(&wasm_encoder::Instruction::Block(
+                            wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
+                        ));
 
-                    if *mutable {
-                        let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+                        self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                            self.locals
+                                .get(*variable)
+                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                        ));
 
-                        wasm.instruction(&wasm_encoder::Instruction::StructNew(
-                            module
+                        self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                            self.locals
+                                .get(*input)
+                                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                        ));
+
+                        self.write_instruction(&wasm_encoder::Instruction::StructSet {
+                            struct_type_index: self
+                                .module
                                 .types
                                 .get_box(
-                                    &module
+                                    &self
+                                        .module
                                         .types
                                         .get(
-                                            definition.types.get(&node).ok_or_else(|| {
-                                                anyhow::format_err!("missing type")
-                                            })?,
+                                            self.definition.types.get(variable).ok_or_else(
+                                                || anyhow::format_err!("missing type"),
+                                            )?,
                                         )
                                         .ok_or_else(|| {
                                             anyhow::format_err!("unresolved variable type")
                                         })?,
                                 )
                                 .ok_or_else(|| anyhow::format_err!("unresolved box type"))?,
-                        ));
+                            field_index: 0,
+                        });
+
+                        self.write_instruction(&wasm_encoder::Instruction::I32Const(1));
+
+                        self.write_instruction(&wasm_encoder::Instruction::End);
                     }
-
-                    wasm.instruction(&wasm_encoder::Instruction::LocalSet(
-                        locals
-                            .get(*variable)
-                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
-                    ));
-
-                    wasm.instruction(&wasm_encoder::Instruction::I32Const(1));
-
-                    wasm.instruction(&wasm_encoder::Instruction::End);
                 }
-                ir::Condition::Mutate { input, variable } => {
-                    wasm.instruction(&wasm_encoder::Instruction::Block(
-                        wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
-                    ));
 
-                    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                        locals
-                            .get(*variable)
-                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
-                    ));
+                self.write_instruction(&wasm_encoder::Instruction::If(
+                    wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
+                ));
 
-                    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                        locals
-                            .get(*input)
-                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
-                    ));
-
-                    wasm.instruction(&wasm_encoder::Instruction::StructSet {
-                        struct_type_index: module
-                            .types
-                            .get_box(
-                                &module
-                                    .types
-                                    .get(
-                                        definition
-                                            .types
-                                            .get(variable)
-                                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                                    )
-                                    .ok_or_else(|| {
-                                        anyhow::format_err!("unresolved variable type")
-                                    })?,
-                            )
-                            .ok_or_else(|| anyhow::format_err!("unresolved box type"))?,
-                        field_index: 0,
-                    });
-
-                    wasm.instruction(&wasm_encoder::Instruction::I32Const(1));
-
-                    wasm.instruction(&wasm_encoder::Instruction::End);
+                if index + 1 == conditions.len() {
+                    self.write_instruction(&wasm_encoder::Instruction::I32Const(1));
                 }
             }
 
-            wasm.instruction(&wasm_encoder::Instruction::If(
-                wasm_encoder::BlockType::Result(wasm_encoder::ValType::I32),
-            ));
-
-            if index + 1 == conditions.len() {
-                wasm.instruction(&wasm_encoder::Instruction::I32Const(1));
+            for _ in conditions {
+                self.write_instruction(&wasm_encoder::Instruction::Else);
+                self.write_instruction(&wasm_encoder::Instruction::I32Const(0));
+                self.write_instruction(&wasm_encoder::Instruction::End);
             }
         }
 
-        for _ in conditions {
-            wasm.instruction(&wasm_encoder::Instruction::Else);
-            wasm.instruction(&wasm_encoder::Instruction::I32Const(0));
-            wasm.instruction(&wasm_encoder::Instruction::End);
-        }
+        Ok(())
     }
 
-    Ok(())
-}
+    fn write_value(&mut self, node: Option<Node>, value: &ir::Value) -> Result<(), CodegenError> {
+        match value {
+            ir::Value::Bound(node) => {
+                return Err(anyhow::format_err!("bound {node:?} not resolved"));
+            }
+            ir::Value::Call { function, inputs } => {
+                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
 
-fn write_value(
-    db: &Db,
-    program: &ir::Program,
-    key: &ir::DefinitionKey,
-    definition: &ir::Definition,
-    node: Option<Node>,
-    value: &ir::Value,
-    module: &Module,
-    locals: &Locals,
-    wasm: &mut wasm_encoder::Function,
-    _options: Options<'_>,
-) -> Result<(), CodegenError> {
-    match value {
-        ir::Value::Bound(node) => {
-            return Err(anyhow::format_err!("bound {node:?} not resolved"));
-        }
-        ir::Value::Call { function, inputs } => {
-            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-
-            write_call(
-                db, program, key, definition, *function, inputs, node, false, module, locals, wasm,
-            )?;
-        }
-        ir::Value::Constant(key) => {
-            wasm.instruction(&wasm_encoder::Instruction::Call(
-                module
-                    .functions
-                    .get(key, None)
-                    .ok_or_else(|| anyhow::format_err!("missing function"))?,
-            ));
-        }
-        ir::Value::Function(function) => {
-            let (closure, captures) = function
-                .closure
-                .as_ref()
-                .ok_or_else(|| anyhow::format_err!("missing closure"))?;
-
-            wasm.instruction(&wasm_encoder::Instruction::RefFunc(
-                module
-                    .functions
-                    .get(key, Some(*closure))
-                    .ok_or_else(|| anyhow::format_err!("missing function"))?,
-            ));
-
-            let env_ty_index = module
-                .types
-                .get_env(key, *closure)
-                .ok_or_else(|| anyhow::format_err!("missing env"))?;
-
-            for &capture in captures {
-                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                    locals
-                        .get(capture)
-                        .ok_or_else(|| anyhow::format_err!("missing capture"))?,
+                self.write_call(*function, inputs, node, false)?;
+            }
+            ir::Value::Constant(key) => {
+                self.write_instruction(&wasm_encoder::Instruction::Call(
+                    self.module
+                        .functions
+                        .get(key, None)
+                        .ok_or_else(|| anyhow::format_err!("missing function"))?,
                 ));
             }
+            ir::Value::Function(function) => {
+                let (closure, captures) = function
+                    .closure
+                    .as_ref()
+                    .ok_or_else(|| anyhow::format_err!("missing closure"))?;
 
-            wasm.instruction(&wasm_encoder::Instruction::StructNew(env_ty_index));
+                self.write_instruction(&wasm_encoder::Instruction::RefFunc(
+                    self.module
+                        .functions
+                        .get(self.key, Some(*closure))
+                        .ok_or_else(|| anyhow::format_err!("missing function"))?,
+                ));
 
-            wasm.instruction(&wasm_encoder::Instruction::StructNew(
-                module
+                let env_ty_index = self
+                    .module
                     .types
-                    .get_as_index(
-                        definition
-                            .types
-                            .get(closure)
-                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                    )
-                    .ok_or_else(|| anyhow::format_err!("missing closure type"))?,
-            ));
-        }
-        ir::Value::Field {
-            input, field_index, ..
-        } => {
-            wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                locals
-                    .get(*input)
-                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
-            ));
+                    .get_env(self.key, *closure)
+                    .ok_or_else(|| anyhow::format_err!("missing env"))?;
 
-            wasm.instruction(&wasm_encoder::Instruction::StructGet {
-                struct_type_index: module
-                    .types
-                    .get_as_index(
-                        definition
-                            .types
-                            .get(input)
-                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                    )
-                    .ok_or_else(|| anyhow::format_err!("unresolved input type"))?,
-                field_index: *field_index as u32,
-            });
-        }
-        ir::Value::Tuple(elements) => {
-            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+                for &capture in captures {
+                    self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                        self.locals
+                            .get(capture)
+                            .ok_or_else(|| anyhow::format_err!("missing capture"))?,
+                    ));
+                }
 
-            for &element in elements {
-                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                    locals
-                        .get(element)
-                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                self.write_instruction(&wasm_encoder::Instruction::StructNew(env_ty_index));
+
+                self.write_instruction(&wasm_encoder::Instruction::StructNew(
+                    self.module
+                        .types
+                        .get_as_index(
+                            self.definition
+                                .types
+                                .get(closure)
+                                .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                        )
+                        .ok_or_else(|| anyhow::format_err!("missing closure type"))?,
                 ));
             }
-
-            wasm.instruction(&wasm_encoder::Instruction::StructNew(
-                module
-                    .types
-                    .get_as_index(
-                        definition
-                            .types
-                            .get(&node)
-                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                    )
-                    .ok_or_else(|| anyhow::format_err!("unresolved tuple type"))?,
-            ));
-        }
-        ir::Value::Marker => {
-            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-
-            wasm.instruction(&wasm_encoder::Instruction::StructNew(
-                module
-                    .types
-                    .get_as_index(
-                        definition
-                            .types
-                            .get(&node)
-                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                    )
-                    .ok_or_else(|| anyhow::format_err!("unresolved marker type"))?,
-            ));
-        }
-        ir::Value::MutableVariable(node) => {
-            wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                locals
-                    .get(*node)
-                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
-            ));
-
-            wasm.instruction(&wasm_encoder::Instruction::StructGet {
-                struct_type_index: module
-                    .types
-                    .get_box(
-                        &module
-                            .types
-                            .get(
-                                definition
-                                    .types
-                                    .get(node)
-                                    .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                            )
-                            .ok_or_else(|| anyhow::format_err!("unresolved variable type"))?,
-                    )
-                    .ok_or_else(|| anyhow::format_err!("unresolved box type"))?,
-                field_index: 0,
-            });
-        }
-        ir::Value::Number(number) => {
-            wasm.instruction(&wasm_encoder::Instruction::F64Const(
-                number.parse::<f64>()?.into(),
-            ));
-        }
-        ir::Value::Runtime { name, inputs } => {
-            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
-
-            for input in inputs {
-                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                    locals
+            ir::Value::Field {
+                input, field_index, ..
+            } => {
+                self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                    self.locals
                         .get(*input)
                         .ok_or_else(|| anyhow::format_err!("missing local"))?,
                 ));
+
+                self.write_instruction(&wasm_encoder::Instruction::StructGet {
+                    struct_type_index: self
+                        .module
+                        .types
+                        .get_as_index(
+                            self.definition
+                                .types
+                                .get(input)
+                                .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                        )
+                        .ok_or_else(|| anyhow::format_err!("unresolved input type"))?,
+                    field_index: *field_index as u32,
+                });
             }
+            ir::Value::Tuple(elements) => {
+                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
 
-            if import_is_wasm_instruction(name) {
-                write_wasm_instruction(name, wasm)?;
-            } else {
-                let input_tys = inputs
-                    .iter()
-                    .map(|input| {
-                        module
-                            .types
-                            .get(
-                                definition
-                                    .types
-                                    .get(input)
-                                    .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                            )
-                            .ok_or_else(|| anyhow::format_err!("unresolved input type"))
-                    })
-                    .collect::<Result<Vec<_>, CodegenError>>()?;
+                for &element in elements {
+                    self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                        self.locals
+                            .get(element)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+                }
 
-                let output_ty = module
-                    .types
-                    .get(
-                        definition
-                            .types
-                            .get(&node)
-                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                    )
-                    .ok_or_else(|| anyhow::format_err!("unresolved output type"))?;
-
-                wasm.instruction(&wasm_encoder::Instruction::Call(
-                    module
-                        .imports
-                        .get(name, &input_tys, &[output_ty])
-                        .ok_or_else(|| anyhow::format_err!("missing import"))?,
+                self.write_instruction(&wasm_encoder::Instruction::StructNew(
+                    self.module
+                        .types
+                        .get_as_index(
+                            self.definition
+                                .types
+                                .get(&node)
+                                .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                        )
+                        .ok_or_else(|| anyhow::format_err!("unresolved tuple type"))?,
                 ));
             }
-        }
-        ir::Value::String(string) => {
-            write_string(db, program, string, module, wasm)?;
-        }
-        ir::Value::Structure(fields) => {
-            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+            ir::Value::Marker => {
+                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
 
-            for (_, value) in fields {
-                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                    locals
-                        .get(*value)
+                self.write_instruction(&wasm_encoder::Instruction::StructNew(
+                    self.module
+                        .types
+                        .get_as_index(
+                            self.definition
+                                .types
+                                .get(&node)
+                                .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                        )
+                        .ok_or_else(|| anyhow::format_err!("unresolved marker type"))?,
+                ));
+            }
+            ir::Value::MutableVariable(node) => {
+                self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                    self.locals
+                        .get(*node)
+                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                ));
+
+                self.write_instruction(&wasm_encoder::Instruction::StructGet {
+                    struct_type_index: self
+                        .module
+                        .types
+                        .get_box(
+                            &self
+                                .module
+                                .types
+                                .get(
+                                    self.definition
+                                        .types
+                                        .get(node)
+                                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                                )
+                                .ok_or_else(|| anyhow::format_err!("unresolved variable type"))?,
+                        )
+                        .ok_or_else(|| anyhow::format_err!("unresolved box type"))?,
+                    field_index: 0,
+                });
+            }
+            ir::Value::Number(number) => {
+                self.write_instruction(&wasm_encoder::Instruction::F64Const(
+                    number.parse::<f64>()?.into(),
+                ));
+            }
+            ir::Value::Runtime { name, inputs } => {
+                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+
+                for input in inputs {
+                    self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                        self.locals
+                            .get(*input)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+                }
+
+                if import_is_wasm_instruction(name) {
+                    self.write_wasm_instruction(name)?;
+                } else {
+                    let input_tys = inputs
+                        .iter()
+                        .map(|input| {
+                            self.module
+                                .types
+                                .get(
+                                    self.definition
+                                        .types
+                                        .get(input)
+                                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                                )
+                                .ok_or_else(|| anyhow::format_err!("unresolved input type"))
+                        })
+                        .collect::<Result<Vec<_>, CodegenError>>()?;
+
+                    let output_ty = self
+                        .module
+                        .types
+                        .get(
+                            self.definition
+                                .types
+                                .get(&node)
+                                .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                        )
+                        .ok_or_else(|| anyhow::format_err!("unresolved output type"))?;
+
+                    self.write_instruction(&wasm_encoder::Instruction::Call(
+                        self.module
+                            .imports
+                            .get(name, &input_tys, &[output_ty])
+                            .ok_or_else(|| anyhow::format_err!("missing import"))?,
+                    ));
+                }
+            }
+            ir::Value::String(string) => {
+                self.write_string(string)?;
+            }
+            ir::Value::Structure(fields) => {
+                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+
+                for (_, value) in fields {
+                    self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                        self.locals
+                            .get(*value)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+                }
+
+                self.write_instruction(&wasm_encoder::Instruction::StructNew(
+                    self.module
+                        .types
+                        .get_as_index(
+                            self.definition
+                                .types
+                                .get(&node)
+                                .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                        )
+                        .ok_or_else(|| anyhow::format_err!("unresolved structure type"))?,
+                ));
+            }
+            ir::Value::TupleElement { input, index } => {
+                self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                    self.locals
+                        .get(*input)
+                        .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                ));
+
+                self.write_instruction(&wasm_encoder::Instruction::StructGet {
+                    struct_type_index: self
+                        .module
+                        .types
+                        .get_as_index(
+                            self.definition
+                                .types
+                                .get(input)
+                                .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                        )
+                        .ok_or_else(|| anyhow::format_err!("unresolved input type"))?,
+                    field_index: *index as u32,
+                });
+            }
+            ir::Value::Unreachable => {
+                self.write_instruction(&wasm_encoder::Instruction::Unreachable);
+            }
+            ir::Value::Variable(node) => {
+                self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                    self.locals
+                        .get(*node)
                         .ok_or_else(|| anyhow::format_err!("missing local"))?,
                 ));
             }
+            ir::Value::Variant { index, elements } => {
+                let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
 
-            wasm.instruction(&wasm_encoder::Instruction::StructNew(
-                module
+                let enumeration_ty_index = self
+                    .module
                     .types
                     .get_as_index(
-                        definition
+                        self.definition
                             .types
                             .get(&node)
                             .ok_or_else(|| anyhow::format_err!("missing type"))?,
                     )
-                    .ok_or_else(|| anyhow::format_err!("unresolved structure type"))?,
-            ));
-        }
-        ir::Value::TupleElement { input, index } => {
-            wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                locals
-                    .get(*input)
-                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
-            ));
+                    .ok_or_else(|| anyhow::format_err!("missing enumeration type"))?;
 
-            wasm.instruction(&wasm_encoder::Instruction::StructGet {
-                struct_type_index: module
+                for &element in elements {
+                    self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                        self.locals
+                            .get(element)
+                            .ok_or_else(|| anyhow::format_err!("missing local"))?,
+                    ));
+                }
+
+                self.write_instruction(&wasm_encoder::Instruction::StructNew(
+                    self.module
+                        .types
+                        .get_variant(enumeration_ty_index, *index)
+                        .ok_or_else(|| anyhow::format_err!("missing variant type"))?,
+                ));
+
+                self.write_instruction(&wasm_encoder::Instruction::I32Const(*index as i32));
+
+                self.write_instruction(&wasm_encoder::Instruction::StructNew(enumeration_ty_index));
+            }
+            ir::Value::VariantElement {
+                input,
+                variant,
+                index,
+            } => {
+                let enumeration_ty_index = self
+                    .module
                     .types
                     .get_as_index(
-                        definition
+                        self.definition
                             .types
                             .get(input)
                             .ok_or_else(|| anyhow::format_err!("missing type"))?,
                     )
-                    .ok_or_else(|| anyhow::format_err!("unresolved input type"))?,
-                field_index: *index as u32,
-            });
-        }
-        ir::Value::Unreachable => {
-            wasm.instruction(&wasm_encoder::Instruction::Unreachable);
-        }
-        ir::Value::Variable(node) => {
-            wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                locals
-                    .get(*node)
-                    .ok_or_else(|| anyhow::format_err!("missing local"))?,
-            ));
-        }
-        ir::Value::Variant { index, elements } => {
-            let node = node.ok_or_else(|| anyhow::format_err!("missing node"))?;
+                    .ok_or_else(|| anyhow::format_err!("missing enumeration type"))?;
 
-            let enumeration_ty_index = module
-                .types
-                .get_as_index(
-                    definition
-                        .types
-                        .get(&node)
-                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                )
-                .ok_or_else(|| anyhow::format_err!("missing enumeration type"))?;
+                let variant_ty_index = self
+                    .module
+                    .types
+                    .get_variant(enumeration_ty_index, *variant)
+                    .ok_or_else(|| anyhow::format_err!("unresolved variant type"))?;
 
-            for &element in elements {
-                wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                    locals
-                        .get(element)
+                self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                    self.locals
+                        .get(*input)
                         .ok_or_else(|| anyhow::format_err!("missing local"))?,
                 ));
+
+                self.write_instruction(&wasm_encoder::Instruction::StructGet {
+                    struct_type_index: enumeration_ty_index,
+                    field_index: 0,
+                });
+
+                self.write_instruction(&wasm_encoder::Instruction::RefCastNonNull(
+                    wasm_encoder::HeapType::Concrete(variant_ty_index),
+                ));
+
+                self.write_instruction(&wasm_encoder::Instruction::StructGet {
+                    struct_type_index: variant_ty_index,
+                    field_index: *index as u32,
+                });
             }
-
-            wasm.instruction(&wasm_encoder::Instruction::StructNew(
-                module
-                    .types
-                    .get_variant(enumeration_ty_index, *index)
-                    .ok_or_else(|| anyhow::format_err!("missing variant type"))?,
-            ));
-
-            wasm.instruction(&wasm_encoder::Instruction::I32Const(*index as i32));
-
-            wasm.instruction(&wasm_encoder::Instruction::StructNew(enumeration_ty_index));
         }
-        ir::Value::VariantElement {
-            input,
-            variant,
-            index,
-        } => {
-            let enumeration_ty_index = module
-                .types
-                .get_as_index(
-                    definition
-                        .types
-                        .get(input)
-                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                )
-                .ok_or_else(|| anyhow::format_err!("missing enumeration type"))?;
 
-            let variant_ty_index = module
-                .types
-                .get_variant(enumeration_ty_index, *variant)
-                .ok_or_else(|| anyhow::format_err!("unresolved variant type"))?;
+        Ok(())
+    }
 
-            wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-                locals
+    fn write_call(
+        &mut self,
+        function: Node,
+        inputs: &[Node],
+        output: Node,
+        tail: bool,
+    ) -> Result<(), CodegenError> {
+        let closure_ty_index = self
+            .module
+            .types
+            .get_as_index(
+                self.definition
+                    .types
+                    .get(&function)
+                    .ok_or_else(|| anyhow::format_err!("missing type"))?,
+            )
+            .ok_or_else(|| anyhow::format_err!("unresolved closure type"))?;
+
+        let mut input_tys = inputs
+            .iter()
+            .map(|input| {
+                self.module
+                    .types
+                    .get(
+                        self.definition
+                            .types
+                            .get(input)
+                            .ok_or_else(|| anyhow::format_err!("missing type"))?,
+                    )
+                    .ok_or_else(|| anyhow::format_err!("unresolved input type"))
+            })
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        let output_ty = self
+            .module
+            .types
+            .get(
+                self.definition
+                    .types
+                    .get(&output)
+                    .ok_or_else(|| anyhow::format_err!("missing type"))?,
+            )
+            .ok_or_else(|| anyhow::format_err!("unresolved output type"))?;
+
+        let env_ty = wasm_encoder::ValType::Ref(wasm_encoder::RefType::ANYREF);
+        input_tys.insert(0, env_ty);
+
+        let func_ty_index = self
+            .module
+            .types
+            .get_function(&wasm_encoder::FuncType::new(input_tys, vec![output_ty]))
+            .ok_or_else(|| anyhow::format_err!("missing function type"))?;
+
+        self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+            self.locals
+                .get(function)
+                .ok_or_else(|| anyhow::format_err!("missing local"))?,
+        ));
+
+        self.write_instruction(&wasm_encoder::Instruction::StructGet {
+            struct_type_index: closure_ty_index,
+            field_index: 1,
+        });
+
+        for input in inputs {
+            self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+                self.locals
                     .get(*input)
                     .ok_or_else(|| anyhow::format_err!("missing local"))?,
             ));
-
-            wasm.instruction(&wasm_encoder::Instruction::StructGet {
-                struct_type_index: enumeration_ty_index,
-                field_index: 0,
-            });
-
-            wasm.instruction(&wasm_encoder::Instruction::RefCastNonNull(
-                wasm_encoder::HeapType::Concrete(variant_ty_index),
-            ));
-
-            wasm.instruction(&wasm_encoder::Instruction::StructGet {
-                struct_type_index: variant_ty_index,
-                field_index: *index as u32,
-            });
         }
-    }
 
-    Ok(())
-}
-
-fn write_call(
-    _db: &Db,
-    _program: &ir::Program,
-    _key: &ir::DefinitionKey,
-    definition: &ir::Definition,
-    function: Node,
-    inputs: &[Node],
-    output: Node,
-    tail: bool,
-    module: &Module,
-    locals: &Locals,
-    wasm: &mut wasm_encoder::Function,
-) -> Result<(), CodegenError> {
-    let closure_ty_index = module
-        .types
-        .get_as_index(
-            definition
-                .types
-                .get(&function)
-                .ok_or_else(|| anyhow::format_err!("missing type"))?,
-        )
-        .ok_or_else(|| anyhow::format_err!("unresolved closure type"))?;
-
-    let mut input_tys = inputs
-        .iter()
-        .map(|input| {
-            module
-                .types
-                .get(
-                    definition
-                        .types
-                        .get(input)
-                        .ok_or_else(|| anyhow::format_err!("missing type"))?,
-                )
-                .ok_or_else(|| anyhow::format_err!("unresolved input type"))
-        })
-        .collect::<Result<Vec<_>, CodegenError>>()?;
-
-    let output_ty = module
-        .types
-        .get(
-            definition
-                .types
-                .get(&output)
-                .ok_or_else(|| anyhow::format_err!("missing type"))?,
-        )
-        .ok_or_else(|| anyhow::format_err!("unresolved output type"))?;
-
-    let env_ty = wasm_encoder::ValType::Ref(wasm_encoder::RefType::ANYREF);
-    input_tys.insert(0, env_ty);
-
-    let func_ty_index = module
-        .types
-        .get_function(&wasm_encoder::FuncType::new(input_tys, vec![output_ty]))
-        .ok_or_else(|| anyhow::format_err!("missing function type"))?;
-
-    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-        locals
-            .get(function)
-            .ok_or_else(|| anyhow::format_err!("missing local"))?,
-    ));
-
-    wasm.instruction(&wasm_encoder::Instruction::StructGet {
-        struct_type_index: closure_ty_index,
-        field_index: 1,
-    });
-
-    for input in inputs {
-        wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-            locals
-                .get(*input)
+        self.write_instruction(&wasm_encoder::Instruction::LocalGet(
+            self.locals
+                .get(function)
                 .ok_or_else(|| anyhow::format_err!("missing local"))?,
         ));
+
+        self.write_instruction(&wasm_encoder::Instruction::StructGet {
+            struct_type_index: closure_ty_index,
+            field_index: 0,
+        });
+
+        if tail {
+            self.write_instruction(&wasm_encoder::Instruction::ReturnCallRef(func_ty_index));
+        } else {
+            self.write_instruction(&wasm_encoder::Instruction::CallRef(func_ty_index));
+        }
+
+        Ok(())
     }
 
-    wasm.instruction(&wasm_encoder::Instruction::LocalGet(
-        locals
-            .get(function)
-            .ok_or_else(|| anyhow::format_err!("missing local"))?,
-    ));
+    fn write_wasm_instruction(&mut self, name: &str) -> Result<(), CodegenError> {
+        let instruction = match name {
+            "f64.add" => wasm_encoder::Instruction::F64Add,
+            "f64.sub" => wasm_encoder::Instruction::F64Sub,
+            "f64.mul" => wasm_encoder::Instruction::F64Mul,
+            "f64.div" => wasm_encoder::Instruction::F64Div,
+            "f64.floor" => wasm_encoder::Instruction::F64Floor,
+            "f64.ceil" => wasm_encoder::Instruction::F64Ceil,
+            "f64.sqrt" => wasm_encoder::Instruction::F64Sqrt,
+            "f64.neg" => wasm_encoder::Instruction::F64Neg,
+            _ => return Err(anyhow::format_err!("unsupported wasm instruction {name:?}")),
+        };
 
-    wasm.instruction(&wasm_encoder::Instruction::StructGet {
-        struct_type_index: closure_ty_index,
-        field_index: 0,
-    });
+        self.write_instruction(&instruction);
 
-    if tail {
-        wasm.instruction(&wasm_encoder::Instruction::ReturnCallRef(func_ty_index));
-    } else {
-        wasm.instruction(&wasm_encoder::Instruction::CallRef(func_ty_index));
+        Ok(())
     }
 
-    Ok(())
+    fn write_string(&mut self, string: &str) -> Result<(), CodegenError> {
+        let offset = self
+            .module
+            .strings
+            .get(string)
+            .ok_or_else(|| anyhow::format_err!("missing trace"))?;
+
+        self.write_instruction(&wasm_encoder::Instruction::I32Const(offset));
+        self.write_instruction(&wasm_encoder::Instruction::I32Const(string.len() as i32));
+
+        self.write_instruction(&wasm_encoder::Instruction::Call(
+            self.module
+                .imports
+                .get(
+                    "make-string",
+                    &[wasm_encoder::ValType::I32, wasm_encoder::ValType::I32],
+                    &[wasm_encoder::ValType::EXTERNREF],
+                )
+                .ok_or_else(|| anyhow::format_err!("missing import"))?,
+        ));
+
+        Ok(())
+    }
 }
 
-fn write_wasm_instruction(
-    name: &str,
-    wasm: &mut wasm_encoder::Function,
-) -> Result<(), CodegenError> {
-    let instruction = match name {
-        "f64.add" => wasm_encoder::Instruction::F64Add,
-        "f64.sub" => wasm_encoder::Instruction::F64Sub,
-        "f64.mul" => wasm_encoder::Instruction::F64Mul,
-        "f64.div" => wasm_encoder::Instruction::F64Div,
-        "f64.floor" => wasm_encoder::Instruction::F64Floor,
-        "f64.ceil" => wasm_encoder::Instruction::F64Ceil,
-        "f64.sqrt" => wasm_encoder::Instruction::F64Sqrt,
-        "f64.neg" => wasm_encoder::Instruction::F64Neg,
-        _ => return Err(anyhow::format_err!("unsupported wasm instruction {name:?}")),
-    };
-
-    wasm.instruction(&instruction);
-
-    Ok(())
-}
-
-fn write_string(
-    _db: &Db,
-    _program: &ir::Program,
-    string: &str,
-    module: &Module,
-    wasm: &mut wasm_encoder::Function,
-) -> Result<(), CodegenError> {
-    let offset = module
-        .strings
-        .get(string)
-        .ok_or_else(|| anyhow::format_err!("missing trace"))?;
-
-    wasm.instruction(&wasm_encoder::Instruction::I32Const(offset));
-    wasm.instruction(&wasm_encoder::Instruction::I32Const(string.len() as i32));
-
-    wasm.instruction(&wasm_encoder::Instruction::Call(
-        module
-            .imports
-            .get(
-                "make-string",
-                &[wasm_encoder::ValType::I32, wasm_encoder::ValType::I32],
-                &[wasm_encoder::ValType::EXTERNREF],
-            )
-            .ok_or_else(|| anyhow::format_err!("missing import"))?,
-    ));
-
-    Ok(())
-}
-
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Types {
     next_index: u32,
     type_section: wasm_encoder::TypeSection,
@@ -1413,7 +1345,7 @@ fn collect_types(db: &Db, program: &ir::Program, types: &mut Types) -> Result<()
     Ok(())
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Functions {
     imports_offset: u32,
     function_section: wasm_encoder::FunctionSection,
@@ -1560,7 +1492,7 @@ fn collect_functions(
     Ok(())
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Imports {
     import_section: wasm_encoder::ImportSection,
     entries: HashMap<
@@ -1691,7 +1623,7 @@ fn collect_imports(
     Ok(())
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Exports {
     export_section: wasm_encoder::ExportSection,
 }
@@ -1720,7 +1652,7 @@ fn collect_exports(
     Ok(())
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Strings {
     memory_section: wasm_encoder::MemorySection,
     data_section: wasm_encoder::DataSection,
@@ -1802,7 +1734,7 @@ fn collect_strings(
     Ok(())
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Implementations {
     code_section: wasm_encoder::CodeSection,
     entries: HashMap<(ir::DefinitionKey, Option<Node>), u32>,
@@ -1823,7 +1755,7 @@ impl Implementations {
     }
 }
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 struct Locals {
     locals: Vec<wasm_encoder::ValType>,
     entries: BTreeMap<Node, u32>,
