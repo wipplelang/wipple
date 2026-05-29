@@ -1,7 +1,7 @@
 Facts (layer 2):
 
 `show` (recursive-instance.wipple:1:1-1:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `(Maybe (Maybe Number))` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (library/src/foundation/io.wipple:17:1-17:57)), `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
+  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `(Maybe (Maybe Number))` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (library/src/foundation/io.wipple:17:1-17:57)), `Describe` (library/src/foundation/io.wipple:2:1-2:44) `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (library/src/foundation/io.wipple:17:1-17:57)), `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
   has type `(Maybe (Maybe Number)) -> ()` (recursive-instance.wipple:1:1-1:5)
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)

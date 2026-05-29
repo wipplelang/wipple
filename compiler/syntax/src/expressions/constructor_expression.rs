@@ -202,8 +202,8 @@ impl CodegenValue for ConstructorExpressionCodegen {
             ConstructorExpressionCodegen::Trait { node, is_generic } => {
                 let resolved = db
                     .get(*node)
-                    .and_then(|Bounds(bounds)| bounds.get(node))
-                    .and_then(|result| result.as_ref().ok())
+                    .and_then(|Bounds(bounds)| bounds.iter().find(|(other, _)| *other == *node))
+                    .and_then(|(_, result)| result.as_ref().ok())
                     .ok_or_else(|| anyhow::format_err!("unresolved"))?
                     .clone();
 

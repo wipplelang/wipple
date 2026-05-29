@@ -84,7 +84,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:77:1-77:48)
 
 `not` (not.wipple:3:8-3:11) (VariableExpression):
-  has bound(s) `Not` (library/src/foundation/logic.wipple:19:1-19:38) `Boolean` (resolved as `instance (Not Boolean)` (library/src/foundation/logic.wipple:20:1-20:23)), `Not` (library/src/foundation/logic.wipple:19:1-19:38) `(Number -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)` (library/src/foundation/logic.wipple:21:1-21:53))
+  has bound(s) `Not` (library/src/foundation/logic.wipple:19:1-19:38) `(Number -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)` (library/src/foundation/logic.wipple:21:1-21:53)), `Not` (library/src/foundation/logic.wipple:19:1-19:38) `Boolean` (resolved as `instance (Not Boolean)` (library/src/foundation/logic.wipple:20:1-20:23))
   has type `(Number -> Boolean) -> Number -> Boolean` (not.wipple:3:8-3:11)
   is an expression
   resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)` (library/src/foundation/logic.wipple:25:1-25:59)

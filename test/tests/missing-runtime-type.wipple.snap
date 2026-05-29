@@ -155,7 +155,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `x` (missing-runtime-type.wipple:5:34-5:35)
 
 `T2` (missing-runtime-type.wipple:6:1-6:3) (ConstructorExpression):
-  has bound(s) `T1` (missing-runtime-type.wipple:1:1-1:27) `()` `()` (resolved as `instance (T1 () ())` (missing-runtime-type.wipple:2:1-2:20)), `T2` (missing-runtime-type.wipple:4:1-4:26) `()` (resolved as `instance (T2 a) where (T1 a b)` (missing-runtime-type.wipple:5:1-5:31))
+  has bound(s) `T2` (missing-runtime-type.wipple:4:1-4:26) `()` (resolved as `instance (T2 a) where (T1 a b)` (missing-runtime-type.wipple:5:1-5:31)), `T1` (missing-runtime-type.wipple:1:1-1:27) `()` `()` (resolved as `instance (T1 () ())` (missing-runtime-type.wipple:2:1-2:20))
   has type `() -> ()` (missing-runtime-type.wipple:6:1-6:3)
   is an expression
   resolved to 1 definition(s): `T2 : a => trait (a -> ())` (missing-runtime-type.wipple:4:1-4:26)

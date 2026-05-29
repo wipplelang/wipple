@@ -121,7 +121,7 @@ Facts (layer 2):
   is an expression
 
 `count name < 5` (infer.wipple:3:43-3:57) (ConstructorExpression):
-  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:49) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:24)), `Less-Than` (library/src/foundation/logic.wipple:61:1-61:52) `Number` (resolved as `instance (Less-Than value) where (Order value)` (library/src/foundation/logic.wipple:62:1-62:47))
+  has bound(s) `Less-Than` (library/src/foundation/logic.wipple:61:1-61:52) `Number` (resolved as `instance (Less-Than value) where (Order value)` (library/src/foundation/logic.wipple:62:1-62:47)), `Order` (library/src/foundation/logic.wipple:48:1-48:49) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:24))
   has type `Number Number -> Boolean` (infer.wipple:3:43-3:57)
   is an expression
   resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:61:1-61:52)

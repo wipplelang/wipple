@@ -132,7 +132,7 @@ Facts (layer 2):
   has type `()` (implied-instance.wipple:10:1-10:6)
 
 `T` (implied-instance.wipple:10:5-10:6) (ConstructorExpression):
-  has bound(s) `U` (implied-instance.wipple:5:1-5:33) `value` (implied-instance.wipple:9:6-9:11) (resolved as `(U value)` (implied-instance.wipple:9:24-9:33)), `T` (implied-instance.wipple:4:1-4:33) `value` (implied-instance.wipple:9:6-9:11) (resolved as `instance (T value) where (U value)` (implied-instance.wipple:7:1-7:35))
+  has bound(s) `T` (implied-instance.wipple:4:1-4:33) `value` (implied-instance.wipple:9:6-9:11) (resolved as `instance (T value) where (U value)` (implied-instance.wipple:7:1-7:35)), `U` (implied-instance.wipple:5:1-5:33) `value` (implied-instance.wipple:9:6-9:11) (resolved as `(U value)` (implied-instance.wipple:9:24-9:33))
   has type `value -> ()` (implied-instance.wipple:9:6-9:17)
   is an expression
   resolved to 1 definition(s): `T : value => trait (value -> ())` (implied-instance.wipple:4:1-4:33)

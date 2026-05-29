@@ -120,7 +120,7 @@ Facts (layer 2):
   is an expression
 
 `B` (nested-bounds.wipple:11:1-11:2) (ConstructorExpression):
-  has bound(s) `A` (nested-bounds.wipple:4:1-4:33) `Number` (resolved as `instance (A Number)` (nested-bounds.wipple:5:1-5:20)), `B` (nested-bounds.wipple:8:1-8:33) `Number` (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:35))
+  has bound(s) `B` (nested-bounds.wipple:8:1-8:33) `Number` (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:35)), `A` (nested-bounds.wipple:4:1-4:33) `Number` (resolved as `instance (A Number)` (nested-bounds.wipple:5:1-5:20))
   has type `Number -> ()` (nested-bounds.wipple:11:1-11:2)
   is an expression
   resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:33)
@@ -137,7 +137,7 @@ Facts (layer 2):
   is an expression
 
 `B` (nested-bounds.wipple:12:1-12:2) (ConstructorExpression):
-  has bound(s) `A` (nested-bounds.wipple:4:1-4:33) `String` (resolved as `instance (A String)` (nested-bounds.wipple:6:1-6:20)), `B` (nested-bounds.wipple:8:1-8:33) `String` (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:35))
+  has bound(s) `B` (nested-bounds.wipple:8:1-8:33) `String` (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:35)), `A` (nested-bounds.wipple:4:1-4:33) `String` (resolved as `instance (A String)` (nested-bounds.wipple:6:1-6:20))
   has type `String -> ()` (nested-bounds.wipple:12:1-12:2)
   is an expression
   resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:33)
@@ -154,7 +154,7 @@ Facts (layer 2):
   is an expression
 
 `B` (nested-bounds.wipple:13:1-13:2) (ConstructorExpression):
-  has bound(s) `A` (nested-bounds.wipple:4:1-4:33) `()` (nested-bounds.wipple:13:3-13:5) (unresolved), `B` (nested-bounds.wipple:8:1-8:33) `()` (nested-bounds.wipple:13:3-13:5) (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:35))
+  has bound(s) `B` (nested-bounds.wipple:8:1-8:33) `()` (nested-bounds.wipple:13:3-13:5) (resolved as `instance (B value) where (A value)` (nested-bounds.wipple:9:1-9:35)), `A` (nested-bounds.wipple:4:1-4:33) `()` (nested-bounds.wipple:13:3-13:5) (unresolved)
   has type `() -> ()` (nested-bounds.wipple:13:1-13:2)
   is an expression
   resolved to 1 definition(s): `B : value => trait (value -> ())` (nested-bounds.wipple:8:1-8:33)

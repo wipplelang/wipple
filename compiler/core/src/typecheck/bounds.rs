@@ -28,7 +28,7 @@ impl Render for Instances {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Bounds(pub BTreeMap<Node, Result<ResolvedBound, UnresolvedBound>>);
+pub struct Bounds(pub Vec<(Node, Result<ResolvedBound, UnresolvedBound>)>);
 
 #[typetag::serde]
 impl Fact for Bounds {}

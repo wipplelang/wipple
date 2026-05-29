@@ -226,14 +226,14 @@ impl Constraint for BoundConstraint {
                         continue;
                     };
 
-                    db.get_mut_or_default::<Bounds>(node).0.insert(
+                    db.get_mut_or_default::<Bounds>(node).0.push((
                         self.bound.bound_node,
                         Ok(ResolvedBound {
                             instance: instance.clone(),
                             instance_parameters: candidate.parameters.clone(),
                             resolved_node,
                         }),
-                    );
+                    ));
                 }
 
                 solver.progress = true;
@@ -249,13 +249,13 @@ impl Constraint for BoundConstraint {
                         continue;
                     };
 
-                    db.get_mut_or_default::<Bounds>(node).0.insert(
+                    db.get_mut_or_default::<Bounds>(node).0.push((
                         self.bound.bound_node,
                         Err(UnresolvedBound {
                             trait_node: self.bound.trait_node,
                             parameters: resolved_parameters.clone(),
                         }),
-                    );
+                    ));
                 }
             }
         }

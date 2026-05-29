@@ -17,7 +17,7 @@ Facts (layer 2):
   is an expression
 
 `"Basketball"` (set.wipple:1:11-1:23) (ConstructorExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23)), `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(Set String)` (resolved as `instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (library/src/foundation/collections.wipple:16:1-16:87))
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(Set String)` (resolved as `instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (library/src/foundation/collections.wipple:16:1-16:87)), `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23))
   has type `String (Set String) -> Set String` (set.wipple:1:11-1:23)
   is an expression
   resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:90)
@@ -31,7 +31,7 @@ Facts (layer 2):
   is an expression
 
 `"Soccer"` (set.wipple:1:25-1:33) (ConstructorExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23)), `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(Set String)` (resolved as `instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (library/src/foundation/collections.wipple:16:1-16:87))
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(Set String)` (resolved as `instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (library/src/foundation/collections.wipple:16:1-16:87)), `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23))
   has type `String (Set String) -> Set String` (set.wipple:1:25-1:33)
   is an expression
   resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:90)
@@ -41,7 +41,7 @@ Facts (layer 2):
   is an expression
 
 `"Golf"` (set.wipple:1:35-1:41) (ConstructorExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23)), `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(Set String)` (resolved as `instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (library/src/foundation/collections.wipple:16:1-16:87))
+  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(Set String)` (resolved as `instance (Build-Collection element (Set element)) where (Equal element) (Hash element)` (library/src/foundation/collections.wipple:16:1-16:87)), `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23))
   has type `String (Set String) -> Set String` (set.wipple:1:35-1:41)
   is an expression
   resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:90)
@@ -78,7 +78,7 @@ Facts (layer 2):
   is an expression
 
 `contains?` (set.wipple:3:16-3:25) (VariableExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23)), `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80))
+  has bound(s) `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80)), `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23))
   has type `String -> (Set String) -> Boolean` (set.wipple:3:16-3:25)
   is an expression
   resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)` (library/src/foundation/sequence.wipple:407:1-407:83)
@@ -118,7 +118,7 @@ Facts (layer 2):
   is an expression
 
 `contains?` (set.wipple:4:16-4:25) (VariableExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23)), `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80))
+  has bound(s) `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80)), `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23))
   has type `String -> (Set String) -> Boolean` (set.wipple:4:16-4:25)
   is an expression
   resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)` (library/src/foundation/sequence.wipple:407:1-407:83)
@@ -158,7 +158,7 @@ Facts (layer 2):
   is an expression
 
 `contains?` (set.wipple:5:16-5:25) (VariableExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23)), `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80))
+  has bound(s) `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80)), `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23))
   has type `String -> (Set String) -> Boolean` (set.wipple:5:16-5:25)
   is an expression
   resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)` (library/src/foundation/sequence.wipple:407:1-407:83)
@@ -198,7 +198,7 @@ Facts (layer 2):
   is an expression
 
 `contains?` (set.wipple:6:16-6:25) (VariableExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23)), `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80))
+  has bound(s) `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80)), `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23))
   has type `String -> (Set String) -> Boolean` (set.wipple:6:16-6:25)
   is an expression
   resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)` (library/src/foundation/sequence.wipple:407:1-407:83)

@@ -105,7 +105,7 @@ impl CodegenCtx {
         db: &Db,
         definition: Node,
         parameters: &BTreeMap<Node, Ty>,
-        bounds: BTreeMap<Node, Result<ResolvedBound, UnresolvedBound>>,
+        bounds: Vec<(Node, Result<ResolvedBound, UnresolvedBound>)>,
         generic: bool,
     ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
         let bounds = bounds

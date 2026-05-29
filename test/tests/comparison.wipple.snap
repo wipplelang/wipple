@@ -157,7 +157,7 @@ Facts (layer 2):
   is an expression
 
 `2 /= 3` (comparison.wipple:3:7-3:13) (ConstructorExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:24)), `Not-Equal` (library/src/foundation/logic.wipple:96:1-96:52) `Number` (resolved as `instance (Not-Equal value) where (Equal value)` (library/src/foundation/logic.wipple:97:1-97:47))
+  has bound(s) `Not-Equal` (library/src/foundation/logic.wipple:96:1-96:52) `Number` (resolved as `instance (Not-Equal value) where (Equal value)` (library/src/foundation/logic.wipple:97:1-97:47)), `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `Number` (resolved as `instance (Equal Number)` (library/src/foundation/logic.wipple:85:1-85:24))
   has type `Number Number -> Boolean` (comparison.wipple:3:7-3:13)
   is an expression
   resolved to 1 definition(s): `Not-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:96:1-96:52)
@@ -373,7 +373,7 @@ Facts (layer 2):
   is an expression
 
 `2 > 1` (comparison.wipple:9:7-9:12) (ConstructorExpression):
-  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:49) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:24)), `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:55) `Number` (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:50))
+  has bound(s) `Greater-Than` (library/src/foundation/logic.wipple:69:1-69:55) `Number` (resolved as `instance (Greater-Than value) where (Order value)` (library/src/foundation/logic.wipple:70:1-70:50)), `Order` (library/src/foundation/logic.wipple:48:1-48:49) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:24))
   has type `Number Number -> Boolean` (comparison.wipple:9:7-9:12)
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:69:1-69:55)
@@ -408,7 +408,7 @@ Facts (layer 2):
   is an expression
 
 `1 >= 1` (comparison.wipple:10:7-10:13) (ConstructorExpression):
-  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:49) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:24)), `Greater-Than-Or-Equal` (library/src/foundation/logic.wipple:73:1-73:64) `Number` (resolved as `instance (Greater-Than-Or-Equal value) where (Order value)` (library/src/foundation/logic.wipple:74:1-74:59))
+  has bound(s) `Greater-Than-Or-Equal` (library/src/foundation/logic.wipple:73:1-73:64) `Number` (resolved as `instance (Greater-Than-Or-Equal value) where (Order value)` (library/src/foundation/logic.wipple:74:1-74:59)), `Order` (library/src/foundation/logic.wipple:48:1-48:49) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:24))
   has type `Number Number -> Boolean` (comparison.wipple:10:7-10:13)
   is an expression
   resolved to 1 definition(s): `Greater-Than-Or-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:73:1-73:64)
@@ -443,7 +443,7 @@ Facts (layer 2):
   is an expression
 
 `4 < 3` (comparison.wipple:11:7-11:12) (ConstructorExpression):
-  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:49) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:24)), `Less-Than` (library/src/foundation/logic.wipple:61:1-61:52) `Number` (resolved as `instance (Less-Than value) where (Order value)` (library/src/foundation/logic.wipple:62:1-62:47))
+  has bound(s) `Less-Than` (library/src/foundation/logic.wipple:61:1-61:52) `Number` (resolved as `instance (Less-Than value) where (Order value)` (library/src/foundation/logic.wipple:62:1-62:47)), `Order` (library/src/foundation/logic.wipple:48:1-48:49) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:24))
   has type `Number Number -> Boolean` (comparison.wipple:11:7-11:12)
   is an expression
   resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:61:1-61:52)
@@ -478,7 +478,7 @@ Facts (layer 2):
   is an expression
 
 `5 <= 6` (comparison.wipple:12:7-12:13) (ConstructorExpression):
-  has bound(s) `Order` (library/src/foundation/logic.wipple:48:1-48:49) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:24)), `Less-Than-Or-Equal` (library/src/foundation/logic.wipple:65:1-65:61) `Number` (resolved as `instance (Less-Than-Or-Equal value) where (Order value)` (library/src/foundation/logic.wipple:66:1-66:56))
+  has bound(s) `Less-Than-Or-Equal` (library/src/foundation/logic.wipple:65:1-65:61) `Number` (resolved as `instance (Less-Than-Or-Equal value) where (Order value)` (library/src/foundation/logic.wipple:66:1-66:56)), `Order` (library/src/foundation/logic.wipple:48:1-48:49) `Number` (resolved as `instance (Order Number)` (library/src/foundation/logic.wipple:53:1-53:24))
   has type `Number Number -> Boolean` (comparison.wipple:12:7-12:13)
   is an expression
   resolved to 1 definition(s): `Less-Than-Or-Equal : value => trait (value value -> Boolean)` (library/src/foundation/logic.wipple:65:1-65:61)

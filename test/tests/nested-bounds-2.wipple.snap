@@ -152,7 +152,7 @@ Facts (layer 2):
   has type `()`
 
 `T` (nested-bounds-2.wipple:10:1-10:2) (ConstructorExpression):
-  has bound(s) `U` (nested-bounds-2.wipple:2:1-2:22) `_` (resolved as `instance (U value) where (V value)` (nested-bounds-2.wipple:7:1-7:35)), `V` (nested-bounds-2.wipple:3:1-3:22) `_` (resolved as `instance (V value) where (W value)` (nested-bounds-2.wipple:8:1-8:35)), `W` (nested-bounds-2.wipple:4:1-4:22) `_` (unresolved), `T` (nested-bounds-2.wipple:1:1-1:22) `_` (resolved as `instance (T value) where (U value)` (nested-bounds-2.wipple:6:1-6:35))
+  has bound(s) `T` (nested-bounds-2.wipple:1:1-1:22) `_` (resolved as `instance (T value) where (U value)` (nested-bounds-2.wipple:6:1-6:35)), `U` (nested-bounds-2.wipple:2:1-2:22) `_` (resolved as `instance (U value) where (V value)` (nested-bounds-2.wipple:7:1-7:35)), `V` (nested-bounds-2.wipple:3:1-3:22) `_` (resolved as `instance (V value) where (W value)` (nested-bounds-2.wipple:8:1-8:35)), `W` (nested-bounds-2.wipple:4:1-4:22) `_` (unresolved)
   has type `()`
   is an expression
   resolved to 1 definition(s): `T : value => trait ()` (nested-bounds-2.wipple:1:1-1:22)

@@ -97,7 +97,7 @@ Facts (layer 2):
   is an expression
 
 `Describe` (recursive-bounds.wipple:9:1-9:9) (ConstructorExpression):
-  has bound(s) `Describe` (recursive-bounds.wipple:5:1-5:44) `String` (resolved as `instance (Describe String)` (recursive-bounds.wipple:6:1-6:27)), `Describe` (recursive-bounds.wipple:5:1-5:44) `(Maybe String)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (recursive-bounds.wipple:7:1-7:57))
+  has bound(s) `Describe` (recursive-bounds.wipple:5:1-5:44) `(Maybe String)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (recursive-bounds.wipple:7:1-7:57)), `Describe` (recursive-bounds.wipple:5:1-5:44) `String` (resolved as `instance (Describe String)` (recursive-bounds.wipple:6:1-6:27))
   has type `(Maybe String) -> String` (recursive-bounds.wipple:9:1-9:9)
   is an expression
   resolved to 1 definition(s): `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1-5:44)
@@ -128,7 +128,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `String : type` (recursive-bounds.wipple:2:13-2:26)
 
 `Describe` (recursive-bounds.wipple:10:1-10:9) (ConstructorExpression):
-  has bound(s) `Describe` (recursive-bounds.wipple:5:1-5:44) `Number` (recursive-bounds.wipple:10:22-10:28) (unresolved), `Describe` (recursive-bounds.wipple:5:1-5:44) `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (recursive-bounds.wipple:7:1-7:57))
+  has bound(s) `Describe` (recursive-bounds.wipple:5:1-5:44) `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (recursive-bounds.wipple:7:1-7:57)), `Describe` (recursive-bounds.wipple:5:1-5:44) `Number` (recursive-bounds.wipple:10:22-10:28) (unresolved)
   has type `(Maybe Number) -> String` (recursive-bounds.wipple:10:1-10:9)
   is an expression
   resolved to 1 definition(s): `Describe : value => trait (value -> String)` (recursive-bounds.wipple:5:1-5:44)

@@ -140,7 +140,7 @@ Facts (layer 2):
   is an expression
 
 `not` (remove-duplicates.wipple:4:28-4:31) (VariableExpression):
-  has bound(s) `Not` (library/src/foundation/logic.wipple:19:1-19:38) `Boolean` (resolved as `instance (Not Boolean)` (library/src/foundation/logic.wipple:20:1-20:23)), `Not` (library/src/foundation/logic.wipple:19:1-19:38) `(element -> (Set element) -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)` (library/src/foundation/logic.wipple:21:1-21:53))
+  has bound(s) `Not` (library/src/foundation/logic.wipple:19:1-19:38) `(element -> (Set element) -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)` (library/src/foundation/logic.wipple:21:1-21:53)), `Not` (library/src/foundation/logic.wipple:19:1-19:38) `((Set element) -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)` (library/src/foundation/logic.wipple:21:1-21:53)), `Not` (library/src/foundation/logic.wipple:19:1-19:38) `Boolean` (resolved as `instance (Not Boolean)` (library/src/foundation/logic.wipple:20:1-20:23))
   has type `(element -> (Set element) -> Boolean) -> element -> (Set element) -> Boolean` (remove-duplicates.wipple:4:28-4:31)
   is an expression
   resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)` (library/src/foundation/logic.wipple:25:1-25:59)
@@ -150,7 +150,7 @@ Facts (layer 2):
   is an expression
 
 `contains?` (remove-duplicates.wipple:4:32-4:41) (VariableExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `(Equal element)` (remove-duplicates.wipple:1:82-1:97)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `(Hash element)` (remove-duplicates.wipple:1:98-1:112)), `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set element)` `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80))
+  has bound(s) `Container` (library/src/foundation/sequence.wipple:404:1-404:83) `(Set element)` `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)` (library/src/foundation/dictionary.wipple:151:1-151:80)), `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `(Equal element)` (remove-duplicates.wipple:1:82-1:97)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `element` (remove-duplicates.wipple:1:28-1:35) (resolved as `(Hash element)` (remove-duplicates.wipple:1:98-1:112))
   has type `element -> (Set element) -> Boolean`
   is an expression
   resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)` (library/src/foundation/sequence.wipple:407:1-407:83)
