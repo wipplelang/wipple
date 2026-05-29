@@ -60,7 +60,7 @@ pub fn to_wasm(
     let dwarf_encoding = gimli::Encoding {
         address_size: 4,
         format: gimli::Format::Dwarf32,
-        version: 5,
+        version: 4,
     };
 
     let mut dwarf_units = HashMap::new();

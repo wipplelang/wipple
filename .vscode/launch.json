@@ -1,0 +1,12 @@
+{
+    "configurations": [
+        {
+            "name": "Run test.wipple",
+            "preLaunchTask": "Compile test.wipple",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/out",
+            "skipFiles": ["<node_internals>/**"]
+        }
+    ]
+}
