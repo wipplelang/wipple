@@ -1,6 +1,4 @@
-# Compiler architecture
-
-## Database of nodes and facts
+# Overview
 
 The Wipple compiler is designed around a database of nodes, where nodes can have arbitrary facts. A node is a handle to an expression, pattern, type, or other program element. Facts represent the results of parsing (e.g., `Syntax`), name resolution (e.g., `Defined` and `Resolved`), type checking (e.g., `Typed` and `Bounds`), and other phases. The IDE can query these facts to obtain the information it needs for error messages, autocomplete, etc.
 

@@ -45,17 +45,23 @@ tasks:
     dir: playground
     cmds:
       - npm run dev -- --open
+  serve:compiler-docs:
+    dir: compiler-docs
+    cmds:
+      - mdbook serve
 
   build:
     deps:
       - build:library
       - build:playground
+      - build:compiler-docs
     dir: site
     cmds:
       - rm -rf dist
       - npm run build
       - cp -r ../library/dist/. dist/library
       - cp -r ../playground/build/. dist/playground
+      - cp -r ../compiler-docs/book/. dist/compiler-docs
   build:library:
     dir: library
     cmds:
@@ -71,6 +77,10 @@ tasks:
     dir: compiler/api
     cmds:
       - npm run build
+  build:compiler-docs:
+    dir: compiler-docs
+    cmds:
+      - mdbook build
 
   vscode:
     dir: vscode
