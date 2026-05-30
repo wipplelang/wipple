@@ -103,6 +103,11 @@ pub fn documentation(db: &Db, node: Node) -> Option<Documentation> {
 
     let instance_declarations = references(db, node)
         .into_iter()
+        .filter(|&reference| {
+            db.get(reference)
+                .and_then(|Defined(definition)| definition.downcast_ref::<InstanceDefinition>())
+                .is_some()
+        })
         .filter_map(|reference| {
             let source = &db.ast(&db.get::<Syntax>(reference)?.0).span(db).source;
             Some(format!("\n{source}"))
