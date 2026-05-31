@@ -1,26 +1,20 @@
-mod imports;
 pub mod ir;
+pub mod js;
 pub mod monomorphize;
-mod optimize;
-pub mod types;
-pub mod wasm;
 
 use crate::{
-    codegen::{
-        imports::collect_imports, monomorphize::MonomorphizeCtx, optimize::optimize, types::ir_type,
-    },
+    codegen::monomorphize::MonomorphizeCtx,
     db::{Db, Node},
     facts::Codegen,
-    typecheck::{
-        bounds::{Bounds, ResolvedBound, UnresolvedBound},
-        ty::Ty,
-    },
+    typecheck::bounds::{Bounds, ResolvedBound, UnresolvedBound},
 };
 use dyn_clone::DynClone;
 use std::{collections::BTreeMap, fmt::Debug};
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Copy)]
 pub struct Options<'a> {
+    pub file_name: &'a str,
+    pub source_root: &'a str,
     pub trace: TraceOptions<'a>,
 }
 
@@ -90,21 +84,18 @@ impl CodegenCtx {
 
     pub fn definition_key(
         &mut self,
-        db: &Db,
         definition: Node,
-        parameters: &BTreeMap<Node, Ty>,
         bounds: BTreeMap<Node, ir::Instance>,
         generic: bool,
     ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
         self.monomorphize_ctx
-            .get_or_insert(db, definition, parameters, bounds, generic)
+            .get_or_insert(definition, bounds, generic)
     }
 
     pub fn codegen_constant(
         &mut self,
         db: &Db,
         definition: Node,
-        parameters: &BTreeMap<Node, Ty>,
         bounds: Vec<(Node, Result<ResolvedBound, UnresolvedBound>)>,
         generic: bool,
     ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
@@ -120,7 +111,7 @@ impl CodegenCtx {
             })
             .collect::<Result<BTreeMap<_, _>, CodegenError>>()?;
 
-        self.definition_key(db, definition, parameters, bounds, generic)
+        self.definition_key(definition, bounds, generic)
     }
 
     pub fn codegen_instance(
@@ -138,52 +129,40 @@ impl CodegenCtx {
         Ok(ir::Instance::Definition(self.codegen_constant(
             db,
             bound.instance.node,
-            &bound.instance_parameters,
             bounds,
             generic,
         )?))
     }
 }
 
-pub fn codegen(db: &Db, statements: &[Node], lib: &[Node]) -> Result<ir::Program, CodegenError> {
+pub fn codegen(
+    db: &Db,
+    source_files: &[Node],
+    statements: &[Node],
+    lib_statements: &[Node],
+) -> Result<ir::Program, CodegenError> {
     let mut ctx = CodegenCtx::new();
 
     let mut program = ir::Program::default();
-    program
-        .source_files
-        .extend(statements.iter().chain(lib).copied());
+    program.source_files.extend(source_files);
 
-    for &statement in statements.iter().chain(lib) {
+    for &statement in statements.iter().chain(lib_statements) {
         ctx.codegen(db, statement)?;
     }
 
-    let mut top_level = ir::Definition {
-        instructions: ctx.pop_instructions(),
-        ..Default::default()
-    };
-
-    for instruction in &mut top_level.instructions {
-        instruction.for_each_node(true, &mut |node| {
-            top_level.types.insert(*node, ir_type(db, Ty::Node(*node))?);
-            Ok(())
-        })?;
-    }
+    program.definitions.insert(
+        ir::DefinitionKey::TopLevel,
+        ir::Function {
+            instructions: ctx.pop_instructions(),
+            ..Default::default()
+        },
+    );
 
     for (key, definition) in ctx.monomorphize_ctx.monomorphize_definitions(db)? {
         program
             .definitions
             .insert(ir::DefinitionKey::Constant(key), definition);
     }
-
-    program
-        .definitions
-        .insert(ir::DefinitionKey::TopLevel, top_level);
-
-    for definition in program.definitions.values_mut() {
-        collect_imports(definition)?;
-    }
-
-    optimize(&mut program);
 
     Ok(program)
 }

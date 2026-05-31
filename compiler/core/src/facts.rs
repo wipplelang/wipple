@@ -45,3 +45,14 @@ pub struct GraphType;
 impl Fact for GraphType {}
 
 impl Render for GraphType {}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct DebugInfo {
+    pub statement: bool,
+    pub variable: bool,
+}
+
+#[typetag::serde]
+impl Fact for DebugInfo {}
+
+impl Render for DebugInfo {}

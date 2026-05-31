@@ -1,7 +1,7 @@
 use crate::{
     expressions::parse_expression,
     patterns::{parse_pattern, variable_pattern::VariablePattern},
-    statements::parse_comments,
+    statements::{parse_comments, visit_statement},
 };
 use serde::{Deserialize, Serialize};
 use wipple_core::{
@@ -58,6 +58,8 @@ impl Visit for AssignmentStatement {
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
+        visit_statement(db, node, visitor);
+
         visitor.constraint(db, TyConstraint::new(node, ConstructedTy::unit()));
 
         // Try assigning to an existing constant in the current scope if possible

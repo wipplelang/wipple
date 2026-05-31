@@ -1,98 +1,98 @@
 Facts (layer 2):
 
-`show` (is.wipple:1:1-1:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:28))
-  has type `Boolean -> ()` (is.wipple:1:1-1:5)
+`show` (VariableExpression):
+  has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
+  has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`show (Some 42 is Some _)` (is.wipple:1:1-1:25) (ExpressionStatement):
+`show (Some 42 is Some _)` (ExpressionStatement):
   has type `()`
 
-`show (Some 42 is Some _)` (is.wipple:1:1-1:25) (CallExpression):
+`show (Some 42 is Some _)` (CallExpression):
   has type `()`
   is an expression
 
-`Some` (is.wipple:1:7-1:11) (ConstructorExpression):
-  has type `Number -> Maybe Number` (is.wipple:1:7-1:11)
+`Some` (ConstructorExpression):
+  has type `Number -> Maybe Number`
   is an expression
-  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:3-6:13)
+  resolved to 1 definition(s): `Some value`
 
-`Some 42` (is.wipple:1:7-1:14) (CallExpression):
+`Some 42` (CallExpression):
   has type `Maybe Number`
   is an expression
 
-`Some 42 is Some _` (is.wipple:1:7-1:24) (IsExpression):
+`Some 42 is Some _` (IsExpression):
   has type `Boolean`
   is an expression
 
-`Some 42 is Some _` (is.wipple:1:7-1:24) (ConstructorExpression):
+`Some 42 is Some _` (ConstructorExpression):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+  resolved to 1 definition(s): `True`
 
-`Some 42 is Some _` (is.wipple:1:7-1:24) (ConstructorExpression):
+`Some 42 is Some _` (ConstructorExpression):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
+  resolved to 1 definition(s): `False`
 
-`42` (is.wipple:1:12-1:14) (NumberExpression):
-  has type `Number` (is.wipple:1:12-1:14)
+`42` (NumberExpression):
+  has type `Number`
   is an expression
 
-`Some _` (is.wipple:1:18-1:24) (ConstructorPattern):
-  has type `Maybe Number`
-  is a pattern
-  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:3-6:13)
-
-`_` (is.wipple:1:23-1:24) (WildcardPattern):
-  has type `Number` (is.wipple:1:12-1:14)
-  is a pattern
-
-`show` (is.wipple:2:1-2:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Boolean` (resolved as `instance (Describe Boolean)` (library/src/foundation/io.wipple:16:1-16:28))
-  has type `Boolean -> ()` (is.wipple:2:1-2:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
-
-`show (Some 42 is None)` (is.wipple:2:1-2:23) (ExpressionStatement):
-  has type `()`
-
-`show (Some 42 is None)` (is.wipple:2:1-2:23) (CallExpression):
-  has type `()`
-  is an expression
-
-`Some` (is.wipple:2:7-2:11) (ConstructorExpression):
-  has type `Number -> Maybe Number` (is.wipple:2:7-2:11)
-  is an expression
-  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:3-6:13)
-
-`Some 42` (is.wipple:2:7-2:14) (CallExpression):
-  has type `Maybe Number`
-  is an expression
-
-`Some 42 is None` (is.wipple:2:7-2:22) (IsExpression):
-  has type `Boolean`
-  is an expression
-
-`Some 42 is None` (is.wipple:2:7-2:22) (ConstructorExpression):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
-
-`Some 42 is None` (is.wipple:2:7-2:22) (ConstructorExpression):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
-
-`42` (is.wipple:2:12-2:14) (NumberExpression):
-  has type `Number` (is.wipple:2:12-2:14)
-  is an expression
-
-`None` (is.wipple:2:18-2:22) (ConstructorPattern):
+`Some _` (ConstructorPattern):
   has type `Maybe Number`
   is a pattern
-  resolved to 1 definition(s): `None` (library/src/foundation/language.wipple:5:3-5:7)
+  resolved to 1 definition(s): `Some value`
+
+`_` (WildcardPattern):
+  has type `Number`
+  is a pattern
+
+`show` (VariableExpression):
+  has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
+  has type `Boolean -> ()`
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+
+`show (Some 42 is None)` (ExpressionStatement):
+  has type `()`
+
+`show (Some 42 is None)` (CallExpression):
+  has type `()`
+  is an expression
+
+`Some` (ConstructorExpression):
+  has type `Number -> Maybe Number`
+  is an expression
+  resolved to 1 definition(s): `Some value`
+
+`Some 42` (CallExpression):
+  has type `Maybe Number`
+  is an expression
+
+`Some 42 is None` (IsExpression):
+  has type `Boolean`
+  is an expression
+
+`Some 42 is None` (ConstructorExpression):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `True`
+
+`Some 42 is None` (ConstructorExpression):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `False`
+
+`42` (NumberExpression):
+  has type `Number`
+  is an expression
+
+`None` (ConstructorPattern):
+  has type `Maybe Number`
+  is a pattern
+  resolved to 1 definition(s): `None`
 
 
 Output:

@@ -5,6 +5,7 @@ use wipple_core::{
     anyhow,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
+    facts::DebugInfo,
     span::{Span, Str},
     visit::{
         IsMutated, Visit, Visitor, definitions::VariableDefinition,
@@ -39,6 +40,8 @@ impl Visit for VariablePattern {
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_pattern(db, node, visitor, Some(MatchPathSegment::Match));
+
+        db.get_mut_or_default::<DebugInfo>(node).variable = true;
 
         let current_match = visitor.current_match.as_ref().unwrap();
         let value = current_match.value;

@@ -1,6 +1,5 @@
 import { makeChannel, readMessage, writeMessage, type Channel } from "sync-message";
 import * as Sentry from "@sentry/browser";
-import initRuntime from "./runtime";
 
 export type Env = Record<string, (input: any) => Promise<any>>;
 
@@ -28,14 +27,14 @@ export const init = (worker: Worker, env: Env) => {
     });
 
     return {
-        run: async (executable: ArrayBufferLike) => {
-            worker.postMessage({ type: "run", channel, executable }, [executable]);
+        run: async (module: string) => {
+            worker.postMessage({ type: "run", channel, module });
             await done;
         },
     };
 };
 
-const run = async (channel: Channel, executable: ArrayBuffer) => {
+const run = async (channel: Channel, moduleString: string) => {
     const env = new Proxy(
         {},
         {
@@ -47,15 +46,13 @@ const run = async (channel: Channel, executable: ArrayBuffer) => {
         },
     );
 
-    const runtime = initRuntime(env);
-
-    const wasm = await WebAssembly.instantiate(executable, { runtime });
-
-    const { main, memory } = wasm.instance.exports as any;
+    const blob = new Blob([moduleString], { type: "application/javascript" });
+    const url = URL.createObjectURL(blob);
+    const { default: main } = await import(/* @vite-ignore */ url);
+    URL.revokeObjectURL(url);
 
     try {
-        runtime.init(memory.buffer);
-        main(runtime);
+        main(env);
     } catch (e) {
         console.error(e);
         Sentry.captureException(e);
@@ -68,7 +65,7 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
     onmessage = (e) => {
         switch (e.data.type) {
             case "run": {
-                run(e.data.channel, e.data.executable);
+                run(e.data.channel, e.data.module);
                 break;
             }
             default:

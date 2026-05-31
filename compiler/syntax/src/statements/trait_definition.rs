@@ -1,7 +1,7 @@
 use crate::{
     attributes::attribute::parse_attributes,
     constraints::parse_constraints,
-    statements::parse_comments,
+    statements::{parse_comments, visit_statement},
     types::{parse_atomic_type, type_parameter::parse_type_parameters},
 };
 
@@ -97,6 +97,8 @@ impl Visit for TraitDefinition {
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
+        visit_statement(db, node, visitor);
+
         visitor.within_definition::<definitions::TraitDefinition>(
             db,
             node,

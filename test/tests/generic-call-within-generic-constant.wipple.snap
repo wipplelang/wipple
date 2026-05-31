@@ -1,108 +1,108 @@
 Facts (layer 2):
 
-`f :: value -> value` (generic-call-within-generic-constant.wipple:1:1-1:20) (ConstantDefinition):
+`f :: value -> value` (ConstantDefinition):
   has definition constraints
-  has type `value -> value` (generic-call-within-generic-constant.wipple:1:6-1:20)
+  has type `value -> value`
   has type parameters
   is a definition
 
-`value` (generic-call-within-generic-constant.wipple:1:6-1:11) (TypeParameter):
-  has type `value` (generic-call-within-generic-constant.wipple:1:6-1:11)
+`value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (generic-call-within-generic-constant.wipple:1:6-1:11)
+  resolved to 1 definition(s): `value`
 
-`value -> value` (generic-call-within-generic-constant.wipple:1:6-1:20) (FunctionType):
-  has type `value -> value` (generic-call-within-generic-constant.wipple:1:6-1:20)
+`value -> value` (FunctionType):
+  has type `value -> value`
   is a type
 
-`value` (generic-call-within-generic-constant.wipple:1:15-1:20) (TypeParameter):
-  has type `value` (generic-call-within-generic-constant.wipple:1:6-1:11)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (generic-call-within-generic-constant.wipple:1:6-1:11)
+  resolved to 1 definition(s): `value`
 
-`f : x -> x` (generic-call-within-generic-constant.wipple:2:1-2:11) (AssignmentStatement):
-  has type `()` (generic-call-within-generic-constant.wipple:2:1-2:11)
+`f : x -> x` (AssignmentStatement):
+  has type `()`
 
-`x` (generic-call-within-generic-constant.wipple:2:5-2:6) (VariablePattern):
-  has type `value` (generic-call-within-generic-constant.wipple:1:6-1:11)
+`x` (VariablePattern):
+  has type `value`
   is a definition
   is a pattern
 
-`x -> x` (generic-call-within-generic-constant.wipple:2:5-2:11) (FunctionExpression):
-  has type `value -> value` (generic-call-within-generic-constant.wipple:1:6-1:20)
+`x -> x` (FunctionExpression):
+  has type `value -> value`
   is an expression
 
-`x` (generic-call-within-generic-constant.wipple:2:10-2:11) (VariableExpression):
-  has type `value` (generic-call-within-generic-constant.wipple:1:6-1:11)
+`x` (VariableExpression):
+  has type `value`
   is an expression
-  resolved to 1 definition(s): `x` (generic-call-within-generic-constant.wipple:2:5-2:6)
+  resolved to 1 definition(s): `x`
 
-`g :: value -> value` (generic-call-within-generic-constant.wipple:4:1-4:20) (ConstantDefinition):
+`g :: value -> value` (ConstantDefinition):
   has definition constraints
-  has type `value -> value` (generic-call-within-generic-constant.wipple:4:6-4:20)
+  has type `value -> value`
   has type parameters
   is a definition
 
-`value` (generic-call-within-generic-constant.wipple:4:6-4:11) (TypeParameter):
-  has type `value` (generic-call-within-generic-constant.wipple:4:6-4:11)
+`value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (generic-call-within-generic-constant.wipple:4:6-4:11)
+  resolved to 1 definition(s): `value`
 
-`value -> value` (generic-call-within-generic-constant.wipple:4:6-4:20) (FunctionType):
-  has type `value -> value` (generic-call-within-generic-constant.wipple:4:6-4:20)
+`value -> value` (FunctionType):
+  has type `value -> value`
   is a type
 
-`value` (generic-call-within-generic-constant.wipple:4:15-4:20) (TypeParameter):
-  has type `value` (generic-call-within-generic-constant.wipple:4:6-4:11)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (generic-call-within-generic-constant.wipple:4:6-4:11)
+  resolved to 1 definition(s): `value`
 
-`g : x -> f x` (generic-call-within-generic-constant.wipple:5:1-5:13) (AssignmentStatement):
-  has type `()` (generic-call-within-generic-constant.wipple:5:1-5:13)
+`g : x -> f x` (AssignmentStatement):
+  has type `()`
 
-`x` (generic-call-within-generic-constant.wipple:5:5-5:6) (VariablePattern):
-  has type `value` (generic-call-within-generic-constant.wipple:4:6-4:11)
+`x` (VariablePattern):
+  has type `value`
   is a definition
   is a pattern
 
-`x -> f x` (generic-call-within-generic-constant.wipple:5:5-5:13) (FunctionExpression):
-  has type `value -> value` (generic-call-within-generic-constant.wipple:4:6-4:20)
+`x -> f x` (FunctionExpression):
+  has type `value -> value`
   is an expression
 
-`f` (generic-call-within-generic-constant.wipple:5:10-5:11) (VariableExpression):
-  has type `value -> value` (generic-call-within-generic-constant.wipple:5:10-5:11)
+`f` (VariableExpression):
+  has type `value -> value`
   is an expression
-  resolved to 1 definition(s): `f :: value -> value` (generic-call-within-generic-constant.wipple:1:1-1:20)
+  resolved to 1 definition(s): `f :: value -> value`
 
-`f x` (generic-call-within-generic-constant.wipple:5:10-5:13) (CallExpression):
-  has type `value` (generic-call-within-generic-constant.wipple:4:6-4:11)
+`f x` (CallExpression):
+  has type `value`
   is an expression
 
-`x` (generic-call-within-generic-constant.wipple:5:12-5:13) (VariableExpression):
-  has type `value` (generic-call-within-generic-constant.wipple:4:6-4:11)
+`x` (VariableExpression):
+  has type `value`
   is an expression
-  resolved to 1 definition(s): `x` (generic-call-within-generic-constant.wipple:5:5-5:6)
+  resolved to 1 definition(s): `x`
 
-`_` (generic-call-within-generic-constant.wipple:7:1-7:2) (WildcardPattern):
-  has type `Number` (generic-call-within-generic-constant.wipple:7:7-7:9)
+`_` (WildcardPattern):
+  has type `Number`
   is a pattern
 
-`_ : g 42` (generic-call-within-generic-constant.wipple:7:1-7:9) (AssignmentStatement):
-  has type `()` (generic-call-within-generic-constant.wipple:7:1-7:9)
+`_ : g 42` (AssignmentStatement):
+  has type `()`
 
-`g` (generic-call-within-generic-constant.wipple:7:5-7:6) (VariableExpression):
-  has type `Number -> Number` (generic-call-within-generic-constant.wipple:7:5-7:6)
+`g` (VariableExpression):
+  has type `Number -> Number`
   is an expression
-  resolved to 1 definition(s): `g :: value -> value` (generic-call-within-generic-constant.wipple:4:1-4:20)
+  resolved to 1 definition(s): `g :: value -> value`
 
-`g 42` (generic-call-within-generic-constant.wipple:7:5-7:9) (CallExpression):
-  has type `Number` (generic-call-within-generic-constant.wipple:7:7-7:9)
+`g 42` (CallExpression):
+  has type `Number`
   is an expression
 
-`42` (generic-call-within-generic-constant.wipple:7:7-7:9) (NumberExpression):
-  has type `Number` (generic-call-within-generic-constant.wipple:7:7-7:9)
+`42` (NumberExpression):
+  has type `Number`
   is an expression
 
 

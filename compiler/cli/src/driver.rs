@@ -24,6 +24,7 @@ pub struct Driver<'a, Out> {
     pub time: bool,
     pub progress: Option<(usize, usize)>,
     pub hide_facts: bool,
+    pub show_span: bool,
 }
 
 impl<'a, Out: io::Write> Driver<'a, Out> {
@@ -36,6 +37,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             time: false,
             progress: None,
             hide_facts: false,
+            show_span: true,
         }
     }
 
@@ -44,7 +46,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
         db: &mut Db,
         top_level: &mut TopLevel,
         name: &str,
-    ) -> anyhow::Result<Option<Vec<Node>>> {
+    ) -> anyhow::Result<Option<(Node, Vec<Node>, Vec<Node>)>> {
         if let Some((index, total)) = self.progress {
             eprint!("\u{001B}[2K\r"); // reset line
             eprint!("({}/{}) ", index + 1, total);
@@ -57,7 +59,8 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
 
         let start = Instant::now();
 
-        let (_, statements) = compile(db, top_level, &self.files, run_checks, GroupOrder::new);
+        let (root_node, source_files, statements) =
+            compile(db, top_level, &self.files, run_checks, GroupOrder::new);
 
         if self.time {
             eprint!(" done ({:.0?})", start.elapsed());
@@ -81,7 +84,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             };
 
             writeln!(self.out, "Facts (layer {}):\n", db.layer())?;
-            writeln!(self.out, "{}", db.debug(filter))?;
+            writeln!(self.out, "{}", db.debug(filter, self.show_span))?;
         }
 
         if self.compile_options.graph && !self.hide_facts {
@@ -114,7 +117,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             let mut render_ctx = RenderCtx::default();
             render_ctx.node(item.location.primary);
             let (rendered_location, _) =
-                render_ctx.finish(db, |db, segment| segment.markdown(db, true));
+                render_ctx.finish(db, |db, segment| segment.markdown(db, self.show_span));
 
             writeln!(self.out, "\n{} ({})\n", rendered_location, item.id)?;
 
@@ -127,6 +130,6 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             feedback_count += 1;
         }
 
-        Ok((feedback_count == 0).then_some(statements))
+        Ok((feedback_count == 0).then_some((root_node, source_files, statements)))
     }
 }

@@ -46,11 +46,14 @@ Ordering : type {
 
 -- Implement this trait to enable comparisons between two values of your type.
 Order : value => trait (value value -> Ordering)
+
 -- Cannot put items that are [`value`] into order.
+--
 -- You can't use comparison operators like `>` or `<` with [`value`]
 -- because it doesn't support ordering.
 default error instance (Order value)
-instance (Order Number) : a b -> when (intrinsic "number-ordering" a b) {
+
+instance (Order Number) : a b -> when (intrinsic "order" a b) {
   -1 -> Is-Less-Than
   0 -> Is-Equal-To
   1 -> Is-Greater-Than
@@ -76,13 +79,13 @@ instance (Greater-Than-Or-Equal value) where (Order value) : a b -> (Order a b) 
 -- Returns `True` if two values are equal.
 Equal : value => trait (value value -> Boolean)
 
-instance (Equal String) : a b -> when (intrinsic "string-equality" a b) {
+instance (Equal String) : a b -> when (intrinsic "equal" a b) {
   0 -> False
   1 -> True
   _ -> error "unreachable"
 }
 
-instance (Equal Number) : a b -> when (intrinsic "number-equality" a b) {
+instance (Equal Number) : a b -> when (intrinsic "equal" a b) {
   0 -> False
   1 -> True
   _ -> error "unreachable"

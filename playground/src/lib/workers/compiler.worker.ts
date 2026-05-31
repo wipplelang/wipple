@@ -53,7 +53,7 @@ const loadLibrary = async (options: { name: string }) => {
     }
 };
 
-const ideInfo = (options: PlaygroundMetadata) => {
+const ideInfo = async (options: PlaygroundMetadata) => {
     const info: any[] = [];
 
     let libraryName: string | undefined = options.library;
@@ -71,12 +71,12 @@ const ideInfo = (options: PlaygroundMetadata) => {
     return { info };
 };
 
-const compile = (
+const compile = async (
     options: PlaygroundMetadata & {
         code: string;
         groups?: boolean;
         graph?: boolean;
-        executable?: boolean;
+        module?: boolean;
     },
 ) => {
     using result = wipple.compile([new wipple.File("input", options.code)], options.library);
@@ -93,18 +93,18 @@ const compile = (
 
     const groups = options.groups ? result.groups() : undefined;
 
-    let executable: ArrayBufferLike | undefined;
-    if (options.executable) {
-        executable = result.executable()?.buffer;
-        if (executable == null) {
-            throw new Error("missing executable");
+    let module: string | undefined;
+    if (options.module) {
+        module = result.module();
+        if (module == null) {
+            throw new Error("missing module");
         }
     }
 
-    return { groups, graph, executable, transfer: executable ? [executable] : [] };
+    return { groups, graph, module };
 };
 
-const documentation = (options: PlaygroundMetadata) => {
+const documentation = async (options: PlaygroundMetadata) => {
     const library = loadedLibraries.get(options.library)?.[0];
     if (library == null) {
         throw new Error("unknown library");
@@ -113,18 +113,14 @@ const documentation = (options: PlaygroundMetadata) => {
     return { items: library.docs };
 };
 
-const format = (options: { code: string }) => {
+const format = async (options: { code: string }) => {
     const formatted = wipple.format(options.code);
     return { code: formatted };
 };
 
 const methods = { loadLibrary, ideInfo, compile, documentation, format };
 
-export type CompilerWorkerMethods = {
-    [K in keyof typeof methods]: (
-        ...options: Parameters<(typeof methods)[K]>
-    ) => Promise<Omit<ReturnType<(typeof methods)[K]>, "transfer">>;
-};
+export type CompilerWorkerMethods = typeof methods;
 
 export type CompilerWorkerResponse<K extends keyof CompilerWorkerMethods> = Awaited<
     ReturnType<CompilerWorkerMethods[K]>
@@ -167,18 +163,8 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
         }
 
         let result = await methods[method](e.data[method]);
-        let transfer: any[] = [];
         if (result != null) {
-            if ("transfer" in result) {
-                transfer = result.transfer as any[];
-                delete result.transfer;
-            }
-
             const convert = (obj: any): any => {
-                if (transfer.includes(obj)) {
-                    return obj;
-                }
-
                 if (typeof obj === "object" && obj != null) {
                     // Expose the Wasm object properties
                     if (obj.toJSON != null) {
@@ -204,7 +190,7 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
             console.log(`compiler(${method}) response:`, result);
         }
 
-        postMessage(result, transfer);
+        postMessage(result);
     };
 
     postMessage("ready");

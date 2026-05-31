@@ -14,7 +14,13 @@ use crate::statements::{
     type_definition::parse_type_definition_statement,
 };
 
-use wipple_core::{ast::AstKey, span::Str};
+use wipple_core::{
+    ast::AstKey,
+    db::{Db, Node},
+    facts::DebugInfo,
+    span::Str,
+    visit::Visitor,
+};
 use wipple_parse::{
     lexer::TokenKind,
     parse_alt,
@@ -47,4 +53,8 @@ pub fn parse_comments(parser: &mut Parser<'_>) -> Result<Vec<Str>, ParseError> {
 
 pub fn parse_comment(parser: &mut Parser<'_>) -> Result<Str, ParseError> {
     parser.token(TokenKind::Comment)
+}
+
+pub fn visit_statement(db: &mut Db, node: Node, _visitor: &mut Visitor) {
+    db.get_mut_or_default::<DebugInfo>(node).statement = true;
 }

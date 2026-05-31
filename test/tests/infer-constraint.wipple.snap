@@ -1,388 +1,388 @@
 Facts (layer 2):
 
-`Number : type` (infer-constraint.wipple:1:13-1:26) (TypeDefinition):
+`Number : type` (TypeDefinition):
   has definition constraints
-  has type `Number` (infer-constraint.wipple:1:13-1:26)
+  has type `Number`
   is a definition
 
-`String : type` (infer-constraint.wipple:2:13-2:26) (TypeDefinition):
+`String : type` (TypeDefinition):
   has definition constraints
-  has type `String` (infer-constraint.wipple:2:13-2:26)
+  has type `String`
   is a definition
 
-`Add : left right sum => trait (left right -> sum)` (infer-constraint.wipple:4:1-4:50) (TraitDefinition):
+`Add : left right sum => trait (left right -> sum)` (TraitDefinition):
   has 2 instances
   has definition constraints
-  has type `left right -> sum` (infer-constraint.wipple:4:32-4:49)
+  has type `left right -> sum`
   has type parameters
   is a definition
 
-`left` (infer-constraint.wipple:4:7-4:11) (TypeParameter):
-  has type `left` (infer-constraint.wipple:4:7-4:11)
+`left` (TypeParameter):
+  has type `left`
   is a definition
   is a type
-  resolved to 1 definition(s): `left` (infer-constraint.wipple:4:7-4:11)
+  resolved to 1 definition(s): `left`
 
-`right` (infer-constraint.wipple:4:12-4:17) (TypeParameter):
-  has type `right` (infer-constraint.wipple:4:12-4:17)
+`right` (TypeParameter):
+  has type `right`
   is a definition
   is a type
-  resolved to 1 definition(s): `right` (infer-constraint.wipple:4:12-4:17)
+  resolved to 1 definition(s): `right`
 
-`sum` (infer-constraint.wipple:4:18-4:21) (TypeParameter):
-  has type `sum` (infer-constraint.wipple:4:18-4:21)
+`sum` (TypeParameter):
+  has type `sum`
   is a definition
   is a type
-  resolved to 1 definition(s): `sum` (infer-constraint.wipple:4:18-4:21)
+  resolved to 1 definition(s): `sum`
 
-`left` (infer-constraint.wipple:4:32-4:36) (TypeParameter):
-  has type `left` (infer-constraint.wipple:4:7-4:11)
+`left` (TypeParameter):
+  has type `left`
   is a type
-  resolved to 1 definition(s): `left` (infer-constraint.wipple:4:7-4:11)
+  resolved to 1 definition(s): `left`
 
-`left right -> sum` (infer-constraint.wipple:4:32-4:49) (FunctionType):
-  has type `left right -> sum` (infer-constraint.wipple:4:32-4:49)
+`left right -> sum` (FunctionType):
+  has type `left right -> sum`
   is a type
 
-`right` (infer-constraint.wipple:4:37-4:42) (TypeParameter):
-  has type `right` (infer-constraint.wipple:4:12-4:17)
+`right` (TypeParameter):
+  has type `right`
   is a type
-  resolved to 1 definition(s): `right` (infer-constraint.wipple:4:12-4:17)
+  resolved to 1 definition(s): `right`
 
-`sum` (infer-constraint.wipple:4:46-4:49) (TypeParameter):
-  has type `sum` (infer-constraint.wipple:4:18-4:21)
+`sum` (TypeParameter):
+  has type `sum`
   is a type
-  resolved to 1 definition(s): `sum` (infer-constraint.wipple:4:18-4:21)
+  resolved to 1 definition(s): `sum`
 
-`instance (Add Number Number Number)` (infer-constraint.wipple:5:1-5:36) (InstanceDefinition):
+`instance (Add Number Number Number)` (InstanceDefinition):
   has definition constraints
   has type `Number Number -> Number`
   is a definition
-  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)` (infer-constraint.wipple:4:1-4:50)
+  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)`
 
-`Number` (infer-constraint.wipple:5:15-5:21) (NamedType):
-  has type `Number` (infer-constraint.wipple:5:15-5:21)
+`Number` (NamedType):
+  has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type` (infer-constraint.wipple:1:13-1:26)
+  resolved to 1 definition(s): `Number : type`
 
-`Number` (infer-constraint.wipple:5:22-5:28) (NamedType):
-  has type `Number` (infer-constraint.wipple:5:22-5:28)
+`Number` (NamedType):
+  has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type` (infer-constraint.wipple:1:13-1:26)
+  resolved to 1 definition(s): `Number : type`
 
-`Number` (infer-constraint.wipple:5:29-5:35) (NamedType):
-  has type `Number` (infer-constraint.wipple:5:29-5:35)
+`Number` (NamedType):
+  has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type` (infer-constraint.wipple:1:13-1:26)
+  resolved to 1 definition(s): `Number : type`
 
-`_` (infer-constraint.wipple:5:39-5:40) (PlaceholderExpression):
+`_` (PlaceholderExpression):
   has type `Number Number -> Number`
   is an expression
 
-`instance (Add String String String)` (infer-constraint.wipple:6:1-6:36) (InstanceDefinition):
+`instance (Add String String String)` (InstanceDefinition):
   has definition constraints
   has type `String String -> String`
   is a definition
-  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)` (infer-constraint.wipple:4:1-4:50)
+  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)`
 
-`String` (infer-constraint.wipple:6:15-6:21) (NamedType):
-  has type `String` (infer-constraint.wipple:6:15-6:21)
+`String` (NamedType):
+  has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (infer-constraint.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`String` (infer-constraint.wipple:6:22-6:28) (NamedType):
-  has type `String` (infer-constraint.wipple:6:22-6:28)
+`String` (NamedType):
+  has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (infer-constraint.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`String` (infer-constraint.wipple:6:29-6:35) (NamedType):
-  has type `String` (infer-constraint.wipple:6:29-6:35)
+`String` (NamedType):
+  has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (infer-constraint.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`_` (infer-constraint.wipple:6:39-6:40) (PlaceholderExpression):
+`_` (PlaceholderExpression):
   has type `String String -> String`
   is an expression
 
-`add :: left right -> sum where (Add left right sum)` (infer-constraint.wipple:8:1-8:52) (ConstantDefinition):
+`add :: left right -> sum where (Add left right sum)` (ConstantDefinition):
   has definition constraints
-  has type `left right -> sum` (infer-constraint.wipple:8:8-8:25)
+  has type `left right -> sum`
   has type parameters
   is a definition
 
-`left` (infer-constraint.wipple:8:8-8:12) (TypeParameter):
-  has type `left` (infer-constraint.wipple:8:8-8:12)
+`left` (TypeParameter):
+  has type `left`
   is a definition
   is a type
-  resolved to 1 definition(s): `left` (infer-constraint.wipple:8:8-8:12)
+  resolved to 1 definition(s): `left`
 
-`left right -> sum` (infer-constraint.wipple:8:8-8:25) (FunctionType):
-  has type `left right -> sum` (infer-constraint.wipple:8:8-8:25)
+`left right -> sum` (FunctionType):
+  has type `left right -> sum`
   is a type
 
-`right` (infer-constraint.wipple:8:13-8:18) (TypeParameter):
-  has type `right` (infer-constraint.wipple:8:13-8:18)
+`right` (TypeParameter):
+  has type `right`
   is a definition
   is a type
-  resolved to 1 definition(s): `right` (infer-constraint.wipple:8:13-8:18)
+  resolved to 1 definition(s): `right`
 
-`sum` (infer-constraint.wipple:8:22-8:25) (TypeParameter):
-  has type `sum` (infer-constraint.wipple:8:22-8:25)
+`sum` (TypeParameter):
+  has type `sum`
   is a definition
   is a type
-  resolved to 1 definition(s): `sum` (infer-constraint.wipple:8:22-8:25)
+  resolved to 1 definition(s): `sum`
 
-`(Add left right sum)` (infer-constraint.wipple:8:32-8:52) (BoundConstraint):
-  has bound(s) `Add` (infer-constraint.wipple:4:1-4:50) `left` (infer-constraint.wipple:8:8-8:12) `right` (infer-constraint.wipple:8:13-8:18) `sum` (infer-constraint.wipple:8:22-8:25) (resolved as `(Add left right sum)` (infer-constraint.wipple:8:32-8:52))
+`(Add left right sum)` (BoundConstraint):
+  has bound(s) `Add` `left` `right` `sum` (resolved as `(Add left right sum)`)
   is a constraint
-  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)` (infer-constraint.wipple:4:1-4:50)
+  resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)`
 
-`left` (infer-constraint.wipple:8:37-8:41) (TypeParameter):
-  has type `left` (infer-constraint.wipple:8:8-8:12)
+`left` (TypeParameter):
+  has type `left`
   is a type
-  resolved to 1 definition(s): `left` (infer-constraint.wipple:8:8-8:12)
+  resolved to 1 definition(s): `left`
 
-`right` (infer-constraint.wipple:8:42-8:47) (TypeParameter):
-  has type `right` (infer-constraint.wipple:8:13-8:18)
+`right` (TypeParameter):
+  has type `right`
   is a type
-  resolved to 1 definition(s): `right` (infer-constraint.wipple:8:13-8:18)
+  resolved to 1 definition(s): `right`
 
-`sum` (infer-constraint.wipple:8:48-8:51) (TypeParameter):
-  has type `sum` (infer-constraint.wipple:8:22-8:25)
+`sum` (TypeParameter):
+  has type `sum`
   is a type
-  resolved to 1 definition(s): `sum` (infer-constraint.wipple:8:22-8:25)
+  resolved to 1 definition(s): `sum`
 
-`add : _` (infer-constraint.wipple:9:1-9:8) (AssignmentStatement):
-  has type `()` (infer-constraint.wipple:9:1-9:8)
+`add : _` (AssignmentStatement):
+  has type `()`
 
-`_` (infer-constraint.wipple:9:7-9:8) (PlaceholderExpression):
-  has type `left right -> sum` (infer-constraint.wipple:8:8-8:25)
+`_` (PlaceholderExpression):
+  has type `left right -> sum`
   is an expression
 
-`_` (infer-constraint.wipple:11:1-11:2) (WildcardPattern):
-  has type `String` (infer-constraint.wipple:11:17-11:23)
+`_` (WildcardPattern):
+  has type `String`
   is a pattern
 
-`_ : (add 1 2 :: String)` (infer-constraint.wipple:11:1-11:24) (AssignmentStatement):
-  has type `()` (infer-constraint.wipple:11:1-11:24)
+`_ : (add 1 2 :: String)` (AssignmentStatement):
+  has type `()`
 
-`add` (infer-constraint.wipple:11:6-11:9) (VariableExpression):
-  has bound(s) `Add` (infer-constraint.wipple:4:1-4:50) `Number` (infer-constraint.wipple:11:10-11:11) `Number` (infer-constraint.wipple:11:12-11:13) `String` (infer-constraint.wipple:11:17-11:23) (unresolved)
-  has type `Number Number -> String` (infer-constraint.wipple:11:6-11:9)
+`add` (VariableExpression):
+  has bound(s) `Add` `Number` `Number` `String` (unresolved)
+  has type `Number Number -> String`
   is an expression
-  resolved to 1 definition(s): `add :: left right -> sum where (Add left right sum)` (infer-constraint.wipple:8:1-8:52)
+  resolved to 1 definition(s): `add :: left right -> sum where (Add left right sum)`
 
-`add 1 2` (infer-constraint.wipple:11:6-11:13) (CallExpression):
-  has type `String` (infer-constraint.wipple:11:17-11:23)
-  is an expression
-
-`add 1 2 :: String` (infer-constraint.wipple:11:6-11:23) (AnnotateExpression):
-  has type `String` (infer-constraint.wipple:11:17-11:23)
+`add 1 2` (CallExpression):
+  has type `String`
   is an expression
 
-`1` (infer-constraint.wipple:11:10-11:11) (NumberExpression):
-  has type `Number` (infer-constraint.wipple:11:10-11:11)
+`add 1 2 :: String` (AnnotateExpression):
+  has type `String`
   is an expression
 
-`2` (infer-constraint.wipple:11:12-11:13) (NumberExpression):
-  has type `Number` (infer-constraint.wipple:11:12-11:13)
+`1` (NumberExpression):
+  has type `Number`
   is an expression
 
-`String` (infer-constraint.wipple:11:17-11:23) (NamedType):
-  has type `String` (infer-constraint.wipple:11:17-11:23)
+`2` (NumberExpression):
+  has type `Number`
+  is an expression
+
+`String` (NamedType):
+  has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (infer-constraint.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-constraint.wipple:13:1-13:64) (TraitDefinition):
+`Add-Infer : left right (infer sum) => trait (left right -> sum)` (TraitDefinition):
   has 2 instances
   has definition constraints
-  has type `left right -> sum` (infer-constraint.wipple:13:46-13:63)
+  has type `left right -> sum`
   has type parameters
   is a definition
 
-`left` (infer-constraint.wipple:13:13-13:17) (TypeParameter):
-  has type `left` (infer-constraint.wipple:13:13-13:17)
+`left` (TypeParameter):
+  has type `left`
   is a definition
   is a type
-  resolved to 1 definition(s): `left` (infer-constraint.wipple:13:13-13:17)
+  resolved to 1 definition(s): `left`
 
-`right` (infer-constraint.wipple:13:18-13:23) (TypeParameter):
-  has type `right` (infer-constraint.wipple:13:18-13:23)
+`right` (TypeParameter):
+  has type `right`
   is a definition
   is a type
-  resolved to 1 definition(s): `right` (infer-constraint.wipple:13:18-13:23)
+  resolved to 1 definition(s): `right`
 
-`(infer sum)` (infer-constraint.wipple:13:24-13:35) (TypeParameter):
-  has type `sum` (infer-constraint.wipple:13:24-13:35)
+`(infer sum)` (TypeParameter):
+  has type `sum`
   is a definition
   is a type
   is inferred type parameter
-  resolved to 1 definition(s): `(infer sum)` (infer-constraint.wipple:13:24-13:35)
+  resolved to 1 definition(s): `(infer sum)`
 
-`left` (infer-constraint.wipple:13:46-13:50) (TypeParameter):
-  has type `left` (infer-constraint.wipple:13:13-13:17)
+`left` (TypeParameter):
+  has type `left`
   is a type
-  resolved to 1 definition(s): `left` (infer-constraint.wipple:13:13-13:17)
+  resolved to 1 definition(s): `left`
 
-`left right -> sum` (infer-constraint.wipple:13:46-13:63) (FunctionType):
-  has type `left right -> sum` (infer-constraint.wipple:13:46-13:63)
+`left right -> sum` (FunctionType):
+  has type `left right -> sum`
   is a type
 
-`right` (infer-constraint.wipple:13:51-13:56) (TypeParameter):
-  has type `right` (infer-constraint.wipple:13:18-13:23)
+`right` (TypeParameter):
+  has type `right`
   is a type
-  resolved to 1 definition(s): `right` (infer-constraint.wipple:13:18-13:23)
+  resolved to 1 definition(s): `right`
 
-`sum` (infer-constraint.wipple:13:60-13:63) (TypeParameter):
-  has type `sum` (infer-constraint.wipple:13:24-13:35)
+`sum` (TypeParameter):
+  has type `sum`
   is a type
-  resolved to 1 definition(s): `(infer sum)` (infer-constraint.wipple:13:24-13:35)
+  resolved to 1 definition(s): `(infer sum)`
 
-`instance (Add-Infer Number Number Number)` (infer-constraint.wipple:14:1-14:42) (InstanceDefinition):
+`instance (Add-Infer Number Number Number)` (InstanceDefinition):
   has definition constraints
   has type `Number Number -> Number`
   is a definition
-  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-constraint.wipple:13:1-13:64)
+  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)`
 
-`Number` (infer-constraint.wipple:14:21-14:27) (NamedType):
-  has type `Number` (infer-constraint.wipple:14:21-14:27)
+`Number` (NamedType):
+  has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type` (infer-constraint.wipple:1:13-1:26)
+  resolved to 1 definition(s): `Number : type`
 
-`Number` (infer-constraint.wipple:14:28-14:34) (NamedType):
-  has type `Number` (infer-constraint.wipple:14:28-14:34)
+`Number` (NamedType):
+  has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type` (infer-constraint.wipple:1:13-1:26)
+  resolved to 1 definition(s): `Number : type`
 
-`Number` (infer-constraint.wipple:14:35-14:41) (NamedType):
-  has type `Number` (infer-constraint.wipple:14:35-14:41)
+`Number` (NamedType):
+  has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type` (infer-constraint.wipple:1:13-1:26)
+  resolved to 1 definition(s): `Number : type`
 
-`_` (infer-constraint.wipple:14:45-14:46) (PlaceholderExpression):
+`_` (PlaceholderExpression):
   has type `Number Number -> Number`
   is an expression
 
-`instance (Add-Infer String String String)` (infer-constraint.wipple:15:1-15:42) (InstanceDefinition):
+`instance (Add-Infer String String String)` (InstanceDefinition):
   has definition constraints
   has type `String String -> String`
   is a definition
-  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-constraint.wipple:13:1-13:64)
+  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)`
 
-`String` (infer-constraint.wipple:15:21-15:27) (NamedType):
-  has type `String` (infer-constraint.wipple:15:21-15:27)
+`String` (NamedType):
+  has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (infer-constraint.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`String` (infer-constraint.wipple:15:28-15:34) (NamedType):
-  has type `String` (infer-constraint.wipple:15:28-15:34)
+`String` (NamedType):
+  has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (infer-constraint.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`String` (infer-constraint.wipple:15:35-15:41) (NamedType):
-  has type `String` (infer-constraint.wipple:15:35-15:41)
+`String` (NamedType):
+  has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (infer-constraint.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`_` (infer-constraint.wipple:15:45-15:46) (PlaceholderExpression):
+`_` (PlaceholderExpression):
   has type `String String -> String`
   is an expression
 
-`add-infer :: left right -> sum where (Add-Infer left right sum)` (infer-constraint.wipple:17:1-17:64) (ConstantDefinition):
+`add-infer :: left right -> sum where (Add-Infer left right sum)` (ConstantDefinition):
   has definition constraints
-  has type `left right -> sum` (infer-constraint.wipple:17:14-17:31)
+  has type `left right -> sum`
   has type parameters
   is a definition
 
-`left` (infer-constraint.wipple:17:14-17:18) (TypeParameter):
-  has type `left` (infer-constraint.wipple:17:14-17:18)
+`left` (TypeParameter):
+  has type `left`
   is a definition
   is a type
-  resolved to 1 definition(s): `left` (infer-constraint.wipple:17:14-17:18)
+  resolved to 1 definition(s): `left`
 
-`left right -> sum` (infer-constraint.wipple:17:14-17:31) (FunctionType):
-  has type `left right -> sum` (infer-constraint.wipple:17:14-17:31)
+`left right -> sum` (FunctionType):
+  has type `left right -> sum`
   is a type
 
-`right` (infer-constraint.wipple:17:19-17:24) (TypeParameter):
-  has type `right` (infer-constraint.wipple:17:19-17:24)
+`right` (TypeParameter):
+  has type `right`
   is a definition
   is a type
-  resolved to 1 definition(s): `right` (infer-constraint.wipple:17:19-17:24)
+  resolved to 1 definition(s): `right`
 
-`sum` (infer-constraint.wipple:17:28-17:31) (TypeParameter):
-  has type `sum` (infer-constraint.wipple:17:28-17:31)
+`sum` (TypeParameter):
+  has type `sum`
   is a definition
   is a type
-  resolved to 1 definition(s): `sum` (infer-constraint.wipple:17:28-17:31)
+  resolved to 1 definition(s): `sum`
 
-`(Add-Infer left right sum)` (infer-constraint.wipple:17:38-17:64) (BoundConstraint):
-  has bound(s) `Add-Infer` (infer-constraint.wipple:13:1-13:64) `left` (infer-constraint.wipple:17:14-17:18) `right` (infer-constraint.wipple:17:19-17:24) `sum` (infer-constraint.wipple:17:28-17:31) (resolved as `(Add-Infer left right sum)` (infer-constraint.wipple:17:38-17:64))
+`(Add-Infer left right sum)` (BoundConstraint):
+  has bound(s) `Add-Infer` `left` `right` `sum` (resolved as `(Add-Infer left right sum)`)
   is a constraint
-  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)` (infer-constraint.wipple:13:1-13:64)
+  resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)`
 
-`left` (infer-constraint.wipple:17:49-17:53) (TypeParameter):
-  has type `left` (infer-constraint.wipple:17:14-17:18)
+`left` (TypeParameter):
+  has type `left`
   is a type
-  resolved to 1 definition(s): `left` (infer-constraint.wipple:17:14-17:18)
+  resolved to 1 definition(s): `left`
 
-`right` (infer-constraint.wipple:17:54-17:59) (TypeParameter):
-  has type `right` (infer-constraint.wipple:17:19-17:24)
+`right` (TypeParameter):
+  has type `right`
   is a type
-  resolved to 1 definition(s): `right` (infer-constraint.wipple:17:19-17:24)
+  resolved to 1 definition(s): `right`
 
-`sum` (infer-constraint.wipple:17:60-17:63) (TypeParameter):
-  has type `sum` (infer-constraint.wipple:17:28-17:31)
+`sum` (TypeParameter):
+  has type `sum`
   is a type
-  resolved to 1 definition(s): `sum` (infer-constraint.wipple:17:28-17:31)
+  resolved to 1 definition(s): `sum`
 
-`add-infer : _` (infer-constraint.wipple:18:1-18:14) (AssignmentStatement):
-  has type `()` (infer-constraint.wipple:18:1-18:14)
+`add-infer : _` (AssignmentStatement):
+  has type `()`
 
-`_` (infer-constraint.wipple:18:13-18:14) (PlaceholderExpression):
-  has type `left right -> sum` (infer-constraint.wipple:17:14-17:31)
+`_` (PlaceholderExpression):
+  has type `left right -> sum`
   is an expression
 
-`output` (infer-constraint.wipple:20:1-20:7) (VariablePattern):
-  has type `Number` or `String` (infer-constraint.wipple:20:28-20:34)
+`output` (VariablePattern):
+  has type `Number` or `String`
   is a definition
   is a pattern
 
-`output : (add-infer 1 2 :: String)` (infer-constraint.wipple:20:1-20:35) (AssignmentStatement):
-  has type `()` (infer-constraint.wipple:20:1-20:35)
+`output : (add-infer 1 2 :: String)` (AssignmentStatement):
+  has type `()`
 
-`add-infer` (infer-constraint.wipple:20:11-20:20) (VariableExpression):
-  has bound(s) `Add-Infer` (infer-constraint.wipple:13:1-13:64) `Number` `Number` `_` (resolved as `instance (Add-Infer Number Number Number)` (infer-constraint.wipple:14:1-14:42))
-  has type `Number Number -> Number` (infer-constraint.wipple:20:11-20:20)
+`add-infer` (VariableExpression):
+  has bound(s) `Add-Infer` `Number` `Number` `_` (resolved as `instance (Add-Infer Number Number Number)`)
+  has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `add-infer :: left right -> sum where (Add-Infer left right sum)` (infer-constraint.wipple:17:1-17:64)
+  resolved to 1 definition(s): `add-infer :: left right -> sum where (Add-Infer left right sum)`
 
-`add-infer 1 2` (infer-constraint.wipple:20:11-20:24) (CallExpression):
-  has type `Number` or `String` (infer-constraint.wipple:20:28-20:34)
-  is an expression
-
-`add-infer 1 2 :: String` (infer-constraint.wipple:20:11-20:34) (AnnotateExpression):
-  has type `Number` or `String` (infer-constraint.wipple:20:28-20:34)
+`add-infer 1 2` (CallExpression):
+  has type `Number` or `String`
   is an expression
 
-`1` (infer-constraint.wipple:20:21-20:22) (NumberExpression):
+`add-infer 1 2 :: String` (AnnotateExpression):
+  has type `Number` or `String`
+  is an expression
+
+`1` (NumberExpression):
   has type `Number`
   is an expression
 
-`2` (infer-constraint.wipple:20:23-20:24) (NumberExpression):
+`2` (NumberExpression):
   has type `Number`
   is an expression
 
-`String` (infer-constraint.wipple:20:28-20:34) (NamedType):
-  has type `Number` or `String` (infer-constraint.wipple:20:28-20:34)
+`String` (NamedType):
+  has type `Number` or `String`
   is a type
-  resolved to 1 definition(s): `String : type` (infer-constraint.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
 
 
 Feedback:
 
-`output` (infer-constraint.wipple:20:1-20:7) (conflicting-types)
+`output` (conflicting-types)
 
   `output` is a `Number` or a `String`, but it can only be one of these.
   
@@ -391,7 +391,7 @@ Feedback:
   -  `(infer sum)` must have the same type everywhere in this use of `_`.
 
 
-`add-infer 1 2` (infer-constraint.wipple:20:11-20:24) (conflicting-types)
+`add-infer 1 2` (conflicting-types)
 
   `add-infer 1 2` is a `Number` or a `String`, but it can only be one of these.
   
@@ -400,7 +400,7 @@ Feedback:
   -  `(infer sum)` must have the same type everywhere in this use of `_`.
 
 
-`add-infer 1 2 :: String` (infer-constraint.wipple:20:11-20:34) (conflicting-types)
+`add-infer 1 2 :: String` (conflicting-types)
 
   `add-infer 1 2 :: String` is a `Number` or a `String`, but it can only be one of these.
   
@@ -409,7 +409,7 @@ Feedback:
   -  `(infer sum)` must have the same type everywhere in this use of `_`.
 
 
-`String` (infer-constraint.wipple:20:28-20:34) (conflicting-types)
+`String` (conflicting-types)
 
   `String` is a `Number` or a `String`, but it can only be one of these.
   

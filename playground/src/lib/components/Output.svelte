@@ -39,8 +39,8 @@
         };
 
         const env: runner.Env = {
-            trace: async (trace: string) => {
-                onchangeline(JSON.parse(trace).start.line);
+            trace: async (trace: any) => {
+                onchangeline(trace.start.line);
             },
             display: async (message: string) => {
                 output.push({
@@ -101,7 +101,7 @@
     let runtimeOutput = $state<any>();
 
     let isCompiling = false;
-    export const compile = async ({ executable = false } = {}) => {
+    export const compile = async ({ module = false } = {}) => {
         if (playground == null) {
             return undefined;
         }
@@ -119,7 +119,7 @@
                 library,
                 groups: visualizerEnabled,
                 graph: visualizerEnabled,
-                executable,
+                module,
             });
         } catch (error) {
             console.error(error);
@@ -137,14 +137,14 @@
         }
 
         if ("diagnostics" in response && response.diagnostics != null) {
-            if (executable) {
+            if (module) {
                 ondiagnostics(response.diagnostics);
             }
 
             return;
         }
 
-        return response.executable;
+        return response.module;
     };
 
     export const run = async () => {
@@ -160,8 +160,8 @@
         // Needed for runtimes that perform setup within a user event
         await runtimeOutput?._initializeOnClick?.();
 
-        const executable = await compile({ executable: true });
-        if (executable == null) {
+        const module = await compile({ module: true });
+        if (module == null) {
             return;
         }
 
@@ -171,7 +171,7 @@
 
         try {
             await runtimeOutput?._initialize?.();
-            await runnerMethods.run(executable);
+            await runnerMethods.run(module);
         } finally {
             await stopRunning(false);
         }

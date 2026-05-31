@@ -22,7 +22,7 @@ use wipple_core::{
     ast::AstKey,
     codegen::{
         self, codegen,
-        wasm::{self, WasmResult},
+        js::{self, JsResult},
     },
     db::{Db, DbRef, Node},
     default_filter,
@@ -153,6 +153,7 @@ fn setup(
 
     let mut top_level = TopLevel::default();
 
+    let mut source_files = Vec::new();
     let mut statements = Vec::new();
     for path in &options.lib {
         db = Db::new(Some(DbRef::new(db)));
@@ -166,10 +167,11 @@ fn setup(
         driver.time = time;
         driver.hide_facts = !options.lib_facts;
 
-        let lib_statements = driver
+        let (_, lib_source_files, lib_statements) = driver
             .run(&mut db, &mut top_level, &name)?
             .ok_or_else(|| anyhow::format_err!("compilation failed"))?;
 
+        source_files.extend(lib_source_files);
         statements.extend(lib_statements);
     }
 
@@ -205,16 +207,18 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
     driver.prefix = "Compiling ";
     driver.time = true;
 
-    let statements = driver
+    let (_, source_files, statements) = driver
         .run(&mut db, &mut top_level, &name)?
         .ok_or_else(|| anyhow::format_err!("compilation failed"))?;
 
-    let program = codegen(&db, &statements, &lib_statements)?;
+    let program = codegen(&db, &source_files, &statements, &lib_statements)?;
 
-    let wasm_result = wasm::to_wasm(
+    let result = js::to_js(
         &db,
         &program,
         codegen::Options {
+            file_name: JS_FILE_NAME,
+            source_root: &format!("{}/", env::current_dir()?.display()),
             trace: if options.trace {
                 codegen::TraceOptions::All
             } else {
@@ -240,16 +244,19 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
         fs::write(path, bytes)?;
     }
 
-    write_wasm(&wasm_result, output_path)?;
+    write_js(&result, output_path)?;
 
     Ok(true)
 }
 
-fn write_wasm(wasm_result: &WasmResult, output_path: Option<&Path>) -> anyhow::Result<()> {
+static JS_FILE_NAME: &str = "main.js";
+
+fn write_js(js: &JsResult, output_path: Option<&Path>) -> anyhow::Result<()> {
     if let Some(path) = output_path {
         fs::create_dir_all(path)?;
 
-        fs::write(path.join("main.wasm"), &wasm_result.wasm)?;
+        fs::write(path.join(JS_FILE_NAME), &js.module)?;
+        fs::write(path.join(format!("{JS_FILE_NAME}.map")), &js.source_map)?;
 
         macro_rules! copy {
             ($name:literal) => {
@@ -261,11 +268,8 @@ fn write_wasm(wasm_result: &WasmResult, output_path: Option<&Path>) -> anyhow::R
         }
 
         copy!("package.json");
-        copy!("runtime.js");
         copy!("index.js");
     }
-
-    wasm::validate(&wasm_result.wasm)?;
 
     Ok(())
 }
@@ -331,14 +335,26 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
         let mut out = Vec::new();
 
         let mut driver = Driver::new(options, vec![file], &mut out);
+        driver.show_span = false;
         driver.progress = Some((counter.fetch_add(1, atomic::Ordering::Relaxed), files_count));
 
-        if let Some(statements) = driver.run(&mut db, &mut top_level.clone(), &name)? {
-            let program = codegen(&db, &statements, &lib_statements)?;
+        if let Some((_, source_files, statements)) =
+            driver.run(&mut db, &mut top_level.clone(), &name)?
+        {
+            let program = codegen(&db, &source_files, &statements, &lib_statements)?;
 
-            let wasm_result = wasm::to_wasm(&db, &program, codegen::Options::default())?;
+            let js = js::to_js(
+                &db,
+                &program,
+                codegen::Options {
+                    file_name: JS_FILE_NAME,
+                    source_root: "",
+                    trace: Default::default(),
+                },
+            )?;
+
             let output_path = make_temp_dir()?;
-            write_wasm(&wasm_result, Some(&output_path))?;
+            write_js(&js, Some(&output_path))?;
 
             let output = run(&output_path, |cmd| cmd.stdout(process::Stdio::piped()))?.stdout;
             writeln!(out, "Output:")?;

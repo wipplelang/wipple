@@ -1,108 +1,108 @@
 Facts (layer 2):
 
-`Grade : type {⋯}` (exhaustiveness-checking.wipple:1:1-7:2) (TypeDefinition):
+`Grade : type {⋯}` (TypeDefinition):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`A` (exhaustiveness-checking.wipple:2:3-2:4) (VariantDefinition):
+`A` (VariantDefinition):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`B` (exhaustiveness-checking.wipple:3:3-3:4) (VariantDefinition):
+`B` (VariantDefinition):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`C` (exhaustiveness-checking.wipple:4:3-4:4) (VariantDefinition):
+`C` (VariantDefinition):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`D` (exhaustiveness-checking.wipple:5:3-5:4) (VariantDefinition):
+`D` (VariantDefinition):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`F` (exhaustiveness-checking.wipple:6:3-6:4) (VariantDefinition):
+`F` (VariantDefinition):
   has definition constraints
-  has type `Grade` (exhaustiveness-checking.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`report-card :: Grade -> String` (exhaustiveness-checking.wipple:9:1-9:31) (ConstantDefinition):
+`report-card :: Grade -> String` (ConstantDefinition):
   has definition constraints
-  has type `Grade -> String` (exhaustiveness-checking.wipple:9:16-9:31)
+  has type `Grade -> String`
   is a definition
 
-`Grade` (exhaustiveness-checking.wipple:9:16-9:21) (NamedType):
-  has type `Grade` (exhaustiveness-checking.wipple:9:16-9:21)
+`Grade` (NamedType):
+  has type `Grade`
   is a type
-  resolved to 1 definition(s): `Grade : type {⋯}` (exhaustiveness-checking.wipple:1:1-7:2)
+  resolved to 1 definition(s): `Grade : type {⋯}`
 
-`Grade -> String` (exhaustiveness-checking.wipple:9:16-9:31) (FunctionType):
-  has type `Grade -> String` (exhaustiveness-checking.wipple:9:16-9:31)
+`Grade -> String` (FunctionType):
+  has type `Grade -> String`
   is a type
 
-`String` (exhaustiveness-checking.wipple:9:25-9:31) (NamedType):
-  has type `String` (exhaustiveness-checking.wipple:9:25-9:31)
+`String` (NamedType):
+  has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`report-card : grade -> when grade {⋯}` (exhaustiveness-checking.wipple:10:1-14:2) (AssignmentStatement):
-  has type `()` (exhaustiveness-checking.wipple:10:1-14:2)
+`report-card : grade -> when grade {⋯}` (AssignmentStatement):
+  has type `()`
 
-`grade` (exhaustiveness-checking.wipple:10:15-10:20) (VariablePattern):
-  has type `Grade` (exhaustiveness-checking.wipple:9:16-9:21)
+`grade` (VariablePattern):
+  has type `Grade`
   is a definition
   is a pattern
 
-`grade -> when grade {⋯}` (exhaustiveness-checking.wipple:10:15-14:2) (FunctionExpression):
-  has type `Grade -> String` (exhaustiveness-checking.wipple:9:16-9:31)
+`grade -> when grade {⋯}` (FunctionExpression):
+  has type `Grade -> String`
   is an expression
 
-`when grade {⋯}` (exhaustiveness-checking.wipple:10:24-14:2) (WhenExpression):
-  has type `String` (exhaustiveness-checking.wipple:9:25-9:31)
+`when grade {⋯}` (WhenExpression):
+  has type `String`
   is an expression
 
-`grade` (exhaustiveness-checking.wipple:10:29-10:34) (VariableExpression):
-  has type `Grade` (exhaustiveness-checking.wipple:9:16-9:21)
+`grade` (VariableExpression):
+  has type `Grade`
   is an expression
   is missing patterns
-  resolved to 1 definition(s): `grade` (exhaustiveness-checking.wipple:10:15-10:20)
+  resolved to 1 definition(s): `grade`
 
-`A` (exhaustiveness-checking.wipple:11:3-11:4) (ConstructorPattern):
-  has type `Grade` (exhaustiveness-checking.wipple:9:16-9:21)
+`A` (ConstructorPattern):
+  has type `Grade`
   is a pattern
-  resolved to 1 definition(s): `A` (exhaustiveness-checking.wipple:2:3-2:4)
+  resolved to 1 definition(s): `A`
 
-`"top of the class"` (exhaustiveness-checking.wipple:11:8-11:26) (StringExpression):
-  has type `String` (exhaustiveness-checking.wipple:9:25-9:31)
+`"top of the class"` (StringExpression):
+  has type `String`
   is an expression
 
-`B` (exhaustiveness-checking.wipple:12:3-12:4) (ConstructorPattern):
-  has type `Grade` (exhaustiveness-checking.wipple:9:16-9:21)
+`B` (ConstructorPattern):
+  has type `Grade`
   is a pattern
-  resolved to 1 definition(s): `B` (exhaustiveness-checking.wipple:3:3-3:4)
+  resolved to 1 definition(s): `B`
 
-`"good job"` (exhaustiveness-checking.wipple:12:8-12:18) (StringExpression):
-  has type `String` (exhaustiveness-checking.wipple:9:25-9:31)
+`"good job"` (StringExpression):
+  has type `String`
   is an expression
 
-`C` (exhaustiveness-checking.wipple:13:3-13:4) (ConstructorPattern):
-  has type `Grade` (exhaustiveness-checking.wipple:9:16-9:21)
+`C` (ConstructorPattern):
+  has type `Grade`
   is a pattern
-  resolved to 1 definition(s): `C` (exhaustiveness-checking.wipple:4:3-4:4)
+  resolved to 1 definition(s): `C`
 
-`"need to study"` (exhaustiveness-checking.wipple:13:8-13:23) (StringExpression):
-  has type `String` (exhaustiveness-checking.wipple:9:25-9:31)
+`"need to study"` (StringExpression):
+  has type `String`
   is an expression
 
 
 
 Feedback:
 
-`grade` (exhaustiveness-checking.wipple:10:29-10:34) (missing-patterns)
+`grade` (missing-patterns)
 
   `grade` could be `D` or `F`, but these patterns are missing.
   

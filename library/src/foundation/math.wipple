@@ -5,7 +5,7 @@ nan : intrinsic "nan"
 
 -- Add two values together, returning the sum.
 Add : left right (infer sum) => trait (left right -> sum)
-instance (Add Number Number Number) : left right -> intrinsic "f64.add" left right
+instance (Add Number Number Number) : left right -> intrinsic "add" left right
 
 -- Can't add [`left`] and [`right`].
 --
@@ -20,7 +20,7 @@ error instance (Add () right sum)
 
 -- Subtract one value from another, returning the difference.
 Subtract : left right (infer difference) => trait (left right -> difference)
-instance (Subtract Number Number Number) : left right -> intrinsic "f64.sub" left right
+instance (Subtract Number Number Number) : left right -> intrinsic "sub" left right
 
 -- Can't subtract [`right`] from [`left`].
 --
@@ -35,7 +35,7 @@ error instance (Subtract () right difference)
 
 -- Multiply two values together, returning the product.
 Multiply : left right (infer product) => trait (left right -> product)
-instance (Multiply Number Number Number) : left right -> intrinsic "f64.mul" left right
+instance (Multiply Number Number Number) : left right -> intrinsic "mul" left right
 
 -- Can't multiply [`left`] and [`right`].
 --
@@ -50,7 +50,7 @@ error instance (Multiply () right product)
 
 -- Divide two numbers, returning the quotient.
 Divide : left right (infer quotient) => trait (left right -> quotient)
-instance (Divide Number Number Number) : left right -> intrinsic "f64.div" left right
+instance (Divide Number Number Number) : left right -> intrinsic "div" left right
 
 -- Can't divide [`left`] by [`right`].
 --
@@ -95,15 +95,15 @@ error instance (Power () right power)
 
 -- Round down a number to the nearest integer.
 floor :: Number -> Number
-floor : n -> intrinsic "f64.floor" n
+floor : n -> intrinsic "floor" n
 
 -- Round up a number to the nearest integer.
 ceil :: Number -> Number
-ceil : n -> intrinsic "f64.ceil" n
+ceil : n -> intrinsic "ceil" n
 
 -- Calculate the square root of a number.
 sqrt :: Number -> Number
-sqrt : n -> intrinsic "f64.sqrt" n
+sqrt : n -> intrinsic "sqrt" n
 
 -- An angle represented in degrees.
 Angle : type {degrees :: Number}
@@ -126,7 +126,7 @@ tan : (Angle {degrees : degrees}) -> intrinsic "tan" degrees
 
 -- Negate the sign of a number.
 negate :: Number -> Number
-negate : n -> intrinsic "f64.neg" n
+negate : n -> intrinsic "neg" n
 
 -- Check if the first number is divisible by the second.
 divisible-by? :: Number -> Number -> Boolean

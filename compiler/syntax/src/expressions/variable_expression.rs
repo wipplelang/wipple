@@ -10,7 +10,6 @@ use wipple_core::{
         constraints::{
             group_constraint::GroupConstraint, instantiate_constraint::InstantiateConstraint,
         },
-        instantiate::InstantiatedParameters,
     },
     visit::{
         IsCaptured, IsMutated, Visit, Visitor,
@@ -93,8 +92,6 @@ impl Visit for VariableExpression {
                     Default::default(),
                 );
 
-                visitor.record_instantiated_parameters(substitutions);
-
                 visitor.constraint(
                     db,
                     InstantiateConstraint {
@@ -149,12 +146,9 @@ impl CodegenValue for VariableExpressionCodegen {
                 definition,
                 is_generic,
             } => {
-                let InstantiatedParameters(parameters) = db.get(*node).cloned().unwrap_or_default();
-
                 let Bounds(bounds) = db.get(*node).cloned().unwrap_or_default();
 
-                let key =
-                    ctx.codegen_constant(db, *definition, &parameters, bounds, *is_generic)?;
+                let key = ctx.codegen_constant(db, *definition, bounds, *is_generic)?;
 
                 ctx.instruction(ir::Instruction::Value {
                     node: *node,

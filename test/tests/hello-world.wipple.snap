@@ -1,19 +1,19 @@
 Facts (layer 2):
 
-`show` (hello-world.wipple:1:1-1:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
-  has type `String -> ()` (hello-world.wipple:1:1-1:5)
+`show` (VariableExpression):
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`show "Hello, world!"` (hello-world.wipple:1:1-1:21) (ExpressionStatement):
+`show "Hello, world!"` (ExpressionStatement):
   has type `()`
 
-`show "Hello, world!"` (hello-world.wipple:1:1-1:21) (CallExpression):
+`show "Hello, world!"` (CallExpression):
   has type `()`
   is an expression
 
-`"Hello, world!"` (hello-world.wipple:1:6-1:21) (StringExpression):
+`"Hello, world!"` (StringExpression):
   has type `String`
   is an expression
 

@@ -31,14 +31,6 @@ impl Render for Instantiated {
     }
 }
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct InstantiatedParameters(pub BTreeMap<Node, Ty>);
-
-#[typetag::serde]
-impl Fact for InstantiatedParameters {}
-
-impl Render for InstantiatedParameters {}
-
 #[derive(Debug, Clone)]
 pub struct InstantiateCtx {
     pub definition: Node,
@@ -100,12 +92,6 @@ impl InstantiateCtx {
                             source_node: self.source_node,
                         },
                     );
-
-                    if substitutions.record_instantiated_parameters {
-                        db.get_mut_or_default::<InstantiatedParameters>(self.source_node)
-                            .0
-                            .insert(parameter, Ty::Node(ty));
-                    }
 
                     Ty::Node(ty)
                 })

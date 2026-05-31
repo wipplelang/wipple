@@ -1,145 +1,145 @@
 Facts (layer 2):
 
-`list` (enumerate.wipple:1:1-1:5) (VariablePattern):
+`list` (VariablePattern):
   has type `List String`
   is a definition
   is a pattern
 
-`list : "a", "b", "c"` (enumerate.wipple:1:1-1:21) (AssignmentStatement):
-  has type `()` (enumerate.wipple:1:1-1:21)
+`list : "a", "b", "c"` (AssignmentStatement):
+  has type `()`
 
-`"a"` (enumerate.wipple:1:8-1:11) (VisitAs):
+`"a"` (VisitAs):
   has type `String`
   is an expression
 
-`"a"` (enumerate.wipple:1:8-1:11) (ConstructorExpression):
-  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(List String)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:51))
-  has type `String (List String) -> List String` (enumerate.wipple:1:8-1:11)
+`"a"` (ConstructorExpression):
+  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
+  has type `String (List String) -> List String`
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:90)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
 
-`"a", "b", "c"` (enumerate.wipple:1:8-1:21) (CollectionExpression):
+`"a", "b", "c"` (CollectionExpression):
   has type `List String`
   is an expression
 
-`"b"` (enumerate.wipple:1:13-1:16) (VisitAs):
+`"b"` (VisitAs):
   has type `String`
   is an expression
 
-`"b"` (enumerate.wipple:1:13-1:16) (ConstructorExpression):
-  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(List String)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:51))
-  has type `String (List String) -> List String` (enumerate.wipple:1:13-1:16)
+`"b"` (ConstructorExpression):
+  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
+  has type `String (List String) -> List String`
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:90)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
 
-`"c"` (enumerate.wipple:1:18-1:21) (VisitAs):
+`"c"` (VisitAs):
   has type `String`
   is an expression
 
-`"c"` (enumerate.wipple:1:18-1:21) (ConstructorExpression):
-  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(List String)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:51))
-  has type `String (List String) -> List String` (enumerate.wipple:1:18-1:21)
+`"c"` (ConstructorExpression):
+  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
+  has type `String (List String) -> List String`
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:90)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
 
-`list` (enumerate.wipple:2:1-2:5) (VisitAs):
+`list` (VisitAs):
   has type `List String`
   is an expression
-  resolved to 1 definition(s): `list` (enumerate.wipple:1:1-1:5)
+  resolved to 1 definition(s): `list`
 
-`list . enumerate` (enumerate.wipple:2:1-2:17) (VisitAs):
+`list . enumerate` (VisitAs):
   has type `Sequence (Number; String)`
   is an expression
 
-`list . enumerate . each ((n; c) -> show ("_: _" n c))` (enumerate.wipple:2:1-2:54) (ExpressionStatement):
+`list . enumerate . each ((n; c) -> show ("_: _" n c))` (ExpressionStatement):
   has type `()`
 
-`list . enumerate . each ((n; c) -> show ("_: _" n c))` (enumerate.wipple:2:1-2:54) (OperatorExpression):
+`list . enumerate . each ((n; c) -> show ("_: _" n c))` (OperatorExpression):
   has type `()`
   is an expression
 
-`enumerate` (enumerate.wipple:2:8-2:17) (CallExpression):
+`enumerate` (CallExpression):
   has type `Sequence (Number; String)`
   is an expression
 
-`enumerate` (enumerate.wipple:2:8-2:17) (VisitAs):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:46))
-  has type `(List String) -> Sequence (Number; String)` (enumerate.wipple:2:8-2:17)
+`enumerate` (VisitAs):
+  has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
+  has type `(List String) -> Sequence (Number; String)`
   is an expression
-  resolved to 1 definition(s): `enumerate :: collection -> Sequence (Number; element) where (As-Sequence collection element)` (library/src/foundation/sequence.wipple:375:1-375:93)
+  resolved to 1 definition(s): `enumerate :: collection -> Sequence (Number; element) where (As-Sequence collection element)`
 
-`each` (enumerate.wipple:2:20-2:24) (VariableExpression):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(Sequence (Number; String))` `(Number; String)` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:50))
-  has type `((Number; String) -> ()) -> (Sequence (Number; String)) -> ()` (enumerate.wipple:2:20-2:24)
+`each` (VariableExpression):
+  has bound(s) `As-Sequence` `(Sequence (Number; String))` `(Number; String)` (resolved as `instance (As-Sequence (Sequence element) element)`)
+  has type `((Number; String) -> ()) -> (Sequence (Number; String)) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:81)
+  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)`
 
-`each ((n; c) -> show ("_: _" n c))` (enumerate.wipple:2:20-2:54) (CallExpression):
+`each ((n; c) -> show ("_: _" n c))` (CallExpression):
   has type `()`
   is an expression
 
-`each ((n; c) -> show ("_: _" n c))` (enumerate.wipple:2:20-2:54) (VisitAs):
-  has type `(Sequence (Number; String)) -> ()` (enumerate.wipple:2:20-2:54)
+`each ((n; c) -> show ("_: _" n c))` (VisitAs):
+  has type `(Sequence (Number; String)) -> ()`
   is an expression
 
-`(n; c) -> show ("_: _" n c)` (enumerate.wipple:2:26-2:53) (FunctionExpression):
-  has type `(Number; String) -> ()` (enumerate.wipple:2:26-2:53)
+`(n; c) -> show ("_: _" n c)` (FunctionExpression):
+  has type `(Number; String) -> ()`
   is an expression
 
-`n` (enumerate.wipple:2:27-2:28) (VariablePattern):
+`n` (VariablePattern):
   has type `Number`
   is a definition
   is a pattern
 
-`n; c` (enumerate.wipple:2:27-2:31) (TuplePattern):
+`n; c` (TuplePattern):
   has type `(Number; String)`
   is a pattern
 
-`c` (enumerate.wipple:2:30-2:31) (VariablePattern):
+`c` (VariablePattern):
   has type `String`
   is a definition
   is a pattern
 
-`show` (enumerate.wipple:2:36-2:40) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
-  has type `String -> ()` (enumerate.wipple:2:36-2:40)
+`show` (VariableExpression):
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`show ("_: _" n c)` (enumerate.wipple:2:36-2:53) (CallExpression):
+`show ("_: _" n c)` (CallExpression):
   has type `()`
   is an expression
 
-`"_: _" n c` (enumerate.wipple:2:42-2:52) (FormatExpression):
+`"_: _" n c` (FormatExpression):
   has type `String`
   is an expression
 
-`"_: _" n c` (enumerate.wipple:2:42-2:52) (NamedType):
+`"_: _" n c` (NamedType):
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`"_: _" n c` (enumerate.wipple:2:42-2:52) (ConstructorExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `Number -> String` (enumerate.wipple:2:42-2:52)
+`"_: _" n c` (ConstructorExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
-`"_: _" n c` (enumerate.wipple:2:42-2:52) (ConstructorExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
-  has type `String -> String` (enumerate.wipple:2:42-2:52)
+`"_: _" n c` (ConstructorExpression):
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
-`n` (enumerate.wipple:2:49-2:50) (VariableExpression):
+`n` (VariableExpression):
   has type `Number`
   is an expression
-  resolved to 1 definition(s): `n` (enumerate.wipple:2:27-2:28)
+  resolved to 1 definition(s): `n`
 
-`c` (enumerate.wipple:2:51-2:52) (VariableExpression):
+`c` (VariableExpression):
   has type `String`
   is an expression
-  resolved to 1 definition(s): `c` (enumerate.wipple:2:30-2:31)
+  resolved to 1 definition(s): `c`
 
 
 Output:

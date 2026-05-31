@@ -1,279 +1,279 @@
 Facts (layer 2):
 
-`Number : type` (custom-errors.wipple:1:13-1:26) (TypeDefinition):
+`Number : type` (TypeDefinition):
   has definition constraints
-  has type `Number` (custom-errors.wipple:1:13-1:26)
+  has type `Number`
   is a definition
 
-`String : type` (custom-errors.wipple:2:13-2:26) (TypeDefinition):
+`String : type` (TypeDefinition):
   has definition constraints
-  has type `String` (custom-errors.wipple:2:13-2:26)
+  has type `String`
   is a definition
 
-`Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58) (TraitDefinition):
+`Add : left right (infer sum) => trait (left right -> sum)` (TraitDefinition):
   has 4 instances
-  has definition constraints
-  has type `left right -> sum` (custom-errors.wipple:4:40-4:57)
-  has type parameters
-  is a definition
-
-`left` (custom-errors.wipple:4:7-4:11) (TypeParameter):
-  has type `left` (custom-errors.wipple:4:7-4:11)
-  is a definition
-  is a type
-  resolved to 1 definition(s): `left` (custom-errors.wipple:4:7-4:11)
-
-`right` (custom-errors.wipple:4:12-4:17) (TypeParameter):
-  has type `right` (custom-errors.wipple:4:12-4:17)
-  is a definition
-  is a type
-  resolved to 1 definition(s): `right` (custom-errors.wipple:4:12-4:17)
-
-`(infer sum)` (custom-errors.wipple:4:18-4:29) (TypeParameter):
-  has type `sum` (custom-errors.wipple:4:18-4:29)
-  is a definition
-  is a type
-  is inferred type parameter
-  resolved to 1 definition(s): `(infer sum)` (custom-errors.wipple:4:18-4:29)
-
-`left` (custom-errors.wipple:4:40-4:44) (TypeParameter):
-  has type `left` (custom-errors.wipple:4:7-4:11)
-  is a type
-  resolved to 1 definition(s): `left` (custom-errors.wipple:4:7-4:11)
-
-`left right -> sum` (custom-errors.wipple:4:40-4:57) (FunctionType):
-  has type `left right -> sum` (custom-errors.wipple:4:40-4:57)
-  is a type
-
-`right` (custom-errors.wipple:4:45-4:50) (TypeParameter):
-  has type `right` (custom-errors.wipple:4:12-4:17)
-  is a type
-  resolved to 1 definition(s): `right` (custom-errors.wipple:4:12-4:17)
-
-`sum` (custom-errors.wipple:4:54-4:57) (TypeParameter):
-  has type `sum` (custom-errors.wipple:4:18-4:29)
-  is a type
-  resolved to 1 definition(s): `(infer sum)` (custom-errors.wipple:4:18-4:29)
-
-`instance (Add Number Number Number)` (custom-errors.wipple:5:1-5:36) (InstanceDefinition):
-  has definition constraints
-  has type `Number Number -> Number`
-  is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
-
-`Number` (custom-errors.wipple:5:15-5:21) (NamedType):
-  has type `Number` (custom-errors.wipple:5:15-5:21)
-  is a type
-  resolved to 1 definition(s): `Number : type` (custom-errors.wipple:1:13-1:26)
-
-`Number` (custom-errors.wipple:5:22-5:28) (NamedType):
-  has type `Number` (custom-errors.wipple:5:22-5:28)
-  is a type
-  resolved to 1 definition(s): `Number : type` (custom-errors.wipple:1:13-1:26)
-
-`Number` (custom-errors.wipple:5:29-5:35) (NamedType):
-  has type `Number` (custom-errors.wipple:5:29-5:35)
-  is a type
-  resolved to 1 definition(s): `Number : type` (custom-errors.wipple:1:13-1:26)
-
-`_` (custom-errors.wipple:5:39-5:40) (PlaceholderExpression):
-  has type `Number Number -> Number`
-  is an expression
-
-`instance (Add String String String)` (custom-errors.wipple:6:1-6:36) (InstanceDefinition):
-  has definition constraints
-  has type `String String -> String`
-  is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
-
-`String` (custom-errors.wipple:6:15-6:21) (NamedType):
-  has type `String` (custom-errors.wipple:6:15-6:21)
-  is a type
-  resolved to 1 definition(s): `String : type` (custom-errors.wipple:2:13-2:26)
-
-`String` (custom-errors.wipple:6:22-6:28) (NamedType):
-  has type `String` (custom-errors.wipple:6:22-6:28)
-  is a type
-  resolved to 1 definition(s): `String : type` (custom-errors.wipple:2:13-2:26)
-
-`String` (custom-errors.wipple:6:29-6:35) (NamedType):
-  has type `String` (custom-errors.wipple:6:29-6:35)
-  is a type
-  resolved to 1 definition(s): `String : type` (custom-errors.wipple:2:13-2:26)
-
-`_` (custom-errors.wipple:6:39-6:40) (PlaceholderExpression):
-  has type `String String -> String`
-  is an expression
-
-`error instance (Add () right sum)` (custom-errors.wipple:9:1-9:34) (InstanceDefinition):
-  has definition constraints
-  has type `() right -> sum`
-  has type parameters
-  is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
-
-`()` (custom-errors.wipple:9:21-9:23) (UnitType):
-  has type `()` (custom-errors.wipple:9:21-9:23)
-  is a type
-
-`right` (custom-errors.wipple:9:24-9:29) (TypeParameter):
-  has type `right` (custom-errors.wipple:9:24-9:29)
-  is a definition
-  is a type
-  resolved to 1 definition(s): `right` (custom-errors.wipple:9:24-9:29)
-
-`sum` (custom-errors.wipple:9:30-9:33) (TypeParameter):
-  has type `sum` (custom-errors.wipple:9:30-9:33)
-  is a definition
-  is a type
-  resolved to 1 definition(s): `sum` (custom-errors.wipple:9:30-9:33)
-
-`default error instance (Add left right sum)` (custom-errors.wipple:12:1-12:44) (InstanceDefinition):
   has definition constraints
   has type `left right -> sum`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
 
-`left` (custom-errors.wipple:12:29-12:33) (TypeParameter):
-  has type `left` (custom-errors.wipple:12:29-12:33)
+`left` (TypeParameter):
+  has type `left`
   is a definition
   is a type
-  resolved to 1 definition(s): `left` (custom-errors.wipple:12:29-12:33)
+  resolved to 1 definition(s): `left`
 
-`right` (custom-errors.wipple:12:34-12:39) (TypeParameter):
-  has type `right` (custom-errors.wipple:12:34-12:39)
+`right` (TypeParameter):
+  has type `right`
   is a definition
   is a type
-  resolved to 1 definition(s): `right` (custom-errors.wipple:12:34-12:39)
+  resolved to 1 definition(s): `right`
 
-`sum` (custom-errors.wipple:12:40-12:43) (TypeParameter):
-  has type `sum` (custom-errors.wipple:12:40-12:43)
+`(infer sum)` (TypeParameter):
+  has type `sum`
   is a definition
   is a type
-  resolved to 1 definition(s): `sum` (custom-errors.wipple:12:40-12:43)
+  is inferred type parameter
+  resolved to 1 definition(s): `(infer sum)`
 
-`_` (custom-errors.wipple:14:1-14:2) (WildcardPattern):
+`left` (TypeParameter):
+  has type `left`
+  is a type
+  resolved to 1 definition(s): `left`
+
+`left right -> sum` (FunctionType):
+  has type `left right -> sum`
+  is a type
+
+`right` (TypeParameter):
+  has type `right`
+  is a type
+  resolved to 1 definition(s): `right`
+
+`sum` (TypeParameter):
+  has type `sum`
+  is a type
+  resolved to 1 definition(s): `(infer sum)`
+
+`instance (Add Number Number Number)` (InstanceDefinition):
+  has definition constraints
+  has type `Number Number -> Number`
+  is a definition
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+
+`Number` (NamedType):
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): `Number : type`
+
+`Number` (NamedType):
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): `Number : type`
+
+`Number` (NamedType):
+  has type `Number`
+  is a type
+  resolved to 1 definition(s): `Number : type`
+
+`_` (PlaceholderExpression):
+  has type `Number Number -> Number`
+  is an expression
+
+`instance (Add String String String)` (InstanceDefinition):
+  has definition constraints
+  has type `String String -> String`
+  is a definition
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+
+`String` (NamedType):
+  has type `String`
+  is a type
+  resolved to 1 definition(s): `String : type`
+
+`String` (NamedType):
+  has type `String`
+  is a type
+  resolved to 1 definition(s): `String : type`
+
+`String` (NamedType):
+  has type `String`
+  is a type
+  resolved to 1 definition(s): `String : type`
+
+`_` (PlaceholderExpression):
+  has type `String String -> String`
+  is an expression
+
+`error instance (Add () right sum)` (InstanceDefinition):
+  has definition constraints
+  has type `() right -> sum`
+  has type parameters
+  is a definition
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+
+`()` (UnitType):
+  has type `()`
+  is a type
+
+`right` (TypeParameter):
+  has type `right`
+  is a definition
+  is a type
+  resolved to 1 definition(s): `right`
+
+`sum` (TypeParameter):
+  has type `sum`
+  is a definition
+  is a type
+  resolved to 1 definition(s): `sum`
+
+`default error instance (Add left right sum)` (InstanceDefinition):
+  has definition constraints
+  has type `left right -> sum`
+  has type parameters
+  is a definition
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+
+`left` (TypeParameter):
+  has type `left`
+  is a definition
+  is a type
+  resolved to 1 definition(s): `left`
+
+`right` (TypeParameter):
+  has type `right`
+  is a definition
+  is a type
+  resolved to 1 definition(s): `right`
+
+`sum` (TypeParameter):
+  has type `sum`
+  is a definition
+  is a type
+  resolved to 1 definition(s): `sum`
+
+`_` (WildcardPattern):
   has type `Number`
   is a pattern
 
-`_ : 1 + 2` (custom-errors.wipple:14:1-14:10) (AssignmentStatement):
-  has type `()` (custom-errors.wipple:14:1-14:10)
+`_ : 1 + 2` (AssignmentStatement):
+  has type `()`
 
-`1` (custom-errors.wipple:14:5-14:6) (NumberExpression):
+`1` (NumberExpression):
   has type `Number`
   is an expression
 
-`1 + 2` (custom-errors.wipple:14:5-14:10) (OperatorExpression):
+`1 + 2` (OperatorExpression):
   has type `Number`
   is an expression
 
-`1 + 2` (custom-errors.wipple:14:5-14:10) (CallExpression):
+`1 + 2` (CallExpression):
   has type `Number`
   is an expression
 
-`1 + 2` (custom-errors.wipple:14:5-14:10) (ConstructorExpression):
-  has bound(s) `Add` (custom-errors.wipple:4:1-4:58) `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)` (custom-errors.wipple:5:1-5:36))
-  has type `Number Number -> Number` (custom-errors.wipple:14:5-14:10)
+`1 + 2` (ConstructorExpression):
+  has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
+  has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
-`2` (custom-errors.wipple:14:9-14:10) (NumberExpression):
+`2` (NumberExpression):
   has type `Number`
   is an expression
 
-`_` (custom-errors.wipple:15:1-15:2) (WildcardPattern):
+`_` (WildcardPattern):
   has type `String`
   is a pattern
 
-`_ : "a" + "b"` (custom-errors.wipple:15:1-15:14) (AssignmentStatement):
-  has type `()` (custom-errors.wipple:15:1-15:14)
+`_ : "a" + "b"` (AssignmentStatement):
+  has type `()`
 
-`"a"` (custom-errors.wipple:15:5-15:8) (StringExpression):
+`"a"` (StringExpression):
   has type `String`
   is an expression
 
-`"a" + "b"` (custom-errors.wipple:15:5-15:14) (OperatorExpression):
+`"a" + "b"` (OperatorExpression):
   has type `String`
   is an expression
 
-`"a" + "b"` (custom-errors.wipple:15:5-15:14) (CallExpression):
+`"a" + "b"` (CallExpression):
   has type `String`
   is an expression
 
-`"a" + "b"` (custom-errors.wipple:15:5-15:14) (ConstructorExpression):
-  has bound(s) `Add` (custom-errors.wipple:4:1-4:58) `String` `String` `String` (resolved as `instance (Add String String String)` (custom-errors.wipple:6:1-6:36))
-  has type `String String -> String` (custom-errors.wipple:15:5-15:14)
+`"a" + "b"` (ConstructorExpression):
+  has bound(s) `Add` `String` `String` `String` (resolved as `instance (Add String String String)`)
+  has type `String String -> String`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
-`"b"` (custom-errors.wipple:15:11-15:14) (StringExpression):
+`"b"` (StringExpression):
   has type `String`
   is an expression
 
-`_` (custom-errors.wipple:16:1-16:2) (WildcardPattern):
+`_` (WildcardPattern):
   is a pattern
-  missing type (group: `_` (custom-errors.wipple:16:1-16:2), `1 + "a"` (custom-errors.wipple:16:5-16:12), `1 + "a"` (custom-errors.wipple:16:5-16:12), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
-`_ : 1 + "a"` (custom-errors.wipple:16:1-16:12) (AssignmentStatement):
-  has type `()` (custom-errors.wipple:16:1-16:12)
+`_ : 1 + "a"` (AssignmentStatement):
+  has type `()`
 
-`1` (custom-errors.wipple:16:5-16:6) (NumberExpression):
-  has type `Number` (custom-errors.wipple:16:5-16:6)
+`1` (NumberExpression):
+  has type `Number`
   is an expression
 
-`1 + "a"` (custom-errors.wipple:16:5-16:12) (OperatorExpression):
+`1 + "a"` (OperatorExpression):
   is an expression
-  missing type (group: `_` (custom-errors.wipple:16:1-16:2), `1 + "a"` (custom-errors.wipple:16:5-16:12), `1 + "a"` (custom-errors.wipple:16:5-16:12), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
-`1 + "a"` (custom-errors.wipple:16:5-16:12) (CallExpression):
+`1 + "a"` (CallExpression):
   is an expression
-  missing type (group: `_` (custom-errors.wipple:16:1-16:2), `1 + "a"` (custom-errors.wipple:16:5-16:12), `1 + "a"` (custom-errors.wipple:16:5-16:12), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
-`1 + "a"` (custom-errors.wipple:16:5-16:12) (ConstructorExpression):
-  has bound(s) `Add` (custom-errors.wipple:4:1-4:58) `Number` (custom-errors.wipple:16:5-16:6) `String` (custom-errors.wipple:16:9-16:12) `_` (resolved as `default error instance (Add left right sum)` (custom-errors.wipple:12:1-12:44))
-  has type `Number String -> _` (custom-errors.wipple:16:5-16:12)
+`1 + "a"` (ConstructorExpression):
+  has bound(s) `Add` `Number` `String` `_` (resolved as `default error instance (Add left right sum)`)
+  has type `Number String -> _`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
-`"a"` (custom-errors.wipple:16:9-16:12) (StringExpression):
-  has type `String` (custom-errors.wipple:16:9-16:12)
+`"a"` (StringExpression):
+  has type `String`
   is an expression
 
-`_` (custom-errors.wipple:17:1-17:2) (WildcardPattern):
+`_` (WildcardPattern):
   is a pattern
-  missing type (group: `_` (custom-errors.wipple:17:1-17:2), `() + 2` (custom-errors.wipple:17:5-17:11), `() + 2` (custom-errors.wipple:17:5-17:11), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `() + 2`, `() + 2`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
-`_ : () + 2` (custom-errors.wipple:17:1-17:11) (AssignmentStatement):
-  has type `()` (custom-errors.wipple:17:1-17:11)
+`_ : () + 2` (AssignmentStatement):
+  has type `()`
 
-`()` (custom-errors.wipple:17:5-17:7) (UnitExpression):
+`()` (UnitExpression):
   has type `()`
   is an expression
 
-`() + 2` (custom-errors.wipple:17:5-17:11) (OperatorExpression):
+`() + 2` (OperatorExpression):
   is an expression
-  missing type (group: `_` (custom-errors.wipple:17:1-17:2), `() + 2` (custom-errors.wipple:17:5-17:11), `() + 2` (custom-errors.wipple:17:5-17:11), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `() + 2`, `() + 2`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
-`() + 2` (custom-errors.wipple:17:5-17:11) (CallExpression):
+`() + 2` (CallExpression):
   is an expression
-  missing type (group: `_` (custom-errors.wipple:17:1-17:2), `() + 2` (custom-errors.wipple:17:5-17:11), `() + 2` (custom-errors.wipple:17:5-17:11), `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `() + 2`, `() + 2`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
 
-`() + 2` (custom-errors.wipple:17:5-17:11) (ConstructorExpression):
-  has bound(s) `Add` (custom-errors.wipple:4:1-4:58) `()` `Number` (custom-errors.wipple:17:10-17:11) `_` (resolved as `error instance (Add () right sum)` (custom-errors.wipple:9:1-9:34))
-  has type `() Number -> _` (custom-errors.wipple:17:5-17:11)
+`() + 2` (ConstructorExpression):
+  has bound(s) `Add` `()` `Number` `_` (resolved as `error instance (Add () right sum)`)
+  has type `() Number -> _`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (custom-errors.wipple:4:1-4:58)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
-`2` (custom-errors.wipple:17:10-17:11) (NumberExpression):
-  has type `Number` (custom-errors.wipple:17:10-17:11)
+`2` (NumberExpression):
+  has type `Number`
   is an expression
 
 
 
 Feedback:
 
-`() + 2` (custom-errors.wipple:17:5-17:11) (error-instance)
+`() + 2` (error-instance)
 
   Missing parentheses around the inputs to `+`.
   

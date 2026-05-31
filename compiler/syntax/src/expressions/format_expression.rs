@@ -202,7 +202,7 @@ impl CodegenValue for FormatExpressionCodegen {
             ctx.instruction(ir::Instruction::Value {
                 node: segment.concat_temporary,
                 value: ir::Value::Runtime {
-                    name: String::from("concat"),
+                    name: String::from("string-concat"),
                     inputs: vec![segment.string_temporary, segment.described_temporary],
                 },
             });
@@ -211,7 +211,7 @@ impl CodegenValue for FormatExpressionCodegen {
                 node: segment.output_temporary,
                 value: match prev {
                     Some(prev) => ir::Value::Runtime {
-                        name: String::from("concat"),
+                        name: String::from("string-concat"),
                         inputs: vec![prev, segment.concat_temporary],
                     },
                     None => ir::Value::Variable(segment.concat_temporary),
@@ -231,7 +231,7 @@ impl CodegenValue for FormatExpressionCodegen {
         ctx.instruction(ir::Instruction::Value {
             node: self.node,
             value: ir::Value::Runtime {
-                name: String::from("concat"),
+                name: String::from("string-concat"),
                 inputs: vec![prev, self.trailing_temporary],
             },
         });

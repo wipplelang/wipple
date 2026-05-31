@@ -1,120 +1,120 @@
 Facts (layer 2):
 
-`Person : type {name :: String}` (format.wipple:1:1-1:31) (TypeDefinition):
+`Person : type {name :: String}` (TypeDefinition):
   has definition constraints
-  has type `Person` (format.wipple:1:1-1:31)
+  has type `Person`
   is a definition
 
-`Person : type {name :: String}` (format.wipple:1:1-1:31) (TypeDefinition):
+`Person : type {name :: String}` (TypeDefinition):
   has definition constraints
-  has type `Person` (format.wipple:1:1-1:31)
+  has type `Person`
   is a definition
 
-`String` (format.wipple:1:24-1:30) (NamedType):
-  has type `String` (format.wipple:1:24-1:30)
+`String` (NamedType):
+  has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`instance (Describe Person)` (format.wipple:3:1-3:27) (InstanceDefinition):
+`instance (Describe Person)` (InstanceDefinition):
   has definition constraints
-  has type `Person -> String` (format.wipple:3:30-3:60)
+  has type `Person -> String`
   is a definition
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
-`Person` (format.wipple:3:20-3:26) (NamedType):
-  has type `Person` (format.wipple:3:20-3:26)
+`Person` (NamedType):
+  has type `Person`
   is a type
-  resolved to 1 definition(s): `Person : type {name :: String}` (format.wipple:1:1-1:31)
+  resolved to 1 definition(s): `Person : type {name :: String}`
 
-`(Person {name : name}) -> name` (format.wipple:3:30-3:60) (FunctionExpression):
-  has type `Person -> String` (format.wipple:3:30-3:60)
+`(Person {name : name}) -> name` (FunctionExpression):
+  has type `Person -> String`
   is an expression
 
-`Person {name : name}` (format.wipple:3:31-3:51) (StructurePattern):
-  has type `Person` (format.wipple:3:20-3:26)
+`Person {name : name}` (StructurePattern):
+  has type `Person`
   is a pattern
-  resolved to 1 definition(s): `Person : type {name :: String}` (format.wipple:1:1-1:31)
+  resolved to 1 definition(s): `Person : type {name :: String}`
 
-`name` (format.wipple:3:46-3:50) (VariablePattern):
+`name` (VariablePattern):
   has type `String`
   is a definition
   is a pattern
 
-`name` (format.wipple:3:56-3:60) (VariableExpression):
+`name` (VariableExpression):
   has type `String`
   is an expression
-  resolved to 1 definition(s): `name` (format.wipple:3:46-3:50)
+  resolved to 1 definition(s): `name`
 
-`bob` (format.wipple:5:1-5:4) (VariablePattern):
+`bob` (VariablePattern):
   has type `Person`
   is a definition
   is a pattern
 
-`bob : Person {name : "Bob"}` (format.wipple:5:1-5:28) (AssignmentStatement):
-  has type `()` (format.wipple:5:1-5:28)
-
-`Person {name : "Bob"}` (format.wipple:5:7-5:28) (StructureExpression):
-  has type `Person`
-  is an expression
-  resolved to 1 definition(s): `Person : type {name :: String}` (format.wipple:1:1-1:31)
-
-`"Bob"` (format.wipple:5:22-5:27) (StringExpression):
-  has type `String` (format.wipple:5:22-5:27)
-  is an expression
-
-`show` (format.wipple:6:1-6:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
-  has type `String -> ()` (format.wipple:6:1-6:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
-
-`show ("Hello, _!" bob)` (format.wipple:6:1-6:23) (ExpressionStatement):
+`bob : Person {name : "Bob"}` (AssignmentStatement):
   has type `()`
 
-`show ("Hello, _!" bob)` (format.wipple:6:1-6:23) (CallExpression):
+`Person {name : "Bob"}` (StructureExpression):
+  has type `Person`
+  is an expression
+  resolved to 1 definition(s): `Person : type {name :: String}`
+
+`"Bob"` (StringExpression):
+  has type `String`
+  is an expression
+
+`show` (VariableExpression):
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> ()`
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+
+`show ("Hello, _!" bob)` (ExpressionStatement):
+  has type `()`
+
+`show ("Hello, _!" bob)` (CallExpression):
   has type `()`
   is an expression
 
-`"Hello, _!" bob` (format.wipple:6:7-6:22) (FormatExpression):
+`"Hello, _!" bob` (FormatExpression):
   has type `String`
   is an expression
 
-`"Hello, _!" bob` (format.wipple:6:7-6:22) (NamedType):
+`"Hello, _!" bob` (NamedType):
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`"Hello, _!" bob` (format.wipple:6:7-6:22) (ConstructorExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Person` (resolved as `instance (Describe Person)` (format.wipple:3:1-3:27))
-  has type `Person -> String` (format.wipple:6:7-6:22)
+`"Hello, _!" bob` (ConstructorExpression):
+  has bound(s) `Describe` `Person` (resolved as `instance (Describe Person)`)
+  has type `Person -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
-`bob` (format.wipple:6:19-6:22) (VariableExpression):
+`bob` (VariableExpression):
   has type `Person`
   is an expression
-  resolved to 1 definition(s): `bob` (format.wipple:5:1-5:4)
+  resolved to 1 definition(s): `bob`
 
-`Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44) (TraitDefinition):
+`Describe : value => trait (value -> String)` (TraitDefinition):
   has 6 instances
   has definition constraints
-  has type `value -> String` (library/src/foundation/io.wipple:2:28-2:43)
+  has type `value -> String`
   has type parameters
   is a definition
 
-`value` (library/src/foundation/io.wipple:2:12-2:17) (TypeParameter):
-  has type `value` (library/src/foundation/io.wipple:2:12-2:17)
+`value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (library/src/foundation/io.wipple:2:12-2:17)
+  resolved to 1 definition(s): `value`
 
-`value` (library/src/foundation/io.wipple:2:28-2:33) (TypeParameter):
-  has type `value` (library/src/foundation/io.wipple:2:12-2:17)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (library/src/foundation/io.wipple:2:12-2:17)
+  resolved to 1 definition(s): `value`
 
-`value -> String` (library/src/foundation/io.wipple:2:28-2:43) (FunctionType):
-  has type `value -> String` (library/src/foundation/io.wipple:2:28-2:43)
+`value -> String` (FunctionType):
+  has type `value -> String`
   is a type
 
 

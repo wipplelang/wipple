@@ -1,55 +1,55 @@
 Facts (layer 2):
 
-`x` (when.wipple:1:1-1:2) (VariablePattern):
+`x` (VariablePattern):
   has type `Boolean`
   is a definition
   is a pattern
 
-`x : True` (when.wipple:1:1-1:9) (AssignmentStatement):
-  has type `()` (when.wipple:1:1-1:9)
+`x : True` (AssignmentStatement):
+  has type `()`
 
-`True` (when.wipple:1:5-1:9) (ConstructorExpression):
+`True` (ConstructorExpression):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+  resolved to 1 definition(s): `True`
 
-`show` (when.wipple:3:1-3:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
-  has type `String -> ()` (when.wipple:3:1-3:5)
+`show` (VariableExpression):
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`show (when x {⋯})` (when.wipple:3:1-6:3) (ExpressionStatement):
+`show (when x {⋯})` (ExpressionStatement):
   has type `()`
 
-`show (when x {⋯})` (when.wipple:3:1-6:3) (CallExpression):
+`show (when x {⋯})` (CallExpression):
   has type `()`
   is an expression
 
-`when x {⋯}` (when.wipple:3:7-6:2) (WhenExpression):
+`when x {⋯}` (WhenExpression):
   has type `String`
   is an expression
 
-`x` (when.wipple:3:12-3:13) (VariableExpression):
+`x` (VariableExpression):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `x` (when.wipple:1:1-1:2)
+  resolved to 1 definition(s): `x`
 
-`True` (when.wipple:4:3-4:7) (ConstructorPattern):
+`True` (ConstructorPattern):
   has type `Boolean`
   is a pattern
-  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+  resolved to 1 definition(s): `True`
 
-`"Yay!"` (when.wipple:4:11-4:17) (StringExpression):
+`"Yay!"` (StringExpression):
   has type `String`
   is an expression
 
-`False` (when.wipple:5:3-5:8) (ConstructorPattern):
+`False` (ConstructorPattern):
   has type `Boolean`
   is a pattern
-  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
+  resolved to 1 definition(s): `False`
 
-`"Uh oh"` (when.wipple:5:12-5:19) (StringExpression):
+`"Uh oh"` (StringExpression):
   has type `String`
   is an expression
 

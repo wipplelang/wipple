@@ -1,54 +1,54 @@
 Facts (layer 2):
 
-`block :: {Number}` (comment-at-end-of-block.wipple:1:1-1:18) (ConstantDefinition):
+`block :: {Number}` (ConstantDefinition):
   has definition constraints
-  has type `{Number}` (comment-at-end-of-block.wipple:1:10-1:18)
+  has type `{Number}`
   is a definition
 
-`{Number}` (comment-at-end-of-block.wipple:1:10-1:18) (BlockType):
-  has type `{Number}` (comment-at-end-of-block.wipple:1:10-1:18)
+`{Number}` (BlockType):
+  has type `{Number}`
   is a type
 
-`Number` (comment-at-end-of-block.wipple:1:11-1:17) (NamedType):
-  has type `Number` (comment-at-end-of-block.wipple:1:11-1:17)
+`Number` (NamedType):
+  has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:38-1:51)
+  resolved to 1 definition(s): `Number : type`
 
-`block : {⋯}` (comment-at-end-of-block.wipple:2:1-5:2) (AssignmentStatement):
-  has type `()` (comment-at-end-of-block.wipple:2:1-5:2)
-
-`{⋯}` (comment-at-end-of-block.wipple:2:9-5:2) (BlockExpression):
-  has type `{Number}` (comment-at-end-of-block.wipple:1:10-1:18)
-  is an expression
-
-`42` (comment-at-end-of-block.wipple:3:3-3:5) (ExpressionStatement):
-  has type `Number` (comment-at-end-of-block.wipple:1:11-1:17)
-
-`42` (comment-at-end-of-block.wipple:3:3-3:5) (NumberExpression):
-  has type `Number` (comment-at-end-of-block.wipple:1:11-1:17)
-  is an expression
-
-`show` (comment-at-end-of-block.wipple:7:1-7:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `Number -> ()` (comment-at-end-of-block.wipple:7:1-7:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
-
-`show (do block)` (comment-at-end-of-block.wipple:7:1-7:16) (ExpressionStatement):
+`block : {⋯}` (AssignmentStatement):
   has type `()`
 
-`show (do block)` (comment-at-end-of-block.wipple:7:1-7:16) (CallExpression):
-  has type `()`
+`{⋯}` (BlockExpression):
+  has type `{Number}`
   is an expression
 
-`do block` (comment-at-end-of-block.wipple:7:7-7:15) (DoExpression):
+`42` (ExpressionStatement):
+  has type `Number`
+
+`42` (NumberExpression):
   has type `Number`
   is an expression
 
-`block` (comment-at-end-of-block.wipple:7:10-7:15) (VariableExpression):
-  has type `{Number}` (comment-at-end-of-block.wipple:7:10-7:15)
+`show` (VariableExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `block :: {Number}` (comment-at-end-of-block.wipple:1:1-1:18)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+
+`show (do block)` (ExpressionStatement):
+  has type `()`
+
+`show (do block)` (CallExpression):
+  has type `()`
+  is an expression
+
+`do block` (DoExpression):
+  has type `Number`
+  is an expression
+
+`block` (VariableExpression):
+  has type `{Number}`
+  is an expression
+  resolved to 1 definition(s): `block :: {Number}`
 
 
 Output:

@@ -1,168 +1,168 @@
 Facts (layer 2):
 
-`Boolean : type` (complex-nested-bounds.wipple:1:13-1:27) (TypeDefinition):
+`Boolean : type` (TypeDefinition):
   has definition constraints
-  has type `Boolean` (complex-nested-bounds.wipple:1:13-1:27)
+  has type `Boolean`
   is a definition
 
-`Not : value => trait (value -> value)` (complex-nested-bounds.wipple:3:1-3:38) (TraitDefinition):
+`Not : value => trait (value -> value)` (TraitDefinition):
   has 2 instances
   has definition constraints
-  has type `value -> value` (complex-nested-bounds.wipple:3:23-3:37)
+  has type `value -> value`
   has type parameters
   is a definition
 
-`value` (complex-nested-bounds.wipple:3:7-3:12) (TypeParameter):
-  has type `value` (complex-nested-bounds.wipple:3:7-3:12)
+`value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (complex-nested-bounds.wipple:3:7-3:12)
+  resolved to 1 definition(s): `value`
 
-`value` (complex-nested-bounds.wipple:3:23-3:28) (TypeParameter):
-  has type `value` (complex-nested-bounds.wipple:3:7-3:12)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (complex-nested-bounds.wipple:3:7-3:12)
+  resolved to 1 definition(s): `value`
 
-`value -> value` (complex-nested-bounds.wipple:3:23-3:37) (FunctionType):
-  has type `value -> value` (complex-nested-bounds.wipple:3:23-3:37)
+`value -> value` (FunctionType):
+  has type `value -> value`
   is a type
 
-`value` (complex-nested-bounds.wipple:3:32-3:37) (TypeParameter):
-  has type `value` (complex-nested-bounds.wipple:3:7-3:12)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (complex-nested-bounds.wipple:3:7-3:12)
+  resolved to 1 definition(s): `value`
 
-`instance (Not Boolean)` (complex-nested-bounds.wipple:4:1-4:23) (InstanceDefinition):
+`instance (Not Boolean)` (InstanceDefinition):
   has definition constraints
   has type `Boolean -> Boolean`
   is a definition
-  resolved to 1 definition(s): `Not : value => trait (value -> value)` (complex-nested-bounds.wipple:3:1-3:38)
+  resolved to 1 definition(s): `Not : value => trait (value -> value)`
 
-`Boolean` (complex-nested-bounds.wipple:4:15-4:22) (NamedType):
-  has type `Boolean` (complex-nested-bounds.wipple:4:15-4:22)
+`Boolean` (NamedType):
+  has type `Boolean`
   is a type
-  resolved to 1 definition(s): `Boolean : type` (complex-nested-bounds.wipple:1:13-1:27)
+  resolved to 1 definition(s): `Boolean : type`
 
-`todo` (complex-nested-bounds.wipple:4:26-4:30) (VariableExpression):
+`todo` (VariableExpression):
   has type `Boolean -> Boolean`
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:27:1-27:14)
+  resolved to 1 definition(s): `todo :: value`
 
-`instance (Not (a -> b)) where (Not b)` (complex-nested-bounds.wipple:5:1-5:38) (InstanceDefinition):
+`instance (Not (a -> b)) where (Not b)` (InstanceDefinition):
   has definition constraints
-  has type `(a -> b) -> a -> b` (complex-nested-bounds.wipple:5:41-5:60)
+  has type `(a -> b) -> a -> b`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Not : value => trait (value -> value)` (complex-nested-bounds.wipple:3:1-3:38)
+  resolved to 1 definition(s): `Not : value => trait (value -> value)`
 
-`a` (complex-nested-bounds.wipple:5:16-5:17) (TypeParameter):
-  has type `a` (complex-nested-bounds.wipple:5:16-5:17)
+`a` (TypeParameter):
+  has type `a`
   is a definition
   is a type
-  resolved to 1 definition(s): `a` (complex-nested-bounds.wipple:5:16-5:17)
+  resolved to 1 definition(s): `a`
 
-`a -> b` (complex-nested-bounds.wipple:5:16-5:22) (FunctionType):
-  has type `a -> b` (complex-nested-bounds.wipple:5:56-5:57)
+`a -> b` (FunctionType):
+  has type `a -> b`
   is a type
 
-`b` (complex-nested-bounds.wipple:5:21-5:22) (TypeParameter):
-  has type `b` (complex-nested-bounds.wipple:5:21-5:22)
+`b` (TypeParameter):
+  has type `b`
   is a definition
   is a type
-  resolved to 1 definition(s): `b` (complex-nested-bounds.wipple:5:21-5:22)
+  resolved to 1 definition(s): `b`
 
-`(Not b)` (complex-nested-bounds.wipple:5:31-5:38) (BoundConstraint):
-  has bound(s) `Not` (complex-nested-bounds.wipple:3:1-3:38) `b` (complex-nested-bounds.wipple:5:21-5:22) (resolved as `(Not b)` (complex-nested-bounds.wipple:5:31-5:38))
+`(Not b)` (BoundConstraint):
+  has bound(s) `Not` `b` (resolved as `(Not b)`)
   is a constraint
-  resolved to 1 definition(s): `Not : value => trait (value -> value)` (complex-nested-bounds.wipple:3:1-3:38)
+  resolved to 1 definition(s): `Not : value => trait (value -> value)`
 
-`b` (complex-nested-bounds.wipple:5:36-5:37) (TypeParameter):
-  has type `b` (complex-nested-bounds.wipple:5:21-5:22)
+`b` (TypeParameter):
+  has type `b`
   is a type
-  resolved to 1 definition(s): `b` (complex-nested-bounds.wipple:5:21-5:22)
+  resolved to 1 definition(s): `b`
 
-`f` (complex-nested-bounds.wipple:5:41-5:42) (VariablePattern):
-  has type `a -> b` (complex-nested-bounds.wipple:5:56-5:57)
+`f` (VariablePattern):
+  has type `a -> b`
   is a definition
   is a pattern
 
-`f -> x -> not (f x)` (complex-nested-bounds.wipple:5:41-5:60) (FunctionExpression):
-  has type `(a -> b) -> a -> b` (complex-nested-bounds.wipple:5:41-5:60)
+`f -> x -> not (f x)` (FunctionExpression):
+  has type `(a -> b) -> a -> b`
   is an expression
 
-`x` (complex-nested-bounds.wipple:5:46-5:47) (VariablePattern):
-  has type `a` (complex-nested-bounds.wipple:5:16-5:17)
+`x` (VariablePattern):
+  has type `a`
   is a definition
   is a pattern
 
-`x -> not (f x)` (complex-nested-bounds.wipple:5:46-5:60) (FunctionExpression):
-  captures `f` (complex-nested-bounds.wipple:5:41-5:42)
-  has type `a -> b` (complex-nested-bounds.wipple:5:56-5:57)
+`x -> not (f x)` (FunctionExpression):
+  captures `f`
+  has type `a -> b`
   is an expression
 
-`not` (complex-nested-bounds.wipple:5:51-5:54) (VariableExpression):
-  has bound(s) `Not` (complex-nested-bounds.wipple:3:1-3:38) `b` (complex-nested-bounds.wipple:5:21-5:22) (resolved as `(Not b)` (complex-nested-bounds.wipple:5:31-5:38))
-  has type `b -> b` (complex-nested-bounds.wipple:5:51-5:54)
+`not` (VariableExpression):
+  has bound(s) `Not` `b` (resolved as `(Not b)`)
+  has type `b -> b`
   is an expression
-  resolved to 1 definition(s): `not :: value -> value where (Not value)` (complex-nested-bounds.wipple:7:1-7:40)
+  resolved to 1 definition(s): `not :: value -> value where (Not value)`
 
-`not (f x)` (complex-nested-bounds.wipple:5:51-5:60) (CallExpression):
-  has type `b` (complex-nested-bounds.wipple:5:21-5:22)
-  is an expression
-
-`f` (complex-nested-bounds.wipple:5:56-5:57) (VariableExpression):
-  has type `a -> b` (complex-nested-bounds.wipple:5:56-5:57)
-  is an expression
-  resolved to 1 definition(s): `f` (complex-nested-bounds.wipple:5:41-5:42)
-
-`f x` (complex-nested-bounds.wipple:5:56-5:59) (CallExpression):
-  has type `b` (complex-nested-bounds.wipple:5:21-5:22)
+`not (f x)` (CallExpression):
+  has type `b`
   is an expression
 
-`x` (complex-nested-bounds.wipple:5:58-5:59) (VariableExpression):
-  has type `a` (complex-nested-bounds.wipple:5:16-5:17)
+`f` (VariableExpression):
+  has type `a -> b`
   is an expression
-  resolved to 1 definition(s): `x` (complex-nested-bounds.wipple:5:46-5:47)
+  resolved to 1 definition(s): `f`
 
-`not :: value -> value where (Not value)` (complex-nested-bounds.wipple:7:1-7:40) (ConstantDefinition):
+`f x` (CallExpression):
+  has type `b`
+  is an expression
+
+`x` (VariableExpression):
+  has type `a`
+  is an expression
+  resolved to 1 definition(s): `x`
+
+`not :: value -> value where (Not value)` (ConstantDefinition):
   has definition constraints
-  has type `value -> value` (complex-nested-bounds.wipple:7:8-7:22)
+  has type `value -> value`
   has type parameters
   is a definition
 
-`value` (complex-nested-bounds.wipple:7:8-7:13) (TypeParameter):
-  has type `value` (complex-nested-bounds.wipple:7:8-7:13)
+`value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (complex-nested-bounds.wipple:7:8-7:13)
+  resolved to 1 definition(s): `value`
 
-`value -> value` (complex-nested-bounds.wipple:7:8-7:22) (FunctionType):
-  has type `value -> value` (complex-nested-bounds.wipple:7:8-7:22)
+`value -> value` (FunctionType):
+  has type `value -> value`
   is a type
 
-`value` (complex-nested-bounds.wipple:7:17-7:22) (TypeParameter):
-  has type `value` (complex-nested-bounds.wipple:7:8-7:13)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (complex-nested-bounds.wipple:7:8-7:13)
+  resolved to 1 definition(s): `value`
 
-`(Not value)` (complex-nested-bounds.wipple:7:29-7:40) (BoundConstraint):
-  has bound(s) `Not` (complex-nested-bounds.wipple:3:1-3:38) `value` (complex-nested-bounds.wipple:7:8-7:13) (resolved as `(Not value)` (complex-nested-bounds.wipple:7:29-7:40))
+`(Not value)` (BoundConstraint):
+  has bound(s) `Not` `value` (resolved as `(Not value)`)
   is a constraint
-  resolved to 1 definition(s): `Not : value => trait (value -> value)` (complex-nested-bounds.wipple:3:1-3:38)
+  resolved to 1 definition(s): `Not : value => trait (value -> value)`
 
-`value` (complex-nested-bounds.wipple:7:34-7:39) (TypeParameter):
-  has type `value` (complex-nested-bounds.wipple:7:8-7:13)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (complex-nested-bounds.wipple:7:8-7:13)
+  resolved to 1 definition(s): `value`
 
-`not : Not` (complex-nested-bounds.wipple:8:1-8:10) (AssignmentStatement):
-  has type `()` (complex-nested-bounds.wipple:8:1-8:10)
+`not : Not` (AssignmentStatement):
+  has type `()`
 
-`Not` (complex-nested-bounds.wipple:8:7-8:10) (ConstructorExpression):
-  has bound(s) `Not` (complex-nested-bounds.wipple:3:1-3:38) `value` (complex-nested-bounds.wipple:7:8-7:13) (resolved as `(Not value)` (complex-nested-bounds.wipple:7:29-7:40))
-  has type `value -> value` (complex-nested-bounds.wipple:7:8-7:22)
+`Not` (ConstructorExpression):
+  has bound(s) `Not` `value` (resolved as `(Not value)`)
+  has type `value -> value`
   is an expression
-  resolved to 1 definition(s): `Not : value => trait (value -> value)` (complex-nested-bounds.wipple:3:1-3:38)
+  resolved to 1 definition(s): `Not : value => trait (value -> value)`
 
 
 Output:

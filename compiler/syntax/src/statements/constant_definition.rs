@@ -1,6 +1,8 @@
 use crate::{
-    attributes::attribute::parse_attributes, constraints::parse_constraints,
-    statements::parse_comments, types::parse_type,
+    attributes::attribute::parse_attributes,
+    constraints::parse_constraints,
+    statements::{parse_comments, visit_statement},
+    types::parse_type,
 };
 
 use serde::{Deserialize, Serialize};
@@ -90,6 +92,8 @@ impl Visit for ConstantDefinition {
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
+        visit_statement(db, node, visitor);
+
         visitor.within_definition::<definitions::ConstantDefinition>(db, node, |db, visitor, _| {
             visitor.push_scope(db, node);
 

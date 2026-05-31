@@ -1,56 +1,56 @@
 Facts (layer 2):
 
-`"abc"` (replicate.wipple:1:1-1:6) (VisitAs):
+`"abc"` (VisitAs):
   has type `String`
   is an expression
 
-`"abc" . replicate 3` (replicate.wipple:1:1-1:20) (VisitAs):
+`"abc" . replicate 3` (VisitAs):
   has type `Sequence String`
   is an expression
 
-`"abc" . replicate 3 . each show` (replicate.wipple:1:1-1:32) (ExpressionStatement):
+`"abc" . replicate 3 . each show` (ExpressionStatement):
   has type `()`
 
-`"abc" . replicate 3 . each show` (replicate.wipple:1:1-1:32) (OperatorExpression):
+`"abc" . replicate 3 . each show` (OperatorExpression):
   has type `()`
   is an expression
 
-`replicate` (replicate.wipple:1:9-1:18) (VariableExpression):
-  has type `Number -> String -> Sequence String` (replicate.wipple:1:9-1:18)
+`replicate` (VariableExpression):
+  has type `Number -> String -> Sequence String`
   is an expression
-  resolved to 1 definition(s): `replicate :: Number -> element -> Sequence element` (library/src/foundation/sequence.wipple:27:1-27:51)
+  resolved to 1 definition(s): `replicate :: Number -> element -> Sequence element`
 
-`replicate 3` (replicate.wipple:1:9-1:20) (CallExpression):
+`replicate 3` (CallExpression):
   has type `Sequence String`
   is an expression
 
-`replicate 3` (replicate.wipple:1:9-1:20) (VisitAs):
-  has type `String -> Sequence String` (replicate.wipple:1:9-1:20)
+`replicate 3` (VisitAs):
+  has type `String -> Sequence String`
   is an expression
 
-`3` (replicate.wipple:1:19-1:20) (NumberExpression):
-  has type `Number` (replicate.wipple:1:19-1:20)
+`3` (NumberExpression):
+  has type `Number`
   is an expression
 
-`each` (replicate.wipple:1:23-1:27) (VariableExpression):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(Sequence String)` `String` (resolved as `instance (As-Sequence (Sequence element) element)` (library/src/foundation/sequence.wipple:54:1-54:50))
-  has type `(String -> ()) -> (Sequence String) -> ()` (replicate.wipple:1:23-1:27)
+`each` (VariableExpression):
+  has bound(s) `As-Sequence` `(Sequence String)` `String` (resolved as `instance (As-Sequence (Sequence element) element)`)
+  has type `(String -> ()) -> (Sequence String) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:81)
+  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)`
 
-`each show` (replicate.wipple:1:23-1:32) (CallExpression):
+`each show` (CallExpression):
   has type `()`
   is an expression
 
-`each show` (replicate.wipple:1:23-1:32) (VisitAs):
-  has type `(Sequence String) -> ()` (replicate.wipple:1:23-1:32)
+`each show` (VisitAs):
+  has type `(Sequence String) -> ()`
   is an expression
 
-`show` (replicate.wipple:1:28-1:32) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
+`show` (VariableExpression):
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 
 Output:

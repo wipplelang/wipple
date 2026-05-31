@@ -5,7 +5,7 @@ use crate::{
         parse_constraints,
     },
     expressions::parse_expression,
-    statements::parse_comments,
+    statements::{parse_comments, visit_statement},
 };
 
 use serde::{Deserialize, Serialize};
@@ -134,6 +134,8 @@ impl Visit for InstanceDefinition {
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
+        visit_statement(db, node, visitor);
+
         visitor.within_definition::<definitions::InstanceDefinition>(
             db,
             node,

@@ -1,58 +1,58 @@
 Facts (layer 2):
 
-`T : value => trait value` (bounds-are-one-way.wipple:1:1-1:25) (TraitDefinition):
+`T : value => trait value` (TraitDefinition):
   has definition constraints
-  has type `value` (bounds-are-one-way.wipple:1:5-1:10)
+  has type `value`
   has type parameters
   is a definition
 
-`value` (bounds-are-one-way.wipple:1:5-1:10) (TypeParameter):
-  has type `value` (bounds-are-one-way.wipple:1:5-1:10)
+`value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (bounds-are-one-way.wipple:1:5-1:10)
+  resolved to 1 definition(s): `value`
 
-`value` (bounds-are-one-way.wipple:1:20-1:25) (TypeParameter):
-  has type `value` (bounds-are-one-way.wipple:1:5-1:10)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (bounds-are-one-way.wipple:1:5-1:10)
+  resolved to 1 definition(s): `value`
 
-`f :: Number where (T value)` (bounds-are-one-way.wipple:3:1-3:28) (ConstantDefinition):
+`f :: Number where (T value)` (ConstantDefinition):
   has definition constraints
-  has type `Number` (bounds-are-one-way.wipple:3:6-3:12)
+  has type `Number`
   has type parameters
   is a definition
 
-`Number` (bounds-are-one-way.wipple:3:6-3:12) (NamedType):
-  has type `Number` (bounds-are-one-way.wipple:3:6-3:12)
+`Number` (NamedType):
+  has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type` (library/src/foundation/language.wipple:1:38-1:51)
+  resolved to 1 definition(s): `Number : type`
 
-`(T value)` (bounds-are-one-way.wipple:3:19-3:28) (BoundConstraint):
-  has bound(s) `T` (bounds-are-one-way.wipple:1:1-1:25) `value` (bounds-are-one-way.wipple:3:22-3:27) (resolved as `(T value)` (bounds-are-one-way.wipple:3:19-3:28))
+`(T value)` (BoundConstraint):
+  has bound(s) `T` `value` (resolved as `(T value)`)
   is a constraint
-  resolved to 1 definition(s): `T : value => trait value` (bounds-are-one-way.wipple:1:1-1:25)
+  resolved to 1 definition(s): `T : value => trait value`
 
-`value` (bounds-are-one-way.wipple:3:22-3:27) (TypeParameter):
-  has type `value` (bounds-are-one-way.wipple:3:22-3:27)
+`value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (bounds-are-one-way.wipple:3:22-3:27)
+  resolved to 1 definition(s): `value`
 
-`f : T` (bounds-are-one-way.wipple:4:1-4:6) (AssignmentStatement):
-  has type `()` (bounds-are-one-way.wipple:4:1-4:6)
+`f : T` (AssignmentStatement):
+  has type `()`
 
-`T` (bounds-are-one-way.wipple:4:5-4:6) (ConstructorExpression):
-  has bound(s) `T` (bounds-are-one-way.wipple:1:1-1:25) `Number` (bounds-are-one-way.wipple:3:6-3:12) (unresolved)
-  has type `Number` (bounds-are-one-way.wipple:3:6-3:12)
+`T` (ConstructorExpression):
+  has bound(s) `T` `Number` (unresolved)
+  has type `Number`
   is an expression
-  resolved to 1 definition(s): `T : value => trait value` (bounds-are-one-way.wipple:1:1-1:25)
+  resolved to 1 definition(s): `T : value => trait value`
 
 
 
 Feedback:
 
-`T` (bounds-are-one-way.wipple:4:5-4:6) (unresolved-bound)
+`T` (unresolved-bound)
 
   `T` requires the instance `T` `Number`, but this instance isn't defined.
   

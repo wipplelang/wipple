@@ -1,64 +1,64 @@
 Facts (layer 2):
 
-`accepts-text :: String -> ()` (mismatched-call.wipple:1:1-1:29) (ConstantDefinition):
+`accepts-text :: String -> ()` (ConstantDefinition):
   has definition constraints
-  has type `String -> ()` (mismatched-call.wipple:1:17-1:29)
+  has type `String -> ()`
   is a definition
 
-`String` (mismatched-call.wipple:1:17-1:23) (NamedType):
-  has type `String` (mismatched-call.wipple:1:17-1:23)
+`String` (NamedType):
+  has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`String -> ()` (mismatched-call.wipple:1:17-1:29) (FunctionType):
-  has type `String -> ()` (mismatched-call.wipple:1:17-1:29)
-  is a type
-
-`()` (mismatched-call.wipple:1:27-1:29) (UnitType):
-  has type `()` (mismatched-call.wipple:1:27-1:29)
+`String -> ()` (FunctionType):
+  has type `String -> ()`
   is a type
 
-`accepts-text : todo` (mismatched-call.wipple:2:1-2:20) (AssignmentStatement):
-  has type `()` (mismatched-call.wipple:2:1-2:20)
+`()` (UnitType):
+  has type `()`
+  is a type
 
-`todo` (mismatched-call.wipple:2:16-2:20) (VariableExpression):
-  has type `String -> ()` (mismatched-call.wipple:1:17-1:29)
+`accepts-text : todo` (AssignmentStatement):
+  has type `()`
+
+`todo` (VariableExpression):
+  has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `todo :: value` (library/src/foundation/language.wipple:27:1-27:14)
+  resolved to 1 definition(s): `todo :: value`
 
 `-- should display 'expected `String`, found `Number`' rather than
 -- 'cannot find instance `Add Number Number String`'
-accepts-text (1 + 2)` (mismatched-call.wipple:4:1-6:21) (ExpressionStatement):
+accepts-text (1 + 2)` (ExpressionStatement):
   has type `()`
 
-`accepts-text` (mismatched-call.wipple:6:1-6:13) (VariableExpression):
-  has type `Number -> ()` (mismatched-call.wipple:6:1-6:13)
+`accepts-text` (VariableExpression):
+  has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `accepts-text :: String -> ()` (mismatched-call.wipple:1:1-1:29)
+  resolved to 1 definition(s): `accepts-text :: String -> ()`
 
-`accepts-text (1 + 2)` (mismatched-call.wipple:6:1-6:21) (CallExpression):
+`accepts-text (1 + 2)` (CallExpression):
   has type `()`
   is an expression
 
-`1` (mismatched-call.wipple:6:15-6:16) (NumberExpression):
+`1` (NumberExpression):
   has type `Number`
   is an expression
 
-`1 + 2` (mismatched-call.wipple:6:15-6:20) (OperatorExpression):
+`1 + 2` (OperatorExpression):
   has type `Number` or `String`
   is an expression
 
-`1 + 2` (mismatched-call.wipple:6:15-6:20) (CallExpression):
+`1 + 2` (CallExpression):
   has type `Number` or `String`
   is an expression
 
-`1 + 2` (mismatched-call.wipple:6:15-6:20) (ConstructorExpression):
-  has bound(s) `Add` (library/src/foundation/math.wipple:7:1-7:58) `Number` `Number` `_` (resolved as `instance (Add Number Number Number)` (library/src/foundation/math.wipple:8:1-8:36))
-  has type `Number Number -> Number` (mismatched-call.wipple:6:15-6:20)
+`1 + 2` (ConstructorExpression):
+  has bound(s) `Add` `Number` `Number` `_` (resolved as `instance (Add Number Number Number)`)
+  has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)` (library/src/foundation/math.wipple:7:1-7:58)
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
-`2` (mismatched-call.wipple:6:19-6:20) (NumberExpression):
+`2` (NumberExpression):
   has type `Number`
   is an expression
 
@@ -66,7 +66,7 @@ accepts-text (1 + 2)` (mismatched-call.wipple:4:1-6:21) (ExpressionStatement):
 
 Feedback:
 
-`1 + 2` (mismatched-call.wipple:6:15-6:20) (conflicting-types)
+`1 + 2` (conflicting-types)
 
   `1 + 2` is a `Number` or a `String`, but it can only be one of these.
   
@@ -75,7 +75,7 @@ Feedback:
   -  `(infer sum)` must have the same type everywhere in this use of `_`.
 
 
-`1 + 2` (mismatched-call.wipple:6:15-6:20) (conflicting-types)
+`1 + 2` (conflicting-types)
 
   `1 + 2` is a `Number` or a `String`, but it can only be one of these.
   

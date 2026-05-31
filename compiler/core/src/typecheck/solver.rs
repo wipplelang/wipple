@@ -30,7 +30,6 @@ pub struct SubstitutionsKey(pub usize);
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Substitutions {
-    pub record_instantiated_parameters: bool,
     pub nodes: BTreeMap<Node, Node>,
     pub parameters: BTreeMap<Node, Ty>,
 }
@@ -116,11 +115,7 @@ impl Solver {
     ) -> SubstitutionsKey {
         let key = SubstitutionsKey(self.substitutions.len());
 
-        self.substitutions.push(Substitutions {
-            record_instantiated_parameters: false,
-            nodes,
-            parameters,
-        });
+        self.substitutions.push(Substitutions { nodes, parameters });
 
         key
     }

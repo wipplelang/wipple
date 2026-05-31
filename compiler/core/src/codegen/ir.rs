@@ -8,7 +8,7 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone, Default)]
 pub struct Program {
     pub source_files: Vec<Node>,
-    pub definitions: BTreeMap<DefinitionKey, Definition>,
+    pub definitions: BTreeMap<DefinitionKey, Function>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -20,23 +20,7 @@ pub enum DefinitionKey {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ConstantDefinitionKey {
     pub node: Node,
-    pub substitutions: BTreeMap<Node, Type>,
     pub bounds: BTreeMap<Node, Instance>,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct Definition {
-    pub ty: Option<Type>,
-    pub instructions: Vec<Instruction>,
-    pub types: BTreeMap<Node, Type>,
-    pub imports: Vec<Import>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Import {
-    pub name: String,
-    pub inputs: Vec<Type>,
-    pub output: Type,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -116,7 +100,6 @@ pub enum Value {
         input: Node,
         index: usize,
     },
-    Unreachable,
     Variable(Node),
     Variant {
         index: usize,
@@ -129,7 +112,7 @@ pub enum Value {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Function {
     pub inputs: Vec<Node>,
     pub instructions: Vec<Instruction>,
@@ -324,6 +307,17 @@ pub fn traverse_instructions(
 }
 
 impl Condition {
+    pub fn primary_node(&self) -> Option<Node> {
+        match *self {
+            Condition::Or(_) => None,
+            Condition::EqualToNumber { input, .. } => Some(input),
+            Condition::EqualToString { input, .. } => Some(input),
+            Condition::EqualToVariant { input, .. } => Some(input),
+            Condition::Initialize { variable, .. } => Some(variable),
+            Condition::Mutate { input, .. } => Some(input),
+        }
+    }
+
     pub fn nodes_mut(&mut self) -> Vec<&mut Node> {
         match self {
             Condition::Or(conditions) => conditions

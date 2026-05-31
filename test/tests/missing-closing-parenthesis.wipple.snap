@@ -4,7 +4,7 @@ Facts (layer 2):
 
 Feedback:
 
-`(` (missing-closing-parenthesis.wipple:1:6-1:7) (syntax-error)
+`(` (syntax-error)
 
   Unexpected `(`.
   

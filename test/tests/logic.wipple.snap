@@ -1,152 +1,152 @@
 Facts (layer 2):
 
-`show` (logic.wipple:1:1-1:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
-  has type `String -> ()` (logic.wipple:1:1-1:5)
+`show` (VariableExpression):
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`show (if (True and False) {"a"} {"b"})` (logic.wipple:1:1-1:39) (ExpressionStatement):
+`show (if (True and False) {"a"} {"b"})` (ExpressionStatement):
   has type `()`
 
-`show (if (True and False) {"a"} {"b"})` (logic.wipple:1:1-1:39) (CallExpression):
-  has type `()`
-  is an expression
-
-`if` (logic.wipple:1:7-1:9) (VariableExpression):
-  has type `Boolean {String} {String} -> String` (logic.wipple:1:7-1:9)
-  is an expression
-  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (library/src/foundation/logic.wipple:12:1-12:86)
-
-`if (True and False) {"a"} {"b"}` (logic.wipple:1:7-1:38) (CallExpression):
-  has type `String`
-  is an expression
-
-`True` (logic.wipple:1:11-1:15) (VisitAs):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
-
-`True and False` (logic.wipple:1:11-1:25) (OperatorExpression):
-  has type `Boolean`
-  is an expression
-
-`True and False` (logic.wipple:1:11-1:25) (CallExpression):
-  has type `Boolean`
-  is an expression
-
-`True and False` (logic.wipple:1:11-1:25) (ConstructorExpression):
-  has bound(s) `And` (library/src/foundation/logic.wipple:29:1-29:74) `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:30:1-30:39))
-  has type `Boolean {Boolean} -> Boolean` (logic.wipple:1:11-1:25)
-  is an expression
-  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:29:1-29:74)
-
-`False` (logic.wipple:1:20-1:25) (VisitAs):
-  has type `Boolean`
-  is an expression
-  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
-
-`False` (logic.wipple:1:20-1:25) (BlockExpression):
-  has type `{Boolean}` (logic.wipple:1:20-1:25)
-  is an expression
-
-`False` (logic.wipple:1:20-1:25) (ExpressionStatement):
-  has type `Boolean`
-
-`{"a"}` (logic.wipple:1:27-1:32) (BlockExpression):
-  has type `{String}` (logic.wipple:1:27-1:32)
-  is an expression
-
-`"a"` (logic.wipple:1:28-1:31) (ExpressionStatement):
-  has type `String`
-
-`"a"` (logic.wipple:1:28-1:31) (StringExpression):
-  has type `String`
-  is an expression
-
-`{"b"}` (logic.wipple:1:33-1:38) (BlockExpression):
-  has type `{String}` (logic.wipple:1:33-1:38)
-  is an expression
-
-`"b"` (logic.wipple:1:34-1:37) (ExpressionStatement):
-  has type `String`
-
-`"b"` (logic.wipple:1:34-1:37) (StringExpression):
-  has type `String`
-  is an expression
-
-`show` (logic.wipple:2:1-2:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
-  has type `String -> ()` (logic.wipple:2:1-2:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
-
-`show (if (True or False) {"a"} {"b"})` (logic.wipple:2:1-2:38) (ExpressionStatement):
-  has type `()`
-
-`show (if (True or False) {"a"} {"b"})` (logic.wipple:2:1-2:38) (CallExpression):
+`show (if (True and False) {"a"} {"b"})` (CallExpression):
   has type `()`
   is an expression
 
-`if` (logic.wipple:2:7-2:9) (VariableExpression):
-  has type `Boolean {String} {String} -> String` (logic.wipple:2:7-2:9)
+`if` (VariableExpression):
+  has type `Boolean {String} {String} -> String`
   is an expression
-  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (library/src/foundation/logic.wipple:12:1-12:86)
+  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
 
-`if (True or False) {"a"} {"b"}` (logic.wipple:2:7-2:37) (CallExpression):
+`if (True and False) {"a"} {"b"}` (CallExpression):
   has type `String`
   is an expression
 
-`True` (logic.wipple:2:11-2:15) (VisitAs):
+`True` (VisitAs):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+  resolved to 1 definition(s): `True`
 
-`True or False` (logic.wipple:2:11-2:24) (OperatorExpression):
-  has type `Boolean`
-  is an expression
-
-`True or False` (logic.wipple:2:11-2:24) (CallExpression):
+`True and False` (OperatorExpression):
   has type `Boolean`
   is an expression
 
-`True or False` (logic.wipple:2:11-2:24) (ConstructorExpression):
-  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:73) `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)` (library/src/foundation/logic.wipple:34:1-34:38))
-  has type `Boolean {Boolean} -> Boolean` (logic.wipple:2:11-2:24)
-  is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:73)
-
-`False` (logic.wipple:2:19-2:24) (VisitAs):
+`True and False` (CallExpression):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `False` (library/src/foundation/logic.wipple:3:3-3:8)
 
-`False` (logic.wipple:2:19-2:24) (BlockExpression):
-  has type `{Boolean}` (logic.wipple:2:19-2:24)
+`True and False` (ConstructorExpression):
+  has bound(s) `And` `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)`)
+  has type `Boolean {Boolean} -> Boolean`
+  is an expression
+  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)`
+
+`False` (VisitAs):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `False`
+
+`False` (BlockExpression):
+  has type `{Boolean}`
   is an expression
 
-`False` (logic.wipple:2:19-2:24) (ExpressionStatement):
+`False` (ExpressionStatement):
   has type `Boolean`
 
-`{"a"}` (logic.wipple:2:26-2:31) (BlockExpression):
-  has type `{String}` (logic.wipple:2:26-2:31)
+`{"a"}` (BlockExpression):
+  has type `{String}`
   is an expression
 
-`"a"` (logic.wipple:2:27-2:30) (ExpressionStatement):
+`"a"` (ExpressionStatement):
   has type `String`
 
-`"a"` (logic.wipple:2:27-2:30) (StringExpression):
+`"a"` (StringExpression):
   has type `String`
   is an expression
 
-`{"b"}` (logic.wipple:2:32-2:37) (BlockExpression):
-  has type `{String}` (logic.wipple:2:32-2:37)
+`{"b"}` (BlockExpression):
+  has type `{String}`
   is an expression
 
-`"b"` (logic.wipple:2:33-2:36) (ExpressionStatement):
+`"b"` (ExpressionStatement):
   has type `String`
 
-`"b"` (logic.wipple:2:33-2:36) (StringExpression):
+`"b"` (StringExpression):
+  has type `String`
+  is an expression
+
+`show` (VariableExpression):
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> ()`
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+
+`show (if (True or False) {"a"} {"b"})` (ExpressionStatement):
+  has type `()`
+
+`show (if (True or False) {"a"} {"b"})` (CallExpression):
+  has type `()`
+  is an expression
+
+`if` (VariableExpression):
+  has type `Boolean {String} {String} -> String`
+  is an expression
+  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
+
+`if (True or False) {"a"} {"b"}` (CallExpression):
+  has type `String`
+  is an expression
+
+`True` (VisitAs):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `True`
+
+`True or False` (OperatorExpression):
+  has type `Boolean`
+  is an expression
+
+`True or False` (CallExpression):
+  has type `Boolean`
+  is an expression
+
+`True or False` (ConstructorExpression):
+  has bound(s) `Or` `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)`)
+  has type `Boolean {Boolean} -> Boolean`
+  is an expression
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)`
+
+`False` (VisitAs):
+  has type `Boolean`
+  is an expression
+  resolved to 1 definition(s): `False`
+
+`False` (BlockExpression):
+  has type `{Boolean}`
+  is an expression
+
+`False` (ExpressionStatement):
+  has type `Boolean`
+
+`{"a"}` (BlockExpression):
+  has type `{String}`
+  is an expression
+
+`"a"` (ExpressionStatement):
+  has type `String`
+
+`"a"` (StringExpression):
+  has type `String`
+  is an expression
+
+`{"b"}` (BlockExpression):
+  has type `{String}`
+  is an expression
+
+`"b"` (ExpressionStatement):
+  has type `String`
+
+`"b"` (StringExpression):
   has type `String`
   is an expression
 

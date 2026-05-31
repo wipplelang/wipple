@@ -1,25 +1,25 @@
 Facts (layer 2):
 
-`show` (missing-inputs.wipple:1:1-1:5) (ExpressionStatement):
+`show` (ExpressionStatement):
   has type `_ -> ()`
 
-`show` (missing-inputs.wipple:1:1-1:5) (VariableExpression):
+`show` (VariableExpression):
   has type `_ -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 
 
 Feedback:
 
-`show` (missing-inputs.wipple:1:1-1:5) (incomplete-type)
+`show` (incomplete-type)
 
   Missing information for the type of `show`.
   
   Wipple determined this code is `_ -> ()`, but it needs some more information for the `_` placeholders.
 
 
-`show` (missing-inputs.wipple:1:1-1:5) (incomplete-type)
+`show` (incomplete-type)
 
   Missing information for the type of `show`.
   

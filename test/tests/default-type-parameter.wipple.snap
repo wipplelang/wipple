@@ -1,232 +1,232 @@
 Facts (layer 2):
 
-`X : type` (default-type-parameter.wipple:1:1-1:9) (TypeDefinition):
+`X : type` (TypeDefinition):
   has definition constraints
-  has type `X` (default-type-parameter.wipple:1:1-1:9)
+  has type `X`
   is a definition
 
-`X : type` (default-type-parameter.wipple:1:1-1:9) (TypeDefinition):
+`X : type` (TypeDefinition):
   has definition constraints
-  has type `X` (default-type-parameter.wipple:1:1-1:9)
+  has type `X`
   is a definition
 
-`Y : type` (default-type-parameter.wipple:2:1-2:9) (TypeDefinition):
+`Y : type` (TypeDefinition):
   has definition constraints
-  has type `Y` (default-type-parameter.wipple:2:1-2:9)
+  has type `Y`
   is a definition
 
-`Y : type` (default-type-parameter.wipple:2:1-2:9) (TypeDefinition):
+`Y : type` (TypeDefinition):
   has definition constraints
-  has type `Y` (default-type-parameter.wipple:2:1-2:9)
+  has type `Y`
   is a definition
 
-`T : value => trait value` (default-type-parameter.wipple:4:1-4:25) (TraitDefinition):
+`T : value => trait value` (TraitDefinition):
   has 2 instances
   has definition constraints
-  has type `value` (default-type-parameter.wipple:4:5-4:10)
+  has type `value`
   has type parameters
   is a definition
 
-`value` (default-type-parameter.wipple:4:5-4:10) (TypeParameter):
-  has type `value` (default-type-parameter.wipple:4:5-4:10)
+`value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (default-type-parameter.wipple:4:5-4:10)
+  resolved to 1 definition(s): `value`
 
-`value` (default-type-parameter.wipple:4:20-4:25) (TypeParameter):
-  has type `value` (default-type-parameter.wipple:4:5-4:10)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (default-type-parameter.wipple:4:5-4:10)
+  resolved to 1 definition(s): `value`
 
-`instance (T X)` (default-type-parameter.wipple:5:1-5:15) (InstanceDefinition):
+`instance (T X)` (InstanceDefinition):
   has definition constraints
-  has type `X` (default-type-parameter.wipple:5:13-5:14)
+  has type `X`
   is a definition
-  resolved to 1 definition(s): `T : value => trait value` (default-type-parameter.wipple:4:1-4:25)
+  resolved to 1 definition(s): `T : value => trait value`
 
-`X` (default-type-parameter.wipple:5:13-5:14) (NamedType):
-  has type `X` (default-type-parameter.wipple:5:13-5:14)
+`X` (NamedType):
+  has type `X`
   is a type
-  resolved to 1 definition(s): `X : type` (default-type-parameter.wipple:1:1-1:9)
+  resolved to 1 definition(s): `X : type`
 
-`X` (default-type-parameter.wipple:5:18-5:19) (ConstructorExpression):
-  has type `X` (default-type-parameter.wipple:5:13-5:14)
-  is an expression
-  resolved to 1 definition(s): `X : type` (default-type-parameter.wipple:1:1-1:9)
-
-`instance (T Y)` (default-type-parameter.wipple:6:1-6:15) (InstanceDefinition):
-  has definition constraints
-  has type `Y` (default-type-parameter.wipple:6:13-6:14)
-  is a definition
-  resolved to 1 definition(s): `T : value => trait value` (default-type-parameter.wipple:4:1-4:25)
-
-`Y` (default-type-parameter.wipple:6:13-6:14) (NamedType):
-  has type `Y` (default-type-parameter.wipple:6:13-6:14)
-  is a type
-  resolved to 1 definition(s): `Y : type` (default-type-parameter.wipple:2:1-2:9)
-
-`Y` (default-type-parameter.wipple:6:18-6:19) (ConstructorExpression):
-  has type `Y` (default-type-parameter.wipple:6:13-6:14)
-  is an expression
-  resolved to 1 definition(s): `Y : type` (default-type-parameter.wipple:2:1-2:9)
-
-`instance (Describe X)` (default-type-parameter.wipple:8:1-8:22) (InstanceDefinition):
-  has definition constraints
-  has type `X -> String` (default-type-parameter.wipple:8:25-8:33)
-  is a definition
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44)
-
-`X` (default-type-parameter.wipple:8:20-8:21) (NamedType):
-  has type `X` (default-type-parameter.wipple:8:20-8:21)
-  is a type
-  resolved to 1 definition(s): `X : type` (default-type-parameter.wipple:1:1-1:9)
-
-`_` (default-type-parameter.wipple:8:25-8:26) (WildcardPattern):
-  has type `X` (default-type-parameter.wipple:8:20-8:21)
-  is a pattern
-
-`_ -> "X"` (default-type-parameter.wipple:8:25-8:33) (FunctionExpression):
-  has type `X -> String` (default-type-parameter.wipple:8:25-8:33)
-  is an expression
-
-`"X"` (default-type-parameter.wipple:8:30-8:33) (StringExpression):
-  has type `String` (default-type-parameter.wipple:8:30-8:33)
-  is an expression
-
-`instance (Describe Y)` (default-type-parameter.wipple:9:1-9:22) (InstanceDefinition):
-  has definition constraints
-  has type `Y -> String` (default-type-parameter.wipple:9:25-9:33)
-  is a definition
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44)
-
-`Y` (default-type-parameter.wipple:9:20-9:21) (NamedType):
-  has type `Y` (default-type-parameter.wipple:9:20-9:21)
-  is a type
-  resolved to 1 definition(s): `Y : type` (default-type-parameter.wipple:2:1-2:9)
-
-`_` (default-type-parameter.wipple:9:25-9:26) (WildcardPattern):
-  has type `Y` (default-type-parameter.wipple:9:20-9:21)
-  is a pattern
-
-`_ -> "Y"` (default-type-parameter.wipple:9:25-9:33) (FunctionExpression):
-  has type `Y -> String` (default-type-parameter.wipple:9:25-9:33)
-  is an expression
-
-`"Y"` (default-type-parameter.wipple:9:30-9:33) (StringExpression):
-  has type `String` (default-type-parameter.wipple:9:30-9:33)
-  is an expression
-
-`foo :: value where (value :: X) (T value)` (default-type-parameter.wipple:11:1-11:42) (ConstantDefinition):
-  has definition constraints
-  has type `value` (default-type-parameter.wipple:11:8-11:13)
-  has type parameters
-  is a definition
-
-`value` (default-type-parameter.wipple:11:8-11:13) (TypeParameter):
-  has type `value` (default-type-parameter.wipple:11:8-11:13)
-  is a definition
-  is a type
-  resolved to 1 definition(s): `value` (default-type-parameter.wipple:11:8-11:13)
-
-`(value :: X)` (default-type-parameter.wipple:11:20-11:32) (DefaultConstraint):
-  is a constraint
-
-`value` (default-type-parameter.wipple:11:21-11:26) (TypeParameter):
-  has type `value` (default-type-parameter.wipple:11:8-11:13)
-  is a type
-  resolved to 1 definition(s): `value` (default-type-parameter.wipple:11:8-11:13)
-
-`X` (default-type-parameter.wipple:11:30-11:31) (NamedType):
-  has type `X` (default-type-parameter.wipple:11:30-11:31)
-  is a type
-  resolved to 1 definition(s): `X : type` (default-type-parameter.wipple:1:1-1:9)
-
-`(T value)` (default-type-parameter.wipple:11:33-11:42) (BoundConstraint):
-  has bound(s) `T` (default-type-parameter.wipple:4:1-4:25) `value` (default-type-parameter.wipple:11:8-11:13) (resolved as `(T value)` (default-type-parameter.wipple:11:33-11:42))
-  is a constraint
-  resolved to 1 definition(s): `T : value => trait value` (default-type-parameter.wipple:4:1-4:25)
-
-`value` (default-type-parameter.wipple:11:36-11:41) (TypeParameter):
-  has type `value` (default-type-parameter.wipple:11:8-11:13)
-  is a type
-  resolved to 1 definition(s): `value` (default-type-parameter.wipple:11:8-11:13)
-
-`foo : T` (default-type-parameter.wipple:12:1-12:8) (AssignmentStatement):
-  has type `()` (default-type-parameter.wipple:12:1-12:8)
-
-`T` (default-type-parameter.wipple:12:7-12:8) (ConstructorExpression):
-  has bound(s) `T` (default-type-parameter.wipple:4:1-4:25) `value` (default-type-parameter.wipple:11:8-11:13) (resolved as `(T value)` (default-type-parameter.wipple:11:33-11:42))
-  has type `value` (default-type-parameter.wipple:11:8-11:13)
-  is an expression
-  resolved to 1 definition(s): `T : value => trait value` (default-type-parameter.wipple:4:1-4:25)
-
-`show` (default-type-parameter.wipple:14:1-14:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `X` (resolved as `instance (Describe X)` (default-type-parameter.wipple:8:1-8:22))
-  has type `X -> ()` (default-type-parameter.wipple:14:1-14:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
-
-`show foo` (default-type-parameter.wipple:14:1-14:9) (ExpressionStatement):
-  has type `()`
-
-`show foo` (default-type-parameter.wipple:14:1-14:9) (CallExpression):
-  has type `()`
-  is an expression
-
-`foo` (default-type-parameter.wipple:14:6-14:9) (VariableExpression):
-  has bound(s) `T` (default-type-parameter.wipple:4:1-4:25) `X` (resolved as `instance (T X)` (default-type-parameter.wipple:5:1-5:15))
+`X` (ConstructorExpression):
   has type `X`
   is an expression
-  resolved to 1 definition(s): `foo :: value where (value :: X) (T value)` (default-type-parameter.wipple:11:1-11:42)
+  resolved to 1 definition(s): `X : type`
 
-`show` (default-type-parameter.wipple:15:1-15:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Y` (resolved as `instance (Describe Y)` (default-type-parameter.wipple:9:1-9:22))
-  has type `Y -> ()` (default-type-parameter.wipple:15:1-15:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
-
-`show (foo :: Y)` (default-type-parameter.wipple:15:1-15:16) (ExpressionStatement):
-  has type `()`
-
-`show (foo :: Y)` (default-type-parameter.wipple:15:1-15:16) (CallExpression):
-  has type `()`
-  is an expression
-
-`foo` (default-type-parameter.wipple:15:7-15:10) (VariableExpression):
-  has bound(s) `T` (default-type-parameter.wipple:4:1-4:25) `Y` (resolved as `instance (T Y)` (default-type-parameter.wipple:6:1-6:15))
+`instance (T Y)` (InstanceDefinition):
+  has definition constraints
   has type `Y`
-  is an expression
-  resolved to 1 definition(s): `foo :: value where (value :: X) (T value)` (default-type-parameter.wipple:11:1-11:42)
+  is a definition
+  resolved to 1 definition(s): `T : value => trait value`
 
-`foo :: Y` (default-type-parameter.wipple:15:7-15:15) (AnnotateExpression):
-  has type `Y`
-  is an expression
-
-`Y` (default-type-parameter.wipple:15:14-15:15) (NamedType):
+`Y` (NamedType):
   has type `Y`
   is a type
-  resolved to 1 definition(s): `Y : type` (default-type-parameter.wipple:2:1-2:9)
+  resolved to 1 definition(s): `Y : type`
 
-`Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44) (TraitDefinition):
-  has 7 instances
+`Y` (ConstructorExpression):
+  has type `Y`
+  is an expression
+  resolved to 1 definition(s): `Y : type`
+
+`instance (Describe X)` (InstanceDefinition):
   has definition constraints
-  has type `value -> String` (library/src/foundation/io.wipple:2:28-2:43)
+  has type `X -> String`
+  is a definition
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+
+`X` (NamedType):
+  has type `X`
+  is a type
+  resolved to 1 definition(s): `X : type`
+
+`_` (WildcardPattern):
+  has type `X`
+  is a pattern
+
+`_ -> "X"` (FunctionExpression):
+  has type `X -> String`
+  is an expression
+
+`"X"` (StringExpression):
+  has type `String`
+  is an expression
+
+`instance (Describe Y)` (InstanceDefinition):
+  has definition constraints
+  has type `Y -> String`
+  is a definition
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+
+`Y` (NamedType):
+  has type `Y`
+  is a type
+  resolved to 1 definition(s): `Y : type`
+
+`_` (WildcardPattern):
+  has type `Y`
+  is a pattern
+
+`_ -> "Y"` (FunctionExpression):
+  has type `Y -> String`
+  is an expression
+
+`"Y"` (StringExpression):
+  has type `String`
+  is an expression
+
+`foo :: value where (value :: X) (T value)` (ConstantDefinition):
+  has definition constraints
+  has type `value`
   has type parameters
   is a definition
 
-`value` (library/src/foundation/io.wipple:2:12-2:17) (TypeParameter):
-  has type `value` (library/src/foundation/io.wipple:2:12-2:17)
+`value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (library/src/foundation/io.wipple:2:12-2:17)
+  resolved to 1 definition(s): `value`
 
-`value` (library/src/foundation/io.wipple:2:28-2:33) (TypeParameter):
-  has type `value` (library/src/foundation/io.wipple:2:12-2:17)
+`(value :: X)` (DefaultConstraint):
+  is a constraint
+
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (library/src/foundation/io.wipple:2:12-2:17)
+  resolved to 1 definition(s): `value`
 
-`value -> String` (library/src/foundation/io.wipple:2:28-2:43) (FunctionType):
-  has type `value -> String` (library/src/foundation/io.wipple:2:28-2:43)
+`X` (NamedType):
+  has type `X`
+  is a type
+  resolved to 1 definition(s): `X : type`
+
+`(T value)` (BoundConstraint):
+  has bound(s) `T` `value` (resolved as `(T value)`)
+  is a constraint
+  resolved to 1 definition(s): `T : value => trait value`
+
+`value` (TypeParameter):
+  has type `value`
+  is a type
+  resolved to 1 definition(s): `value`
+
+`foo : T` (AssignmentStatement):
+  has type `()`
+
+`T` (ConstructorExpression):
+  has bound(s) `T` `value` (resolved as `(T value)`)
+  has type `value`
+  is an expression
+  resolved to 1 definition(s): `T : value => trait value`
+
+`show` (VariableExpression):
+  has bound(s) `Describe` `X` (resolved as `instance (Describe X)`)
+  has type `X -> ()`
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+
+`show foo` (ExpressionStatement):
+  has type `()`
+
+`show foo` (CallExpression):
+  has type `()`
+  is an expression
+
+`foo` (VariableExpression):
+  has bound(s) `T` `X` (resolved as `instance (T X)`)
+  has type `X`
+  is an expression
+  resolved to 1 definition(s): `foo :: value where (value :: X) (T value)`
+
+`show` (VariableExpression):
+  has bound(s) `Describe` `Y` (resolved as `instance (Describe Y)`)
+  has type `Y -> ()`
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+
+`show (foo :: Y)` (ExpressionStatement):
+  has type `()`
+
+`show (foo :: Y)` (CallExpression):
+  has type `()`
+  is an expression
+
+`foo` (VariableExpression):
+  has bound(s) `T` `Y` (resolved as `instance (T Y)`)
+  has type `Y`
+  is an expression
+  resolved to 1 definition(s): `foo :: value where (value :: X) (T value)`
+
+`foo :: Y` (AnnotateExpression):
+  has type `Y`
+  is an expression
+
+`Y` (NamedType):
+  has type `Y`
+  is a type
+  resolved to 1 definition(s): `Y : type`
+
+`Describe : value => trait (value -> String)` (TraitDefinition):
+  has 7 instances
+  has definition constraints
+  has type `value -> String`
+  has type parameters
+  is a definition
+
+`value` (TypeParameter):
+  has type `value`
+  is a definition
+  is a type
+  resolved to 1 definition(s): `value`
+
+`value` (TypeParameter):
+  has type `value`
+  is a type
+  resolved to 1 definition(s): `value`
+
+`value -> String` (FunctionType):
+  has type `value -> String`
   is a type
 
 

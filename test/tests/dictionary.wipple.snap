@@ -1,263 +1,263 @@
 Facts (layer 2):
 
-`sports` (dictionary.wipple:1:1-1:7) (VariablePattern):
+`sports` (VariablePattern):
   has type `List String`
   is a definition
   is a pattern
 
-`sports : "Basketball", "Soccer", "Golf"` (dictionary.wipple:1:1-1:40) (AssignmentStatement):
-  has type `()` (dictionary.wipple:1:1-1:40)
+`sports : "Basketball", "Soccer", "Golf"` (AssignmentStatement):
+  has type `()`
 
-`"Basketball"` (dictionary.wipple:1:10-1:22) (VisitAs):
+`"Basketball"` (VisitAs):
   has type `String`
   is an expression
 
-`"Basketball"` (dictionary.wipple:1:10-1:22) (ConstructorExpression):
-  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(List String)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:51))
-  has type `String (List String) -> List String` (dictionary.wipple:1:10-1:22)
+`"Basketball"` (ConstructorExpression):
+  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
+  has type `String (List String) -> List String`
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:90)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
 
-`"Basketball", "Soccer", "Golf"` (dictionary.wipple:1:10-1:40) (CollectionExpression):
+`"Basketball", "Soccer", "Golf"` (CollectionExpression):
   has type `List String`
   is an expression
 
-`"Soccer"` (dictionary.wipple:1:24-1:32) (VisitAs):
+`"Soccer"` (VisitAs):
   has type `String`
   is an expression
 
-`"Soccer"` (dictionary.wipple:1:24-1:32) (ConstructorExpression):
-  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(List String)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:51))
-  has type `String (List String) -> List String` (dictionary.wipple:1:24-1:32)
+`"Soccer"` (ConstructorExpression):
+  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
+  has type `String (List String) -> List String`
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:90)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
 
-`"Golf"` (dictionary.wipple:1:34-1:40) (VisitAs):
+`"Golf"` (VisitAs):
   has type `String`
   is an expression
 
-`"Golf"` (dictionary.wipple:1:34-1:40) (ConstructorExpression):
-  has bound(s) `Build-Collection` (library/src/foundation/collections.wipple:1:1-1:90) `String` `(List String)` (resolved as `instance (Build-Collection element (List element))` (library/src/foundation/collections.wipple:12:1-12:51))
-  has type `String (List String) -> List String` (dictionary.wipple:1:34-1:40)
+`"Golf"` (ConstructorExpression):
+  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
+  has type `String (List String) -> List String`
   is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)` (library/src/foundation/collections.wipple:1:1-1:90)
+  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
 
-`lengths` (dictionary.wipple:2:1-2:8) (VariablePattern):
+`lengths` (VariablePattern):
   has type `Dictionary String Number`
   is a definition
   is a pattern
 
-`lengths : sports . reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (dictionary.wipple:2:1-2:90) (AssignmentStatement):
-  has type `()` (dictionary.wipple:2:1-2:90)
+`lengths : sports . reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (AssignmentStatement):
+  has type `()`
 
-`sports` (dictionary.wipple:2:11-2:17) (VisitAs):
+`sports` (VisitAs):
   has type `List String`
   is an expression
-  resolved to 1 definition(s): `sports` (dictionary.wipple:1:1-1:7)
+  resolved to 1 definition(s): `sports`
 
-`sports . reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (dictionary.wipple:2:11-2:90) (OperatorExpression):
+`sports . reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (OperatorExpression):
   has type `Dictionary String Number`
   is an expression
 
-`reduce` (dictionary.wipple:2:20-2:26) (VariableExpression):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:46))
-  has type `(Dictionary String Number) ((Dictionary String Number) String -> Dictionary String Number) -> (List String) -> Dictionary String Number` (dictionary.wipple:2:20-2:26)
+`reduce` (VariableExpression):
+  has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
+  has type `(Dictionary String Number) ((Dictionary String Number) String -> Dictionary String Number) -> (List String) -> Dictionary String Number`
   is an expression
-  resolved to 1 definition(s): `reduce :: result (result element -> result) -> container -> result where (As-Sequence container element)` (library/src/foundation/sequence.wipple:159:1-159:105)
+  resolved to 1 definition(s): `reduce :: result (result element -> result) -> container -> result where (As-Sequence container element)`
 
-`reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (dictionary.wipple:2:20-2:90) (CallExpression):
+`reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (CallExpression):
   has type `Dictionary String Number`
   is an expression
 
-`reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (dictionary.wipple:2:20-2:90) (VisitAs):
-  has type `(List String) -> Dictionary String Number` (dictionary.wipple:2:20-2:90)
+`reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (VisitAs):
+  has type `(List String) -> Dictionary String Number`
   is an expression
 
-`,` (dictionary.wipple:2:28-2:29) (CollectionExpression):
+`,` (CollectionExpression):
   has type `Dictionary String Number`
   is an expression
 
-`sports` (dictionary.wipple:2:32-2:38) (VariablePattern):
+`sports` (VariablePattern):
   has type `Dictionary String Number`
   is a definition
   is a pattern
 
-`sports sport -> sports . insert-entry sport (count sport)` (dictionary.wipple:2:32-2:89) (FunctionExpression):
-  has type `(Dictionary String Number) String -> Dictionary String Number` (dictionary.wipple:2:32-2:89)
+`sports sport -> sports . insert-entry sport (count sport)` (FunctionExpression):
+  has type `(Dictionary String Number) String -> Dictionary String Number`
   is an expression
 
-`sport` (dictionary.wipple:2:39-2:44) (VariablePattern):
+`sport` (VariablePattern):
   has type `String`
   is a definition
   is a pattern
 
-`sports` (dictionary.wipple:2:48-2:54) (VisitAs):
+`sports` (VisitAs):
   has type `Dictionary String Number`
   is an expression
-  resolved to 1 definition(s): `sports` (dictionary.wipple:2:32-2:38)
+  resolved to 1 definition(s): `sports`
 
-`sports . insert-entry sport (count sport)` (dictionary.wipple:2:48-2:89) (OperatorExpression):
-  has type `Dictionary String Number`
-  is an expression
-
-`insert-entry` (dictionary.wipple:2:57-2:69) (VariableExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23))
-  has type `String Number -> (Dictionary String Number) -> Dictionary String Number` (dictionary.wipple:2:57-2:69)
-  is an expression
-  resolved to 1 definition(s): `insert-entry :: key value -> (Dictionary key value) -> Dictionary key value where (Equal key) (Hash key)` (library/src/foundation/dictionary.wipple:39:1-39:105)
-
-`insert-entry sport (count sport)` (dictionary.wipple:2:57-2:89) (CallExpression):
+`sports . insert-entry sport (count sport)` (OperatorExpression):
   has type `Dictionary String Number`
   is an expression
 
-`insert-entry sport (count sport)` (dictionary.wipple:2:57-2:89) (VisitAs):
-  has type `(Dictionary String Number) -> Dictionary String Number` (dictionary.wipple:2:57-2:89)
+`insert-entry` (VariableExpression):
+  has bound(s) `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
+  has type `String Number -> (Dictionary String Number) -> Dictionary String Number`
+  is an expression
+  resolved to 1 definition(s): `insert-entry :: key value -> (Dictionary key value) -> Dictionary key value where (Equal key) (Hash key)`
+
+`insert-entry sport (count sport)` (CallExpression):
+  has type `Dictionary String Number`
   is an expression
 
-`sport` (dictionary.wipple:2:70-2:75) (VariableExpression):
+`insert-entry sport (count sport)` (VisitAs):
+  has type `(Dictionary String Number) -> Dictionary String Number`
+  is an expression
+
+`sport` (VariableExpression):
   has type `String`
   is an expression
-  resolved to 1 definition(s): `sport` (dictionary.wipple:2:39-2:44)
+  resolved to 1 definition(s): `sport`
 
-`count` (dictionary.wipple:2:77-2:82) (VariableExpression):
-  has bound(s) `Count` (library/src/foundation/sequence.wipple:267:1-267:51) `String` (resolved as `instance (Count String)` (library/src/foundation/sequence.wipple:269:1-269:24))
-  has type `String -> Number` (dictionary.wipple:2:77-2:82)
+`count` (VariableExpression):
+  has bound(s) `Count` `String` (resolved as `instance (Count String)`)
+  has type `String -> Number`
   is an expression
-  resolved to 1 definition(s): `count :: collection -> Number where (Count collection)` (library/src/foundation/sequence.wipple:264:1-264:55)
+  resolved to 1 definition(s): `count :: collection -> Number where (Count collection)`
 
-`count sport` (dictionary.wipple:2:77-2:88) (CallExpression):
+`count sport` (CallExpression):
   has type `Number`
   is an expression
 
-`sport` (dictionary.wipple:2:83-2:88) (VariableExpression):
+`sport` (VariableExpression):
   has type `String`
   is an expression
-  resolved to 1 definition(s): `sport` (dictionary.wipple:2:39-2:44)
+  resolved to 1 definition(s): `sport`
 
-`sports` (dictionary.wipple:4:1-4:7) (VisitAs):
+`sports` (VisitAs):
   has type `List String`
   is an expression
-  resolved to 1 definition(s): `sports` (dictionary.wipple:1:1-1:7)
+  resolved to 1 definition(s): `sports`
 
-`sports . each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (dictionary.wipple:4:1-4:97) (ExpressionStatement):
+`sports . each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (ExpressionStatement):
   has type `()`
 
-`sports . each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (dictionary.wipple:4:1-4:97) (OperatorExpression):
-  has type `()`
-  is an expression
-
-`each` (dictionary.wipple:4:10-4:14) (VariableExpression):
-  has bound(s) `As-Sequence` (library/src/foundation/sequence.wipple:47:1-47:81) `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)` (library/src/foundation/sequence.wipple:199:1-199:46))
-  has type `(String -> ()) -> (List String) -> ()` (dictionary.wipple:4:10-4:14)
-  is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)` (library/src/foundation/sequence.wipple:221:1-221:81)
-
-`each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (dictionary.wipple:4:10-4:97) (CallExpression):
+`sports . each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (OperatorExpression):
   has type `()`
   is an expression
 
-`each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (dictionary.wipple:4:10-4:97) (VisitAs):
-  has type `(List String) -> ()` (dictionary.wipple:4:10-4:97)
+`each` (VariableExpression):
+  has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
+  has type `(String -> ()) -> (List String) -> ()`
+  is an expression
+  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)`
+
+`each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (CallExpression):
+  has type `()`
   is an expression
 
-`sport` (dictionary.wipple:4:16-4:21) (VariablePattern):
+`each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (VisitAs):
+  has type `(List String) -> ()`
+  is an expression
+
+`sport` (VariablePattern):
   has type `String`
   is a definition
   is a pattern
 
-`sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable))` (dictionary.wipple:4:16-4:96) (FunctionExpression):
-  captures `lengths` (dictionary.wipple:2:1-2:8)
-  has type `String -> ()` (dictionary.wipple:4:16-4:96)
+`sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable))` (FunctionExpression):
+  captures `lengths`
+  has type `String -> ()`
   is an expression
 
-`show` (dictionary.wipple:4:25-4:29) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
-  has type `String -> ()` (dictionary.wipple:4:25-4:29)
+`show` (VariableExpression):
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`show ("_ has _ letters" sport ((lengths . entry sport) or unreachable))` (dictionary.wipple:4:25-4:96) (CallExpression):
+`show ("_ has _ letters" sport ((lengths . entry sport) or unreachable))` (CallExpression):
   has type `()`
   is an expression
 
-`"_ has _ letters" sport ((lengths . entry sport) or unreachable)` (dictionary.wipple:4:31-4:95) (FormatExpression):
+`"_ has _ letters" sport ((lengths . entry sport) or unreachable)` (FormatExpression):
   has type `String`
   is an expression
 
-`"_ has _ letters" sport ((lengths . entry sport) or unreachable)` (dictionary.wipple:4:31-4:95) (NamedType):
+`"_ has _ letters" sport ((lengths . entry sport) or unreachable)` (NamedType):
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type` (library/src/foundation/language.wipple:2:13-2:26)
+  resolved to 1 definition(s): `String : type`
 
-`"_ has _ letters" sport ((lengths . entry sport) or unreachable)` (dictionary.wipple:4:31-4:95) (ConstructorExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `String` (resolved as `instance (Describe String)` (library/src/foundation/io.wipple:14:1-14:27))
-  has type `String -> String` (dictionary.wipple:4:31-4:95)
+`"_ has _ letters" sport ((lengths . entry sport) or unreachable)` (ConstructorExpression):
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
-`"_ has _ letters" sport ((lengths . entry sport) or unreachable)` (dictionary.wipple:4:31-4:95) (ConstructorExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `Number -> String` (dictionary.wipple:4:31-4:95)
+`"_ has _ letters" sport ((lengths . entry sport) or unreachable)` (ConstructorExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)` (library/src/foundation/io.wipple:2:1-2:44)
+  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
-`sport` (dictionary.wipple:4:49-4:54) (VariableExpression):
+`sport` (VariableExpression):
   has type `String`
   is an expression
-  resolved to 1 definition(s): `sport` (dictionary.wipple:4:16-4:21)
+  resolved to 1 definition(s): `sport`
 
-`lengths` (dictionary.wipple:4:57-4:64) (VisitAs):
+`lengths` (VisitAs):
   has type `Dictionary String Number`
   is an expression
-  resolved to 1 definition(s): `lengths` (dictionary.wipple:2:1-2:8)
+  resolved to 1 definition(s): `lengths`
 
-`lengths . entry sport` (dictionary.wipple:4:57-4:78) (VisitAs):
+`lengths . entry sport` (VisitAs):
   has type `Maybe Number`
   is an expression
 
-`lengths . entry sport) or unreachable` (dictionary.wipple:4:57-4:94) (OperatorExpression):
+`lengths . entry sport) or unreachable` (OperatorExpression):
   has type `Number`
   is an expression
 
-`lengths . entry sport) or unreachable` (dictionary.wipple:4:57-4:94) (CallExpression):
+`lengths . entry sport) or unreachable` (CallExpression):
   has type `Number`
   is an expression
 
-`lengths . entry sport) or unreachable` (dictionary.wipple:4:57-4:94) (ConstructorExpression):
-  has bound(s) `Or` (library/src/foundation/logic.wipple:33:1-33:73) `(Maybe Number)` `Number` `Number` (resolved as `instance (Or (Maybe value) value value)` (library/src/foundation/logic.wipple:35:1-35:40))
-  has type `(Maybe Number) {Number} -> Number` (dictionary.wipple:4:57-4:94)
+`lengths . entry sport) or unreachable` (ConstructorExpression):
+  has bound(s) `Or` `(Maybe Number)` `Number` `Number` (resolved as `instance (Or (Maybe value) value value)`)
+  has type `(Maybe Number) {Number} -> Number`
   is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)` (library/src/foundation/logic.wipple:33:1-33:73)
+  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)`
 
-`entry` (dictionary.wipple:4:67-4:72) (VariableExpression):
-  has bound(s) `Equal` (library/src/foundation/logic.wipple:77:1-77:48) `String` (resolved as `instance (Equal String)` (library/src/foundation/logic.wipple:79:1-79:24)), `Hash` (library/src/foundation/dictionary.wipple:3:1-3:40) `String` (resolved as `instance (Hash String)` (library/src/foundation/dictionary.wipple:5:1-5:23))
-  has type `String -> (Dictionary String Number) -> Maybe Number` (dictionary.wipple:4:67-4:72)
+`entry` (VariableExpression):
+  has bound(s) `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
+  has type `String -> (Dictionary String Number) -> Maybe Number`
   is an expression
-  resolved to 1 definition(s): `entry :: key -> (Dictionary key value) -> Maybe value where (Equal key) (Hash key)` (library/src/foundation/dictionary.wipple:20:1-20:83)
+  resolved to 1 definition(s): `entry :: key -> (Dictionary key value) -> Maybe value where (Equal key) (Hash key)`
 
-`entry sport` (dictionary.wipple:4:67-4:78) (CallExpression):
+`entry sport` (CallExpression):
   has type `Maybe Number`
   is an expression
 
-`entry sport` (dictionary.wipple:4:67-4:78) (VisitAs):
-  has type `(Dictionary String Number) -> Maybe Number` (dictionary.wipple:4:67-4:78)
+`entry sport` (VisitAs):
+  has type `(Dictionary String Number) -> Maybe Number`
   is an expression
 
-`sport` (dictionary.wipple:4:73-4:78) (VariableExpression):
+`sport` (VariableExpression):
   has type `String`
   is an expression
-  resolved to 1 definition(s): `sport` (dictionary.wipple:4:16-4:21)
+  resolved to 1 definition(s): `sport`
 
-`unreachable` (dictionary.wipple:4:83-4:94) (VisitAs):
+`unreachable` (VisitAs):
   has type `Number`
   is an expression
-  resolved to 1 definition(s): `unreachable :: value` (library/src/foundation/language.wipple:33:1-33:21)
+  resolved to 1 definition(s): `unreachable :: value`
 
-`unreachable` (dictionary.wipple:4:83-4:94) (BlockExpression):
-  has type `{Number}` (dictionary.wipple:4:83-4:94)
+`unreachable` (BlockExpression):
+  has type `{Number}`
   is an expression
 
-`unreachable` (dictionary.wipple:4:83-4:94) (ExpressionStatement):
+`unreachable` (ExpressionStatement):
   has type `Number`
 
 

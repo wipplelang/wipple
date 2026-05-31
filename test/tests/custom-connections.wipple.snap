@@ -1,122 +1,122 @@
 Facts (layer 2):
 
-`my-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (custom-connections.wipple:5:1-5:89) (ConstantDefinition):
+`my-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (ConstantDefinition):
   has definition constraints
-  has type `Boolean {value} {value} -> value` (custom-connections.wipple:5:10-5:89)
+  has type `Boolean {value} {value} -> value`
   has type parameters
   is a definition
 
-`(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (custom-connections.wipple:5:10-5:89) (FunctionType):
-  has type `Boolean {value} {value} -> value` (custom-connections.wipple:5:10-5:89)
+`(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (FunctionType):
+  has type `Boolean {value} {value} -> value`
   is a type
 
-`condition :: Boolean` (custom-connections.wipple:5:11-5:31) (TypeParameter):
-  has type `Boolean` (custom-connections.wipple:5:24-5:31)
+`condition :: Boolean` (TypeParameter):
+  has type `Boolean`
   is a definition
   is a type
-  resolved to 1 definition(s): `condition :: Boolean` (custom-connections.wipple:5:11-5:31)
+  resolved to 1 definition(s): `condition :: Boolean`
 
-`Boolean` (custom-connections.wipple:5:24-5:31) (NamedType):
-  has type `Boolean` (custom-connections.wipple:5:24-5:31)
+`Boolean` (NamedType):
+  has type `Boolean`
   is a type
-  resolved to 1 definition(s): `Boolean : type {⋯}` (library/src/foundation/logic.wipple:2:1-5:2)
+  resolved to 1 definition(s): `Boolean : type {⋯}`
 
-`{(then :: value)}` (custom-connections.wipple:5:33-5:50) (BlockType):
-  has type `{value}` (custom-connections.wipple:5:33-5:50)
+`{(then :: value)}` (BlockType):
+  has type `{value}`
   is a type
 
-`then :: value` (custom-connections.wipple:5:35-5:48) (TypeParameter):
-  has type `value` (custom-connections.wipple:5:43-5:48)
+`then :: value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `then :: value` (custom-connections.wipple:5:35-5:48)
+  resolved to 1 definition(s): `then :: value`
 
-`value` (custom-connections.wipple:5:43-5:48) (TypeParameter):
-  has type `value` (custom-connections.wipple:5:43-5:48)
+`value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `value` (custom-connections.wipple:5:43-5:48)
+  resolved to 1 definition(s): `value`
 
-`{(else :: value)}` (custom-connections.wipple:5:51-5:68) (BlockType):
-  has type `{value}` (custom-connections.wipple:5:51-5:68)
+`{(else :: value)}` (BlockType):
+  has type `{value}`
   is a type
 
-`else :: value` (custom-connections.wipple:5:53-5:66) (TypeParameter):
-  has type `value` (custom-connections.wipple:5:43-5:48)
+`else :: value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `else :: value` (custom-connections.wipple:5:53-5:66)
+  resolved to 1 definition(s): `else :: value`
 
-`value` (custom-connections.wipple:5:61-5:66) (TypeParameter):
-  has type `value` (custom-connections.wipple:5:43-5:48)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (custom-connections.wipple:5:43-5:48)
+  resolved to 1 definition(s): `value`
 
-`output :: value` (custom-connections.wipple:5:73-5:88) (TypeParameter):
-  has type `value` (custom-connections.wipple:5:43-5:48)
+`output :: value` (TypeParameter):
+  has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `output :: value` (custom-connections.wipple:5:73-5:88)
+  resolved to 1 definition(s): `output :: value`
 
-`value` (custom-connections.wipple:5:83-5:88) (TypeParameter):
-  has type `value` (custom-connections.wipple:5:43-5:48)
+`value` (TypeParameter):
+  has type `value`
   is a type
-  resolved to 1 definition(s): `value` (custom-connections.wipple:5:43-5:48)
+  resolved to 1 definition(s): `value`
 
-`my-if : if` (custom-connections.wipple:6:1-6:11) (AssignmentStatement):
-  has type `()` (custom-connections.wipple:6:1-6:11)
-
-`if` (custom-connections.wipple:6:9-6:11) (VariableExpression):
-  has type `Boolean {value} {value} -> value` (custom-connections.wipple:5:10-5:89)
-  is an expression
-  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (library/src/foundation/logic.wipple:12:1-12:86)
-
-`show` (custom-connections.wipple:8:1-8:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `Number -> ()` (custom-connections.wipple:8:1-8:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
-
-`show (my-if True {123} {456})` (custom-connections.wipple:8:1-8:30) (ExpressionStatement):
+`my-if : if` (AssignmentStatement):
   has type `()`
 
-`show (my-if True {123} {456})` (custom-connections.wipple:8:1-8:30) (CallExpression):
+`if` (VariableExpression):
+  has type `Boolean {value} {value} -> value`
+  is an expression
+  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
+
+`show` (VariableExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> ()`
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+
+`show (my-if True {123} {456})` (ExpressionStatement):
+  has type `()`
+
+`show (my-if True {123} {456})` (CallExpression):
   has type `()`
   is an expression
 
-`my-if` (custom-connections.wipple:8:7-8:12) (VariableExpression):
-  has type `Boolean {Number} {Number} -> Number` (custom-connections.wipple:8:7-8:12)
+`my-if` (VariableExpression):
+  has type `Boolean {Number} {Number} -> Number`
   is an expression
-  resolved to 1 definition(s): `my-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (custom-connections.wipple:5:1-5:89)
+  resolved to 1 definition(s): `my-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
 
-`my-if True {123} {456}` (custom-connections.wipple:8:7-8:29) (CallExpression):
+`my-if True {123} {456}` (CallExpression):
   has type `Number`
   is an expression
 
-`True` (custom-connections.wipple:8:13-8:17) (ConstructorExpression):
+`True` (ConstructorExpression):
   has type `Boolean`
   is an expression
-  resolved to 1 definition(s): `True` (library/src/foundation/logic.wipple:4:3-4:7)
+  resolved to 1 definition(s): `True`
 
-`{123}` (custom-connections.wipple:8:18-8:23) (BlockExpression):
-  has type `{Number}` (custom-connections.wipple:8:18-8:23)
+`{123}` (BlockExpression):
+  has type `{Number}`
   is an expression
 
-`123` (custom-connections.wipple:8:19-8:22) (ExpressionStatement):
+`123` (ExpressionStatement):
   has type `Number`
 
-`123` (custom-connections.wipple:8:19-8:22) (NumberExpression):
+`123` (NumberExpression):
   has type `Number`
   is an expression
 
-`{456}` (custom-connections.wipple:8:24-8:29) (BlockExpression):
-  has type `{Number}` (custom-connections.wipple:8:24-8:29)
+`{456}` (BlockExpression):
+  has type `{Number}`
   is an expression
 
-`456` (custom-connections.wipple:8:25-8:28) (ExpressionStatement):
+`456` (ExpressionStatement):
   has type `Number`
 
-`456` (custom-connections.wipple:8:25-8:28) (NumberExpression):
+`456` (NumberExpression):
   has type `Number`
   is an expression
 

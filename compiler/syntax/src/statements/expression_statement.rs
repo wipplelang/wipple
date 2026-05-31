@@ -1,4 +1,7 @@
-use crate::{expressions::parse_expression, statements::parse_comments};
+use crate::{
+    expressions::parse_expression,
+    statements::{parse_comments, visit_statement},
+};
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
@@ -40,6 +43,8 @@ impl Visit for ExpressionStatement {
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
+        visit_statement(db, node, visitor);
+
         db.insert(node, Typed::default());
 
         let expression = visitor.visit(db, &self.expression);

@@ -54,15 +54,15 @@ pub fn compile<'a, K: Ord>(
     files: impl IntoIterator<Item = &'a AstKey>,
     mut checks: impl FnMut(&mut Db, &TopLevel),
     mut group_order: impl FnMut(&Db, Node) -> K,
-) -> (Node, Vec<Node>) {
+) -> (Node, Vec<Node>, Vec<Node>) {
     // Define/resolve names and collect constraints
 
-    let root = db.node();
-    db.hide(root);
+    let root_node = db.node();
+    db.hide(root_node);
 
     let mut visitor = Visitor::new(
         db,
-        root,
+        root_node,
         top_level.definitions.iter().cloned(),
         top_level.substitutions.iter().map(|substitutions| {
             (
@@ -72,11 +72,12 @@ pub fn compile<'a, K: Ord>(
         }),
     );
 
-    visitor.push_scope(db, root);
+    visitor.push_scope(db, root_node);
 
-    for file in files {
-        visitor.visit(db, file);
-    }
+    let source_files = files
+        .into_iter()
+        .map(|file| visitor.visit(db, file))
+        .collect::<Vec<_>>();
 
     let mut visited = visitor.finish(db);
 
@@ -153,7 +154,7 @@ pub fn compile<'a, K: Ord>(
     check_exhaustiveness(db);
     checks(db, top_level);
 
-    (root, visited.top_level_statements)
+    (root_node, source_files, visited.top_level_statements)
 }
 
 pub fn set_groups<K: Ord>(db: &mut Db, solver: Solver, mut key: impl FnMut(&Db, Node) -> K) {

@@ -2,8 +2,6 @@
 
 ## Unreleased
 
--   Wipple now compiles to WebAssembly.
-
 -   `when` and related pattern-matching expressions are now checked for exhaustiveness.
 
 -   Operators can be referenced in parentheses to refer to their underlying trait; e.g. `(+)` is the same as `Add`.

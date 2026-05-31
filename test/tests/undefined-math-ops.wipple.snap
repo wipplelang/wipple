@@ -1,187 +1,187 @@
 Facts (layer 2):
 
-`show` (undefined-math-ops.wipple:1:1-1:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `Number -> ()` (undefined-math-ops.wipple:1:1-1:5)
+`show` (VariableExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`show nan` (undefined-math-ops.wipple:1:1-1:9) (ExpressionStatement):
+`show nan` (ExpressionStatement):
   has type `()`
 
-`show nan` (undefined-math-ops.wipple:1:1-1:9) (CallExpression):
-  has type `()`
-  is an expression
-
-`nan` (undefined-math-ops.wipple:1:6-1:9) (VariableExpression):
-  has type `Number`
-  is an expression
-  resolved to 1 definition(s): `nan :: Number` (library/src/foundation/math.wipple:3:1-3:14)
-
-`show` (undefined-math-ops.wipple:2:1-2:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `Number -> ()` (undefined-math-ops.wipple:2:1-2:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
-
-`show (1 / 0)` (undefined-math-ops.wipple:2:1-2:13) (ExpressionStatement):
-  has type `()`
-
-`show (1 / 0)` (undefined-math-ops.wipple:2:1-2:13) (CallExpression):
+`show nan` (CallExpression):
   has type `()`
   is an expression
 
-`1` (undefined-math-ops.wipple:2:7-2:8) (NumberExpression):
+`nan` (VariableExpression):
   has type `Number`
   is an expression
+  resolved to 1 definition(s): `nan :: Number`
 
-`1 / 0` (undefined-math-ops.wipple:2:7-2:12) (OperatorExpression):
-  has type `Number`
+`show` (VariableExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> ()`
   is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`1 / 0` (undefined-math-ops.wipple:2:7-2:12) (CallExpression):
-  has type `Number`
-  is an expression
-
-`1 / 0` (undefined-math-ops.wipple:2:7-2:12) (ConstructorExpression):
-  has bound(s) `Divide` (library/src/foundation/math.wipple:52:1-52:71) `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:39))
-  has type `Number Number -> Number` (undefined-math-ops.wipple:2:7-2:12)
-  is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:52:1-52:71)
-
-`0` (undefined-math-ops.wipple:2:11-2:12) (NumberExpression):
-  has type `Number`
-  is an expression
-
-`show` (undefined-math-ops.wipple:3:1-3:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `Number -> ()` (undefined-math-ops.wipple:3:1-3:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
-
-`show (0 / 0)` (undefined-math-ops.wipple:3:1-3:13) (ExpressionStatement):
+`show (1 / 0)` (ExpressionStatement):
   has type `()`
 
-`show (0 / 0)` (undefined-math-ops.wipple:3:1-3:13) (CallExpression):
+`show (1 / 0)` (CallExpression):
   has type `()`
   is an expression
 
-`0` (undefined-math-ops.wipple:3:7-3:8) (NumberExpression):
+`1` (NumberExpression):
   has type `Number`
   is an expression
 
-`0 / 0` (undefined-math-ops.wipple:3:7-3:12) (OperatorExpression):
+`1 / 0` (OperatorExpression):
   has type `Number`
   is an expression
 
-`0 / 0` (undefined-math-ops.wipple:3:7-3:12) (CallExpression):
+`1 / 0` (CallExpression):
   has type `Number`
   is an expression
 
-`0 / 0` (undefined-math-ops.wipple:3:7-3:12) (ConstructorExpression):
-  has bound(s) `Divide` (library/src/foundation/math.wipple:52:1-52:71) `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)` (library/src/foundation/math.wipple:53:1-53:39))
-  has type `Number Number -> Number` (undefined-math-ops.wipple:3:7-3:12)
+`1 / 0` (ConstructorExpression):
+  has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
+  has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)` (library/src/foundation/math.wipple:52:1-52:71)
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)`
 
-`0` (undefined-math-ops.wipple:3:11-3:12) (NumberExpression):
+`0` (NumberExpression):
   has type `Number`
   is an expression
 
-`show` (undefined-math-ops.wipple:4:1-4:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `Number -> ()` (undefined-math-ops.wipple:4:1-4:5)
+`show` (VariableExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`show (sqrt -1)` (undefined-math-ops.wipple:4:1-4:15) (ExpressionStatement):
+`show (0 / 0)` (ExpressionStatement):
   has type `()`
 
-`show (sqrt -1)` (undefined-math-ops.wipple:4:1-4:15) (CallExpression):
-  has type `()`
-  is an expression
-
-`sqrt` (undefined-math-ops.wipple:4:7-4:11) (VariableExpression):
-  has type `Number -> Number` (undefined-math-ops.wipple:4:7-4:11)
-  is an expression
-  resolved to 1 definition(s): `sqrt :: Number -> Number` (library/src/foundation/math.wipple:105:1-105:25)
-
-`sqrt -1` (undefined-math-ops.wipple:4:7-4:14) (CallExpression):
-  has type `Number`
-  is an expression
-
-`-1` (undefined-math-ops.wipple:4:12-4:14) (NumberExpression):
-  has type `Number` (undefined-math-ops.wipple:4:12-4:14)
-  is an expression
-
-`show` (undefined-math-ops.wipple:5:1-5:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `Number -> ()` (undefined-math-ops.wipple:5:1-5:5)
-  is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
-
-`show (2 ^ 2 ^ 2 ^ 2048)` (undefined-math-ops.wipple:5:1-5:24) (ExpressionStatement):
-  has type `()`
-
-`show (2 ^ 2 ^ 2 ^ 2048)` (undefined-math-ops.wipple:5:1-5:24) (CallExpression):
+`show (0 / 0)` (CallExpression):
   has type `()`
   is an expression
 
-`2` (undefined-math-ops.wipple:5:7-5:8) (NumberExpression):
+`0` (NumberExpression):
   has type `Number`
   is an expression
 
-`2 ^ 2` (undefined-math-ops.wipple:5:7-5:12) (OperatorExpression):
+`0 / 0` (OperatorExpression):
   has type `Number`
   is an expression
 
-`2 ^ 2` (undefined-math-ops.wipple:5:7-5:12) (CallExpression):
+`0 / 0` (CallExpression):
   has type `Number`
   is an expression
 
-`2 ^ 2` (undefined-math-ops.wipple:5:7-5:12) (ConstructorExpression):
-  has bound(s) `Power` (library/src/foundation/math.wipple:82:1-82:64) `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)` (library/src/foundation/math.wipple:83:1-83:38))
-  has type `Number Number -> Number` (undefined-math-ops.wipple:5:7-5:12)
+`0 / 0` (ConstructorExpression):
+  has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
+  has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (library/src/foundation/math.wipple:82:1-82:64)
+  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)`
 
-`2 ^ 2 ^ 2` (undefined-math-ops.wipple:5:7-5:16) (OperatorExpression):
+`0` (NumberExpression):
   has type `Number`
   is an expression
 
-`2 ^ 2 ^ 2` (undefined-math-ops.wipple:5:7-5:16) (CallExpression):
+`show` (VariableExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> ()`
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+
+`show (sqrt -1)` (ExpressionStatement):
+  has type `()`
+
+`show (sqrt -1)` (CallExpression):
+  has type `()`
+  is an expression
+
+`sqrt` (VariableExpression):
+  has type `Number -> Number`
+  is an expression
+  resolved to 1 definition(s): `sqrt :: Number -> Number`
+
+`sqrt -1` (CallExpression):
   has type `Number`
   is an expression
 
-`2 ^ 2 ^ 2` (undefined-math-ops.wipple:5:7-5:16) (ConstructorExpression):
-  has bound(s) `Power` (library/src/foundation/math.wipple:82:1-82:64) `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)` (library/src/foundation/math.wipple:83:1-83:38))
-  has type `Number Number -> Number` (undefined-math-ops.wipple:5:7-5:16)
-  is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (library/src/foundation/math.wipple:82:1-82:64)
-
-`2 ^ 2 ^ 2 ^ 2048` (undefined-math-ops.wipple:5:7-5:23) (OperatorExpression):
+`-1` (NumberExpression):
   has type `Number`
   is an expression
 
-`2 ^ 2 ^ 2 ^ 2048` (undefined-math-ops.wipple:5:7-5:23) (CallExpression):
+`show` (VariableExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> ()`
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+
+`show (2 ^ 2 ^ 2 ^ 2048)` (ExpressionStatement):
+  has type `()`
+
+`show (2 ^ 2 ^ 2 ^ 2048)` (CallExpression):
+  has type `()`
+  is an expression
+
+`2` (NumberExpression):
   has type `Number`
   is an expression
 
-`2 ^ 2 ^ 2 ^ 2048` (undefined-math-ops.wipple:5:7-5:23) (ConstructorExpression):
-  has bound(s) `Power` (library/src/foundation/math.wipple:82:1-82:64) `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)` (library/src/foundation/math.wipple:83:1-83:38))
-  has type `Number Number -> Number` (undefined-math-ops.wipple:5:7-5:23)
-  is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)` (library/src/foundation/math.wipple:82:1-82:64)
-
-`2` (undefined-math-ops.wipple:5:11-5:12) (NumberExpression):
+`2 ^ 2` (OperatorExpression):
   has type `Number`
   is an expression
 
-`2` (undefined-math-ops.wipple:5:15-5:16) (NumberExpression):
+`2 ^ 2` (CallExpression):
   has type `Number`
   is an expression
 
-`2048` (undefined-math-ops.wipple:5:19-5:23) (NumberExpression):
+`2 ^ 2` (ConstructorExpression):
+  has bound(s) `Power` `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)`)
+  has type `Number Number -> Number`
+  is an expression
+  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)`
+
+`2 ^ 2 ^ 2` (OperatorExpression):
+  has type `Number`
+  is an expression
+
+`2 ^ 2 ^ 2` (CallExpression):
+  has type `Number`
+  is an expression
+
+`2 ^ 2 ^ 2` (ConstructorExpression):
+  has bound(s) `Power` `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)`)
+  has type `Number Number -> Number`
+  is an expression
+  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)`
+
+`2 ^ 2 ^ 2 ^ 2048` (OperatorExpression):
+  has type `Number`
+  is an expression
+
+`2 ^ 2 ^ 2 ^ 2048` (CallExpression):
+  has type `Number`
+  is an expression
+
+`2 ^ 2 ^ 2 ^ 2048` (ConstructorExpression):
+  has bound(s) `Power` `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)`)
+  has type `Number Number -> Number`
+  is an expression
+  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)`
+
+`2` (NumberExpression):
+  has type `Number`
+  is an expression
+
+`2` (NumberExpression):
+  has type `Number`
+  is an expression
+
+`2048` (NumberExpression):
   has type `Number`
   is an expression
 

@@ -1,7 +1,6 @@
 use crate::{
-    codegen::{CodegenCtx, CodegenError, ir, types::ir_type},
+    codegen::{CodegenCtx, CodegenError, ir},
     db::{Db, Node},
-    typecheck::ty::Ty,
     visit::definitions::{ConstantDefinition, ConstantValue, Defined, InstanceDefinition},
 };
 use std::{
@@ -17,15 +16,12 @@ pub struct MonomorphizeCtx {
 impl MonomorphizeCtx {
     pub fn get_or_insert(
         &mut self,
-        db: &Db,
         definition: Node,
-        parameters: &BTreeMap<Node, Ty>,
         bounds: BTreeMap<Node, ir::Instance>,
         generic: bool,
     ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
         let key = ir::ConstantDefinitionKey {
             node: definition,
-            substitutions: convert_substitutions(db, parameters)?,
             bounds,
         };
 
@@ -41,24 +37,12 @@ impl MonomorphizeCtx {
     }
 }
 
-fn convert_substitutions(
-    db: &Db,
-    substitutions: &BTreeMap<Node, Ty>,
-) -> Result<BTreeMap<Node, ir::Type>, CodegenError> {
-    substitutions
-        .iter()
-        .map(|(&parameter, ty)| Ok((parameter, ir_type(db, ty.clone())?)))
-        .collect()
-}
-
 impl MonomorphizeCtx {
     pub fn monomorphize_definitions(
         &mut self,
         db: &Db,
-    ) -> Result<
-        impl Iterator<Item = (ir::ConstantDefinitionKey, ir::Definition)> + use<>,
-        CodegenError,
-    > {
+    ) -> Result<impl Iterator<Item = (ir::ConstantDefinitionKey, ir::Function)> + use<>, CodegenError>
+    {
         let mut cache = BTreeMap::new();
 
         for key in mem::take(&mut self.definitions) {
@@ -74,7 +58,7 @@ impl MonomorphizeCtx {
         &mut self,
         db: &Db,
         key: &ir::ConstantDefinitionKey,
-        cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Definition>>,
+        cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Function>>,
     ) -> Result<(), CodegenError> {
         if cache.contains_key(key) {
             return Ok(());
@@ -100,16 +84,8 @@ impl MonomorphizeCtx {
         ctx.instruction(ir::Instruction::Return { value: body });
 
         let mut instructions = ctx.pop_instructions();
-        let mut types = BTreeMap::new();
         for instruction in &mut instructions {
             instruction.traverse_mut(&mut |instruction| {
-                instruction.for_each_node(true, &mut |node| {
-                    let mut ty = ir_type(db, Ty::Node(*node))?;
-                    ty.substitute(&key.substitutions);
-                    types.insert(*node, ty);
-                    Ok(())
-                })?;
-
                 if let ir::Instruction::Value { value, .. } = instruction {
                     match value {
                         ir::Value::Constant(constant_key) => {
@@ -119,13 +95,7 @@ impl MonomorphizeCtx {
                                 ))?;
                             };
 
-                            self.monomorphize_key(
-                                db,
-                                constant_key,
-                                &key.substitutions,
-                                &key.bounds,
-                                cache,
-                            )?;
+                            self.monomorphize_key(db, constant_key, &key.bounds, cache)?;
                         }
                         ir::Value::Bound(bound) => {
                             let Some(ir::Instance::Definition(mut resolved_key)) =
@@ -134,13 +104,7 @@ impl MonomorphizeCtx {
                                 return Err(anyhow::format_err!("bound {bound:?} not resolved"));
                             };
 
-                            self.monomorphize_key(
-                                db,
-                                &mut resolved_key,
-                                &key.substitutions,
-                                &key.bounds,
-                                cache,
-                            )?;
+                            self.monomorphize_key(db, &mut resolved_key, &key.bounds, cache)?;
 
                             *value = ir::Value::Constant(ir::DefinitionKey::Constant(resolved_key));
                         }
@@ -152,11 +116,9 @@ impl MonomorphizeCtx {
             })?;
         }
 
-        cache.get_mut(key).unwrap().replace(ir::Definition {
-            ty: types.get(&body).cloned(),
+        cache.get_mut(key).unwrap().replace(ir::Function {
             instructions,
-            types,
-            imports: Vec::new(), // will be populated via `collect_imports`
+            ..Default::default()
         });
 
         Ok(())
@@ -166,16 +128,11 @@ impl MonomorphizeCtx {
         &mut self,
         db: &Db,
         key: &mut ir::ConstantDefinitionKey,
-        substitutions: &BTreeMap<Node, ir::Type>,
         bounds: &BTreeMap<Node, ir::Instance>,
-        cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Definition>>,
+        cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Function>>,
     ) -> Result<(), CodegenError> {
-        for ty in key.substitutions.values_mut() {
-            self.monomorphize_type(ty, substitutions)?;
-        }
-
         for instance in key.bounds.values_mut() {
-            self.monomorphize_instance(db, instance, substitutions, bounds, cache)?;
+            self.monomorphize_instance(db, instance, bounds, cache)?;
         }
 
         self.monomorphize_definition(db, key, cache)?;
@@ -183,31 +140,12 @@ impl MonomorphizeCtx {
         Ok(())
     }
 
-    fn monomorphize_type(
-        &mut self,
-        ty: &mut ir::Type,
-        substitutions: &BTreeMap<Node, ir::Type>,
-    ) -> Result<(), CodegenError> {
-        ty.traverse_mut(&mut |ty| {
-            if let ir::Type::Parameter(ref parameter) = *ty {
-                if let Some(substitution) = substitutions.get(parameter) {
-                    *ty = substitution.clone();
-                } else {
-                    return Err(anyhow::format_err!("could not monomorphize {ty:?}"));
-                }
-            }
-
-            Ok(())
-        })
-    }
-
     fn monomorphize_instance(
         &mut self,
         db: &Db,
         instance: &mut ir::Instance,
-        substitutions: &BTreeMap<Node, ir::Type>,
         bounds: &BTreeMap<Node, ir::Instance>,
-        cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Definition>>,
+        cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Function>>,
     ) -> Result<(), CodegenError> {
         match instance {
             ir::Instance::Bound(bound) => {
@@ -217,7 +155,7 @@ impl MonomorphizeCtx {
                     .clone();
             }
             ir::Instance::Definition(instance_key) => {
-                self.monomorphize_key(db, instance_key, substitutions, bounds, cache)?;
+                self.monomorphize_key(db, instance_key, bounds, cache)?;
             }
         }
 

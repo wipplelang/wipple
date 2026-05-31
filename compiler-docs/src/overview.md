@@ -42,4 +42,4 @@ Feedback (error messages) is created by querying the database for nodes with spe
 
 ## Code generation
 
-Wipple compiles to an intermediate representation (IR) via a `Codegen` fact. Then, the IR is monomorphized and compiled to WebAssembly.
+Wipple compiles to an intermediate representation (IR) via a `Codegen` fact. Then, the IR is monomorphized and compiled to JavaScript.

@@ -1,37 +1,37 @@
 Facts (layer 2):
 
-`show` (recursive-instance.wipple:1:1-1:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `(Maybe (Maybe Number))` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (library/src/foundation/io.wipple:17:1-17:57)), `Describe` (library/src/foundation/io.wipple:2:1-2:44) `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)` (library/src/foundation/io.wipple:17:1-17:57)), `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `(Maybe (Maybe Number)) -> ()` (recursive-instance.wipple:1:1-1:5)
+`show` (VariableExpression):
+  has bound(s) `Describe` `(Maybe (Maybe Number))` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `(Maybe (Maybe Number)) -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`show (Some (Some 42))` (recursive-instance.wipple:1:1-1:22) (ExpressionStatement):
+`show (Some (Some 42))` (ExpressionStatement):
   has type `()`
 
-`show (Some (Some 42))` (recursive-instance.wipple:1:1-1:22) (CallExpression):
+`show (Some (Some 42))` (CallExpression):
   has type `()`
   is an expression
 
-`Some` (recursive-instance.wipple:1:7-1:11) (ConstructorExpression):
-  has type `(Maybe Number) -> Maybe (Maybe Number)` (recursive-instance.wipple:1:7-1:11)
+`Some` (ConstructorExpression):
+  has type `(Maybe Number) -> Maybe (Maybe Number)`
   is an expression
-  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:3-6:13)
+  resolved to 1 definition(s): `Some value`
 
-`Some (Some 42)` (recursive-instance.wipple:1:7-1:21) (CallExpression):
+`Some (Some 42)` (CallExpression):
   has type `Maybe (Maybe Number)`
   is an expression
 
-`Some` (recursive-instance.wipple:1:13-1:17) (ConstructorExpression):
-  has type `Number -> Maybe Number` (recursive-instance.wipple:1:13-1:17)
+`Some` (ConstructorExpression):
+  has type `Number -> Maybe Number`
   is an expression
-  resolved to 1 definition(s): `Some value` (library/src/foundation/language.wipple:6:3-6:13)
+  resolved to 1 definition(s): `Some value`
 
-`Some 42` (recursive-instance.wipple:1:13-1:20) (CallExpression):
+`Some 42` (CallExpression):
   has type `Maybe Number`
   is an expression
 
-`42` (recursive-instance.wipple:1:18-1:20) (NumberExpression):
+`42` (NumberExpression):
   has type `Number`
   is an expression
 

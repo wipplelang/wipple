@@ -1,35 +1,35 @@
 Facts (layer 2):
 
-`show` (too-many-inputs.wipple:1:1-1:5) (VariableExpression):
-  has bound(s) `Describe` (library/src/foundation/io.wipple:2:1-2:44) `Number` (resolved as `instance (Describe Number)` (library/src/foundation/io.wipple:15:1-15:27))
-  has type `Number Number Number -> ()` (too-many-inputs.wipple:1:1-1:5) or `Number -> ()`
+`show` (VariableExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number Number Number -> ()` or `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)` (library/src/foundation/io.wipple:11:1-11:43)
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
-`show 1 2 3` (too-many-inputs.wipple:1:1-1:11) (ExpressionStatement):
+`show 1 2 3` (ExpressionStatement):
   has type `()`
 
-`show 1 2 3` (too-many-inputs.wipple:1:1-1:11) (CallExpression):
+`show 1 2 3` (CallExpression):
   has type `()`
   is an expression
 
-`1` (too-many-inputs.wipple:1:6-1:7) (NumberExpression):
+`1` (NumberExpression):
   has type `Number`
   is an expression
 
-`2` (too-many-inputs.wipple:1:8-1:9) (NumberExpression):
-  has type `Number` (too-many-inputs.wipple:1:8-1:9)
+`2` (NumberExpression):
+  has type `Number`
   is an expression
 
-`3` (too-many-inputs.wipple:1:10-1:11) (NumberExpression):
-  has type `Number` (too-many-inputs.wipple:1:10-1:11)
+`3` (NumberExpression):
+  has type `Number`
   is an expression
 
 
 
 Feedback:
 
-`show` (too-many-inputs.wipple:1:1-1:5) (conflicting-types)
+`show` (conflicting-types)
 
   `show` isn't a `Number -> ()`.
   

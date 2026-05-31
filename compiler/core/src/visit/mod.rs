@@ -339,11 +339,7 @@ impl Visitor {
 
         let substitutions = substitutions
             .into_iter()
-            .map(|(nodes, parameters)| Substitutions {
-                record_instantiated_parameters: false,
-                nodes,
-                parameters,
-            })
+            .map(|(nodes, parameters)| Substitutions { nodes, parameters })
             .collect::<Vec<_>>();
 
         let mut visitor = Visitor {
@@ -444,17 +440,9 @@ impl Visitor {
     ) -> SubstitutionsKey {
         let key = SubstitutionsKey(self.substitutions.len());
 
-        self.substitutions.push(Substitutions {
-            record_instantiated_parameters: false,
-            nodes,
-            parameters,
-        });
+        self.substitutions.push(Substitutions { nodes, parameters });
 
         key
-    }
-
-    pub fn record_instantiated_parameters(&mut self, substitutions: SubstitutionsKey) {
-        self.substitutions[substitutions.0].record_instantiated_parameters = true;
     }
 
     pub fn codegen(&mut self, db: &mut Db, node: Node, value: impl CodegenValue) {

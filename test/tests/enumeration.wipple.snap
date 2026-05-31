@@ -1,46 +1,46 @@
 Facts (layer 2):
 
-`Grade : type {⋯}` (enumeration.wipple:1:1-7:2) (TypeDefinition):
+`Grade : type {⋯}` (TypeDefinition):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`A` (enumeration.wipple:2:3-2:4) (VariantDefinition):
+`A` (VariantDefinition):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`B` (enumeration.wipple:3:3-3:4) (VariantDefinition):
+`B` (VariantDefinition):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`C` (enumeration.wipple:4:3-4:4) (VariantDefinition):
+`C` (VariantDefinition):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`D` (enumeration.wipple:5:3-5:4) (VariantDefinition):
+`D` (VariantDefinition):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`F` (enumeration.wipple:6:3-6:4) (VariantDefinition):
+`F` (VariantDefinition):
   has definition constraints
-  has type `Grade` (enumeration.wipple:1:1-7:2)
+  has type `Grade`
   is a definition
 
-`_` (enumeration.wipple:9:1-9:2) (WildcardPattern):
+`_` (WildcardPattern):
   has type `Grade`
   is a pattern
 
-`_ : A` (enumeration.wipple:9:1-9:6) (AssignmentStatement):
-  has type `()` (enumeration.wipple:9:1-9:6)
+`_ : A` (AssignmentStatement):
+  has type `()`
 
-`A` (enumeration.wipple:9:5-9:6) (ConstructorExpression):
+`A` (ConstructorExpression):
   has type `Grade`
   is an expression
-  resolved to 1 definition(s): `A` (enumeration.wipple:2:3-2:4)
+  resolved to 1 definition(s): `A`
 
 
 Output:

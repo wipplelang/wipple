@@ -277,7 +277,7 @@ impl Ide {
     }
 
     pub fn autocomplete(&self, line: usize, column: usize) -> Vec<IdeDefinition> {
-        let mut nodes = vec![self.result.root];
+        let mut nodes = vec![self.result.root_node];
 
         let node_at_position = self.node_at(line, column);
 
