@@ -230,9 +230,9 @@ impl GraphBuilder {
             let mut labels = labels
                 .into_iter()
                 .map(|ty| GraphLabel {
-                    tag: match ty.tag {
-                        TyTag::Function | TyTag::Block => String::from("function"),
-                        _ => String::from("embed"),
+                    kind: match ty.tag {
+                        TyTag::Function => Some(String::from("function")),
+                        _ => None,
                     },
                     display: Ty::Constructed(ty).display(db, true),
                 })
@@ -240,7 +240,7 @@ impl GraphBuilder {
 
             let conflict = if labels.is_empty() {
                 labels.push(GraphLabel {
-                    tag: String::from("unknown"),
+                    kind: None,
                     display: String::from("_"),
                 });
                 true
@@ -316,7 +316,7 @@ pub struct GraphEdge {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct GraphLabel {
-    pub tag: String,
+    pub kind: Option<String>,
     pub display: String,
 }
 

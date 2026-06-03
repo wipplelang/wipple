@@ -42,7 +42,7 @@ pub struct GraphSpan {
 #[wasm_bindgen(getter_with_clone, inspectable)]
 #[derive(Debug, Clone)]
 pub struct GraphLabel {
-    pub tag: String,
+    pub kind: Option<String>,
     pub display: String,
 }
 
@@ -78,7 +78,7 @@ pub fn convert_graph(graph: wipple_core::graph::Graph) -> Graph {
                     .labels
                     .into_iter()
                     .map(|label| GraphLabel {
-                        tag: label.tag,
+                        kind: label.kind,
                         display: label.display,
                     })
                     .collect(),
