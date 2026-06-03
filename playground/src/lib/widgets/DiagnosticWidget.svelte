@@ -117,7 +117,7 @@
                 {/if}
 
                 {#if showExtra === "visualizer" && context.diagnostic.graph != null}
-                    <Visualizer graph={context.diagnostic.graph} showFunctionsAndStatements />
+                    <Visualizer graph={context.diagnostic.graph} showFunctions />
                 {/if}
             </div>
         </Box>

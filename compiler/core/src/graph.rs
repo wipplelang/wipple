@@ -3,13 +3,11 @@ use crate::{
     facts::{GraphType, Syntax},
     span::Span,
     typecheck::{
+        groups::update_type,
         instantiate::Instantiated,
         ty::{ConstructedTy, Ty, TyTag},
     },
-    visit::{
-        Resolved,
-        definitions::{Defined, VariableDefinition},
-    },
+    visit::definitions::{Defined, VariableDefinition},
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -92,6 +90,15 @@ impl GraphBuilder {
                     continue;
                 }
 
+                let tys = group
+                    .tys
+                    .iter()
+                    .map(|ty| match update_type(db, &Ty::Constructed(ty.clone())) {
+                        Ty::Constructed(ty) => ty,
+                        _ => unreachable!(),
+                    })
+                    .collect::<Vec<_>>();
+
                 if let Some((existing_nodes, existing_tys)) = groups.get_mut(&index) {
                     if *existing_nodes == nodes {
                         finished_groups.insert(index);
@@ -100,13 +107,13 @@ impl GraphBuilder {
                         progress = true;
                     }
 
-                    for ty in &group.tys {
-                        if !existing_tys.contains(ty) {
-                            existing_tys.push(ty.clone());
+                    for ty in tys {
+                        if !existing_tys.contains(&ty) {
+                            existing_tys.push(ty);
                         }
                     }
                 } else {
-                    groups.insert(index, (nodes.clone(), group.tys.clone()));
+                    groups.insert(index, (nodes.clone(), tys));
                     progress = true;
                 }
 
@@ -188,40 +195,6 @@ impl GraphBuilder {
         // Remove unconnected nodes
         in_group.retain(|id| connected_nodes.contains(id));
 
-        // Remove groups containing only function constants
-        groups.retain(|_, (nodes, types)| {
-            if nodes.len() != 1 {
-                return true;
-            }
-
-            let node = *nodes.iter().next().unwrap();
-            let Some(Resolved { definitions, .. }) = db.get(node) else {
-                return true;
-            };
-
-            if definitions.len() != 1 {
-                return true;
-            };
-
-            let definition = *definitions.first().unwrap();
-
-            let Some(Defined(definition)) = db.get(definition) else {
-                return true;
-            };
-
-            if definition.downcast_ref::<VariableDefinition>().is_some() {
-                return true;
-            };
-
-            !matches!(
-                types.as_slice(),
-                [ConstructedTy {
-                    tag: TyTag::Function,
-                    ..
-                }],
-            )
-        });
-
         for node in reachable_nodes.into_keys() {
             let Some(id) = self.id(db, node) else {
                 continue;
@@ -256,11 +229,20 @@ impl GraphBuilder {
 
             let mut labels = labels
                 .into_iter()
-                .map(|ty| Ty::Constructed(ty).display(db, true))
+                .map(|ty| GraphLabel {
+                    tag: match ty.tag {
+                        TyTag::Function | TyTag::Block => String::from("function"),
+                        _ => String::from("embed"),
+                    },
+                    display: Ty::Constructed(ty).display(db, true),
+                })
                 .collect::<Vec<_>>();
 
             let conflict = if labels.is_empty() {
-                labels.push(String::from("_"));
+                labels.push(GraphLabel {
+                    tag: String::from("unknown"),
+                    display: String::from("_"),
+                });
                 true
             } else {
                 labels.len() > 1
@@ -315,7 +297,7 @@ pub struct Graph {
 #[derive(Debug, Clone, Serialize)]
 pub struct GraphGroup {
     pub nodes: Vec<String>,
-    pub labels: Vec<String>,
+    pub labels: Vec<GraphLabel>,
     pub conflict: bool,
 }
 
@@ -330,6 +312,12 @@ pub struct GraphEdge {
     pub from: String,
     pub to: String,
     pub label: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct GraphLabel {
+    pub tag: String,
+    pub display: String,
 }
 
 impl Graph {

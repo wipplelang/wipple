@@ -4,10 +4,10 @@
 
     interface Props {
         graph: wipple.Graph | undefined;
-        showFunctionsAndStatements?: boolean;
+        showFunctions?: boolean;
     }
 
-    const { graph, showFunctionsAndStatements }: Props = $props();
+    const { graph, showFunctions }: Props = $props();
 
     const visualizationUrl = (() => {
         const base = PUBLIC_VISUALIZER_URL;
@@ -19,10 +19,6 @@
 
         url.searchParams.set("embed", "1");
 
-        if (showFunctionsAndStatements) {
-            url.searchParams.set("showFunctionsAndStatements", "1");
-        }
-
         return url.toString();
     })();
 
@@ -32,7 +28,11 @@
             return;
         }
 
-        visualizationWindow.postMessage({ embed }, "*");
+        const show = {
+            functions: showFunctions ?? false,
+        };
+
+        visualizationWindow.postMessage({ embed, show }, "*");
     };
 
     let visualizationIFrame = $state<HTMLIFrameElement>();

@@ -14,7 +14,7 @@ pub struct Graph {
 #[derive(Debug, Clone)]
 pub struct GraphGroup {
     pub nodes: Vec<String>,
-    pub labels: Vec<String>,
+    pub labels: Vec<GraphLabel>,
     pub conflict: bool,
 }
 
@@ -37,6 +37,13 @@ pub struct GraphSpan {
     pub start: GraphLocation,
     pub end: GraphLocation,
     pub source: String,
+}
+
+#[wasm_bindgen(getter_with_clone, inspectable)]
+#[derive(Debug, Clone)]
+pub struct GraphLabel {
+    pub tag: String,
+    pub display: String,
 }
 
 #[wasm_bindgen(getter_with_clone, inspectable)]
@@ -67,7 +74,14 @@ pub fn convert_graph(graph: wipple_core::graph::Graph) -> Graph {
             .into_iter()
             .map(|group| GraphGroup {
                 nodes: group.nodes,
-                labels: group.labels,
+                labels: group
+                    .labels
+                    .into_iter()
+                    .map(|label| GraphLabel {
+                        tag: label.tag,
+                        display: label.display,
+                    })
+                    .collect(),
                 conflict: group.conflict,
             })
             .collect(),
