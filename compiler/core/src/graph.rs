@@ -231,7 +231,7 @@ impl GraphBuilder {
                 .into_iter()
                 .map(|ty| GraphLabel {
                     kind: match ty.tag {
-                        TyTag::Function => Some(String::from("function")),
+                        TyTag::Function | TyTag::Block => Some(String::from("function")),
                         _ => None,
                     },
                     display: Ty::Constructed(ty).display(db, true),
