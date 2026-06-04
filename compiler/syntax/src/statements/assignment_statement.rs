@@ -1,5 +1,8 @@
 use crate::{
-    expressions::parse_expression,
+    expressions::{
+        block_expression::BlockExpression, function_expression::FunctionExpression,
+        parse_expression,
+    },
     patterns::{parse_pattern, variable_pattern::VariablePattern},
     statements::{parse_comments, visit_statement},
 };
@@ -94,24 +97,43 @@ impl Visit for AssignmentStatement {
             return;
         }
 
-        let value = visitor.visit(db, &self.value);
+        let pattern = |db: &mut Db, value: Node, visitor: &mut Visitor| {
+            visitor.matching(
+                value,
+                |current_match| current_match.allow_set = true,
+                |visitor| {
+                    let current_match = visitor.current_match.as_mut().unwrap();
 
-        let pattern = visitor.matching(
-            value,
-            |current_match| current_match.allow_set = true,
-            |visitor| {
-                let current_match = visitor.current_match.as_mut().unwrap();
+                    current_match.root = Some(value);
 
-                current_match.root = Some(value);
+                    let pattern = db.node();
+                    current_match.arm = Some(pattern);
 
-                let pattern = db.node();
-                current_match.arm = Some(pattern);
+                    visitor.visit_as(db, &self.pattern, pattern);
 
-                visitor.visit_as(db, &self.pattern, pattern);
+                    pattern
+                },
+            )
+        };
 
-                pattern
-            },
-        );
+        let allow_recursion = {
+            let value = self.value.get(db);
+
+            value.downcast_ref::<FunctionExpression>().is_some()
+                || value.downcast_ref::<BlockExpression>().is_some()
+        };
+
+        // If recursion is allowed, visit the pattern before the value
+        let (pattern, value) = if allow_recursion {
+            let value = db.node();
+            let pattern = pattern(db, value, visitor);
+            visitor.visit_as(db, &self.value, value);
+            (pattern, value)
+        } else {
+            let value = visitor.visit(db, &self.value);
+            let pattern = pattern(db, value, visitor);
+            (pattern, value)
+        };
 
         visitor.constraint(db, GroupConstraint::new(pattern, value));
 

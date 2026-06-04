@@ -1,0 +1,159 @@
+Facts (layer 2):
+
+`fib` (VariablePattern):
+  has type `Number -> Number`
+  is a definition
+  is a pattern
+
+`fib : n -> when n {⋯}` (AssignmentStatement):
+  has type `()`
+
+`n` (VariablePattern):
+  has type `Number`
+  is a definition
+  is a pattern
+
+`n -> when n {⋯}` (FunctionExpression):
+  captures `fib`
+  has type `Number -> Number`
+  is an expression
+
+`when n {⋯}` (WhenExpression):
+  has type `Number`
+  is an expression
+
+`n` (VariableExpression):
+  has type `Number`
+  is an expression
+  resolved to 1 definition(s): `n`
+
+`0` (NumberPattern):
+  has type `Number`
+  is a pattern
+
+`0 or 1` (OrPattern):
+  captures `n`
+  has type `Number`
+  is a pattern
+
+`1` (NumberPattern):
+  has type `Number`
+  is a pattern
+
+`n` (VariableExpression):
+  has type `Number`
+  is an expression
+  resolved to 1 definition(s): `n`
+
+`_` (WildcardPattern):
+  captures `fib`, `n`
+  has type `Number`
+  is a pattern
+
+`fib` (VariableExpression):
+  has type `Number -> Number`
+  is an expression
+  resolved to 1 definition(s): `fib`
+
+`fib (n - 1)` (CallExpression):
+  has type `Number`
+  is an expression
+
+`fib (n - 1) + fib (n - 2)` (OperatorExpression):
+  has type `Number`
+  is an expression
+
+`fib (n - 1) + fib (n - 2)` (CallExpression):
+  has type `Number`
+  is an expression
+
+`fib (n - 1) + fib (n - 2)` (ConstructorExpression):
+  has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
+  has type `Number Number -> Number`
+  is an expression
+  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+
+`n` (VariableExpression):
+  has type `Number`
+  is an expression
+  resolved to 1 definition(s): `n`
+
+`n - 1` (OperatorExpression):
+  has type `Number`
+  is an expression
+
+`n - 1` (CallExpression):
+  has type `Number`
+  is an expression
+
+`n - 1` (ConstructorExpression):
+  has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
+  has type `Number Number -> Number`
+  is an expression
+  resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)`
+
+`1` (NumberExpression):
+  has type `Number`
+  is an expression
+
+`fib` (VariableExpression):
+  has type `Number -> Number`
+  is an expression
+  resolved to 1 definition(s): `fib`
+
+`fib (n - 2)` (CallExpression):
+  has type `Number`
+  is an expression
+
+`n` (VariableExpression):
+  has type `Number`
+  is an expression
+  resolved to 1 definition(s): `n`
+
+`n - 2` (OperatorExpression):
+  has type `Number`
+  is an expression
+
+`n - 2` (CallExpression):
+  has type `Number`
+  is an expression
+
+`n - 2` (ConstructorExpression):
+  has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
+  has type `Number Number -> Number`
+  is an expression
+  resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)`
+
+`2` (NumberExpression):
+  has type `Number`
+  is an expression
+
+`show` (VariableExpression):
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> ()`
+  is an expression
+  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+
+`show (fib 10)` (ExpressionStatement):
+  has type `()`
+
+`show (fib 10)` (CallExpression):
+  has type `()`
+  is an expression
+
+`fib` (VariableExpression):
+  has type `Number -> Number`
+  is an expression
+  resolved to 1 definition(s): `fib`
+
+`fib 10` (CallExpression):
+  has type `Number`
+  is an expression
+
+`10` (NumberExpression):
+  has type `Number`
+  is an expression
+
+
+Output:
+55

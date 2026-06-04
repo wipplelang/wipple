@@ -1,0 +1,6 @@
+fib : n -> when n {
+  (0 or 1) -> n
+  _ -> fib (n - 1) + fib (n - 2)
+}
+
+show (fib 10)
