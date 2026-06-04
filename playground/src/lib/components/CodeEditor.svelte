@@ -45,6 +45,8 @@
     import { compilerWorker, context } from "$lib/context.svelte";
     import DiagnosticWidget from "$lib/widgets/DiagnosticWidget.svelte";
     import { nanoid } from "nanoid";
+    import Tooltip from "./Tooltip.svelte";
+    import CodeEditor from "./CodeEditor.svelte";
 
     interface Props {
         readOnly?: boolean;
@@ -464,6 +466,8 @@
 
     const markDiagnostic = new Compartment();
 
+    let hoverState = $state<{ element: HTMLElement; labels: string[] }>();
+
     const allMarkGroupDecorations = () =>
         [...document.querySelectorAll("[data-group-decoration-id]")]
             .flatMap((node) => {
@@ -482,6 +486,7 @@
         start: number;
         end: number;
         group: number;
+        labels: string[] | undefined;
         primary: boolean;
     }) => {
         if (
@@ -528,6 +533,10 @@
                         element.classList.add("group-dimmed");
                     }
                 }
+
+                if (options.labels != null) {
+                    hoverState = { element, labels: options.labels };
+                }
             });
 
             element.addEventListener("mouseout", (e) => {
@@ -542,6 +551,8 @@
                         element.classList.remove("group-highlighted");
                     }
                 }
+
+                hoverState = undefined;
             });
         });
 
@@ -549,12 +560,13 @@
     };
 
     const createMarkGroups = (hideWidget = true) => {
-        const decorations = groups.flatMap(({ locations }, group) =>
+        const decorations = groups.flatMap(({ labels, locations }, group) =>
             locations.flatMap(({ start, end, primary }) => {
                 const decoration = getMarkGroupDecoration({
                     start,
                     end,
                     group,
+                    labels,
                     primary: primary ? !hideWidget : false,
                 });
 
@@ -574,6 +586,7 @@
                       start: 0,
                       end: editorView.state.doc.length,
                       group: highlightedGroup,
+                      labels: undefined,
                       primary: false,
                   })
                 : undefined;
@@ -647,6 +660,8 @@
         });
 
         prevDiagnostic = diagnostic?.value;
+
+        hoverState = undefined;
     });
 </script>
 
@@ -655,3 +670,24 @@
     class={["code-editor h-full w-full", diagnostic ? "has-diagnostic" : ""]}
     style={padding ? `--code-editor-padding: ${padding};` : ""}
 ></div>
+
+{#if hoverState != null}
+    {@const {
+        element,
+        labels: [label, ...rest],
+    } = hoverState}
+
+    <Tooltip reference={element} delay={500}>
+        {#snippet content()}
+            <div class="flex flex-row items-baseline gap-[4pt]">
+                <CodeEditor readOnly code={label} />
+
+                {#each rest as label, index (index)}
+                    <p style:font-size="var(--code-editor-font-size)">or</p>
+
+                    <CodeEditor readOnly code={label} />
+                {/each}
+            </div>
+        {/snippet}
+    </Tooltip>
+{/if}

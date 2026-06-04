@@ -84,14 +84,14 @@ const compile = async (
         throw new Error("compilation failed");
     }
 
+    const groups = options.groups ? result.groups() : undefined;
+
     const graph = options.graph ? result.graph() : undefined;
 
     const diagnostics = result.diagnostics();
     if (diagnostics != null) {
-        return { graph, diagnostics };
+        return { groups, graph, diagnostics };
     }
-
-    const groups = options.groups ? result.groups() : undefined;
 
     let module: string | undefined;
     if (options.module) {

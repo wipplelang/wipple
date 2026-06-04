@@ -20,8 +20,6 @@ digraph G {
   node_2_44 [label="short-names"]
   node_2_46 [label="each show"]
   node_2_48 [label="each show"]
-  node_2_49 [label="each"]
-  node_2_50 [label="show"]
   node_2_5 -> node_2_28 [label="value"]
   node_2_7 -> node_2_5 [label="element"]
   node_2_8 -> node_2_5 [label="element"]
@@ -40,8 +38,7 @@ digraph G {
   node_2_39 -> node_2_37 [label="input"]
   node_2_40 -> node_2_39 [label="function"]
   node_2_42 -> node_2_37 [label="input"]
+  node_2_44 -> node_2_35 [label="element"]
   node_2_44 -> node_2_46 [label="input"]
   node_2_48 -> node_2_46 [label="function"]
-  node_2_49 -> node_2_48 [label="function"]
-  node_2_50 -> node_2_48 [label="input"]
 }

@@ -1,10 +1,11 @@
 <script lang="ts">
-    import { type Snippet } from "svelte";
+    import { onMount, type Snippet } from "svelte";
     import type { HTMLAttributes, MouseEventHandler } from "svelte/elements";
     import type { Action } from "svelte/action";
 
     interface Props extends HTMLAttributes<HTMLElement> {
         children?: Snippet;
+        reference?: HTMLElement;
         alignment?: "left" | "center";
         delay?: number;
         defaultStyle?: boolean;
@@ -17,6 +18,7 @@
 
     const {
         children,
+        reference,
         alignment = "center",
         delay = 150,
         content,
@@ -55,23 +57,43 @@
             wrapperVisible = true;
 
             requestAnimationFrame(() => {
-                const referenceRect = reference.getBoundingClientRect();
-                const wrapperRect = wrapper!.getBoundingClientRect();
-
-                const x =
-                    alignment === "left"
-                        ? referenceRect.left
-                        : referenceRect.left + referenceRect.width / 2 - wrapperRect.width / 2;
-
-                const y = referenceRect.top + referenceRect.height + topOffset;
-
-                wrapper!.style.position = "fixed";
-                wrapper!.style.left = `${x}px`;
-                wrapper!.style.top = `${y}px`;
-                contentVisible = true;
+                showAt(reference);
             });
         }, delay);
     };
+
+    const showAt = (reference: HTMLElement) => {
+        const referenceRect = reference.getBoundingClientRect();
+        const wrapperRect = wrapper!.getBoundingClientRect();
+
+        const x =
+            alignment === "left"
+                ? referenceRect.left
+                : referenceRect.left + referenceRect.width / 2 - wrapperRect.width / 2;
+
+        const y = referenceRect.top + referenceRect.height + topOffset;
+
+        wrapper!.style.position = "fixed";
+        wrapper!.style.left = `${x}px`;
+        wrapper!.style.top = `${y}px`;
+        contentVisible = true;
+    };
+
+    onMount(() => {
+        if (reference != null) {
+            const timeout = setTimeout(() => {
+                wrapperVisible = true;
+
+                requestAnimationFrame(() => {
+                    showAt(reference);
+                });
+            }, delay);
+
+            return () => {
+                clearTimeout(timeout);
+            };
+        }
+    });
 
     const dismiss = () => {
         clearTimeout(timeout);

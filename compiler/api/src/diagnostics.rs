@@ -9,7 +9,11 @@ use wipple_core::{
     default_filter,
     facts::Syntax,
     render::RenderSegment,
-    typecheck::{groups::Group, groups::Typed, instantiate::Instantiated},
+    typecheck::{
+        groups::{Group, Typed, update_type},
+        instantiate::Instantiated,
+        ty::Ty,
+    },
 };
 use wipple_feedback::{FeedbackLocation, collect_feedback};
 use wipple_syntax::file::File as FileSyntax;
@@ -27,6 +31,7 @@ pub struct Diagnostic {
 #[wasm_bindgen(getter_with_clone, inspectable)]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DiagnosticGroup {
+    pub labels: Vec<String>,
     pub locations: Vec<DiagnosticLocation>,
 }
 
@@ -49,7 +54,7 @@ pub struct DiagnosticLine {
 impl CompileResult {
     #[wasm_bindgen]
     pub fn groups(&self) -> Vec<DiagnosticGroup> {
-        let mut groups = BTreeMap::<Vec<Node>, (usize, Vec<DiagnosticLocation>)>::new();
+        let mut groups = BTreeMap::<Vec<Node>, (usize, DiagnosticGroup)>::new();
 
         for node in self.db.owned_nodes() {
             let Some(span) = self
@@ -79,17 +84,30 @@ impl CompileResult {
                 group: group_index as i32,
             };
 
-            if let Some((_, locations)) = groups.get_mut(&group.nodes) {
-                locations.push(location);
+            if let Some((_, group)) = groups.get_mut(&group.nodes) {
+                group.locations.push(location);
             } else {
-                groups.insert(group.nodes.clone(), (group_index, vec![location]));
+                groups.insert(
+                    group.nodes.clone(),
+                    (
+                        group_index,
+                        DiagnosticGroup {
+                            labels: group
+                                .tys
+                                .iter()
+                                .map(|ty| {
+                                    update_type(&self.db, &Ty::Constructed(ty.clone()))
+                                        .display(&self.db, true)
+                                })
+                                .collect(),
+                            locations: vec![location],
+                        },
+                    ),
+                );
             }
         }
 
-        groups
-            .into_iter()
-            .map(|(_, (_, locations))| DiagnosticGroup { locations })
-            .collect()
+        groups.into_iter().map(|(_, (_, group))| group).collect()
     }
 
     #[wasm_bindgen]
