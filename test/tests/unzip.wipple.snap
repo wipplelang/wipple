@@ -17,10 +17,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`((1; "a"), (2; "b"), (3; "c")) . unzip :: (List _; List _)` (AnnotateExpression):
-  has type `(List Number; List String)`
-  is an expression
-
 `(1; "a"), (2; "b"), (3; "c")` (VisitAs):
   has type `List (Number; String)`
   is an expression

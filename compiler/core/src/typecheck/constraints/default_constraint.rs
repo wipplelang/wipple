@@ -39,7 +39,7 @@ impl Constraint for DefaultConstraint {
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
         if let Ty::Node(node) = solver.apply_ty(Ty::Node(self.node)) {
-            solver.unify_with_node(db, node, self.default, Some(self.clone()));
+            solver.unify_with_node(db, node, self.default);
         }
 
         RunResult::None

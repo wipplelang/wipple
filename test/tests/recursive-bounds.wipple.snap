@@ -113,10 +113,6 @@ Facts (layer 2):
   has type `Maybe String`
   is an expression
 
-`_ :: Maybe String` (AnnotateExpression):
-  has type `Maybe String`
-  is an expression
-
 `Maybe String` (NamedType):
   has type `Maybe String`
   is a type
@@ -141,10 +137,6 @@ Facts (layer 2):
   is an expression
 
 `_` (PlaceholderExpression):
-  has type `Maybe Number`
-  is an expression
-
-`_ :: Maybe Number` (AnnotateExpression):
   has type `Maybe Number`
   is an expression
 

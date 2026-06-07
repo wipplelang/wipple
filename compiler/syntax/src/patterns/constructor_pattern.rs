@@ -109,6 +109,7 @@ impl Visit for ConstructorPattern {
                         source_node: node,
                         definition: definition_node,
                         substitutions,
+                        trace: None,
                     },
                 );
 
@@ -152,6 +153,7 @@ impl Visit for ConstructorPattern {
                             source_node: node,
                             definition: definition_node,
                             substitutions,
+                            trace: None,
                         },
                     );
                 } else {
@@ -169,6 +171,7 @@ impl Visit for ConstructorPattern {
                             source_node: node,
                             definition: definition_node,
                             substitutions,
+                            trace: None,
                         },
                     );
 

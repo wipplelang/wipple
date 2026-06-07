@@ -8,10 +8,6 @@ Facts (layer 2):
 `sports : ("Basketball", "Soccer", "Golf") :: Set _` (AssignmentStatement):
   has type `()`
 
-`("Basketball", "Soccer", "Golf") :: Set _` (AnnotateExpression):
-  has type `Set String`
-  is an expression
-
 `"Basketball"` (VisitAs):
   has type `String`
   is an expression

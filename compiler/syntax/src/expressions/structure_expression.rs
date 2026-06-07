@@ -150,6 +150,7 @@ impl Visit for StructureExpression {
                 source_node: node,
                 definition: definition_node,
                 substitutions,
+                trace: None,
             },
         );
 

@@ -1,6 +1,6 @@
 use crate::{
     db::{Db, Fact, Node},
-    render::{Render, RenderCtx},
+    render::{Render, RenderCtx, TyPlacement},
     typecheck::{solver::SubstitutionsKey, ty::Ty},
     visit::definitions::{Defined, TraitDefinition},
 };
@@ -110,7 +110,7 @@ impl Render for UnresolvedBound {
             ctx.string(" ");
 
             if let Some(ty) = self.parameters.get(parameter) {
-                ctx.ty(db, ty, false);
+                ctx.ty(db, ty, TyPlacement::BoundMultiple);
             } else {
                 ctx.code("_");
             }

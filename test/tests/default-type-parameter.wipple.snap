@@ -198,10 +198,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `foo :: value where (value :: X) (T value)`
 
-`foo :: Y` (AnnotateExpression):
-  has type `Y`
-  is an expression
-
 `Y` (NamedType):
   has type `Y`
   is a type

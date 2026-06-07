@@ -93,10 +93,12 @@ impl GraphBuilder {
                 let tys = group
                     .tys
                     .iter()
-                    .map(|ty| match update_type(db, &Ty::Constructed(ty.clone())) {
-                        Ty::Constructed(ty) => ty,
-                        _ => unreachable!(),
-                    })
+                    .map(
+                        |ty| match update_type(db, &Ty::Constructed(ty.clone()), true) {
+                            Ty::Constructed(ty) => ty,
+                            _ => unreachable!(),
+                        },
+                    )
                     .collect::<Vec<_>>();
 
                 if let Some((existing_nodes, existing_tys)) = groups.get_mut(&index) {

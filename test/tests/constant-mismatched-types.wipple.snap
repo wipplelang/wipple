@@ -21,13 +21,13 @@ Facts (layer 2):
 
 Feedback:
 
-`x :: Number` (conflicting-types)
+`"42"` (conflicting-types)
 
-  `x :: Number` is a `Number` or a `String`, but it can only be one of these.
+  `"42"` is a `Number` or a `String`, but it can only be one of these.
   
-  `x :: Number` must be the same type as `"42"` and `Number`; double-check these.
+  `"42"` must be the same type as `Number` and `x :: Number`; double-check these.
   
-  -  `"42"` is a `String`.
+  -  `x` is a `Number`.
 
 
 `Number` (conflicting-types)
@@ -36,7 +36,7 @@ Feedback:
   
   `Number` must be the same type as `"42"` and `x :: Number`; double-check these.
   
-  -  `"42"` is a `String`.
+  -  `x` is a `Number`.
 
 
 `"42"` (conflicting-types)
@@ -45,13 +45,11 @@ Feedback:
   
   `"42"` must be the same type as `Number` and `x :: Number`; double-check these.
   
-  -  `"42"` is a `String`.
+  -  `x` is a `Number`.
 
 
-`"42"` (conflicting-types)
+`x :: Number` (conflicting-types)
 
-  `"42"` is a `Number` or a `String`, but it can only be one of these.
+  `x :: Number` is a `Number` or a `String`, but it can only be one of these.
   
-  `"42"` must be the same type as `Number` and `x :: Number`; double-check these.
-  
-  -  `"42"` is a `String`.
+  `x :: Number` must be the same type as `"42"` and `Number`; double-check these.

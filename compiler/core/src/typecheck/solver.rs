@@ -3,7 +3,7 @@ use crate::{
     render::Render,
     typecheck::{
         bounds::Instance,
-        constraints::{Constraint, Constraints},
+        constraints::Constraints,
         groups::{Group, Groups},
         ty::{ConstructedTy, Ty},
     },
@@ -36,12 +36,12 @@ pub struct Substitutions {
 
 #[derive(Debug, Default)]
 pub struct Solver {
-    pub groups: Groups,
-    pub implied_instances: Vec<Instance>,
-    pub progress: bool,
     pub error: bool,
     pub constraints: Constraints,
     pub substitutions: Vec<Substitutions>,
+    pub(crate) groups: Groups,
+    pub(crate) implied_instances: Vec<Instance>,
+    pub(crate) progress: bool,
     iterations: usize,
 }
 
@@ -143,33 +143,15 @@ impl Solver {
         result
     }
 
-    pub fn unify_with_node(
-        &mut self,
-        db: &mut Db,
-        left: Node,
-        right: Node,
-        trace: Option<Box<dyn Constraint>>,
-    ) {
-        self.unify_inner(db, &Ty::Node(left), &Ty::Node(right), trace);
+    pub fn unify_with_node(&mut self, db: &mut Db, left: Node, right: Node) {
+        self.unify_inner(db, &Ty::Node(left), &Ty::Node(right));
     }
 
-    pub fn unify_with_ty(
-        &mut self,
-        db: &mut Db,
-        node: Node,
-        ty: ConstructedTy,
-        trace: Option<Box<dyn Constraint>>,
-    ) {
-        self.unify_inner(db, &Ty::Node(node), &Ty::Constructed(ty), trace);
+    pub fn unify_with_ty(&mut self, db: &mut Db, node: Node, ty: ConstructedTy) {
+        self.unify_inner(db, &Ty::Node(node), &Ty::Constructed(ty));
     }
 
-    fn unify_inner(
-        &mut self,
-        db: &mut Db,
-        left: &Ty,
-        right: &Ty,
-        trace: Option<Box<dyn Constraint>>,
-    ) {
+    fn unify_inner(&mut self, db: &mut Db, left: &Ty, right: &Ty) {
         if left == right {
             return;
         }
@@ -181,7 +163,7 @@ impl Solver {
             && let Some(original_right_node) = original_right_node
         {
             self.progress = true;
-            self.merge(db, original_left_node, original_right_node, trace);
+            self.merge(db, original_left_node, original_right_node);
             return;
         }
 
@@ -191,11 +173,11 @@ impl Solver {
         match (left, right) {
             (Ty::Node(left), Ty::Node(right)) => {
                 self.progress = true;
-                self.merge(db, left, right, trace);
+                self.merge(db, left, right);
             }
             (Ty::Node(node), Ty::Constructed(ty)) | (Ty::Constructed(ty), Ty::Node(node)) => {
                 self.progress = true;
-                self.insert(node, ty, trace);
+                self.insert(node, ty);
             }
             (Ty::Constructed(left), Ty::Constructed(right)) => {
                 let original_nodes = BTreeSet::from_iter(
@@ -208,11 +190,11 @@ impl Solver {
                     // Report conflicts on the original nodes
 
                     if let Some(original_left_node) = original_left_node {
-                        self.insert(original_left_node, right, trace.clone());
+                        self.insert(original_left_node, right);
                     }
 
                     if let Some(original_right_node) = original_right_node {
-                        self.insert(original_right_node, left, trace);
+                        self.insert(original_right_node, left);
                     }
                 }
             }
@@ -238,7 +220,7 @@ impl Solver {
                     continue;
                 }
 
-                self.unify_inner(db, left_child, right_child, None);
+                self.unify_inner(db, left_child, right_child);
             }
         }
 
@@ -255,22 +237,15 @@ impl Solver {
         db: &mut Db,
         left: &BTreeMap<Node, Ty>,
         right: &BTreeMap<Node, Ty>,
-        trace: Option<Box<dyn Constraint>>,
     ) {
         for (parameter, left) in left.iter() {
             if let Some(right) = right.get(parameter) {
-                self.unify_inner(db, left, right, trace.clone());
+                self.unify_inner(db, left, right);
             }
         }
     }
 
-    pub fn merge(
-        &mut self,
-        db: &mut Db,
-        left_node: Node,
-        right_node: Node,
-        trace: Option<Box<dyn Constraint>>,
-    ) {
+    pub fn merge(&mut self, db: &mut Db, left_node: Node, right_node: Node) {
         db.get_mut_or_default::<GroupedWith>(left_node)
             .0
             .insert(right_node);
@@ -298,7 +273,7 @@ impl Solver {
         if let Some(index) = index {
             let mut new_group = self.groups.remove_existing(index);
 
-            Groups::merge(group, &mut new_group, trace, |left, right| {
+            Groups::merge(group, &mut new_group, |left, right| {
                 self.unify_inner_constructed(
                     db,
                     left,
@@ -313,28 +288,16 @@ impl Solver {
         }
     }
 
-    pub fn insert(
-        &mut self,
-        node: Node,
-        mut ty: ConstructedTy,
-        trace: Option<Box<dyn Constraint>>,
-    ) {
+    pub fn insert(&mut self, node: Node, mut ty: ConstructedTy) {
         if ty.representative.is_none() {
             ty.representative = Some(node);
         }
 
-        let insert_into = |group: &mut Group| {
-            group.tys.push(ty);
-            if let Some(trace) = trace {
-                group.trace.push(trace);
-            }
-        };
-
         if let Some(index) = self.groups.index_of(node) {
-            insert_into(self.groups.get_mut(index));
+            self.groups.get_mut(index).tys.push(ty);
         } else {
             let mut group = Group::with_nodes([node]);
-            insert_into(&mut group);
+            group.tys.push(ty);
             self.groups.insert(group);
         }
     }

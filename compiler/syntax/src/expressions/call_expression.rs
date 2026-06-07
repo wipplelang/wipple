@@ -7,10 +7,10 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Fact, Node},
-    render::Render,
+    render::{Render, RenderCtx, TyPlacement},
     span::Span,
     typecheck::{
-        constraints::ty_constraint::TyConstraint,
+        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
         ty::{ConstructedTy, Ty},
     },
     visit::{Visit, Visitor, definitions::ConstantDefinition},
@@ -109,7 +109,8 @@ impl Visit for CallExpression {
                     inputs.iter().copied().map(Ty::Node).collect(),
                     Ty::Node(node),
                 ),
-            ),
+            )
+            .with_trace(CallConstraintTrace { node }),
         );
 
         db.insert(
@@ -130,6 +131,31 @@ impl Visit for CallExpression {
                 inputs,
             },
         );
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CallConstraintTrace {
+    node: Node,
+}
+
+#[typetag::serde]
+impl ConstraintTrace for CallConstraintTrace {
+    fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        vec![&mut self.node]
+    }
+
+    fn nodes(&self, _db: &Db) -> Vec<Node> {
+        vec![self.node]
+    }
+}
+
+impl Render for CallConstraintTrace {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+        ctx.node(self.node);
+        ctx.string(" returns a ");
+        ctx.ty(db, &Ty::Node(self.node), TyPlacement::InlineMultiple);
+        ctx.string(".");
     }
 }
 

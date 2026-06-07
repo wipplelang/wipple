@@ -5,7 +5,7 @@ use wipple_core::{
     db::Node,
     default_filter,
     facts::Syntax,
-    render::RenderCtx,
+    render::{RenderCtx, TyPlacement},
     span::Span,
     typecheck::ty::Ty,
     visit::{
@@ -192,7 +192,11 @@ impl Ide {
                 ctx.string(" :: ");
             }
 
-            ctx.ty(&self.result.db, &Ty::Constructed(ty.clone()), true);
+            ctx.ty(
+                &self.result.db,
+                &Ty::Constructed(ty.clone()),
+                TyPlacement::InlineFirst,
+            );
 
             let (rendered, _) = ctx.finish(&self.result.db, |db, segment| segment.plain_text(db));
 
@@ -410,7 +414,7 @@ impl Ide {
         let comments = wipple_queries::comments_without_links(&self.result.db, node)?;
 
         let mut writer = FeedbackWriter::default();
-        writer.comments(&self.result.db, &comments);
+        writer.comments(&self.result.db, node, &comments);
 
         let (rendered, _) =
             writer.finish(&self.result.db, |db, segment| segment.markdown(db, false));

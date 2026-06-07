@@ -48,6 +48,7 @@ pub fn check_for_overlapping_instances(
             source_node: instance.node,
             definition: instance.node,
             substitutions,
+            trace: None,
         }));
 
         solver.run_pass_until(db, Some(TypeId::of::<BoundConstraint>()));
@@ -68,12 +69,7 @@ pub fn check_for_overlapping_instances(
         for (left_instance, right_instance) in instances.into_iter().tuple_combinations() {
             let mut copy = solver.copy();
 
-            copy.unify_parameters(
-                db,
-                &left_instance.parameters,
-                &right_instance.parameters,
-                None,
-            );
+            copy.unify_parameters(db, &left_instance.parameters, &right_instance.parameters);
 
             if copy.error {
                 continue;

@@ -221,10 +221,6 @@ Facts (layer 2):
   has type `Set String`
   is an expression
 
-`collect "hi" :: Set _` (AnnotateExpression):
-  has type `Set String`
-  is an expression
-
 `"hi"` (StringExpression):
   has type `String`
   is an expression

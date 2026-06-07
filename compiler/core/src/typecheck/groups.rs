@@ -3,7 +3,6 @@ use crate::{
     render::{Render, RenderCtx},
     typecheck::{
         bounds::Instance,
-        constraints::Constraint,
         ty::{ConstructedTy, Ty},
     },
 };
@@ -14,7 +13,6 @@ use std::collections::BTreeMap;
 pub struct Group {
     pub nodes: Vec<Node>,
     pub tys: Vec<ConstructedTy>,
-    pub trace: Vec<Box<dyn Constraint>>,
 }
 
 impl Group {
@@ -94,16 +92,10 @@ impl Groups {
     pub fn merge(
         old_group: Group,
         new_group: &mut Group,
-        trace: Option<Box<dyn Constraint>>,
         unify: impl FnMut(&ConstructedTy, &ConstructedTy) -> bool,
     ) {
         new_group.nodes.extend(old_group.nodes);
         new_group.unify(old_group.tys, None, unify);
-        new_group.trace.extend(old_group.trace);
-
-        if let Some(trace) = trace {
-            new_group.trace.push(trace);
-        }
     }
 
     pub fn indices(&self) -> impl Iterator<Item = usize> {
@@ -111,6 +103,10 @@ impl Groups {
             .iter()
             .filter(|(_, slot)| slot.is_some())
             .map(|(index, _)| *index)
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Group> {
+        self.0.values_mut().flatten()
     }
 
     pub fn into_sorted_groups<K: Ord>(self, mut key: impl FnMut(Node) -> K) -> Vec<Group> {
@@ -174,16 +170,24 @@ pub fn types_of(db: &Db, node: Node) -> &[ConstructedTy] {
         .unwrap_or_default()
 }
 
-pub fn type_of(db: &Db, node: Node) -> Option<&ConstructedTy> {
-    let tys = types_of(db, node);
-    (tys.len() == 1).then(|| &tys[0])
-}
-
-pub fn update_type(db: &Db, ty: &Ty) -> Ty {
+pub fn update_type(db: &Db, ty: &Ty, ignore_conflicts: bool) -> Ty {
     ty.traverse(&mut |ty| {
-        if let Ty::Node(node) = ty
-            && let Some(latest) = type_of(db, *node)
-        {
+        if let Ty::Node(node) = ty {
+            let tys = types_of(db, *node);
+
+            let latest = if let [ty] = tys {
+                ty
+            } else if ignore_conflicts
+                && let Some(ty) = tys
+                    .iter()
+                    .find(|ty| ty.representative == Some(*node))
+                    .or(tys.first())
+            {
+                ty
+            } else {
+                return ty.clone();
+            };
+
             Ty::Constructed(latest.clone())
         } else {
             ty.clone()
@@ -193,6 +197,6 @@ pub fn update_type(db: &Db, ty: &Ty) -> Ty {
 
 pub fn update_instance(db: &Db, instance: &mut Instance) {
     for ty in instance.parameters.values_mut() {
-        *ty = update_type(db, ty);
+        *ty = update_type(db, ty, false);
     }
 }

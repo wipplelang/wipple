@@ -1,14 +1,10 @@
 use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank};
-use std::collections::{BTreeMap, BTreeSet};
-use wipple_core::{
-    db::Node,
-    facts::Syntax,
-    typecheck::{constraints::ty_constraint::TyConstraint, instantiate::Instantiated, ty::Ty},
-};
+use std::collections::BTreeSet;
+use wipple_core::{facts::Syntax, render::TyPlacement, typecheck::ty::Ty};
 use wipple_queries::{conflicting_types, fact, incomplete_type, unknown_type};
 use wipple_syntax::{
     checks::instances::OverlappingInstances,
-    types::{ExtraType, MissingTypes, type_parameter::TypeParameter},
+    types::{ExtraType, MissingTypes},
 };
 
 pub fn register(ctx: &mut FeedbackCtx<'_>) {
@@ -41,28 +37,21 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 writer.string(", ");
             }
 
-            let has_type_constraint = data
-                .trace
-                .iter()
-                .any(|constraint| constraint.downcast_ref::<TyConstraint>().is_some());
-
-            if has_type_constraint && data.nodes.len() == 1 && data.tys.len() == 2 {
-                writer.node(data.from);
-                writer.string(" isn't a ");
-                writer.ty(db, &Ty::Constructed(data.tys[1].clone()), true);
-                writer.string(".");
-                writer.line_break();
-            } else {
-                writer.node(data.from);
-                writer.string(" is a ");
-                writer.write_list("or a", |list| {
-                    for ty in &data.tys {
-                        let ty = ty.clone();
-                        list.add(move |writer| writer.ty(db, &Ty::Constructed(ty), true));
-                    }
-                });
-                writer.string(", but it can only be one of these.");
-            }
+            writer.node(data.from);
+            writer.string(" is a ");
+            writer.list("or a", |list| {
+                for ty in &data.tys {
+                    let ty = ty.clone();
+                    list.add(move |writer| {
+                        writer.ty(
+                            db,
+                            &Ty::Constructed(ty),
+                            wipple_core::render::TyPlacement::InlineFirst,
+                        )
+                    });
+                }
+            });
+            writer.string(", but it can only be one of these.");
 
             let from_span = db
                 .get(data.from)
@@ -79,10 +68,6 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 .collect::<Vec<_>>();
 
             if nodes.len() > 1 {
-                writer.line_break();
-                writer.node(data.from);
-                writer.string(" must be the same type as ");
-
                 // Only render visible nodes
                 let mut seen = BTreeSet::new();
                 let nodes = nodes
@@ -93,52 +78,20 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                     })
                     .collect::<Vec<_>>();
 
-                writer.write_list("and", |list| {
-                    for node in nodes {
-                        list.add(move |writer| writer.node(node));
-                    }
-                });
-                writer.string("; double-check these.");
-            }
-
-            writer.constraints(db, &data.trace);
-
-            let mut parameters_by_name = BTreeMap::<String, Vec<(Node, Node)>>::new();
-            for &node in &data.nodes {
-                let Some(instantiated) = db.get::<Instantiated>(node) else {
-                    continue;
-                };
-
-                let Some(Syntax(syntax)) = db.get::<Syntax>(instantiated.from) else {
-                    continue;
-                };
-
-                let Some(parameter) = db.ast(syntax).downcast_ref::<TypeParameter>() else {
-                    continue;
-                };
-
-                parameters_by_name
-                    .entry(parameter.name.to_string())
-                    .or_default()
-                    .push((instantiated.source_node, instantiated.from));
-            }
-
-            for entries in parameters_by_name.values() {
-                let Some(&(source, from)) = entries.first() else {
-                    continue;
-                };
-
-                if entries.len() <= 1 {
-                    continue;
+                if !nodes.is_empty() {
+                    writer.line_break();
+                    writer.node(data.from);
+                    writer.string(" must be the same type as ");
+                    writer.list("and", |list| {
+                        for node in nodes {
+                            list.add(move |writer| writer.node(node));
+                        }
+                    });
+                    writer.string("; double-check these.");
                 }
-
-                writer.line_break();
-                writer.string("-  ");
-                writer.node(from);
-                writer.string(" must have the same type everywhere in this use of ");
-                writer.node(source);
-                writer.string(".");
             }
+
+            writer.traces(db, &data.traces);
         })
         .register();
 
@@ -152,8 +105,12 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             writer.node(*node);
             writer.string(".");
             writer.line_break();
-            writer.string("Wipple determined this code is ");
-            writer.ty(db, &Ty::Constructed((*ty).clone()), true);
+            writer.string("Wipple determined this code is a ");
+            writer.ty(
+                db,
+                &Ty::Constructed((*ty).clone()),
+                TyPlacement::InlineMultiple,
+            );
             writer.string(", but it needs some more information for the ");
             writer.code("_");
             writer.string(" placeholders.");
@@ -186,7 +143,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 writer.node(parameter);
             } else {
                 writer.string(" is missing types for ");
-                writer.write_list("and", |list| {
+                writer.list("and", |list| {
                     for &parameter in parameters {
                         list.add(move |writer| writer.node(parameter));
                     }
@@ -216,7 +173,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
         .display(|_db, writer, node, OverlappingInstances(instances)| {
             writer.node(node);
             writer.string(" has multiple overlapping instances: ");
-            writer.write_list("and", |list| {
+            writer.list("and", |list| {
                 for &instance in instances {
                     list.add(move |writer| writer.node(instance));
                 }

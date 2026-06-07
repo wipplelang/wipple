@@ -126,4 +126,8 @@ Feedback:
   
   -  `2` is a `Number`.
   
-  -   The instance `Add` `()` `Number` `_` doesn't exist.
+  -  `show 1` returns a `()`.
+  
+  -  `show 1 + 2` returns a `_`.
+  
+  -  `show 1 + 2` requires the instance `Add` `()` `Number` `_`.

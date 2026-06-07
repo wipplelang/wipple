@@ -1096,7 +1096,6 @@ dependencies = [
 name = "wipple-feedback"
 version = "0.0.0"
 dependencies = [
- "regex",
  "wipple-core",
  "wipple-queries",
  "wipple-syntax",

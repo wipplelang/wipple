@@ -6,15 +6,12 @@ use crate::{
     visit::{TypeParameters, definitions::Defined},
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    ops::ControlFlow,
-};
+use std::{collections::BTreeMap, ops::ControlFlow};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Link {
     pub node: Node,
-    pub related: BTreeSet<Node>,
+    pub related: Vec<Node>,
     pub tys: Vec<ConstructedTy>,
 }
 
@@ -32,7 +29,7 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
             name.clone(),
             Link {
                 node: definition_node,
-                related: BTreeSet::new(),
+                related: Vec::new(),
                 tys: Vec::new(),
             },
         );
@@ -55,15 +52,7 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
     }
 
     for (name, name_node) in nodes {
-        let Some(instantiated_node) =
-            db.for_each_fact::<Instantiated, _>(&mut |_, node, instantiated| {
-                if instantiated.from == name_node && instantiated.source_node == source_node {
-                    ControlFlow::Break(node)
-                } else {
-                    ControlFlow::Continue(())
-                }
-            })
-        else {
+        let Some(instantiated_node) = instantiated_node_for(db, name_node, source_node) else {
             continue;
         };
 
@@ -71,34 +60,50 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
             continue;
         };
 
-        // Prefer using the first node from the source that was grouped with
-        // `instantiated`
-        let node = db
-            .get(instantiated_node)
-            .and_then(|GroupedWith(nodes)| {
-                nodes
-                    .iter()
-                    .copied()
-                    .find(|&node| !db.contains::<Instantiated>(node))
-            })
-            .or_else(|| {
-                group
-                    .nodes
-                    .iter()
-                    .copied()
-                    .find(|&node| db.contains::<Syntax>(node))
-            })
-            .unwrap_or(group.nodes[0]);
-
         links.insert(
             name,
             Link {
-                node,
-                related: BTreeSet::from_iter(group.nodes.iter().copied()),
+                node: instantiated_node,
+                related: group.nodes.clone(),
                 tys: group.tys.clone(),
             },
         );
     }
 
     links
+}
+
+pub fn instantiated_node_for(db: &Db, parameter: Node, source_node: Node) -> Option<Node> {
+    let instantiated_node = db.for_each_fact::<Instantiated, _>(&mut |_, node, instantiated| {
+        if instantiated.from == parameter && instantiated.source_node == source_node {
+            ControlFlow::Break(node)
+        } else {
+            ControlFlow::Continue(())
+        }
+    })?;
+
+    let Some(Typed(Some(group))) = db.get(instantiated_node) else {
+        return None;
+    };
+
+    // Prefer using the first node from the source that was grouped with
+    // `instantiated`
+    let node = db
+        .get(instantiated_node)
+        .and_then(|GroupedWith(nodes)| {
+            nodes
+                .iter()
+                .copied()
+                .find(|&node| !db.contains::<Instantiated>(node))
+        })
+        .or_else(|| {
+            group
+                .nodes
+                .iter()
+                .copied()
+                .find(|&node| db.contains::<Syntax>(node))
+        })
+        .unwrap_or(group.nodes[0]);
+
+    Some(node)
 }

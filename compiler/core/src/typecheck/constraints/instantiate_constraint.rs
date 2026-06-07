@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, Node},
     typecheck::{
-        constraints::{Constraint, RunResult, Solver},
+        constraints::{Constraint, ConstraintTrace, RunResult, Solver},
         instantiate::InstantiateCtx,
         solver::SubstitutionsKey,
     },
@@ -14,12 +14,17 @@ pub struct InstantiateConstraint {
     pub source_node: Node,
     pub definition: Node,
     pub substitutions: SubstitutionsKey,
+    pub trace: Option<Box<dyn ConstraintTrace>>,
 }
 
 #[typetag::serde]
 impl Constraint for InstantiateConstraint {
     fn node(&self) -> Node {
         self.source_node
+    }
+
+    fn trace(&self) -> Option<Box<dyn ConstraintTrace>> {
+        self.trace.clone()
     }
 
     fn instantiate(
@@ -39,6 +44,7 @@ impl Constraint for InstantiateConstraint {
             source_node: ctx.source_node,
             definition: self.definition,
             substitutions,
+            trace: ctx.instantiate_trace(db, solver, &self.trace),
         }))
     }
 

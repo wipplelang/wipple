@@ -1,7 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
-  has bound(s) `Describe` `_` (unresolved)
+  has bound(s) `Describe` (`Number` or `String`) (unresolved)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
@@ -50,11 +50,11 @@ Feedback:
   
   `when True {⋯}` must be the same type as `"hi"` and `42`; double-check these.
   
+  -  Display a value on the screen.
+  
   -  `42` is a `Number`.
   
   -  `"hi"` is a `String`.
-  
-  -  `value` must have the same type everywhere in this use of `show`.
 
 
 `42` (conflicting-types)
@@ -63,11 +63,24 @@ Feedback:
   
   `42` must be the same type as `"hi"` and `when True {⋯}`; double-check these.
   
+  -  Display a value on the screen.
+  
   -  `42` is a `Number`.
   
   -  `"hi"` is a `String`.
+
+
+`"hi"` (conflicting-types)
+
+  `"hi"` is a `Number` or a `String`, but it can only be one of these.
   
-  -  `value` must have the same type everywhere in this use of `show`.
+  `"hi"` must be the same type as `42` and `when True {⋯}`; double-check these.
+  
+  -  Display a value on the screen.
+  
+  -  `42` is a `Number`.
+  
+  -  `"hi"` is a `String`.
 
 
 `42` (conflicting-types)
@@ -76,11 +89,11 @@ Feedback:
   
   `42` must be the same type as `"hi"` and `when True {⋯}`; double-check these.
   
+  -  Display a value on the screen.
+  
   -  `42` is a `Number`.
   
   -  `"hi"` is a `String`.
-  
-  -  `value` must have the same type everywhere in this use of `show`.
 
 
 `"hi"` (conflicting-types)
@@ -89,21 +102,8 @@ Feedback:
   
   `"hi"` must be the same type as `42` and `when True {⋯}`; double-check these.
   
-  -  `42` is a `Number`.
-  
-  -  `"hi"` is a `String`.
-  
-  -  `value` must have the same type everywhere in this use of `show`.
-
-
-`"hi"` (conflicting-types)
-
-  `"hi"` is a `Number` or a `String`, but it can only be one of these.
-  
-  `"hi"` must be the same type as `42` and `when True {⋯}`; double-check these.
+  -  Display a value on the screen.
   
   -  `42` is a `Number`.
   
   -  `"hi"` is a `String`.
-  
-  -  `value` must have the same type everywhere in this use of `show`.

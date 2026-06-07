@@ -41,9 +41,9 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             }
         })
         .show_graph()
-        .display(|db, writer, _, error| {
-            writer.comments(db, &error.comments);
-            writer.constraints(db, &error.trace);
+        .display(|db, writer, node, error| {
+            writer.comments(db, node, &error.comments);
+            writer.traces(db, &error.traces);
         })
         .register();
 }

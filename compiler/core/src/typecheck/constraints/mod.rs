@@ -7,6 +7,7 @@ pub mod ty_constraint;
 
 use crate::{
     db::{Db, Node},
+    render::Render,
     typecheck::{
         constraints::{
             bound_constraint::BoundConstraint, default_constraint::DefaultConstraint,
@@ -20,7 +21,7 @@ use crate::{
 use dyn_clone::DynClone;
 use std::{
     any::{Any, TypeId},
-    collections::{BTreeMap, VecDeque},
+    collections::{BTreeMap, BTreeSet, VecDeque},
     fmt::Debug,
 };
 
@@ -33,6 +34,10 @@ pub enum RunResult {
 #[typetag::serde]
 pub trait Constraint: Debug + DynClone + Any + Send + Sync {
     fn node(&self) -> Node;
+
+    fn trace(&self) -> Option<Box<dyn ConstraintTrace>> {
+        None
+    }
 
     fn instantiate(
         &self,
@@ -55,6 +60,30 @@ impl dyn Constraint {
         (self as &mut dyn Any).downcast_mut()
     }
 }
+
+#[typetag::serde]
+pub trait ConstraintTrace: Debug + DynClone + Any + Send + Sync + Render {
+    fn nodes_mut(&mut self) -> Vec<&mut Node>;
+
+    fn nodes(&self, db: &Db) -> Vec<Node>;
+
+    fn allow_hidden_nodes(&self) -> bool {
+        true
+    }
+
+    fn source_node_mut(&mut self) -> Option<&mut Node> {
+        None
+    }
+
+    fn contains(&mut self, db: &Db, nodes: &BTreeSet<Node>) -> bool {
+        BTreeSet::from_iter(self.nodes(db))
+            .intersection(nodes)
+            .next()
+            .is_some()
+    }
+}
+
+dyn_clone::clone_trait_object!(ConstraintTrace);
 
 static CONSTRAINT_ORDER: &[TypeId] = &[
     TypeId::of::<InstantiateConstraint>(),
@@ -101,9 +130,13 @@ impl Constraints {
     pub fn run_until(&mut self, db: &mut Db, solver: &mut Solver, stop: Option<TypeId>) {
         let mut requeued_constraints = Vec::new();
         loop {
-            let Some(constraint) = self.dequeue(stop) else {
+            let Some((order, constraint)) = self.dequeue(stop) else {
                 break;
             };
+
+            if let Some(trace) = constraint.trace() {
+                db.traces.push((order, trace));
+            }
 
             match constraint.run(db, solver) {
                 RunResult::None => {}
@@ -125,8 +158,8 @@ impl Constraints {
         }
     }
 
-    fn dequeue(&mut self, stop: Option<TypeId>) -> Option<Box<dyn Constraint>> {
-        for &type_id in CONSTRAINT_ORDER {
+    fn dequeue(&mut self, stop: Option<TypeId>) -> Option<(usize, Box<dyn Constraint>)> {
+        for (order, &type_id) in CONSTRAINT_ORDER.iter().enumerate() {
             if stop.is_some_and(|stop| type_id == stop) {
                 return None;
             }
@@ -136,7 +169,7 @@ impl Constraints {
                 .get_mut(&type_id)
                 .and_then(|constraints| constraints.pop_front())
             {
-                return Some(constraint);
+                return Some((order, constraint));
             }
         }
 

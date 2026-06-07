@@ -64,6 +64,7 @@ impl Visit for SetPattern {
         }
 
         db.graph.replace(node, variable_definition_node);
+
         db.insert(variable_definition_node, IsMutated);
 
         visitor.codegen(

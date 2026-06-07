@@ -83,7 +83,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(String -> Boolean) -> (List String) -> Sequence String`
   is an expression
-  resolved to 1 definition(s): `filter :: (element -> Boolean) -> container -> Sequence element where (As-Sequence container element)`
+  resolved to 1 definition(s): `filter :: (condition :: (element -> Boolean)) -> container -> Sequence element where (As-Sequence container element)`
 
 `filter (name -> count name < 5)` (CallExpression):
   has type `Sequence String`

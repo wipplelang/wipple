@@ -47,3 +47,11 @@ Feedback:
   Missing `times` after `5`.
   
   Try rewriting this code as `(`5` times)`, or double-check your parentheses.
+  
+  -  Run code repeatedly.
+  
+  -  `5` is a `Number`.
+  
+  -  `repeat 5 {⋯}` returns a `_`.
+  
+  -  `show "Hello, world!"` returns a `()`.

@@ -7,7 +7,6 @@ edition = "2024"
 workspace = true
 
 [dependencies]
-regex = "1"
 wipple-core = { path = "../core" }
 wipple-queries = { path = "../queries" }
 wipple-syntax = { path = "../syntax" }

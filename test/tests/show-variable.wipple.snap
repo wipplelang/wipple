@@ -51,3 +51,7 @@ Feedback:
   
   You can't display `my-variable` on the screen or use it in placeholders because
   it can't be converted into a string.
+  
+  -  Display a value on the screen.
+  
+  -  `my-variable` is `Cannot-Be-Shown`.

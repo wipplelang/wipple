@@ -89,7 +89,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List element)` `element` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(element -> Boolean) -> (List element) -> Sequence element`
   is an expression
-  resolved to 1 definition(s): `filter :: (element -> Boolean) -> container -> Sequence element where (As-Sequence container element)`
+  resolved to 1 definition(s): `filter :: (condition :: (element -> Boolean)) -> container -> Sequence element where (As-Sequence container element)`
 
 `filter (item -> (seen . (not contains?) item) and (do {⋯}))` (ExpressionStatement):
   has type `(List element) -> Sequence element`

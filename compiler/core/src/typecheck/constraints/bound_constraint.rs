@@ -4,7 +4,8 @@ use crate::{
     typecheck::{
         bounds::{Bound, Bounds, Instance, Instances, ResolvedBound, UnresolvedBound},
         constraints::{
-            Constraint, RunResult, Solver, instantiate_constraint::InstantiateConstraint,
+            Constraint, ConstraintTrace, RunResult, Solver,
+            instantiate_constraint::InstantiateConstraint,
         },
         instantiate::InstantiateCtx,
         ty::Ty,
@@ -38,11 +39,21 @@ impl Render for IsBound {}
 pub struct BoundConstraint {
     pub node: Node,
     pub bound: Bound,
+    pub trace: Option<Box<dyn ConstraintTrace>>,
 }
 
 impl BoundConstraint {
     pub fn new(node: Node, bound: Bound) -> Self {
-        BoundConstraint { node, bound }
+        BoundConstraint {
+            node,
+            bound,
+            trace: None,
+        }
+    }
+
+    pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
+        self.trace = Some(Box::new(trace));
+        self
     }
 }
 
@@ -50,6 +61,10 @@ impl BoundConstraint {
 impl Constraint for BoundConstraint {
     fn node(&self) -> Node {
         self.node
+    }
+
+    fn trace(&self) -> Option<Box<dyn ConstraintTrace>> {
+        self.trace.clone()
     }
 
     fn instantiate(
@@ -72,7 +87,11 @@ impl Constraint for BoundConstraint {
             ..self.bound
         };
 
-        Some(Box::new(BoundConstraint { node, bound }))
+        Some(Box::new(BoundConstraint {
+            node,
+            bound,
+            trace: ctx.instantiate_trace(db, solver, &self.trace),
+        }))
     }
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
@@ -130,6 +149,7 @@ impl Constraint for BoundConstraint {
                     source_node: resolved_node,
                     definition: instance.node,
                     substitutions,
+                    trace: None,
                 }));
 
                 // Run the solver (excluding bounds) to populate `replacements`
@@ -171,20 +191,10 @@ impl Constraint for BoundConstraint {
 
                 copy.error = false;
 
-                copy.unify_parameters(
-                    db,
-                    &instance_parameters,
-                    &bound_parameters,
-                    Some(self.clone()),
-                );
+                copy.unify_parameters(db, &instance_parameters, &bound_parameters);
 
                 if !copy.error {
-                    copy.unify_parameters(
-                        db,
-                        &instance_inferred,
-                        &bound_inferred,
-                        Some(self.clone()),
-                    );
+                    copy.unify_parameters(db, &instance_inferred, &bound_inferred);
 
                     let (_, parameters) = copy.get_substitutions(substitutions);
 

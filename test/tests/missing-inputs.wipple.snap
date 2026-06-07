@@ -16,11 +16,11 @@ Feedback:
 
   Missing information for the type of `show`.
   
-  Wipple determined this code is `_ -> ()`, but it needs some more information for the `_` placeholders.
+  Wipple determined this code is a `_ -> ()`, but it needs some more information for the `_` placeholders.
 
 
 `show` (incomplete-type)
 
   Missing information for the type of `show`.
   
-  Wipple determined this code is `_ -> ()`, but it needs some more information for the `_` placeholders.
+  Wipple determined this code is a `_ -> ()`, but it needs some more information for the `_` placeholders.

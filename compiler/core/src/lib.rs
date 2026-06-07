@@ -158,7 +158,9 @@ pub fn compile<'a, K: Ord>(
 }
 
 pub fn set_groups<K: Ord>(db: &mut Db, solver: Solver, mut key: impl FnMut(&Db, Node) -> K) {
-    for group in solver.into_sorted_groups(|node| key(db, node)) {
+    let groups = solver.into_sorted_groups(|node| key(db, node));
+
+    for group in groups {
         if group.nodes.is_empty() {
             continue;
         }

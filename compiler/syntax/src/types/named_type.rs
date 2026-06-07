@@ -96,6 +96,7 @@ impl Visit for NamedType {
                 source_node: node,
                 definition: type_definition_node,
                 substitutions,
+                trace: None,
             },
         );
     }

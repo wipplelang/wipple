@@ -4,16 +4,19 @@ use std::collections::BTreeMap;
 use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
+    render::{Comments, Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
         bounds::Bounds,
         constraints::{
-            group_constraint::GroupConstraint, instantiate_constraint::InstantiateConstraint,
+            ConstraintTrace, group_constraint::GroupConstraint,
+            instantiate_constraint::InstantiateConstraint,
         },
     },
+    util::{get_links, instantiated_node_for},
     visit::{
-        IsCaptured, IsMutated, Visit, Visitor,
-        definitions::{ConstantDefinition, VariableDefinition},
+        IsCaptured, IsMutated, TypeParameters, Visit, Visitor,
+        definitions::{ConstantDefinition, Defined, VariableDefinition},
     },
 };
 use wipple_parse::{
@@ -76,6 +79,7 @@ impl Visit for VariableExpression {
                 }
 
                 db.graph.replace(node, definition_node);
+
                 visitor.constraint(db, GroupConstraint::new(node, definition_node));
                 visitor.codegen(
                     db,
@@ -98,6 +102,10 @@ impl Visit for VariableExpression {
                         source_node: node,
                         definition: definition_node,
                         substitutions,
+                        trace: Some(Box::new(ConstantConstraintTrace {
+                            definition: definition_node,
+                            node,
+                        })),
                     },
                 );
 
@@ -112,6 +120,58 @@ impl Visit for VariableExpression {
                 );
             }
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ConstantConstraintTrace {
+    definition: Node,
+    node: Node,
+}
+
+#[typetag::serde]
+impl ConstraintTrace for ConstantConstraintTrace {
+    fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        vec![&mut self.node]
+    }
+
+    fn nodes(&self, db: &Db) -> Vec<Node> {
+        let TypeParameters(parameters) = db.get(self.definition).cloned().unwrap_or_default();
+
+        [self.node, self.definition]
+            .into_iter()
+            .chain(
+                parameters
+                    .into_iter()
+                    .filter_map(|parameter| instantiated_node_for(db, parameter, self.node)),
+            )
+            .collect()
+    }
+
+    fn source_node_mut(&mut self) -> Option<&mut Node> {
+        Some(&mut self.node)
+    }
+}
+
+impl Render for ConstantConstraintTrace {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+        let Some(Defined(definition)) = db.get(self.definition) else {
+            return;
+        };
+
+        let Some(definition) = definition.downcast_ref::<ConstantDefinition>() else {
+            return;
+        };
+
+        ctx.comments(
+            db,
+            self.definition,
+            &Comments {
+                nodes: Default::default(),
+                comments: definition.comments.clone(),
+                links: get_links(db, self.definition, self.node),
+            },
+        );
     }
 }
 

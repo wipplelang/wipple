@@ -436,7 +436,7 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
             };
 
             let mut writer = FeedbackWriter::default();
-            writer.comments(db, &documentation.comments);
+            writer.comments(db, node, &documentation.comments);
             let (docs, _) = writer.finish(db, |db, segment| segment.markdown(db, false));
 
             items.insert(

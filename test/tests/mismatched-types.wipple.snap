@@ -7,10 +7,6 @@ Facts (layer 2):
   has type `Number` or `String`
   is an expression
 
-`42 :: String` (AnnotateExpression):
-  has type `Number` or `String`
-  is an expression
-
 `String` (NamedType):
   has type `Number` or `String`
   is a type
@@ -19,24 +15,6 @@ Facts (layer 2):
 
 
 Feedback:
-
-`(42 :: String)` (conflicting-types)
-
-  `(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
-  
-  `(42 :: String)` must be the same type as `42`, `42 :: String`, and `String`; double-check these.
-  
-  -  `42` is a `Number`.
-
-
-`42` (conflicting-types)
-
-  `42` is a `Number` or a `String`, but it can only be one of these.
-  
-  `42` must be the same type as `42 :: String`, `String`, and `(42 :: String)`; double-check these.
-  
-  -  `42` is a `Number`.
-
 
 `42` (conflicting-types)
 
@@ -56,10 +34,28 @@ Feedback:
   -  `42` is a `Number`.
 
 
+`42` (conflicting-types)
+
+  `42` is a `Number` or a `String`, but it can only be one of these.
+  
+  `42` must be the same type as `42 :: String`, `String`, and `(42 :: String)`; double-check these.
+  
+  -  `42` is a `Number`.
+
+
 `String` (conflicting-types)
 
   `String` is a `Number` or a `String`, but it can only be one of these.
   
   `String` must be the same type as `42`, `42 :: String`, and `(42 :: String)`; double-check these.
+  
+  -  `42` is a `Number`.
+
+
+`(42 :: String)` (conflicting-types)
+
+  `(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
+  
+  `(42 :: String)` must be the same type as `42`, `42 :: String`, and `String`; double-check these.
   
   -  `42` is a `Number`.

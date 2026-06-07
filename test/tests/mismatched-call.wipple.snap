@@ -53,7 +53,7 @@ accepts-text (1 + 2)` (ExpressionStatement):
   is an expression
 
 `1 + 2` (ConstructorExpression):
-  has bound(s) `Add` `Number` `Number` `_` (resolved as `instance (Add Number Number Number)`)
+  has bound(s) `Add` `Number` `Number` (`Number` or `String`) (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
@@ -70,15 +70,23 @@ Feedback:
 
   `1 + 2` is a `Number` or a `String`, but it can only be one of these.
   
-  `1 + 2` must be the same type as ; double-check these.
+  -  `1` is a `Number`.
   
-  -  `(infer sum)` must have the same type everywhere in this use of `_`.
+  -  `2` is a `Number`.
+  
+  -  `1 + 2` returns a `Number` or `String`.
+  
+  -  `1 + 2` requires the instance `Add` `Number` `Number` (`Number` or `String`).
 
 
 `1 + 2` (conflicting-types)
 
   `1 + 2` is a `Number` or a `String`, but it can only be one of these.
   
-  `1 + 2` must be the same type as ; double-check these.
+  -  `1` is a `Number`.
   
-  -  `(infer sum)` must have the same type everywhere in this use of `_`.
+  -  `2` is a `Number`.
+  
+  -  `1 + 2` returns a `Number` or `String`.
+  
+  -  `1 + 2` requires the instance `Add` `Number` `Number` (`Number` or `String`).

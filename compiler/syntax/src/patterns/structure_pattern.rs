@@ -136,6 +136,7 @@ impl Visit for StructurePattern {
                 source_node: node,
                 definition: definition_node,
                 substitutions,
+                trace: None,
             },
         );
 

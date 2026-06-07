@@ -6,6 +6,9 @@ tasks:
   compiler:
     cmds:
       - cargo run -- {{.CLI_ARGS}}
+  compiler:instruments:
+    cmds:
+      - cargo instruments --release -t cpu -- {{.CLI_ARGS}}
   test:
     cmds:
       - node {{.CLI_ARGS}} test

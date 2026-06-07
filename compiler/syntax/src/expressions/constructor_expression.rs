@@ -5,12 +5,13 @@ use wipple_core::{
     anyhow,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
+    render::{Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
-        bounds::{Bound, Bounds},
+        bounds::{Bound, Bounds, UnresolvedBound},
         constraints::{
-            bound_constraint::BoundConstraint, instantiate_constraint::InstantiateConstraint,
-            ty_constraint::TyConstraint,
+            ConstraintTrace, bound_constraint::BoundConstraint,
+            instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint,
         },
         groups::Typed,
         ty::{ConstructedTy, Ty},
@@ -53,14 +54,14 @@ impl Visit for ConstructorExpression {
 
         #[derive(Debug)]
         enum ConstructorDefinition {
-            Trait,
+            Trait(TraitDefinition),
             Variant(VariantConstructorDefinition),
             Marker,
         }
 
         let definition = visitor.resolve_matching(db, &self.constructor, node, |_, definition| {
-            if definition.downcast_ref::<TraitDefinition>().is_some() {
-                return Some(ConstructorDefinition::Trait);
+            if let Some(definition) = definition.downcast_ref::<TraitDefinition>() {
+                return Some(ConstructorDefinition::Trait(definition.clone()));
             }
 
             if let Some(definition) = definition.downcast_ref::<VariantConstructorDefinition>() {
@@ -83,10 +84,15 @@ impl Visit for ConstructorExpression {
 
         db.graph.edge(definition_node, node, "instantiated");
 
-        let substitutions = visitor.substitutions(
-            BTreeMap::from([(definition_node, node)]),
-            Default::default(),
-        );
+        let mut parameters = BTreeMap::from([(definition_node, node)]);
+        if let ConstructorDefinition::Trait(trait_definition) = &definition {
+            for &parameter in &trait_definition.parameters {
+                let node = db.node();
+                parameters.insert(parameter, node);
+            }
+        }
+
+        let substitutions = visitor.substitutions(parameters.clone(), Default::default());
 
         visitor.constraint(
             db,
@@ -94,11 +100,12 @@ impl Visit for ConstructorExpression {
                 source_node: node,
                 definition: definition_node,
                 substitutions,
+                trace: None,
             },
         );
 
         match definition {
-            ConstructorDefinition::Trait => {
+            ConstructorDefinition::Trait(_) => {
                 visitor.constraint(
                     db,
                     BoundConstraint::new(
@@ -111,7 +118,12 @@ impl Visit for ConstructorExpression {
                             substitutions,
                             is_optional: false,
                         },
-                    ),
+                    )
+                    .with_trace(TraitConstraintTrace {
+                        node,
+                        trait_node: definition_node,
+                        trait_parameters: parameters,
+                    }),
                 );
 
                 visitor.codegen(
@@ -169,6 +181,48 @@ impl Visit for ConstructorExpression {
                 visitor.codegen(db, node, ConstructorExpressionCodegen::Marker { node });
             }
         }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct TraitConstraintTrace {
+    node: Node,
+    trait_node: Node,
+    trait_parameters: BTreeMap<Node, Node>,
+}
+
+#[typetag::serde]
+impl ConstraintTrace for TraitConstraintTrace {
+    fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        [&mut self.node]
+            .into_iter()
+            .chain(self.trait_parameters.values_mut())
+            .collect()
+    }
+
+    fn nodes(&self, _db: &Db) -> Vec<Node> {
+        [self.node]
+            .into_iter()
+            .chain(self.trait_parameters.values().copied())
+            .collect()
+    }
+}
+
+impl Render for TraitConstraintTrace {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+        let bound = UnresolvedBound {
+            trait_node: self.trait_node,
+            parameters: self
+                .trait_parameters
+                .iter()
+                .map(|(&parameter, &node)| (parameter, Ty::Node(node)))
+                .collect(),
+        };
+
+        ctx.node(self.node);
+        ctx.string(" requires the instance ");
+        bound.render_into(db, ctx);
+        ctx.string(".");
     }
 }
 

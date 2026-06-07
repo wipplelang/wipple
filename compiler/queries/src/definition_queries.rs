@@ -1,4 +1,4 @@
-use crate::{Comments, comments_without_links};
+use crate::comments_without_links;
 use levenshtein::levenshtein;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -7,6 +7,7 @@ use std::{
 use wipple_core::{
     db::{Db, Node},
     facts::{Parent, Syntax},
+    render::Comments,
     span::Str,
     visit::{
         Resolved, Scope,

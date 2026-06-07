@@ -43,6 +43,20 @@ Facts (layer 2):
 
 Feedback:
 
+`x` (conflicting-types)
+
+  `x` is a `a` or a `b`, but it can only be one of these.
+  
+  `x` must be the same type as `x`, `a`, and `b`; double-check these.
+
+
+`x` (conflicting-types)
+
+  `x` is a `a` or a `b`, but it can only be one of these.
+  
+  `x` must be the same type as `x`, `a`, and `b`; double-check these.
+
+
 `a` (conflicting-types)
 
   `a` is a `a` or a `b`, but it can only be one of these.
@@ -55,17 +69,3 @@ Feedback:
   `b` is a `a` or a `b`, but it can only be one of these.
   
   `b` must be the same type as `x`, `x`, and `a`; double-check these.
-
-
-`x` (conflicting-types)
-
-  `x` is a `a` or a `b`, but it can only be one of these.
-  
-  `x` must be the same type as `x`, `a`, and `b`; double-check these.
-
-
-`x` (conflicting-types)
-
-  `x` is a `a` or a `b`, but it can only be one of these.
-  
-  `x` must be the same type as `x`, `a`, and `b`; double-check these.

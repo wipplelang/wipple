@@ -1,26 +1,16 @@
-use std::collections::BTreeMap;
 use wipple_core::{
     db::{Db, Node},
-    span::Str,
+    render::Comments,
     typecheck::{
         bounds::{Bounds, ResolvedBound},
-        constraints::Constraint,
-        groups::Typed,
-        ty::Ty,
+        constraints::ConstraintTrace,
     },
-    util::{Link, get_links},
+    util::get_links,
     visit::{
         Resolved,
         definitions::{Defined, InstanceDefinition},
     },
 };
-
-#[derive(Debug, Clone)]
-pub struct Comments {
-    pub nodes: Vec<Node>,
-    pub comments: Vec<Str>,
-    pub links: BTreeMap<Str, Link>,
-}
 
 pub fn comments_without_links(db: &Db, node: Node) -> Option<Comments> {
     let definition_node = db
@@ -57,7 +47,7 @@ pub struct ErrorInstance<'a> {
     pub bound: &'a ResolvedBound,
     pub is_default: bool,
     pub comments: Comments,
-    pub trace: Vec<Box<dyn Constraint>>,
+    pub traces: Vec<Box<dyn ConstraintTrace>>,
 }
 
 pub fn error_instances<'a>(db: &'a Db, node: Node) -> Vec<ErrorInstance<'a>> {
@@ -87,31 +77,25 @@ pub fn error_instances<'a>(db: &'a Db, node: Node) -> Vec<ErrorInstance<'a>> {
                 links: get_links(db, bound.instance.node, bound.resolved_node),
             };
 
-            let trace = bound
-                .instance_parameters
-                .iter()
-                .filter_map(|(_, ty)| {
-                    let Ty::Node(node) = ty else {
-                        return None;
-                    };
+            let mut traces = db
+                .traces_for(comments.nodes.iter().copied().chain(
+                    comments.links.values().flat_map(|link| {
+                        [link.node].into_iter().chain(link.related.iter().copied())
+                    }),
+                ))
+                .collect::<Vec<_>>();
 
-                    let Typed(Some(group)) = db.get(*node)? else {
-                        return None;
-                    };
-
-                    comments.nodes.extend(group.nodes.iter().copied());
-
-                    Some(&group.trace)
-                })
-                .flatten()
-                .cloned()
-                .collect();
+            comments.nodes.extend(
+                traces
+                    .iter_mut()
+                    .flat_map(|trace| trace.nodes_mut().into_iter().map(|&mut node| node)),
+            );
 
             Some(ErrorInstance {
                 bound,
                 is_default: instance.default,
                 comments,
-                trace,
+                traces,
             })
         })
         .collect()

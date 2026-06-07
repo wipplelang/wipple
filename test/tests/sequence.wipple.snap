@@ -218,10 +218,6 @@ Facts (layer 2):
   has type `Box String`
   is an expression
 
-`_ :: Box String` (AnnotateExpression):
-  has type `Box String`
-  is an expression
-
 `Box String` (NamedType):
   has type `Box String`
   is a type
@@ -248,10 +244,6 @@ Facts (layer 2):
   has type `String` or `Number`
   is a pattern
 
-`_ :: Number` (AnnotatePattern):
-  has type `String` or `Number`
-  is a pattern
-
 `Number` (NamedType):
   has type `String` or `Number`
   is a type
@@ -269,7 +261,7 @@ Facts (layer 2):
   is an expression
 
 `filter` (VariableExpression):
-  has bound(s) `As-Sequence` `(Box String)` `_` (resolved as `instance (As-Sequence (Box value) value)`)
+  has bound(s) `As-Sequence` `(Box String)` (`String` or `Number`) (resolved as `instance (As-Sequence (Box value) value)`)
   has type `(String -> Boolean) -> (Box String) -> Sequence String`
   is an expression
   resolved to 1 definition(s): `filter :: (item -> Boolean) -> collection -> Sequence item where (As-Sequence collection item)`
@@ -292,30 +284,17 @@ Facts (layer 2):
 
 Feedback:
 
-`String` (conflicting-types)
-
-  `String` is a `String` or a `Number`, but it can only be one of these.
-  
-  `String` must be the same type as `_`, `_ :: Number`, and `Number`; double-check these.
-  
-  -  `(infer element)` must have the same type everywhere in this use of `_`.
-  
-  -  `item` must have the same type everywhere in this use of `filter`.
-  
-  -  `value` must have the same type everywhere in this use of `_`.
-
-
 `_` (conflicting-types)
 
   `_` is a `String` or a `Number`, but it can only be one of these.
   
   `_` must be the same type as `_ :: Number`, `String`, and `Number`; double-check these.
   
-  -  `(infer element)` must have the same type everywhere in this use of `_`.
+  -  `filter` is a `(item -> Boolean) -> collection -> Sequence item`.
   
-  -  `item` must have the same type everywhere in this use of `filter`.
+  -  `_` was annotated with the type `Box String`.
   
-  -  `value` must have the same type everywhere in this use of `_`.
+  -  `_` was annotated with the type `Number`.
 
 
 `_ :: Number` (conflicting-types)
@@ -324,11 +303,24 @@ Feedback:
   
   `_ :: Number` must be the same type as `_`, `String`, and `Number`; double-check these.
   
-  -  `(infer element)` must have the same type everywhere in this use of `_`.
+  -  `filter` is a `(item -> Boolean) -> collection -> Sequence item`.
   
-  -  `item` must have the same type everywhere in this use of `filter`.
+  -  `_` was annotated with the type `Box String`.
   
-  -  `value` must have the same type everywhere in this use of `_`.
+  -  `_` was annotated with the type `Number`.
+
+
+`String` (conflicting-types)
+
+  `String` is a `String` or a `Number`, but it can only be one of these.
+  
+  `String` must be the same type as `_`, `_ :: Number`, and `Number`; double-check these.
+  
+  -  `filter` is a `(item -> Boolean) -> collection -> Sequence item`.
+  
+  -  `_` was annotated with the type `Box String`.
+  
+  -  `_` was annotated with the type `Number`.
 
 
 `Number` (conflicting-types)
@@ -337,8 +329,8 @@ Feedback:
   
   `Number` must be the same type as `_`, `_ :: Number`, and `String`; double-check these.
   
-  -  `(infer element)` must have the same type everywhere in this use of `_`.
+  -  `filter` is a `(item -> Boolean) -> collection -> Sequence item`.
   
-  -  `item` must have the same type everywhere in this use of `filter`.
+  -  `_` was annotated with the type `Box String`.
   
-  -  `value` must have the same type everywhere in this use of `_`.
+  -  `_` was annotated with the type `Number`.

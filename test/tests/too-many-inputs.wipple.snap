@@ -31,8 +31,4 @@ Feedback:
 
 `show` (conflicting-types)
 
-  `show` isn't a `Number -> ()`.
-  
-  
-  
-  -  `show` is a `Number Number Number -> ()`.
+  `show` is a `Number Number Number -> ()` or a `Number -> ()`, but it can only be one of these.

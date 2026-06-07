@@ -30,7 +30,10 @@ use wipple_core::{
     ast::AstKey,
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
-    typecheck::{constraints::group_constraint::GroupConstraint, groups::Typed},
+    typecheck::{
+        constraints::{ConstraintTrace, group_constraint::GroupConstraint},
+        groups::Typed,
+    },
     visit::{Visitor, exhaustiveness::MatchPathSegment},
 };
 use wipple_parse::{
@@ -150,8 +153,46 @@ pub fn visit_pattern(
     db.insert(node, Matching(matching));
 
     if visitor.current_match.as_ref().and_then(|m| m.arm) == Some(node) {
-        db.graph.edge(matching, node, "value");
+        db.graph.edge(matching, node, "value")
     }
 
-    visitor.constraint(db, GroupConstraint::new(node, matching));
+    let mut constraint = GroupConstraint::new(node, matching);
+    if node != matching {
+        constraint = constraint.with_trace(MatchingConstraintTrace {
+            pattern: node,
+            value: matching,
+        });
+    }
+
+    visitor.constraint(db, constraint);
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct MatchingConstraintTrace {
+    pattern: Node,
+    value: Node,
+}
+
+#[typetag::serde]
+impl ConstraintTrace for MatchingConstraintTrace {
+    fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        vec![&mut self.pattern, &mut self.value]
+    }
+
+    fn nodes(&self, _db: &Db) -> Vec<Node> {
+        vec![self.pattern, self.value]
+    }
+
+    fn allow_hidden_nodes(&self) -> bool {
+        false
+    }
+}
+
+impl Render for MatchingConstraintTrace {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+        ctx.node(self.pattern);
+        ctx.string(" is ");
+        ctx.node(self.value);
+        ctx.string(".");
+    }
 }

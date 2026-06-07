@@ -2,6 +2,7 @@ use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
+        constraints::ConstraintTrace,
         groups::Typed,
         solver::{Solver, SubstitutionsKey},
         ty::{Ty, TyTag},
@@ -119,5 +120,24 @@ impl InstantiateCtx {
         for ty in parameters.values_mut() {
             *ty = self.instantiate_ty(db, solver, ty);
         }
+    }
+
+    pub fn instantiate_trace(
+        &mut self,
+        db: &mut Db,
+        solver: &mut Solver,
+        trace: &Option<Box<dyn ConstraintTrace>>,
+    ) -> Option<Box<dyn ConstraintTrace>> {
+        let mut trace = trace.as_ref().cloned()?;
+
+        for node in trace.nodes_mut() {
+            *node = self.instantiate_node(db, solver, *node);
+        }
+
+        if let Some(source_node) = trace.source_node_mut() {
+            *source_node = self.source_node;
+        }
+
+        Some(trace)
     }
 }

@@ -4,8 +4,12 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
+    render::{Render, RenderCtx, TyPlacement},
     span::{Span, Str},
-    typecheck::constraints::group_constraint::GroupConstraint,
+    typecheck::{
+        constraints::{ConstraintTrace, group_constraint::GroupConstraint},
+        ty::Ty,
+    },
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -49,7 +53,12 @@ impl Visit for StringExpression {
         );
         visitor.visit_as(db, &syntax, string_type);
 
-        visitor.constraint(db, GroupConstraint::new(node, string_type));
+        visitor.constraint(
+            db,
+            GroupConstraint::new(node, string_type)
+                .with_trace(StringConstraintTrace { node, string_type }),
+        );
+
         visitor.codegen(
             db,
             node,
@@ -58,6 +67,32 @@ impl Visit for StringExpression {
                 value: self.value.clone(),
             },
         );
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct StringConstraintTrace {
+    node: Node,
+    string_type: Node,
+}
+
+#[typetag::serde]
+impl ConstraintTrace for StringConstraintTrace {
+    fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        vec![&mut self.node, &mut self.string_type]
+    }
+
+    fn nodes(&self, _db: &Db) -> Vec<Node> {
+        vec![self.node, self.string_type]
+    }
+}
+
+impl Render for StringConstraintTrace {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+        ctx.node(self.node);
+        ctx.string(" is a ");
+        ctx.ty(db, &Ty::Node(self.string_type), TyPlacement::InlineFirst);
+        ctx.string(".");
     }
 }
 

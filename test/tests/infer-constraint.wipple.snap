@@ -176,10 +176,6 @@ Facts (layer 2):
   has type `String`
   is an expression
 
-`add 1 2 :: String` (AnnotateExpression):
-  has type `String`
-  is an expression
-
 `1` (NumberExpression):
   has type `Number`
   is an expression
@@ -352,16 +348,12 @@ Facts (layer 2):
   has type `()`
 
 `add-infer` (VariableExpression):
-  has bound(s) `Add-Infer` `Number` `Number` `_` (resolved as `instance (Add-Infer Number Number Number)`)
+  has bound(s) `Add-Infer` `Number` `Number` (`Number` or `String`) (resolved as `instance (Add-Infer Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `add-infer :: left right -> sum where (Add-Infer left right sum)`
 
 `add-infer 1 2` (CallExpression):
-  has type `Number` or `String`
-  is an expression
-
-`add-infer 1 2 :: String` (AnnotateExpression):
   has type `Number` or `String`
   is an expression
 
@@ -388,7 +380,13 @@ Feedback:
   
   `output` must be the same type as `add-infer 1 2`, `add-infer 1 2 :: String`, and `String`; double-check these.
   
-  -  `(infer sum)` must have the same type everywhere in this use of `_`.
+  -  `add-infer` is a `left right -> sum`.
+  
+  -  `add-infer 1 2` was annotated with the type `String`.
+  
+  -  `1` is a `Number`.
+  
+  -  `2` is a `Number`.
 
 
 `add-infer 1 2` (conflicting-types)
@@ -397,7 +395,13 @@ Feedback:
   
   `add-infer 1 2` must be the same type as `output`, `add-infer 1 2 :: String`, and `String`; double-check these.
   
-  -  `(infer sum)` must have the same type everywhere in this use of `_`.
+  -  `add-infer` is a `left right -> sum`.
+  
+  -  `add-infer 1 2` was annotated with the type `String`.
+  
+  -  `1` is a `Number`.
+  
+  -  `2` is a `Number`.
 
 
 `add-infer 1 2 :: String` (conflicting-types)
@@ -406,7 +410,13 @@ Feedback:
   
   `add-infer 1 2 :: String` must be the same type as `output`, `add-infer 1 2`, and `String`; double-check these.
   
-  -  `(infer sum)` must have the same type everywhere in this use of `_`.
+  -  `add-infer` is a `left right -> sum`.
+  
+  -  `add-infer 1 2` was annotated with the type `String`.
+  
+  -  `1` is a `Number`.
+  
+  -  `2` is a `Number`.
 
 
 `String` (conflicting-types)
@@ -415,4 +425,10 @@ Feedback:
   
   `String` must be the same type as `output`, `add-infer 1 2`, and `add-infer 1 2 :: String`; double-check these.
   
-  -  `(infer sum)` must have the same type everywhere in this use of `_`.
+  -  `add-infer` is a `left right -> sum`.
+  
+  -  `add-infer 1 2` was annotated with the type `String`.
+  
+  -  `1` is a `Number`.
+  
+  -  `2` is a `Number`.

@@ -1,4 +1,5 @@
 use crate::{
+    expressions::annotate_expression::AnnotateConstraintTrace,
     patterns::{parse_pattern_element, visit_pattern},
     types::parse_type_element,
 };
@@ -47,13 +48,18 @@ impl Visit for AnnotatePattern {
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_pattern(db, node, visitor, None);
 
+        db.hide(node);
+
         let pattern = visitor.visit(db, &self.pattern);
-        db.graph.edge(pattern, node, "pattern");
-
         let ty = visitor.visit(db, &self.ty);
-        db.graph.edge(ty, node, "type");
+        db.graph.edge(ty, pattern, "type");
 
-        visitor.constraint(db, GroupConstraint::new(pattern, ty));
+        visitor.constraint(
+            db,
+            GroupConstraint::new(pattern, ty)
+                .with_trace(AnnotateConstraintTrace { value: pattern, ty }),
+        );
+
         visitor.constraint(db, GroupConstraint::new(node, pattern));
 
         visitor.codegen(db, node, AnnotatePatternCodegen { pattern });

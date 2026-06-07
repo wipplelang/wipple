@@ -270,6 +270,7 @@ impl Visit for OperatorExpression {
         };
 
         db.graph.replace(node, resolved);
+
         visitor.constraint(db, GroupConstraint::new(node, resolved));
         visitor.codegen(db, node, OperatorExpressionCodegen { node, resolved });
     }

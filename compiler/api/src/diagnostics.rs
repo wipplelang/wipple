@@ -96,7 +96,7 @@ impl CompileResult {
                                 .tys
                                 .iter()
                                 .map(|ty| {
-                                    update_type(&self.db, &Ty::Constructed(ty.clone()))
+                                    update_type(&self.db, &Ty::Constructed(ty.clone()), true)
                                         .display(&self.db, true)
                                 })
                                 .collect(),

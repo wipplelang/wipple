@@ -1,7 +1,7 @@
 use wipple_core::{
     db::{Db, Node},
     typecheck::{
-        constraints::Constraint,
+        constraints::ConstraintTrace,
         groups::Typed,
         instantiate::Instantiated,
         ty::{ConstructedTy, Ty},
@@ -30,7 +30,7 @@ pub struct ConflictingTypes {
     pub from: Node,
     pub nodes: Vec<Node>,
     pub tys: Vec<ConstructedTy>,
-    pub trace: Vec<Box<dyn Constraint>>,
+    pub traces: Vec<Box<dyn ConstraintTrace>>,
 }
 
 pub fn conflicting_types(db: &Db, node: Node) -> Option<ConflictingTypes> {
@@ -42,19 +42,23 @@ pub fn conflicting_types(db: &Db, node: Node) -> Option<ConflictingTypes> {
         return None;
     }
 
+    let nodes = group
+        .nodes
+        .iter()
+        .copied()
+        .filter(|other| *other != node)
+        .collect::<Vec<_>>();
+
+    let traces = db.traces_for(nodes.iter().copied()).collect::<Vec<_>>();
+
     Some(ConflictingTypes {
         source: db
             .get::<Instantiated>(node)
             .map(|instantiated| instantiated.source_node),
         from: node,
-        nodes: group
-            .nodes
-            .iter()
-            .copied()
-            .filter(|other| *other != node)
-            .collect(),
+        nodes,
         tys: group.tys.clone(),
-        trace: group.trace.clone(),
+        traces,
     })
 }
 

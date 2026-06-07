@@ -1,7 +1,9 @@
 use crate::{
     db::{Db, Node},
     typecheck::{
-        constraints::{Constraint, RunResult, Solver, group_constraint::GroupConstraint},
+        constraints::{
+            Constraint, ConstraintTrace, RunResult, Solver, group_constraint::GroupConstraint,
+        },
         instantiate::InstantiateCtx,
         ty::{ConstructedTy, Ty},
     },
@@ -12,11 +14,21 @@ use serde::{Deserialize, Serialize};
 pub struct TyConstraint {
     pub node: Node,
     pub ty: ConstructedTy,
+    pub trace: Option<Box<dyn ConstraintTrace>>,
 }
 
 impl TyConstraint {
     pub fn new(node: Node, ty: ConstructedTy) -> Self {
-        TyConstraint { node, ty }
+        TyConstraint {
+            node,
+            ty,
+            trace: None,
+        }
+    }
+
+    pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
+        self.trace = Some(Box::new(trace));
+        self
     }
 }
 
@@ -24,6 +36,10 @@ impl TyConstraint {
 impl Constraint for TyConstraint {
     fn node(&self) -> Node {
         self.node
+    }
+
+    fn trace(&self) -> Option<Box<dyn ConstraintTrace>> {
+        self.trace.clone()
     }
 
     fn instantiate(
@@ -34,15 +50,22 @@ impl Constraint for TyConstraint {
     ) -> Option<Box<dyn Constraint>> {
         let node = ctx.instantiate_node(db, solver, self.node);
         let ty = ctx.instantiate_ty(db, solver, &Ty::Constructed(self.ty.clone()));
+        let trace = ctx.instantiate_trace(db, solver, &self.trace);
 
         match ty {
-            Ty::Node(other) => Some(Box::new(GroupConstraint::new(node, other))),
-            Ty::Constructed(ty) => Some(Box::new(TyConstraint::new(node, ty))),
+            Ty::Node(other) => Some(Box::new(GroupConstraint {
+                trace,
+                ..GroupConstraint::new(node, other)
+            })),
+            Ty::Constructed(ty) => Some(Box::new(TyConstraint {
+                trace,
+                ..TyConstraint::new(node, ty)
+            })),
         }
     }
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
-        solver.unify_with_ty(db, self.node, self.ty.clone(), Some(self.clone()));
+        solver.unify_with_ty(db, self.node, self.ty.clone());
         RunResult::None
     }
 }

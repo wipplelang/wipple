@@ -48,7 +48,9 @@ impl Visit for ExpressionStatement {
         db.insert(node, Typed::default());
 
         let expression = visitor.visit(db, &self.expression);
+
         db.graph.replace(node, expression);
+
         visitor.constraint(db, GroupConstraint::new(node, expression));
 
         visitor.codegen(db, node, ExpressionStatementCodegen { node, expression });

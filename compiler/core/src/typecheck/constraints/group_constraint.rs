@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, Node},
     typecheck::{
-        constraints::{Constraint, RunResult, Solver},
+        constraints::{Constraint, ConstraintTrace, RunResult, Solver},
         instantiate::InstantiateCtx,
     },
 };
@@ -11,11 +11,21 @@ use serde::{Deserialize, Serialize};
 pub struct GroupConstraint {
     pub node: Node,
     pub other: Node,
+    pub trace: Option<Box<dyn ConstraintTrace>>,
 }
 
 impl GroupConstraint {
     pub fn new(node: Node, other: Node) -> Self {
-        GroupConstraint { node, other }
+        GroupConstraint {
+            node,
+            other,
+            trace: None,
+        }
+    }
+
+    pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
+        self.trace = Some(Box::new(trace));
+        self
     }
 }
 
@@ -25,19 +35,25 @@ impl Constraint for GroupConstraint {
         self.node
     }
 
+    fn trace(&self) -> Option<Box<dyn ConstraintTrace>> {
+        self.trace.clone()
+    }
+
     fn instantiate(
         &self,
         db: &mut Db,
         solver: &mut Solver,
         ctx: &mut InstantiateCtx,
     ) -> Option<Box<dyn Constraint>> {
-        let node = ctx.instantiate_node(db, solver, self.node);
-        let other = ctx.instantiate_node(db, solver, self.other);
-        Some(Box::new(GroupConstraint::new(node, other)))
+        Some(Box::new(GroupConstraint {
+            node: ctx.instantiate_node(db, solver, self.node),
+            other: ctx.instantiate_node(db, solver, self.other),
+            trace: ctx.instantiate_trace(db, solver, &self.trace),
+        }))
     }
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
-        solver.unify_with_node(db, self.node, self.other, Some(self.clone()));
+        solver.unify_with_node(db, self.node, self.other);
 
         RunResult::None
     }

@@ -132,10 +132,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `f :: (a; b) where (T a) (T b)`
 
-`f :: (Number; _)` (AnnotateExpression):
-  has type `(Number; _)`
-  is an expression
-
 `Number` (NamedType):
   has type `Number`
   is a type
@@ -153,34 +149,25 @@ Facts (layer 2):
 
 Feedback:
 
-`-- `B` should not be inferred to be `Number`
-(f :: (Number; _))` (incomplete-type)
-
-  Missing information for the type of `-- `B` should not be inferred to be `Number`
-  (f :: (Number; _))`.
-  
-  Wipple determined this code is `(Number; _)`, but it needs some more information for the `_` placeholders.
-
-
 `f` (incomplete-type)
 
   Missing information for the type of `f`.
   
-  Wipple determined this code is `(Number; _)`, but it needs some more information for the `_` placeholders.
+  Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
 
 `f :: (Number; _)` (incomplete-type)
 
   Missing information for the type of `f :: (Number; _)`.
   
-  Wipple determined this code is `(Number; _)`, but it needs some more information for the `_` placeholders.
+  Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
 
 `Number; _` (incomplete-type)
 
   Missing information for the type of `Number; _`.
   
-  Wipple determined this code is `(Number; _)`, but it needs some more information for the `_` placeholders.
+  Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
 
 `_` (unknown-type)
@@ -188,3 +175,12 @@ Feedback:
   Could not determine the type of `_`.
   
   Wipple needs to know the type of this code before running it. Try using a function or assigning it to a variable.
+
+
+`-- `B` should not be inferred to be `Number`
+(f :: (Number; _))` (incomplete-type)
+
+  Missing information for the type of `-- `B` should not be inferred to be `Number`
+  (f :: (Number; _))`.
+  
+  Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
