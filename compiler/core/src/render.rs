@@ -1,7 +1,11 @@
 use crate::{
     db::{Db, Node},
     facts::Syntax,
-    typecheck::{groups::update_type, ty::Ty},
+    typecheck::{
+        bounds::Instance,
+        groups::{update_instance, update_type},
+        ty::Ty,
+    },
 };
 use regex::Regex;
 use std::{collections::BTreeSet, fmt::Write, sync::LazyLock};
@@ -40,6 +44,12 @@ impl RenderCtx {
     pub fn ty(&mut self, db: &Db, ty: &Ty, root: bool) {
         let ty = update_type(db, ty);
         ty.render_into(db, self, root);
+    }
+
+    pub fn instance(&mut self, db: &Db, instance: &Instance) {
+        let mut instance = instance.clone();
+        update_instance(db, &mut instance);
+        instance.render_into(db, self);
     }
 
     pub fn link(&mut self, label: impl Into<String>, node: Node) {

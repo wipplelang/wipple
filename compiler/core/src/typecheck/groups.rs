@@ -2,6 +2,7 @@ use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
+        bounds::Instance,
         constraints::Constraint,
         ty::{ConstructedTy, Ty},
     },
@@ -166,11 +167,16 @@ impl Render for Typed {
     }
 }
 
-pub fn type_of(db: &Db, node: Node) -> Option<&ConstructedTy> {
+pub fn types_of(db: &Db, node: Node) -> &[ConstructedTy] {
     db.get(node)
         .and_then(|Typed(group)| group.as_ref())
-        .filter(|group| group.tys.len() == 1)
-        .map(|group| &group.tys[0])
+        .map(|group| group.tys.as_slice())
+        .unwrap_or_default()
+}
+
+pub fn type_of(db: &Db, node: Node) -> Option<&ConstructedTy> {
+    let tys = types_of(db, node);
+    (tys.len() == 1).then(|| &tys[0])
 }
 
 pub fn update_type(db: &Db, ty: &Ty) -> Ty {
@@ -183,4 +189,10 @@ pub fn update_type(db: &Db, ty: &Ty) -> Ty {
             ty.clone()
         }
     })
+}
+
+pub fn update_instance(db: &Db, instance: &mut Instance) {
+    for ty in instance.parameters.values_mut() {
+        *ty = update_type(db, ty);
+    }
 }

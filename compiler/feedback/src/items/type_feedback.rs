@@ -101,9 +101,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 writer.string("; double-check these.");
             }
 
-            for constraint in &data.trace {
-                writer.constraint(db, constraint.as_ref());
-            }
+            writer.constraints(db, &data.trace);
 
             let mut parameters_by_name = BTreeMap::<String, Vec<(Node, Node)>>::new();
             for &node in &data.nodes {

@@ -9,9 +9,11 @@ use wipple_core::{
     facts::Syntax,
     render::{RenderCtx, RenderSegment},
     typecheck::{
-        constraints::{Constraint, ty_constraint::TyConstraint},
+        bounds::{Bounds, Instance},
+        constraints::{Constraint, bound_constraint::BoundConstraint, ty_constraint::TyConstraint},
+        groups::types_of,
         instantiate::Instantiated,
-        ty::{Ty, TyTag},
+        ty::{ConstructedTy, Ty, TyTag},
     },
 };
 use wipple_queries::Comments;
@@ -114,34 +116,107 @@ impl FeedbackWriter {
         self.string(&comments_string[index..]);
     }
 
-    pub fn constraint(&mut self, db: &Db, constraint: &dyn Constraint) {
-        let node = constraint.node();
+    pub fn constraints(&mut self, db: &Db, constraints: &[Box<dyn Constraint>]) {
+        #[derive(Debug, Clone, PartialEq, Eq)]
+        pub enum RenderedConstraint {
+            Ty(Node, ConstructedTy),
+            Bound(Instance),
+        }
 
-        if let Some(constraint) = constraint.downcast_ref::<TyConstraint>() {
-            if let TyTag::Parameter(_) = constraint.ty.tag {
-                return; // hide type parameters
-            }
+        let mut rendered_constraints = Vec::new();
+        for constraint in constraints {
+            let node = constraint.node();
 
             if db.contains::<Instantiated>(node) {
-                return; // hide instantiated definitions
+                continue; // hide instantiated definitions
             }
 
-            let Some(Syntax(syntax)) = db.get(node) else {
-                return;
-            };
+            let constraint =
+                if let Some(constraint) = constraint.downcast_ref::<TyConstraint>() {
+                    RenderedConstraint::Ty(node, constraint.ty.clone())
+                } else if let Some(constraint) = constraint.downcast_ref::<BoundConstraint>() {
+                    let Bounds(bounds) = db.get(constraint.node).cloned().unwrap_or_default();
 
-            if db.ast(syntax).span(db).source
-                == Ty::Constructed(constraint.ty.clone()).display(db, true)
-            {
-                return; // don't repeat the type if it is from the source code
+                    let Some(instance) = bounds.into_iter().find_map(|(node, bound)| {
+                        if node != constraint.bound.bound_node {
+                            return None;
+                        }
+
+                        let instance = match bound {
+                            Ok(resolved) => resolved.instance,
+                            Err(unresolved) => Instance {
+                                node,
+                                trait_node: unresolved.trait_node,
+                                parameters: unresolved.parameters,
+                                is_from_bound: true,
+                            },
+                        };
+
+                        if instance.trait_node != constraint.bound.trait_node {
+                            return None;
+                        }
+
+                        // Hide instances containing conflicting types
+                        if instance.parameters.values().any(|ty| {
+                            ty.references_nodes_where(|node| types_of(db, node).len() > 1)
+                        }) {
+                            return None;
+                        }
+
+                        Some(instance)
+                    }) else {
+                        continue;
+                    };
+
+                    RenderedConstraint::Bound(instance)
+                } else {
+                    continue;
+                };
+
+            if rendered_constraints.contains(&constraint) {
+                continue;
             }
 
-            self.line_break();
-            self.string("-  ");
-            self.node(node);
-            self.string(" is a ");
-            self.ty(db, &Ty::Constructed(constraint.ty.clone()), true);
-            self.string(".");
+            rendered_constraints.push(constraint);
+        }
+
+        rendered_constraints.sort_by_key(|constraint| match constraint {
+            RenderedConstraint::Ty(..) => 0,
+            RenderedConstraint::Bound(..) => 1,
+        });
+
+        for constraint in rendered_constraints {
+            match constraint {
+                RenderedConstraint::Ty(node, ty) => {
+                    if let TyTag::Parameter(_) = ty.tag {
+                        continue; // hide type parameters
+                    }
+
+                    let Some(Syntax(syntax)) = db.get(node) else {
+                        continue;
+                    };
+
+                    if db.ast(syntax).span(db).source
+                        == Ty::Constructed(ty.clone()).display(db, true)
+                    {
+                        continue; // don't repeat the type if it is from the source code
+                    }
+
+                    self.line_break();
+                    self.string("-  ");
+                    self.node(node);
+                    self.string(" is a ");
+                    self.ty(db, &Ty::Constructed(ty.clone()), true);
+                    self.string(".");
+                }
+                RenderedConstraint::Bound(instance) => {
+                    self.line_break();
+                    self.string("-  ");
+                    self.string(" The instance ");
+                    self.instance(db, &instance);
+                    self.string(" doesn't exist.");
+                }
+            }
         }
     }
 }

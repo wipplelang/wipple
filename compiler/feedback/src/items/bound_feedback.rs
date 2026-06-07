@@ -43,10 +43,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
         .show_graph()
         .display(|db, writer, _, error| {
             writer.comments(db, &error.comments);
-
-            for constraint in &error.trace {
-                writer.constraint(db, constraint.as_ref());
-            }
+            writer.constraints(db, &error.trace);
         })
         .register();
 }
