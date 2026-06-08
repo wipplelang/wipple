@@ -148,6 +148,10 @@ impl ConstraintTrace for BoundConstraintTrace {
     fn source_node_mut(&mut self) -> Option<&mut Node> {
         Some(&mut self.source_node)
     }
+
+    fn allow_hidden_nodes(&self) -> bool {
+        false
+    }
 }
 
 impl Render for BoundConstraintTrace {

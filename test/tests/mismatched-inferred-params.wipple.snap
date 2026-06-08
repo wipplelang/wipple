@@ -98,8 +98,6 @@ Feedback:
   
   -  `3` returns a `List Number`.
   
-  -  `_` requires the instance `Initial` `(List Number)`.
-  
   -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
   
   -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
@@ -128,8 +126,6 @@ Feedback:
   -  `2` returns a `List Number`.
   
   -  `3` returns a `List Number`.
-  
-  -  `_` requires the instance `Initial` `(List Number)`.
   
   -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
   
@@ -160,8 +156,6 @@ Feedback:
   
   -  `3` returns a `List Number`.
   
-  -  `_` requires the instance `Initial` `(List Number)`.
-  
   -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
   
   -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
@@ -191,8 +185,6 @@ Feedback:
   
   -  `3` returns a `List Number`.
   
-  -  `_` requires the instance `Initial` `(List Number)`.
-  
   -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
   
   -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
@@ -221,8 +213,6 @@ Feedback:
   -  `2` returns a `List Number`.
   
   -  `3` returns a `List Number`.
-  
-  -  `_` requires the instance `Initial` `(List Number)`.
   
   -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
   
@@ -253,8 +243,6 @@ Feedback:
   
   -  `3` returns a `List Number`.
   
-  -  `_` requires the instance `Initial` `(List Number)`.
-  
   -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
   
   -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
@@ -283,8 +271,6 @@ Feedback:
   -  `2` returns a `List Number`.
   
   -  `3` returns a `List Number`.
-  
-  -  `_` requires the instance `Initial` `(List Number)`.
   
   -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
   
@@ -315,8 +301,6 @@ Feedback:
   
   -  `3` returns a `List Number`.
   
-  -  `_` requires the instance `Initial` `(List Number)`.
-  
   -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
   
   -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
@@ -346,8 +330,6 @@ Feedback:
   
   -  `3` returns a `List Number`.
   
-  -  `_` requires the instance `Initial` `(List Number)`.
-  
   -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
   
   -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
@@ -376,8 +358,6 @@ Feedback:
   -  `2` returns a `List Number`.
   
   -  `3` returns a `List Number`.
-  
-  -  `_` requires the instance `Initial` `(List Number)`.
   
   -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
   

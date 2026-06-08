@@ -99,8 +99,6 @@ Feedback:
   
   -  `()` returns a `List ()`.
   
-  -  `_` requires the instance `Initial` `(List ())`.
-  
   -  `1` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
   
   -  `1, "hi", ()` requires the instance `Initial-Collection` (`()` or `String` or `Number`) `(List ())`.
@@ -131,8 +129,6 @@ Feedback:
   -  `"hi"` returns a `List ()`.
   
   -  `()` returns a `List ()`.
-  
-  -  `_` requires the instance `Initial` `(List ())`.
   
   -  `1` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
   
@@ -165,8 +161,6 @@ Feedback:
   
   -  `()` returns a `List ()`.
   
-  -  `_` requires the instance `Initial` `(List ())`.
-  
   -  `1` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
   
   -  `1, "hi", ()` requires the instance `Initial-Collection` (`()` or `String` or `Number`) `(List ())`.
@@ -198,8 +192,6 @@ Feedback:
   
   -  `()` returns a `List ()`.
   
-  -  `_` requires the instance `Initial` `(List ())`.
-  
   -  `1` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
   
   -  `1, "hi", ()` requires the instance `Initial-Collection` (`()` or `String` or `Number`) `(List ())`.
@@ -230,8 +222,6 @@ Feedback:
   -  `"hi"` returns a `List ()`.
   
   -  `()` returns a `List ()`.
-  
-  -  `_` requires the instance `Initial` `(List ())`.
   
   -  `1` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
   
