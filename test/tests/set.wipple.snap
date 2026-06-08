@@ -11,45 +11,33 @@ Facts (layer 2):
 `"Basketball"` (VisitAs):
   has type `String`
   is an expression
-
-`"Basketball"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(Set String)` (resolved as `instance (Build-Collection element (Set element)) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
-  has type `String (Set String) -> Set String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `"Basketball", "Soccer", "Golf"` (CollectionExpression):
   has type `Set String`
   is an expression
+  type is annotated
 
 `"Soccer"` (VisitAs):
   has type `String`
   is an expression
-
-`"Soccer"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(Set String)` (resolved as `instance (Build-Collection element (Set element)) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
-  has type `String (Set String) -> Set String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `"Golf"` (VisitAs):
   has type `String`
   is an expression
-
-`"Golf"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(Set String)` (resolved as `instance (Build-Collection element (Set element)) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
-  has type `String (Set String) -> Set String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `Set _` (NamedType):
   has type `Set String`
   is a type
   resolved to 1 definition(s): `Set : element => type {dictionary :: Dictionary element ()}`
+  type is annotated
 
 `_` (PlaceholderType):
   has type `String`
   is a type
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -68,6 +56,7 @@ Facts (layer 2):
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
+  type is annotated
 
 `sports . contains? "Basketball"` (OperatorExpression):
   has type `Boolean`
@@ -90,6 +79,7 @@ Facts (layer 2):
 `"Basketball"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -108,6 +98,7 @@ Facts (layer 2):
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
+  type is annotated
 
 `sports . contains? "Soccer"` (OperatorExpression):
   has type `Boolean`
@@ -130,6 +121,7 @@ Facts (layer 2):
 `"Soccer"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -148,6 +140,7 @@ Facts (layer 2):
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
+  type is annotated
 
 `sports . contains? "Golf"` (OperatorExpression):
   has type `Boolean`
@@ -170,6 +163,7 @@ Facts (layer 2):
 `"Golf"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -188,6 +182,7 @@ Facts (layer 2):
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
+  type is annotated
 
 `sports . contains? "Baseball"` (OperatorExpression):
   has type `Boolean`
@@ -210,6 +205,7 @@ Facts (layer 2):
 `"Baseball"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 Output:

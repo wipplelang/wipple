@@ -23,7 +23,7 @@ use wipple_core::{
     db::{Db, Fact, Node},
     facts::GraphType,
     render::{Render, RenderCtx},
-    typecheck::groups::Typed,
+    typecheck::groups::{Annotated, Typed},
     visit::Visitor,
 };
 use wipple_parse::{
@@ -112,4 +112,5 @@ pub fn visit_type(db: &mut Db, node: Node, _visitor: &mut Visitor) {
     db.insert(node, IsType);
     db.insert(node, GraphType);
     db.insert(node, Typed::default());
+    db.insert(node, Annotated);
 }

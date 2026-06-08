@@ -1,5 +1,8 @@
 use crate::CompileResult;
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 use wasm_bindgen::prelude::*;
 use wipple_core::{
     db::Node,
@@ -92,8 +95,10 @@ impl Ide {
     }
 
     pub fn diagnostics(&self) -> Vec<IdeDiagnostic> {
-        collect_feedback(&self.result.db, |item| {
-            default_filter(&self.result.db, item.location.primary)
+        let filter = default_filter;
+
+        collect_feedback(&self.result.db, filter, |item| {
+            filter(&self.result.db, item.location.primary)
         })
         .into_iter()
         .filter_map(|item| {
@@ -387,6 +392,7 @@ impl Ide {
         self.result
             .db
             .owned_nodes()
+            .filter(|&node| self.result.db.is_hidden(node))
             .filter_map(|node| {
                 let span = self
                     .result
@@ -413,7 +419,7 @@ impl Ide {
     fn comments(&self, node: Node) -> Option<String> {
         let comments = wipple_queries::comments_without_links(&self.result.db, node)?;
 
-        let mut writer = FeedbackWriter::default();
+        let mut writer = FeedbackWriter::new(Arc::new(default_filter));
         writer.comments(&self.result.db, node, &comments);
 
         let (rendered, _) =

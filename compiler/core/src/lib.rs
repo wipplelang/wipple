@@ -45,7 +45,9 @@ pub struct TopLevel {
 }
 
 pub fn default_filter(db: &Db, node: Node) -> bool {
-    db.owned_nodes().any(|owned| owned == node) && db.contains::<Syntax>(node)
+    db.owned_nodes().any(|owned| owned == node)
+        && !db.is_hidden(node)
+        && db.contains::<Syntax>(node)
 }
 
 pub fn compile<'a, K: Ord>(
@@ -145,6 +147,7 @@ pub fn compile<'a, K: Ord>(
 
     // Solve constraints from top-level expressions
     let mut solver = Solver::default();
+    solver.trace = true;
     solver.constraints.extend(visited.constraints.drain(..));
     solver.substitutions.extend(top_level.substitutions.clone());
     solver.run(db);

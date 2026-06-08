@@ -3,7 +3,7 @@ use crate::{
     render::{Render, RenderCtx},
     typecheck::{
         constraints::ConstraintTrace,
-        groups::Typed,
+        groups::{Annotated, Typed},
         solver::{Solver, SubstitutionsKey},
         ty::{Ty, TyTag},
     },
@@ -60,6 +60,10 @@ impl InstantiateCtx {
                     from: node,
                 },
             );
+
+            if db.contains::<Annotated>(node) {
+                db.insert(replacement, Annotated);
+            }
 
             replacement
         })

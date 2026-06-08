@@ -63,6 +63,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `x` (VariablePattern):
   has type `E`
@@ -81,6 +82,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:

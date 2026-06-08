@@ -29,6 +29,7 @@ Facts (layer 2):
 `0` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `n` (VariablePattern):
   has type `Number`
@@ -52,6 +53,7 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
+  type is annotated
 
 `n + 1` (OperatorExpression):
   has type `Number`
@@ -70,11 +72,13 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `numbers` (VisitAs):
   has type `Sequence Number`
   is an expression
   resolved to 1 definition(s): `numbers`
+  type is annotated
 
 `numbers . take 5` (VisitAs):
   has type `Sequence Number`
@@ -104,6 +108,7 @@ Facts (layer 2):
 `5` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `each` (VariableExpression):
   has bound(s) `As-Sequence` `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)`)

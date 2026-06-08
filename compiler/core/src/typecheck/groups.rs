@@ -163,6 +163,18 @@ impl Render for Typed {
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Annotated;
+
+#[typetag::serde]
+impl Fact for Annotated {}
+
+impl Render for Annotated {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+        ctx.string("type is annotated");
+    }
+}
+
 pub fn types_of(db: &Db, node: Node) -> &[ConstructedTy] {
     db.get(node)
         .and_then(|Typed(group)| group.as_ref())

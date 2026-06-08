@@ -9,27 +9,32 @@ Facts (layer 2):
 `(List element) -> Sequence element` (FunctionType):
   has type `(List element) -> Sequence element`
   is a type
+  type is annotated
 
 `List element` (NamedType):
   has type `List element`
   is a type
   resolved to 1 definition(s): `List : element => type`
+  type is annotated
 
 `element` (TypeParameter):
   has type `element`
   is a definition
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `Sequence element` (NamedType):
   has type `Sequence element`
   is a type
   resolved to 1 definition(s): `Sequence : element => type {next :: {Maybe element}}`
+  type is annotated
 
 `element` (TypeParameter):
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `(Describe element)` (BoundConstraint):
   has bound(s) `Describe` `element` (resolved as `(Describe element)`)
@@ -40,6 +45,7 @@ Facts (layer 2):
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `(Equal element)` (BoundConstraint):
   has bound(s) `Equal` `element` (resolved as `(Equal element)`)
@@ -50,6 +56,7 @@ Facts (layer 2):
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `(Hash element)` (BoundConstraint):
   has bound(s) `Hash` `element` (resolved as `(Hash element)`)
@@ -60,6 +67,7 @@ Facts (layer 2):
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `remove-duplicates : do {⋯}` (AssignmentStatement):
   has type `()`
@@ -112,6 +120,7 @@ Facts (layer 2):
   has type `Set element`
   is an expression
   resolved to 1 definition(s): `seen`
+  type is annotated
 
 `seen . (not contains?) item` (VisitAs):
   has type `Boolean`
@@ -159,6 +168,7 @@ Facts (layer 2):
   has type `element`
   is an expression
   resolved to 1 definition(s): `item`
+  type is annotated
 
 `do {⋯}` (VisitAs):
   has type `Boolean`
@@ -189,6 +199,7 @@ Facts (layer 2):
   has type `Set element`
   is an expression
   resolved to 1 definition(s): `seen`
+  type is annotated
 
 `seen . insert item` (OperatorExpression):
   has type `Set element`
@@ -212,6 +223,7 @@ Facts (layer 2):
   has type `element`
   is an expression
   resolved to 1 definition(s): `item`
+  type is annotated
 
 `True` (ExpressionStatement):
   has type `Boolean`
@@ -232,12 +244,7 @@ Facts (layer 2):
 `5` (VisitAs):
   has type `Number`
   is an expression
-
-`5` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (CollectionExpression):
   has type `List Number`
@@ -246,117 +253,63 @@ Facts (layer 2):
 `5` (VisitAs):
   has type `Number`
   is an expression
-
-`5` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `4` (VisitAs):
   has type `Number`
   is an expression
-
-`4` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `3` (VisitAs):
   has type `Number`
   is an expression
-
-`3` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `3` (VisitAs):
   has type `Number`
   is an expression
-
-`3` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `3` (VisitAs):
   has type `Number`
   is an expression
-
-`3` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `2` (VisitAs):
   has type `Number`
   is an expression
-
-`2` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `1` (VisitAs):
   has type `Number`
   is an expression
-
-`1` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `2` (VisitAs):
   has type `Number`
   is an expression
-
-`2` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `3` (VisitAs):
   has type `Number`
   is an expression
-
-`3` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `4` (VisitAs):
   has type `Number`
   is an expression
-
-`4` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `5` (VisitAs):
   has type `Number`
   is an expression
-
-`5` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `numbers` (VisitAs):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `numbers`
+  type is annotated
 
 `numbers . remove-duplicates` (VisitAs):
   has type `Sequence Number`

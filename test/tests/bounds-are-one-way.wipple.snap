@@ -11,11 +11,13 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `f :: Number where (T value)` (ConstantDefinition):
   has definition constraints
@@ -27,6 +29,7 @@ Facts (layer 2):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `(T value)` (BoundConstraint):
   has bound(s) `T` `value` (resolved as `(T value)`)
@@ -38,6 +41,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `f : T` (AssignmentStatement):
   has type `()`

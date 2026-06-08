@@ -21,6 +21,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `Describe : value => trait (value -> String)` (TraitDefinition):
   has 2 instances
@@ -34,20 +35,24 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> String` (FunctionType):
   has type `value -> String`
   is a type
+  type is annotated
 
 `String` (NamedType):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `instance (Describe String)` (InstanceDefinition):
   has definition constraints
@@ -59,6 +64,7 @@ Facts (layer 2):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `String -> String`
@@ -75,12 +81,14 @@ Facts (layer 2):
   has type `Maybe value`
   is a type
   resolved to 1 definition(s): `Maybe : value => type`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `(Describe value)` (BoundConstraint):
   has bound(s) `Describe` `value` (resolved as `(Describe value)`)
@@ -91,6 +99,7 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `(Maybe value) -> String`
@@ -112,16 +121,19 @@ Facts (layer 2):
 `_` (PlaceholderExpression):
   has type `Maybe String`
   is an expression
+  type is annotated
 
 `Maybe String` (NamedType):
   has type `Maybe String`
   is a type
   resolved to 1 definition(s): `Maybe : value => type`
+  type is annotated
 
 `String` (NamedType):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `Describe` (ConstructorExpression):
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (unresolved)
@@ -139,16 +151,19 @@ Facts (layer 2):
 `_` (PlaceholderExpression):
   has type `Maybe Number`
   is an expression
+  type is annotated
 
 `Maybe Number` (NamedType):
   has type `Maybe Number`
   is a type
   resolved to 1 definition(s): `Maybe : value => type`
+  type is annotated
 
 `Number` (NamedType):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 
 

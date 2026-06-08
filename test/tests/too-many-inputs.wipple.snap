@@ -16,14 +16,17 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `3` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 

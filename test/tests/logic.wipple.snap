@@ -63,6 +63,7 @@ Facts (layer 2):
 `"a"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `{"b"}` (BlockExpression):
   has type `{String}`
@@ -74,6 +75,7 @@ Facts (layer 2):
 `"b"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
@@ -138,6 +140,7 @@ Facts (layer 2):
 `"a"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `{"b"}` (BlockExpression):
   has type `{String}`
@@ -149,6 +152,7 @@ Facts (layer 2):
 `"b"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 Output:

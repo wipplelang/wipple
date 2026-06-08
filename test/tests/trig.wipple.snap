@@ -39,6 +39,7 @@ Facts (layer 2):
 `0` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `0 degrees` (CallExpression):
   has type `Angle`
@@ -52,6 +53,7 @@ Facts (layer 2):
 `0` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -92,6 +94,7 @@ Facts (layer 2):
 `0` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `0 degrees` (CallExpression):
   has type `Angle`
@@ -105,6 +108,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -159,6 +163,7 @@ Facts (layer 2):
 `45` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `45 degrees` (CallExpression):
   has type `Angle`
@@ -181,6 +186,7 @@ Facts (layer 2):
 `45` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `45 degrees` (CallExpression):
   has type `Angle`
@@ -203,6 +209,7 @@ Facts (layer 2):
 `45` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `45 degrees` (CallExpression):
   has type `Angle`

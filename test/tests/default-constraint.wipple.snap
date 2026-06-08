@@ -21,6 +21,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `Set : element => type` (TypeDefinition):
   has definition constraints
@@ -33,6 +34,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `Collect : element collection => trait (element -> collection)` (TraitDefinition):
   has 2 instances
@@ -46,26 +48,31 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `collection` (TypeParameter):
   has type `collection`
   is a definition
   is a type
   resolved to 1 definition(s): `collection`
+  type is annotated
 
 `element` (TypeParameter):
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `element -> collection` (FunctionType):
   has type `element -> collection`
   is a type
+  type is annotated
 
 `collection` (TypeParameter):
   has type `collection`
   is a type
   resolved to 1 definition(s): `collection`
+  type is annotated
 
 `instance (Collect element (List element))` (InstanceDefinition):
   has definition constraints
@@ -79,16 +86,19 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `List element` (NamedType):
   has type `List element`
   is a type
   resolved to 1 definition(s): `List : element => type`
+  type is annotated
 
 `element` (TypeParameter):
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `element -> List element`
@@ -106,16 +116,19 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `Set element` (NamedType):
   has type `Set element`
   is a type
   resolved to 1 definition(s): `Set : element => type`
+  type is annotated
 
 `element` (TypeParameter):
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `element -> Set element`
@@ -132,16 +145,19 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `element -> output` (FunctionType):
   has type `element -> output`
   is a type
+  type is annotated
 
 `output` (TypeParameter):
   has type `output`
   is a definition
   is a type
   resolved to 1 definition(s): `output`
+  type is annotated
 
 `(output :: List element)` (DefaultConstraint):
   is a constraint
@@ -150,16 +166,19 @@ Facts (layer 2):
   has type `output`
   is a type
   resolved to 1 definition(s): `output`
+  type is annotated
 
 `List element` (NamedType):
   has type `List element`
   is a type
   resolved to 1 definition(s): `List : element => type`
+  type is annotated
 
 `element` (TypeParameter):
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `(Collect element output)` (BoundConstraint):
   has bound(s) `Collect` `element` `output` (resolved as `(Collect element output)`)
@@ -170,11 +189,13 @@ Facts (layer 2):
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `output` (TypeParameter):
   has type `output`
   is a type
   resolved to 1 definition(s): `output`
+  type is annotated
 
 `collect : _` (AssignmentStatement):
   has type `()`
@@ -203,6 +224,7 @@ Facts (layer 2):
 `"hi"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `_` (WildcardPattern):
   has type `Set String`
@@ -220,19 +242,23 @@ Facts (layer 2):
 `collect "hi"` (CallExpression):
   has type `Set String`
   is an expression
+  type is annotated
 
 `"hi"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `Set _` (NamedType):
   has type `Set String`
   is a type
   resolved to 1 definition(s): `Set : element => type`
+  type is annotated
 
 `_` (PlaceholderType):
   has type `String`
   is a type
+  type is annotated
 
 
 

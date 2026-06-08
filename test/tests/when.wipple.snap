@@ -34,6 +34,7 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `x`
+  type is annotated
 
 `True` (ConstructorPattern):
   has type `Boolean`
@@ -43,6 +44,7 @@ Facts (layer 2):
 `"Yay!"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `False` (ConstructorPattern):
   has type `Boolean`
@@ -52,6 +54,7 @@ Facts (layer 2):
 `"Uh oh"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 Output:

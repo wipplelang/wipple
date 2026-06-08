@@ -11,6 +11,7 @@ Facts (layer 2):
 `3.14` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `is-42?` (VariablePattern):
   has type `Number -> Boolean`
@@ -33,6 +34,7 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
+  type is annotated
 
 `n = 42` (OperatorExpression):
   has type `Boolean`
@@ -51,6 +53,7 @@ Facts (layer 2):
 `42` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -97,11 +100,13 @@ Facts (layer 2):
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `is-42?`
+  type is annotated
 
 `input` (VariableExpression):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `input`
+  type is annotated
 
 `not` (VariableExpression):
   has bound(s) `Not` `Boolean` (resolved as `instance (Not Boolean)`)
@@ -117,6 +122,7 @@ Facts (layer 2):
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `is-42?`
+  type is annotated
 
 `is-42? input` (CallExpression):
   has type `Boolean`
@@ -126,6 +132,7 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `input`
+  type is annotated
 
 
 Output:

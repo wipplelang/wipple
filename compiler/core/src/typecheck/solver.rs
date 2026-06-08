@@ -36,6 +36,7 @@ pub struct Substitutions {
 
 #[derive(Debug, Default)]
 pub struct Solver {
+    pub trace: bool,
     pub error: bool,
     pub constraints: Constraints,
     pub substitutions: Vec<Substitutions>,

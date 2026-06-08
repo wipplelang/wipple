@@ -12,6 +12,5 @@ digraph G {
   node_2_7 -> node_2_4 [label="element"]
   node_2_8 -> node_2_4 [label="element"]
   node_2_26 -> node_2_28 [label="input"]
-  node_2_26 -> node_2_1108 [label="element"]
   node_2_30 -> node_2_28 [label="function"]
 }

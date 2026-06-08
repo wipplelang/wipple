@@ -14,6 +14,7 @@ Facts (layer 2):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `alice` (VariablePattern):
   has type `Person`
@@ -31,6 +32,7 @@ Facts (layer 2):
 `"Alice"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `Person {name : name}` (StructurePattern):
   has type `Person`
@@ -49,6 +51,7 @@ Facts (layer 2):
   has type `Person`
   is an expression
   resolved to 1 definition(s): `alice`
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
@@ -67,6 +70,7 @@ Facts (layer 2):
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
+  type is annotated
 
 `get-name :: Person -> String` (ConstantDefinition):
   has definition constraints
@@ -77,15 +81,18 @@ Facts (layer 2):
   has type `Person`
   is a type
   resolved to 1 definition(s): `Person : type {name :: String}`
+  type is annotated
 
 `Person -> String` (FunctionType):
   has type `Person -> String`
   is a type
+  type is annotated
 
 `String` (NamedType):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `get-name : (Person {name : name}) -> name` (AssignmentStatement):
   has type `()`
@@ -108,6 +115,7 @@ Facts (layer 2):
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
+  type is annotated
 
 `bob` (VariablePattern):
   has type `Person`
@@ -125,6 +133,7 @@ Facts (layer 2):
 `"Bob"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
@@ -152,6 +161,7 @@ Facts (layer 2):
   has type `Person`
   is an expression
   resolved to 1 definition(s): `bob`
+  type is annotated
 
 `instance (Describe Person)` (InstanceDefinition):
   has definition constraints
@@ -163,6 +173,7 @@ Facts (layer 2):
   has type `Person`
   is a type
   resolved to 1 definition(s): `Person : type {name :: String}`
+  type is annotated
 
 `(Person {name : name}) -> name` (FunctionExpression):
   has type `Person -> String`
@@ -182,6 +193,7 @@ Facts (layer 2):
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
+  type is annotated
 
 `charlie` (VariablePattern):
   has type `Person`
@@ -199,6 +211,7 @@ Facts (layer 2):
 `"Charlie"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Person` (resolved as `instance (Describe Person)`)
@@ -217,6 +230,7 @@ Facts (layer 2):
   has type `Person`
   is an expression
   resolved to 1 definition(s): `charlie`
+  type is annotated
 
 `Describe : value => trait (value -> String)` (TraitDefinition):
   has 6 instances
@@ -230,15 +244,18 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> String` (FunctionType):
   has type `value -> String`
   is a type
+  type is annotated
 
 
 Output:

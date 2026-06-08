@@ -16,11 +16,13 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `foo` (VariablePattern):
   has type `Foo String`
@@ -38,6 +40,7 @@ Facts (layer 2):
 `"Hello, world!"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `Foo {inner : inner}` (StructurePattern):
   has type `Foo String`
@@ -56,6 +59,7 @@ Facts (layer 2):
   has type `Foo String`
   is an expression
   resolved to 1 definition(s): `foo`
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
@@ -74,6 +78,7 @@ Facts (layer 2):
   has type `String`
   is an expression
   resolved to 1 definition(s): `inner`
+  type is annotated
 
 
 Output:

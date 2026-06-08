@@ -8,6 +8,7 @@ use wipple_core::{
     span::{Span, Str},
     typecheck::{
         constraints::{ConstraintTrace, group_constraint::GroupConstraint},
+        groups::Annotated,
         ty::Ty,
     },
     visit::{Visit, Visitor},
@@ -58,6 +59,8 @@ impl Visit for NumberExpression {
             GroupConstraint::new(node, number_type)
                 .with_trace(NumberConstraintTrace { node, number_type }),
         );
+
+        db.insert(node, Annotated);
 
         visitor.codegen(
             db,

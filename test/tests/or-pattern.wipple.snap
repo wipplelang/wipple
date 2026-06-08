@@ -20,18 +20,22 @@ Facts (layer 2):
 `3` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1` (NumberPattern):
   has type `Number`
   is a pattern
+  type is annotated
 
 `"oh no"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `2` (NumberPattern):
   has type `Number`
   is a pattern
+  type is annotated
 
 `2 or 3` (OrPattern):
   has type `Number`
@@ -40,10 +44,12 @@ Facts (layer 2):
 `3` (NumberPattern):
   has type `Number`
   is a pattern
+  type is annotated
 
 `"yay"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `_` (WildcardPattern):
   has type `Number`
@@ -52,6 +58,7 @@ Facts (layer 2):
 `"uh oh"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 Output:

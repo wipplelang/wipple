@@ -16,6 +16,7 @@ Facts (layer 2):
 `4` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `4 times` (CallExpression):
   has type `Times`
@@ -46,6 +47,7 @@ Facts (layer 2):
 `"Hello, world!"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 Output:

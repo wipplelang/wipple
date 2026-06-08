@@ -8,9 +8,8 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
     db::{Db, Node},
-    render::{Render, RenderCtx},
     span::{Span, Str},
-    typecheck::constraints::{ConstraintTrace, group_constraint::GroupConstraint},
+    typecheck::constraints::group_constraint::GroupConstraint,
     visit::{
         Visit, Visitor,
         definitions::{self, ConstantAttributes, Definition},
@@ -103,16 +102,7 @@ impl Visit for ConstantDefinition {
                     let ty = visitor.visit(db, &self.ty);
                     db.graph.edge(ty, node, "type");
 
-                    visitor.constraint(
-                        db,
-                        GroupConstraint::new(node, ty).with_trace(
-                            ConstantDefinitionConstraintTrace {
-                                name: self.name.clone(),
-                                definition: node,
-                                ty,
-                            },
-                        ),
-                    );
+                    visitor.constraint(db, GroupConstraint::new(node, ty));
 
                     for constraint in self.constraints {
                         let constraint = visitor.visit(db, &constraint);
@@ -125,32 +115,5 @@ impl Visit for ConstantDefinition {
 
             // TODO: Check for missing constant values
         });
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConstantDefinitionConstraintTrace {
-    pub name: Str,
-    pub definition: Node,
-    pub ty: Node,
-}
-
-#[typetag::serde]
-impl ConstraintTrace for ConstantDefinitionConstraintTrace {
-    fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        vec![&mut self.definition]
-    }
-
-    fn nodes(&self, _db: &Db) -> Vec<Node> {
-        vec![self.definition]
-    }
-}
-
-impl Render for ConstantDefinitionConstraintTrace {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
-        ctx.link(self.name.to_string(), self.definition);
-        ctx.string(" is a ");
-        ctx.node(self.ty);
-        ctx.string(".");
     }
 }

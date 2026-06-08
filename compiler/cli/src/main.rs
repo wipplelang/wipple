@@ -15,7 +15,10 @@ use std::{
     ops::ControlFlow,
     path::{Path, PathBuf},
     process,
-    sync::atomic::{self, AtomicUsize},
+    sync::{
+        Arc,
+        atomic::{self, AtomicUsize},
+    },
 };
 use wipple_core::{
     LibraryArtifact, TopLevel,
@@ -435,7 +438,7 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
                 return ControlFlow::Continue(());
             };
 
-            let mut writer = FeedbackWriter::default();
+            let mut writer = FeedbackWriter::new(Arc::new(default_filter));
             writer.comments(db, node, &documentation.comments);
             let (docs, _) = writer.finish(db, |db, segment| segment.markdown(db, false));
 

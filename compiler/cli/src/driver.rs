@@ -95,9 +95,11 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             writeln!(self.out, "{dot}")?;
         }
 
+        let filter = default_filter;
+
         let mut seen_feedback = BTreeMap::<Node, HashSet<String>>::new();
-        let feedback_items = collect_feedback(db, |item| {
-            default_filter(db, item.location.primary)
+        let feedback_items = collect_feedback(db, filter, |item| {
+            filter(db, item.location.primary)
                 && (self.compile_options.filter_feedback.is_empty()
                     || self.compile_options.filter_feedback.contains(&item.id))
                 && seen_feedback

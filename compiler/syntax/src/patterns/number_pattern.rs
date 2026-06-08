@@ -9,7 +9,7 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::{Span, Str},
-    typecheck::constraints::group_constraint::GroupConstraint,
+    typecheck::{constraints::group_constraint::GroupConstraint, groups::Annotated},
     visit::{Visit, Visitor, exhaustiveness::MatchPathSegment},
 };
 use wipple_parse::{
@@ -54,6 +54,8 @@ impl Visit for NumberPattern {
         visitor.visit_as(db, &syntax, number_type);
 
         visitor.constraint(db, GroupConstraint::new(node, number_type));
+
+        db.insert(node, Annotated);
 
         visitor.codegen(
             db,

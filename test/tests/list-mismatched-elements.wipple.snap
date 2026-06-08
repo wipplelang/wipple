@@ -11,12 +11,7 @@ Facts (layer 2):
 `1` (VisitAs):
   has type `()` or `String` or `Number`
   is an expression
-
-`1` (ConstructorExpression):
-  has bound(s) `Build-Collection` (`()` or `String` or `Number`) `(List ())` (resolved as `default error instance (Build-Collection element collection)`)
-  has type `() (List ()) -> List ()`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `1, "hi", ()` (CollectionExpression):
   has type `List ()`
@@ -25,27 +20,17 @@ Facts (layer 2):
 `"hi"` (VisitAs):
   has type `()` or `String` or `Number`
   is an expression
-
-`"hi"` (ConstructorExpression):
-  has bound(s) `Build-Collection` (`()` or `String` or `Number`) `(List ())` (resolved as `default error instance (Build-Collection element collection)`)
-  has type `() (List ()) -> List ()`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `()` (VisitAs):
   has type `()` or `String` or `Number`
   is an expression
 
-`()` (ConstructorExpression):
-  has bound(s) `Build-Collection` (`()` or `String` or `Number`) `(List ())` (resolved as `instance (Build-Collection element (List element))`)
-  has type `() (List ()) -> List ()`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
-
 `my-list` (VisitAs):
   has type `List ()`
   is an expression
   resolved to 1 definition(s): `my-list`
+  type is annotated
 
 `my-list . each show` (ExpressionStatement):
   has type `()`
@@ -77,68 +62,6 @@ Facts (layer 2):
 
 Feedback:
 
-`1` (conflicting-types)
-
-  `1` is a `()`, `String`, or a `Number`, but it can only be one of these.
-  
-  `1` must be the same type as `"hi"` and `()`; double-check these.
-  
-  -  `each` calls `show` for each  element in `my-list`.
-  
-  -  `show` displays `_` on the screen.
-  
-  -  `my-list` is `1, "hi", ()`.
-  
-  -  `1` is a `Number`.
-  
-  -  `"hi"` is a `String`.
-  
-  -  `1` returns a `List ()`.
-  
-  -  `"hi"` returns a `List ()`.
-  
-  -  `()` returns a `List ()`.
-  
-  -  `1` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `1, "hi", ()` requires the instance `Initial-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `"hi"` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `()` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-
-
-`"hi"` (conflicting-types)
-
-  `"hi"` is a `()`, `String`, or a `Number`, but it can only be one of these.
-  
-  `"hi"` must be the same type as `1` and `()`; double-check these.
-  
-  -  `each` calls `show` for each  element in `my-list`.
-  
-  -  `show` displays `_` on the screen.
-  
-  -  `my-list` is `1, "hi", ()`.
-  
-  -  `1` is a `Number`.
-  
-  -  `"hi"` is a `String`.
-  
-  -  `1` returns a `List ()`.
-  
-  -  `"hi"` returns a `List ()`.
-  
-  -  `()` returns a `List ()`.
-  
-  -  `1` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `1, "hi", ()` requires the instance `Initial-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `"hi"` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `()` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-
-
 `()` (conflicting-types)
 
   `()` is a `()`, `String`, or a `Number`, but it can only be one of these.
@@ -154,79 +77,3 @@ Feedback:
   -  `1` is a `Number`.
   
   -  `"hi"` is a `String`.
-  
-  -  `1` returns a `List ()`.
-  
-  -  `"hi"` returns a `List ()`.
-  
-  -  `()` returns a `List ()`.
-  
-  -  `1` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `1, "hi", ()` requires the instance `Initial-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `"hi"` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `()` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-
-
-`1` (conflicting-types)
-
-  `1` is a `()`, `String`, or a `Number`, but it can only be one of these.
-  
-  `1` must be the same type as `"hi"` and `()`; double-check these.
-  
-  -  `each` calls `show` for each  element in `my-list`.
-  
-  -  `show` displays `_` on the screen.
-  
-  -  `my-list` is `1, "hi", ()`.
-  
-  -  `1` is a `Number`.
-  
-  -  `"hi"` is a `String`.
-  
-  -  `1` returns a `List ()`.
-  
-  -  `"hi"` returns a `List ()`.
-  
-  -  `()` returns a `List ()`.
-  
-  -  `1` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `1, "hi", ()` requires the instance `Initial-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `"hi"` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `()` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-
-
-`"hi"` (conflicting-types)
-
-  `"hi"` is a `()`, `String`, or a `Number`, but it can only be one of these.
-  
-  `"hi"` must be the same type as `1` and `()`; double-check these.
-  
-  -  `each` calls `show` for each  element in `my-list`.
-  
-  -  `show` displays `_` on the screen.
-  
-  -  `my-list` is `1, "hi", ()`.
-  
-  -  `1` is a `Number`.
-  
-  -  `"hi"` is a `String`.
-  
-  -  `1` returns a `List ()`.
-  
-  -  `"hi"` returns a `List ()`.
-  
-  -  `()` returns a `List ()`.
-  
-  -  `1` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `1, "hi", ()` requires the instance `Initial-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `"hi"` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.
-  
-  -  `()` requires the instance `Build-Collection` (`()` or `String` or `Number`) `(List ())`.

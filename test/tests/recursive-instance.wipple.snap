@@ -34,6 +34,7 @@ Facts (layer 2):
 `42` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:

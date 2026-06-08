@@ -12,26 +12,31 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `b` (TypeParameter):
   has type `b`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
+  type is annotated
 
 `a` (TypeParameter):
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `a -> b` (FunctionType):
   has type `a -> b`
   is a type
+  type is annotated
 
 `b` (TypeParameter):
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
+  type is annotated
 
 `instance (T1 () ())` (InstanceDefinition):
   has definition constraints
@@ -42,10 +47,12 @@ Facts (layer 2):
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `()` (UnitPattern):
   has type `()`
@@ -71,19 +78,23 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `a` (TypeParameter):
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `a -> ()` (FunctionType):
   has type `a -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `instance (T2 a) where (T1 a b)` (InstanceDefinition):
   has definition constraints
@@ -97,6 +108,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `(T1 a b)` (BoundConstraint):
   has bound(s) `T1` `a` `b` (resolved as `(T1 a b)`)
@@ -107,12 +119,14 @@ Facts (layer 2):
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `b` (TypeParameter):
   has type `b`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
+  type is annotated
 
 `x` (VariablePattern):
   has type `a`
@@ -153,6 +167,7 @@ Facts (layer 2):
   has type `a`
   is an expression
   resolved to 1 definition(s): `x`
+  type is annotated
 
 `T2` (ConstructorExpression):
   has bound(s) `T2` `()` (resolved as `instance (T2 a) where (T1 a b)`), `T1` `()` `()` (resolved as `instance (T1 () ())`)
@@ -187,6 +202,7 @@ Facts (layer 2):
 `"done"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 Output:

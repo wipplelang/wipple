@@ -9,59 +9,70 @@ Facts (layer 2):
 `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (FunctionType):
   has type `Boolean {value} {value} -> value`
   is a type
+  type is annotated
 
 `condition :: Boolean` (TypeParameter):
   has type `Boolean`
   is a definition
   is a type
   resolved to 1 definition(s): `condition :: Boolean`
+  type is annotated
 
 `Boolean` (NamedType):
   has type `Boolean`
   is a type
   resolved to 1 definition(s): `Boolean : type {⋯}`
+  type is annotated
 
 `{(then :: value)}` (BlockType):
   has type `{value}`
   is a type
+  type is annotated
 
 `then :: value` (TypeParameter):
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `then :: value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `{(else :: value)}` (BlockType):
   has type `{value}`
   is a type
+  type is annotated
 
 `else :: value` (TypeParameter):
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `else :: value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `output :: value` (TypeParameter):
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `output :: value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `my-if : if` (AssignmentStatement):
   has type `()`
@@ -108,6 +119,7 @@ Facts (layer 2):
 `123` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `{456}` (BlockExpression):
   has type `{Number}`
@@ -119,6 +131,7 @@ Facts (layer 2):
 `456` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:

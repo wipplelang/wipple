@@ -16,11 +16,13 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `Foo : a b => trait (a -> b)` (TraitDefinition):
   has 1 instances
@@ -34,26 +36,31 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `b` (TypeParameter):
   has type `b`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
+  type is annotated
 
 `a` (TypeParameter):
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `a -> b` (FunctionType):
   has type `a -> b`
   is a type
+  type is annotated
 
 `b` (TypeParameter):
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
+  type is annotated
 
 `instance (Foo (Box value) value)` (InstanceDefinition):
   has definition constraints
@@ -66,17 +73,20 @@ Facts (layer 2):
   has type `Box value`
   is a type
   resolved to 1 definition(s): `Box : value => type {value :: value}`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `(Box {value : value}) -> value` (FunctionExpression):
   has type `(Box value) -> value`
@@ -96,6 +106,7 @@ Facts (layer 2):
   has type `value`
   is an expression
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
@@ -128,6 +139,7 @@ Facts (layer 2):
 `"Hello, world!"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 Output:

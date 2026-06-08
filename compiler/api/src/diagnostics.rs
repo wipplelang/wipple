@@ -112,8 +112,10 @@ impl CompileResult {
 
     #[wasm_bindgen]
     pub fn diagnostics(&self) -> Option<Vec<Diagnostic>> {
-        let items = collect_feedback(&self.db, |item| {
-            default_filter(&self.db, item.location.primary)
+        let filter = default_filter;
+
+        let items = collect_feedback(&self.db, filter, |item| {
+            filter(&self.db, item.location.primary)
         });
 
         if items.is_empty() {

@@ -16,6 +16,7 @@ Facts (layer 2):
 `"Hello, world!"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 Output:

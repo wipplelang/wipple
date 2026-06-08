@@ -9,6 +9,7 @@ Facts (layer 2):
   has type `Number` or `String`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `x : "42"` (AssignmentStatement):
   has type `()`
@@ -16,37 +17,11 @@ Facts (layer 2):
 `"42"` (StringExpression):
   has type `Number` or `String`
   is an expression
+  type is annotated
 
 
 
 Feedback:
-
-`"42"` (conflicting-types)
-
-  `"42"` is a `Number` or a `String`, but it can only be one of these.
-  
-  `"42"` must be the same type as `Number` and `x :: Number`; double-check these.
-  
-  -  `x` is a `Number`.
-
-
-`Number` (conflicting-types)
-
-  `Number` is a `Number` or a `String`, but it can only be one of these.
-  
-  `Number` must be the same type as `"42"` and `x :: Number`; double-check these.
-  
-  -  `x` is a `Number`.
-
-
-`"42"` (conflicting-types)
-
-  `"42"` is a `Number` or a `String`, but it can only be one of these.
-  
-  `"42"` must be the same type as `Number` and `x :: Number`; double-check these.
-  
-  -  `x` is a `Number`.
-
 
 `x :: Number` (conflicting-types)
 

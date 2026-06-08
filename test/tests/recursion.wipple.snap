@@ -26,10 +26,12 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
+  type is annotated
 
 `0` (NumberPattern):
   has type `Number`
   is a pattern
+  type is annotated
 
 `0 or 1` (OrPattern):
   captures `n`
@@ -39,11 +41,13 @@ Facts (layer 2):
 `1` (NumberPattern):
   has type `Number`
   is a pattern
+  type is annotated
 
 `n` (VariableExpression):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
+  type is annotated
 
 `_` (WildcardPattern):
   captures `fib`, `n`
@@ -54,6 +58,7 @@ Facts (layer 2):
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `fib`
+  type is annotated
 
 `fib (n - 1)` (CallExpression):
   has type `Number`
@@ -77,6 +82,7 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
+  type is annotated
 
 `n - 1` (OperatorExpression):
   has type `Number`
@@ -95,11 +101,13 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `fib` (VariableExpression):
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `fib`
+  type is annotated
 
 `fib (n - 2)` (CallExpression):
   has type `Number`
@@ -109,6 +117,7 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
+  type is annotated
 
 `n - 2` (OperatorExpression):
   has type `Number`
@@ -127,6 +136,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
@@ -145,6 +155,7 @@ Facts (layer 2):
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `fib`
+  type is annotated
 
 `fib 10` (CallExpression):
   has type `Number`
@@ -153,6 +164,7 @@ Facts (layer 2):
 `10` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:

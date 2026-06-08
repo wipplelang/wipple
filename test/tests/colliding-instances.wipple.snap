@@ -13,10 +13,12 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `X : type` (TypeDefinition):
   has definition constraints
@@ -38,6 +40,7 @@ Facts (layer 2):
   has type `X`
   is a type
   resolved to 1 definition(s): `X : type`
+  type is annotated
 
 `()` (UnitExpression):
   has type `()`
@@ -53,6 +56,7 @@ Facts (layer 2):
   has type `X`
   is a type
   resolved to 1 definition(s): `X : type`
+  type is annotated
 
 `()` (UnitExpression):
   has type `()`
@@ -70,6 +74,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `()` (UnitExpression):
   has type `()`
@@ -86,10 +91,12 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `instance (T a) where (U a)` (InstanceDefinition):
   has definition constraints
@@ -103,6 +110,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `(U a)` (BoundConstraint):
   has bound(s) `U` `a` (resolved as `(U a)`)
@@ -113,6 +121,7 @@ Facts (layer 2):
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `()` (UnitExpression):
   has type `()`

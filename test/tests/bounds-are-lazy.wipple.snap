@@ -12,19 +12,23 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> ()` (FunctionType):
   has type `value -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `instance (T Number)` (InstanceDefinition):
   has definition constraints
@@ -36,6 +40,7 @@ Facts (layer 2):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `do {⋯}` (DoExpression):
   has type `Number -> ()`
@@ -61,6 +66,7 @@ Facts (layer 2):
 `"should appear second"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `_` (WildcardPattern):
   has type `Number`
@@ -88,14 +94,17 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> ()` (FunctionType):
   has type `value -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `(T value)` (BoundConstraint):
   has bound(s) `T` `value` (resolved as `(T value)`)
@@ -106,6 +115,7 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `f : value -> do {⋯}` (AssignmentStatement):
   has type `()`
@@ -144,6 +154,7 @@ Facts (layer 2):
 `"should appear first"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `T` (ConstructorExpression):
   has bound(s) `T` `value` (resolved as `(T value)`)
@@ -162,6 +173,7 @@ Facts (layer 2):
   has type `value`
   is an expression
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `f` (VariableExpression):
   has bound(s) `T` `Number` (resolved as `instance (T Number)`)
@@ -179,6 +191,7 @@ Facts (layer 2):
 `123` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:

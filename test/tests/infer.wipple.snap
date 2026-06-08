@@ -11,12 +11,7 @@ Facts (layer 2):
 `"C"` (VisitAs):
   has type `String`
   is an expression
-
-`"C"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `String (List String) -> List String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `"C", "Python", "Java", "JavaScript", "Wipple"` (CollectionExpression):
   has type `List String`
@@ -25,42 +20,22 @@ Facts (layer 2):
 `"Python"` (VisitAs):
   has type `String`
   is an expression
-
-`"Python"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `String (List String) -> List String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `"Java"` (VisitAs):
   has type `String`
   is an expression
-
-`"Java"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `String (List String) -> List String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `"JavaScript"` (VisitAs):
   has type `String`
   is an expression
-
-`"JavaScript"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `String (List String) -> List String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `"Wipple"` (VisitAs):
   has type `String`
   is an expression
-
-`"Wipple"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `String (List String) -> List String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `short-names` (VariablePattern):
   has type `Sequence String`
@@ -74,6 +49,7 @@ Facts (layer 2):
   has type `List String`
   is an expression
   resolved to 1 definition(s): `languages`
+  type is annotated
 
 `languages . filter (name -> count name < 5)` (OperatorExpression):
   has type `Sequence String`
@@ -130,15 +106,18 @@ Facts (layer 2):
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
+  type is annotated
 
 `5` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `short-names` (VisitAs):
   has type `Sequence String`
   is an expression
   resolved to 1 definition(s): `short-names`
+  type is annotated
 
 `short-names . each show` (ExpressionStatement):
   has type `()`

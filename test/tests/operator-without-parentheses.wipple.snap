@@ -30,10 +30,12 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -94,6 +96,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1 + "hi"` (OperatorExpression):
   is an expression
@@ -112,6 +115,7 @@ Facts (layer 2):
 `"hi"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 

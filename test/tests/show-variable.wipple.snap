@@ -40,6 +40,7 @@ Facts (layer 2):
   has type `Cannot-Be-Shown`
   is an expression
   resolved to 1 definition(s): `my-variable`
+  type is annotated
 
 
 

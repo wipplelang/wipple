@@ -32,19 +32,23 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> ()` (FunctionType):
   has type `value -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `U : value => trait (value -> ())` (TraitDefinition):
   has definition constraints
@@ -57,19 +61,23 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> ()` (FunctionType):
   has type `value -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `instance (T value) where (U value)` (InstanceDefinition):
   has definition constraints
@@ -83,6 +91,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `(U value)` (BoundConstraint):
   has bound(s) `U` `value` (resolved as `(U value)`)
@@ -93,6 +102,7 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `value -> ()`
@@ -109,14 +119,17 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> ()` (FunctionType):
   has type `value -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `(U value)` (BoundConstraint):
   has bound(s) `U` `value` (resolved as `(U value)`)
@@ -127,6 +140,7 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `t : T` (AssignmentStatement):
   has type `()`

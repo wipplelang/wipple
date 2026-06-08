@@ -4,7 +4,6 @@ use crate::{
     span::Span,
     typecheck::{
         groups::update_type,
-        instantiate::Instantiated,
         ty::{ConstructedTy, Ty, TyTag},
     },
     visit::definitions::{Defined, VariableDefinition},
@@ -273,7 +272,7 @@ impl GraphBuilder {
     }
 
     fn can_display(&self, db: &Db, node: Node) -> bool {
-        (!db.is_hidden(node) || db.contains::<Instantiated>(node))
+        !db.is_hidden(node)
             && db.get(node).is_none_or(|Defined(definition)| {
                 // Allow variables, but not other definitions
                 definition.downcast_ref::<VariableDefinition>().is_some()

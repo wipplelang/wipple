@@ -16,6 +16,7 @@ Facts (layer 2):
 `5` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `{⋯}` (BlockExpression):
   has type `{()}`
@@ -37,6 +38,7 @@ Facts (layer 2):
 `"Hello, world!"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 

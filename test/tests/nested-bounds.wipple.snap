@@ -22,19 +22,23 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> ()` (FunctionType):
   has type `value -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `instance (A Number)` (InstanceDefinition):
   has definition constraints
@@ -46,6 +50,7 @@ Facts (layer 2):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `Number -> ()`
@@ -61,6 +66,7 @@ Facts (layer 2):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `String -> ()`
@@ -78,19 +84,23 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> ()` (FunctionType):
   has type `value -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `instance (B value) where (A value)` (InstanceDefinition):
   has definition constraints
@@ -104,6 +114,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `(A value)` (BoundConstraint):
   has bound(s) `A` `value` (resolved as `(A value)`)
@@ -114,6 +125,7 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `value -> ()`
@@ -135,6 +147,7 @@ Facts (layer 2):
 `123` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `B` (ConstructorExpression):
   has bound(s) `B` `String` (resolved as `instance (B value) where (A value)`), `A` `String` (resolved as `instance (A String)`)
@@ -152,6 +165,7 @@ Facts (layer 2):
 `"abc"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `B` (ConstructorExpression):
   has bound(s) `B` `()` (resolved as `instance (B value) where (A value)`), `A` `()` (unresolved)

@@ -8,11 +8,13 @@ Facts (layer 2):
 `{Number}` (BlockType):
   has type `{Number}`
   is a type
+  type is annotated
 
 `Number` (NamedType):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `block : {⋯}` (AssignmentStatement):
   has type `()`
@@ -27,6 +29,7 @@ Facts (layer 2):
 `42` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)

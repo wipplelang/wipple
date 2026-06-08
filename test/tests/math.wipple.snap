@@ -16,6 +16,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1 + 2` (OperatorExpression):
   has type `Number`
@@ -34,6 +35,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
@@ -51,6 +53,7 @@ Facts (layer 2):
 `4` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `4 - 1` (OperatorExpression):
   has type `Number`
@@ -69,6 +72,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
@@ -86,6 +90,7 @@ Facts (layer 2):
 `3` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `3 * 5` (OperatorExpression):
   has type `Number`
@@ -104,6 +109,7 @@ Facts (layer 2):
 `5` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
@@ -121,6 +127,7 @@ Facts (layer 2):
 `10` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `10 / 4` (OperatorExpression):
   has type `Number`
@@ -139,6 +146,7 @@ Facts (layer 2):
 `4` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:

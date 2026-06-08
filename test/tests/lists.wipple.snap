@@ -11,12 +11,7 @@ Facts (layer 2):
 `1` (VisitAs):
   has type `Number`
   is an expression
-
-`1` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `1, 2, 3` (CollectionExpression):
   has type `List Number`
@@ -25,22 +20,12 @@ Facts (layer 2):
 `2` (VisitAs):
   has type `Number`
   is an expression
-
-`2` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `3` (VisitAs):
   has type `Number`
   is an expression
-
-`3` (ConstructorExpression):
-  has bound(s) `Build-Collection` `Number` `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
@@ -59,6 +44,7 @@ Facts (layer 2):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
+  type is annotated
 
 `my-list . first` (OperatorExpression):
   has type `Maybe Number`
@@ -90,6 +76,7 @@ Facts (layer 2):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
+  type is annotated
 
 `my-list . last` (OperatorExpression):
   has type `Maybe Number`
@@ -121,6 +108,7 @@ Facts (layer 2):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
+  type is annotated
 
 `my-list . initial` (VisitAs):
   has type `Maybe (List Number)`
@@ -191,6 +179,7 @@ Facts (layer 2):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
+  type is annotated
 
 `my-list . tail` (VisitAs):
   has type `Maybe (List Number)`
@@ -261,6 +250,7 @@ Facts (layer 2):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
+  type is annotated
 
 `my-list . nth 1` (OperatorExpression):
   has type `Maybe Number`
@@ -282,6 +272,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:

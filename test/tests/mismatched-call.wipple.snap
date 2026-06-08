@@ -9,14 +9,17 @@ Facts (layer 2):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `String -> ()` (FunctionType):
   has type `String -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `accepts-text : todo` (AssignmentStatement):
   has type `()`
@@ -43,6 +46,7 @@ accepts-text (1 + 2)` (ExpressionStatement):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1 + 2` (OperatorExpression):
   has type `Number` or `String`
@@ -61,6 +65,7 @@ accepts-text (1 + 2)` (ExpressionStatement):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 

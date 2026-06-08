@@ -2,7 +2,7 @@ use wipple_core::{
     db::{Db, Node},
     typecheck::{
         constraints::ConstraintTrace,
-        groups::Typed,
+        groups::{Annotated, Typed},
         instantiate::Instantiated,
         ty::{ConstructedTy, Ty},
     },
@@ -49,13 +49,22 @@ pub fn conflicting_types(db: &Db, node: Node) -> Option<ConflictingTypes> {
         .filter(|other| *other != node)
         .collect::<Vec<_>>();
 
+    // Prioritize non-annotated nodes
+    if db.contains::<Annotated>(node) && nodes.iter().any(|&other| !db.contains::<Annotated>(other))
+    {
+        return None;
+    }
+
     let traces = db.traces_for(nodes.iter().copied()).collect::<Vec<_>>();
 
+    let (source, from) = db
+        .get::<Instantiated>(node)
+        .map(|instantiated| (Some(instantiated.source_node), instantiated.from))
+        .unwrap_or((None, node));
+
     Some(ConflictingTypes {
-        source: db
-            .get::<Instantiated>(node)
-            .map(|instantiated| instantiated.source_node),
-        from: node,
+        source,
+        from,
         nodes,
         tys: group.tys.clone(),
         traces,

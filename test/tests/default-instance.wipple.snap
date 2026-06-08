@@ -12,19 +12,23 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> ()` (FunctionType):
   has type `value -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `default instance (Do-Something value)` (InstanceDefinition):
   has definition constraints
@@ -38,6 +42,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `_` (WildcardPattern):
   has type `value`
@@ -60,6 +65,7 @@ Facts (layer 2):
 `"using default instance"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `instance (Do-Something String)` (InstanceDefinition):
   has definition constraints
@@ -71,6 +77,7 @@ Facts (layer 2):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `text` (VariablePattern):
   has type `String`
@@ -99,6 +106,7 @@ Facts (layer 2):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `"using specific instance: _" text` (ConstructorExpression):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
@@ -110,6 +118,7 @@ Facts (layer 2):
   has type `String`
   is an expression
   resolved to 1 definition(s): `text`
+  type is annotated
 
 `Do-Something` (ConstructorExpression):
   has bound(s) `Do-Something` `Number` (resolved as `default instance (Do-Something value)`)
@@ -127,6 +136,7 @@ Facts (layer 2):
 `42` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `Do-Something` (ConstructorExpression):
   has bound(s) `Do-Something` `String` (resolved as `instance (Do-Something String)`)
@@ -144,6 +154,7 @@ Facts (layer 2):
 `"Hello, world!"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 Output:

@@ -30,6 +30,7 @@ Facts (layer 2):
 `42` (NumberExpression):
   has type `Number` or `String`
   is an expression
+  type is annotated
 
 `False` (ConstructorPattern):
   has type `Boolean`
@@ -39,6 +40,7 @@ Facts (layer 2):
 `"hi"` (StringExpression):
   has type `Number` or `String`
   is an expression
+  type is annotated
 
 
 
@@ -49,58 +51,6 @@ Feedback:
   `when True {⋯}` is a `Number` or a `String`, but it can only be one of these.
   
   `when True {⋯}` must be the same type as `"hi"` and `42`; double-check these.
-  
-  -  `show` displays `when True {⋯}` on the screen.
-  
-  -  `42` is a `Number`.
-  
-  -  `"hi"` is a `String`.
-
-
-`42` (conflicting-types)
-
-  `42` is a `Number` or a `String`, but it can only be one of these.
-  
-  `42` must be the same type as `"hi"` and `when True {⋯}`; double-check these.
-  
-  -  `show` displays `when True {⋯}` on the screen.
-  
-  -  `42` is a `Number`.
-  
-  -  `"hi"` is a `String`.
-
-
-`"hi"` (conflicting-types)
-
-  `"hi"` is a `Number` or a `String`, but it can only be one of these.
-  
-  `"hi"` must be the same type as `42` and `when True {⋯}`; double-check these.
-  
-  -  `show` displays `when True {⋯}` on the screen.
-  
-  -  `42` is a `Number`.
-  
-  -  `"hi"` is a `String`.
-
-
-`42` (conflicting-types)
-
-  `42` is a `Number` or a `String`, but it can only be one of these.
-  
-  `42` must be the same type as `"hi"` and `when True {⋯}`; double-check these.
-  
-  -  `show` displays `when True {⋯}` on the screen.
-  
-  -  `42` is a `Number`.
-  
-  -  `"hi"` is a `String`.
-
-
-`"hi"` (conflicting-types)
-
-  `"hi"` is a `Number` or a `String`, but it can only be one of these.
-  
-  `"hi"` must be the same type as `42` and `when True {⋯}`; double-check these.
   
   -  `show` displays `when True {⋯}` on the screen.
   

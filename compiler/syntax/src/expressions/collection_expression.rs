@@ -88,7 +88,7 @@ impl Visit for CollectionExpression {
 
             let function = visitor.in_ast(
                 db,
-                Box::new(ConstructorExpression {
+                Hidden::new(ConstructorExpression {
                     span: db.ast(element).span(db).clone(),
                     constructor: Str::from("Build-Collection"),
                 }),

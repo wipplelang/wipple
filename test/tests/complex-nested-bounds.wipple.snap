@@ -17,20 +17,24 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> value` (FunctionType):
   has type `value -> value`
   is a type
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `instance (Not Boolean)` (InstanceDefinition):
   has definition constraints
@@ -42,6 +46,7 @@ Facts (layer 2):
   has type `Boolean`
   is a type
   resolved to 1 definition(s): `Boolean : type`
+  type is annotated
 
 `todo` (VariableExpression):
   has type `Boolean -> Boolean`
@@ -60,16 +65,19 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `a -> b` (FunctionType):
   has type `a -> b`
   is a type
+  type is annotated
 
 `b` (TypeParameter):
   has type `b`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
+  type is annotated
 
 `(Not b)` (BoundConstraint):
   has bound(s) `Not` `b` (resolved as `(Not b)`)
@@ -80,6 +88,7 @@ Facts (layer 2):
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
+  type is annotated
 
 `f` (VariablePattern):
   has type `a -> b`
@@ -114,6 +123,7 @@ Facts (layer 2):
   has type `a -> b`
   is an expression
   resolved to 1 definition(s): `f`
+  type is annotated
 
 `f x` (CallExpression):
   has type `b`
@@ -123,6 +133,7 @@ Facts (layer 2):
   has type `a`
   is an expression
   resolved to 1 definition(s): `x`
+  type is annotated
 
 `not :: value -> value where (Not value)` (ConstantDefinition):
   has definition constraints
@@ -135,15 +146,18 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> value` (FunctionType):
   has type `value -> value`
   is a type
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `(Not value)` (BoundConstraint):
   has bound(s) `Not` `value` (resolved as `(Not value)`)
@@ -154,6 +168,7 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `not : Not` (AssignmentStatement):
   has type `()`

@@ -41,15 +41,18 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `{element}` (BlockType):
   has type `{element}`
   is a type
+  type is annotated
 
 `element` (TypeParameter):
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  type is annotated
 
 `Box : value => type {⋯}` (TypeDefinition):
   has definition constraints
@@ -67,11 +70,13 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (TraitDefinition):
   has 1 instances
@@ -85,6 +90,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `collection`
+  type is annotated
 
 `(infer element)` (TypeParameter):
   has type `element`
@@ -92,25 +98,30 @@ Facts (layer 2):
   is a type
   is inferred type parameter
   resolved to 1 definition(s): `(infer element)`
+  type is annotated
 
 `collection` (TypeParameter):
   has type `collection`
   is a type
   resolved to 1 definition(s): `collection`
+  type is annotated
 
 `collection -> Sequence element` (FunctionType):
   has type `collection -> Sequence element`
   is a type
+  type is annotated
 
 `Sequence element` (NamedType):
   has type `Sequence element`
   is a type
   resolved to 1 definition(s): `Sequence : element => type {⋯}`
+  type is annotated
 
 `element` (TypeParameter):
   has type `element`
   is a type
   resolved to 1 definition(s): `(infer element)`
+  type is annotated
 
 `instance (As-Sequence (Box value) value)` (InstanceDefinition):
   has definition constraints
@@ -123,17 +134,20 @@ Facts (layer 2):
   has type `Box value`
   is a type
   resolved to 1 definition(s): `Box : value => type {⋯}`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `(Box value) -> Sequence value`
@@ -148,41 +162,49 @@ Facts (layer 2):
 `(item -> Boolean) -> collection -> Sequence item` (FunctionType):
   has type `(item -> Boolean) -> collection -> Sequence item`
   is a type
+  type is annotated
 
 `item` (TypeParameter):
   has type `item`
   is a definition
   is a type
   resolved to 1 definition(s): `item`
+  type is annotated
 
 `item -> Boolean` (FunctionType):
   has type `item -> Boolean`
   is a type
+  type is annotated
 
 `Boolean` (NamedType):
   has type `Boolean`
   is a type
   resolved to 1 definition(s): `Boolean : type {⋯}`
+  type is annotated
 
 `collection` (TypeParameter):
   has type `collection`
   is a definition
   is a type
   resolved to 1 definition(s): `collection`
+  type is annotated
 
 `collection -> Sequence item` (FunctionType):
   has type `collection -> Sequence item`
   is a type
+  type is annotated
 
 `Sequence item` (NamedType):
   has type `Sequence item`
   is a type
   resolved to 1 definition(s): `Sequence : element => type {⋯}`
+  type is annotated
 
 `item` (TypeParameter):
   has type `item`
   is a type
   resolved to 1 definition(s): `item`
+  type is annotated
 
 `(As-Sequence collection item)` (BoundConstraint):
   has bound(s) `As-Sequence` `collection` `item` (resolved as `(As-Sequence collection item)`)
@@ -193,11 +215,13 @@ Facts (layer 2):
   has type `collection`
   is a type
   resolved to 1 definition(s): `collection`
+  type is annotated
 
 `item` (TypeParameter):
   has type `item`
   is a type
   resolved to 1 definition(s): `item`
+  type is annotated
 
 `filter : _` (AssignmentStatement):
   has type `()`
@@ -217,16 +241,19 @@ Facts (layer 2):
 `_` (PlaceholderExpression):
   has type `Box String`
   is an expression
+  type is annotated
 
 `Box String` (NamedType):
   has type `Box String`
   is a type
   resolved to 1 definition(s): `Box : value => type {⋯}`
+  type is annotated
 
 `String` (NamedType):
   has type `String` or `Number`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `positive?` (VariablePattern):
   has type `String -> Boolean`
@@ -243,11 +270,13 @@ Facts (layer 2):
 `_` (WildcardPattern):
   has type `String` or `Number`
   is a pattern
+  type is annotated
 
 `Number` (NamedType):
   has type `String` or `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `Boolean`
@@ -274,63 +303,26 @@ Facts (layer 2):
   has type `String -> Boolean`
   is an expression
   resolved to 1 definition(s): `positive?`
+  type is annotated
 
 `box` (VariableExpression):
   has type `Box String`
   is an expression
   resolved to 1 definition(s): `box`
+  type is annotated
 
 
 
 Feedback:
 
-`_` (conflicting-types)
+`filter` (conflicting-types)
 
-  `_` is a `String` or a `Number`, but it can only be one of these.
+  In `filter`, `item` is a `String` or a `Number`, but it can only be one of these.
   
-  `_` must be the same type as `_ :: Number`, `String`, and `Number`; double-check these.
+  `item` must be the same type as `_`, `_ :: Number`, `String`, and 1 other; double-check these.
   
   -  `filter` is a `(item -> Boolean) -> collection -> Sequence item`.
   
-  -  `_` was annotated with the type `Box String`.
+  -  `_` is annotated with the type `Box String`.
   
-  -  `_` was annotated with the type `Number`.
-
-
-`_ :: Number` (conflicting-types)
-
-  `_ :: Number` is a `String` or a `Number`, but it can only be one of these.
-  
-  `_ :: Number` must be the same type as `_`, `String`, and `Number`; double-check these.
-  
-  -  `filter` is a `(item -> Boolean) -> collection -> Sequence item`.
-  
-  -  `_` was annotated with the type `Box String`.
-  
-  -  `_` was annotated with the type `Number`.
-
-
-`String` (conflicting-types)
-
-  `String` is a `String` or a `Number`, but it can only be one of these.
-  
-  `String` must be the same type as `_`, `_ :: Number`, and `Number`; double-check these.
-  
-  -  `filter` is a `(item -> Boolean) -> collection -> Sequence item`.
-  
-  -  `_` was annotated with the type `Box String`.
-  
-  -  `_` was annotated with the type `Number`.
-
-
-`Number` (conflicting-types)
-
-  `Number` is a `String` or a `Number`, but it can only be one of these.
-  
-  `Number` must be the same type as `_`, `_ :: Number`, and `String`; double-check these.
-  
-  -  `filter` is a `(item -> Boolean) -> collection -> Sequence item`.
-  
-  -  `_` was annotated with the type `Box String`.
-  
-  -  `_` was annotated with the type `Number`.
+  -  `_` is annotated with the type `Number`.

@@ -6,12 +6,7 @@ Facts (layer 2):
 `1` (VisitAs):
   has type `Number` or `String`
   is an expression
-
-`1` (ConstructorExpression):
-  has bound(s) `Build-Collection` (`Number` or `String`) `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `1, 2, 3` (VisitAs):
   has type `List Number`
@@ -24,22 +19,12 @@ Facts (layer 2):
 `2` (VisitAs):
   has type `Number` or `String`
   is an expression
-
-`2` (ConstructorExpression):
-  has bound(s) `Build-Collection` (`Number` or `String`) `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `3` (VisitAs):
   has type `Number` or `String`
   is an expression
-
-`3` (ConstructorExpression):
-  has bound(s) `Build-Collection` (`Number` or `String`) `(List Number)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `Number (List Number) -> List Number`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `transform` (VariableExpression):
   has bound(s) `As-Sequence` `(List Number)` (`Number` or `String`) (resolved as `instance (As-Sequence (List element) element)`)
@@ -63,26 +48,31 @@ Facts (layer 2):
   has type `Number` or `String`
   is a definition
   is a pattern
+  type is annotated
 
 `String` (NamedType):
   has type `Number` or `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `x` (VariableExpression):
   has type `Number` or `String`
   is an expression
   resolved to 1 definition(s): `x`
+  type is annotated
 
 
 
 Feedback:
 
-`x` (conflicting-types)
+`transform` (conflicting-types)
 
-  `x` is a `Number` or a `String`, but it can only be one of these.
+  In `transform`, `input` is a `Number` or a `String`, but it can only be one of these.
   
-  `x` must be the same type as `x :: String`, `1`, `2`, and 3 others; double-check these.
+  `input` must be the same type as `x`, `x :: String`, `1`, and 4 others; double-check these.
+  
+  -  `transform` is a `(input -> output) -> container -> Sequence output`.
   
   -  `1` is a `Number`.
   
@@ -90,279 +80,4 @@ Feedback:
   
   -  `3` is a `Number`.
   
-  -  `x` was annotated with the type `String`.
-  
-  -  `1` returns a `List Number`.
-  
-  -  `2` returns a `List Number`.
-  
-  -  `3` returns a `List Number`.
-  
-  -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `2` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `3` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-
-
-`x :: String` (conflicting-types)
-
-  `x :: String` is a `Number` or a `String`, but it can only be one of these.
-  
-  `x :: String` must be the same type as `x`, `1`, `2`, and 3 others; double-check these.
-  
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `3` is a `Number`.
-  
-  -  `x` was annotated with the type `String`.
-  
-  -  `1` returns a `List Number`.
-  
-  -  `2` returns a `List Number`.
-  
-  -  `3` returns a `List Number`.
-  
-  -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `2` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `3` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-
-
-`1` (conflicting-types)
-
-  `1` is a `Number` or a `String`, but it can only be one of these.
-  
-  `1` must be the same type as `x`, `x :: String`, `2`, and 3 others; double-check these.
-  
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `3` is a `Number`.
-  
-  -  `x` was annotated with the type `String`.
-  
-  -  `1` returns a `List Number`.
-  
-  -  `2` returns a `List Number`.
-  
-  -  `3` returns a `List Number`.
-  
-  -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `2` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `3` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-
-
-`2` (conflicting-types)
-
-  `2` is a `Number` or a `String`, but it can only be one of these.
-  
-  `2` must be the same type as `x`, `x :: String`, `1`, and 3 others; double-check these.
-  
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `3` is a `Number`.
-  
-  -  `x` was annotated with the type `String`.
-  
-  -  `1` returns a `List Number`.
-  
-  -  `2` returns a `List Number`.
-  
-  -  `3` returns a `List Number`.
-  
-  -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `2` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `3` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-
-
-`3` (conflicting-types)
-
-  `3` is a `Number` or a `String`, but it can only be one of these.
-  
-  `3` must be the same type as `x`, `x :: String`, `1`, and 3 others; double-check these.
-  
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `3` is a `Number`.
-  
-  -  `x` was annotated with the type `String`.
-  
-  -  `1` returns a `List Number`.
-  
-  -  `2` returns a `List Number`.
-  
-  -  `3` returns a `List Number`.
-  
-  -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `2` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `3` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-
-
-`x` (conflicting-types)
-
-  `x` is a `Number` or a `String`, but it can only be one of these.
-  
-  `x` must be the same type as `x`, `x :: String`, `1`, and 3 others; double-check these.
-  
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `3` is a `Number`.
-  
-  -  `x` was annotated with the type `String`.
-  
-  -  `1` returns a `List Number`.
-  
-  -  `2` returns a `List Number`.
-  
-  -  `3` returns a `List Number`.
-  
-  -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `2` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `3` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-
-
-`1` (conflicting-types)
-
-  `1` is a `Number` or a `String`, but it can only be one of these.
-  
-  `1` must be the same type as `x`, `x :: String`, `2`, and 3 others; double-check these.
-  
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `3` is a `Number`.
-  
-  -  `x` was annotated with the type `String`.
-  
-  -  `1` returns a `List Number`.
-  
-  -  `2` returns a `List Number`.
-  
-  -  `3` returns a `List Number`.
-  
-  -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `2` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `3` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-
-
-`2` (conflicting-types)
-
-  `2` is a `Number` or a `String`, but it can only be one of these.
-  
-  `2` must be the same type as `x`, `x :: String`, `1`, and 3 others; double-check these.
-  
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `3` is a `Number`.
-  
-  -  `x` was annotated with the type `String`.
-  
-  -  `1` returns a `List Number`.
-  
-  -  `2` returns a `List Number`.
-  
-  -  `3` returns a `List Number`.
-  
-  -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `2` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `3` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-
-
-`3` (conflicting-types)
-
-  `3` is a `Number` or a `String`, but it can only be one of these.
-  
-  `3` must be the same type as `x`, `x :: String`, `1`, and 3 others; double-check these.
-  
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `3` is a `Number`.
-  
-  -  `x` was annotated with the type `String`.
-  
-  -  `1` returns a `List Number`.
-  
-  -  `2` returns a `List Number`.
-  
-  -  `3` returns a `List Number`.
-  
-  -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `2` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `3` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-
-
-`String` (conflicting-types)
-
-  `String` is a `Number` or a `String`, but it can only be one of these.
-  
-  `String` must be the same type as `x`, `x :: String`, `1`, and 3 others; double-check these.
-  
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `3` is a `Number`.
-  
-  -  `x` was annotated with the type `String`.
-  
-  -  `1` returns a `List Number`.
-  
-  -  `2` returns a `List Number`.
-  
-  -  `3` returns a `List Number`.
-  
-  -  `1` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `1, 2, 3` requires the instance `Initial-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `2` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
-  
-  -  `3` requires the instance `Build-Collection` (`Number` or `String`) `(List Number)`.
+  -  `x` is annotated with the type `String`.

@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    render::{Comments, Render, RenderCtx},
+    render::{Comments, Render, RenderCtx, TyPlacement},
     span::{Span, Str},
     typecheck::{
         bounds::Bounds,
@@ -12,6 +12,8 @@ use wipple_core::{
             ConstraintTrace, group_constraint::GroupConstraint,
             instantiate_constraint::InstantiateConstraint,
         },
+        groups::Annotated,
+        ty::Ty,
     },
     util::{get_links, instantiated_node_for},
     visit::{
@@ -81,6 +83,10 @@ impl Visit for VariableExpression {
                 db.graph.replace(node, definition_node);
 
                 visitor.constraint(db, GroupConstraint::new(node, definition_node));
+
+                // Prefer showing conflicts on the definition rather than its uses
+                db.insert(node, Annotated);
+
                 visitor.codegen(
                     db,
                     node,
@@ -163,15 +169,22 @@ impl Render for ConstantConstraintTrace {
             return;
         };
 
-        ctx.comments(
-            db,
-            self.definition,
-            &Comments {
-                nodes: Default::default(),
-                comments: definition.comments.clone(),
-                links: get_links(db, self.definition, self.node),
-            },
-        );
+        if !definition.comments.is_empty() {
+            ctx.comments(
+                db,
+                self.definition,
+                &Comments {
+                    nodes: Default::default(),
+                    comments: definition.comments.clone(),
+                    links: get_links(db, self.definition, self.node),
+                },
+            );
+        } else {
+            ctx.node(self.node);
+            ctx.string(" is a ");
+            ctx.ty(db, &Ty::Node(self.definition), TyPlacement::InlineFirst);
+            ctx.string(".");
+        }
     }
 }
 

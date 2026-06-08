@@ -16,6 +16,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1 + 2` (OperatorExpression):
   has type `Number`
@@ -48,10 +49,12 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `3` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -69,6 +72,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1 = 2` (VisitAs):
   has type `Boolean`
@@ -101,10 +105,12 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1 = 1` (VisitAs):
   has type `Boolean`
@@ -130,6 +136,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -147,6 +154,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `2 /= 3` (OperatorExpression):
   has type `Boolean`
@@ -165,6 +173,7 @@ Facts (layer 2):
 `3` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -182,6 +191,7 @@ Facts (layer 2):
 `"hello"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `"hello" = "hello"` (OperatorExpression):
   has type `Boolean`
@@ -200,6 +210,7 @@ Facts (layer 2):
 `"hello"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -363,6 +374,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `2 > 1` (OperatorExpression):
   has type `Boolean`
@@ -381,6 +393,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -398,6 +411,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1 >= 1` (OperatorExpression):
   has type `Boolean`
@@ -416,6 +430,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -433,6 +448,7 @@ Facts (layer 2):
 `4` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `4 < 3` (OperatorExpression):
   has type `Boolean`
@@ -451,6 +467,7 @@ Facts (layer 2):
 `3` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -468,6 +485,7 @@ Facts (layer 2):
 `5` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `5 <= 6` (OperatorExpression):
   has type `Boolean`
@@ -486,6 +504,7 @@ Facts (layer 2):
 `6` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:

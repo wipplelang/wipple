@@ -10,7 +10,7 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue},
     db::{Db, Node},
     span::Span,
-    typecheck::constraints::group_constraint::GroupConstraint,
+    typecheck::{constraints::group_constraint::GroupConstraint, groups::Annotated},
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -61,6 +61,8 @@ impl Visit for AnnotatePattern {
         );
 
         visitor.constraint(db, GroupConstraint::new(node, pattern));
+
+        db.insert(pattern, Annotated);
 
         visitor.codegen(db, node, AnnotatePatternCodegen { pattern });
     }

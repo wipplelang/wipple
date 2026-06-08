@@ -10,7 +10,10 @@ use wipple_core::{
     db::{Db, Node},
     render::{Render, RenderCtx},
     span::Span,
-    typecheck::constraints::{ConstraintTrace, group_constraint::GroupConstraint},
+    typecheck::{
+        constraints::{ConstraintTrace, group_constraint::GroupConstraint},
+        groups::Annotated,
+    },
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -66,6 +69,8 @@ impl Visit for AnnotateExpression {
 
         visitor.constraint(db, GroupConstraint::new(node, expression));
 
+        db.insert(expression, Annotated);
+
         visitor.codegen(db, node, AnnotateExpressionCodegen { node, expression });
     }
 }
@@ -90,7 +95,7 @@ impl ConstraintTrace for AnnotateConstraintTrace {
 impl Render for AnnotateConstraintTrace {
     fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.node(self.value);
-        ctx.string(" was annotated with the type ");
+        ctx.string(" is annotated with the type ");
         ctx.node(self.ty);
         ctx.string(".");
     }

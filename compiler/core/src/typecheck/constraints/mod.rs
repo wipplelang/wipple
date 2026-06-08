@@ -134,7 +134,9 @@ impl Constraints {
                 break;
             };
 
-            if let Some(trace) = constraint.trace() {
+            if solver.trace
+                && let Some(trace) = constraint.trace()
+            {
                 db.traces.push((order, trace));
             }
 

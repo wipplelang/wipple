@@ -11,6 +11,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `Nil` (VariantDefinition):
   has definition constraints
@@ -26,16 +27,19 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `Linked-List value` (NamedType):
   has type `Linked-List value`
   is a type
   resolved to 1 definition(s): `Linked-List : value => type {⋯}`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `reduce-linked-list :: (value result -> result) result (Linked-List value) -> result` (ConstantDefinition):
   has definition constraints
@@ -46,47 +50,56 @@ Facts (layer 2):
 `(value result -> result) result (Linked-List value) -> result` (FunctionType):
   has type `(value result -> result) result (Linked-List value) -> result`
   is a type
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value result -> result` (FunctionType):
   has type `value result -> result`
   is a type
+  type is annotated
 
 `result` (TypeParameter):
   has type `result`
   is a definition
   is a type
   resolved to 1 definition(s): `result`
+  type is annotated
 
 `result` (TypeParameter):
   has type `result`
   is a type
   resolved to 1 definition(s): `result`
+  type is annotated
 
 `result` (TypeParameter):
   has type `result`
   is a type
   resolved to 1 definition(s): `result`
+  type is annotated
 
 `Linked-List value` (NamedType):
   has type `Linked-List value`
   is a type
   resolved to 1 definition(s): `Linked-List : value => type {⋯}`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `result` (TypeParameter):
   has type `result`
   is a type
   resolved to 1 definition(s): `result`
+  type is annotated
 
 `reduce-linked-list : f result l -> when l {⋯}` (AssignmentStatement):
   has type `()`
@@ -118,6 +131,7 @@ Facts (layer 2):
   has type `Linked-List value`
   is an expression
   resolved to 1 definition(s): `l`
+  type is annotated
 
 `Nil` (ConstructorPattern):
   captures `result`
@@ -129,6 +143,7 @@ Facts (layer 2):
   has type `result`
   is an expression
   resolved to 1 definition(s): `result`
+  type is annotated
 
 `Cons x rest` (ConstructorPattern):
   captures `f`, `result`
@@ -159,11 +174,13 @@ Facts (layer 2):
   has type `value result -> result`
   is an expression
   resolved to 1 definition(s): `f`
+  type is annotated
 
 `f` (VariableExpression):
   has type `value result -> result`
   is an expression
   resolved to 1 definition(s): `f`
+  type is annotated
 
 `f x result` (CallExpression):
   has type `result`
@@ -173,16 +190,19 @@ Facts (layer 2):
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
+  type is annotated
 
 `result` (VariableExpression):
   has type `result`
   is an expression
   resolved to 1 definition(s): `result`
+  type is annotated
 
 `rest` (VariableExpression):
   has type `Linked-List value`
   is an expression
   resolved to 1 definition(s): `rest`
+  type is annotated
 
 `list` (VariablePattern):
   has type `Linked-List Number`
@@ -204,6 +224,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `Cons` (ConstructorExpression):
   has type `Number (Linked-List Number) -> Linked-List Number`
@@ -217,6 +238,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `Cons` (ConstructorExpression):
   has type `Number (Linked-List Number) -> Linked-List Number`
@@ -230,6 +252,7 @@ Facts (layer 2):
 `3` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `Nil` (ConstructorExpression):
   has type `Linked-List Number`
@@ -262,11 +285,13 @@ Facts (layer 2):
 `0` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `list` (VariableExpression):
   has type `Linked-List Number`
   is an expression
   resolved to 1 definition(s): `list`
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
@@ -285,6 +310,7 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `sum`
+  type is annotated
 
 
 Output:

@@ -20,6 +20,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `odd?` (VariablePattern):
   has type `Number -> Boolean`
@@ -43,6 +44,7 @@ Facts (layer 2):
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `even?`
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -61,6 +63,7 @@ Facts (layer 2):
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `even?`
+  type is annotated
 
 `even? 2` (CallExpression):
   has type `Boolean`
@@ -69,6 +72,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -87,6 +91,7 @@ Facts (layer 2):
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `odd?`
+  type is annotated
 
 `odd? 2` (CallExpression):
   has type `Boolean`
@@ -95,6 +100,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -113,6 +119,7 @@ Facts (layer 2):
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `even?`
+  type is annotated
 
 `even? 3` (CallExpression):
   has type `Boolean`
@@ -121,6 +128,7 @@ Facts (layer 2):
 `3` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -139,6 +147,7 @@ Facts (layer 2):
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `odd?`
+  type is annotated
 
 `odd? 3` (CallExpression):
   has type `Boolean`
@@ -147,6 +156,7 @@ Facts (layer 2):
 `3` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:

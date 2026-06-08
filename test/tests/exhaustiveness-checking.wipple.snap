@@ -39,15 +39,18 @@ Facts (layer 2):
   has type `Grade`
   is a type
   resolved to 1 definition(s): `Grade : type {⋯}`
+  type is annotated
 
 `Grade -> String` (FunctionType):
   has type `Grade -> String`
   is a type
+  type is annotated
 
 `String` (NamedType):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `report-card : grade -> when grade {⋯}` (AssignmentStatement):
   has type `()`
@@ -70,6 +73,7 @@ Facts (layer 2):
   is an expression
   is missing patterns
   resolved to 1 definition(s): `grade`
+  type is annotated
 
 `A` (ConstructorPattern):
   has type `Grade`
@@ -79,6 +83,7 @@ Facts (layer 2):
 `"top of the class"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `B` (ConstructorPattern):
   has type `Grade`
@@ -88,6 +93,7 @@ Facts (layer 2):
 `"good job"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `C` (ConstructorPattern):
   has type `Grade`
@@ -97,6 +103,7 @@ Facts (layer 2):
 `"need to study"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 
 

@@ -5,19 +5,21 @@ mod writer;
 pub use item::*;
 pub use writer::*;
 
+use std::sync::Arc;
 use wipple_core::db::{Db, Node};
 
 pub fn collect_feedback<'a>(
     db: &'a Db,
-    filter: impl FnMut(&FeedbackItem<'a>) -> bool,
+    node_filter: impl Fn(&Db, Node) -> bool + 'static,
+    feedback_filter: impl FnMut(&FeedbackItem<'a>) -> bool,
 ) -> Vec<FeedbackItem<'a>> {
-    let mut ctx = FeedbackCtx::default();
+    let mut ctx = FeedbackCtx::new(Arc::new(node_filter));
     items::register(&mut ctx);
 
     let mut items = db
         .owned_nodes()
         .flat_map(|node| ctx.queries.iter().flat_map(move |query| query(db, node)))
-        .filter(filter)
+        .filter(feedback_filter)
         .collect::<Vec<_>>();
 
     sort_feedback(db, &mut items);
@@ -25,9 +27,18 @@ pub fn collect_feedback<'a>(
     items
 }
 
-#[derive(Default)]
 struct FeedbackCtx<'a> {
     queries: Vec<Box<dyn Fn(&'a Db, Node) -> Box<dyn Iterator<Item = FeedbackItem<'a>> + 'a> + 'a>>,
+    filter: Arc<dyn Fn(&Db, Node) -> bool>,
+}
+
+impl<'a> FeedbackCtx<'a> {
+    fn new(filter: Arc<dyn Fn(&Db, Node) -> bool>) -> Self {
+        FeedbackCtx {
+            queries: Vec::new(),
+            filter,
+        }
+    }
 }
 
 trait FeedbackQueryItem<'a> {
@@ -110,6 +121,7 @@ impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
         let rank = self.rank.unwrap();
         let location = self.location;
         let display = self.display.unwrap();
+        let filter = self.ctx.filter.clone();
         let show_graph = self.show_graph;
 
         self.ctx.queries.push(Box::new(move |db, node| {
@@ -117,6 +129,7 @@ impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
 
             Box::new({
                 let id = id.clone();
+                let filter = filter.clone();
                 items.map(move |item| FeedbackItem {
                     id: id.clone(),
                     rank: rank(&item),
@@ -124,11 +137,14 @@ impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
                         Some(f) => f(node, &item),
                         None => FeedbackLocation::from(node),
                     },
-                    display: Box::new(move |db, render_segment| {
-                        let mut writer = FeedbackWriter::default();
-                        display(db, &mut writer, node, &item);
-                        let (s, nodes) = writer.finish(db, render_segment);
-                        (s.to_string(), nodes)
+                    display: Box::new({
+                        let filter = filter.clone();
+                        move |db, render_segment| {
+                            let mut writer = FeedbackWriter::new(filter.clone());
+                            display(db, &mut writer, node, &item);
+                            let (s, nodes) = writer.finish(db, render_segment);
+                            (s.to_string(), nodes)
+                        }
                     }),
                     show_graph,
                 })

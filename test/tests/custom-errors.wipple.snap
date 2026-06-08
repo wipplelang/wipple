@@ -22,12 +22,14 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `left`
+  type is annotated
 
 `right` (TypeParameter):
   has type `right`
   is a definition
   is a type
   resolved to 1 definition(s): `right`
+  type is annotated
 
 `(infer sum)` (TypeParameter):
   has type `sum`
@@ -35,25 +37,30 @@ Facts (layer 2):
   is a type
   is inferred type parameter
   resolved to 1 definition(s): `(infer sum)`
+  type is annotated
 
 `left` (TypeParameter):
   has type `left`
   is a type
   resolved to 1 definition(s): `left`
+  type is annotated
 
 `left right -> sum` (FunctionType):
   has type `left right -> sum`
   is a type
+  type is annotated
 
 `right` (TypeParameter):
   has type `right`
   is a type
   resolved to 1 definition(s): `right`
+  type is annotated
 
 `sum` (TypeParameter):
   has type `sum`
   is a type
   resolved to 1 definition(s): `(infer sum)`
+  type is annotated
 
 `instance (Add Number Number Number)` (InstanceDefinition):
   has definition constraints
@@ -65,16 +72,19 @@ Facts (layer 2):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `Number` (NamedType):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `Number` (NamedType):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `Number Number -> Number`
@@ -90,16 +100,19 @@ Facts (layer 2):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `String` (NamedType):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `String` (NamedType):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `_` (PlaceholderExpression):
   has type `String String -> String`
@@ -115,18 +128,21 @@ Facts (layer 2):
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `right` (TypeParameter):
   has type `right`
   is a definition
   is a type
   resolved to 1 definition(s): `right`
+  type is annotated
 
 `sum` (TypeParameter):
   has type `sum`
   is a definition
   is a type
   resolved to 1 definition(s): `sum`
+  type is annotated
 
 `default error instance (Add left right sum)` (InstanceDefinition):
   has definition constraints
@@ -140,18 +156,21 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `left`
+  type is annotated
 
 `right` (TypeParameter):
   has type `right`
   is a definition
   is a type
   resolved to 1 definition(s): `right`
+  type is annotated
 
 `sum` (TypeParameter):
   has type `sum`
   is a definition
   is a type
   resolved to 1 definition(s): `sum`
+  type is annotated
 
 `_` (WildcardPattern):
   has type `Number`
@@ -163,6 +182,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1 + 2` (OperatorExpression):
   has type `Number`
@@ -181,6 +201,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `_` (WildcardPattern):
   has type `String`
@@ -192,6 +213,7 @@ Facts (layer 2):
 `"a"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `"a" + "b"` (OperatorExpression):
   has type `String`
@@ -210,6 +232,7 @@ Facts (layer 2):
 `"b"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `_` (WildcardPattern):
   is a pattern
@@ -221,6 +244,7 @@ Facts (layer 2):
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1 + "a"` (OperatorExpression):
   is an expression
@@ -239,6 +263,7 @@ Facts (layer 2):
 `"a"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `_` (WildcardPattern):
   is a pattern
@@ -268,6 +293,7 @@ Facts (layer 2):
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 

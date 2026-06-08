@@ -12,20 +12,24 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value value -> Boolean` (FunctionType):
   has type `value value -> Boolean`
   is a type
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `Elephants : type {count :: Number}` (TypeDefinition):
   has definition constraints
@@ -41,6 +45,7 @@ Facts (layer 2):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `instance (Equal Elephants)` (InstanceDefinition):
   has definition constraints
@@ -52,6 +57,7 @@ Facts (layer 2):
   has type `Elephants`
   is a type
   resolved to 1 definition(s): `Elephants : type {count :: Number}`
+  type is annotated
 
 `(Elephants {count : a}) (Elephants {count : b}) -> a = b` (FunctionExpression):
   has type `Elephants Elephants -> Boolean`
@@ -81,6 +87,7 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `a = b` (OperatorExpression):
   has type `Boolean`
@@ -100,6 +107,7 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `b`
+  type is annotated
 
 `elephants :: Number -> Elephants` (ConstantDefinition):
   has definition constraints
@@ -110,15 +118,18 @@ Facts (layer 2):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `Number -> Elephants` (FunctionType):
   has type `Number -> Elephants`
   is a type
+  type is annotated
 
 `Elephants` (NamedType):
   has type `Elephants`
   is a type
   resolved to 1 definition(s): `Elephants : type {count :: Number}`
+  type is annotated
 
 `elephants : count -> Elephants {count : count}` (AssignmentStatement):
   has type `()`
@@ -141,6 +152,7 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `count`
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
@@ -158,6 +170,7 @@ Facts (layer 2):
 `42` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `42 elephants` (CallExpression):
   has type `Elephants`
@@ -194,6 +207,7 @@ Facts (layer 2):
 `42` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:

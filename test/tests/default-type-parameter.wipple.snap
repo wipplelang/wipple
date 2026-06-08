@@ -32,11 +32,13 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `instance (T X)` (InstanceDefinition):
   has definition constraints
@@ -48,6 +50,7 @@ Facts (layer 2):
   has type `X`
   is a type
   resolved to 1 definition(s): `X : type`
+  type is annotated
 
 `X` (ConstructorExpression):
   has type `X`
@@ -64,6 +67,7 @@ Facts (layer 2):
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y : type`
+  type is annotated
 
 `Y` (ConstructorExpression):
   has type `Y`
@@ -80,6 +84,7 @@ Facts (layer 2):
   has type `X`
   is a type
   resolved to 1 definition(s): `X : type`
+  type is annotated
 
 `_` (WildcardPattern):
   has type `X`
@@ -92,6 +97,7 @@ Facts (layer 2):
 `"X"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `instance (Describe Y)` (InstanceDefinition):
   has definition constraints
@@ -103,6 +109,7 @@ Facts (layer 2):
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y : type`
+  type is annotated
 
 `_` (WildcardPattern):
   has type `Y`
@@ -115,6 +122,7 @@ Facts (layer 2):
 `"Y"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `foo :: value where (value :: X) (T value)` (ConstantDefinition):
   has definition constraints
@@ -127,6 +135,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `(value :: X)` (DefaultConstraint):
   is a constraint
@@ -135,11 +144,13 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `X` (NamedType):
   has type `X`
   is a type
   resolved to 1 definition(s): `X : type`
+  type is annotated
 
 `(T value)` (BoundConstraint):
   has bound(s) `T` `value` (resolved as `(T value)`)
@@ -150,6 +161,7 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `foo : T` (AssignmentStatement):
   has type `()`
@@ -197,11 +209,13 @@ Facts (layer 2):
   has type `Y`
   is an expression
   resolved to 1 definition(s): `foo :: value where (value :: X) (T value)`
+  type is annotated
 
 `Y` (NamedType):
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y : type`
+  type is annotated
 
 `Describe : value => trait (value -> String)` (TraitDefinition):
   has 7 instances
@@ -215,15 +229,18 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> String` (FunctionType):
   has type `value -> String`
   is a type
+  type is annotated
 
 
 Output:

@@ -12,19 +12,23 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> ()` (FunctionType):
   has type `value -> ()`
   is a type
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `instance (T Number)` (InstanceDefinition):
   has definition constraints
@@ -36,6 +40,7 @@ Facts (layer 2):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `_` (WildcardPattern):
   has type `Number`
@@ -59,6 +64,7 @@ Facts (layer 2):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `_` (WildcardPattern):
   has type `String`
@@ -83,16 +89,19 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `a; b` (TupleType):
   has type `(a; b)`
   is a type
+  type is annotated
 
 `b` (TypeParameter):
   has type `b`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
+  type is annotated
 
 `(T a)` (BoundConstraint):
   has bound(s) `T` `a` (resolved as `(T a)`)
@@ -103,6 +112,7 @@ Facts (layer 2):
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
+  type is annotated
 
 `(T b)` (BoundConstraint):
   has bound(s) `T` `b` (resolved as `(T b)`)
@@ -113,6 +123,7 @@ Facts (layer 2):
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
+  type is annotated
 
 `f : todo` (AssignmentStatement):
   has type `()`
@@ -131,19 +142,23 @@ Facts (layer 2):
   has type `(Number; _)`
   is an expression
   resolved to 1 definition(s): `f :: (a; b) where (T a) (T b)`
+  type is annotated
 
 `Number` (NamedType):
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
+  type is annotated
 
 `Number; _` (TupleType):
   has type `(Number; _)`
   is a type
+  type is annotated
 
 `_` (PlaceholderType):
   is a type
   missing type (group: `_`, `_`, `_`, `_`)
+  type is annotated
 
 
 
@@ -152,13 +167,6 @@ Feedback:
 `f` (incomplete-type)
 
   Missing information for the type of `f`.
-  
-  Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
-
-
-`f :: (Number; _)` (incomplete-type)
-
-  Missing information for the type of `f :: (Number; _)`.
   
   Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 

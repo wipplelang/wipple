@@ -12,10 +12,12 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `U : value => trait ()` (TraitDefinition):
   has 1 instances
@@ -29,10 +31,12 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `V : value => trait ()` (TraitDefinition):
   has 1 instances
@@ -46,10 +50,12 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `W : value => trait ()` (TraitDefinition):
   has definition constraints
@@ -62,10 +68,12 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `()` (UnitType):
   has type `()`
   is a type
+  type is annotated
 
 `instance (T value) where (U value)` (InstanceDefinition):
   has definition constraints
@@ -79,6 +87,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `(U value)` (BoundConstraint):
   has bound(s) `U` `value` (resolved as `(U value)`)
@@ -89,6 +98,7 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `()` (UnitExpression):
   has type `()`
@@ -106,6 +116,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `(V value)` (BoundConstraint):
   has bound(s) `V` `value` (resolved as `(V value)`)
@@ -116,6 +127,7 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `()` (UnitExpression):
   has type `()`
@@ -133,6 +145,7 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `(W value)` (BoundConstraint):
   has bound(s) `W` `value` (resolved as `(W value)`)
@@ -143,6 +156,7 @@ Facts (layer 2):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `()` (UnitExpression):
   has type `()`

@@ -11,12 +11,7 @@ Facts (layer 2):
 `"a"` (VisitAs):
   has type `String`
   is an expression
-
-`"a"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `String (List String) -> List String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `"a", "b", "c"` (CollectionExpression):
   has type `List String`
@@ -25,27 +20,18 @@ Facts (layer 2):
 `"b"` (VisitAs):
   has type `String`
   is an expression
-
-`"b"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `String (List String) -> List String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `"c"` (VisitAs):
   has type `String`
   is an expression
-
-`"c"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `String` `(List String)` (resolved as `instance (Build-Collection element (List element))`)
-  has type `String (List String) -> List String`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
+  type is annotated
 
 `list` (VisitAs):
   has type `List String`
   is an expression
   resolved to 1 definition(s): `list`
+  type is annotated
 
 `list . enumerate` (VisitAs):
   has type `Sequence (Number; String)`
@@ -118,6 +104,7 @@ Facts (layer 2):
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
+  type is annotated
 
 `"_: _" n c` (ConstructorExpression):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
@@ -135,11 +122,13 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
+  type is annotated
 
 `c` (VariableExpression):
   has type `String`
   is an expression
   resolved to 1 definition(s): `c`
+  type is annotated
 
 
 Output:

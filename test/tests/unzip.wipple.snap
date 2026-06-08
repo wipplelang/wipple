@@ -24,60 +24,49 @@ Facts (layer 2):
 `(1; "a"), (2; "b"), (3; "c")) . unzip` (OperatorExpression):
   has type `(List Number; List String)`
   is an expression
+  type is annotated
 
 `1` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `1; "a"` (VisitAs):
   has type `(Number; String)`
   is an expression
 
-`1; "a"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `(Number; String)` `(List (Number; String))` (resolved as `instance (Build-Collection element (List element))`)
-  has type `(Number; String) (List (Number; String)) -> List (Number; String)`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
-
 `"a"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `2` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `2; "b"` (VisitAs):
   has type `(Number; String)`
   is an expression
 
-`2; "b"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `(Number; String)` `(List (Number; String))` (resolved as `instance (Build-Collection element (List element))`)
-  has type `(Number; String) (List (Number; String)) -> List (Number; String)`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
-
 `"b"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `3` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 `3; "c"` (VisitAs):
   has type `(Number; String)`
   is an expression
 
-`3; "c"` (ConstructorExpression):
-  has bound(s) `Build-Collection` `(Number; String)` `(List (Number; String))` (resolved as `instance (Build-Collection element (List element))`)
-  has type `(Number; String) (List (Number; String)) -> List (Number; String)`
-  is an expression
-  resolved to 1 definition(s): `Build-Collection : (infer element) collection => trait (element collection -> collection)`
-
 `"c"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `unzip` (CallExpression):
   has type `(List Number; List String)`
@@ -93,23 +82,28 @@ Facts (layer 2):
   has type `List Number`
   is a type
   resolved to 1 definition(s): `List : element => type`
+  type is annotated
 
 `List _; List _` (TupleType):
   has type `(List Number; List String)`
   is a type
+  type is annotated
 
 `_` (PlaceholderType):
   has type `Number`
   is a type
+  type is annotated
 
 `List _` (NamedType):
   has type `List String`
   is a type
   resolved to 1 definition(s): `List : element => type`
+  type is annotated
 
 `_` (PlaceholderType):
   has type `String`
   is a type
+  type is annotated
 
 `show` (VariableExpression):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
@@ -127,11 +121,13 @@ Facts (layer 2):
 `"Left:"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `left` (VisitAs):
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `left`
+  type is annotated
 
 `left . each show` (ExpressionStatement):
   has type `()`
@@ -176,11 +172,13 @@ Facts (layer 2):
 `"Right:"` (StringExpression):
   has type `String`
   is an expression
+  type is annotated
 
 `right` (VisitAs):
   has type `List String`
   is an expression
   resolved to 1 definition(s): `right`
+  type is annotated
 
 `right . each show` (ExpressionStatement):
   has type `()`

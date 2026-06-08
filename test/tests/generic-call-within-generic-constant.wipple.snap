@@ -11,15 +11,18 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> value` (FunctionType):
   has type `value -> value`
   is a type
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `f : x -> x` (AssignmentStatement):
   has type `()`
@@ -37,6 +40,7 @@ Facts (layer 2):
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
+  type is annotated
 
 `g :: value -> value` (ConstantDefinition):
   has definition constraints
@@ -49,15 +53,18 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `value -> value` (FunctionType):
   has type `value -> value`
   is a type
+  type is annotated
 
 `value` (TypeParameter):
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  type is annotated
 
 `g : x -> f x` (AssignmentStatement):
   has type `()`
@@ -84,6 +91,7 @@ Facts (layer 2):
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
+  type is annotated
 
 `_` (WildcardPattern):
   has type `Number`
@@ -104,6 +112,7 @@ Facts (layer 2):
 `42` (NumberExpression):
   has type `Number`
   is an expression
+  type is annotated
 
 
 Output:
