@@ -58,7 +58,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List ())` `_` (resolved as `default error instance (As-Sequence container element)`)
   has type `(_ -> ()) -> (List ()) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
 
 `each show` (CallExpression):
   has type `()`
@@ -83,9 +83,9 @@ Feedback:
   
   `1` must be the same type as `"hi"` and `()`; double-check these.
   
-  -  Perform an action for each item in a sequence.
+  -  `each` calls `show` for each  element in `my-list`.
   
-  -  Display a value on the screen.
+  -  `show` displays `_` on the screen.
   
   -  `my-list` is `1, "hi", ()`.
   
@@ -116,9 +116,9 @@ Feedback:
   
   `"hi"` must be the same type as `1` and `()`; double-check these.
   
-  -  Perform an action for each item in a sequence.
+  -  `each` calls `show` for each  element in `my-list`.
   
-  -  Display a value on the screen.
+  -  `show` displays `_` on the screen.
   
   -  `my-list` is `1, "hi", ()`.
   
@@ -149,9 +149,9 @@ Feedback:
   
   `()` must be the same type as `1` and `"hi"`; double-check these.
   
-  -  Perform an action for each item in a sequence.
+  -  `each` calls `show` for each  element in `my-list`.
   
-  -  Display a value on the screen.
+  -  `show` displays `_` on the screen.
   
   -  `my-list` is `1, "hi", ()`.
   
@@ -182,9 +182,9 @@ Feedback:
   
   `1` must be the same type as `"hi"` and `()`; double-check these.
   
-  -  Perform an action for each item in a sequence.
+  -  `each` calls `show` for each  element in `my-list`.
   
-  -  Display a value on the screen.
+  -  `show` displays `_` on the screen.
   
   -  `my-list` is `1, "hi", ()`.
   
@@ -215,9 +215,9 @@ Feedback:
   
   `"hi"` must be the same type as `1` and `()`; double-check these.
   
-  -  Perform an action for each item in a sequence.
+  -  `each` calls `show` for each  element in `my-list`.
   
-  -  Display a value on the screen.
+  -  `show` displays `_` on the screen.
   
   -  `my-list` is `1, "hi", ()`.
   

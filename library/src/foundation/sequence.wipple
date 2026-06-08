@@ -217,9 +217,9 @@ instance (From-Sequence () ()) : sequence -> repeat with-control-flow {
   }
 }
 
--- Perform an action for each item in a sequence.
+-- [`each`] calls [`action`] for each [`element@type`] element in [`container`].
 [connect : container -> element ("element")]
-each :: (element -> ()) -> container -> () where (As-Sequence container element)
+each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)
 each : action -> container -> container . transform action . collect
 
 -- Split a sequence into groups of consecutive items satisfying a condition.

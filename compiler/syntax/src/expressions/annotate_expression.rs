@@ -8,12 +8,9 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    render::{Render, RenderCtx, TyPlacement},
+    render::{Render, RenderCtx},
     span::Span,
-    typecheck::{
-        constraints::{ConstraintTrace, group_constraint::GroupConstraint},
-        ty::Ty,
-    },
+    typecheck::constraints::{ConstraintTrace, group_constraint::GroupConstraint},
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -91,10 +88,10 @@ impl ConstraintTrace for AnnotateConstraintTrace {
 }
 
 impl Render for AnnotateConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.node(self.value);
         ctx.string(" was annotated with the type ");
-        ctx.ty(db, &Ty::Node(self.ty), TyPlacement::InlineFirst);
+        ctx.node(self.ty);
         ctx.string(".");
     }
 }

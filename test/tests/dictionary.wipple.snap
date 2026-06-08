@@ -150,7 +150,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(String -> ()) -> (List String) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
 
 `each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (CallExpression):
   has type `()`

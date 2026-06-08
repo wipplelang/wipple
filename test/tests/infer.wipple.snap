@@ -151,7 +151,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(Sequence String)` `String` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `(String -> ()) -> (Sequence String) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
 
 `each show` (CallExpression):
   has type `()`

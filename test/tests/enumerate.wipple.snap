@@ -72,7 +72,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(Sequence (Number; String))` `(Number; String)` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `((Number; String) -> ()) -> (Sequence (Number; String)) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (element -> ()) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
 
 `each ((n; c) -> show ("_: _" n c))` (CallExpression):
   has type `()`
