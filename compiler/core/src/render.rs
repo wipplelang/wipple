@@ -210,7 +210,7 @@ impl RenderCtx<'_> {
             let name = captures.get(1).unwrap().as_str();
             match links.get(name) {
                 Some(link) => link(&mut ctx),
-                None => ctx.code("_"),
+                None => ctx.code(name),
             }
 
             self.extend([ctx]);
