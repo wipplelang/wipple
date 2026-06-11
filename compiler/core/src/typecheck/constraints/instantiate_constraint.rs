@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, Node},
     typecheck::{
-        constraints::{Constraint, ConstraintTrace, RunResult, Solver},
+        constraints::{AnyConstraintTrace, Constraint, ConstraintTrace, RunResult, Solver},
         instantiate::InstantiateCtx,
         solver::SubstitutionsKey,
     },
@@ -14,7 +14,14 @@ pub struct InstantiateConstraint {
     pub source_node: Node,
     pub definition: Node,
     pub substitutions: SubstitutionsKey,
-    pub trace: Option<Box<dyn ConstraintTrace>>,
+    pub traces: Vec<AnyConstraintTrace>,
+}
+
+impl InstantiateConstraint {
+    pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
+        self.traces.push(AnyConstraintTrace::new(trace));
+        self
+    }
 }
 
 #[typetag::serde]
@@ -23,8 +30,8 @@ impl Constraint for InstantiateConstraint {
         self.source_node
     }
 
-    fn trace(&self) -> Option<Box<dyn ConstraintTrace>> {
-        self.trace.clone()
+    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace> {
+        &mut self.traces
     }
 
     fn instantiate(
@@ -44,7 +51,7 @@ impl Constraint for InstantiateConstraint {
             source_node: ctx.source_node,
             definition: self.definition,
             substitutions,
-            trace: ctx.instantiate_trace(db, solver, &self.trace),
+            traces: ctx.instantiate_traces(db, solver, &self.traces),
         }))
     }
 
@@ -62,10 +69,19 @@ impl Constraint for InstantiateConstraint {
             substitutions: self.substitutions,
         };
 
-        let instantiated_constraints = constraints
+        let mut instantiated_constraints = constraints
             .into_iter()
             .flat_map(|constraint| constraint.instantiate(db, solver, &mut ctx))
             .collect::<Vec<_>>();
+
+        let mut traces = self.traces.clone();
+        for trace in &mut traces {
+            trace.from.extend(solver.active_traces.clone());
+        }
+
+        for constraint in &mut instantiated_constraints {
+            constraint.traces_mut().extend(traces.iter().cloned());
+        }
 
         RunResult::Insert(instantiated_constraints)
     }

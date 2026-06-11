@@ -4,7 +4,7 @@ use crate::{
     typecheck::{
         bounds::{Bound, Bounds, Instance, Instances, ResolvedBound, UnresolvedBound},
         constraints::{
-            Constraint, ConstraintTrace, RunResult, Solver,
+            AnyConstraintTrace, Constraint, ConstraintTrace, RunResult, Solver,
             instantiate_constraint::InstantiateConstraint,
         },
         instantiate::InstantiateCtx,
@@ -22,7 +22,7 @@ pub struct InferredParameter;
 impl Fact for InferredParameter {}
 
 impl Render for InferredParameter {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("is inferred type parameter");
     }
 }
@@ -39,7 +39,7 @@ impl Render for IsBound {}
 pub struct BoundConstraint {
     pub node: Node,
     pub bound: Bound,
-    pub trace: Option<Box<dyn ConstraintTrace>>,
+    pub traces: Vec<AnyConstraintTrace>,
 }
 
 impl BoundConstraint {
@@ -47,12 +47,12 @@ impl BoundConstraint {
         BoundConstraint {
             node,
             bound,
-            trace: None,
+            traces: Vec::new(),
         }
     }
 
     pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
-        self.trace = Some(Box::new(trace));
+        self.traces.push(AnyConstraintTrace::new(trace));
         self
     }
 }
@@ -63,8 +63,8 @@ impl Constraint for BoundConstraint {
         self.node
     }
 
-    fn trace(&self) -> Option<Box<dyn ConstraintTrace>> {
-        self.trace.clone()
+    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace> {
+        &mut self.traces
     }
 
     fn instantiate(
@@ -90,7 +90,7 @@ impl Constraint for BoundConstraint {
         Some(Box::new(BoundConstraint {
             node,
             bound,
-            trace: ctx.instantiate_trace(db, solver, &self.trace),
+            traces: ctx.instantiate_traces(db, solver, &self.traces),
         }))
     }
 
@@ -149,7 +149,7 @@ impl Constraint for BoundConstraint {
                     source_node: resolved_node,
                     definition: instance.node,
                     substitutions,
-                    trace: None,
+                    traces: Vec::new(),
                 }));
 
                 // Run the solver (excluding bounds) to populate `replacements`
@@ -171,21 +171,22 @@ impl Constraint for BoundConstraint {
                 let mut instance_parameters = BTreeMap::new();
                 let mut instance_inferred = BTreeMap::new();
                 for (&parameter, substitution) in &instance.parameters {
-                    let mut substitution = substitution.clone();
-                    if !keep_generic {
+                    let substitution = if keep_generic {
+                        substitution.clone()
+                    } else {
                         let mut ctx = InstantiateCtx {
                             definition: instance.node,
                             source_node: resolved_node,
                             substitutions,
                         };
 
-                        substitution = ctx.instantiate_ty(db, &mut copy, &substitution);
-                    }
+                        ctx.instantiate_ty(db, &mut copy, substitution)
+                    };
 
                     if db.contains::<InferredParameter>(parameter) {
-                        instance_inferred.insert(parameter, substitution.clone());
+                        instance_inferred.insert(parameter, substitution);
                     } else {
-                        instance_parameters.insert(parameter, substitution.clone());
+                        instance_parameters.insert(parameter, substitution);
                     }
                 }
 

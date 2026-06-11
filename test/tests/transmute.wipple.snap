@@ -2,7 +2,7 @@ Facts (layer 2):
 
 `transmute :: a -> b` (ConstantDefinition):
   has definition constraints
-  has type `a -> a`
+  has type `(a or b) -> a or b`
   has type parameters
   is a definition
 
@@ -14,7 +14,7 @@ Facts (layer 2):
   type is annotated
 
 `a -> b` (FunctionType):
-  has type `a -> a`
+  has type `(a or b) -> a or b`
   is a type
   type is annotated
 
@@ -34,7 +34,7 @@ Facts (layer 2):
   is a pattern
 
 `x -> x` (FunctionExpression):
-  has type `a -> a`
+  has type `(a or b) -> a or b`
   is an expression
 
 `x` (VariableExpression):

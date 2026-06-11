@@ -37,7 +37,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             writer.string(" could refer to ");
             writer.list("or", |list| {
                 for &definition in *definitions {
-                    list.add(move |writer| writer.node(definition));
+                    list.add(move |ctx| ctx.node(definition));
                 }
             });
             writer.string(".");

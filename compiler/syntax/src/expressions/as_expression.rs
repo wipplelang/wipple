@@ -14,7 +14,7 @@ use wipple_core::{
     typecheck::{
         constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
         groups::Annotated,
-        ty::{ConstructedTy, Ty},
+        ty::ConstructedTy,
     },
     visit::{Visit, Visitor},
 };
@@ -69,10 +69,7 @@ impl Visit for AsExpression {
 
         visitor.constraint(
             db,
-            TyConstraint::new(
-                as_function,
-                ConstructedTy::function(vec![Ty::Node(left)], Ty::Node(right)),
-            ),
+            TyConstraint::new(as_function, ConstructedTy::function(vec![left], right)),
         );
 
         visitor.constraint(db, GroupConstraint::new(node, right));

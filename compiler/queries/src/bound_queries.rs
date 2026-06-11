@@ -1,5 +1,6 @@
 use wipple_core::{
     db::{Db, Node},
+    traces::Traces,
     typecheck::bounds::{Bounds, ResolvedBound, UnresolvedBound},
 };
 
@@ -14,13 +15,25 @@ pub fn resolved_bounds(db: &Db, node: Node) -> Vec<&ResolvedBound> {
         .collect()
 }
 
-pub fn unresolved_bounds(db: &Db, node: Node) -> Vec<&UnresolvedBound> {
+pub fn unresolved_bounds(db: &Db, node: Node) -> Vec<(&UnresolvedBound, Traces)> {
     let Some(Bounds(bounds)) = db.get(node) else {
         return Vec::new();
     };
 
     bounds
         .iter()
-        .filter_map(|(_, result)| result.as_ref().err())
+        .filter_map(|(node, result)| result.as_ref().err().map(|bound| (*node, bound)))
+        .map(|(node, bound)| {
+            (
+                bound,
+                db.traces_for(
+                    node,
+                    bound
+                        .parameters
+                        .values()
+                        .flat_map(|ty| ty.referenced_nodes()),
+                ),
+            )
+        })
         .collect()
 }

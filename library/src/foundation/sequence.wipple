@@ -78,7 +78,7 @@ transform : f -> container -> do {
   }
 }
 
--- [`filter`] keeps the [`element@type`] elements in [`container`] that satisfy [`condition`].
+-- [`filter`] keeps the elements in [`container`] that satisfy [`condition`].
 filter :: (condition :: (element -> Boolean)) -> container -> Sequence element where (As-Sequence container element)
 filter : include? -> container -> do {
   base : As-Sequence container
@@ -217,7 +217,7 @@ instance (From-Sequence () ()) : sequence -> repeat with-control-flow {
   }
 }
 
--- [`each`] calls [`action`] for each [`element@type`] element in [`container`].
+-- [`each`] calls [`action`] for each element in [`container`].
 [connect : container -> element ("element")]
 each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)
 each : action -> container -> container . transform action . collect

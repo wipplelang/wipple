@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, Node},
     typecheck::{
-        constraints::{Constraint, ConstraintTrace, RunResult, Solver},
+        constraints::{AnyConstraintTrace, Constraint, ConstraintTrace, RunResult, Solver},
         instantiate::InstantiateCtx,
     },
 };
@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 pub struct GroupConstraint {
     pub node: Node,
     pub other: Node,
-    pub trace: Option<Box<dyn ConstraintTrace>>,
+    pub traces: Vec<AnyConstraintTrace>,
 }
 
 impl GroupConstraint {
@@ -19,12 +19,12 @@ impl GroupConstraint {
         GroupConstraint {
             node,
             other,
-            trace: None,
+            traces: Vec::new(),
         }
     }
 
     pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
-        self.trace = Some(Box::new(trace));
+        self.traces.push(AnyConstraintTrace::new(trace));
         self
     }
 }
@@ -35,8 +35,8 @@ impl Constraint for GroupConstraint {
         self.node
     }
 
-    fn trace(&self) -> Option<Box<dyn ConstraintTrace>> {
-        self.trace.clone()
+    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace> {
+        &mut self.traces
     }
 
     fn instantiate(
@@ -48,7 +48,7 @@ impl Constraint for GroupConstraint {
         Some(Box::new(GroupConstraint {
             node: ctx.instantiate_node(db, solver, self.node),
             other: ctx.instantiate_node(db, solver, self.other),
-            trace: ctx.instantiate_trace(db, solver, &self.trace),
+            traces: ctx.instantiate_traces(db, solver, &self.traces),
         }))
     }
 

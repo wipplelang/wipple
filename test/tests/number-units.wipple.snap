@@ -1,36 +1,5 @@
 Facts (layer 2):
 
-`Equal : value => trait (value value -> Boolean)` (TraitDefinition):
-  has 5 instances
-  has definition constraints
-  has type `value value -> Boolean`
-  has type parameters
-  is a definition
-
-`value` (TypeParameter):
-  has type `value`
-  is a definition
-  is a type
-  resolved to 1 definition(s): `value`
-  type is annotated
-
-`value` (TypeParameter):
-  has type `value`
-  is a type
-  resolved to 1 definition(s): `value`
-  type is annotated
-
-`value value -> Boolean` (FunctionType):
-  has type `value value -> Boolean`
-  is a type
-  type is annotated
-
-`value` (TypeParameter):
-  has type `value`
-  is a type
-  resolved to 1 definition(s): `value`
-  type is annotated
-
 `Elephants : type {count :: Number}` (TypeDefinition):
   has definition constraints
   has type `Elephants`

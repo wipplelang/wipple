@@ -7,11 +7,11 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Fact, Node},
-    render::{Render, RenderCtx, TyPlacement},
+    render::Render,
     span::Span,
     typecheck::{
         constraints::{ConstraintTrace, ty_constraint::TyConstraint},
-        ty::{ConstructedTy, Ty},
+        ty::ConstructedTy,
     },
     visit::{Visit, Visitor, definitions::ConstantDefinition},
 };
@@ -70,10 +70,7 @@ impl Visit for CallExpression {
 
                 visitor.constraint(
                     db,
-                    TyConstraint::new(
-                        unit,
-                        ConstructedTy::function(vec![Ty::Node(number)], Ty::Node(node)),
-                    ),
+                    TyConstraint::new(unit, ConstructedTy::function(vec![number], node)),
                 );
 
                 db.graph.edge(number, node, "number");
@@ -101,17 +98,19 @@ impl Visit for CallExpression {
             .map(|input| visitor.visit(db, &input))
             .collect::<Vec<_>>();
 
-        visitor.constraint(
-            db,
-            TyConstraint::new(
+        let mut constraint =
+            TyConstraint::new(function, ConstructedTy::function(inputs.clone(), node))
+                .with_trace(CallOutputConstraintTrace { function, node });
+
+        for &input in &inputs {
+            constraint = constraint.with_trace(CallInputConstraintTrace {
+                node,
                 function,
-                ConstructedTy::function(
-                    inputs.iter().copied().map(Ty::Node).collect(),
-                    Ty::Node(node),
-                ),
-            )
-            .with_trace(CallConstraintTrace { node }),
-        );
+                input,
+            });
+        }
+
+        visitor.constraint(db, constraint);
 
         db.insert(
             node,
@@ -135,29 +134,43 @@ impl Visit for CallExpression {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct CallConstraintTrace {
+struct CallInputConstraintTrace {
+    node: Node,
+    function: Node,
+    input: Node,
+}
+
+#[typetag::serde]
+impl ConstraintTrace for CallInputConstraintTrace {
+    fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        vec![&mut self.node, &mut self.function, &mut self.input]
+    }
+
+    fn nodes(&self, _db: &Db) -> Vec<Node> {
+        vec![self.node, self.function, self.input]
+    }
+}
+
+impl Render for CallInputConstraintTrace {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CallOutputConstraintTrace {
+    function: Node,
     node: Node,
 }
 
 #[typetag::serde]
-impl ConstraintTrace for CallConstraintTrace {
+impl ConstraintTrace for CallOutputConstraintTrace {
     fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        vec![&mut self.node]
+        vec![&mut self.node, &mut self.function]
     }
 
     fn nodes(&self, _db: &Db) -> Vec<Node> {
-        vec![self.node]
+        vec![self.node, self.function]
     }
 }
 
-impl Render for CallConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
-        ctx.node(self.node);
-        ctx.string(" returns a ");
-        ctx.ty(db, &Ty::Node(self.node), TyPlacement::InlineMultiple);
-        ctx.string(".");
-    }
-}
+impl Render for CallOutputConstraintTrace {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum CallExpressionCodegen {

@@ -3,7 +3,7 @@ use crate::{
     facts::Syntax,
     graph::GraphBuilder,
     render::{Render, RenderCtx},
-    typecheck::{constraints::ConstraintTrace, groups::Typed},
+    traces::TracesEntry,
     visit::Visit,
 };
 use dyn_clone::DynClone;
@@ -76,7 +76,7 @@ pub struct Db {
     pub debug_enabled: bool,
     pub(crate) ast: Ast,
     pub graph: GraphBuilder,
-    pub traces: Vec<(usize, Box<dyn ConstraintTrace>)>,
+    pub traces: Vec<TracesEntry>,
     nodes: Vec<NodeInfo>,                // for owned nodes
     overrides: BTreeMap<Node, NodeInfo>, // for parent nodes
     cache: BTreeMap<TypeId, BTreeSet<Node>>,
@@ -131,7 +131,7 @@ struct SerializedDb {
     parent: Option<Box<SerializedDb>>,
     debug_enabled: bool,
     graph: GraphBuilder,
-    traces: Vec<(usize, Box<dyn ConstraintTrace>)>,
+    traces: Vec<TracesEntry>,
     ast: Ast,
     nodes: Vec<NodeInfo>,
     overrides: BTreeMap<Node, NodeInfo>,
@@ -277,63 +277,6 @@ impl Db {
         self.ast.insert(value)
     }
 
-    pub fn traces_for(
-        &self,
-        nodes: impl IntoIterator<Item = Node>,
-    ) -> impl Iterator<Item = Box<dyn ConstraintTrace>> {
-        let mut nodes = BTreeSet::from_iter(nodes);
-        let mut traces = self.traces.clone();
-
-        let mut result = Vec::new();
-        let mut added = BTreeSet::new();
-        loop {
-            let mut progress = false;
-
-            for (index, (order, trace)) in traces.iter_mut().enumerate() {
-                if added.contains(&index) {
-                    continue;
-                }
-
-                let trace_nodes = trace.nodes(self);
-
-                if trace_nodes.iter().any(|node| nodes.contains(node)) {
-                    let primary_node = trace.source_node_mut().copied().unwrap_or(trace_nodes[0]);
-
-                    added.insert(index);
-
-                    if trace.allow_hidden_nodes()
-                        || trace_nodes.iter().all(|node| !self.is_hidden(*node))
-                    {
-                        result.push((*order, primary_node, trace.clone()));
-                    }
-
-                    for node in trace_nodes {
-                        nodes.insert(node);
-
-                        if let Some(Typed(Some(group))) = self.get(node) {
-                            nodes.extend(group.nodes.iter().copied());
-                        }
-                    }
-
-                    progress = true;
-                }
-            }
-
-            if !progress {
-                break;
-            }
-        }
-
-        result.sort_by_key(|(_, node, _)| {
-            self.get(*node)
-                .map(|Syntax(syntax)| syntax.get(self).span(self))
-        });
-
-        result.sort_by_key(|(order, _, _)| *order);
-
-        result.into_iter().map(|(_, _, trace)| trace)
-    }
-
     fn info(&self, node: Node) -> Option<&NodeInfo> {
         if node.layer == self.layer() {
             Some(&self.nodes[node.index])
@@ -466,34 +409,29 @@ impl Db {
     }
 
     fn owned_nodes_with_info(&self) -> impl Iterator<Item = (Node, &NodeInfo)> {
-        self.nodes
-            .iter()
-            .enumerate()
-            .map(|(index, info)| {
-                let node = Node {
-                    layer: self.layer(),
-                    index,
-                };
-
-                (node, info)
-            })
+        self.nodes()
             .chain(self.overrides.iter().map(|(&node, info)| (node, info)))
+    }
+
+    fn nodes(&self) -> impl Iterator<Item = (Node, &NodeInfo)> {
+        self.nodes.iter().enumerate().map(|(index, info)| {
+            let node = Node {
+                layer: self.layer(),
+                index,
+            };
+
+            (node, info)
+        })
     }
 
     pub fn gc(&mut self) {
         self.ast.gc();
     }
 
-    pub fn debug(
-        &self,
-        mut filter: impl FnMut(&Self, Node) -> bool,
-        show_span: bool,
-    ) -> impl Display {
+    pub fn debug(&self, filter: impl Fn(&Self, Node) -> bool, show_span: bool) -> impl Display {
         let mut nodes = self
-            .owned_nodes()
-            .filter_map(|node| {
-                let info = self.info(node).unwrap();
-
+            .nodes()
+            .filter_map(|(node, info)| {
                 if !self.debug_enabled && (info.hidden || !filter(self, node)) {
                     return None;
                 }
@@ -515,20 +453,14 @@ impl Db {
         nodes
             .sort_by_key(|(_, _, syntax)| syntax.map(|Syntax(syntax)| syntax.get(self).span(self)));
 
-        let mut ctx = RenderCtx::default();
+        let mut ctx = RenderCtx::with_filter(&filter);
         for (node, info, syntax) in nodes {
-            ctx.node(node);
-            if let Some(Syntax(syntax)) = syntax {
-                ctx.string(format!(" ({})", syntax.get(self).type_name()));
-            }
-            ctx.string(":\n");
-
             let mut facts = info
                 .facts
                 .0
                 .values()
                 .filter_map(|fact| {
-                    let mut ctx = RenderCtx::default();
+                    let mut ctx = RenderCtx::with_filter(&filter);
                     fact.render_into(self, &mut ctx);
 
                     if ctx.is_empty() {
@@ -544,15 +476,19 @@ impl Db {
                 .collect::<Vec<_>>();
 
             if facts.is_empty() {
-                ctx.string("  (no facts)\n");
-            } else {
-                facts.sort();
-
-                for fact in facts {
-                    ctx.string(format!("  {fact}\n"));
-                }
+                continue;
             }
 
+            facts.sort();
+
+            ctx.node(node);
+            if let Some(Syntax(syntax)) = syntax {
+                ctx.string(format!(" ({})", syntax.get(self).type_name()));
+            }
+            ctx.string(":\n");
+            for fact in facts {
+                ctx.string(format!("  {fact}\n"));
+            }
             ctx.string("\n");
         }
 

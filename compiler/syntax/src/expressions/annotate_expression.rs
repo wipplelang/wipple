@@ -93,7 +93,7 @@ impl ConstraintTrace for AnnotateConstraintTrace {
 }
 
 impl Render for AnnotateConstraintTrace {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.node(self.value);
         ctx.string(" is annotated with the type ");
         ctx.node(self.ty);

@@ -2,10 +2,7 @@ use crate::{
     db::{Db, Node},
     facts::{GraphType, Syntax},
     span::Span,
-    typecheck::{
-        groups::update_type,
-        ty::{ConstructedTy, Ty, TyTag},
-    },
+    typecheck::ty::{ConstructedTy, Ty, TyTag},
     visit::definitions::{Defined, VariableDefinition},
 };
 use serde::{Deserialize, Serialize};
@@ -89,17 +86,6 @@ impl GraphBuilder {
                     continue;
                 }
 
-                let tys = group
-                    .tys
-                    .iter()
-                    .map(
-                        |ty| match update_type(db, &Ty::Constructed(ty.clone()), true) {
-                            Ty::Constructed(ty) => ty,
-                            _ => unreachable!(),
-                        },
-                    )
-                    .collect::<Vec<_>>();
-
                 if let Some((existing_nodes, existing_tys)) = groups.get_mut(&index) {
                     if *existing_nodes == nodes {
                         finished_groups.insert(index);
@@ -108,13 +94,13 @@ impl GraphBuilder {
                         progress = true;
                     }
 
-                    for ty in tys {
-                        if !existing_tys.contains(&ty) {
-                            existing_tys.push(ty);
+                    for ty in &group.tys {
+                        if !existing_tys.contains(ty) {
+                            existing_tys.push(ty.clone());
                         }
                     }
                 } else {
-                    groups.insert(index, (nodes.clone(), tys));
+                    groups.insert(index, (nodes.clone(), group.tys.clone()));
                     progress = true;
                 }
 
@@ -235,7 +221,7 @@ impl GraphBuilder {
                         TyTag::Function | TyTag::Block => Some(String::from("function")),
                         _ => None,
                     },
-                    display: Ty::Constructed(ty).display(db, true),
+                    display: Ty::Constructed(ty).display(db, None, true),
                 })
                 .collect::<Vec<_>>();
 

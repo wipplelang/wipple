@@ -174,7 +174,7 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`do {⋯}` (BlockExpression):
+`do {⋯}` (VisitAs):
   captures `seen`, `item`
   has type `{Boolean}`
   is an expression

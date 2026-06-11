@@ -7,125 +7,98 @@
 
 <script lang="ts">
     import Box from "$lib/components/Box.svelte";
-    import CodeEditor, { createGroups } from "$lib/components/CodeEditor.svelte";
     import Icon from "$lib/components/Icon.svelte";
     import Markdown from "$lib/components/Markdown.svelte";
     import ToolbarButton from "$lib/components/ToolbarButton.svelte";
     import { scale } from "svelte/transition";
-    import { context } from "$lib/context.svelte";
-    import Visualizer from "$lib/components/Visualizer.svelte";
+    import DiagnosticVisualizer from "$lib/components/DiagnosticVisualizer.svelte";
+    import type { Diagnostic } from "wipple";
 
     interface Props {
+        code: string;
+        diagnostic: Diagnostic;
         animate: boolean;
         onclose?: () => void;
     }
 
-    let { animate, onclose }: Props = $props();
+    const { code, diagnostic, animate, onclose }: Props = $props();
 
-    let showExtra = $state<"diagnostic" | "visualizer">();
+    let showAll = $state(false);
+    let expanded = $state(false);
 
     const transition = animate ? scale : () => ({});
+
+    let container = $state<HTMLDivElement>();
+    $effect(() => {
+        container?.scrollIntoView({ behavior: "smooth" });
+    });
+
+    const [title, ...extra] = diagnostic.message.split("\n\n");
 </script>
 
-{#if context.diagnostic != null}
-    {@const [title, ...extra] = context.diagnostic.message.split("\n\n")}
+<div
+    bind:this={container}
+    class="relative flex h-full w-full items-stretch justify-stretch pb-[10px]"
+    in:transition={{ start: 0.95, opacity: 0.5 }}
+>
+    <Box class="flex flex-1 flex-col px-[10px] py-[8px] font-sans shadow-blue-500/10 transition">
+        <div class="scroll flex flex-col gap-[2px]">
+            <div class="mr-(--toolbar-height) font-semibold">
+                <Markdown content={title} highlightGroups />
+            </div>
 
-    <div
-        class="relative flex h-full w-full items-stretch justify-stretch pb-[10px]"
-        in:transition={{ start: 0.95, opacity: 0.5 }}
-    >
-        <Box
-            class="flex flex-1 flex-col px-[10px] py-[8px] font-sans shadow-blue-500/10 transition"
-        >
-            <div class="scroll flex flex-col gap-[2px]">
-                <div class="mr-(--toolbar-height) font-semibold">
-                    <Markdown content={title} highlightGroups />
-                </div>
+            {#if extra.length === 1}
+                <Markdown content={extra[0]} highlightGroups={false} />
+            {/if}
 
-                {#if extra.length === 1}
-                    <Markdown content={extra[0]} highlightGroups={false} />
+            <div class="flex flex-row items-center gap-[10px]">
+                {#snippet button(title: string, active: boolean, onclick: () => void)}
+                    <ToolbarButton
+                        data-active={active || undefined}
+                        class="text-background-button -mx-[4px] self-start bg-transparent px-[4px] data-[active]:font-bold"
+                        {onclick}
+                    >
+                        {title}
+                    </ToolbarButton>
+                {/snippet}
+
+                {#if extra.length > 1}
+                    {@render button("Details", showAll, () => (showAll = !showAll))}
                 {/if}
 
-                <div class="flex flex-row items-center gap-[10px]">
-                    {#snippet button(title: string, kind: NonNullable<typeof showExtra>)}
-                        <ToolbarButton
-                            data-active={showExtra === kind || undefined}
-                            class="text-background-button -mx-[4px] self-start bg-transparent px-[4px] data-[active]:font-bold"
-                            onclick={() => {
-                                if (showExtra === kind) {
-                                    showExtra = undefined;
-                                } else {
-                                    showExtra = kind;
-                                }
-                            }}
-                        >
-                            {title}
-                        </ToolbarButton>
-                    {/snippet}
-
+                {#if diagnostic.graph != null}
                     {#if extra.length > 1}
-                        {@render button("Details", "diagnostic")}
+                        <div class="h-[1.25em] rounded-full border-[1px] border-gray-500/40"></div>
                     {/if}
 
-                    {#if context.diagnostic.graph != null}
-                        {#if extra.length > 1}
-                            <div
-                                class="h-[1.25em] rounded-full border-[1px] border-gray-500/40"
-                            ></div>
-                        {/if}
-
-                        {@render button("Visualize", "visualizer")}
-                    {/if}
-                </div>
-
-                {#if showExtra === "diagnostic"}
-                    <div class="mt-[5px]">
-                        <Markdown content={extra.join("\n\n")} highlightGroups />
-                    </div>
-
-                    {#if context.diagnostic.lines.length > 0}
-                        <div class="mt-[15px] mb-[5px] flex flex-col gap-[10px]">
-                            {#each context.diagnostic.lines as line}
-                                <div
-                                    class="rounded-xl border-[1.5px] border-black/5 dark:bg-gray-800"
-                                >
-                                    <CodeEditor
-                                        readOnly
-                                        code={line.source}
-                                        groups={createGroups(
-                                            context.diagnostic.groups,
-                                            line.locations,
-                                        )}
-                                        diagnostic={{
-                                            value: { locations: line.locations },
-                                            hideWidget: true,
-                                        }}
-                                    />
-                                </div>
-                            {/each}
-                        </div>
-                    {/if}
-
-                    {#if context.diagnostic.groups > 1}
-                        <p class="mx-[4px] my-[8px] text-sm opacity-75">
-                            <strong>Tip:</strong>
-                            Hover over an
-                            <span class="diagnostic diagnostic-dimmed">outlined</span>
-                            piece of code to highlight related code.
-                        </p>
-                    {/if}
-                {/if}
-
-                {#if showExtra === "visualizer" && context.diagnostic.graph != null}
-                    <Visualizer graph={context.diagnostic.graph} showFunctions />
+                    {@render button("Explore", expanded, () => (expanded = !expanded))}
                 {/if}
             </div>
-        </Box>
 
-        <div class="absolute top-[10px] right-[10px]">
-            <ToolbarButton onclick={onclose} square>
-                <Icon fill>close</Icon>
-            </ToolbarButton>
+            {#if showAll}
+                <div class="mt-[5px]">
+                    <Markdown content={extra.join("\n\n")} highlightGroups />
+                </div>
+
+                {#if diagnostic.groups > 1}
+                    <p class="mx-[4px] my-[8px] text-sm opacity-75">
+                        <strong>Tip:</strong>
+                        Hover over an
+                        <span class="diagnostic diagnostic-dimmed">outlined</span>
+                        piece of code to highlight related code.
+                    </p>
+                {/if}
+            {/if}
         </div>
+    </Box>
+
+    <div class="absolute top-[10px] right-[10px]">
+        <ToolbarButton onclick={onclose} square>
+            <Icon fill>close</Icon>
+        </ToolbarButton>
     </div>
+</div>
+
+{#if expanded}
+    <DiagnosticVisualizer {code} {diagnostic} onclose={() => (expanded = false)} />
 {/if}

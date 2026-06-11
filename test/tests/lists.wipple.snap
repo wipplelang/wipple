@@ -146,7 +146,7 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `unreachable :: value`
 
-`unreachable` (BlockExpression):
+`unreachable` (VisitAs):
   has type `{List Number}`
   is an expression
 
@@ -217,7 +217,7 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `unreachable :: value`
 
-`unreachable` (BlockExpression):
+`unreachable` (VisitAs):
   has type `{List Number}`
   is an expression
 

@@ -1,14 +1,11 @@
 use crate::CompileResult;
-use std::{
-    collections::{BTreeMap, HashMap},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, HashMap};
 use wasm_bindgen::prelude::*;
 use wipple_core::{
     db::Node,
     default_filter,
     facts::Syntax,
-    render::{RenderCtx, TyPlacement},
+    render::RenderCtx,
     span::Span,
     typecheck::ty::Ty,
     visit::{
@@ -110,12 +107,11 @@ impl Ide {
                 .get(&self.result.db)
                 .span(&self.result.db);
 
-            let (message, _) =
-                item.display(&self.result.db, |db, segment| segment.markdown(db, false));
+            let feedback = item.display(&self.result.db, |db, segment| segment.markdown(db, false));
 
             Some(IdeDiagnostic {
                 range: span.into(),
-                message,
+                message: feedback.message,
             })
         })
         .collect()
@@ -180,7 +176,7 @@ impl Ide {
             && let Some(Defined(definition)) = self.result.db.get(definition_node)
             && definition.downcast_ref::<VariableDefinition>().is_none()
         {
-            let mut ctx = RenderCtx::default();
+            let mut ctx = RenderCtx::with_filter(&default_filter);
             ctx.node(definition_node);
 
             let (rendered, _) = ctx.finish(&self.result.db, |db, segment| segment.plain_text(db));
@@ -190,18 +186,14 @@ impl Ide {
                 is_code: true,
             });
         } else if let Some(ty) = wipple_queries::has_type(&self.result.db, node) {
-            let mut ctx = RenderCtx::default();
+            let mut ctx = RenderCtx::with_filter(&default_filter);
 
             if definition_node.is_some() {
                 ctx.node(node);
                 ctx.string(" :: ");
             }
 
-            ctx.ty(
-                &self.result.db,
-                &Ty::Constructed(ty.clone()),
-                TyPlacement::InlineFirst,
-            );
+            ctx.ty(&self.result.db, &Ty::Constructed(ty.clone()), None, true);
 
             let (rendered, _) = ctx.finish(&self.result.db, |db, segment| segment.plain_text(db));
 
@@ -212,7 +204,7 @@ impl Ide {
         }
 
         for bound in wipple_queries::resolved_bounds(&self.result.db, node) {
-            let mut ctx = RenderCtx::default();
+            let mut ctx = RenderCtx::with_filter(&default_filter);
             ctx.node(bound.instance.node);
 
             let (rendered, _) = ctx.finish(&self.result.db, |db, segment| segment.plain_text(db));
@@ -372,7 +364,7 @@ impl Ide {
                     return None;
                 };
 
-                let mut ctx = RenderCtx::default();
+                let mut ctx = RenderCtx::with_filter(&default_filter);
                 ctx.node(node);
 
                 let (rendered, _) =
@@ -419,15 +411,12 @@ impl Ide {
     fn comments(&self, node: Node) -> Option<String> {
         let comments = wipple_queries::comments_without_links(&self.result.db, node)?;
 
-        let mut writer = FeedbackWriter::new(Arc::new(default_filter));
+        let mut writer = FeedbackWriter::with_filter(&default_filter);
         writer.comments(&self.result.db, node, &comments);
 
-        let (rendered, _) =
-            writer.finish(&self.result.db, |db, segment| segment.markdown(db, false));
+        let feedback = writer.finish(&self.result.db, |db, segment| segment.markdown(db, false));
 
-        let string = rendered.to_string();
-
-        (!string.is_empty()).then_some(string)
+        (!feedback.message.is_empty()).then_some(feedback.message)
     }
 }
 

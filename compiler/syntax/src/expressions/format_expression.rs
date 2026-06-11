@@ -14,7 +14,7 @@ use wipple_core::{
     span::{Span, Str},
     typecheck::{
         constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
-        ty::{ConstructedTy, Ty},
+        ty::ConstructedTy,
     },
     visit::{Visit, Visitor},
 };
@@ -108,7 +108,7 @@ impl Visit for FormatExpression {
                 db,
                 TyConstraint::new(
                     describe_node,
-                    ConstructedTy::function(vec![Ty::Node(*input)], Ty::Node(string_type)),
+                    ConstructedTy::function(vec![*input], string_type),
                 ),
             );
 

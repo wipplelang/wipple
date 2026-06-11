@@ -392,8 +392,8 @@ Facts (layer 2):
   has type `()`
 
 `add-infer` (VariableExpression):
-  has bound(s) `Add-Infer` `Number` `Number` (`Number` or `String`) (resolved as `instance (Add-Infer Number Number Number)`)
-  has type `Number Number -> Number`
+  has bound(s) `Add-Infer` `Number` `Number` `(Number or String)` (resolved as `instance (Add-Infer Number Number Number)`)
+  has type `Number Number -> Number or String`
   is an expression
   resolved to 1 definition(s): `add-infer :: left right -> sum where (Add-Infer left right sum)`
 
@@ -426,12 +426,31 @@ Feedback:
 
   `output` is a `Number` or a `String`, but it can only be one of these.
   
-  `output` must be the same type as `add-infer 1 2`, `add-infer 1 2 :: String`, and `String`; double-check these.
+  `output` must be the same type as `add-infer 1 2`, `add-infer 1 2 :: String`, `String`, and 4 others; double-check these.
+
+  1. `add-infer`: `add-infer` is a `Number Number -> Number`.
+
+  2. `1`: `1` is a `Number`.
+
+  3. `2`: `2` is a `Number`.
+
+  4. `add-infer 1 2`: `add-infer 1 2` is annotated with the type `String`.
+
+  (2 -> 1, 3 -> 1, 4 -> 1, 1 -> error)
+
+
+`add-infer 1 2 :: String` (conflicting-types)
+
+  `add-infer 1 2 :: String` is a `Number` or a `String`, but it can only be one of these.
   
-  -  `add-infer` is a `left right -> sum`.
-  
-  -  `add-infer 1 2` is annotated with the type `String`.
-  
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
+  `add-infer 1 2 :: String` must be the same type as `output`, `add-infer 1 2`, `String`, and 4 others; double-check these.
+
+  1. `add-infer`: `add-infer` is a `Number Number -> Number`.
+
+  2. `1`: `1` is a `Number`.
+
+  3. `2`: `2` is a `Number`.
+
+  4. `add-infer 1 2`: `add-infer 1 2` is annotated with the type `String`.
+
+  (2 -> 1, 3 -> 1, 4 -> 1, 1 -> error)

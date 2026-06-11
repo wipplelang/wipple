@@ -53,6 +53,7 @@
         code: string;
         groups?: Groups;
         highlightedGroup?: number;
+        highlightedGroupIsPrimary?: boolean;
         diagnostic?: {
             value: { locations: wipple.DiagnosticLocation[] };
             hideWidget?: boolean;
@@ -67,6 +68,7 @@
         code = $bindable(),
         groups = [],
         highlightedGroup,
+        highlightedGroupIsPrimary = false,
         diagnostic,
         runningLine,
         padding,
@@ -509,7 +511,7 @@
         };
 
         const decoration = markDecoration(
-            `group ${options.primary ? "group-primary group-highlighted" : "group-dimmed"}`,
+            `group ${options.primary ? "group-primary group-highlighted" : "group-dimmed"} ${diagnostic ? "group-underlined" : ""}`,
             "",
             attributes,
         );
@@ -583,11 +585,13 @@
         const decoration =
             highlightedGroup != null
                 ? getMarkGroupDecoration({
-                      start: 0,
-                      end: editorView.state.doc.length,
+                      start: highlightedGroupIsPrimary ? groups[0].locations[0].start : 0,
+                      end: highlightedGroupIsPrimary
+                          ? groups[0].locations[0].end
+                          : editorView.state.doc.length,
                       group: highlightedGroup,
                       labels: undefined,
-                      primary: false,
+                      primary: highlightedGroupIsPrimary,
                   })
                 : undefined;
 
@@ -610,6 +614,7 @@
 
         const diagnosticWidget = new DiagnosticWidget.element!();
         Object.assign(diagnosticWidget, {
+            code,
             diagnostic: value,
             animate,
             onclose,
@@ -672,21 +677,12 @@
 ></div>
 
 {#if hoverState != null}
-    {@const {
-        element,
-        labels: [label, ...rest],
-    } = hoverState}
+    {@const { element, labels } = hoverState}
 
     <Tooltip reference={element} delay={500}>
         {#snippet content()}
             <div class="flex flex-row items-baseline gap-[4pt]">
-                <CodeEditor readOnly code={label} />
-
-                {#each rest as label, index (index)}
-                    <p style:font-size="var(--code-editor-font-size)">or</p>
-
-                    <CodeEditor readOnly code={label} />
-                {/each}
+                <CodeEditor readOnly code={labels.join(" or ")} />
             </div>
         {/snippet}
     </Tooltip>

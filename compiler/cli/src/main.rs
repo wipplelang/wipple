@@ -15,10 +15,7 @@ use std::{
     ops::ControlFlow,
     path::{Path, PathBuf},
     process,
-    sync::{
-        Arc,
-        atomic::{self, AtomicUsize},
-    },
+    sync::atomic::{self, AtomicUsize},
 };
 use wipple_core::{
     LibraryArtifact, TopLevel,
@@ -150,9 +147,6 @@ fn setup(
     }
 
     let mut db = Db::new(None);
-    if env::var("WIPPLE_DEBUG").is_ok() {
-        db.debug_enabled = true;
-    }
 
     let mut top_level = TopLevel::default();
 
@@ -189,6 +183,9 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
     }
 
     let mut db = Db::new(Some(DbRef::new(lib_db)));
+    if env::var("WIPPLE_DEBUG").is_ok() {
+        db.debug_enabled = true;
+    }
 
     let files = options
         .paths
@@ -438,9 +435,11 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
                 return ControlFlow::Continue(());
             };
 
-            let mut writer = FeedbackWriter::new(Arc::new(default_filter));
+            let mut writer = FeedbackWriter::with_filter(&default_filter);
             writer.comments(db, node, &documentation.comments);
-            let (docs, _) = writer.finish(db, |db, segment| segment.markdown(db, false));
+            let docs = writer
+                .finish(db, |db, segment| segment.markdown(db, false))
+                .message;
 
             items.insert(
                 name.to_string(),

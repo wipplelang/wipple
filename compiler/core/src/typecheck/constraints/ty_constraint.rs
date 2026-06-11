@@ -2,7 +2,8 @@ use crate::{
     db::{Db, Node},
     typecheck::{
         constraints::{
-            Constraint, ConstraintTrace, RunResult, Solver, group_constraint::GroupConstraint,
+            AnyConstraintTrace, Constraint, ConstraintTrace, RunResult, Solver,
+            group_constraint::GroupConstraint,
         },
         instantiate::InstantiateCtx,
         ty::{ConstructedTy, Ty},
@@ -14,7 +15,7 @@ use serde::{Deserialize, Serialize};
 pub struct TyConstraint {
     pub node: Node,
     pub ty: ConstructedTy,
-    pub trace: Option<Box<dyn ConstraintTrace>>,
+    pub traces: Vec<AnyConstraintTrace>,
 }
 
 impl TyConstraint {
@@ -22,12 +23,12 @@ impl TyConstraint {
         TyConstraint {
             node,
             ty,
-            trace: None,
+            traces: Vec::new(),
         }
     }
 
     pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
-        self.trace = Some(Box::new(trace));
+        self.traces.push(AnyConstraintTrace::new(trace));
         self
     }
 }
@@ -38,8 +39,8 @@ impl Constraint for TyConstraint {
         self.node
     }
 
-    fn trace(&self) -> Option<Box<dyn ConstraintTrace>> {
-        self.trace.clone()
+    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace> {
+        &mut self.traces
     }
 
     fn instantiate(
@@ -49,16 +50,16 @@ impl Constraint for TyConstraint {
         ctx: &mut InstantiateCtx,
     ) -> Option<Box<dyn Constraint>> {
         let node = ctx.instantiate_node(db, solver, self.node);
-        let ty = ctx.instantiate_ty(db, solver, &Ty::Constructed(self.ty.clone()));
-        let trace = ctx.instantiate_trace(db, solver, &self.trace);
+        let ty = ctx.instantiate_constructed_ty(db, solver, &self.ty);
+        let traces = ctx.instantiate_traces(db, solver, &self.traces);
 
         match ty {
             Ty::Node(other) => Some(Box::new(GroupConstraint {
-                trace,
+                traces,
                 ..GroupConstraint::new(node, other)
             })),
             Ty::Constructed(ty) => Some(Box::new(TyConstraint {
-                trace,
+                traces,
                 ..TyConstraint::new(node, ty)
             })),
         }

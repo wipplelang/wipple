@@ -193,3 +193,15 @@ Feedback:
   `B` requires the instance `A` `()`, but this instance isn't defined.
   
   Double-check that these types are correct.
+
+  1. `B`: `B` is a `() -> ()`.
+
+  2. `B`: `B` is a `Number -> ()`.
+
+  3. `B`: `B` is a `String -> ()`.
+
+  4. `123`: `123` is a `Number`.
+
+  5. `"abc"`: `"abc"` is a `String`.
+
+  (2 -> 1, 3 -> 1, 3 -> 2, 4 -> 2, 5 -> 3)

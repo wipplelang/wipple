@@ -16,15 +16,15 @@ use wipple_core::{
     },
 };
 use wipple_feedback::{FeedbackLocation, collect_feedback};
-use wipple_syntax::file::File as FileSyntax;
 
 #[wasm_bindgen(getter_with_clone, inspectable)]
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
     pub locations: Vec<DiagnosticLocation>,
-    pub lines: Vec<DiagnosticLine>,
     pub groups: usize,
     pub message: String,
+    pub traces: Vec<DiagnosticTrace>,
+    pub trace_edges: Vec<DiagnosticTraceEdge>,
     pub graph: Option<Graph>,
 }
 
@@ -48,6 +48,22 @@ pub struct DiagnosticLocation {
 pub struct DiagnosticLine {
     pub source: String,
     pub locations: Vec<DiagnosticLocation>,
+}
+
+#[wasm_bindgen(getter_with_clone, inspectable)]
+#[derive(Debug, Clone)]
+pub struct DiagnosticTrace {
+    pub index: usize,
+    pub location: DiagnosticLocation,
+    pub message: String,
+    pub consequences: Vec<String>,
+}
+
+#[wasm_bindgen(getter_with_clone, inspectable)]
+#[derive(Debug, Clone)]
+pub struct DiagnosticTraceEdge {
+    pub from: usize,
+    pub to: Option<usize>,
 }
 
 #[wasm_bindgen]
@@ -96,8 +112,10 @@ impl CompileResult {
                                 .tys
                                 .iter()
                                 .map(|ty| {
-                                    update_type(&self.db, &Ty::Constructed(ty.clone()), true)
-                                        .display(&self.db, true)
+                                    let (ty, _) =
+                                        update_type(&self.db, &Ty::Constructed(ty.clone()), None);
+
+                                    ty.display(&self.db, None, true)
                                 })
                                 .collect(),
                             locations: vec![location],
@@ -125,12 +143,12 @@ impl CompileResult {
         let diagnostics = items
             .into_iter()
             .map(|item| {
-                let (groups, locations, lines) = self.collect_lines(&item.location);
+                let (groups, locations) = self.collect_locations(&item.location);
 
                 let mut mask = BTreeSet::from([item.location.primary]);
                 mask.extend(item.location.secondary.iter().copied());
 
-                let (message, nodes) = item.display(&self.db, |db, segment| {
+                let feedback = item.display(&self.db, |db, segment| {
                     let (label, node) = match segment {
                         RenderSegment::Node(node) => (segment.plain_text(db), *node),
                         RenderSegment::Link(label, node) => (label.clone(), *node),
@@ -149,7 +167,7 @@ impl CompileResult {
                     }
                 });
 
-                mask.extend(nodes);
+                mask.extend(feedback.nodes);
 
                 let graph = item
                     .show_graph
@@ -157,9 +175,36 @@ impl CompileResult {
 
                 Diagnostic {
                     locations,
-                    lines,
                     groups: groups.len(),
-                    message,
+                    message: feedback.message,
+                    traces: feedback
+                        .traces
+                        .into_iter()
+                        .filter_map(|(index, (node, message, consequences))| {
+                            let span = self
+                                .db
+                                .get(node)
+                                .map(|Syntax(syntax)| syntax.get(&self.db).span(&self.db))?;
+
+                            let location = DiagnosticLocation {
+                                start: span.start.index,
+                                end: span.end.index,
+                                group: -1,
+                            };
+
+                            Some(DiagnosticTrace {
+                                index,
+                                location,
+                                message,
+                                consequences,
+                            })
+                        })
+                        .collect(),
+                    trace_edges: feedback
+                        .trace_edges
+                        .into_iter()
+                        .map(|(from, to)| DiagnosticTraceEdge { from, to })
+                        .collect(),
                     graph,
                 }
             })
@@ -170,21 +215,12 @@ impl CompileResult {
 }
 
 impl CompileResult {
-    fn collect_lines(
+    fn collect_locations(
         &self,
         location: &FeedbackLocation,
-    ) -> (Vec<Group>, Vec<DiagnosticLocation>, Vec<DiagnosticLine>) {
-        #[derive(Debug, Clone)]
-        struct LineInfo {
-            start: usize,
-            end: usize,
-            offset: usize,
-            nodes: BTreeSet<Node>,
-        }
-
+    ) -> (Vec<Group>, Vec<DiagnosticLocation>) {
         let mut groups = Vec::<Group>::new();
         let mut locations = Vec::<DiagnosticLocation>::new();
-        let mut lines = Vec::<(DiagnosticLine, LineInfo)>::new();
         for node in [location.primary]
             .into_iter()
             .chain(location.secondary.iter().copied())
@@ -196,6 +232,10 @@ impl CompileResult {
             else {
                 continue;
             };
+
+            if span.path != self.path {
+                continue;
+            }
 
             // Hide non-instantiated, hidden nodes
             if self.db.is_hidden(node) && !self.db.contains::<Instantiated>(node) {
@@ -217,88 +257,17 @@ impl CompileResult {
                     }
                 });
 
-            if span.path == self.path {
-                let location = DiagnosticLocation {
-                    start: span.start.index,
-                    end: span.end.index,
-                    group: group_index,
-                };
-
-                if !locations.contains(&location) {
-                    locations.push(location);
-                }
-
-                continue;
-            }
-
-            let convert_offset = |offset: usize| DiagnosticLocation {
-                start: span.start.column - 1 + offset,
-                end: span.end.column - 1 + offset,
+            let location = DiagnosticLocation {
+                start: span.start.index,
+                end: span.end.index,
                 group: group_index,
             };
 
-            if let Some(index) = lines
-                .iter()
-                .position(|(_, line)| span.start.line >= line.start && span.end.line <= line.end)
-            {
-                lines[index].1.nodes.insert(node);
-
-                let location = convert_offset(lines[index].1.offset);
-
-                if !lines[index].0.locations.contains(&location) {
-                    lines[index].0.locations.push(location);
-                }
-
-                continue;
+            if !locations.contains(&location) {
+                locations.push(location);
             }
-
-            let Some(source) = self.db.owned_nodes().find_map(|file_node| {
-                let syntax = self.db.get::<Syntax>(file_node)?.0.get(&self.db);
-                syntax.downcast_ref::<FileSyntax>()?;
-
-                let file_span = syntax.span(&self.db);
-                (file_span.path == span.path).then_some(file_span.source.as_str())
-            }) else {
-                continue;
-            };
-
-            // Seek to the `span` location
-            let mut offset = 0;
-            let source = source
-                .lines()
-                .enumerate()
-                .skip(span.start.line - 1)
-                .take(span.end.line - span.start.line + 1)
-                .inspect(|(index, line)| {
-                    if *index < span.start.line {
-                        offset += line.len() + 1
-                    }
-                })
-                .map(|(_, line)| line)
-                .collect::<Vec<_>>()
-                .join("\n");
-
-            lines.push((
-                DiagnosticLine {
-                    source,
-                    locations: vec![convert_offset(offset)],
-                },
-                LineInfo {
-                    start: span.start.line,
-                    end: span.end.line,
-                    offset,
-                    nodes: BTreeSet::from([node]),
-                },
-            ));
         }
 
-        // Delete lines that have no groups
-        lines.retain(|(line, _)| !line.locations.iter().all(|location| location.group == -1));
-
-        (
-            groups,
-            locations,
-            lines.into_iter().map(|(line, _)| line).collect(),
-        )
+        (groups, locations)
     }
 }

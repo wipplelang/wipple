@@ -121,7 +121,7 @@ impl MatchTree {
 }
 
 impl Render for MatchTree {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let node = match self {
             MatchTree::Field(node, _) | MatchTree::Variant(node, _) => Some(node),
             _ => None,
@@ -185,7 +185,7 @@ pub struct MissingPatterns(pub Vec<MatchTree>);
 impl Fact for MissingPatterns {}
 
 impl Render for MissingPatterns {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("is missing patterns");
     }
 }
@@ -255,7 +255,7 @@ pub fn check_exhaustiveness(db: &mut Db) {
 fn collect_paths(
     db: &Db,
     ty: Ty,
-    parameters: &BTreeMap<Node, Ty>,
+    parameters: &BTreeMap<Node, Node>,
     prefix: &[MatchPathSegment],
     max: usize,
 ) -> Vec<Vec<MatchPath>> {
@@ -263,16 +263,16 @@ fn collect_paths(
         return vec![vec![MatchPath(prefix.to_vec())]];
     }
 
-    let mut ty = update_type(db, &ty, false);
+    let (mut ty, _) = update_type(db, &ty, None);
 
     if let Ty::Constructed(inner) = &ty
         && let TyTag::Parameter(parameter) = inner.tag
         && let Some(substitution) = parameters.get(&parameter)
     {
-        ty = substitution.clone();
+        ty = Ty::Node(*substitution);
     }
 
-    let Ty::Constructed(ty) = update_type(db, &ty, false) else {
+    let (Ty::Constructed(ty), _) = update_type(db, &ty, None) else {
         return Vec::new();
     };
 
@@ -355,7 +355,7 @@ fn collect_paths(
                     let mut prefix = prefix.to_vec();
                     prefix.push(MatchPathSegment::TupleElement(index, len));
 
-                    collect_paths(db, element, parameters, &prefix, max)
+                    collect_paths(db, Ty::Node(element), parameters, &prefix, max)
                 })
                 .multi_cartesian_product()
                 .map(|combination| combination.into_iter().flatten().collect())

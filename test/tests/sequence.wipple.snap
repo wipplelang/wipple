@@ -231,7 +231,7 @@ Facts (layer 2):
   is an expression
 
 `box` (VariablePattern):
-  has type `Box String`
+  has type `Box (String or Number)`
   is a definition
   is a pattern
 
@@ -239,12 +239,12 @@ Facts (layer 2):
   has type `()`
 
 `_` (PlaceholderExpression):
-  has type `Box String`
+  has type `Box (String or Number)`
   is an expression
   type is annotated
 
 `Box String` (NamedType):
-  has type `Box String`
+  has type `Box (String or Number)`
   is a type
   resolved to 1 definition(s): `Box : value => type {⋯}`
   type is annotated
@@ -256,7 +256,7 @@ Facts (layer 2):
   type is annotated
 
 `positive?` (VariablePattern):
-  has type `String -> Boolean`
+  has type `(String or Number) -> Boolean`
   is a definition
   is a pattern
 
@@ -264,7 +264,7 @@ Facts (layer 2):
   has type `()`
 
 `(_ :: Number) -> _` (FunctionExpression):
-  has type `String -> Boolean`
+  has type `(String or Number) -> Boolean`
   is an expression
 
 `_` (WildcardPattern):
@@ -283,30 +283,30 @@ Facts (layer 2):
   is an expression
 
 `(filter positive?) box` (ExpressionStatement):
-  has type `Sequence String`
+  has type `Sequence (String or Number)`
 
 `(filter positive?) box` (CallExpression):
-  has type `Sequence String`
+  has type `Sequence (String or Number)`
   is an expression
 
 `filter` (VariableExpression):
-  has bound(s) `As-Sequence` `(Box String)` (`String` or `Number`) (resolved as `instance (As-Sequence (Box value) value)`)
-  has type `(String -> Boolean) -> (Box String) -> Sequence String`
+  has bound(s) `As-Sequence` `(Box (String or Number))` `(String or Number)` (resolved as `instance (As-Sequence (Box value) value)`)
+  has type `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`
   is an expression
   resolved to 1 definition(s): `filter :: (item -> Boolean) -> collection -> Sequence item where (As-Sequence collection item)`
 
 `filter positive?` (CallExpression):
-  has type `(Box String) -> Sequence String`
+  has type `(Box (String or Number)) -> Sequence (String or Number)`
   is an expression
 
 `positive?` (VariableExpression):
-  has type `String -> Boolean`
+  has type `(String or Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `positive?`
   type is annotated
 
 `box` (VariableExpression):
-  has type `Box String`
+  has type `Box (String or Number)`
   is an expression
   resolved to 1 definition(s): `box`
   type is annotated
@@ -315,14 +315,16 @@ Facts (layer 2):
 
 Feedback:
 
-`filter` (conflicting-types)
+`_ :: Number` (conflicting-types)
 
-  In `filter`, `item` is a `String` or a `Number`, but it can only be one of these.
+  `_ :: Number` is a `String` or a `Number`, but it can only be one of these.
   
-  `item` must be the same type as `_`, `_ :: Number`, `String`, and 1 other; double-check these.
-  
-  -  `filter` is a `(item -> Boolean) -> collection -> Sequence item`.
-  
-  -  `_` is annotated with the type `Box String`.
-  
-  -  `_` is annotated with the type `Number`.
+  `_ :: Number` must be the same type as `_`, `String`, `Number`, and 12 others; double-check these.
+
+  1. `filter`: `filter` is a `(String -> Boolean) -> (Box String) -> Sequence String`.
+
+  2. `_`: `_` is annotated with the type `Box String`.
+
+  3. `_`: `_` is annotated with the type `Number`.
+
+  (2 -> 1, 3 -> 1, 1 -> error)

@@ -116,17 +116,74 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
                 writeln!(self.out)?;
             }
 
-            let mut render_ctx = RenderCtx::default();
-            render_ctx.node(item.location.primary);
-            let (rendered_location, _) =
-                render_ctx.finish(db, |db, segment| segment.markdown(db, self.show_span));
+            let render_location = |db: &Db, node: Node| {
+                let mut render_ctx = RenderCtx::with_filter(&filter);
+                render_ctx.node(node);
+                let (location, _) =
+                    render_ctx.finish(db, |db, segment| segment.markdown(db, self.show_span));
+                location
+            };
+
+            let rendered_location = render_location(db, item.location.primary);
 
             writeln!(self.out, "\n{} ({})\n", rendered_location, item.id)?;
 
-            let (feedback, _) = item.display(db, |db, segment| segment.markdown(db, false));
+            let feedback = item.display(db, |db, segment| segment.markdown(db, false));
 
-            for line in feedback.lines() {
+            for line in feedback.message.lines() {
                 writeln!(self.out, "  {line}")?;
+            }
+
+            if !feedback.traces.is_empty() {
+                let mut indices = BTreeMap::new();
+
+                for (index, (trace_index, (node, trace, consequences))) in
+                    feedback.traces.into_iter().enumerate()
+                {
+                    indices.insert(trace_index, index);
+
+                    let location = render_location(db, node);
+                    write!(self.out, "\n  {}. {}: {}", index + 1, location, trace)?;
+                    for consequence in consequences {
+                        write!(self.out, " {consequence}")?;
+                    }
+                    writeln!(self.out)?;
+                }
+
+                if !feedback.trace_edges.is_empty() {
+                    let mut first = true;
+                    for (from, to) in feedback.trace_edges {
+                        let Some(from) = indices.get(&from) else {
+                            continue;
+                        };
+
+                        let to = match to {
+                            Some(to) => match indices.get(&to) {
+                                Some(to) => Some(to),
+                                None => continue,
+                            },
+                            None => None,
+                        };
+
+                        if first {
+                            write!(self.out, "\n  (")?;
+                            first = false;
+                        } else {
+                            write!(self.out, ", ")?;
+                        }
+
+                        write!(
+                            self.out,
+                            "{} -> {}",
+                            from + 1,
+                            to.map_or_else(|| String::from("error"), |to| (to + 1).to_string())
+                        )?;
+                    }
+
+                    if !first {
+                        writeln!(self.out, ")")?;
+                    }
+                }
             }
 
             feedback_count += 1;

@@ -1,6 +1,6 @@
 use crate::{
     db::{Db, Fact, Node},
-    render::{Render, RenderCtx, TyPlacement},
+    render::{Render, RenderCtx},
     typecheck::{solver::SubstitutionsKey, ty::Ty},
     visit::definitions::{Defined, TraitDefinition},
 };
@@ -22,7 +22,7 @@ pub struct Instances(pub Vec<Instance>);
 impl Fact for Instances {}
 
 impl Render for Instances {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string(format!("has {} instances", self.0.len()));
     }
 }
@@ -34,7 +34,7 @@ pub struct Bounds(pub Vec<(Node, Result<ResolvedBound, UnresolvedBound>)>);
 impl Fact for Bounds {}
 
 impl Render for Bounds {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         if self.0.is_empty() {
             ctx.string("has no bounds");
         }
@@ -86,7 +86,7 @@ pub struct Bound {
 }
 
 impl Render for Instance {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         UnresolvedBound {
             trait_node: self.trait_node,
             parameters: self.parameters.clone(),
@@ -96,7 +96,7 @@ impl Render for Instance {
 }
 
 impl Render for UnresolvedBound {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let trait_definition = db
             .get::<Defined>(self.trait_node)
             .unwrap()
@@ -110,7 +110,7 @@ impl Render for UnresolvedBound {
             ctx.string(" ");
 
             if let Some(ty) = self.parameters.get(parameter) {
-                ctx.ty(db, ty, TyPlacement::BoundMultiple);
+                ctx.ty(db, ty, None, false);
             } else {
                 ctx.code("_");
             }

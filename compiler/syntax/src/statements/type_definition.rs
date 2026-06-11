@@ -14,7 +14,7 @@ use wipple_core::{
     typecheck::{
         constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
         groups::Typed,
-        ty::{ConstructedTy, Ty},
+        ty::ConstructedTy,
     },
     visit::{
         DefinitionConstraints, Visit, Visitor,
@@ -319,15 +319,7 @@ impl Visit for TypeDefinition {
                     db,
                     TyConstraint::new(
                         node,
-                        ConstructedTy::named(
-                            node,
-                            definition
-                                .parameters
-                                .iter()
-                                .copied()
-                                .map(Ty::Node)
-                                .collect(),
-                        ),
+                        ConstructedTy::named(node, definition.parameters.clone()),
                     ),
                 );
 
@@ -476,12 +468,8 @@ impl Visit for TypeDefinition {
                                                     TyConstraint::new(
                                                         constructor,
                                                         ConstructedTy::function(
-                                                            elements
-                                                                .iter()
-                                                                .copied()
-                                                                .map(Ty::Node)
-                                                                .collect(),
-                                                            Ty::Node(node),
+                                                            elements.clone(),
+                                                            node,
                                                         ),
                                                     ),
                                                 );

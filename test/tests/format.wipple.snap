@@ -101,31 +101,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `bob`
   type is annotated
 
-`Describe : value => trait (value -> String)` (TraitDefinition):
-  has 6 instances
-  has definition constraints
-  has type `value -> String`
-  has type parameters
-  is a definition
-
-`value` (TypeParameter):
-  has type `value`
-  is a definition
-  is a type
-  resolved to 1 definition(s): `value`
-  type is annotated
-
-`value` (TypeParameter):
-  has type `value`
-  is a type
-  resolved to 1 definition(s): `value`
-  type is annotated
-
-`value -> String` (FunctionType):
-  has type `value -> String`
-  is a type
-  type is annotated
-
 
 Output:
 Hello, Bob!

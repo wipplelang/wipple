@@ -1,6 +1,6 @@
 Build-Collection : (infer element) collection => trait (element collection -> collection)
 
--- Can't create [`collection`] from items that are [`element`].
+-- Can't create [`collection`] from items that are [`element@type`].
 --
 -- Creating [`collection`] from these items isn't supported. Double-check that
 -- you're providing the right kinds of items here.

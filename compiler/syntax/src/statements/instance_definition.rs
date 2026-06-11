@@ -195,7 +195,7 @@ impl Visit for InstanceDefinition {
                                     source_node: node,
                                     definition: definition_node,
                                     substitutions,
-                                    trace: None,
+                                    traces: Vec::new(),
                                 },
                             );
                         },

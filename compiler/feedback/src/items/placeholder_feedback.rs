@@ -1,6 +1,6 @@
 use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank};
 use std::collections::BTreeSet;
-use wipple_core::{render::TyPlacement, typecheck::ty::Ty};
+use wipple_core::typecheck::ty::Ty;
 use wipple_queries::placeholder;
 
 pub fn register(ctx: &mut FeedbackCtx<'_>) {
@@ -15,11 +15,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
         .display(|db, writer, _, (_, _, ty)| {
             if let Some(ty) = *ty {
                 writer.string("Found a placeholder of type ");
-                writer.ty(
-                    db,
-                    &Ty::Constructed(ty.clone()),
-                    TyPlacement::InlineMultiple,
-                );
+                writer.ty(db, &Ty::Constructed(ty.clone()), None, true);
                 writer.string(".");
             } else {
                 writer.string("Found a placeholder.");
@@ -29,11 +25,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
 
             if let Some(ty) = *ty {
                 writer.string("Add a ");
-                writer.ty(
-                    db,
-                    &Ty::Constructed(ty.clone()),
-                    TyPlacement::InlineMultiple,
-                );
+                writer.ty(db, &Ty::Constructed(ty.clone()), None, true);
                 writer.string(" value here before running your program.");
             } else {
                 writer.string("Add a value here before running your program.");

@@ -236,7 +236,7 @@ Facts (layer 2):
 
 `_` (WildcardPattern):
   is a pattern
-  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `sum`, `sum`, `(infer sum)`, `sum`, `_`, `(infer sum)`, `sum`)
 
 `_ : 1 + "a"` (AssignmentStatement):
   has type `()`
@@ -248,11 +248,11 @@ Facts (layer 2):
 
 `1 + "a"` (OperatorExpression):
   is an expression
-  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `sum`, `sum`, `(infer sum)`, `sum`, `_`, `(infer sum)`, `sum`)
 
 `1 + "a"` (CallExpression):
   is an expression
-  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `sum`, `sum`, `(infer sum)`, `sum`, `_`, `(infer sum)`, `sum`)
 
 `1 + "a"` (ConstructorExpression):
   has bound(s) `Add` `Number` `String` `_` (resolved as `default error instance (Add left right sum)`)
@@ -267,7 +267,7 @@ Facts (layer 2):
 
 `_` (WildcardPattern):
   is a pattern
-  missing type (group: `_`, `() + 2`, `() + 2`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `() + 2`, `() + 2`, `sum`, `sum`, `(infer sum)`, `sum`, `_`, `(infer sum)`, `sum`)
 
 `_ : () + 2` (AssignmentStatement):
   has type `()`
@@ -278,11 +278,11 @@ Facts (layer 2):
 
 `() + 2` (OperatorExpression):
   is an expression
-  missing type (group: `_`, `() + 2`, `() + 2`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `() + 2`, `() + 2`, `sum`, `sum`, `(infer sum)`, `sum`, `_`, `(infer sum)`, `sum`)
 
 `() + 2` (CallExpression):
   is an expression
-  missing type (group: `_`, `() + 2`, `() + 2`, `_`, `_`, `_`, `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `() + 2`, `() + 2`, `sum`, `sum`, `(infer sum)`, `sum`, `_`, `(infer sum)`, `sum`)
 
 `() + 2` (ConstructorExpression):
   has bound(s) `Add` `()` `Number` `_` (resolved as `error instance (Add () right sum)`)
@@ -302,11 +302,27 @@ Feedback:
 `() + 2` (error-instance)
 
   Missing parentheses around the inputs to `+`.
-  
-  -  `_` is `() + 2`.
-  
-  -  `2` is a `Number`.
-  
-  -  `() + 2` returns a `_`.
-  
-  -  `() + 2` requires the instance `Add` `()` `Number` `_`.
+
+  1. `2`: `2` is a `Number`.
+
+  2. `() + 2`: `() + 2` is a `() Number -> _`.
+
+  3. `1 + 2`: `1 + 2` is a `Number Number -> Number`.
+
+  4. `"a" + "b"`: `"a" + "b"` is a `String String -> String`.
+
+  5. `1 + "a"`: `1 + "a"` is a `Number String -> _`.
+
+  6. `1`: `1` is a `Number`.
+
+  7. `2`: `2` is a `Number`.
+
+  8. `"a"`: `"a"` is a `String`.
+
+  9. `"b"`: `"b"` is a `String`.
+
+  10. `1`: `1` is a `Number`.
+
+  11. `"a"`: `"a"` is a `String`.
+
+  (2 -> error, 2 -> 1, 3 -> 2, 4 -> 2, 4 -> 3, 5 -> 2, 5 -> 3, 5 -> 4, 6 -> 3, 7 -> 3, 8 -> 4, 9 -> 4, 10 -> 5, 11 -> 5)

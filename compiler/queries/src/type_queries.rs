@@ -1,10 +1,10 @@
 use wipple_core::{
     db::{Db, Node},
+    traces::Traces,
     typecheck::{
-        constraints::ConstraintTrace,
         groups::{Annotated, Typed},
         instantiate::Instantiated,
-        ty::{ConstructedTy, Ty},
+        ty::ConstructedTy,
     },
 };
 
@@ -30,7 +30,7 @@ pub struct ConflictingTypes {
     pub from: Node,
     pub nodes: Vec<Node>,
     pub tys: Vec<ConstructedTy>,
-    pub traces: Vec<Box<dyn ConstraintTrace>>,
+    pub traces: Traces,
 }
 
 pub fn conflicting_types(db: &Db, node: Node) -> Option<ConflictingTypes> {
@@ -42,7 +42,7 @@ pub fn conflicting_types(db: &Db, node: Node) -> Option<ConflictingTypes> {
         return None;
     }
 
-    let nodes = group
+    let mut nodes = group
         .nodes
         .iter()
         .copied()
@@ -55,7 +55,8 @@ pub fn conflicting_types(db: &Db, node: Node) -> Option<ConflictingTypes> {
         return None;
     }
 
-    let traces = db.traces_for(nodes.iter().copied()).collect::<Vec<_>>();
+    let traces = db.traces_for(node, nodes.iter().copied());
+    nodes.extend(traces.nodes(db));
 
     let (source, from) = db
         .get::<Instantiated>(node)
@@ -82,9 +83,15 @@ pub fn incomplete_type(db: &Db, node: Node) -> Option<(Node, &ConstructedTy)> {
 
     let ty = &group.tys[0];
 
-    Ty::Constructed(ty.clone())
-        .references_nodes()
-        .then_some((node, ty))
+    if ty.children.iter().any(|&ty| {
+        db.get(ty)
+            .and_then(|Typed(group)| group.as_ref())
+            .is_some_and(|group| group.tys.is_empty())
+    }) {
+        return Some((node, ty));
+    }
+
+    None
 }
 
 pub fn unknown_type(db: &Db, node: Node) -> bool {

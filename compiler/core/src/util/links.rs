@@ -28,13 +28,13 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
         links.insert(
             name.clone(),
             Link {
-                node: definition_node,
+                node: source_node,
                 related: Vec::new(),
                 tys: Vec::new(),
             },
         );
 
-        nodes.push((name.clone(), definition_node));
+        nodes.push((name.clone(), source_node));
     }
 
     if let Some(TypeParameters(parameters)) = db.get(definition_node) {

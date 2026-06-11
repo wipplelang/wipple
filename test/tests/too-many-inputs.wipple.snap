@@ -35,3 +35,15 @@ Feedback:
 `show` (conflicting-types)
 
   `show` is a `Number Number Number -> ()` or a `Number -> ()`, but it can only be one of these.
+  
+  `show` must be the same type as `1`, `show 1 2 3`, `2`, and 1 other; double-check these.
+
+  1. `show`: `show` displays `1` on the screen.
+
+  2. `1`: `1` is a `Number`.
+
+  3. `2`: `2` is a `Number`.
+
+  4. `3`: `3` is a `Number`.
+
+  (1 -> error, 2 -> 1)

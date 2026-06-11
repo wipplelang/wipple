@@ -1,9 +1,9 @@
 <script lang="ts">
     import type { Snippet } from "svelte";
-    import type { HTMLAttributes } from "svelte/elements";
+    import type { ClassValue, HTMLAttributes } from "svelte/elements";
 
     interface Props extends HTMLAttributes<HTMLDivElement> {
-        class?: string;
+        class?: ClassValue;
         scroll?: boolean;
         children: Snippet;
     }

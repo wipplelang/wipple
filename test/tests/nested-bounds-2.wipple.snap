@@ -180,3 +180,7 @@ Feedback:
   `T` requires the instance `W` `_`, but this instance isn't defined.
   
   Double-check that these types are correct.
+
+  1. `T`: `T` is a `()`.
+
+  (1 -> error)

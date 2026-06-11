@@ -82,7 +82,7 @@ struct FeedbackBuilder<'ctx, 'a, T: 'a> {
     query: Option<Box<dyn Fn(&'a Db, Node) -> Box<dyn Iterator<Item = T> + 'a>>>,
     rank: Option<fn(&T) -> FeedbackRank>,
     location: Option<fn(Node, &T) -> FeedbackLocation>,
-    display: Option<fn(&Db, &mut FeedbackWriter, Node, &T)>,
+    display: Option<fn(&Db, &mut FeedbackWriter<'_>, Node, &T)>,
     show_graph: bool,
 }
 
@@ -105,7 +105,7 @@ impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
         self
     }
 
-    fn display(mut self, display: fn(&Db, &mut FeedbackWriter, Node, &T)) -> Self {
+    fn display(mut self, display: fn(&Db, &mut FeedbackWriter<'_>, Node, &T)) -> Self {
         self.display = Some(display);
         self
     }
@@ -140,10 +140,9 @@ impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
                     display: Box::new({
                         let filter = filter.clone();
                         move |db, render_segment| {
-                            let mut writer = FeedbackWriter::new(filter.clone());
+                            let mut writer = FeedbackWriter::with_filter(filter.as_ref());
                             display(db, &mut writer, node, &item);
-                            let (s, nodes) = writer.finish(db, render_segment);
-                            (s.to_string(), nodes)
+                            writer.finish(db, render_segment)
                         }
                     }),
                     show_graph,

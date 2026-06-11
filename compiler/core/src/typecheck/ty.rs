@@ -1,11 +1,15 @@
 use crate::{
     db::{Db, Node},
     render::{Render, RenderCtx},
+    typecheck::groups::{types_of, update_type},
     visit::definitions::Defined,
 };
 use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeSet, fmt::Debug};
+use std::{
+    fmt::{Debug, Write},
+    slice,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Ty {
@@ -21,88 +25,89 @@ impl Ty {
         }
     }
 
-    pub fn traverse(&self, f: &mut impl FnMut(&Self) -> Self) -> Self {
-        self.traverse_inner(f, &mut Vec::new())
-    }
-
-    fn traverse_inner(&self, f: &mut impl FnMut(&Self) -> Self, stack: &mut Vec<Self>) -> Self {
-        let mut ty = f(self);
-
-        if stack.contains(&ty) {
-            return ty; // recursive type
-        }
-
-        stack.push(ty.clone());
-
-        if let Ty::Constructed(ty) = &mut ty {
-            for child in &mut ty.children {
-                *child = child.traverse_inner(f, stack);
-            }
-        }
-
-        stack.pop();
-
-        ty
-    }
-
-    pub fn referenced_nodes(&self) -> BTreeSet<Node> {
-        let mut nodes = BTreeSet::new();
-        self.traverse(&mut |ty| {
-            if let Ty::Node(node) = ty {
-                nodes.insert(*node);
-            }
-
-            ty.clone()
-        });
-
-        nodes
-    }
-
-    pub fn references_nodes(&self) -> bool {
-        self.references_nodes_where(|_| true)
-    }
-
-    pub fn references_nodes_where(&self, mut f: impl FnMut(Node) -> bool) -> bool {
-        let mut found = false;
-        self.traverse(&mut |ty| {
-            if found {
-                return ty.clone();
-            }
-
-            let Ty::Node(node) = ty else {
-                return ty.clone();
-            };
-
-            if f(*node) {
-                found = true;
-            }
-
-            ty.clone()
-        });
-
-        found
-    }
-
-    pub fn display(&self, db: &Db, root: bool) -> String {
+    pub fn referenced_nodes(&self) -> Vec<Node> {
         match self {
-            Ty::Node(_) => String::from("_"),
-            Ty::Constructed(ty) => {
-                let children = ty
-                    .children
-                    .iter()
-                    .map(|ty| -> Box<dyn Fn(&Db, bool) -> String> {
-                        let ty = ty.clone();
-                        Box::new(move |db, root| ty.display(db, root))
-                    })
-                    .collect();
+            Ty::Node(node) => vec![*node],
+            Ty::Constructed(ty) => ty.children.clone(),
+        }
+    }
 
-                ty.display.display(db, children, root)
+    pub fn referenced_nodes_mut(&mut self) -> Vec<&mut Node> {
+        match self {
+            Ty::Node(node) => vec![node],
+            Ty::Constructed(ty) => ty.children.iter_mut().collect(),
+        }
+    }
+    pub fn display(&self, db: &Db, representative: impl Into<Option<Node>>, root: bool) -> String {
+        let representative = representative.into();
+
+        let render_unknown = || String::from("_");
+
+        let render_children = |children: &[Node]| {
+            children
+                .iter()
+                .map(|&node| -> Box<dyn Fn(&Db, bool) -> String> {
+                    Box::new(move |db, root| Ty::Node(node).display(db, representative, root))
+                })
+                .collect()
+        };
+
+        match representative {
+            Some(representative) => {
+                let (ty, _) = update_type(db, self, representative);
+
+                match ty {
+                    Ty::Node(_) => render_unknown(),
+                    Ty::Constructed(ty) => {
+                        let children = render_children(&ty.children);
+
+                        ty.display.display(db, children, root)
+                    }
+                }
+            }
+            None => {
+                let tys = match self {
+                    Ty::Node(node) => types_of(db, *node),
+                    Ty::Constructed(ty) => slice::from_ref(ty),
+                };
+
+                if tys.is_empty() {
+                    render_unknown()
+                } else {
+                    let mut s = String::new();
+
+                    if !root && tys.len() > 1 {
+                        write!(s, "(").unwrap();
+                    }
+
+                    for (index, ty) in tys.iter().enumerate() {
+                        if index > 0 {
+                            write!(s, " or ").unwrap();
+                        }
+
+                        let children = render_children(&ty.children);
+
+                        write!(s, "{}", ty.display.display(db, children, root)).unwrap();
+                    }
+
+                    if !root && tys.len() > 1 {
+                        write!(s, ")").unwrap();
+                    }
+
+                    s
+                }
             }
         }
     }
 
-    pub fn render_into(&self, db: &Db, ctx: &mut RenderCtx, root: bool) {
-        let description = self.display(db, root);
+    pub fn render_into(
+        &self,
+        db: &Db,
+        ctx: &mut RenderCtx<'_>,
+        representative: impl Into<Option<Node>>,
+        root: bool,
+    ) {
+        let description = self.display(db, representative.into().or(ctx.representative), root);
 
         let node = match self {
             Ty::Node(node) => Some(*node),
@@ -118,8 +123,8 @@ impl Ty {
 }
 
 impl Render for Ty {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
-        self.render_into(db, ctx, true);
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+        self.render_into(db, ctx, None, true);
     }
 }
 
@@ -148,7 +153,7 @@ dyn_clone::clone_trait_object!(TyDisplay);
 pub struct ConstructedTy {
     pub representative: Option<Node>,
     pub tag: TyTag,
-    pub children: Vec<Ty>,
+    pub children: Vec<Node>,
     display: Box<dyn TyDisplay>,
 }
 
@@ -171,7 +176,7 @@ impl PartialEq for ConstructedTy {
 impl Eq for ConstructedTy {}
 
 impl ConstructedTy {
-    fn new(tag: TyTag, children: Vec<Ty>, display: impl TyDisplay) -> Self {
+    fn new(tag: TyTag, children: Vec<Node>, display: impl TyDisplay) -> Self {
         ConstructedTy {
             representative: None,
             tag,
@@ -222,7 +227,7 @@ impl TyDisplay for NamedTyDisplay {
 }
 
 impl ConstructedTy {
-    pub fn named(definition: Node, parameters: Vec<Ty>) -> Self {
+    pub fn named(definition: Node, parameters: Vec<Node>) -> Self {
         ConstructedTy::new(
             TyTag::Named(definition),
             parameters,
@@ -258,7 +263,7 @@ impl TyDisplay for FunctionTyDisplay {
 }
 
 impl ConstructedTy {
-    pub fn function(inputs: Vec<Ty>, output: Ty) -> Self {
+    pub fn function(inputs: Vec<Node>, output: Node) -> Self {
         ConstructedTy::new(
             TyTag::Function,
             [output].into_iter().chain(inputs).collect(),
@@ -300,7 +305,7 @@ impl TyDisplay for TupleTyDisplay {
 }
 
 impl ConstructedTy {
-    pub fn tuple(elements: Vec<Ty>) -> Self {
+    pub fn tuple(elements: Vec<Node>) -> Self {
         ConstructedTy::new(TyTag::Tuple, elements, TupleTyDisplay)
     }
 
@@ -326,7 +331,7 @@ impl TyDisplay for BlockTyDisplay {
 }
 
 impl ConstructedTy {
-    pub fn block(output: Ty) -> Self {
+    pub fn block(output: Node) -> Self {
         ConstructedTy::new(TyTag::Block, vec![output], BlockTyDisplay)
     }
 }

@@ -1,3 +1,4 @@
+use crate::writer::Feedback;
 use std::collections::BTreeSet;
 use wipple_core::{
     db::{Db, Node},
@@ -10,9 +11,7 @@ pub struct FeedbackItem<'a> {
     pub id: String,
     pub rank: FeedbackRank,
     pub location: FeedbackLocation,
-    pub display: Box<
-        dyn Fn(&Db, &mut dyn FnMut(&Db, &RenderSegment) -> String) -> (String, BTreeSet<Node>) + 'a,
-    >,
+    pub display: Box<dyn Fn(&Db, &mut dyn FnMut(&Db, &RenderSegment) -> String) -> Feedback + 'a>,
     pub show_graph: bool,
 }
 
@@ -21,7 +20,7 @@ impl FeedbackItem<'_> {
         &self,
         db: &Db,
         mut render_segment: impl FnMut(&Db, &RenderSegment) -> String,
-    ) -> (String, BTreeSet<Node>) {
+    ) -> Feedback {
         (self.display)(db, &mut render_segment)
     }
 }

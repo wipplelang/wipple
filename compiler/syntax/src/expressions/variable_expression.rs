@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    render::{Comments, Render, RenderCtx, TyPlacement},
+    render::{Comments, Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
         bounds::Bounds,
@@ -82,7 +82,16 @@ impl Visit for VariableExpression {
 
                 db.graph.replace(node, definition_node);
 
-                visitor.constraint(db, GroupConstraint::new(node, definition_node));
+                visitor.constraint(
+                    db,
+                    GroupConstraint::new(node, definition_node).with_trace(
+                        DefinitionConstraintTrace {
+                            variable: true,
+                            definition: definition_node,
+                            node,
+                        },
+                    ),
+                );
 
                 // Prefer showing conflicts on the definition rather than its uses
                 db.insert(node, Annotated);
@@ -108,11 +117,13 @@ impl Visit for VariableExpression {
                         source_node: node,
                         definition: definition_node,
                         substitutions,
-                        trace: Some(Box::new(ConstantConstraintTrace {
-                            definition: definition_node,
-                            node,
-                        })),
-                    },
+                        traces: Vec::new(),
+                    }
+                    .with_trace(DefinitionConstraintTrace {
+                        variable: false,
+                        definition: definition_node,
+                        node,
+                    }),
                 );
 
                 visitor.codegen(
@@ -130,15 +141,20 @@ impl Visit for VariableExpression {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-struct ConstantConstraintTrace {
-    definition: Node,
-    node: Node,
+pub struct DefinitionConstraintTrace {
+    pub variable: bool,
+    pub definition: Node,
+    pub node: Node,
 }
 
 #[typetag::serde]
-impl ConstraintTrace for ConstantConstraintTrace {
+impl ConstraintTrace for DefinitionConstraintTrace {
     fn nodes_mut(&mut self) -> Vec<&mut Node> {
         vec![&mut self.node]
+    }
+
+    fn require_consequences(&self) -> bool {
+        self.variable
     }
 
     fn nodes(&self, db: &Db) -> Vec<Node> {
@@ -153,36 +169,30 @@ impl ConstraintTrace for ConstantConstraintTrace {
             )
             .collect()
     }
-
-    fn source_node_mut(&mut self) -> Option<&mut Node> {
-        Some(&mut self.node)
-    }
 }
 
-impl Render for ConstantConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+impl Render for DefinitionConstraintTrace {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let Some(Defined(definition)) = db.get(self.definition) else {
             return;
         };
 
-        let Some(definition) = definition.downcast_ref::<ConstantDefinition>() else {
-            return;
-        };
+        let comments = definition.comments();
 
-        if !definition.comments.is_empty() {
+        if !comments.is_empty() {
             ctx.comments(
                 db,
                 self.definition,
                 &Comments {
                     nodes: Default::default(),
-                    comments: definition.comments.clone(),
+                    comments: comments.to_vec(),
                     links: get_links(db, self.definition, self.node),
                 },
             );
         } else {
             ctx.node(self.node);
             ctx.string(" is a ");
-            ctx.ty(db, &Ty::Node(self.definition), TyPlacement::InlineFirst);
+            ctx.ty(db, &Ty::Node(self.node), Some(self.definition), true);
             ctx.string(".");
         }
     }

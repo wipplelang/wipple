@@ -7,22 +7,27 @@ pub mod ty_constraint;
 
 use crate::{
     db::{Db, Node},
-    render::Render,
+    render::{Render, RenderCtx},
+    traces::TracesEntry,
     typecheck::{
         constraints::{
             bound_constraint::BoundConstraint, default_constraint::DefaultConstraint,
             generic_constraint::GenericConstraint, group_constraint::GroupConstraint,
             instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint,
         },
-        instantiate::InstantiateCtx,
+        groups::Typed,
+        instantiate::{InstantiateCtx, Instantiated},
         solver::Solver,
+        ty::{ConstructedTy, Ty},
     },
 };
 use dyn_clone::DynClone;
+use serde::{Deserialize, Serialize};
 use std::{
     any::{Any, TypeId},
     collections::{BTreeMap, BTreeSet, VecDeque},
     fmt::Debug,
+    ops::{Deref, DerefMut},
 };
 
 pub enum RunResult {
@@ -35,9 +40,7 @@ pub enum RunResult {
 pub trait Constraint: Debug + DynClone + Any + Send + Sync {
     fn node(&self) -> Node;
 
-    fn trace(&self) -> Option<Box<dyn ConstraintTrace>> {
-        None
-    }
+    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace>;
 
     fn instantiate(
         &self,
@@ -71,8 +74,8 @@ pub trait ConstraintTrace: Debug + DynClone + Any + Send + Sync + Render {
         true
     }
 
-    fn source_node_mut(&mut self) -> Option<&mut Node> {
-        None
+    fn require_consequences(&self) -> bool {
+        false
     }
 
     fn contains(&mut self, db: &Db, nodes: &BTreeSet<Node>) -> bool {
@@ -85,6 +88,97 @@ pub trait ConstraintTrace: Debug + DynClone + Any + Send + Sync + Render {
 
 dyn_clone::clone_trait_object!(ConstraintTrace);
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnyConstraintTrace {
+    pub trace: Box<dyn ConstraintTrace>,
+    pub from: Vec<usize>,
+    pub source_node: Option<Node>,
+}
+
+impl AnyConstraintTrace {
+    pub fn new(trace: impl ConstraintTrace) -> Self {
+        AnyConstraintTrace {
+            trace: Box::new(trace),
+            from: Vec::new(),
+            source_node: None,
+        }
+    }
+}
+
+impl Deref for AnyConstraintTrace {
+    type Target = dyn ConstraintTrace;
+
+    fn deref(&self) -> &Self::Target {
+        self.trace.as_ref()
+    }
+}
+
+impl DerefMut for AnyConstraintTrace {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.trace.as_mut()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ConstraintConsequence {
+    Group(Node),
+    Ty(Node, ConstructedTy),
+}
+
+impl ConstraintConsequence {
+    pub fn node(&self) -> Node {
+        match *self {
+            ConstraintConsequence::Group(node) => node,
+            ConstraintConsequence::Ty(node, _) => node,
+        }
+    }
+}
+
+impl Render for ConstraintConsequence {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+        match self {
+            ConstraintConsequence::Group(node) => {
+                let representative = if let Some(instantiated) = db.get::<Instantiated>(*node) {
+                    instantiated.definition
+                } else {
+                    *node
+                };
+
+                let Some(Typed(Some(group))) = db.get(*node) else {
+                    return;
+                };
+
+                let nodes = group
+                    .nodes
+                    .iter()
+                    .filter(|&&node| ctx.filter(db, node))
+                    .collect::<Vec<_>>();
+
+                if nodes.len() > 1 {
+                    ctx.string("This means ");
+                    ctx.list("and", |list| {
+                        for &node in &group.nodes {
+                            if list.filter(db, node) {
+                                list.add(move |ctx| ctx.node(node));
+                            }
+                        }
+                    });
+                    ctx.string(" must be a ");
+                    ctx.ty(db, &Ty::Node(*node), representative, true);
+                    ctx.string(".");
+                }
+            }
+            ConstraintConsequence::Ty(node, ty) => {
+                ctx.string("This means ");
+                ctx.node(*node);
+                ctx.string(" is a ");
+                ctx.ty(db, &Ty::Constructed(ty.clone()), None, true);
+                ctx.string(".");
+            }
+        }
+    }
+}
+
 static CONSTRAINT_ORDER: &[TypeId] = &[
     TypeId::of::<InstantiateConstraint>(),
     TypeId::of::<GroupConstraint>(),
@@ -95,7 +189,7 @@ static CONSTRAINT_ORDER: &[TypeId] = &[
 #[derive(Debug, Default)]
 pub struct Constraints {
     constraints: BTreeMap<TypeId, VecDeque<Box<dyn Constraint>>>,
-    default_constraints: Vec<Box<dyn Constraint>>,
+    default_constraints: VecDeque<Box<dyn Constraint>>,
 }
 
 impl Constraints {
@@ -107,17 +201,15 @@ impl Constraints {
         };
 
         if type_id == TypeId::of::<DefaultConstraint>() {
-            self.default_constraints.push(constraint);
+            self.default_constraints.push_back(constraint);
         } else {
             assert!(
                 CONSTRAINT_ORDER.contains(&type_id),
                 "unsupported constraint: {constraint:?}"
             );
 
-            self.constraints
-                .entry(type_id)
-                .or_default()
-                .push_back(constraint);
+            let constraints = self.constraints.entry(type_id).or_default();
+            constraints.push_back(constraint);
         }
     }
 
@@ -130,14 +222,18 @@ impl Constraints {
     pub fn run_until(&mut self, db: &mut Db, solver: &mut Solver, stop: Option<TypeId>) {
         let mut requeued_constraints = Vec::new();
         loop {
-            let Some((order, constraint)) = self.dequeue(stop) else {
+            let Some(mut constraint) = self.dequeue(stop) else {
                 break;
             };
 
-            if solver.trace
-                && let Some(trace) = constraint.trace()
-            {
-                db.traces.push((order, trace));
+            if solver.trace {
+                let traces = constraint.traces_mut();
+                let indices = db.traces.len()..(db.traces.len() + traces.len());
+
+                db.traces
+                    .extend(traces.iter().cloned().map(TracesEntry::new));
+
+                solver.active_traces = indices;
             }
 
             match constraint.run(db, solver) {
@@ -160,8 +256,8 @@ impl Constraints {
         }
     }
 
-    fn dequeue(&mut self, stop: Option<TypeId>) -> Option<(usize, Box<dyn Constraint>)> {
-        for (order, &type_id) in CONSTRAINT_ORDER.iter().enumerate() {
+    fn dequeue(&mut self, stop: Option<TypeId>) -> Option<Box<dyn Constraint>> {
+        for &type_id in CONSTRAINT_ORDER {
             if stop.is_some_and(|stop| type_id == stop) {
                 return None;
             }
@@ -171,7 +267,7 @@ impl Constraints {
                 .get_mut(&type_id)
                 .and_then(|constraints| constraints.pop_front())
             {
-                return Some((order, constraint));
+                return Some(constraint);
             }
         }
 

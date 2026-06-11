@@ -3,20 +3,16 @@ use crate::{
     render::Render,
     typecheck::{
         bounds::Instance,
-        constraints::Constraints,
-        groups::{Group, Groups},
+        constraints::{ConstraintConsequence, Constraints},
+        groups::{Group, Groups, representative_ty},
         ty::{ConstructedTy, Ty},
     },
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    any::TypeId,
-    collections::{BTreeMap, BTreeSet},
-    mem,
-};
+use std::{any::TypeId, collections::BTreeMap, mem, ops::Range};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct GroupedWith(pub BTreeSet<Node>);
+pub struct GroupedWith(pub Vec<Node>);
 
 #[typetag::serde]
 impl Fact for GroupedWith {}
@@ -42,6 +38,7 @@ pub struct Solver {
     pub substitutions: Vec<Substitutions>,
     pub(crate) groups: Groups,
     pub(crate) implied_instances: Vec<Instance>,
+    pub(crate) active_traces: Range<usize>,
     pub(crate) progress: bool,
     iterations: usize,
 }
@@ -62,8 +59,8 @@ impl Solver {
         other.constraints
     }
 
-    pub fn into_sorted_groups<K: Ord>(mut self, key: impl FnMut(Node) -> K) -> Vec<Group> {
-        self.apply_all();
+    pub fn into_sorted_groups<K: Ord>(mut self, db: &Db, key: impl FnMut(Node) -> K) -> Vec<Group> {
+        self.apply_all(db);
         self.groups.into_sorted_groups(key)
     }
 
@@ -107,6 +104,12 @@ impl Solver {
         }
 
         self.implied_instances.push(instance);
+    }
+
+    pub fn add_consequence(&mut self, db: &mut Db, consequence: ConstraintConsequence) {
+        for index in self.active_traces.clone() {
+            db.traces[index].consequences.push(consequence.clone());
+        }
     }
 
     pub fn insert_substitutions(
@@ -168,8 +171,8 @@ impl Solver {
             return;
         }
 
-        let left = self.apply_ty_shallow(left);
-        let right = self.apply_ty_shallow(right);
+        let left = self.apply_ty(db, left);
+        let right = self.apply_ty(db, right);
 
         match (left, right) {
             (Ty::Node(left), Ty::Node(right)) => {
@@ -178,24 +181,18 @@ impl Solver {
             }
             (Ty::Node(node), Ty::Constructed(ty)) | (Ty::Constructed(ty), Ty::Node(node)) => {
                 self.progress = true;
-                self.insert(node, ty);
+                self.insert(db, node, ty);
             }
             (Ty::Constructed(left), Ty::Constructed(right)) => {
-                let original_nodes = BTreeSet::from_iter(
-                    [original_left_node, original_right_node]
-                        .into_iter()
-                        .flatten(),
-                );
-
-                if !self.unify_inner_constructed(db, &left, &right, original_nodes) {
+                if !self.unify_inner_constructed(db, &left, &right) {
                     // Report conflicts on the original nodes
 
                     if let Some(original_left_node) = original_left_node {
-                        self.insert(original_left_node, right);
+                        self.insert(db, original_left_node, right);
                     }
 
                     if let Some(original_right_node) = original_right_node {
-                        self.insert(original_right_node, left);
+                        self.insert(db, original_right_node, left);
                     }
                 }
             }
@@ -207,21 +204,13 @@ impl Solver {
         db: &mut Db,
         left: &ConstructedTy,
         right: &ConstructedTy,
-        original_nodes: BTreeSet<Node>,
     ) -> bool {
         let left_child_count = left.children.len();
         let right_child_count = right.children.len();
 
         if left.tag == right.tag {
-            for (left_child, right_child) in std::iter::zip(&left.children, &right.children) {
-                if !left_child.referenced_nodes().is_disjoint(&original_nodes)
-                    || !right_child.referenced_nodes().is_disjoint(&original_nodes)
-                {
-                    // recursive types
-                    continue;
-                }
-
-                self.unify_inner(db, left_child, right_child);
+            for (&left_child, &right_child) in std::iter::zip(&left.children, &right.children) {
+                self.unify_inner(db, &Ty::Node(left_child), &Ty::Node(right_child));
             }
         }
 
@@ -249,11 +238,11 @@ impl Solver {
     pub fn merge(&mut self, db: &mut Db, left_node: Node, right_node: Node) {
         db.get_mut_or_default::<GroupedWith>(left_node)
             .0
-            .insert(right_node);
+            .push(right_node);
 
         db.get_mut_or_default::<GroupedWith>(right_node)
             .0
-            .insert(left_node);
+            .push(left_node);
 
         let left_index = self.groups.index_of(left_node);
         let right_index = self.groups.index_of(right_node);
@@ -261,6 +250,8 @@ impl Solver {
         if (left_index.is_some() || right_index.is_some()) && left_index == right_index {
             return; // already the same group
         }
+
+        self.add_consequence(db, ConstraintConsequence::Group(right_node));
 
         let (index, group) = match (left_index, right_index) {
             (Some(left_index), Some(right_index)) => {
@@ -274,13 +265,8 @@ impl Solver {
         if let Some(index) = index {
             let mut new_group = self.groups.remove_existing(index);
 
-            Groups::merge(group, &mut new_group, |left, right| {
-                self.unify_inner_constructed(
-                    db,
-                    left,
-                    right,
-                    BTreeSet::from([left_node, right_node]),
-                )
+            Groups::merge(db, group, &mut new_group, |db, left, right| {
+                self.unify_inner_constructed(db, left, right)
             });
 
             self.groups.insert(new_group);
@@ -289,10 +275,12 @@ impl Solver {
         }
     }
 
-    pub fn insert(&mut self, node: Node, mut ty: ConstructedTy) {
+    pub fn insert(&mut self, db: &mut Db, node: Node, mut ty: ConstructedTy) {
         if ty.representative.is_none() {
             ty.representative = Some(node);
         }
+
+        self.add_consequence(db, ConstraintConsequence::Ty(node, ty.clone()));
 
         if let Some(index) = self.groups.index_of(node) {
             self.groups.get_mut(index).tys.push(ty);
@@ -303,17 +291,13 @@ impl Solver {
         }
     }
 
-    pub fn apply_ty(&self, ty: Ty) -> Ty {
-        ty.traverse(&mut |ty| self.apply_ty_shallow(ty))
-    }
-
-    pub fn apply_parameters(&self, parameters: &mut BTreeMap<Node, Ty>) {
+    pub fn apply_parameters(&self, db: &Db, parameters: &mut BTreeMap<Node, Ty>) {
         for ty in parameters.values_mut() {
-            *ty = self.apply_ty(ty.clone());
+            *ty = self.apply_ty(db, ty);
         }
     }
 
-    fn apply_ty_shallow(&self, ty: &Ty) -> Ty {
+    pub fn apply_ty(&self, db: &Db, ty: &Ty) -> Ty {
         let Ty::Node(node) = ty else {
             return ty.clone();
         };
@@ -324,21 +308,21 @@ impl Solver {
 
         let group = self.groups.get(index);
 
-        let Some(applied) = group.tys.first() else {
+        let Some(applied) = representative_ty(db, &group.tys, *node) else {
             return ty.clone();
         };
 
         Ty::Constructed(applied.clone())
     }
 
-    fn apply_all(&mut self) {
+    fn apply_all(&mut self, db: &Db) {
         let indices = self.groups.indices().collect::<Vec<_>>();
 
         for index in indices {
             let mut group = self.groups.remove_existing(index);
 
             for ty in &mut group.tys {
-                *ty = match self.apply_ty(Ty::Constructed(ty.clone())) {
+                *ty = match self.apply_ty(db, &Ty::Constructed(ty.clone())) {
                     Ty::Constructed(ty) => ty,
                     Ty::Node(_) => {
                         unreachable!("constructed types remain constructed after `apply_ty`")

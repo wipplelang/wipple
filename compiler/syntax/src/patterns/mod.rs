@@ -84,7 +84,7 @@ pub struct IsPattern;
 impl Fact for IsPattern {}
 
 impl Render for IsPattern {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("is a pattern");
     }
 }
@@ -188,11 +188,4 @@ impl ConstraintTrace for MatchingConstraintTrace {
     }
 }
 
-impl Render for MatchingConstraintTrace {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
-        ctx.node(self.pattern);
-        ctx.string(" is ");
-        ctx.node(self.value);
-        ctx.string(".");
-    }
-}
+impl Render for MatchingConstraintTrace {}

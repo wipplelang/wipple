@@ -1,4 +1,4 @@
-use crate::expressions::visit_expression;
+use crate::expressions::{variable_expression::DefinitionConstraintTrace, visit_expression};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
@@ -100,7 +100,7 @@ impl Visit for ConstructorExpression {
                 source_node: node,
                 definition: definition_node,
                 substitutions,
-                trace: None,
+                traces: Vec::new(),
             },
         );
 
@@ -119,6 +119,11 @@ impl Visit for ConstructorExpression {
                             is_optional: false,
                         },
                     )
+                    .with_trace(DefinitionConstraintTrace {
+                        variable: false,
+                        definition: definition_node,
+                        node,
+                    })
                     .with_trace(TraitConstraintTrace {
                         node,
                         trait_node: definition_node,
@@ -154,13 +159,7 @@ impl Visit for ConstructorExpression {
 
                     visitor.constraint(
                         db,
-                        TyConstraint::new(
-                            node,
-                            ConstructedTy::function(
-                                elements.iter().copied().map(Ty::Node).collect(),
-                                Ty::Node(result),
-                            ),
-                        ),
+                        TyConstraint::new(node, ConstructedTy::function(elements.clone(), result)),
                     );
 
                     result
@@ -209,7 +208,7 @@ impl ConstraintTrace for TraitConstraintTrace {
 }
 
 impl Render for TraitConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let bound = UnresolvedBound {
             trait_node: self.trait_node,
             parameters: self

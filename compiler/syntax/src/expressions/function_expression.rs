@@ -8,13 +8,13 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
+    render::Render,
     span::Span,
     typecheck::{
-        constraints::ty_constraint::TyConstraint,
-        ty::{ConstructedTy, Ty},
+        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
+        ty::ConstructedTy,
     },
-    visit::Captures,
-    visit::{Visit, Visitor},
+    visit::{Captures, Visit, Visitor},
 };
 use wipple_parse::{
     lexer::TokenKind,
@@ -87,16 +87,22 @@ impl Visit for FunctionExpression {
 
         visitor.pop_scope(db);
 
-        visitor.constraint(
-            db,
-            TyConstraint::new(
-                node,
-                ConstructedTy::function(
-                    inputs.iter().copied().map(Ty::Node).collect(),
-                    Ty::Node(output),
-                ),
-            ),
-        );
+        let mut constraint =
+            TyConstraint::new(node, ConstructedTy::function(inputs.clone(), output)).with_trace(
+                FunctionOutputConstraintTrace {
+                    function: node,
+                    output,
+                },
+            );
+
+        for &input in &inputs {
+            constraint = constraint.with_trace(FunctionInputConstraintTrace {
+                function: node,
+                input,
+            });
+        }
+
+        visitor.constraint(db, constraint);
 
         visitor.codegen(
             db,
@@ -109,6 +115,44 @@ impl Visit for FunctionExpression {
         );
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct FunctionInputConstraintTrace {
+    function: Node,
+    input: Node,
+}
+
+#[typetag::serde]
+impl ConstraintTrace for FunctionInputConstraintTrace {
+    fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        vec![&mut self.function, &mut self.input]
+    }
+
+    fn nodes(&self, _db: &Db) -> Vec<Node> {
+        vec![self.function, self.input]
+    }
+}
+
+impl Render for FunctionInputConstraintTrace {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct FunctionOutputConstraintTrace {
+    function: Node,
+    output: Node,
+}
+
+#[typetag::serde]
+impl ConstraintTrace for FunctionOutputConstraintTrace {
+    fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        vec![&mut self.function, &mut self.output]
+    }
+
+    fn nodes(&self, _db: &Db) -> Vec<Node> {
+        vec![self.function, self.output]
+    }
+}
+
+impl Render for FunctionOutputConstraintTrace {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct FunctionExpressionCodegen {

@@ -10,7 +10,7 @@ use wipple_core::{
     typecheck::{
         constraints::{instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint},
         groups::Typed,
-        ty::{ConstructedTy, Ty},
+        ty::ConstructedTy,
     },
     visit::{
         Visit, Visitor,
@@ -109,7 +109,7 @@ impl Visit for ConstructorPattern {
                         source_node: node,
                         definition: definition_node,
                         substitutions,
-                        trace: None,
+                        traces: Vec::new(),
                     },
                 );
 
@@ -153,7 +153,7 @@ impl Visit for ConstructorPattern {
                             source_node: node,
                             definition: definition_node,
                             substitutions,
-                            trace: None,
+                            traces: Vec::new(),
                         },
                     );
                 } else {
@@ -171,7 +171,7 @@ impl Visit for ConstructorPattern {
                             source_node: node,
                             definition: definition_node,
                             substitutions,
-                            trace: None,
+                            traces: Vec::new(),
                         },
                     );
 
@@ -180,11 +180,8 @@ impl Visit for ConstructorPattern {
                         TyConstraint::new(
                             constructor_node,
                             ConstructedTy::function(
-                                elements
-                                    .iter()
-                                    .map(|(_, temporary)| Ty::Node(*temporary))
-                                    .collect(),
-                                Ty::Node(node),
+                                elements.iter().map(|(_, temporary)| *temporary).collect(),
+                                node,
                             ),
                         ),
                     );

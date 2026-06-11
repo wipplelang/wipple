@@ -157,7 +157,7 @@ Facts (layer 2):
 
 `_` (PlaceholderType):
   is a type
-  missing type (group: `_`, `_`, `_`, `_`)
+  missing type (group: `_`, `b`, `b`, `b`)
   type is annotated
 
 
@@ -167,6 +167,13 @@ Feedback:
 `f` (incomplete-type)
 
   Missing information for the type of `f`.
+  
+  Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
+
+
+`f :: (Number; _)` (incomplete-type)
+
+  Missing information for the type of `f :: (Number; _)`.
   
   Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 

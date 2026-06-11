@@ -116,7 +116,7 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`1 = 1` (BlockExpression):
+`1 = 1` (VisitAs):
   has type `{Boolean}`
   is an expression
 

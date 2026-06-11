@@ -4,7 +4,7 @@ Boolean : type {
   True
 }
 
--- Make a choice based on whether the input is `True` or `False`.
+-- [`if`] makes a choice based on whether [`condition`] is `True` or `False`.
 [connect : condition -> then ("then")]
 [connect : condition -> else ("else")]
 [connect : then -> output ("output")]
@@ -76,7 +76,7 @@ instance (Greater-Than value) where (Order value) : a b -> (Order a b) is Is-Gre
 Greater-Than-Or-Equal : value => trait (value value -> Boolean)
 instance (Greater-Than-Or-Equal value) where (Order value) : a b -> (Order a b) is (Is-Greater-Than or Is-Equal-To)
 
--- Returns `True` if two values are equal.
+-- [`Equal`] returns `True` if both sides are equal.
 Equal : value => trait (value value -> Boolean)
 
 instance (Equal String) : a b -> when (intrinsic "equal" a b) {

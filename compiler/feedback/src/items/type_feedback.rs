@@ -1,6 +1,6 @@
 use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank};
 use std::collections::BTreeSet;
-use wipple_core::{facts::Syntax, render::TyPlacement, typecheck::ty::Ty};
+use wipple_core::{facts::Syntax, typecheck::ty::Ty};
 use wipple_queries::{conflicting_types, fact, incomplete_type, unknown_type};
 use wipple_syntax::{
     checks::instances::OverlappingInstances,
@@ -43,11 +43,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 for ty in &data.tys {
                     let ty = ty.clone();
                     list.add(move |writer| {
-                        writer.ty(
-                            db,
-                            &Ty::Constructed(ty),
-                            wipple_core::render::TyPlacement::InlineFirst,
-                        )
+                        writer.ty(db, &Ty::Constructed(ty), None, true);
                     });
                 }
             });
@@ -84,7 +80,9 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                     writer.string(" must be the same type as ");
                     writer.list("and", |list| {
                         for node in nodes {
-                            list.add(move |writer| writer.node(node));
+                            if list.filter(db, node) {
+                                list.add(move |writer| writer.node(node));
+                            }
                         }
                     });
                     writer.string("; double-check these.");
@@ -106,11 +104,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             writer.string(".");
             writer.line_break();
             writer.string("Wipple determined this code is a ");
-            writer.ty(
-                db,
-                &Ty::Constructed((*ty).clone()),
-                TyPlacement::InlineMultiple,
-            );
+            writer.ty(db, &Ty::Constructed((*ty).clone()), None, true);
             writer.string(", but it needs some more information for the ");
             writer.code("_");
             writer.string(" placeholders.");

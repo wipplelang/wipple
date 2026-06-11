@@ -1,11 +1,12 @@
 use crate::{
     db::{Db, Fact, Node},
+    facts::Syntax,
     render::{Render, RenderCtx},
     typecheck::{
-        constraints::ConstraintTrace,
+        constraints::AnyConstraintTrace,
         groups::{Annotated, Typed},
         solver::{Solver, SubstitutionsKey},
-        ty::{Ty, TyTag},
+        ty::{ConstructedTy, Ty, TyTag},
     },
 };
 use serde::{Deserialize, Serialize};
@@ -22,7 +23,7 @@ pub struct Instantiated {
 impl Fact for Instantiated {}
 
 impl Render for Instantiated {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("instantiated from ");
         ctx.node(self.from);
         ctx.string(" in ");
@@ -50,6 +51,10 @@ impl InstantiateCtx {
             db.hide(replacement);
             substitutions.nodes.insert(node, replacement);
 
+            if let Some(Syntax(syntax)) = db.get(node) {
+                db.insert(replacement, Syntax(syntax.clone()));
+            }
+
             db.insert(replacement, Typed::default());
 
             db.insert(
@@ -70,38 +75,59 @@ impl InstantiateCtx {
     }
 
     pub fn instantiate_ty(&mut self, db: &mut Db, solver: &mut Solver, ty: &Ty) -> Ty {
-        ty.traverse(&mut |ty| match ty {
-            Ty::Node(node) => Ty::Node(self.instantiate_node(db, solver, *node)),
-            Ty::Constructed(ty) => {
-                let TyTag::Parameter(parameter) = ty.tag else {
-                    return Ty::Constructed(ty.clone());
-                };
-
-                solver.with_substitutions_mut(self.substitutions, |_, substitutions| {
-                    if let Some(ty) = substitutions.parameters.get(&parameter) {
-                        return ty.clone();
-                    }
-
-                    let ty = db.node();
-                    db.hide(ty);
-
-                    substitutions.parameters.insert(parameter, Ty::Node(ty));
-
-                    db.insert(ty, Typed::default());
-
-                    db.insert(
-                        ty,
-                        Instantiated {
-                            definition: self.definition,
-                            from: parameter,
-                            source_node: self.source_node,
-                        },
-                    );
-
-                    Ty::Node(ty)
-                })
+        match solver.apply_ty(db, ty) {
+            Ty::Node(other) => Ty::Node(self.instantiate_node(db, solver, other)),
+            Ty::Constructed(constructed) => {
+                self.instantiate_constructed_ty(db, solver, &constructed)
             }
-        })
+        }
+    }
+
+    pub fn instantiate_constructed_ty(
+        &mut self,
+        db: &mut Db,
+        solver: &mut Solver,
+        ty: &ConstructedTy,
+    ) -> Ty {
+        let mut instantiated_ty = Ty::Constructed(ty.clone());
+        if let TyTag::Parameter(parameter) = ty.tag {
+            solver.with_substitutions_mut(self.substitutions, |_, substitutions| {
+                if let Some(existing) = substitutions.parameters.get(&parameter) {
+                    instantiated_ty = existing.clone();
+                    return;
+                }
+
+                let node = db.node();
+                db.hide(node);
+
+                substitutions.parameters.insert(parameter, Ty::Node(node));
+
+                if let Some(Syntax(syntax)) = db.get(parameter) {
+                    db.insert(node, Syntax(syntax.clone()));
+                }
+
+                db.insert(node, Typed::default());
+
+                db.insert(
+                    node,
+                    Instantiated {
+                        definition: self.definition,
+                        from: parameter,
+                        source_node: self.source_node,
+                    },
+                );
+
+                db.insert(node, Annotated);
+
+                instantiated_ty = Ty::Node(node);
+            });
+        } else {
+            for node in instantiated_ty.referenced_nodes_mut() {
+                *node = self.instantiate_node(db, solver, *node);
+            }
+        }
+
+        instantiated_ty
     }
 
     pub fn instantiate_nodes(
@@ -126,22 +152,25 @@ impl InstantiateCtx {
         }
     }
 
-    pub fn instantiate_trace(
+    pub fn instantiate_traces(
         &mut self,
         db: &mut Db,
         solver: &mut Solver,
-        trace: &Option<Box<dyn ConstraintTrace>>,
-    ) -> Option<Box<dyn ConstraintTrace>> {
-        let mut trace = trace.as_ref().cloned()?;
+        traces: &[AnyConstraintTrace],
+    ) -> Vec<AnyConstraintTrace> {
+        traces
+            .iter()
+            .map(|trace| {
+                let mut trace = trace.clone();
 
-        for node in trace.nodes_mut() {
-            *node = self.instantiate_node(db, solver, *node);
-        }
+                for node in trace.nodes_mut() {
+                    *node = self.instantiate_node(db, solver, *node);
+                }
 
-        if let Some(source_node) = trace.source_node_mut() {
-            *source_node = self.source_node;
-        }
+                trace.source_node.get_or_insert(self.source_node);
 
-        Some(trace)
+                trace
+            })
+            .collect()
     }
 }

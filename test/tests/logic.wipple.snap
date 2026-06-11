@@ -46,7 +46,7 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `False`
 
-`False` (BlockExpression):
+`False` (VisitAs):
   has type `{Boolean}`
   is an expression
 
@@ -123,7 +123,7 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `False`
 
-`False` (BlockExpression):
+`False` (VisitAs):
   has type `{Boolean}`
   is an expression
 

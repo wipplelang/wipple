@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tailwindcss-animated";
+@import "@xyflow/svelte/dist/style.css";
 @import "./fonts.css";
 @import "./code-editor.css";
 @import "./markdown.css";

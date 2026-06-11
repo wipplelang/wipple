@@ -2,11 +2,7 @@ use crate::{
     db::{Db, Node},
     facts::Syntax,
     span::Str,
-    typecheck::{
-        bounds::Instance,
-        groups::{types_of, update_instance, update_type},
-        ty::Ty,
-    },
+    typecheck::ty::Ty,
     util::Link,
 };
 use regex::Regex;
@@ -17,24 +13,32 @@ use std::{
 };
 
 pub trait Render {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let _ = db;
         let _ = ctx;
     }
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub struct RenderCtx {
+pub struct RenderCtx<'a> {
+    pub filter: &'a dyn Fn(&Db, Node) -> bool,
+    pub representative: Option<Node>,
     segments: Vec<RenderSegment>,
     nodes: BTreeSet<Node>,
 }
 
-#[derive(Debug, Clone, Copy)]
-pub enum TyPlacement {
-    InlineMultiple,
-    InlineFirst,
-    BoundMultiple,
-    NestedFirst,
+impl<'a> RenderCtx<'a> {
+    pub fn with_filter(filter: &'a dyn Fn(&Db, Node) -> bool) -> Self {
+        RenderCtx {
+            filter,
+            representative: Default::default(),
+            segments: Default::default(),
+            nodes: Default::default(),
+        }
+    }
+
+    pub fn filter(&self, db: &Db, node: Node) -> bool {
+        (self.filter)(db, node)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -44,18 +48,22 @@ pub struct Comments {
     pub links: BTreeMap<Str, Link>,
 }
 
-#[derive(Default)]
-pub struct ListBuilder<'a> {
-    items: Vec<Box<dyn FnOnce(&mut RenderCtx) + 'a>>,
+pub struct ListBuilder<'a, 'f> {
+    filter: &'f dyn Fn(&Db, Node) -> bool,
+    items: Vec<Box<dyn FnOnce(&mut RenderCtx<'_>) + 'a>>,
 }
 
-impl<'a> ListBuilder<'a> {
-    pub fn add(&mut self, item: impl FnOnce(&mut RenderCtx) + 'a) {
+impl<'a> ListBuilder<'a, '_> {
+    pub fn filter(&self, db: &Db, node: Node) -> bool {
+        (self.filter)(db, node)
+    }
+
+    pub fn add(&mut self, item: impl FnOnce(&mut RenderCtx<'_>) + 'a) {
         self.items.push(Box::new(item));
     }
 }
 
-impl RenderCtx {
+impl RenderCtx<'_> {
     pub fn line_break(&mut self) {
         self.segments.push(RenderSegment::LineBreak);
     }
@@ -79,46 +87,8 @@ impl RenderCtx {
         self.nodes.insert(node);
     }
 
-    pub fn ty(&mut self, db: &Db, ty: &Ty, placement: TyPlacement) {
-        let (root, multiple) = match placement {
-            TyPlacement::InlineMultiple => (true, true),
-            TyPlacement::InlineFirst => (true, false),
-            TyPlacement::BoundMultiple => (false, true),
-            TyPlacement::NestedFirst => (false, false),
-        };
-
-        if multiple && let Ty::Node(node) = ty {
-            let tys = types_of(db, *node);
-
-            if !tys.is_empty() {
-                if !root && tys.len() > 1 {
-                    self.string("(");
-                }
-
-                for (index, ty) in tys.iter().enumerate() {
-                    if index > 0 {
-                        self.string(" or ");
-                    }
-
-                    Ty::Constructed(ty.clone()).render_into(db, self, root);
-                }
-
-                if !root && tys.len() > 1 {
-                    self.string(")");
-                }
-
-                return;
-            }
-        }
-
-        let ty = update_type(db, ty, !multiple);
-        ty.render_into(db, self, root);
-    }
-
-    pub fn instance(&mut self, db: &Db, instance: &Instance) {
-        let mut instance = instance.clone();
-        update_instance(db, &mut instance);
-        instance.render_into(db, self);
+    pub fn ty(&mut self, db: &Db, ty: &Ty, representative: impl Into<Option<Node>>, root: bool) {
+        ty.render_into(db, self, representative, root);
     }
 
     pub fn link(&mut self, label: impl Into<String>, node: Node) {
@@ -128,8 +98,12 @@ impl RenderCtx {
 
     pub const LIST_LIMIT: usize = 3;
 
-    pub fn list<'a>(&mut self, separator: &str, build: impl FnOnce(&mut ListBuilder<'a>)) {
-        let mut builder = ListBuilder::default();
+    pub fn list<'a>(&mut self, separator: &str, build: impl FnOnce(&mut ListBuilder<'a, '_>)) {
+        let mut builder = ListBuilder {
+            filter: self.filter,
+            items: Default::default(),
+        };
+
         build(&mut builder);
         let items = builder.items;
 
@@ -174,7 +148,7 @@ impl RenderCtx {
         static LINK_REGEX: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(r"(?s)\[`([^`]+)`\]").unwrap());
 
-        let mut links = HashMap::<String, Box<dyn Fn(&mut RenderCtx)>>::new();
+        let mut links = HashMap::<String, Box<dyn Fn(&mut RenderCtx<'_>)>>::new();
         for (name, link) in &comments.links {
             links.insert(
                 name.to_string(),
@@ -192,7 +166,9 @@ impl RenderCtx {
                 Box::new(|ctx| {
                     ctx.list("and", |list| {
                         for &node in &link.related {
-                            list.add(move |ctx| ctx.node(node));
+                            if list.filter(db, node) {
+                                list.add(move |ctx| ctx.node(node));
+                            }
                         }
                     });
                 }),
@@ -201,15 +177,11 @@ impl RenderCtx {
             links.insert(
                 format!("{name}@type"),
                 Box::new(|writer| {
-                    writer.list("or", |list| {
-                        let Some(ty) = link.tys.first() else {
-                            return;
-                        };
+                    let Some(ty) = link.tys.first() else {
+                        return;
+                    };
 
-                        let ty = Ty::Constructed(ty.clone());
-
-                        list.add(move |writer| writer.ty(db, &ty, TyPlacement::InlineFirst));
-                    });
+                    writer.ty(db, &Ty::Constructed(ty.clone()), None, true);
                 }),
             );
         }
@@ -234,7 +206,7 @@ impl RenderCtx {
             self.string(&comments_string[index..capture.range().start]);
             index = capture.range().end;
 
-            let mut ctx = RenderCtx::default();
+            let mut ctx = RenderCtx::with_filter(self.filter);
             let name = captures.get(1).unwrap().as_str();
             match links.get(name) {
                 Some(link) => link(&mut ctx),
@@ -249,6 +221,10 @@ impl RenderCtx {
 
     pub fn render(&mut self, db: &Db, render: &impl Render) {
         render.render_into(db, self);
+    }
+
+    pub fn nodes(&self) -> impl Iterator<Item = Node> {
+        self.nodes.iter().copied()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -269,7 +245,7 @@ impl RenderCtx {
     }
 }
 
-impl Extend<Self> for RenderCtx {
+impl Extend<Self> for RenderCtx<'_> {
     fn extend<T: IntoIterator<Item = Self>>(&mut self, iter: T) {
         for other in iter {
             self.segments.extend(other.segments);

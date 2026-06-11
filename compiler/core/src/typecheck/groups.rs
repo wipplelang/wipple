@@ -2,7 +2,7 @@ use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
-        bounds::Instance,
+        instantiate::Instantiated,
         ty::{ConstructedTy, Ty},
     },
 };
@@ -25,24 +25,35 @@ impl Group {
 
     pub fn unify(
         &mut self,
+        db: &mut Db,
         tys: impl IntoIterator<Item = ConstructedTy>,
         representative: Option<Node>,
-        mut unify: impl FnMut(&ConstructedTy, &ConstructedTy) -> bool,
+        mut unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy) -> bool,
     ) {
         for mut ty in tys {
-            if self.tys.is_empty() || !unify(&self.tys[0], &ty) {
+            if ty.representative.is_none() {
+                ty.representative = representative;
+            }
+
+            if let Some(existing) = self.tys.iter_mut().find(|existing| **existing == ty) {
+                // If the type already exists, update its representative
+                let representative = match (existing.representative, ty.representative) {
+                    (None, representative) | (representative, None) => representative,
+                    (Some(existing), Some(representative)) => {
+                        // Prefer nodes that aren't type parameters
+                        if db.contains::<Instantiated>(existing)
+                            && !db.contains::<Instantiated>(representative)
+                        {
+                            Some(representative)
+                        } else {
+                            Some(existing)
+                        }
+                    }
+                };
+
+                existing.representative = representative;
+            } else if self.tys.is_empty() || !unify(db, &self.tys[0], &ty) {
                 // If the type cannot be unified, add it to the group separately
-
-                if self.tys.contains(&ty) {
-                    continue;
-                }
-
-                if let Some(representative) = representative
-                    && ty.representative.is_none()
-                {
-                    ty.representative = Some(representative)
-                }
-
                 self.tys.push(ty);
             }
         }
@@ -90,12 +101,13 @@ impl Groups {
     }
 
     pub fn merge(
+        db: &mut Db,
         old_group: Group,
         new_group: &mut Group,
-        unify: impl FnMut(&ConstructedTy, &ConstructedTy) -> bool,
+        unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy) -> bool,
     ) {
         new_group.nodes.extend(old_group.nodes);
-        new_group.unify(old_group.tys, None, unify);
+        new_group.unify(db, old_group.tys, None, unify);
     }
 
     pub fn indices(&self) -> impl Iterator<Item = usize> {
@@ -127,7 +139,7 @@ pub struct Typed(pub Option<Group>);
 impl Fact for Typed {}
 
 impl Render for Typed {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let Some(group) = &self.0 else {
             ctx.string("types not solved");
             return;
@@ -170,7 +182,7 @@ pub struct Annotated;
 impl Fact for Annotated {}
 
 impl Render for Annotated {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("type is annotated");
     }
 }
@@ -182,33 +194,41 @@ pub fn types_of(db: &Db, node: Node) -> &[ConstructedTy] {
         .unwrap_or_default()
 }
 
-pub fn update_type(db: &Db, ty: &Ty, ignore_conflicts: bool) -> Ty {
-    ty.traverse(&mut |ty| {
-        if let Ty::Node(node) = ty {
+pub fn update_type(db: &Db, ty: &Ty, representative: impl Into<Option<Node>>) -> (Ty, Vec<Ty>) {
+    match ty {
+        Ty::Node(node) => {
             let tys = types_of(db, *node);
 
-            let latest = if let [ty] = tys {
-                ty
-            } else if ignore_conflicts
-                && let Some(ty) = tys
-                    .iter()
-                    .find(|ty| ty.representative == Some(*node))
-                    .or(tys.first())
-            {
-                ty
+            if tys.is_empty() {
+                (Ty::Node(*node), Vec::new())
             } else {
-                return ty.clone();
-            };
-
-            Ty::Constructed(latest.clone())
-        } else {
-            ty.clone()
+                (
+                    Ty::Constructed(
+                        representative_ty(db, tys, representative.into().unwrap_or(*node))
+                            .unwrap_or_else(|| tys.first().unwrap())
+                            .clone(),
+                    ),
+                    tys.iter().cloned().map(Ty::Constructed).collect(),
+                )
+            }
         }
-    })
+        Ty::Constructed(ty) => (Ty::Constructed(ty.clone()), Vec::new()),
+    }
 }
 
-pub fn update_instance(db: &Db, instance: &mut Instance) {
-    for ty in instance.parameters.values_mut() {
-        *ty = update_type(db, ty, false);
-    }
+pub fn representative_ty<'a>(
+    db: &Db,
+    tys: &'a [ConstructedTy],
+    representative: Node,
+) -> Option<&'a ConstructedTy> {
+    tys.iter()
+        .find(|ty| {
+            ty.representative.is_some_and(|node| {
+                node == representative
+                    || db
+                        .get::<Instantiated>(node)
+                        .is_some_and(|instantiated| instantiated.definition == representative)
+            })
+        })
+        .or_else(|| tys.first())
 }

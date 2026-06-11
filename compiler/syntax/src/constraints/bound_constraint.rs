@@ -114,7 +114,7 @@ impl Visit for BoundConstraint {
                 },
             )
             .with_trace(BoundConstraintTrace {
-                source_node: node,
+                node,
                 trait_node,
                 parameters: bound_parameters,
             }),
@@ -124,7 +124,7 @@ impl Visit for BoundConstraint {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct BoundConstraintTrace {
-    source_node: Node,
+    node: Node,
     trait_node: Node,
     parameters: BTreeMap<Node, Node>,
 }
@@ -132,21 +132,17 @@ struct BoundConstraintTrace {
 #[typetag::serde]
 impl ConstraintTrace for BoundConstraintTrace {
     fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        [&mut self.source_node]
+        [&mut self.node]
             .into_iter()
             .chain(self.parameters.values_mut())
             .collect()
     }
 
     fn nodes(&self, _db: &Db) -> Vec<Node> {
-        [self.source_node]
+        [self.node]
             .into_iter()
             .chain(self.parameters.values().copied())
             .collect()
-    }
-
-    fn source_node_mut(&mut self) -> Option<&mut Node> {
-        Some(&mut self.source_node)
     }
 
     fn allow_hidden_nodes(&self) -> bool {
@@ -155,7 +151,7 @@ impl ConstraintTrace for BoundConstraintTrace {
 }
 
 impl Render for BoundConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let bound = UnresolvedBound {
             trait_node: self.trait_node,
             parameters: self
@@ -165,7 +161,7 @@ impl Render for BoundConstraintTrace {
                 .collect(),
         };
 
-        ctx.node(self.source_node);
+        ctx.node(self.node);
         ctx.string(" requires the instance ");
         bound.render_into(db, ctx);
         ctx.string(".");

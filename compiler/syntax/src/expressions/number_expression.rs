@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    render::{Render, RenderCtx, TyPlacement},
+    render::{Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
         constraints::{ConstraintTrace, group_constraint::GroupConstraint},
@@ -91,10 +91,10 @@ impl ConstraintTrace for NumberConstraintTrace {
 }
 
 impl Render for NumberConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.node(self.node);
         ctx.string(" is a ");
-        ctx.ty(db, &Ty::Node(self.number_type), TyPlacement::InlineFirst);
+        ctx.ty(db, &Ty::Node(self.number_type), self.number_type, true);
         ctx.string(".");
     }
 }

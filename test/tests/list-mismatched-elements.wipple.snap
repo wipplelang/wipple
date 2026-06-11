@@ -1,7 +1,7 @@
 Facts (layer 2):
 
 `my-list` (VariablePattern):
-  has type `List ()`
+  has type `List (() or String or Number)`
   is a definition
   is a pattern
 
@@ -14,7 +14,7 @@ Facts (layer 2):
   type is annotated
 
 `1, "hi", ()` (CollectionExpression):
-  has type `List ()`
+  has type `List (() or String or Number)`
   is an expression
 
 `"hi"` (VisitAs):
@@ -27,7 +27,7 @@ Facts (layer 2):
   is an expression
 
 `my-list` (VisitAs):
-  has type `List ()`
+  has type `List (() or String or Number)`
   is an expression
   resolved to 1 definition(s): `my-list`
   type is annotated
@@ -40,8 +40,8 @@ Facts (layer 2):
   is an expression
 
 `each` (VariableExpression):
-  has bound(s) `As-Sequence` `(List ())` `_` (resolved as `default error instance (As-Sequence container element)`)
-  has type `(_ -> ()) -> (List ()) -> ()`
+  has bound(s) `As-Sequence` `(List (() or String or Number))` `_` (resolved as `default error instance (As-Sequence container element)`)
+  has type `(_ -> ()) -> (List (() or String or Number)) -> ()`
   is an expression
   resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
 
@@ -50,7 +50,7 @@ Facts (layer 2):
   is an expression
 
 `each show` (VisitAs):
-  has type `(List ()) -> ()`
+  has type `(List (() or String or Number)) -> ()`
   is an expression
 
 `show` (VariableExpression):
@@ -66,14 +66,14 @@ Feedback:
 
   `()` is a `()`, `String`, or a `Number`, but it can only be one of these.
   
-  `()` must be the same type as `1` and `"hi"`; double-check these.
-  
-  -  `each` calls `show` for each  element in `my-list`.
-  
-  -  `show` displays `_` on the screen.
-  
-  -  `my-list` is `1, "hi", ()`.
-  
-  -  `1` is a `Number`.
-  
-  -  `"hi"` is a `String`.
+  `()` must be the same type as `1`, `"hi"`, `each`, and 5 others; double-check these.
+
+  1. `"hi"`: `"hi"` is a `String`.
+
+  2. `1`: `1` is a `Number`.
+
+  3. `each`: `each` calls `show` for each element in `my-list`.
+
+  4. `show`: `show` displays `element` on the screen.
+
+  (2 -> 1, 4 -> 3, 1 -> error)

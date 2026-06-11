@@ -7,11 +7,11 @@ Facts (layer 2):
   resolved to 1 definition(s): `repeat :: state {body} -> result where (Repeat-Predicate state body result)`
 
 `repeat 5 {⋯}` (ExpressionStatement):
-  missing type (group: `repeat 5 {⋯}`, `_`, `_`, `_`, `_`, `_`, `repeat 5 {⋯}`, `_`, `_`, `_`)
+  missing type (group: `repeat 5 {⋯}`, `result`, `result`, `result`, `result`, `result`, `repeat 5 {⋯}`, `result`, `result`, `result`)
 
 `repeat 5 {⋯}` (CallExpression):
   is an expression
-  missing type (group: `repeat 5 {⋯}`, `_`, `_`, `_`, `_`, `_`, `repeat 5 {⋯}`, `_`, `_`, `_`)
+  missing type (group: `repeat 5 {⋯}`, `result`, `result`, `result`, `result`, `result`, `repeat 5 {⋯}`, `result`, `result`, `result`)
 
 `5` (NumberExpression):
   has type `Number`
@@ -49,11 +49,13 @@ Feedback:
   Missing `times` after `5`.
   
   Try rewriting this code as `(`5` times)`, or double-check your parentheses.
-  
-  -  Run code repeatedly.
-  
-  -  `5` is a `Number`.
-  
-  -  `repeat 5 {⋯}` returns a `_`.
-  
-  -  `show "Hello, world!"` returns a `()`.
+
+  1. `repeat`: Run code repeatedly.
+
+  2. `5`: `5` is a `Number`.
+
+  3. `show`: `show` displays `"Hello, world!"` on the screen.
+
+  4. `"Hello, world!"`: `"Hello, world!"` is a `String`.
+
+  (1 -> error, 2 -> 1, 4 -> 3)

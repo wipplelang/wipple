@@ -5,6 +5,7 @@ pub mod facts;
 pub mod graph;
 pub mod render;
 pub mod span;
+pub mod traces;
 pub mod typecheck;
 pub mod util;
 pub mod visit;
@@ -20,6 +21,7 @@ use crate::{
         bounds::{Instance, Instances},
         constraints::bound_constraint::{BoundConstraint, IsBound},
         groups::Typed,
+        instantiate::Instantiated,
         solver::{Solver, Substitutions},
     },
     visit::{
@@ -46,8 +48,8 @@ pub struct TopLevel {
 
 pub fn default_filter(db: &Db, node: Node) -> bool {
     db.owned_nodes().any(|owned| owned == node)
-        && !db.is_hidden(node)
         && db.contains::<Syntax>(node)
+        && !db.contains::<Instantiated>(node)
 }
 
 pub fn compile<'a, K: Ord>(
@@ -161,7 +163,7 @@ pub fn compile<'a, K: Ord>(
 }
 
 pub fn set_groups<K: Ord>(db: &mut Db, solver: Solver, mut key: impl FnMut(&Db, Node) -> K) {
-    let groups = solver.into_sorted_groups(|node| key(db, node));
+    let groups = solver.into_sorted_groups(db, |node| key(db, node));
 
     for group in groups {
         if group.nodes.is_empty() {

@@ -7,6 +7,18 @@
             "request": "launch",
             "program": "${workspaceFolder}/out",
             "skipFiles": ["<node_internals>/**"]
+        },
+        {
+            "name": "Debug Compiler",
+            "type": "lldb",
+            "request": "launch",
+            "cargo": {
+                "args": ["run"]
+            },
+            "args": ["compile", "test.wipple", "--lib=foundation.bin", "--facts"],
+            "env": {
+                "WIPPLE_DEBUG": "1"
+            }
         }
     ]
 }

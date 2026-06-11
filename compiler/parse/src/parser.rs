@@ -23,7 +23,7 @@ pub struct ParseError {
 impl Fact for ParseError {}
 
 impl Render for ParseError {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string(&self.message);
 
         if let Some(committed) = &self.committed {

@@ -35,7 +35,7 @@ accepts-text (1 + 2)` (ExpressionStatement):
   has type `()`
 
 `accepts-text` (VariableExpression):
-  has type `Number -> ()`
+  has type `(Number or String) -> ()`
   is an expression
   resolved to 1 definition(s): `accepts-text :: String -> ()`
 
@@ -57,8 +57,8 @@ accepts-text (1 + 2)` (ExpressionStatement):
   is an expression
 
 `1 + 2` (ConstructorExpression):
-  has bound(s) `Add` `Number` `Number` (`Number` or `String`) (resolved as `instance (Add Number Number Number)`)
-  has type `Number Number -> Number`
+  has bound(s) `Add` `Number` `Number` `(Number or String)` (resolved as `instance (Add Number Number Number)`)
+  has type `Number Number -> Number or String`
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
@@ -75,23 +75,27 @@ Feedback:
 
   `1 + 2` is a `Number` or a `String`, but it can only be one of these.
   
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `1 + 2` returns a `Number` or `String`.
-  
-  -  `1 + 2` requires the instance `Add` `Number` `Number` (`Number` or `String`).
+  `1 + 2` must be the same type as `1`, `2`, `accepts-text (1 + 2)`, and 2 others; double-check these.
+
+  1. `accepts-text`: `accepts-text` is a `String -> ()`.
+
+  2. `1 + 2`: Add two values together, returning the sum.
+
+  3. `1`: `1` is a `Number`.
+
+  4. `2`: `2` is a `Number`.
 
 
 `1 + 2` (conflicting-types)
 
   `1 + 2` is a `Number` or a `String`, but it can only be one of these.
   
-  -  `1` is a `Number`.
-  
-  -  `2` is a `Number`.
-  
-  -  `1 + 2` returns a `Number` or `String`.
-  
-  -  `1 + 2` requires the instance `Add` `Number` `Number` (`Number` or `String`).
+  `1 + 2` must be the same type as `1`, `2`, `accepts-text (1 + 2)`, and 2 others; double-check these.
+
+  1. `accepts-text`: `accepts-text` is a `String -> ()`.
+
+  2. `1 + 2`: Add two values together, returning the sum.
+
+  3. `1`: `1` is a `Number`.
+
+  4. `2`: `2` is a `Number`.

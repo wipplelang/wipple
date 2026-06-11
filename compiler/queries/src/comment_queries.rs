@@ -1,10 +1,8 @@
 use wipple_core::{
     db::{Db, Node},
     render::Comments,
-    typecheck::{
-        bounds::{Bounds, ResolvedBound},
-        constraints::ConstraintTrace,
-    },
+    traces::Traces,
+    typecheck::bounds::{Bounds, ResolvedBound},
     util::get_links,
     visit::{
         Resolved,
@@ -47,7 +45,7 @@ pub struct ErrorInstance<'a> {
     pub bound: &'a ResolvedBound,
     pub is_default: bool,
     pub comments: Comments,
-    pub traces: Vec<Box<dyn ConstraintTrace>>,
+    pub traces: Traces,
 }
 
 pub fn error_instances<'a>(db: &'a Db, node: Node) -> Vec<ErrorInstance<'a>> {
@@ -77,19 +75,16 @@ pub fn error_instances<'a>(db: &'a Db, node: Node) -> Vec<ErrorInstance<'a>> {
                 links: get_links(db, bound.instance.node, bound.resolved_node),
             };
 
-            let mut traces = db
-                .traces_for(comments.nodes.iter().copied().chain(
+            let traces = db.traces_for(
+                node,
+                comments.nodes.iter().copied().chain(
                     comments.links.values().flat_map(|link| {
                         [link.node].into_iter().chain(link.related.iter().copied())
                     }),
-                ))
-                .collect::<Vec<_>>();
-
-            comments.nodes.extend(
-                traces
-                    .iter_mut()
-                    .flat_map(|trace| trace.nodes_mut().into_iter().map(|&mut node| node)),
+                ),
             );
+
+            comments.nodes.extend(traces.nodes(db));
 
             Some(ErrorInstance {
                 bound,

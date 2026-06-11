@@ -38,7 +38,7 @@ pub struct Resolved {
 impl Fact for Resolved {}
 
 impl Render for Resolved {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         if self.definitions.is_empty() {
             ctx.string("unresolved");
             return;
@@ -76,7 +76,7 @@ pub struct DefinitionConstraints(pub Vec<Box<dyn Constraint>>);
 impl Fact for DefinitionConstraints {}
 
 impl Render for DefinitionConstraints {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("has definition constraints");
     }
 }
@@ -88,7 +88,7 @@ pub struct TypeParameters(pub Vec<Node>);
 impl Fact for TypeParameters {}
 
 impl Render for TypeParameters {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("has type parameters");
     }
 }
@@ -100,7 +100,7 @@ pub struct Captures(pub BTreeSet<Node>);
 impl Fact for Captures {}
 
 impl Render for Captures {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         if self.0.is_empty() {
             return;
         }
@@ -131,7 +131,7 @@ pub struct IsMutated;
 impl Fact for IsMutated {}
 
 impl Render for IsMutated {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("is mutated");
     }
 }

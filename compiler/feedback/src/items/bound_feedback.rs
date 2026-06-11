@@ -6,13 +6,15 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
     ctx.feedback("unresolved-bound")
         .query(unresolved_bounds)
         .rank(|_| FeedbackRank::Bounds)
-        .display(|db, writer, node, bound| {
+        .display(|db, writer, node, (bound, traces)| {
             writer.node(node);
             writer.string(" requires the instance ");
             writer.render(db, *bound);
             writer.string(", but this instance isn't defined.");
             writer.line_break();
             writer.string("Double-check that these types are correct.");
+
+            writer.traces(db, traces);
         })
         .register();
 

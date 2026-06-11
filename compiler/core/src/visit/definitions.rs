@@ -18,7 +18,7 @@ pub struct Defined(pub Box<dyn Definition>);
 impl Fact for Defined {}
 
 impl Render for Defined {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("is a definition");
     }
 }

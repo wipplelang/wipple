@@ -102,7 +102,7 @@
         @apply rounded-[6px] ring-[1.5px] ring-transparent transition-all;
     }
 
-    .group.group-primary:not(.group-dimmed) {
+    .group.group-primary:not(.group-dimmed).group-underlined {
         @apply underline decoration-blue-500 decoration-wavy [text-decoration-skip-ink:none];
     }
 

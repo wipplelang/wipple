@@ -38,5 +38,7 @@ Feedback:
   
   You can't display `Foo` on the screen or use it in placeholders because
   it can't be converted into a string.
-  
-  -  `show` displays `Foo` on the screen.
+
+  1. `show`: `show` displays `Foo` on the screen.
+
+  (1 -> error)
