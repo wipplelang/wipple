@@ -2,7 +2,7 @@ use crate::{
     db::{Db, Node},
     facts::Syntax,
     span::Str,
-    typecheck::{groups::Typed, instantiate::Instantiated, solver::GroupedWith, ty::ConstructedTy},
+    typecheck::{groups::Typed, instantiate::Instantiated, solver::GroupedWith},
     visit::{TypeParameters, definitions::Defined},
 };
 use serde::{Deserialize, Serialize};
@@ -12,7 +12,6 @@ use std::{collections::BTreeMap, ops::ControlFlow};
 pub struct Link {
     pub node: Node,
     pub related: Vec<Node>,
-    pub tys: Vec<ConstructedTy>,
 }
 
 pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<Str, Link> {
@@ -30,7 +29,6 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
             Link {
                 node: source_node,
                 related: Vec::new(),
-                tys: Vec::new(),
             },
         );
 
@@ -65,7 +63,6 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
             Link {
                 node: instantiated_node,
                 related: group.nodes.clone(),
-                tys: group.tys.clone(),
             },
         );
     }

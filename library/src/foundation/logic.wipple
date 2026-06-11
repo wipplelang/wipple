@@ -20,16 +20,15 @@ Not : value => trait (value -> value)
 instance (Not Boolean) : boolean -> if boolean {False} {True}
 instance (Not (a -> b)) where (Not b) (b :: Boolean) : f -> x -> not (f x)
 
--- Returns `False` if provided `True`, and vice versa. Can also be used on
--- boolean functions and any other value that implements `Not`.
+-- [`not`] returns `False` if provided `True`, and vice versa.
 not :: value -> value where (Not value) (value :: Boolean)
 not : Not
 
--- Returns `True` if both sides are `True`.
+-- [`And`] returns `True` if both sides are `True`.
 And : left (infer right) (infer output) => trait (left {right} -> output)
 instance (And Boolean Boolean Boolean) : a b -> if a b {False}
 
--- Returns `True` if either side is `True`.
+-- [`Or`] returns `True` if either side is `True`.
 Or : left (infer right) (infer output) => trait (left {right} -> output)
 instance (Or Boolean Boolean Boolean) : a b -> if a {True} b
 instance (Or (Maybe value) value value) : maybe other -> when maybe {
@@ -60,23 +59,23 @@ instance (Order Number) : a b -> when (intrinsic "order" a b) {
   _ -> error "unreachable"
 }
 
--- Returns `True` if the left side is less than the right side.
+-- [`Less-Than`] returns `True` if the left [`value@type`] is less than the right [`value@type`].
 Less-Than : value => trait (value value -> Boolean)
 instance (Less-Than value) where (Order value) : a b -> (Order a b) is Is-Less-Than
 
--- Returns `True` if the left side is less than or equal to the right side.
+-- [`Less-Than-Or-Equal`] returns `True` if the left [`value@type`] is less than or equal to the right [`value@type`].
 Less-Than-Or-Equal : value => trait (value value -> Boolean)
 instance (Less-Than-Or-Equal value) where (Order value) : a b -> (Order a b) is (Is-Less-Than or Is-Equal-To)
 
--- Returns `True` if the left side is greater than the right side.
+-- [`Greater-Than`] returns `True` if the left [`value@type`] is greater than the right [`value@type`].
 Greater-Than : value => trait (value value -> Boolean)
 instance (Greater-Than value) where (Order value) : a b -> (Order a b) is Is-Greater-Than
 
--- Returns `True` if the left side is greater than or equal to the right side.
+-- [`Greater-Than-Or-Equal`] returns `True` if the left [`value@type`] is greater than or equal to the right [`value@type`].
 Greater-Than-Or-Equal : value => trait (value value -> Boolean)
 instance (Greater-Than-Or-Equal value) where (Order value) : a b -> (Order a b) is (Is-Greater-Than or Is-Equal-To)
 
--- [`Equal`] returns `True` if both sides are equal.
+-- [`Equal`] returns `True` if both [`value@type`] values are equal.
 Equal : value => trait (value value -> Boolean)
 
 instance (Equal String) : a b -> when (intrinsic "equal" a b) {
@@ -95,14 +94,14 @@ instance (Equal ()) : () () -> True
 
 instance (Equal Boolean) : a b -> if a {b} {not b}
 
--- Returns `True` if two values are not equal.
+-- [`Not-Equal`] returns `True` if the [`value@type`] values are not equal.
 Not-Equal : value => trait (value value -> Boolean)
 instance (Not-Equal value) where (Equal value) : a b -> not (Equal a b)
 
--- Returns the larger of the two inputs.
+-- [`max`] returns the larger of the two [`n@type`] values.
 max :: n n -> n where (Order n)
 max : a b -> if (a >= b) {a} {b}
 
--- Returns the smaller of the two inputs.
+-- [`min`] returns the smaller of the two [`n@type`] values.
 min :: n n -> n where (Order n)
 min : a b -> if (a <= b) {a} {b}

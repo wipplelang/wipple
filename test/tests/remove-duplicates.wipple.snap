@@ -209,7 +209,7 @@ Facts (layer 2):
   has bound(s) `Equal` `element` (resolved as `(Equal element)`), `Hash` `element` (resolved as `(Hash element)`)
   has type `element -> (Set element) -> Set element`
   is an expression
-  resolved to 1 definition(s): `insert :: element -> (Set element) -> Set element where (Equal element) (Hash element)`
+  resolved to 1 definition(s): `insert :: element -> (set_ :: (Set element)) -> Set element where (Equal element) (Hash element)`
 
 `insert item` (CallExpression):
   has type `Set element`

@@ -72,7 +72,7 @@ Feedback:
 
   2. `1`: `1` is a `Number`.
 
-  3. `each`: `each` calls `show` for each element in `my-list`.
+  3. `each`: `each` calls `show` for each `_` in `my-list`.
 
   4. `show`: `show` displays `element` on the screen.
 

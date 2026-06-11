@@ -72,7 +72,7 @@ Feedback:
   
   `x :: String` must be the same type as `x`, `1`, `2`, and 7 others; double-check these.
 
-  1. `transform`: `transform` is a `(Number -> Number) -> (List Number) -> Sequence Number`.
+  1. `transform`: `transform` transforms the `Number` elements in `1, 2, 3` into `Number` elements using `f`.
 
   2. `x`: `x` is annotated with the type `String`.
 

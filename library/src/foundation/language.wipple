@@ -33,10 +33,10 @@ assert : message -> condition -> if condition {()} {error message}
 unreachable :: value
 unreachable : error "unreachable"
 
--- Represents the default or initial value of a type.
+-- [`Initial`] represents the default or initial value for [`value@type`].
 Initial : value => trait value
 
--- Can't create an initial [`value`] value.
+-- Can't create an initial [`value@type`] value.
 --
 -- This code only works with lists, maybes, and other types that have an
 -- initial value.

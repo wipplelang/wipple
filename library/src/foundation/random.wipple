@@ -1,10 +1,10 @@
 Random : range result => trait (range -> result)
 
--- Produce a random value within the provided range.
+-- [`random-in`] produces a random [`result@type`] within the range [`range`].
 random-in :: range -> result where (Random range result)
 random-in : Random
 
--- Produce a random value.
+-- [`random`] produces a random [`result@type`].
 random :: result where (Random () result)
 random : Random ()
 

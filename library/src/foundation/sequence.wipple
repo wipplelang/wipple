@@ -1,15 +1,15 @@
 -- A container for a sequence that produces the next value on demand.
 Sequence : element => type {next :: {Maybe element}}
 
--- Retrieve the next item in a sequence.
-next :: (Sequence element) -> Maybe element
+-- [`next`] retrieves the next [`element@type`] in [`sequence`].
+next :: (sequence :: (Sequence element)) -> Maybe element
 next : (Sequence {next : next}) -> do next
 
--- Create a sequence.
+-- Create a sequence of [`element@type`] values.
 sequence :: {Maybe element} -> Sequence element
 sequence : next -> Sequence {next : next}
 
--- Create a sequence that always produces the provided element.
+-- Create a sequence that produces [`element`] forever.
 --
 -- **Example:**
 --
@@ -22,12 +22,11 @@ sequence : next -> Sequence {next : next}
 always :: element -> Sequence element
 always : element -> sequence {Some element}
 
--- Create a sequence that produces the provided element a certain number of
--- times. `element . replicate n` is equivalent to `always element . take n`.
-replicate :: Number -> element -> Sequence element
+-- Create a sequence that produces [`element`] [`n`] times.
+replicate :: (n :: Number) -> element -> Sequence element
 replicate : n -> element -> always element . take n
 
--- Build a sequence from an initial item and a transform function.
+-- Build a sequence from an initial [`element@type`] and a transform function.
 build-sequence :: (Maybe element) (element -> Maybe element) -> Sequence element
 build-sequence : initial transform -> do {
   next : initial
@@ -43,7 +42,7 @@ build-sequence : initial transform -> do {
   }
 }
 
--- Convert a collection into a sequence.
+-- Convert [`container`] into a sequence of [`element@type`] elements.
 As-Sequence : container (infer element) => trait (container -> Sequence element)
 
 -- Can't make a sequence from [`container`].
@@ -66,6 +65,7 @@ instance (As-Sequence (Maybe element) element) : maybe -> do {
   }
 }
 
+-- [`transform`] transforms the [`input@type`] elements in [`container`] into [`output@type`] elements using [`f`].
 transform :: (input -> output) -> container -> Sequence output where (As-Sequence container input)
 transform : f -> container -> do {
   base : As-Sequence container
@@ -93,15 +93,15 @@ filter : include? -> container -> do {
   }
 }
 
--- Transform each item in a sequence, keeping only the items that aren't `None`.
-filter-by :: (element -> Maybe result) -> container -> Sequence result where (As-Sequence container element)
-filter-by : transform -> container -> do {
+-- [`filter-by`] transforms the [`element@type`] elements in [`container`] into [`output@type`] elements using [`f`], keeping only the items that are `Some`.
+filter-by :: (input -> Maybe output) -> container -> Sequence output where (As-Sequence container input)
+filter-by : f -> container -> do {
   base : As-Sequence container
 
   sequence {
     repeat with-control-flow {
       when (next base) {
-        (Some value) -> when (transform value) {
+        (Some value) -> when (f value) {
           (Some value) -> Stop (Some value)
           None -> Continue ()
         }
@@ -111,7 +111,7 @@ filter-by : transform -> container -> do {
   }
 }
 
--- Flatten a sequence of sequences.
+-- [`flatten`] flattens [`outer`] into a sequence of [`element@type`] elements.
 flatten :: outer -> Sequence element where (As-Sequence outer inner) (As-Sequence inner element)
 flatten : outer -> do {
   outer : As-Sequence outer
@@ -139,8 +139,8 @@ flatten : outer -> do {
   }
 }
 
--- Find the first item in a sequence that can be transformed into a `Some` value.
-find-by :: (element -> Maybe result) -> collection -> Maybe result where (As-Sequence collection element)
+-- [`find-by`] finds the first [`element@type`] in [`collection`] for which [`f`] returns `Some`.
+find-by :: (f :: (element -> Maybe result)) -> collection -> Maybe result where (As-Sequence collection element)
 find-by : f -> collection -> do {
   base : As-Sequence collection
 
@@ -155,8 +155,8 @@ find-by : f -> collection -> do {
   }
 }
 
--- Reduce a sequence down to a single item.
-reduce :: result (result element -> result) -> container -> result where (As-Sequence container element)
+-- [`reduce`] calls [`f`] on each [`element@type`] in [`container`], accumulating the result into a single [`result@type`].
+reduce :: result (f :: (result element -> result)) -> container -> result where (As-Sequence container element)
 reduce : result f -> container -> As-Sequence container . reduce-helper result f
 
 reduce-helper :: result (result element -> result) -> (Sequence element) -> result
@@ -165,7 +165,7 @@ reduce-helper : result f -> sequence -> when (next sequence) {
   None -> result
 }
 
--- Find the sum of all the numbers in a sequence.
+-- [`sum`] calculates the sum of all the [`n@type`] elements in [`container`].
 sum :: container -> n where (As-Sequence container n) (Initial n) (Add n n n)
 sum : reduce Initial (+)
 
@@ -176,7 +176,7 @@ From-Sequence : element container => trait ((Sequence element) -> container)
 -- You can't use `collect` to create [`container`] from these items.
 default error instance (From-Sequence element container)
 
--- Collect a sequence into a single container, like a list.
+-- [`collect`] collects all the elements in [`input`] into a single [`output@type`].
 collect :: input -> output where (As-Sequence input element) (From-Sequence element output) (output :: List element)
 collect : collection -> From-Sequence (As-Sequence collection)
 
@@ -217,13 +217,13 @@ instance (From-Sequence () ()) : sequence -> repeat with-control-flow {
   }
 }
 
--- [`each`] calls [`action`] for each element in [`container`].
+-- [`each`] calls [`action`] for each [`element@type`] in [`container`].
 [connect : container -> element ("element")]
 each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)
 each : action -> container -> container . transform action . collect
 
--- Split a sequence into groups of consecutive items satisfying a condition.
-split-by :: (element -> Boolean) -> collection -> Sequence (List element) where (As-Sequence collection element)
+-- [`split-by`] splits [`collection`] into groups of consecutive [`element@type`] elements separated by [`separator`].
+split-by :: (separator :: (element -> Boolean)) -> collection -> Sequence (List element) where (As-Sequence collection element)
 split-by : separator -> collection -> do {
   base : As-Sequence collection
   group : Some (,)
@@ -257,11 +257,11 @@ split-by : separator -> collection -> do {
   }
 }
 
--- Split a sequence into groups of consecutive items equal to a value.
+-- [`split`] splits [`collection`] into groups of consecutive [`element@type`] elements separated by [`element`].
 split :: element -> collection -> Sequence (List element) where (As-Sequence collection element) (Equal element)
 split : separator -> split-by (item -> item = separator)
 
--- Count the number of items in a sequence.
+-- [`count`] counts the number of items in [`collection`].
 count :: collection -> Number where (Count collection)
 count : Count
 
@@ -284,12 +284,12 @@ instance (Count (Sequence element)) : sequence -> do {
   }
 }
 
--- Collect two sequences into a single value.
+-- [`join`] collects [`a`] and [`b`] into a single [`c@type`].
 join :: a b -> c where (As-Sequence a element) (As-Sequence b element) (From-Sequence element c) (c :: a)
 join : a b -> collect (flatten ((,) . append (As-Sequence a) . append (As-Sequence b)))
 
--- Take up to a fixed number of values from a sequence.
-take :: Number -> collection -> Sequence element where (As-Sequence collection element)
+-- [`take`] takes up to [`count`] items from [`collection`].
+take :: (count :: Number) -> collection -> Sequence element where (As-Sequence collection element)
 take : count -> collection -> do {
   base : As-Sequence collection
 
@@ -304,28 +304,28 @@ take : count -> collection -> do {
   }
 }
 
--- Find the first item in a sequence that satisfies a condition.
-find :: (element -> Boolean) -> collection -> Maybe element where (As-Sequence collection element)
-find : found? -> collection -> do {
+-- [`find`] finds the first [`element@type`] in [`collection`] that satisfies [`condition`].
+find :: (condition :: (element -> Boolean)) -> collection -> Maybe element where (As-Sequence collection element)
+find : condition -> collection -> do {
   base : As-Sequence collection
 
   repeat with-control-flow {
     when (next base) {
-      (Some element) -> if (found? element) {Stop (Some element)} {Continue ()}
+      (Some element) -> if (condition element) {Stop (Some element)} {Continue ()}
       None -> Stop None
     }
   }
 }
 
--- Find the position of the first item in a sequence that satisfies a condition.
-find-position :: (element -> Boolean) -> collection -> Maybe Number where (As-Sequence collection element)
-find-position : found? -> collection -> do {
+-- [`find-position`] finds the position of the first [`element@type`] in [`collection`] that satisfies [`condition`].
+find-position :: (condition :: (element -> Boolean)) -> collection -> Maybe Number where (As-Sequence collection element)
+find-position : condition -> collection -> do {
   base : As-Sequence collection
   counter : 0
 
   repeat with-control-flow {
     when (next base) {
-      (Some element) -> if (found? element) {
+      (Some element) -> if (condition element) {
         Stop (Some counter)
       } {
         set counter : counter + 1
@@ -336,27 +336,27 @@ find-position : found? -> collection -> do {
   }
 }
 
--- Returns `True` if the condition is `True` for all items in the sequence, or if the sequence is empty.
-all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)
-all? : condition? -> collection -> As-Sequence collection . all-helper condition?
+-- [`all?`] return `True` if [`condition`] is `True` for every [`element@type`] in [`collection`], or if [`collection`] is empty.
+all? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)
+all? : condition -> collection -> As-Sequence collection . all-helper condition
 
 all-helper :: (element -> Boolean) -> (Sequence element) -> Boolean
-all-helper : condition? -> sequence -> when (next sequence) {
-  (Some element) -> condition? element and (all-helper condition?) sequence
+all-helper : condition -> sequence -> when (next sequence) {
+  (Some element) -> condition element and (all-helper condition) sequence
   None -> True
 }
 
--- Returns `True` if the condition is `True` for any item in the sequence, or `False` if the sequence is empty.
-any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)
-any? : condition? -> collection -> As-Sequence collection . any-helper condition?
+-- [`any?`] return `True` if [`condition`] is `True` for any [`element@type`] in [`collection`], or `False` if [`collection`] is empty.
+any? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)
+any? : condition -> collection -> As-Sequence collection . any-helper condition
 
 any-helper :: (element -> Boolean) -> (Sequence element) -> Boolean
-any-helper : condition? -> sequence -> when (next sequence) {
-  (Some element) -> condition? element or (any-helper condition?) sequence
+any-helper : condition -> sequence -> when (next sequence) {
+  (Some element) -> condition element or (any-helper condition) sequence
   None -> False
 }
 
--- Create a sequence that takes values from two sequences at a time until either sequence runs out.
+-- [`zip`] creates a sequence that produces [`left-element@type`]-[`right-element@type`] pairs from [`left`] and [`right`], stopping once either runs out of elements.
 zip :: left right -> Sequence (left-element; right-element) where (As-Sequence left left-element) (As-Sequence right right-element)
 zip : left right -> do {
   left : As-Sequence left
@@ -370,17 +370,15 @@ zip : left right -> do {
   }
 }
 
--- Create a sequence that maintains a counter indicating the number of elements
--- produced. For example, `enumerate ("a", "b", "c")` produces `(0; "a")`,
--- `(1; "b")`, and `(2; "c")`.
+-- [`enumerate`] adds a counter alongside each element in [`collection`], starting at 0.
 enumerate :: collection -> Sequence (Number; element) where (As-Sequence collection element)
 enumerate : collection -> zip (0 to nan by 1) collection
 
 Extend : container (infer element) => trait ((Sequence element) -> container -> container)
 instance (Extend (List element) element) : sequence -> list -> sequence . reduce list (list element -> list . append element)
 
--- Append the contents of a sequence to a collection.
-extend :: from -> container -> container where (As-Sequence from element) (Extend container element)
+-- [`extend`] appends the contents of [`right`] to [`left`].
+extend :: left -> (right :: container) -> container where (As-Sequence left element) (Extend container element)
 extend : collection -> Extend (As-Sequence collection)
 
 instance (Extend (left; right) (left-element; right-element)) where (Extend left left-element) (Extend right right-element) : sequence -> (left; right) -> do {
@@ -398,13 +396,13 @@ instance (Extend (left; right) (left-element; right-element)) where (Extend left
   left; right
 }
 
--- Split a sequence that produces two values at a time into two separate collections.
+-- [`unzip`] splits the [`left-element@type`]-[`right-element@type`] pairs in [`collection`] into two separate sequences.
 unzip :: collection -> (left; right) where (Initial left) (Initial right) (As-Sequence collection (left-element; right-element)) (Extend left left-element) (Extend right right-element)
 unzip : collection -> (Initial; Initial) . extend (As-Sequence collection)
 
 Container : collection (infer element) => trait (element -> collection -> Boolean)
 
--- Returns `True` if the collection contains the element.
+-- [`contains?`] returns `True` if [`collection`] contains [`element`].
 contains? :: element -> collection -> Boolean where (Container collection element)
 contains? : Container
 

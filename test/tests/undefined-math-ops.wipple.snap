@@ -108,7 +108,7 @@ Facts (layer 2):
 `sqrt` (VariableExpression):
   has type `Number -> Number`
   is an expression
-  resolved to 1 definition(s): `sqrt :: Number -> Number`
+  resolved to 1 definition(s): `sqrt :: (n :: Number) -> Number`
 
 `sqrt -1` (CallExpression):
   has type `Number`

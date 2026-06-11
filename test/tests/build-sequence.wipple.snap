@@ -95,7 +95,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `Number -> (Sequence Number) -> Sequence Number`
   is an expression
-  resolved to 1 definition(s): `take :: Number -> collection -> Sequence element where (As-Sequence collection element)`
+  resolved to 1 definition(s): `take :: (count :: Number) -> collection -> Sequence element where (As-Sequence collection element)`
 
 `take 5` (CallExpression):
   has type `Sequence Number`

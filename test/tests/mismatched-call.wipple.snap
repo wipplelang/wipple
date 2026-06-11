@@ -79,7 +79,7 @@ Feedback:
 
   1. `accepts-text`: `accepts-text` is a `String -> ()`.
 
-  2. `1 + 2`: Add two values together, returning the sum.
+  2. `1 + 2`: `1 + 2` adds `_` and `_` together, returning a `Number`.
 
   3. `1`: `1` is a `Number`.
 
@@ -94,7 +94,7 @@ Feedback:
 
   1. `accepts-text`: `accepts-text` is a `String -> ()`.
 
-  2. `1 + 2`: Add two values together, returning the sum.
+  2. `1 + 2`: `1 + 2` adds `_` and `_` together, returning a `Number`.
 
   3. `1`: `1` is a `Number`.
 

@@ -11,7 +11,7 @@ Facts (layer 2):
 `divisible-by?` (VariableExpression):
   has type `Number -> Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `divisible-by? :: Number -> Number -> Boolean`
+  resolved to 1 definition(s): `divisible-by? :: (left :: Number) -> (right :: Number) -> Boolean`
 
 `divisible-by? 2` (CallExpression):
   has type `Number -> Boolean`

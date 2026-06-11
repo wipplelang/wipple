@@ -49,7 +49,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Dictionary String Number) ((Dictionary String Number) String -> Dictionary String Number) -> (List String) -> Dictionary String Number`
   is an expression
-  resolved to 1 definition(s): `reduce :: result (result element -> result) -> container -> result where (As-Sequence container element)`
+  resolved to 1 definition(s): `reduce :: result (f :: (result element -> result)) -> container -> result where (As-Sequence container element)`
 
 `reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (CallExpression):
   has type `Dictionary String Number`
@@ -91,7 +91,7 @@ Facts (layer 2):
   has bound(s) `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String Number -> (Dictionary String Number) -> Dictionary String Number`
   is an expression
-  resolved to 1 definition(s): `insert-entry :: key value -> (Dictionary key value) -> Dictionary key value where (Equal key) (Hash key)`
+  resolved to 1 definition(s): `insert-entry :: key value -> (dictionary :: (Dictionary key value)) -> Dictionary key value where (Equal key) (Hash key)`
 
 `insert-entry sport (count sport)` (CallExpression):
   has type `Dictionary String Number`
@@ -226,7 +226,7 @@ Facts (layer 2):
   has bound(s) `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Dictionary String Number) -> Maybe Number`
   is an expression
-  resolved to 1 definition(s): `entry :: key -> (Dictionary key value) -> Maybe value where (Equal key) (Hash key)`
+  resolved to 1 definition(s): `entry :: key -> (dictionary :: (Dictionary key value)) -> Maybe value where (Equal key) (Hash key)`
 
 `entry sport` (CallExpression):
   has type `Maybe Number`

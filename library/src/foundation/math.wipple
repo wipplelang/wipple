@@ -3,7 +3,7 @@
 nan :: Number
 nan : intrinsic "nan"
 
--- Add two values together, returning the sum.
+-- [`Add`] adds [`left`] and [`right`] together, returning a [`sum@type`].
 Add : left right (infer sum) => trait (left right -> sum)
 instance (Add Number Number Number) : left right -> intrinsic "add" left right
 
@@ -18,7 +18,7 @@ default error instance (Add left right sum)
 -- the inputs to `+`.
 error instance (Add () right sum)
 
--- Subtract one value from another, returning the difference.
+-- [`Subtract`] subtracts [`right`] from [`left`], returning a [`difference@type`].
 Subtract : left right (infer difference) => trait (left right -> difference)
 instance (Subtract Number Number Number) : left right -> intrinsic "sub" left right
 
@@ -33,7 +33,7 @@ default error instance (Subtract left right difference)
 -- the inputs to `-`.
 error instance (Subtract () right difference)
 
--- Multiply two values together, returning the product.
+-- [`Multiply`] multiplies [`left`] and [`right`] together, returning a [`product@type`].
 Multiply : left right (infer product) => trait (left right -> product)
 instance (Multiply Number Number Number) : left right -> intrinsic "mul" left right
 
@@ -48,7 +48,7 @@ default error instance (Multiply left right product)
 -- the inputs to `*`.
 error instance (Multiply () right product)
 
--- Divide two numbers, returning the quotient.
+-- [`Divide`] divides [`left`] by [`right`], returning a [`quotient@type`].
 Divide : left right (infer quotient) => trait (left right -> quotient)
 instance (Divide Number Number Number) : left right -> intrinsic "div" left right
 
@@ -63,7 +63,7 @@ default error instance (Divide left right quotient)
 -- the inputs to `/`.
 error instance (Divide () right quotient)
 
--- Divide two numbers, returning the remainder.
+-- [`Remainder`] divides [`left`] by [`right`], returning the remainder as a [`remainder@type`].
 Remainder : left right (infer remainder) => trait (left right -> remainder)
 instance (Remainder Number Number Number) : left right -> intrinsic "rem" left right
 
@@ -78,7 +78,7 @@ default error instance (Remainder left right remainder)
 -- the inputs to `%`.
 error instance (Remainder () right remainder)
 
--- Raise one number to the power of the other number.
+-- [`Power`] raises [`left`] to the power of [`right`], returning a [`power@type`].
 Power : left right (infer power) => trait (left right -> power)
 instance (Power Number Number Number) : left right -> intrinsic "pow" left right
 
@@ -93,16 +93,16 @@ default error instance (Power left right power)
 -- the inputs to `^`.
 error instance (Power () right power)
 
--- Round down a number to the nearest integer.
-floor :: Number -> Number
+-- [`floor`] rounds down [`n`] to the nearest integer.
+floor :: (n :: Number) -> Number
 floor : n -> intrinsic "floor" n
 
--- Round up a number to the nearest integer.
-ceil :: Number -> Number
+-- [`ceil`] rounds up [`n`] to the nearest integer.
+ceil :: (n :: Number) -> Number
 ceil : n -> intrinsic "ceil" n
 
--- Calculate the square root of a number.
-sqrt :: Number -> Number
+-- [`sqrt`] calculates the square root of [`n`].
+sqrt :: (n :: Number) -> Number
 sqrt : n -> intrinsic "sqrt" n
 
 -- An angle represented in degrees.
@@ -112,22 +112,22 @@ Angle : type {degrees :: Number}
 [unit] degrees :: Number -> Angle
 degrees : degrees -> Angle {degrees : degrees}
 
--- Calculate the sine of an angle.
-sin :: Angle -> Number
+-- [`sin`] calculates the sine of [`angle`].
+sin :: (angle :: Angle) -> Number
 sin : (Angle {degrees : degrees}) -> intrinsic "sin" degrees
 
--- Calculate the cosine of an angle.
-cos :: Angle -> Number
+-- [`cos`] calculates the cosine of [`angle`].
+cos :: (angle :: Angle) -> Number
 cos : (Angle {degrees : degrees}) -> intrinsic "cos" degrees
 
--- Calculate the tangent of an angle.
-tan :: Angle -> Number
+-- [`tan`] calculates the tangent of [`angle`].
+tan :: (angle :: Angle) -> Number
 tan : (Angle {degrees : degrees}) -> intrinsic "tan" degrees
 
--- Negate the sign of a number.
-negate :: Number -> Number
+-- [`negate`] negates the sign of [`n`].
+negate :: (n :: Number) -> Number
 negate : n -> intrinsic "neg" n
 
--- Check if the first number is divisible by the second.
-divisible-by? :: Number -> Number -> Boolean
+-- [`divisible-by?`] checks if [`left`] is divisible by [`right`].
+divisible-by? :: (left :: Number) -> (right :: Number) -> Boolean
 divisible-by? : right -> left -> left % right = 0

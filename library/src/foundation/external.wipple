@@ -1,3 +1,3 @@
--- Send a message to the runtime.
+-- [`external`] sends a message to the runtime.
 external :: String input -> output where (output :: ())
 external : message input -> intrinsic "external" message input

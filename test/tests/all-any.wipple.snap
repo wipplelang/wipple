@@ -40,7 +40,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)`
+  resolved to 1 definition(s): `all? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
 
 `all? (n -> n > 0)` (CallExpression):
   has type `Boolean`
@@ -124,7 +124,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `all? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)`
+  resolved to 1 definition(s): `all? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
 
 `all? (n -> n > 0)` (CallExpression):
   has type `Boolean`
@@ -208,7 +208,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)`
+  resolved to 1 definition(s): `any? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
 
 `any? (n -> n > 0)` (CallExpression):
   has type `Boolean`
@@ -292,7 +292,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `any? :: (element -> Boolean) -> collection -> Boolean where (As-Sequence collection element)`
+  resolved to 1 definition(s): `any? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
 
 `any? (n -> n > 0)` (CallExpression):
   has type `Boolean`

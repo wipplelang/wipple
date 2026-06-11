@@ -25,7 +25,7 @@ Facts (layer 2):
 `times` (VariableExpression):
   has type `Number -> Times`
   is an expression
-  resolved to 1 definition(s): `times :: Number -> Times`
+  resolved to 1 definition(s): `times :: (n :: Number) -> Times`
 
 `{⋯}` (BlockExpression):
   has type `{()}`

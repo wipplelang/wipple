@@ -1,4 +1,4 @@
--- Produce a `String` describing the value.
+-- [`Describe`] produces a `String` describing [`value`].
 Describe : value => trait (value -> String)
 
 -- Can't describe [`value`].
@@ -19,13 +19,13 @@ instance (Describe (Maybe value)) where (Describe value) : m -> when m {
   None -> "None"
 }
 
--- Convert from a `String` to a value.
+-- [`Read`] converts from a `String` to a [`value@type`].
 Read : value => trait (String -> Maybe value)
 
 -- Can't read [`value`] from input.
 --
 -- You can't use `prompt` with [`value`] because there's no way to convert the
--- contents of a text field into [`value`].
+-- contents of a text field into [`value@type`].
 default error instance (Read value)
 
 instance (Read String) : Some
@@ -39,7 +39,7 @@ instance (Read Number) : string -> do {
   }
 }
 
--- Ask the user to enter a value.
+-- [`prompt`] asks the user to enter a [`value@type`].
 prompt :: String -> value where (value :: String) (Read value)
 prompt : message -> do {
   external "beginPrompt" message

@@ -50,7 +50,7 @@ Feedback:
   
   Try rewriting this code as `(`5` times)`, or double-check your parentheses.
 
-  1. `repeat`: Run code repeatedly.
+  1. `repeat`: `repeat` runs `show "Hello, world!"` repeatedly.
 
   2. `5`: `5` is a `Number`.
 

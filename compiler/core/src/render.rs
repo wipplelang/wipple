@@ -177,11 +177,7 @@ impl RenderCtx<'_> {
             links.insert(
                 format!("{name}@type"),
                 Box::new(|writer| {
-                    let Some(ty) = link.tys.first() else {
-                        return;
-                    };
-
-                    writer.ty(db, &Ty::Constructed(ty.clone()), None, true);
+                    writer.ty(db, &Ty::Node(link.node), link.node, true);
                 }),
             );
         }
@@ -210,7 +206,7 @@ impl RenderCtx<'_> {
             let name = captures.get(1).unwrap().as_str();
             match links.get(name) {
                 Some(link) => link(&mut ctx),
-                None => ctx.code(name),
+                None => ctx.code(name.split_once('@').map_or(name, |(name, _)| name)),
             }
 
             self.extend([ctx]);

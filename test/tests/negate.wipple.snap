@@ -16,7 +16,7 @@ Facts (layer 2):
 `negate` (VariableExpression):
   has type `Number -> Number`
   is an expression
-  resolved to 1 definition(s): `negate :: Number -> Number`
+  resolved to 1 definition(s): `negate :: (n :: Number) -> Number`
 
 `negate 3` (CallExpression):
   has type `Number`

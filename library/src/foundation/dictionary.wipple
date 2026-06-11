@@ -16,8 +16,8 @@ instance (Initial (Dictionary key value)) : Dictionary {
   entries : (None,)
 }
 
--- Retrieve the value for a key stored in a dictionary.
-entry :: key -> (Dictionary key value) -> Maybe value where (Equal key) (Hash key)
+-- [`entry`] retrieves the value for a [`key@type`] stored in [`dictionary`].
+entry :: key -> (dictionary :: (Dictionary key value)) -> Maybe value where (Equal key) (Hash key)
 entry : key -> (Dictionary {entries : entries}) -> do {
   initial-index : (Hash key) % count entries
   index : initial-index
@@ -35,8 +35,8 @@ entry : key -> (Dictionary {entries : entries}) -> do {
   }
 }
 
--- Add a new entry to a dictionary, returning a new dictionary.
-insert-entry :: key value -> (Dictionary key value) -> Dictionary key value where (Equal key) (Hash key)
+-- [`insert-entry`] adds a new entry to [`dictionary`], returning a new dictionary.
+insert-entry :: key value -> (dictionary :: (Dictionary key value)) -> Dictionary key value where (Equal key) (Hash key)
 insert-entry : key value -> (Dictionary {
   size : size
   entries : entries
@@ -61,8 +61,8 @@ insert-entry : key value -> (Dictionary {
   dictionary . set-entry key (Some value)
 }
 
--- Remove an entry from a dictionary by its key, returning a new dictionary.
-remove-entry :: key -> (Dictionary key value) -> Dictionary key value where (Equal key) (Hash key)
+-- [`remove-entry`] removes an entry from [`dictionary`] by its key, returning a new dictionary.
+remove-entry :: key -> (dictionary :: (Dictionary key value)) -> Dictionary key value where (Equal key) (Hash key)
 remove-entry : key -> (Dictionary {
   size : size
   entries : entries
@@ -136,12 +136,12 @@ Set : element => type {dictionary :: Dictionary element ()}
 
 instance (Initial (Set element)) : Set {dictionary : Initial}
 
--- Add a new element to a set, returning a new set.
-insert :: element -> (Set element) -> Set element where (Equal element) (Hash element)
+-- [`insert`] adds a new [`element@type`] to [`set_`], returning a new set.
+insert :: element -> (set_ :: (Set element)) -> Set element where (Equal element) (Hash element)
 insert : element -> (Set {dictionary : dictionary}) -> Set {dictionary : dictionary . insert-entry element ()}
 
--- Remove an element from a set, returning a new set.
-remove :: element -> (Set element) -> Set element where (Equal element) (Hash element)
+-- [`remove`] removes a [`element@type`] from [`set_`], returning a new set.
+remove :: element -> (set_ :: (Set element)) -> Set element where (Equal element) (Hash element)
 remove : element -> (Set {dictionary : dictionary}) -> (Set {dictionary : dictionary . remove-entry element})
 
 instance (From-Sequence element (Set element)) where (Equal element) (Hash element) : sequence -> Set {dictionary : sequence . transform (key -> (key; ())) . collect}

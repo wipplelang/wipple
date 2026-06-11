@@ -7,7 +7,7 @@ Control-Flow : state result => type {
 -- Determines whether to evaluate a `repeat` body again.
 Repeat-Predicate : state body result => trait (state -> Control-Flow (body -> state) result)
 
--- Repeat using the `Control-Flow` produced by the `repeat` body.
+-- [`with-control-flow`] repeats using the `Control-Flow` produced by the `repeat` body.
 with-control-flow :: With-Control-Flow result
 with-control-flow : With-Control-Flow {current : Continue ()}
 
@@ -18,15 +18,15 @@ instance (Repeat-Predicate (With-Control-Flow result) (Control-Flow () result) r
   (Stop result) -> Stop result
 }
 
--- Repeat so long as the provided condition is `True`.
-while :: {Boolean} -> While
+-- [`while`] repeats so long as [`condition`] is `True`.
+while :: (condition :: {Boolean}) -> While
 while : condition -> While {condition : condition}
 
 While : type {condition :: {Boolean}}
 
 instance (Repeat-Predicate While body ()) where (body :: ()) : (While {condition : condition}) -> if (do condition) {Continue (_ -> while condition)} {Stop ()}
 
--- Repeat forever.
+-- [`forever`] repeats forever.
 forever :: Forever
 forever : Forever
 
@@ -43,11 +43,11 @@ error instance (Repeat-Predicate (state :: Number) body result)
 
 instance (Repeat-Predicate Times body ()) where (body :: ()) : (Times {times : n}) -> if (n > 0) {Continue (_ -> (n - 1) times)} {Stop ()}
 
--- Repeat a certain number of times.
-[unit] times :: Number -> Times
+-- [`times`] repeats [`n`] times.
+[unit] times :: (n :: Number) -> Times
 times : times -> Times {times : times}
 
--- Run code repeatedly.
+-- [`repeat`] runs [`body`] repeatedly.
 repeat :: state {body} -> result where (Repeat-Predicate state body result)
 repeat : state body -> when (Repeat-Predicate state) {
   (Continue next) -> repeat (next (do body)) body

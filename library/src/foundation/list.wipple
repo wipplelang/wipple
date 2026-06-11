@@ -2,34 +2,34 @@
 
 instance (Initial (List element)) : intrinsic "empty-list"
 
--- Retrieve the first item inside a list, or `None` if the list is empty.
-first :: (List element) -> Maybe element
+-- [`first`] retrieves the first [`element@type`] inside [`list`], or `None` if the list is empty.
+first :: (list :: (List element)) -> Maybe element
 first : list -> if (count list = 0) {None} {Some (intrinsic "list-first" list)}
 
--- Retrieve the last item inside a list, or `None` if the list is empty.
-last :: (List element) -> Maybe element
+-- [`last`] retrieves the last [`element@type`] inside [`list`], or `None` if the list is empty.
+last :: (list :: (List element)) -> Maybe element
 last : list -> if (count list = 0) {None} {Some (intrinsic "list-last" list)}
 
--- Retrieve all but the last item inside a list, or `None` if the list is empty.
-initial :: (List element) -> Maybe (List element)
+-- [`initial`] retrieves all but the last [`element@type`] inside [`list`], or `None` if the list is empty.
+initial :: (list :: (List element)) -> Maybe (List element)
 initial : list -> if (count list = 0) {None} {Some (intrinsic "list-initial" list)}
 
--- Retrieve all but the first item inside a list, or `None` if the list is empty.
-tail :: (List element) -> Maybe (List element)
+-- [`tail`] retrieves all but the first [`element@type`] inside [`list`], or `None` if the list is empty.
+tail :: (list :: (List element)) -> Maybe (List element)
 tail : list -> if (count list = 0) {None} {Some (intrinsic "list-tail" list)}
 
--- Retrieve the value in a list at a particular location, if it exists.
-nth :: Number -> (List element) -> Maybe element
+-- [`nth`] retrieves the [`element@type`] in [`list`] at a particular location, if it exists.
+nth :: Number -> (list :: (List element)) -> Maybe element
 nth : index -> list -> if (index >= 0 and index < count list) {Some (intrinsic "list-nth" list index)} {None}
 
--- Add a new item to the end of a list, producing a new list.
-append :: element -> (List element) -> List element
+-- [`append`] adds a new [`element@type`] to the end of [`list`], producing a new list.
+append :: element -> (list :: (List element)) -> List element
 append : element -> list -> intrinsic "list-append" list element
 
--- Insert a new item at a particular location inside a list, shifting the elements from that location on one place to the right, producing a new list.
-insert-at :: Number element -> (List element) -> Maybe (List element)
+-- [`insert-at`] inserts a new [`element@type`] at a particular location inside [`list`], shifting the elements from that location on one place to the right, producing a new list.
+insert-at :: Number element -> (list :: (List element)) -> Maybe (List element)
 insert-at : index element -> list -> if (index >= 0 and index <= count list) {Some (intrinsic "list-insert-at" list index element)} {None}
 
--- Remove the item at a particular location inside a list, producing a new list.
-remove-at :: Number -> (List element) -> Maybe (List element)
+-- [`remove-at`] removes the [`element@type`] at a particular location inside [`list`], producing a new list.
+remove-at :: Number -> (list :: (List element)) -> Maybe (List element)
 remove-at : index -> list -> if (index >= 0 and index < count list) {Some (intrinsic "list-remove-at" list index)} {None}

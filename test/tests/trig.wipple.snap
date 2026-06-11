@@ -16,7 +16,7 @@ Facts (layer 2):
 `sin` (VariableExpression):
   has type `Angle -> Number`
   is an expression
-  resolved to 1 definition(s): `sin :: Angle -> Number`
+  resolved to 1 definition(s): `sin :: (angle :: Angle) -> Number`
 
 `sin (0 degrees)` (CallExpression):
   has type `Number`
@@ -71,7 +71,7 @@ Facts (layer 2):
 `cos` (VariableExpression):
   has type `Angle -> Number`
   is an expression
-  resolved to 1 definition(s): `cos :: Angle -> Number`
+  resolved to 1 definition(s): `cos :: (angle :: Angle) -> Number`
 
 `cos (0 degrees)` (CallExpression):
   has type `Number`
@@ -126,7 +126,7 @@ Facts (layer 2):
 `sin` (VariableExpression):
   has type `Angle -> Number`
   is an expression
-  resolved to 1 definition(s): `sin :: Angle -> Number`
+  resolved to 1 definition(s): `sin :: (angle :: Angle) -> Number`
 
 `sin (45 degrees)` (CallExpression):
   has type `Number`
@@ -177,7 +177,7 @@ Facts (layer 2):
 `cos` (VariableExpression):
   has type `Angle -> Number`
   is an expression
-  resolved to 1 definition(s): `cos :: Angle -> Number`
+  resolved to 1 definition(s): `cos :: (angle :: Angle) -> Number`
 
 `cos (45 degrees)` (CallExpression):
   has type `Number`
@@ -200,7 +200,7 @@ Facts (layer 2):
 `tan` (VariableExpression):
   has type `Angle -> Number`
   is an expression
-  resolved to 1 definition(s): `tan :: Angle -> Number`
+  resolved to 1 definition(s): `tan :: (angle :: Angle) -> Number`
 
 `tan (45 degrees)` (CallExpression):
   has type `Number`

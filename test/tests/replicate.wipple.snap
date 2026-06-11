@@ -19,7 +19,7 @@ Facts (layer 2):
 `replicate` (VariableExpression):
   has type `Number -> String -> Sequence String`
   is an expression
-  resolved to 1 definition(s): `replicate :: Number -> element -> Sequence element`
+  resolved to 1 definition(s): `replicate :: (n :: Number) -> element -> Sequence element`
 
 `replicate 3` (CallExpression):
   has type `Sequence String`
