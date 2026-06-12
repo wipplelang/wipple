@@ -14,27 +14,27 @@ Wipple's type system operates on groups of nodes. Concrete types, such as `Strin
 
 The type checker accepts constraints (defined on nodes) as input. There are five types of constraints:
 
-1.  `GroupConstraint` places two nodes in the same group.
+1.  **Group constraints** place two nodes in the same group.
 
-2.  `TyConstraint` assigns a concrete type to a group.
+2.  **Type constraints** assign a concrete type to the group of a representative node.
 
-    For example, the expression `n :: Number` would generate a `GroupConstraint` between `n` and `Number`. Then, the node representing `Number` would generate a `TyConstraint` for the concrete type `Number`, resulting in `n` and `Number` sharing this type.
+    For example, the expression `n :: Number` would generate a group constraint between `n` and `Number`. Then, the node representing `Number` would generate a type constraint for the concrete type `Number`, resulting in `n` and `Number` sharing this type.
 
-    Of note is that the node representing the source code `Number` and the concrete type `Number` are different objects in the compiler — most nodes representing types in the source code contribute equivalent `TyConstraint`s, but some contribute different constraints. For instance, placeholders (`_`) do not contribute any constraints, and instead inherit their type from the group they belong to; `_` is not a concrete type. This allows code like `(1, 2, 3) :: List _` to resolve to `List Number`. Similarly, the first time a type parameter is used, it contributes a `TyConstraint`, but subsequent uses instead contribute `GroupConstraint`s linking back to the first use.
+    Of note is that the node representing the source code `Number` and the concrete type `Number` are different objects in the compiler — most nodes representing types in the source code contribute equivalent type constraints, but some contribute different constraints. For instance, placeholders (`_`) do not contribute any constraints, and instead inherit their type from the group they belong to; `_` is not a concrete type. This allows code like `(1, 2, 3) :: List _` to resolve to `List Number`. Similarly, the first time a type parameter is used, it contributes a type constraint, but subsequent uses instead contribute group constraints linking back to the first use.
 
-3.  `DefaultConstraint` acts like `TyConstraint`, but only if the node's group does not already have another concrete type. `DefaultConstraint`s run after all other constraints.
+3.  **Default constraints** act like type constraints, but only if the node's group does not already have another concrete type. Default constraints run after all other constraints.
 
-4.  `InstantiateConstraint` takes a generic definition and makes a copy of _all of the definition's constraints_, where any mentioned type parameters are replaced with fresh nodes, and where mentions of the definition node are replaced by the instantiated node. This design straightforwardly preserves groups, bounds, and other information beyond the definition's concrete type.
+4.  **Instantiate constraints** take a generic definition and makes a copy of _all of the definition's constraints_, where any mentioned type parameters are replaced with fresh nodes, and where mentions of the definition node are replaced by the instantiated node. This design straightforwardly preserves groups, bounds, and other information beyond the definition's concrete type.
 
-    For example, the definition `id :: value -> value` would generate a `GroupConstraint` between the two `value`s, and a `TyConstraint` assigning the concrete type parameter `value` to this group. Then, calling `id 123` would generate a fresh node representing the instantiated `value`, along with the original `GroupConstraint` and `TyConstraint` modified to use this fresh node. Finally, the literal `123` generates a `TyConstraint` assigning `Number` to the instantiated `value` group, resulting in the function call expression `id 123` also having type `Number`.
+    For example, the definition `id :: value -> value` would generate a group constraint between the two `value`s, and a type constraint assigning the concrete type parameter `value` to this group. Then, calling `id 123` would generate a fresh node representing the instantiated `value`, along with the original group constraint and type constraint modified to use this fresh node. Finally, the literal `123` generates a type constraint assigning `Number` to the instantiated `value` group, resulting in the function call expression `id 123` also having type `Number`.
 
-5.  `BoundConstraint` resolves trait bounds.
+5.  **Bound constraints** resolve trait bounds.
 
     To resolve bounds, the type checker iterates over each available instance, unifying the instance's instantiated parameters with the bound's. If any errors occur during unification, the instance is discarded and the type checker is restored to its previous state. For example, given the instances `As-Sequence String String` and `As-Sequence (List element) element` and the bound `As-Sequence (List Number) x`, the first instance fails because `String` and `List _` do not unify, and the second instance succeeds, assigning `Number` to the group containing `x`.
 
     During bound resolution, if more than one instance matches, the bound is considered ambiguous and is added back to the queue. To prevent infinite loops, the type checker stops if no progress is made (i.e., a concrete type is assigned to a group or a bound is resolved) after iterating through the entire queue.
 
-When more than one concrete type is assigned to the same group, the types are unified. This operation does not preserve group information, so to create the most groups possible, the type checker sorts constraints: `GroupConstraint`s are evaluated before `TyConstraint`s, which are evaluated before `BoundConstraint`s, etc.
+When more than one concrete type is assigned to the same group, the types are unified. This operation does not preserve group information, so to create the most groups possible, the type checker sorts constraints: group constraints are evaluated before type constraints, which are evaluated before bound constraints, etc.
 
 ## Querying and feedback generation
 

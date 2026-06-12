@@ -1,6 +1,6 @@
 # The trait system
 
-Wipple supports ad-hoc polymorphism using _traits_. Traits in Wipple are similar to multi-parameter type classes in Haskell. A trait is defined over one or more type parameters, and users can define _instances_ replacing these type parameters with specific types. Wipple will select the appropriate instance automatically.
+Wipple supports ad-hoc polymorphism using **traits**. Traits in Wipple are similar to multi-parameter type classes in Haskell. A trait is defined over one or more type parameters, and users can define **instances** replacing these type parameters with specific types. Wipple will select the appropriate instance automatically.
 
 For example, a common trait in Wipple is `Describe`, which is used by `show` to convert its input to a `String`:
 
@@ -11,7 +11,7 @@ instance (Describe String) : s -> s
 instance (Describe Boolean) : b -> if b {"True"} {"False"}
 ```
 
-To reference an instance of a trait, you write the trait's name (forming a _trait expression_), and the compiler will select the matching instance based on the data type of the trait expression.
+To reference an instance of a trait, you write the trait's name (forming a **trait expression**), and the compiler will select the matching instance based on the data type of the trait expression.
 
 ```wipple
 (Describe :: String -> String) -- instance (Describe String)
@@ -76,7 +76,7 @@ Finally, when type checking instance definitions, the instance being defined is 
 
 ## Inferred parameters
 
-Traits can mark one or more of their type parameters as _inferred_ using `infer`. During bound resolution, inferred parameters are _not_ checked and instead propagate back to the caller. If regular type parameters behave as "inputs" to the trait when searching for bounds, inferred parameters effectively behave as "outputs". For example, the `Add` trait defines its `sum` parameter as inferred:
+Traits can mark one or more of their type parameters as **inferred** using `infer`. During bound resolution, inferred parameters are _not_ checked and instead propagate back to the caller. If regular type parameters behave as "inputs" to the trait when searching for bounds, inferred parameters effectively behave as "outputs". For example, the `Add` trait defines its `sum` parameter as inferred:
 
 ```wipple
 Add : left right (infer sum) => trait (left right -> sum)
