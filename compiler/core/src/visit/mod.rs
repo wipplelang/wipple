@@ -233,6 +233,15 @@ impl Visit for Hidden {
     }
 }
 
+#[typetag::serde]
+impl Visit for Span {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
+        self
+    }
+
+    fn visit(self: Box<Self>, _db: &mut Db, _node: Node, _visitor: &mut Visitor) {}
+}
+
 #[derive(Debug, Default)]
 pub struct ScopeValues {
     names: BTreeMap<Str, Vec<Node>>,

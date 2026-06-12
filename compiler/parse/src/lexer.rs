@@ -78,6 +78,8 @@ pub enum TokenKind {
     InstanceKeyword,
     #[regex(r#"intrinsic"#)]
     IntrinsicKeyword,
+    #[regex(r#"loop"#)]
+    LoopKeyword,
     #[regex(r#"set"#)]
     SetKeyword,
     #[regex(r#"trait"#)]
@@ -226,6 +228,7 @@ impl TokenKind {
             TokenKind::InferKeyword => "`infer`",
             TokenKind::InstanceKeyword => "`instance`",
             TokenKind::IntrinsicKeyword => "`intrinsic`",
+            TokenKind::LoopKeyword => "`loop`",
             TokenKind::SetKeyword => "`set`",
             TokenKind::TraitKeyword => "`trait`",
             TokenKind::TypeKeyword => "`type`",
@@ -251,6 +254,7 @@ impl TokenKind {
                 | TokenKind::InferKeyword
                 | TokenKind::InstanceKeyword
                 | TokenKind::IntrinsicKeyword
+                | TokenKind::LoopKeyword
                 | TokenKind::SetKeyword
                 | TokenKind::TraitKeyword
                 | TokenKind::TypeKeyword

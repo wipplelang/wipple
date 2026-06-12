@@ -316,16 +316,20 @@ impl<'a> WriteContext<'a, '_> {
                 ir::Instruction::Return { value } => {
                     writeln!(self.writer, "return {};", mangle_local(*value))?;
                 }
-                ir::Instruction::ReturnCall {
-                    function, inputs, ..
-                } => {
-                    // TODO: tail call optimization
+                ir::Instruction::Loop { node, body, result } => {
+                    writeln!(self.writer, "while (true) {{")?;
+                    self.write_instructions(body)?;
 
-                    write!(self.writer, "return {}(", mangle_local(*function))?;
-                    for input in inputs {
-                        write!(self.writer, "{}, ", mangle_local(*input))?;
-                    }
-                    writeln!(self.writer, ");")?;
+                    write!(
+                        self.writer,
+                        "if ({:?} in {}) {{ {} = {}[{:?}][0]; break; }}",
+                        mangle_variant(1),
+                        mangle_local(*result),
+                        mangle_local(*node),
+                        mangle_local(*result),
+                        mangle_variant(1)
+                    )?;
+                    writeln!(self.writer, "}}")?;
                 }
                 ir::Instruction::Trace { span } => {
                     let can_trace = match self.options.trace {

@@ -384,7 +384,7 @@ impl Ide {
         self.result
             .db
             .owned_nodes()
-            .filter(|&node| self.result.db.is_hidden(node))
+            .filter(|&node| !self.result.db.is_hidden(node))
             .filter_map(|node| {
                 let span = self
                     .result

@@ -1,10 +1,10 @@
 Facts (layer 2):
 
 `repeat` (VariableExpression):
-  has bound(s) `Repeat-Predicate` `Times` `()` `()` (resolved as `instance (Repeat-Predicate Times body ()) where (body :: ())`)
+  has bound(s) `Repeat-Condition` `Times` (resolved as `instance (Repeat-Condition Times)`)
   has type `Times {()} -> ()`
   is an expression
-  resolved to 1 definition(s): `repeat :: state {body} -> result where (Repeat-Predicate state body result)`
+  resolved to 1 definition(s): `repeat :: condition {body} -> () where (Repeat-Condition condition) (body :: ())`
 
 `repeat (4 times) {⋯}` (ExpressionStatement):
   has type `()`

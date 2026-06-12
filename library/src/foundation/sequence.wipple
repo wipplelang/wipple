@@ -84,12 +84,10 @@ filter : include? -> container -> do {
   base : As-Sequence container
 
   sequence {
-    repeat with-control-flow {
-      when (next base) {
-        (Some value) -> if (include? value) {Stop (Some value)} {Continue ()}
-        None -> Stop None
-      }
-    }
+    loop (when (next base) {
+      (Some value) -> if (include? value) {Break (Some value)} {Continue}
+      None -> Break None
+    })
   }
 }
 
@@ -99,15 +97,13 @@ filter-by : f -> container -> do {
   base : As-Sequence container
 
   sequence {
-    repeat with-control-flow {
-      when (next base) {
-        (Some value) -> when (f value) {
-          (Some value) -> Stop (Some value)
-          None -> Continue ()
-        }
-        None -> Stop None
+    loop (when (next base) {
+      (Some value) -> when (f value) {
+        (Some value) -> Break (Some value)
+        None -> Continue
       }
-    }
+      None -> Break None
+    })
   }
 }
 
@@ -121,18 +117,16 @@ flatten : outer -> do {
       inner : As-Sequence inner
 
       sequence {
-        repeat with-control-flow {
-          when (next inner) {
-            (Some value) -> Stop (Some value)
-            None -> when (next outer) {
-              (Some next-inner) -> do {
-                set inner : As-Sequence next-inner
-                Continue ()
-              }
-              None -> Stop None
+        loop (when (next inner) {
+          (Some value) -> Break (Some value)
+          None -> when (next outer) {
+            (Some next-inner) -> do {
+              set inner : As-Sequence next-inner
+              Continue
             }
+            None -> Break None
           }
-        }
+        })
       }
     }
     None -> sequence {None}
@@ -144,15 +138,13 @@ find-by :: (f :: (element -> Maybe result)) -> collection -> Maybe result where 
 find-by : f -> collection -> do {
   base : As-Sequence collection
 
-  repeat with-control-flow {
-    when (next base) {
-      (Some element) -> when (f element) {
-        (Some result) -> Stop (Some result)
-        None -> Continue ()
-      }
-      None -> Stop None
+  loop (when (next base) {
+    (Some element) -> when (f element) {
+      (Some result) -> Break (Some result)
+      None -> Continue
     }
-  }
+    None -> Break None
+  })
 }
 
 -- [`reduce`] calls [`f`] on each [`element@type`] in [`container`], accumulating the result into a single [`result@type`].
@@ -182,16 +174,13 @@ collect : collection -> From-Sequence (As-Sequence collection)
 
 instance (From-Sequence element (List element)) : sequence -> do {
   list : (,)
-
-  repeat with-control-flow {
-    when (next sequence) {
-      (Some value) -> do {
-        set list : list . append value
-        Continue ()
-      }
-      None -> Stop ()
+  loop (when (next sequence) {
+    (Some value) -> do {
+      set list : list . append value
+      Continue
     }
-  }
+    None -> Break ()
+  })
 
   list
 }
@@ -210,12 +199,10 @@ instance (As-Sequence (List element) element) : list -> do {
   }
 }
 
-instance (From-Sequence () ()) : sequence -> repeat with-control-flow {
-  when (next sequence) {
-    (Some ()) -> Continue ()
-    None -> Stop ()
-  }
-}
+instance (From-Sequence () ()) : sequence -> loop (when (next sequence) {
+  (Some ()) -> Continue
+  None -> Break ()
+})
 
 -- [`each`] calls [`action`] for each [`element@type`] in [`container`].
 [connect : container -> element ("element")]
@@ -229,31 +216,29 @@ split-by : separator -> collection -> do {
   group : Some (,)
 
   sequence {
-    repeat with-control-flow {
-      when (next base) {
-        (Some x) -> do {
-          if (separator x) {
-            result : group
-            set group : None
-            Stop result
-          } {
-            inner : when group {
-              (Some inner) -> inner
-              None -> (,)
-            }
-
-            set group : Some (inner . append x)
-
-            Continue ()
-          }
-        }
-        None -> do {
+    loop (when (next base) {
+      (Some x) -> do {
+        if (separator x) {
           result : group
           set group : None
-          Stop result
+          Break result
+        } {
+          inner : when group {
+            (Some inner) -> inner
+            None -> (,)
+          }
+
+          set group : Some (inner . append x)
+
+          Continue
         }
       }
-    }
+      None -> do {
+        result : group
+        set group : None
+        Break result
+      }
+    })
   }
 }
 
@@ -273,15 +258,13 @@ instance (Count (List element)) : list -> intrinsic "list-count" list
 
 instance (Count (Sequence element)) : sequence -> do {
   count : 0
-  repeat with-control-flow {
-    when (next sequence) {
-      (Some _) -> do {
-        set count : count + 1
-        Continue ()
-      }
-      None -> Stop count
+  loop (when (next sequence) {
+    (Some _) -> do {
+      set count : count + 1
+      Continue
     }
-  }
+    None -> Break count
+  })
 }
 
 -- [`join`] collects [`a`] and [`b`] into a single [`c@type`].
@@ -309,12 +292,10 @@ find :: (condition :: (element -> Boolean)) -> collection -> Maybe element where
 find : condition -> collection -> do {
   base : As-Sequence collection
 
-  repeat with-control-flow {
-    when (next base) {
-      (Some element) -> if (condition element) {Stop (Some element)} {Continue ()}
-      None -> Stop None
-    }
-  }
+  loop (when (next base) {
+    (Some element) -> if (condition element) {Break (Some element)} {Continue}
+    None -> Break None
+  })
 }
 
 -- [`find-position`] finds the position of the first [`element@type`] in [`collection`] that satisfies [`condition`].
@@ -323,17 +304,15 @@ find-position : condition -> collection -> do {
   base : As-Sequence collection
   counter : 0
 
-  repeat with-control-flow {
-    when (next base) {
-      (Some element) -> if (condition element) {
-        Stop (Some counter)
-      } {
-        set counter : counter + 1
-        Continue ()
-      }
-      None -> Stop None
+  loop (when (next base) {
+    (Some element) -> if (condition element) {
+      Break (Some counter)
+    } {
+      set counter : counter + 1
+      Continue
     }
-  }
+    None -> Break None
+  })
 }
 
 -- [`all?`] return `True` if [`condition`] is `True` for every [`element@type`] in [`collection`], or if [`collection`] is empty.
@@ -382,16 +361,14 @@ extend :: left -> (right :: container) -> container where (As-Sequence left elem
 extend : collection -> Extend (As-Sequence collection)
 
 instance (Extend (left; right) (left-element; right-element)) where (Extend left left-element) (Extend right right-element) : sequence -> (left; right) -> do {
-  repeat with-control-flow {
-    when (next sequence) {
-      (Some (a; b)) -> do {
-        set left : left . extend (Some a)
-        set right : right . extend (Some b)
-        Continue ()
-      }
-      None -> Stop ()
+  loop (when (next sequence) {
+    (Some (a; b)) -> do {
+      set left : left . extend (Some a)
+      set right : right . extend (Some b)
+      Continue
     }
-  }
+    None -> Break ()
+  })
 
   left; right
 }
@@ -409,12 +386,10 @@ contains? : Container
 instance (Container (List element) element) where (Equal element) : target -> list -> do {
   base : As-Sequence list
 
-  repeat with-control-flow {
-    when (next base) {
-      (Some element) -> if (element = target) {Stop True} {Continue ()}
-      None -> Stop False
-    }
-  }
+  loop (when (next base) {
+    (Some element) -> if (element = target) {Break True} {Continue}
+    None -> Break False
+  })
 }
 
 instance (Add String String String) : a b -> "__" a b

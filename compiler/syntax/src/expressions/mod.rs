@@ -9,6 +9,7 @@ pub mod format_expression;
 pub mod function_expression;
 pub mod intrinsic_expression;
 pub mod is_expression;
+pub mod loop_expression;
 pub mod number_expression;
 pub mod operator_expression;
 pub mod placeholder_expression;
@@ -33,6 +34,7 @@ use crate::expressions::{
     function_expression::parse_function_expression,
     intrinsic_expression::parse_intrinsic_expression,
     is_expression::parse_is_expression,
+    loop_expression::parse_loop_expression,
     number_expression::parse_number_expression,
     operator_expression::{parse_operator_expression, parse_parenthesized_operator_expression},
     placeholder_expression::parse_placeholder_expression,
@@ -89,6 +91,7 @@ pub fn parse_expression_element(parser: &mut Parser<'_>) -> Result<AstKey, Parse
         parse_structure_expression as value => parser.in_ast(value),
         parse_call_expression as value => parser.in_ast(value),
         parse_do_expression as value => parser.in_ast(value),
+        parse_loop_expression as value => parser.in_ast(value),
         parse_when_expression as value => parser.in_ast(value),
         parse_intrinsic_expression as value => parser.in_ast(value),
         parse_atomic_expression as value => value,

@@ -1,17 +1,17 @@
 Facts (layer 2):
 
 `repeat` (VariableExpression):
-  has bound(s) `Repeat-Predicate` `Number` `()` `_` (resolved as `error instance (Repeat-Predicate (state :: Number) body result)`)
-  has type `Number {()} -> _`
+  has bound(s) `Repeat-Condition` `Number` (resolved as `error instance (Repeat-Condition (n :: Number))`)
+  has type `Number {()} -> ()`
   is an expression
-  resolved to 1 definition(s): `repeat :: state {body} -> result where (Repeat-Predicate state body result)`
+  resolved to 1 definition(s): `repeat :: condition {body} -> () where (Repeat-Condition condition) (body :: ())`
 
 `repeat 5 {⋯}` (ExpressionStatement):
-  missing type (group: `repeat 5 {⋯}`, `result`, `result`, `result`, `result`, `result`, `repeat 5 {⋯}`, `result`, `result`, `result`)
+  has type `()`
 
 `repeat 5 {⋯}` (CallExpression):
+  has type `()`
   is an expression
-  missing type (group: `repeat 5 {⋯}`, `result`, `result`, `result`, `result`, `result`, `repeat 5 {⋯}`, `result`, `result`, `result`)
 
 `5` (NumberExpression):
   has type `Number`

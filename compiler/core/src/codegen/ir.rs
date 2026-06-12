@@ -55,12 +55,12 @@ pub enum Instruction {
         branches: Vec<(Vec<Condition>, Vec<Instruction>, Option<Node>)>,
         else_branch: Option<(Vec<Instruction>, Option<Node>)>,
     },
-    Return {
-        value: Node,
+    Loop {
+        node: Node,
+        body: Vec<Instruction>,
+        result: Node,
     },
-    ReturnCall {
-        function: Node,
-        inputs: Vec<Node>,
+    Return {
         value: Node,
     },
     Trace {
@@ -151,7 +151,7 @@ impl Instruction {
         match *self {
             Instruction::If { node, .. } => node,
             Instruction::Return { value } => Some(value),
-            Instruction::ReturnCall { function, .. } => Some(function),
+            Instruction::Loop { node, .. } => Some(node),
             Instruction::Trace { .. } => None,
             Instruction::Value { node, .. } => Some(node),
         }
@@ -199,18 +199,12 @@ impl Instruction {
                 }
             }
             Instruction::Return { value } => f(value)?,
-            Instruction::ReturnCall {
-                function,
-                inputs,
-                value: node,
-            } => {
-                f(function)?;
-
-                for input in inputs {
-                    f(input)?;
-                }
-
+            Instruction::Loop { node, body, result } => {
                 f(node)?;
+                for instruction in body {
+                    instruction.for_each_node(traverse_functions, f)?;
+                }
+                f(result)?;
             }
             Instruction::Trace { .. } => {}
             Instruction::Value { node, value } => {
@@ -256,7 +250,11 @@ impl Instruction {
                 }
             }
             Instruction::Return { .. } => {}
-            Instruction::ReturnCall { .. } => {}
+            Instruction::Loop { body, .. } => {
+                for instruction in body {
+                    instruction.traverse_mut(f)?;
+                }
+            }
             Instruction::Trace { .. } => {}
             Instruction::Value { value, .. } => {
                 if let Value::Function(function) = value {
@@ -293,7 +291,9 @@ pub fn traverse_instructions(
                 }
             }
             Instruction::Return { .. } => {}
-            Instruction::ReturnCall { .. } => {}
+            Instruction::Loop { body, .. } => {
+                traverse_instructions(body, f)?;
+            }
             Instruction::Trace { .. } => {}
             Instruction::Value { value, .. } => {
                 if let Value::Function(function) = value {

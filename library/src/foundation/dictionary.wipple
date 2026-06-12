@@ -22,17 +22,15 @@ entry : key -> (Dictionary {entries : entries}) -> do {
   initial-index : (Hash key) % count entries
   index : initial-index
 
-  repeat with-control-flow {
-    when ((entries . nth index) or unreachable) {
-      (Some (existing-key; value)) -> if (key = existing-key) {
-        Stop (Some value)
-      } {
-        set index : (index + 1) % count entries
-        if (index = initial-index) {Stop None} {Continue ()}
-      }
-      None -> Stop None
+  loop (when ((entries . nth index) or unreachable) {
+    (Some (existing-key; value)) -> if (key = existing-key) {
+      Break (Some value)
+    } {
+      set index : (index + 1) % count entries
+      if (index = initial-index) {Break None} {Continue}
     }
-  }
+    None -> Break None
+  })
 }
 
 -- [`insert-entry`] adds a new entry to [`dictionary`], returning a new dictionary.
@@ -84,19 +82,17 @@ set-entry : key value -> (Dictionary {
   index : initial-index
 
   -- Find a spot for the entry
-  repeat with-control-flow {
-    when ((entries . nth index) or unreachable) {
-      (Some (existing; _)) -> do {
-        if (key = existing) {
-          Stop ()
-        } {
-          set index : (index + 1) % count entries
-          if (index = initial-index) {Stop ()} {Continue ()}
-        }
+  loop (when ((entries . nth index) or unreachable) {
+    (Some (existing; _)) -> do {
+      if (key = existing) {
+        Break ()
+      } {
+        set index : (index + 1) % count entries
+        if (index = initial-index) {Break ()} {Continue}
       }
-      None -> Stop ()
     }
-  }
+    None -> Break ()
+  })
 
   new-entry : when value {
     (Some value) -> Some (key; value)
@@ -114,15 +110,13 @@ set-entry : key value -> (Dictionary {
 
 instance (From-Sequence (key; value) (Dictionary key value)) where (Equal key) (Hash key) : sequence -> do {
   dictionary : (,)
-  repeat with-control-flow {
-    when (next sequence) {
-      (Some (key; value)) -> do {
-        set dictionary : dictionary . insert-entry key value
-        Continue ()
-      }
-      None -> Stop ()
+  loop (when (next sequence) {
+    (Some (key; value)) -> do {
+      set dictionary : dictionary . insert-entry key value
+      Continue
     }
-  }
+    None -> Break ()
+  })
 
   dictionary
 }

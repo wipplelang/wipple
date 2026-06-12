@@ -44,14 +44,14 @@ prompt :: String -> value where (value :: String) (Read value)
 prompt : message -> do {
   external "beginPrompt" message
 
-  repeat with-control-flow {
+  loop (do {
     input : external "getPrompt" ()
     when (Read input) {
       (Some input) -> do {
         external "endPrompt" ()
-        Stop input
+        Break input
       }
-      None -> Continue ()
+      None -> Continue
     }
-  }
+  })
 }

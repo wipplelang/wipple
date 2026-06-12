@@ -1,22 +1,11 @@
--- Used by `repeat` to determine whether to continue running or stop with a value.
-Control-Flow : state result => type {
-  Continue state
-  Stop result
+-- Used by `loop` to determine whether to continue running or stop with a value.
+Control-Flow : result => type {
+  Continue
+  Break result
 }
 
 -- Determines whether to evaluate a `repeat` body again.
-Repeat-Predicate : state body result => trait (state -> Control-Flow (body -> state) result)
-
--- [`with-control-flow`] repeats using the `Control-Flow` produced by the `repeat` body.
-with-control-flow :: With-Control-Flow result
-with-control-flow : With-Control-Flow {current : Continue ()}
-
-With-Control-Flow : result => type {current :: Control-Flow () result}
-
-instance (Repeat-Predicate (With-Control-Flow result) (Control-Flow () result) result) : (With-Control-Flow {current : current}) -> when current {
-  (Continue ()) -> Continue (new -> With-Control-Flow {current : new})
-  (Stop result) -> Stop result
-}
+Repeat-Condition : condition => trait (condition -> Sequence ())
 
 -- [`while`] repeats so long as [`condition`] is `True`.
 while :: (condition :: {Boolean}) -> While
@@ -24,7 +13,9 @@ while : condition -> While {condition : condition}
 
 While : type {condition :: {Boolean}}
 
-instance (Repeat-Predicate While body ()) where (body :: ()) : (While {condition : condition}) -> if (do condition) {Continue (_ -> while condition)} {Stop ()}
+instance (Repeat-Condition While) : (While {condition : condition}) -> sequence {
+  if (do condition) {Some ()} {None}
+}
 
 -- [`forever`] repeats forever.
 forever :: Forever
@@ -32,24 +23,38 @@ forever : Forever
 
 Forever : type
 
-instance (Repeat-Predicate Forever body result) where (result :: ()) : _ -> Continue (_ -> Forever)
+instance (Repeat-Condition Forever) : Forever -> always ()
 
 Times : type {times :: Number}
 
--- Missing `times` after [`state`].
+-- Missing `times` after [`n`].
 --
--- Try rewriting this code as `([`state`] times)`, or double-check your parentheses.
-error instance (Repeat-Predicate (state :: Number) body result)
+-- Try rewriting this code as `([`n`] times)`, or double-check your parentheses.
+error instance (Repeat-Condition (n :: Number))
 
-instance (Repeat-Predicate Times body ()) where (body :: ()) : (Times {times : n}) -> if (n > 0) {Continue (_ -> (n - 1) times)} {Stop ()}
+instance (Repeat-Condition Times) : (Times {times : n}) -> sequence {
+  if (n > 0) {
+    set n : n - 1
+    Some ()
+  } {
+    None
+  }
+}
 
 -- [`times`] repeats [`n`] times.
 [unit] times :: (n :: Number) -> Times
 times : times -> Times {times : times}
 
 -- [`repeat`] runs [`body`] repeatedly.
-repeat :: state {body} -> result where (Repeat-Predicate state body result)
-repeat : state body -> when (Repeat-Predicate state) {
-  (Continue next) -> repeat (next (do body)) body
-  (Stop result) -> result
+repeat :: condition {body} -> () where (Repeat-Condition condition) (body :: ())
+repeat : condition body -> do {
+  sequence : Repeat-Condition condition
+
+  loop (when (next sequence) {
+    (Some ()) -> do {
+      do body
+      Continue
+    }
+    None -> Break ()
+  })
 }
