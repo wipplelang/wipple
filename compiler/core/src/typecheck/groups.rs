@@ -26,35 +26,52 @@ impl Group {
     pub fn unify(
         &mut self,
         db: &mut Db,
-        tys: impl IntoIterator<Item = ConstructedTy>,
+        tys: &[ConstructedTy],
         representative: Option<Node>,
         mut unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy) -> bool,
     ) {
-        for mut ty in tys {
-            if ty.representative.is_none() {
-                ty.representative = representative;
-            }
+        // Unify against the representative type
+        let Some(mut ty) = representative
+            .and_then(|representative| representative_ty(db, tys, representative))
+            .or_else(|| tys.first())
+            .cloned()
+        else {
+            return;
+        };
 
-            if let Some(existing) = self.tys.iter_mut().find(|existing| **existing == ty) {
-                // If the type already exists, update its representative
-                let representative = match (existing.representative, ty.representative) {
-                    (None, representative) | (representative, None) => representative,
-                    (Some(existing), Some(representative)) => {
-                        // Prefer nodes that aren't type parameters
-                        if db.contains::<Instantiated>(existing)
-                            && !db.contains::<Instantiated>(representative)
-                        {
-                            Some(representative)
-                        } else {
-                            Some(existing)
-                        }
+        let index = tys.iter().position(|other| *other == ty).unwrap();
+
+        if ty.representative.is_none() {
+            ty.representative = representative;
+        }
+
+        if let Some(existing) = self.tys.iter_mut().find(|existing| **existing == ty) {
+            // If the type already exists in `self`, update its representative
+            let representative = match (existing.representative, ty.representative) {
+                (None, representative) | (representative, None) => representative,
+                (Some(existing), Some(representative)) => {
+                    // Prefer nodes that aren't type parameters
+                    if db.contains::<Instantiated>(existing)
+                        && !db.contains::<Instantiated>(representative)
+                    {
+                        Some(representative)
+                    } else {
+                        Some(existing)
                     }
-                };
+                }
+            };
 
-                existing.representative = representative;
-            } else if self.tys.is_empty() || !unify(db, &self.tys[0], &ty) {
-                // If the type cannot be unified, add it to the group separately
-                self.tys.push(ty);
+            existing.representative = representative;
+        }
+
+        if self.tys.is_empty() || !unify(db, &self.tys[0], &ty) {
+            self.tys.push(ty.clone());
+        }
+
+        // Add the remaining types as-is
+        for (other_index, other) in tys.iter().enumerate() {
+            if index != other_index {
+                self.tys.push(other.clone());
             }
         }
     }
@@ -107,7 +124,7 @@ impl Groups {
         unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy) -> bool,
     ) {
         new_group.nodes.extend(old_group.nodes);
-        new_group.unify(db, old_group.tys, None, unify);
+        new_group.unify(db, &old_group.tys, None, unify);
     }
 
     pub fn indices(&self) -> impl Iterator<Item = usize> {

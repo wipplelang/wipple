@@ -1,7 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
-  has bound(s) `Describe` `(Number or String)` (unresolved)
+  has bound(s) `Describe` `(Number or String)` (resolved as `instance (Describe Number)`)
   has type `(Number or String) -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
