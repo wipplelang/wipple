@@ -103,21 +103,26 @@ impl CompileResult {
             if let Some((_, group)) = groups.get_mut(&group.nodes) {
                 group.locations.push(location);
             } else {
+                let mut labels = group
+                    .tys
+                    .iter()
+                    .map(|ty| {
+                        let (ty, _) = update_type(&self.db, &Ty::Constructed(ty.clone()), None);
+
+                        ty.display(&self.db, None, true)
+                    })
+                    .collect::<Vec<_>>();
+
+                if labels.is_empty() {
+                    labels.push(String::from("_"))
+                }
+
                 groups.insert(
                     group.nodes.clone(),
                     (
                         group_index,
                         DiagnosticGroup {
-                            labels: group
-                                .tys
-                                .iter()
-                                .map(|ty| {
-                                    let (ty, _) =
-                                        update_type(&self.db, &Ty::Constructed(ty.clone()), None);
-
-                                    ty.display(&self.db, None, true)
-                                })
-                                .collect(),
+                            labels,
                             locations: vec![location],
                         },
                     ),
