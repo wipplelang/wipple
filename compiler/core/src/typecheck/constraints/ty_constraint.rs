@@ -66,7 +66,7 @@ impl Constraint for TyConstraint {
     }
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
-        solver.unify_with_ty(db, self.node, self.ty.clone());
+        solver.unify_with_ty(db, self.node, self.ty.clone(), None);
         RunResult::None
     }
 }

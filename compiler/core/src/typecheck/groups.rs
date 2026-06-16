@@ -28,7 +28,8 @@ impl Group {
         db: &mut Db,
         tys: &[ConstructedTy],
         representative: Option<Node>,
-        mut unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy) -> bool,
+        error: Option<&mut bool>,
+        mut unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy, Option<&mut bool>) -> bool,
     ) {
         // Unify against the representative type
         let Some(mut ty) = representative
@@ -64,7 +65,7 @@ impl Group {
             existing.representative = representative;
         }
 
-        if self.tys.is_empty() || !unify(db, &self.tys[0], &ty) {
+        if self.tys.is_empty() || !unify(db, &self.tys[0], &ty, error) {
             self.tys.push(ty.clone());
         }
 
@@ -121,10 +122,11 @@ impl Groups {
         db: &mut Db,
         old_group: Group,
         new_group: &mut Group,
-        unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy) -> bool,
+        error: Option<&mut bool>,
+        unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy, Option<&mut bool>) -> bool,
     ) {
         new_group.nodes.extend(old_group.nodes);
-        new_group.unify(db, &old_group.tys, None, unify);
+        new_group.unify(db, &old_group.tys, None, error, unify);
     }
 
     pub fn indices(&self) -> impl Iterator<Item = usize> {

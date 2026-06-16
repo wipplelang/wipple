@@ -33,7 +33,6 @@ pub struct Substitutions {
 #[derive(Debug, Default)]
 pub struct Solver {
     pub trace: bool,
-    pub error: bool,
     pub constraints: Constraints,
     pub substitutions: Vec<Substitutions>,
     pub(crate) groups: Groups,
@@ -147,15 +146,27 @@ impl Solver {
         result
     }
 
-    pub fn unify_with_node(&mut self, db: &mut Db, left: Node, right: Node) {
-        self.unify_inner(db, &Ty::Node(left), &Ty::Node(right));
+    pub fn unify_with_node(
+        &mut self,
+        db: &mut Db,
+        left: Node,
+        right: Node,
+        error: Option<&mut bool>,
+    ) {
+        self.unify_inner(db, &Ty::Node(left), &Ty::Node(right), error);
     }
 
-    pub fn unify_with_ty(&mut self, db: &mut Db, node: Node, ty: ConstructedTy) {
-        self.unify_inner(db, &Ty::Node(node), &Ty::Constructed(ty));
+    pub fn unify_with_ty(
+        &mut self,
+        db: &mut Db,
+        node: Node,
+        ty: ConstructedTy,
+        error: Option<&mut bool>,
+    ) {
+        self.unify_inner(db, &Ty::Node(node), &Ty::Constructed(ty), error);
     }
 
-    fn unify_inner(&mut self, db: &mut Db, left: &Ty, right: &Ty) {
+    fn unify_inner(&mut self, db: &mut Db, left: &Ty, right: &Ty, error: Option<&mut bool>) {
         if left == right {
             return;
         }
@@ -167,7 +178,7 @@ impl Solver {
             && let Some(original_right_node) = original_right_node
         {
             self.progress = true;
-            self.merge(db, original_left_node, original_right_node);
+            self.merge(db, original_left_node, original_right_node, error);
             return;
         }
 
@@ -177,14 +188,14 @@ impl Solver {
         match (left, right) {
             (Ty::Node(left), Ty::Node(right)) => {
                 self.progress = true;
-                self.merge(db, left, right);
+                self.merge(db, left, right, error);
             }
             (Ty::Node(node), Ty::Constructed(ty)) | (Ty::Constructed(ty), Ty::Node(node)) => {
                 self.progress = true;
                 self.insert(db, node, ty);
             }
             (Ty::Constructed(left), Ty::Constructed(right)) => {
-                if !self.unify_inner_constructed(db, &left, &right) {
+                if !self.unify_inner_constructed(db, &left, &right, error) {
                     // Report conflicts on the original nodes
 
                     if let Some(original_left_node) = original_left_node {
@@ -204,18 +215,27 @@ impl Solver {
         db: &mut Db,
         left: &ConstructedTy,
         right: &ConstructedTy,
+        mut error: Option<&mut bool>,
     ) -> bool {
         let left_child_count = left.children.len();
         let right_child_count = right.children.len();
 
         if left.tag == right.tag {
             for (&left_child, &right_child) in std::iter::zip(&left.children, &right.children) {
-                self.unify_inner(db, &Ty::Node(left_child), &Ty::Node(right_child));
+                self.unify_inner(
+                    db,
+                    &Ty::Node(left_child),
+                    &Ty::Node(right_child),
+                    error.as_deref_mut(),
+                );
             }
         }
 
         if left.tag != right.tag || left_child_count != right_child_count {
-            self.error = true;
+            if let Some(error) = error {
+                *error = true;
+            }
+
             return false;
         }
 
@@ -227,15 +247,22 @@ impl Solver {
         db: &mut Db,
         left: &BTreeMap<Node, Ty>,
         right: &BTreeMap<Node, Ty>,
+        mut error: Option<&mut bool>,
     ) {
         for (parameter, left) in left.iter() {
             if let Some(right) = right.get(parameter) {
-                self.unify_inner(db, left, right);
+                self.unify_inner(db, left, right, error.as_deref_mut());
             }
         }
     }
 
-    pub fn merge(&mut self, db: &mut Db, left_node: Node, right_node: Node) {
+    pub fn merge(
+        &mut self,
+        db: &mut Db,
+        left_node: Node,
+        right_node: Node,
+        error: Option<&mut bool>,
+    ) {
         db.get_mut_or_default::<GroupedWith>(left_node)
             .0
             .push(right_node);
@@ -265,9 +292,13 @@ impl Solver {
         if let Some(index) = index {
             let mut new_group = self.groups.remove_existing(index);
 
-            Groups::merge(db, group, &mut new_group, |db, left, right| {
-                self.unify_inner_constructed(db, left, right)
-            });
+            Groups::merge(
+                db,
+                group,
+                &mut new_group,
+                error,
+                |db, left, right, error| self.unify_inner_constructed(db, left, right, error),
+            );
 
             self.groups.insert(new_group);
         } else {

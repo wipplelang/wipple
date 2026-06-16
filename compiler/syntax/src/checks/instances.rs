@@ -69,9 +69,15 @@ pub fn check_for_overlapping_instances(
         for (left_instance, right_instance) in instances.into_iter().tuple_combinations() {
             let mut copy = solver.copy();
 
-            copy.unify_parameters(db, &left_instance.parameters, &right_instance.parameters);
+            let mut error = false;
+            copy.unify_parameters(
+                db,
+                &left_instance.parameters,
+                &right_instance.parameters,
+                Some(&mut error),
+            );
 
-            if copy.error {
+            if error {
                 continue;
             }
 

@@ -190,12 +190,16 @@ impl Constraint for BoundConstraint {
                     }
                 }
 
-                copy.error = false;
+                let mut error = false;
+                copy.unify_parameters(
+                    db,
+                    &instance_parameters,
+                    &bound_parameters,
+                    Some(&mut error),
+                );
 
-                copy.unify_parameters(db, &instance_parameters, &bound_parameters);
-
-                if !copy.error {
-                    copy.unify_parameters(db, &instance_inferred, &bound_inferred);
+                if !error {
+                    copy.unify_parameters(db, &instance_inferred, &bound_inferred, None);
 
                     let (_, parameters) = copy.get_substitutions(substitutions);
 

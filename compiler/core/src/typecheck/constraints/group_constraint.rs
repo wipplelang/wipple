@@ -53,7 +53,7 @@ impl Constraint for GroupConstraint {
     }
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
-        solver.unify_with_node(db, self.node, self.other);
+        solver.unify_with_node(db, self.node, self.other, None);
 
         RunResult::None
     }
