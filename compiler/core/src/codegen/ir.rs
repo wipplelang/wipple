@@ -3,6 +3,7 @@ use crate::{
     db::Node,
     span::{Span, Str},
 };
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Default)]
@@ -17,7 +18,7 @@ pub enum DefinitionKey {
     Constant(ConstantDefinitionKey),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct ConstantDefinitionKey {
     pub node: Node,
     pub bounds: BTreeMap<Vec<Node>, Instance>,
@@ -42,7 +43,7 @@ pub enum TypeRepresentation {
     Enumeration(Vec<Vec<Type>>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Instance {
     Bound(Vec<Node>),
     Definition(ConstantDefinitionKey),

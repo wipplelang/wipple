@@ -87,7 +87,7 @@ impl Db {
                         edges.push((index, None));
                     }
 
-                    result.push((index, trace_primary_node, entry.clone()));
+                    result.push((trace_index, trace_primary_node, entry.clone()));
                 }
 
                 for node in trace_nodes {

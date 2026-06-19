@@ -172,22 +172,22 @@ Feedback:
 
   1. `2`: `2` is a `Number`.
 
-  2. `show 1 + 2`: `show 1 + 2` adds `show 1` and `2` together, returning a `_`.
+  2. `show 1 + 2`: `show 1 + 2` adds `show 1` and `2` together, returning a `_`. This requires `Add` `()` `Number` `_`.
 
-  3. `1 + "hi"`: `1 + "hi"` adds `1` and `"hi"` together, returning a `_`.
+  3. `1 + "hi"`: `1 + "hi"` adds `1` and `"hi"` together, returning a `_`. This requires `Add` `Number` `String` `_`.
 
   4. `show`: `show` displays `1 + "hi"` on the screen.
 
-  5. `show`: `show` displays `1` on the screen.
+  5. `show`: `show` displays `1` on the screen. This requires `Describe` `Number`.
 
   6. `1`: `1` is a `Number`.
 
-  7. `show`: `show` displays `True` on the screen.
+  7. `show`: `show` displays `True` on the screen. This requires `Describe` `Boolean`.
 
   8. `1`: `1` is a `Number`.
 
   9. `"hi"`: `"hi"` is a `String`.
 
-  10. `show True or False`: `show True or False` returns `True` if either side is `True`.
+  10. `show True or False`: `show True or False` returns `True` if either side is `True`. This requires `Or` `()` `Boolean` `_`.
 
   (2 -> error, 2 -> 1, 3 -> 2, 4 -> 3, 5 -> 4, 6 -> 5, 7 -> 4, 7 -> 5, 8 -> 3, 9 -> 3)

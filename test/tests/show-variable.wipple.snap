@@ -71,6 +71,6 @@ Feedback:
 
   1. `my-variable`: `my-variable` is `Cannot-Be-Shown`. This means `Cannot-Be-Shown`, `my-variable`, and `my-variable` must be a `Cannot-Be-Shown`.
 
-  2. `show`: `show` displays `my-variable` on the screen.
+  2. `show`: `show` displays `my-variable` on the screen. This requires `Describe` `Cannot-Be-Shown`.
 
   (2 -> error, 2 -> 1)

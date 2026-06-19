@@ -405,13 +405,13 @@ Feedback:
 
   2. `_`: `_` is `() + 2`. This means `() + 2`, `() + 2`, and `_` must be a `_`.
 
-  3. `() + 2`: `() + 2` is a `() Number -> _`.
+  3. `() + 2`: `() + 2` is a `() Number -> _`. This requires `Add` `()` `Number` `_`.
 
-  4. `1 + 2`: `1 + 2` is a `Number Number -> Number`.
+  4. `1 + 2`: `1 + 2` is a `Number Number -> Number`. This requires `Add` `Number` `Number` `Number`.
 
-  5. `"a" + "b"`: `"a" + "b"` is a `String String -> String`.
+  5. `"a" + "b"`: `"a" + "b"` is a `String String -> String`. This requires `Add` `String` `String` `String`.
 
-  6. `1 + "a"`: `1 + "a"` is a `Number String -> _`.
+  6. `1 + "a"`: `1 + "a"` is a `Number String -> _`. This requires `Add` `Number` `String` `_`.
 
   7. `1`: `1` is a `Number`.
 

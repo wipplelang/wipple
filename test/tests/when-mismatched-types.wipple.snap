@@ -67,7 +67,7 @@ Feedback:
   
   `when True {⋯}` must be the same type as `42` and `"hi"`; double-check these.
 
-  1. `show`: `show` displays `when True {⋯}` on the screen.
+  1. `show`: `show` displays `when True {⋯}` on the screen. This requires `Describe` `(String or Number)`.
 
   2. `42`: `42` is a `Number`.
 
@@ -82,7 +82,7 @@ Feedback:
   
   `42` must be the same type as `when True {⋯}` and `"hi"`; double-check these.
 
-  1. `show`: `show` displays `when True {⋯}` on the screen.
+  1. `show`: `show` displays `when True {⋯}` on the screen. This requires `Describe` `(String or Number)`.
 
   2. `42`: `42` is a `Number`.
 
@@ -97,7 +97,7 @@ Feedback:
   
   `"hi"` must be the same type as `when True {⋯}` and `42`; double-check these.
 
-  1. `show`: `show` displays `when True {⋯}` on the screen.
+  1. `show`: `show` displays `when True {⋯}` on the screen. This requires `Describe` `(String or Number)`.
 
   2. `42`: `42` is a `Number`.
 

@@ -64,11 +64,11 @@ Feedback:
   
   Try rewriting this code as `(`5` times)`, or double-check your parentheses.
 
-  1. `repeat`: `repeat` runs `show "Hello, world!"` repeatedly.
+  1. `repeat`: `repeat` runs `show "Hello, world!"` repeatedly. This requires `Repeat-Condition` `Number`.
 
   2. `5`: `5` is a `Number`.
 
-  3. `show`: `show` displays `"Hello, world!"` on the screen.
+  3. `show`: `show` displays `"Hello, world!"` on the screen. This requires `Describe` `String`.
 
   4. `"Hello, world!"`: `"Hello, world!"` is a `String`.
 

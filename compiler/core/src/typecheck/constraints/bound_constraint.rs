@@ -4,8 +4,8 @@ use crate::{
     typecheck::{
         bounds::{Bound, Bounds, Instance, Instances, ResolvedBound, UnresolvedBound},
         constraints::{
-            AnyConstraintTrace, Constraint, ConstraintKind, ConstraintTrace, RunResult, Solver,
-            instantiate_constraint::InstantiateConstraint,
+            AnyConstraintTrace, Constraint, ConstraintConsequence, ConstraintKind, ConstraintTrace,
+            RunResult, Solver, instantiate_constraint::InstantiateConstraint,
         },
         instantiate::InstantiateCtx,
         ty::Ty,
@@ -223,7 +223,6 @@ impl Constraint for BoundConstraint {
             let mut resolved_parameters = BTreeMap::new();
             resolved_parameters.extend(bound_parameters.clone());
             resolved_parameters.extend(bound_inferred.clone());
-
             // Allow multiple candidates (picking the first) if considering implied
             // instances
             let has_candidate = if keep_generic {
@@ -252,6 +251,11 @@ impl Constraint for BoundConstraint {
                         }),
                     );
 
+                solver.add_consequence(
+                    db,
+                    ConstraintConsequence::Instance(self.bound.source_node, instance),
+                );
+
                 return RunResult::Enqueue(Vec::from_iter(constraints));
             } else if candidates.len() > 1 {
                 for candidate in candidates {
@@ -271,6 +275,19 @@ impl Constraint for BoundConstraint {
                             parameters: resolved_parameters.clone(),
                         }),
                     );
+
+                solver.add_consequence(
+                    db,
+                    ConstraintConsequence::Instance(
+                        self.bound.source_node,
+                        Instance {
+                            node: self.bound.bound_node,
+                            trait_node: self.bound.trait_node,
+                            parameters: resolved_parameters.clone(),
+                            is_from_bound: false,
+                        },
+                    ),
+                );
 
                 break;
             }

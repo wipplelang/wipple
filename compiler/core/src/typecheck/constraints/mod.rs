@@ -9,6 +9,7 @@ use crate::{
     render::{Render, RenderCtx},
     traces::TracesEntry,
     typecheck::{
+        bounds::Instance,
         groups::Typed,
         instantiate::InstantiateCtx,
         solver::Solver,
@@ -119,6 +120,7 @@ impl DerefMut for AnyConstraintTrace {
 pub enum ConstraintConsequence {
     Group(Node),
     Ty(Node, ConstructedTy),
+    Instance(Node, Instance),
 }
 
 impl ConstraintConsequence {
@@ -126,6 +128,7 @@ impl ConstraintConsequence {
         match *self {
             ConstraintConsequence::Group(node) => node,
             ConstraintConsequence::Ty(node, _) => node,
+            ConstraintConsequence::Instance(node, _) => node,
         }
     }
 }
@@ -163,6 +166,11 @@ impl Render for ConstraintConsequence {
                 ctx.node(*node);
                 ctx.string(" is a ");
                 ctx.ty(db, &Ty::Constructed(ty.clone()), true);
+                ctx.string(".");
+            }
+            ConstraintConsequence::Instance(_, instance) => {
+                ctx.string("This requires ");
+                ctx.render(db, instance);
                 ctx.string(".");
             }
         }

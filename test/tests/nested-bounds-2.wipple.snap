@@ -232,6 +232,6 @@ Feedback:
   
   Double-check that these types are correct.
 
-  1. `T`: `T` is a `()`.
+  1. `T`: `T` is a `()`. This requires `T` `_`.
 
   (1 -> error)

@@ -572,7 +572,7 @@ Feedback:
   
   `output` must be the same type as `add-infer 1 2` and `String`; double-check these.
 
-  1. `add-infer`: `add-infer` is a `Number Number -> Number or String`.
+  1. `add-infer`: `add-infer` is a `Number Number -> Number or String`. This requires `Add-Infer` `Number` `Number` `(Number or String)`.
 
   2. `1`: `1` is a `Number`.
 
@@ -587,7 +587,7 @@ Feedback:
   
   `add-infer 1 2` must be the same type as `String` and `output`; double-check these.
 
-  1. `add-infer`: `add-infer` is a `Number Number -> Number or String`.
+  1. `add-infer`: `add-infer` is a `Number Number -> Number or String`. This requires `Add-Infer` `Number` `Number` `(Number or String)`.
 
   2. `1`: `1` is a `Number`.
 

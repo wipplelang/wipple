@@ -93,7 +93,7 @@ Feedback:
   
   `1` must be the same type as `x`, `String`, `x`, and 2 others; double-check these.
 
-  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `f`.
+  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `f`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
 
   2. `3`: `3` is a `Number`.
 
@@ -110,7 +110,7 @@ Feedback:
   
   `2` must be the same type as `x`, `String`, `x`, and 2 others; double-check these.
 
-  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `f`.
+  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `f`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
 
   2. `3`: `3` is a `Number`.
 
@@ -127,7 +127,7 @@ Feedback:
   
   `3` must be the same type as `x`, `String`, `x`, and 2 others; double-check these.
 
-  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `f`.
+  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `f`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
 
   2. `3`: `3` is a `Number`.
 

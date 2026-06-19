@@ -427,7 +427,7 @@ Feedback:
   
   `String` must be the same type as `_` and `Number`; double-check these.
 
-  1. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`.
+  1. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`. This requires `As-Sequence` `(Box (String or Number))` `(String or Number)`.
 
   2. `_`: `_` is annotated with the type `Box String`.
 
@@ -442,7 +442,7 @@ Feedback:
   
   `_` must be the same type as `String` and `Number`; double-check these.
 
-  1. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`.
+  1. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`. This requires `As-Sequence` `(Box (String or Number))` `(String or Number)`.
 
   2. `_`: `_` is annotated with the type `Box String`.
 
@@ -457,7 +457,7 @@ Feedback:
   
   `Number` must be the same type as `String` and `_`; double-check these.
 
-  1. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`.
+  1. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`. This requires `As-Sequence` `(Box (String or Number))` `(String or Number)`.
 
   2. `_`: `_` is annotated with the type `Box String`.
 

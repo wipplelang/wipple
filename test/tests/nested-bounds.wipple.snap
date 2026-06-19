@@ -256,11 +256,11 @@ Feedback:
   
   Double-check that these types are correct.
 
-  1. `B`: `B` is a `() -> ()`.
+  1. `B`: `B` is a `() -> ()`. This requires `B` `()`.
 
-  2. `B`: `B` is a `Number -> ()`.
+  2. `B`: `B` is a `Number -> ()`. This requires `B` `Number`.
 
-  3. `B`: `B` is a `String -> ()`.
+  3. `B`: `B` is a `String -> ()`. This requires `B` `String`.
 
   4. `123`: `123` is a `Number`.
 
