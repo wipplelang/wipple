@@ -1,15 +1,15 @@
 use crate::{
     db::{Db, Fact, Node},
-    render::Render,
+    render::{Render, RenderCtx},
     typecheck::{
         bounds::Instance,
-        constraints::{ConstraintConsequence, Constraints},
-        groups::{Group, Groups, representative_ty},
+        constraints::{ConstraintConsequence, ConstraintKind, Constraints},
+        groups::{AssignedType, Group, Groups, representative_ty},
         ty::{ConstructedTy, Ty},
     },
 };
 use serde::{Deserialize, Serialize};
-use std::{any::TypeId, collections::BTreeMap, mem, ops::Range};
+use std::{collections::BTreeMap, mem, ops::Range};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct GroupedWith(pub Vec<Node>);
@@ -17,7 +17,19 @@ pub struct GroupedWith(pub Vec<Node>);
 #[typetag::serde]
 impl Fact for GroupedWith {}
 
-impl Render for GroupedWith {}
+impl Render for GroupedWith {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+        ctx.string("grouped with ");
+
+        for (index, node) in self.0.iter().enumerate() {
+            if index > 0 {
+                ctx.string(", ");
+            }
+
+            ctx.node(*node);
+        }
+    }
+}
 
 static ITERATION_LIMIT: usize = 32;
 
@@ -38,11 +50,13 @@ pub struct Solver {
     pub(crate) groups: Groups,
     pub(crate) implied_instances: Vec<Instance>,
     pub(crate) active_traces: Range<usize>,
-    pub(crate) progress: bool,
-    iterations: usize,
 }
 
 impl Solver {
+    pub fn new() -> Self {
+        Default::default()
+    }
+
     pub fn copy(&self) -> Self {
         Solver {
             groups: self.groups.clone(),
@@ -58,39 +72,29 @@ impl Solver {
         other.constraints
     }
 
-    pub fn into_sorted_groups<K: Ord>(mut self, db: &Db, key: impl FnMut(Node) -> K) -> Vec<Group> {
+    pub fn into_groups(mut self, db: &Db) -> Vec<Group> {
         self.apply_all(db);
-        self.groups.into_sorted_groups(key)
+        self.groups.into_vec()
     }
 
     pub fn run(&mut self, db: &mut Db) {
-        loop {
-            self.progress = false;
-
-            self.run_pass_until(db, None);
-
-            if !self.progress {
-                break;
+        let mut iterations = 0;
+        while !self.constraints.is_empty() {
+            if iterations >= ITERATION_LIMIT {
+                return;
             }
-        }
 
-        // Run a final pass
-        self.run_pass_until(db, None);
+            self.run_pass(db, ConstraintKind::Ty);
+            self.run_pass(db, ConstraintKind::Bound);
+
+            iterations += 1;
+        }
     }
 
-    pub fn run_pass_until(&mut self, db: &mut Db, stop: Option<TypeId>) {
-        if self.iterations >= ITERATION_LIMIT {
-            return;
-        }
-
+    pub fn run_pass(&mut self, db: &mut Db, kind: ConstraintKind) {
         let mut constraints = mem::take(&mut self.constraints);
-        constraints.run_until(db, self, stop);
-        if !self.progress {
-            constraints.run_defaults(db, self);
-        }
-
+        constraints.run(db, self, kind);
         self.constraints = constraints;
-        self.iterations += 1;
     }
 
     pub fn imply(&mut self, instance: Instance) {
@@ -146,24 +150,12 @@ impl Solver {
         result
     }
 
-    pub fn unify_with_node(
-        &mut self,
-        db: &mut Db,
-        left: Node,
-        right: Node,
-        error: Option<&mut bool>,
-    ) {
-        self.unify_inner(db, &Ty::Node(left), &Ty::Node(right), error);
-    }
+    pub fn unify(&mut self, db: &mut Db, node: Node, ty: &Ty, error: Option<&mut bool>) {
+        if !db.contains::<AssignedType>(node) {
+            db.insert(node, AssignedType(ty.clone()));
+        }
 
-    pub fn unify_with_ty(
-        &mut self,
-        db: &mut Db,
-        node: Node,
-        ty: ConstructedTy,
-        error: Option<&mut bool>,
-    ) {
-        self.unify_inner(db, &Ty::Node(node), &Ty::Constructed(ty), error);
+        self.unify_inner(db, &Ty::Node(node), ty, error);
     }
 
     fn unify_inner(&mut self, db: &mut Db, left: &Ty, right: &Ty, error: Option<&mut bool>) {
@@ -177,7 +169,6 @@ impl Solver {
         if let Some(original_left_node) = original_left_node
             && let Some(original_right_node) = original_right_node
         {
-            self.progress = true;
             self.merge(db, original_left_node, original_right_node, error);
             return;
         }
@@ -187,11 +178,9 @@ impl Solver {
 
         match (left, right) {
             (Ty::Node(left), Ty::Node(right)) => {
-                self.progress = true;
                 self.merge(db, left, right, error);
             }
             (Ty::Node(node), Ty::Constructed(ty)) | (Ty::Constructed(ty), Ty::Node(node)) => {
-                self.progress = true;
                 self.insert(db, node, ty);
             }
             (Ty::Constructed(left), Ty::Constructed(right)) => {

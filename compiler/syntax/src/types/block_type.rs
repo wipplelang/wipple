@@ -5,7 +5,10 @@ use wipple_core::{
     ast::AstKey,
     db::{Db, Node},
     span::Span,
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::ConstructedTy},
+    typecheck::{
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
+    },
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -42,6 +45,9 @@ impl Visit for BlockType {
         let output = visitor.visit(db, &self.output);
         db.graph.edge(output, node, "output");
 
-        visitor.constraint(db, TyConstraint::new(node, ConstructedTy::block(output)));
+        visitor.constraint(
+            db,
+            TyConstraint::new(node, Ty::Constructed(ConstructedTy::block(output))),
+        );
     }
 }

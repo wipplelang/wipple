@@ -1,12 +1,16 @@
 Facts (layer 2):
 
 `T : value => trait value` (TraitDefinition):
+  assigned type `value`
+  grouped with `value`
   has definition constraints
   has type `value`
   has type parameters
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -14,18 +18,25 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `T : value => trait value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `f :: Number where (T value)` (ConstantDefinition):
+  assigned type `Number`
+  grouped with `Number`, `T`
   has definition constraints
   has type `Number`
   has type parameters
   is a definition
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `f :: Number where (T value)`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
@@ -37,6 +48,8 @@ Facts (layer 2):
   resolved to 1 definition(s): `T : value => trait value`
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -44,9 +57,12 @@ Facts (layer 2):
   type is annotated
 
 `f : T` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `T` (ConstructorExpression):
+  assigned type `Number`
+  grouped with `value`, `f :: Number where (T value)`
   has bound(s) `T` `Number` (unresolved)
   has type `Number`
   is an expression

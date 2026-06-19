@@ -1,26 +1,36 @@
 Facts (layer 2):
 
 `A : type` (TypeDefinition):
+  assigned type `A`
+  grouped with `A : type`
   has definition constraints
   has type `A`
   is a definition
 
 `A : type` (TypeDefinition):
+  assigned type `A`
+  grouped with `A : type`
   has definition constraints
   has type `A`
   is a definition
 
 `B : type` (TypeDefinition):
+  assigned type `B`
+  grouped with `B : type`
   has definition constraints
   has type `B`
   is a definition
 
 `B : type` (TypeDefinition):
+  assigned type `B`
+  grouped with `B : type`
   has definition constraints
   has type `B`
   is a definition
 
 `T : value => trait (value -> ())` (TraitDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`
   has 1 instances
   has definition constraints
   has type `value -> ()`
@@ -28,6 +38,8 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -35,28 +47,38 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `value -> ()` (FunctionType):
+  assigned type `value -> ()`
+  grouped with `T : value => trait (value -> ())`
   has type `value -> ()`
   is a type
   type is annotated
 
 `()` (UnitType):
+  assigned type `()`
   has type `()`
   is a type
   type is annotated
 
 `U : value => trait (value -> ())` (TraitDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`
   has definition constraints
   has type `value -> ()`
   has type parameters
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -64,22 +86,30 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `value -> ()` (FunctionType):
+  assigned type `value -> ()`
+  grouped with `U : value => trait (value -> ())`
   has type `value -> ()`
   is a type
   type is annotated
 
 `()` (UnitType):
+  assigned type `()`
   has type `()`
   is a type
   type is annotated
 
 `instance (T value) where (U value)` (InstanceDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`, `_`
   has definition constraints
   has type `value -> ()`
   has type parameters
@@ -87,6 +117,8 @@ Facts (layer 2):
   resolved to 1 definition(s): `T : value => trait (value -> ())`
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -99,22 +131,31 @@ Facts (layer 2):
   resolved to 1 definition(s): `U : value => trait (value -> ())`
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `_` (PlaceholderExpression):
+  assigned type `value -> ()`
+  grouped with `instance (T value) where (U value)`
   has type `value -> ()`
   is an expression
 
 `t :: value -> () where (U value)` (ConstantDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`, `T`
   has definition constraints
   has type `value -> ()`
   has type parameters
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -122,11 +163,15 @@ Facts (layer 2):
   type is annotated
 
 `value -> ()` (FunctionType):
+  assigned type `value -> ()`
+  grouped with `t :: value -> () where (U value)`
   has type `value -> ()`
   is a type
   type is annotated
 
 `()` (UnitType):
+  assigned type `()`
+  grouped with `()`
   has type `()`
   is a type
   type is annotated
@@ -137,15 +182,21 @@ Facts (layer 2):
   resolved to 1 definition(s): `U : value => trait (value -> ())`
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `t : T` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `T` (ConstructorExpression):
+  assigned type `value -> ()`
+  grouped with `value -> ()`, `t :: value -> () where (U value)`
   has bound(s) `T` `value` (resolved as `instance (T value) where (U value)`), `U` `value` (resolved as `(U value)`)
   has type `value -> ()`
   is an expression

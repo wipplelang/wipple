@@ -11,7 +11,10 @@ use wipple_core::{
     db::{Db, Node},
     facts::Syntax,
     span::Span,
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::ConstructedTy},
+    typecheck::{
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
+    },
     visit::{Captures, Visit, Visitor},
 };
 use wipple_parse::{
@@ -61,7 +64,10 @@ impl Visit for BlockExpression {
 
         let unit_value = statements.is_empty().then(|| {
             let node = db.node();
-            visitor.constraint(db, TyConstraint::new(node, ConstructedTy::unit()));
+            visitor.constraint(
+                db,
+                TyConstraint::new(node, Ty::Constructed(ConstructedTy::unit())),
+            );
             node
         });
 
@@ -69,7 +75,9 @@ impl Visit for BlockExpression {
             db,
             TyConstraint::new(
                 node,
-                ConstructedTy::block(unit_value.or_else(|| statements.last().copied()).unwrap()),
+                Ty::Constructed(ConstructedTy::block(
+                    unit_value.or_else(|| statements.last().copied()).unwrap(),
+                )),
             ),
         );
 

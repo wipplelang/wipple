@@ -1,12 +1,16 @@
 Facts (layer 2):
 
 `f :: value -> value` (ConstantDefinition):
+  assigned type `value -> value`
+  grouped with `value -> value`, `x -> x`
   has definition constraints
   has type `value -> value`
   has type parameters
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `x`
   has type `value`
   is a definition
   is a type
@@ -14,41 +18,57 @@ Facts (layer 2):
   type is annotated
 
 `value -> value` (FunctionType):
+  assigned type `value -> value`
+  grouped with `f :: value -> value`
   has type `value -> value`
   is a type
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `x`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `f : x -> x` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `x` (VariablePattern):
+  assigned type `value`
+  grouped with `x`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `x -> x` (FunctionExpression):
+  assigned type `value -> value`
+  grouped with `f :: value -> value`
   has type `value -> value`
   is an expression
 
 `x` (VariableExpression):
+  assigned type `value`
+  grouped with `x`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
   type is annotated
 
 `g :: value -> value` (ConstantDefinition):
+  assigned type `value -> value`
+  grouped with `value -> value`, `x -> f x`
   has definition constraints
   has type `value -> value`
   has type parameters
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `x`
   has type `value`
   is a definition
   is a type
@@ -56,63 +76,85 @@ Facts (layer 2):
   type is annotated
 
 `value -> value` (FunctionType):
+  assigned type `value -> value`
+  grouped with `g :: value -> value`
   has type `value -> value`
   is a type
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `f x`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `g : x -> f x` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `x` (VariablePattern):
+  assigned type `value`
+  grouped with `x`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `x -> f x` (FunctionExpression):
+  assigned type `value -> value`
+  grouped with `g :: value -> value`
   has type `value -> value`
   is an expression
 
 `f` (VariableExpression):
+  assigned type `value -> value`
+  grouped with `value -> value`
   has type `value -> value`
   is an expression
   resolved to 1 definition(s): `f :: value -> value`
 
 `f x` (CallExpression):
+  grouped with `value`, `value`
   has type `value`
   is an expression
 
 `x` (VariableExpression):
+  assigned type `value`
+  grouped with `x`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
   type is annotated
 
 `_` (WildcardPattern):
+  assigned type `Number`
+  grouped with `g 42`, `g 42`
   has type `Number`
   is a pattern
 
 `_ : g 42` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `g` (VariableExpression):
+  assigned type `Number -> Number`
+  grouped with `value -> value`
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `g :: value -> value`
 
 `g 42` (CallExpression):
+  grouped with `value`, `_`, `_`
   has type `Number`
   is an expression
 
 `42` (NumberExpression):
+  assigned type `Number`
+  grouped with `42`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

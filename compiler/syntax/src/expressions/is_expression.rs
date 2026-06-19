@@ -11,7 +11,7 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::{Span, Str},
-    typecheck::constraints::group_constraint::GroupConstraint,
+    typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -83,8 +83,8 @@ impl Visit for IsExpression {
         );
         let false_node = visitor.visit(db, &false_node);
 
-        visitor.constraint(db, GroupConstraint::new(node, true_node));
-        visitor.constraint(db, GroupConstraint::new(node, false_node));
+        visitor.constraint(db, TyConstraint::new(node, Ty::Node(true_node)));
+        visitor.constraint(db, TyConstraint::new(node, Ty::Node(false_node)));
 
         visitor.codegen(
             db,

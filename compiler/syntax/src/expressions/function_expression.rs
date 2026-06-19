@@ -12,7 +12,7 @@ use wipple_core::{
     span::Span,
     typecheck::{
         constraints::{ConstraintTrace, ty_constraint::TyConstraint},
-        ty::ConstructedTy,
+        ty::{ConstructedTy, Ty},
     },
     visit::{Captures, Visit, Visitor},
 };
@@ -87,13 +87,14 @@ impl Visit for FunctionExpression {
 
         visitor.pop_scope(db);
 
-        let mut constraint =
-            TyConstraint::new(node, ConstructedTy::function(inputs.clone(), output)).with_trace(
-                FunctionOutputConstraintTrace {
-                    function: node,
-                    output,
-                },
-            );
+        let mut constraint = TyConstraint::new(
+            node,
+            Ty::Constructed(ConstructedTy::function(inputs.clone(), output)),
+        )
+        .with_trace(FunctionOutputConstraintTrace {
+            function: node,
+            output,
+        });
 
         for &input in &inputs {
             constraint = constraint.with_trace(FunctionInputConstraintTrace {

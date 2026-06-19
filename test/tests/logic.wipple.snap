@@ -1,158 +1,220 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (if (True and False) {"a"} {"b"})` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (if (True and False) {"a"} {"b"})`
   has type `()`
 
 `show (if (True and False) {"a"} {"b"})` (CallExpression):
+  grouped with `()`, `show (if (True and False) {"a"} {"b"})`
   has type `()`
   is an expression
 
 `if` (VariableExpression):
+  assigned type `Boolean {String} {String} -> String`
+  grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
   has type `Boolean {String} {String} -> String`
   is an expression
   resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
 
 `if (True and False) {"a"} {"b"}` (CallExpression):
+  grouped with `output :: value`, `value`
   has type `String`
   is an expression
 
 `True` (VisitAs):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `left`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `True and False` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `True and False`, `condition :: Boolean`
   has type `Boolean`
   is an expression
 
 `True and False` (CallExpression):
+  grouped with `output`, `True and False`
   has type `Boolean`
   is an expression
 
 `True and False` (ConstructorExpression):
+  assigned type `Boolean {Boolean} -> Boolean`
+  grouped with `left {right} -> output`
   has bound(s) `And` `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
   is an expression
   resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)`
 
 `False` (VisitAs):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `False`, `False`, `right`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `False` (VisitAs):
+  assigned type `{Boolean}`
+  grouped with `{right}`
   has type `{Boolean}`
   is an expression
 
 `False` (ExpressionStatement):
+  assigned type `Boolean`
+  grouped with `False`, `False`
   has type `Boolean`
 
 `{"a"}` (BlockExpression):
+  assigned type `{String}`
+  grouped with `{(then :: value)}`
   has type `{String}`
   is an expression
 
 `"a"` (ExpressionStatement):
+  assigned type `String`
+  grouped with `"a"`, `then :: value`
   has type `String`
 
 `"a"` (StringExpression):
+  assigned type `String`
+  grouped with `"a"`, `"a"`
   has type `String`
   is an expression
-  type is annotated
 
 `{"b"}` (BlockExpression):
+  assigned type `{String}`
+  grouped with `{(else :: value)}`
   has type `{String}`
   is an expression
 
 `"b"` (ExpressionStatement):
+  assigned type `String`
+  grouped with `"b"`, `else :: value`
   has type `String`
 
 `"b"` (StringExpression):
+  assigned type `String`
+  grouped with `"b"`, `"b"`
   has type `String`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (if (True or False) {"a"} {"b"})` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (if (True or False) {"a"} {"b"})`
   has type `()`
 
 `show (if (True or False) {"a"} {"b"})` (CallExpression):
+  grouped with `()`, `show (if (True or False) {"a"} {"b"})`
   has type `()`
   is an expression
 
 `if` (VariableExpression):
+  assigned type `Boolean {String} {String} -> String`
+  grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
   has type `Boolean {String} {String} -> String`
   is an expression
   resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
 
 `if (True or False) {"a"} {"b"}` (CallExpression):
+  grouped with `output :: value`, `value`
   has type `String`
   is an expression
 
 `True` (VisitAs):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `left`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `True or False` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `True or False`, `condition :: Boolean`
   has type `Boolean`
   is an expression
 
 `True or False` (CallExpression):
+  grouped with `output`, `True or False`
   has type `Boolean`
   is an expression
 
 `True or False` (ConstructorExpression):
+  assigned type `Boolean {Boolean} -> Boolean`
+  grouped with `left {right} -> output`
   has bound(s) `Or` `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
   is an expression
   resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)`
 
 `False` (VisitAs):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `False`, `False`, `right`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `False` (VisitAs):
+  assigned type `{Boolean}`
+  grouped with `{right}`
   has type `{Boolean}`
   is an expression
 
 `False` (ExpressionStatement):
+  assigned type `Boolean`
+  grouped with `False`, `False`
   has type `Boolean`
 
 `{"a"}` (BlockExpression):
+  assigned type `{String}`
+  grouped with `{(then :: value)}`
   has type `{String}`
   is an expression
 
 `"a"` (ExpressionStatement):
+  assigned type `String`
+  grouped with `"a"`, `then :: value`
   has type `String`
 
 `"a"` (StringExpression):
+  assigned type `String`
+  grouped with `"a"`, `"a"`
   has type `String`
   is an expression
-  type is annotated
 
 `{"b"}` (BlockExpression):
+  assigned type `{String}`
+  grouped with `{(else :: value)}`
   has type `{String}`
   is an expression
 
 `"b"` (ExpressionStatement):
+  assigned type `String`
+  grouped with `"b"`, `else :: value`
   has type `String`
 
 `"b"` (StringExpression):
+  assigned type `String`
+  grouped with `"b"`, `"b"`
   has type `String`
   is an expression
-  type is annotated
 
 
 Output:

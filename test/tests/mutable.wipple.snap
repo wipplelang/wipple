@@ -1,66 +1,88 @@
 Facts (layer 2):
 
 `x` (VariablePattern):
+  assigned type `Number`
+  grouped with `1`, `1`, `x`, `set x`, `x`
   has type `Number`
   is a definition
   is a pattern
   is mutated
 
 `x : 1` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `x`, `x`
   has type `Number`
   is an expression
-  type is annotated
 
 `set x` (SetPattern):
+  assigned type `Number`
+  grouped with `x + 1`, `x`, `x + 1`
   has type `Number`
   is a pattern
   resolved to 1 definition(s): `x`
 
 `set x : x + 1` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `x` (VariableExpression):
+  assigned type `Number`
+  grouped with `x`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `x`
   type is annotated
 
 `x + 1` (OperatorExpression):
+  assigned type `Number`
+  grouped with `x + 1`, `set x`, `set x`
   has type `Number`
   is an expression
 
 `x + 1` (CallExpression):
+  grouped with `sum`, `x + 1`
   has type `Number`
   is an expression
 
 `x + 1` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show x` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show x`
   has type `()`
 
 `show x` (CallExpression):
+  grouped with `()`, `show x`
   has type `()`
   is an expression
 
 `x` (VariableExpression):
+  assigned type `Number`
+  grouped with `x`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `x`

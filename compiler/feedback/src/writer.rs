@@ -74,8 +74,12 @@ impl FeedbackWriter<'_> {
                 continue;
             }
 
+            if db.contains::<Annotated>(node) {
+                // Hide obvious traces
+                continue;
+            }
+
             let mut ctx = RenderCtx::with_filter(self.ctx.filter);
-            ctx.representative = entry.trace.source_node;
             entry.trace.render_into(db, &mut ctx);
 
             if !ctx.is_empty() {
@@ -107,7 +111,6 @@ impl FeedbackWriter<'_> {
                     }
 
                     let mut consequence_ctx = RenderCtx::with_filter(self.ctx.filter);
-                    consequence_ctx.representative = entry.trace.source_node;
                     consequence.render_into(db, &mut consequence_ctx);
                     if !consequence_ctx.is_empty() {
                         consequence_ctxs.push(consequence_ctx);

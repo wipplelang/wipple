@@ -13,8 +13,8 @@ use wipple_core::{
     db::{Db, Node},
     span::Span,
     typecheck::{
-        constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
-        ty::ConstructedTy,
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
     },
     visit::{
         Visit, Visitor,
@@ -63,7 +63,10 @@ impl Visit for AssignmentStatement {
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_statement(db, node, visitor);
 
-        visitor.constraint(db, TyConstraint::new(node, ConstructedTy::unit()));
+        visitor.constraint(
+            db,
+            TyConstraint::new(node, Ty::Constructed(ConstructedTy::unit())),
+        );
 
         // Try assigning to an existing constant in the current scope if possible
         if let Some(pattern) = db.ast(&self.pattern).downcast_ref::<VariablePattern>()
@@ -86,7 +89,10 @@ impl Visit for AssignmentStatement {
                         |d| &mut d.within_constant_value,
                         |visitor| {
                             let value = visitor.visit(db, &self.value);
-                            visitor.constraint(db, GroupConstraint::new(value, definition_node));
+                            visitor.constraint(
+                                db,
+                                TyConstraint::new(value, Ty::Node(definition_node)),
+                            );
                             db.insert(definition_node, ConstantValue(value));
                         },
                     );
@@ -135,7 +141,7 @@ impl Visit for AssignmentStatement {
             (pattern, value)
         };
 
-        visitor.constraint(db, GroupConstraint::new(pattern, value));
+        visitor.constraint(db, TyConstraint::new(pattern, Ty::Node(value)));
 
         visitor.codegen(
             db,

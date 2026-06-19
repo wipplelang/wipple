@@ -1,17 +1,23 @@
 Facts (layer 2):
 
 `Foo : value => type {inner :: value}` (TypeDefinition):
+  assigned type `Foo value`
+  grouped with `Foo : value => type {inner :: value}`
   has definition constraints
   has type `Foo value`
   has type parameters
   is a definition
 
 `Foo : value => type {inner :: value}` (TypeDefinition):
+  assigned type `Foo value`
+  grouped with `Foo : value => type {inner :: value}`
   has definition constraints
   has type `Foo value`
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -19,62 +25,85 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `foo` (VariablePattern):
+  assigned type `Foo String`
+  grouped with `Foo {inner : "Hello, world!"}`, `Foo {inner : "Hello, world!"}`, `foo`
   has type `Foo String`
   is a definition
   is a pattern
 
 `foo : Foo {inner : "Hello, world!"}` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `Foo {inner : "Hello, world!"}` (StructureExpression):
+  assigned type `Foo String`
+  grouped with `Foo : value => type {inner :: value}`, `foo`, `foo`
   has type `Foo String`
   is an expression
   resolved to 1 definition(s): `Foo : value => type {inner :: value}`
 
 `"Hello, world!"` (StringExpression):
+  assigned type `String`
+  grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression
-  type is annotated
 
 `Foo {inner : inner}` (StructurePattern):
+  assigned type `Foo String`
+  grouped with `foo`, `Foo : value => type {inner :: value}`, `foo`
   has type `Foo String`
   is a pattern
   resolved to 1 definition(s): `Foo : value => type {inner :: value}`
 
 `Foo {inner : inner} : foo` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `inner` (VariablePattern):
+  assigned type `String`
+  grouped with `_`, `inner`
   has type `String`
   is a definition
   is a pattern
 
 `foo` (VariableExpression):
+  assigned type `Foo String`
+  grouped with `foo`, `Foo {inner : inner}`, `Foo {inner : inner}`
   has type `Foo String`
   is an expression
   resolved to 1 definition(s): `foo`
   type is annotated
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show inner` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show inner`
   has type `()`
 
 `show inner` (CallExpression):
+  grouped with `()`, `show inner`
   has type `()`
   is an expression
 
 `inner` (VariableExpression):
+  assigned type `String`
+  grouped with `inner`, `value`
   has type `String`
   is an expression
   resolved to 1 definition(s): `inner`

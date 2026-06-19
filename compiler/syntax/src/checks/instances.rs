@@ -1,12 +1,13 @@
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
-use std::{any::TypeId, collections::BTreeMap, ops::ControlFlow};
+use std::{collections::BTreeMap, ops::ControlFlow};
 use wipple_core::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
         bounds::{Bound, Instance},
         constraints::{
+            ConstraintKind,
             bound_constraint::{BoundConstraint, group_instances},
             instantiate_constraint::InstantiateConstraint,
             ty_constraint::TyConstraint,
@@ -37,6 +38,8 @@ pub fn check_for_overlapping_instances(
     trait_node: Node,
     instances: impl IntoIterator<Item = Instance>,
 ) {
+    let last_node = db.last_node();
+
     let mut instance_groups = group_instances(db, instances);
 
     for instance in instance_groups.iter_mut().flatten() {
@@ -44,20 +47,22 @@ pub fn check_for_overlapping_instances(
 
         let substitutions = solver.insert_substitutions(Default::default(), Default::default());
 
-        solver.constraints.insert(Box::new(InstantiateConstraint {
-            source_node: instance.node,
-            definition: instance.node,
-            substitutions,
-            traces: Vec::new(),
-        }));
+        solver
+            .constraints
+            .insert_front(Box::new(InstantiateConstraint::new(
+                instance.node,
+                instance.node,
+                substitutions,
+            )));
 
-        solver.run_pass_until(db, Some(TypeId::of::<BoundConstraint>()));
+        solver.run_pass(db, ConstraintKind::Ty);
 
         // Instantiate the parameters for the *trait*
 
         let mut ctx = InstantiateCtx {
             definition: instance.node,
             source_node: instance.node,
+            bound_path: Vec::new(),
             substitutions,
         };
 
@@ -94,6 +99,8 @@ pub fn check_for_overlapping_instances(
             db.insert(trait_node, OverlappingInstances(overlapping));
         }
     }
+
+    db.delete_range(last_node..=db.last_node());
 }
 
 pub fn run_mismatched_trait(
@@ -129,26 +136,28 @@ pub fn run_mismatched_trait(
             parameters.insert(trait_definition.parameters[0], Ty::Node(node));
             parameters.insert(trait_definition.parameters[1], Ty::Constructed(right));
 
-            let mut solver = Solver::default();
+            let mut solver = Solver::new();
             init(&mut solver);
 
             let substitutions = solver.insert_substitutions(Default::default(), parameters);
 
             solver
                 .constraints
-                .insert(Box::new(TyConstraint::new(node, left)));
+                .insert_back(Box::new(TyConstraint::new(node, Ty::Constructed(left))));
 
-            solver.constraints.insert(Box::new(BoundConstraint::new(
-                node,
-                Bound {
-                    source_node: node,
-                    bound_node: node,
-                    trait_node,
-                    target_node: None,
-                    substitutions,
-                    is_optional: true,
-                },
-            )));
+            solver
+                .constraints
+                .insert_back(Box::new(BoundConstraint::new(
+                    node,
+                    Bound {
+                        source_node: node,
+                        bound_path: Vec::new(),
+                        bound_node: node,
+                        trait_node,
+                        substitutions,
+                        is_optional: true,
+                    },
+                )));
 
             solver.run(db);
 

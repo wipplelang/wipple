@@ -1,16 +1,17 @@
+use crate::QueryCtx;
 use wipple_core::{
-    db::{Db, Node},
+    db::Node,
     render::Comments,
     traces::Traces,
     typecheck::bounds::{Bounds, ResolvedBound},
-    util::get_links,
+    util::{get_links, instantiated_node_for},
     visit::{
         Resolved,
         definitions::{Defined, InstanceDefinition},
     },
 };
 
-pub fn comments_without_links(db: &Db, node: Node) -> Option<Comments> {
+pub fn comments_without_links(db: &QueryCtx<'_>, node: Node) -> Option<Comments> {
     let definition_node = db
         .get::<Resolved>(node)
         .and_then(|resolved| resolved.definitions.first().copied())
@@ -25,7 +26,7 @@ pub fn comments_without_links(db: &Db, node: Node) -> Option<Comments> {
     })
 }
 
-pub fn comments_with_links(db: &Db, node: Node) -> Option<Comments> {
+pub fn comments_with_links(db: &QueryCtx<'_>, node: Node) -> Option<Comments> {
     let definition_node = db
         .get::<Resolved>(node)
         .and_then(|resolved| resolved.definitions.first().copied())
@@ -36,7 +37,9 @@ pub fn comments_with_links(db: &Db, node: Node) -> Option<Comments> {
     Some(Comments {
         nodes: vec![definition_node],
         comments: definition.comments().to_vec(),
-        links: get_links(db, definition_node, node),
+        links: get_links(db, definition_node, node, |parameter| {
+            instantiated_node_for(db, parameter, node)
+        }),
     })
 }
 
@@ -48,7 +51,7 @@ pub struct ErrorInstance<'a> {
     pub traces: Traces,
 }
 
-pub fn error_instances<'a>(db: &'a Db, node: Node) -> Vec<ErrorInstance<'a>> {
+pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'a>> {
     let Some(Bounds(bounds)) = db.get(node) else {
         return Vec::new();
     };
@@ -72,7 +75,9 @@ pub fn error_instances<'a>(db: &'a Db, node: Node) -> Vec<ErrorInstance<'a>> {
             let mut comments = Comments {
                 nodes: vec![bound.instance.node],
                 comments: instance_definition.comments.clone(),
-                links: get_links(db, bound.instance.node, bound.resolved_node),
+                links: get_links(db, bound.instance.node, node, |parameter| {
+                    instantiated_node_for(db, parameter, node)
+                }),
             };
 
             let traces = db.traces_for(

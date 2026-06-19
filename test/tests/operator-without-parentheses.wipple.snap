@@ -1,121 +1,163 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show 1` (CallExpression):
+  grouped with `()`, `left`
   has type `()`
   is an expression
 
 `show 1 + 2` (ExpressionStatement):
-  missing type (group: `show 1 + 2`, `show 1 + 2`, `sum`, `sum`, `(infer sum)`, `sum`, `show 1 + 2`, `_`, `(infer sum)`, `sum`)
+  assigned type `_`
+  grouped with `show 1 + 2`
+  missing type (group: `show 1 + 2`, `show 1 + 2`, `show 1 + 2`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `show 1 + 2` (OperatorExpression):
+  assigned type `_`
+  grouped with `show 1 + 2`, `show 1 + 2`
   is an expression
-  missing type (group: `show 1 + 2`, `show 1 + 2`, `sum`, `sum`, `(infer sum)`, `sum`, `show 1 + 2`, `_`, `(infer sum)`, `sum`)
+  missing type (group: `show 1 + 2`, `show 1 + 2`, `show 1 + 2`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `show 1 + 2` (CallExpression):
+  grouped with `sum`, `show 1 + 2`
   is an expression
-  missing type (group: `show 1 + 2`, `show 1 + 2`, `sum`, `sum`, `(infer sum)`, `sum`, `show 1 + 2`, `_`, `(infer sum)`, `sum`)
+  missing type (group: `show 1 + 2`, `show 1 + 2`, `show 1 + 2`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `show 1 + 2` (ConstructorExpression):
+  assigned type `() Number -> _`
+  grouped with `left right -> sum`
   has bound(s) `Add` `()` `Number` `_` (resolved as `error instance (Add () right sum)`)
   has type `() Number -> _`
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show True` (VisitAs):
+  grouped with `()`, `left`
   has type `()`
   is an expression
 
 `show True or False` (ExpressionStatement):
-  missing type (group: `show True or False`, `show True or False`, `show True or False`, `_`, `(infer output)`, `output`)
+  assigned type `_`
+  grouped with `show True or False`
+  missing type (group: `show True or False`, `show True or False`, `show True or False`, `(infer output)`, `(infer output)`, `output`)
 
 `show True or False` (OperatorExpression):
+  assigned type `_`
+  grouped with `show True or False`, `show True or False`
   is an expression
-  missing type (group: `show True or False`, `show True or False`, `show True or False`, `_`, `(infer output)`, `output`)
+  missing type (group: `show True or False`, `show True or False`, `show True or False`, `(infer output)`, `(infer output)`, `output`)
 
 `show True or False` (CallExpression):
+  grouped with `output`, `show True or False`
   is an expression
-  missing type (group: `show True or False`, `show True or False`, `show True or False`, `_`, `(infer output)`, `output`)
+  missing type (group: `show True or False`, `show True or False`, `show True or False`, `(infer output)`, `(infer output)`, `output`)
 
 `show True or False` (ConstructorExpression):
+  assigned type `() {Boolean} -> _`
+  grouped with `left {right} -> output`
   has bound(s) `Or` `()` `Boolean` `_` (unresolved)
   has type `() {Boolean} -> _`
   is an expression
   resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)`
 
 `True` (ConstructorExpression):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `False` (VisitAs):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `False`, `False`, `right`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `False` (VisitAs):
+  assigned type `{Boolean}`
+  grouped with `{right}`
   has type `{Boolean}`
   is an expression
 
 `False` (ExpressionStatement):
+  assigned type `Boolean`
+  grouped with `False`, `False`
   has type `Boolean`
 
 `show` (VariableExpression):
+  assigned type `_ -> ()`
+  grouped with `value -> ()`
   has type `_ -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (1 + "hi")` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (1 + "hi")`
   has type `()`
 
 `show (1 + "hi")` (CallExpression):
+  grouped with `()`, `show (1 + "hi")`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `left`
   has type `Number`
   is an expression
-  type is annotated
 
 `1 + "hi"` (OperatorExpression):
+  assigned type `_`
+  grouped with `1 + "hi"`, `value`
   is an expression
-  missing type (group: `1 + "hi"`, `1 + "hi"`, `sum`, `sum`, `(infer sum)`, `sum`, `value`, `value`, `value`, `_`, `(infer sum)`, `sum`)
+  missing type (group: `1 + "hi"`, `1 + "hi"`, `value`, `value`, `value`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `1 + "hi"` (CallExpression):
+  grouped with `sum`, `1 + "hi"`
   is an expression
-  missing type (group: `1 + "hi"`, `1 + "hi"`, `sum`, `sum`, `(infer sum)`, `sum`, `value`, `value`, `value`, `_`, `(infer sum)`, `sum`)
+  missing type (group: `1 + "hi"`, `1 + "hi"`, `value`, `value`, `value`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `1 + "hi"` (ConstructorExpression):
+  assigned type `Number String -> _`
+  grouped with `left right -> sum`
   has bound(s) `Add` `Number` `String` `_` (resolved as `default error instance (Add left right sum)`)
   has type `Number String -> _`
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
 `"hi"` (StringExpression):
+  assigned type `String`
+  grouped with `"hi"`, `right`
   has type `String`
   is an expression
-  type is annotated
 
 
 
@@ -130,17 +172,17 @@ Feedback:
 
   1. `2`: `2` is a `Number`.
 
-  2. `show 1 + 2`: `show 1 + 2` adds `_` and `_` together, returning a `_`.
+  2. `show 1 + 2`: `show 1 + 2` adds `show 1` and `2` together, returning a `_`.
 
-  3. `1 + "hi"`: `1 + "hi"` adds `_` and `_` together, returning a `_`.
+  3. `1 + "hi"`: `1 + "hi"` adds `1` and `"hi"` together, returning a `_`.
 
   4. `show`: `show` displays `1 + "hi"` on the screen.
 
   5. `show`: `show` displays `1` on the screen.
 
-  6. `show`: `show` displays `True` on the screen.
+  6. `1`: `1` is a `Number`.
 
-  7. `1`: `1` is a `Number`.
+  7. `show`: `show` displays `True` on the screen.
 
   8. `1`: `1` is a `Number`.
 
@@ -148,4 +190,4 @@ Feedback:
 
   10. `show True or False`: `show True or False` returns `True` if either side is `True`.
 
-  (2 -> error, 2 -> 1, 3 -> 2, 4 -> 3, 5 -> 4, 6 -> 4, 6 -> 5, 7 -> 5, 8 -> 3, 9 -> 3)
+  (2 -> error, 2 -> 1, 3 -> 2, 4 -> 3, 5 -> 4, 6 -> 5, 7 -> 4, 7 -> 5, 8 -> 3, 9 -> 3)

@@ -18,8 +18,33 @@ pub use syntax_queries::*;
 pub use type_queries::*;
 pub use unused_queries::*;
 
+use std::{ops::Deref, sync::Arc};
 use wipple_core::db::{Db, Fact, Node};
 
-pub fn fact<T: Fact>(db: &Db, node: Node) -> Option<&T> {
+#[derive(Clone)]
+pub struct QueryCtx<'a> {
+    db: &'a Db,
+    filter: Arc<dyn Fn(&'a Db, Node) -> bool + 'a>,
+}
+
+impl<'a> QueryCtx<'a> {
+    pub fn new(db: &'a Db, filter: Arc<dyn Fn(&'a Db, Node) -> bool + 'a>) -> Self {
+        QueryCtx { db, filter }
+    }
+
+    pub fn filter(&self, node: Node) -> bool {
+        (self.filter)(self.db, node)
+    }
+}
+
+impl<'a> Deref for QueryCtx<'a> {
+    type Target = &'a Db;
+
+    fn deref(&self) -> &Self::Target {
+        &self.db
+    }
+}
+
+pub fn fact<'a, T: Fact>(db: &QueryCtx<'a>, node: Node) -> Option<&'a T> {
     db.get(node)
 }

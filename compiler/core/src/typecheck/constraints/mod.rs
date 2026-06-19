@@ -1,7 +1,6 @@
 pub mod bound_constraint;
 pub mod default_constraint;
 pub mod generic_constraint;
-pub mod group_constraint;
 pub mod instantiate_constraint;
 pub mod ty_constraint;
 
@@ -10,13 +9,8 @@ use crate::{
     render::{Render, RenderCtx},
     traces::TracesEntry,
     typecheck::{
-        constraints::{
-            bound_constraint::BoundConstraint, default_constraint::DefaultConstraint,
-            generic_constraint::GenericConstraint, group_constraint::GroupConstraint,
-            instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint,
-        },
         groups::Typed,
-        instantiate::{InstantiateCtx, Instantiated},
+        instantiate::InstantiateCtx,
         solver::Solver,
         ty::{ConstructedTy, Ty},
     },
@@ -24,7 +18,7 @@ use crate::{
 use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
 use std::{
-    any::{Any, TypeId},
+    any::Any,
     collections::{BTreeMap, BTreeSet, VecDeque},
     fmt::Debug,
     ops::{Deref, DerefMut},
@@ -38,6 +32,8 @@ pub enum RunResult {
 
 #[typetag::serde]
 pub trait Constraint: Debug + DynClone + Any + Send + Sync {
+    fn kind(&self) -> ConstraintKind;
+
     fn node(&self) -> Node;
 
     fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace>;
@@ -138,12 +134,6 @@ impl Render for ConstraintConsequence {
     fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         match self {
             ConstraintConsequence::Group(node) => {
-                let representative = if let Some(instantiated) = db.get::<Instantiated>(*node) {
-                    instantiated.definition
-                } else {
-                    *node
-                };
-
                 let Some(Typed(Some(group))) = db.get(*node) else {
                     return;
                 };
@@ -164,7 +154,7 @@ impl Render for ConstraintConsequence {
                         }
                     });
                     ctx.string(" must be a ");
-                    ctx.ty(db, &Ty::Node(*node), representative, true);
+                    ctx.ty(db, &Ty::Node(*node), true);
                     ctx.string(".");
                 }
             }
@@ -172,60 +162,63 @@ impl Render for ConstraintConsequence {
                 ctx.string("This means ");
                 ctx.node(*node);
                 ctx.string(" is a ");
-                ctx.ty(db, &Ty::Constructed(ty.clone()), None, true);
+                ctx.ty(db, &Ty::Constructed(ty.clone()), true);
                 ctx.string(".");
             }
         }
     }
 }
 
-static CONSTRAINT_ORDER: &[TypeId] = &[
-    TypeId::of::<InstantiateConstraint>(),
-    TypeId::of::<GroupConstraint>(),
-    TypeId::of::<TyConstraint>(),
-    TypeId::of::<BoundConstraint>(),
-];
-
-#[derive(Debug, Default)]
-pub struct Constraints {
-    constraints: BTreeMap<TypeId, VecDeque<Box<dyn Constraint>>>,
-    default_constraints: VecDeque<Box<dyn Constraint>>,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum ConstraintKind {
+    Ty,
+    Bound,
 }
 
+#[derive(Debug, Default)]
+pub struct Constraints(BTreeMap<ConstraintKind, VecDeque<Box<dyn Constraint>>>);
+
 impl Constraints {
-    pub fn insert(&mut self, constraint: Box<dyn Constraint>) {
-        let type_id = if let Some(constraint) = constraint.downcast_ref::<GenericConstraint>() {
-            constraint.0.as_ref().type_id()
-        } else {
-            constraint.as_ref().type_id()
-        };
+    pub fn is_empty(&self) -> bool {
+        self.0.values().all(|constraints| constraints.is_empty())
+    }
 
-        if type_id == TypeId::of::<DefaultConstraint>() {
-            self.default_constraints.push_back(constraint);
-        } else {
-            assert!(
-                CONSTRAINT_ORDER.contains(&type_id),
-                "unsupported constraint: {constraint:?}"
-            );
+    pub fn insert_front(&mut self, constraint: Box<dyn Constraint>) {
+        self.insert_inner(constraint, true);
+    }
 
-            let constraints = self.constraints.entry(type_id).or_default();
+    pub fn insert_back(&mut self, constraint: Box<dyn Constraint>) {
+        self.insert_inner(constraint, false);
+    }
+
+    fn insert_inner(&mut self, constraint: Box<dyn Constraint>, front: bool) {
+        let constraints = self.0.entry(constraint.kind()).or_default();
+
+        if front {
+            constraints.push_front(constraint);
+        } else {
             constraints.push_back(constraint);
         }
     }
 
-    pub fn extend(&mut self, constraints: impl IntoIterator<Item = Box<dyn Constraint>>) {
-        for constraint in constraints {
-            self.insert(constraint);
+    pub fn extend_front(
+        &mut self,
+        constraints: impl IntoIterator<Item = Box<dyn Constraint>, IntoIter: DoubleEndedIterator>,
+    ) {
+        for constraint in constraints.into_iter().rev() {
+            self.insert_front(constraint);
         }
     }
 
-    pub fn run_until(&mut self, db: &mut Db, solver: &mut Solver, stop: Option<TypeId>) {
-        let mut requeued_constraints = Vec::new();
-        loop {
-            let Some(mut constraint) = self.dequeue(stop) else {
-                break;
-            };
+    pub fn extend_back(&mut self, constraints: impl IntoIterator<Item = Box<dyn Constraint>>) {
+        for constraint in constraints {
+            self.insert_back(constraint);
+        }
+    }
 
+    pub fn run(&mut self, db: &mut Db, solver: &mut Solver, kind: ConstraintKind) {
+        let mut requeued_constraints = Vec::new();
+        while let Some(mut constraint) = self.0.get_mut(&kind).and_then(|c| c.pop_front()) {
             if solver.trace {
                 let traces = constraint.traces_mut();
                 let indices = db.traces.len()..(db.traces.len() + traces.len());
@@ -239,7 +232,7 @@ impl Constraints {
             match constraint.run(db, solver) {
                 RunResult::None => {}
                 RunResult::Insert(constraints) => {
-                    self.extend(constraints);
+                    self.extend_front(constraints);
                 }
                 RunResult::Enqueue(constraints) => {
                     requeued_constraints.extend(constraints);
@@ -247,38 +240,13 @@ impl Constraints {
             }
         }
 
-        self.extend(requeued_constraints);
-    }
-
-    pub fn run_defaults(&mut self, db: &mut Db, solver: &mut Solver) {
-        for constraint in self.default_constraints.drain(..) {
-            constraint.run(db, solver);
-        }
-    }
-
-    fn dequeue(&mut self, stop: Option<TypeId>) -> Option<Box<dyn Constraint>> {
-        for &type_id in CONSTRAINT_ORDER {
-            if stop.is_some_and(|stop| type_id == stop) {
-                return None;
-            }
-
-            if let Some(constraint) = self
-                .constraints
-                .get_mut(&type_id)
-                .and_then(|constraints| constraints.pop_front())
-            {
-                return Some(constraint);
-            }
-        }
-
-        None
+        self.extend_back(requeued_constraints);
     }
 
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut dyn Constraint> {
-        self.constraints
+        self.0
             .values_mut()
             .flatten()
-            .chain(self.default_constraints.iter_mut())
             .map(|constraint| constraint.as_mut())
     }
 }
@@ -288,11 +256,6 @@ impl IntoIterator for Constraints {
     type IntoIter = Box<dyn Iterator<Item = Self::Item>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        Box::new(
-            self.constraints
-                .into_values()
-                .flatten()
-                .chain(self.default_constraints),
-        )
+        Box::new(self.0.into_values().flatten())
     }
 }

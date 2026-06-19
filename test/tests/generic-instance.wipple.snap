@@ -1,17 +1,23 @@
 Facts (layer 2):
 
 `Box : value => type {value :: value}` (TypeDefinition):
+  assigned type `Box value`
+  grouped with `Box : value => type {value :: value}`
   has definition constraints
   has type `Box value`
   has type parameters
   is a definition
 
 `Box : value => type {value :: value}` (TypeDefinition):
+  assigned type `Box value`
+  grouped with `Box : value => type {value :: value}`
   has definition constraints
   has type `Box value`
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -19,12 +25,17 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `Foo : a b => trait (a -> b)` (TraitDefinition):
+  assigned type `a -> b`
+  grouped with `a -> b`
   has 1 instances
   has definition constraints
   has type `a -> b`
@@ -32,6 +43,8 @@ Facts (layer 2):
   is a definition
 
 `a` (TypeParameter):
+  assigned type `a`
+  grouped with `a`
   has type `a`
   is a definition
   is a type
@@ -39,6 +52,8 @@ Facts (layer 2):
   type is annotated
 
 `b` (TypeParameter):
+  assigned type `b`
+  grouped with `b`
   has type `b`
   is a definition
   is a type
@@ -46,23 +61,33 @@ Facts (layer 2):
   type is annotated
 
 `a` (TypeParameter):
+  assigned type `a`
+  grouped with `a`
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
+  resolved to type parameter `a`
   type is annotated
 
 `a -> b` (FunctionType):
+  assigned type `a -> b`
+  grouped with `Foo : a b => trait (a -> b)`
   has type `a -> b`
   is a type
   type is annotated
 
 `b` (TypeParameter):
+  assigned type `b`
+  grouped with `b`
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
+  resolved to type parameter `b`
   type is annotated
 
 `instance (Foo (Box value) value)` (InstanceDefinition):
+  assigned type `(Box value) -> value`
+  grouped with `a -> b`, `(Box {value : value}) -> value`
   has definition constraints
   has type `(Box value) -> value`
   has type parameters
@@ -70,12 +95,16 @@ Facts (layer 2):
   resolved to 1 definition(s): `Foo : a b => trait (a -> b)`
 
 `Box value` (NamedType):
+  assigned type `Box value`
+  grouped with `a`
   has type `Box value`
   is a type
   resolved to 1 definition(s): `Box : value => type {value :: value}`
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -83,63 +112,85 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `b`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `(Box {value : value}) -> value` (FunctionExpression):
+  assigned type `(Box value) -> value`
+  grouped with `instance (Foo (Box value) value)`
   has type `(Box value) -> value`
   is an expression
 
 `Box {value : value}` (StructurePattern):
+  assigned type `Box value`
+  grouped with `Box : value => type {value :: value}`, `a`
   has type `Box value`
   is a pattern
   resolved to 1 definition(s): `Box : value => type {value :: value}`
 
 `value` (VariablePattern):
+  assigned type `value`
+  grouped with `_`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `value` (VariableExpression):
+  assigned type `value`
+  grouped with `value`, `b`
   has type `value`
   is an expression
   resolved to 1 definition(s): `value`
   type is annotated
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (Foo (Box {value : "Hello, world!"}))` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (Foo (Box {value : "Hello, world!"}))`
   has type `()`
 
 `show (Foo (Box {value : "Hello, world!"}))` (CallExpression):
+  grouped with `()`, `show (Foo (Box {value : "Hello, world!"}))`
   has type `()`
   is an expression
 
 `Foo` (ConstructorExpression):
+  assigned type `(Box String) -> String`
+  grouped with `a -> b`
   has bound(s) `Foo` `(Box String)` `String` (resolved as `instance (Foo (Box value) value)`)
   has type `(Box String) -> String`
   is an expression
   resolved to 1 definition(s): `Foo : a b => trait (a -> b)`
 
 `Foo (Box {value : "Hello, world!"})` (CallExpression):
+  grouped with `b`, `value`
   has type `String`
   is an expression
 
 `Box {value : "Hello, world!"}` (StructureExpression):
+  assigned type `Box String`
+  grouped with `Box : value => type {value :: value}`, `a`
   has type `Box String`
   is an expression
   resolved to 1 definition(s): `Box : value => type {value :: value}`
 
 `"Hello, world!"` (StringExpression):
+  assigned type `String`
+  grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression
-  type is annotated
 
 
 Output:

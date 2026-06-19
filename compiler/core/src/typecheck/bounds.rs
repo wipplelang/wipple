@@ -28,7 +28,7 @@ impl Render for Instances {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Bounds(pub Vec<(Node, Result<ResolvedBound, UnresolvedBound>)>);
+pub struct Bounds(pub BTreeMap<Vec<Node>, Result<ResolvedBound, UnresolvedBound>>);
 
 #[typetag::serde]
 impl Fact for Bounds {}
@@ -66,7 +66,6 @@ impl Render for Bounds {
 pub struct ResolvedBound {
     pub instance: Instance,
     pub instance_parameters: BTreeMap<Node, Ty>,
-    pub resolved_node: Node,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -78,9 +77,9 @@ pub struct UnresolvedBound {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Bound {
     pub source_node: Node,
+    pub bound_path: Vec<Node>,
     pub bound_node: Node,
     pub trait_node: Node,
-    pub target_node: Option<Node>,
     pub substitutions: SubstitutionsKey,
     pub is_optional: bool,
 }
@@ -110,7 +109,7 @@ impl Render for UnresolvedBound {
             ctx.string(" ");
 
             if let Some(ty) = self.parameters.get(parameter) {
-                ctx.ty(db, ty, None, false);
+                ctx.ty(db, ty, false);
             } else {
                 ctx.code("_");
             }

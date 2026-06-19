@@ -1,510 +1,684 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (1 + 2 = 3)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (1 + 2 = 3)`
   has type `()`
 
 `show (1 + 2 = 3)` (CallExpression):
+  grouped with `()`, `show (1 + 2 = 3)`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `left`
   has type `Number`
   is an expression
-  type is annotated
 
 `1 + 2` (OperatorExpression):
+  assigned type `Number`
+  grouped with `1 + 2`, `value`
   has type `Number`
   is an expression
 
 `1 + 2` (CallExpression):
+  grouped with `sum`, `1 + 2`
   has type `Number`
   is an expression
 
 `1 + 2` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
 `1 + 2 = 3` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `1 + 2 = 3`, `value`
   has type `Boolean`
   is an expression
 
 `1 + 2 = 3` (CallExpression):
+  grouped with `Boolean`, `1 + 2 = 3`
   has type `Boolean`
   is an expression
 
 `1 + 2 = 3` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (NumberExpression):
+  assigned type `Number`
+  grouped with `3`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (1 = 2 or 1 = 1)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (1 = 2 or 1 = 1)`
   has type `()`
 
 `show (1 = 2 or 1 = 1)` (CallExpression):
+  grouped with `()`, `show (1 = 2 or 1 = 1)`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `1 = 2` (VisitAs):
+  assigned type `Boolean`
+  grouped with `1 = 2`, `left`
   has type `Boolean`
   is an expression
 
 `1 = 2` (CallExpression):
+  grouped with `Boolean`, `1 = 2`
   has type `Boolean`
   is an expression
 
 `1 = 2` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `1 = 2 or 1 = 1` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `1 = 2 or 1 = 1`, `value`
   has type `Boolean`
   is an expression
 
 `1 = 2 or 1 = 1` (CallExpression):
+  grouped with `output`, `1 = 2 or 1 = 1`
   has type `Boolean`
   is an expression
 
 `1 = 2 or 1 = 1` (ConstructorExpression):
+  assigned type `Boolean {Boolean} -> Boolean`
+  grouped with `left {right} -> output`
   has bound(s) `Or` `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
   is an expression
   resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)`
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `1 = 1` (VisitAs):
+  assigned type `Boolean`
+  grouped with `1 = 1`, `1 = 1`, `1 = 1`, `right`
   has type `Boolean`
   is an expression
 
 `1 = 1` (VisitAs):
+  assigned type `{Boolean}`
+  grouped with `{right}`
   has type `{Boolean}`
   is an expression
 
 `1 = 1` (ExpressionStatement):
+  assigned type `Boolean`
+  grouped with `1 = 1`, `1 = 1`
   has type `Boolean`
 
 `1 = 1` (CallExpression):
+  grouped with `Boolean`, `1 = 1`
   has type `Boolean`
   is an expression
 
 `1 = 1` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (2 /= 3)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (2 /= 3)`
   has type `()`
 
 `show (2 /= 3)` (CallExpression):
+  grouped with `()`, `show (2 /= 3)`
   has type `()`
   is an expression
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `2 /= 3` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `2 /= 3`, `value`
   has type `Boolean`
   is an expression
 
 `2 /= 3` (CallExpression):
+  grouped with `Boolean`, `2 /= 3`
   has type `Boolean`
   is an expression
 
 `2 /= 3` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Not-Equal` `Number` (resolved as `instance (Not-Equal value) where (Equal value)`), `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Not-Equal : value => trait (value value -> Boolean)`
 
 `3` (NumberExpression):
+  assigned type `Number`
+  grouped with `3`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show ("hello" = "hello")` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show ("hello" = "hello")`
   has type `()`
 
 `show ("hello" = "hello")` (CallExpression):
+  grouped with `()`, `show ("hello" = "hello")`
   has type `()`
   is an expression
 
 `"hello"` (StringExpression):
+  assigned type `String`
+  grouped with `"hello"`, `value`
   has type `String`
   is an expression
-  type is annotated
 
 `"hello" = "hello"` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `"hello" = "hello"`, `value`
   has type `Boolean`
   is an expression
 
 `"hello" = "hello"` (CallExpression):
+  grouped with `Boolean`, `"hello" = "hello"`
   has type `Boolean`
   is an expression
 
 `"hello" = "hello"` (ConstructorExpression):
+  assigned type `String String -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `String` (resolved as `instance (Equal String)`)
   has type `String String -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `"hello"` (StringExpression):
+  assigned type `String`
+  grouped with `"hello"`, `value`
   has type `String`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (() = ())` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (() = ())`
   has type `()`
 
 `show (() = ())` (CallExpression):
+  grouped with `()`, `show (() = ())`
   has type `()`
   is an expression
 
 `()` (UnitExpression):
+  assigned type `()`
+  grouped with `value`
   has type `()`
   is an expression
 
 `() = ()` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `() = ()`, `value`
   has type `Boolean`
   is an expression
 
 `() = ()` (CallExpression):
+  grouped with `Boolean`, `() = ()`
   has type `Boolean`
   is an expression
 
 `() = ()` (ConstructorExpression):
+  assigned type `() () -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `()` (resolved as `instance (Equal ())`)
   has type `() () -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `()` (UnitExpression):
+  assigned type `()`
+  grouped with `value`
   has type `()`
   is an expression
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (True = True)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (True = True)`
   has type `()`
 
 `show (True = True)` (CallExpression):
+  grouped with `()`, `show (True = True)`
   has type `()`
   is an expression
 
 `True` (ConstructorExpression):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `True = True` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `True = True`, `value`
   has type `Boolean`
   is an expression
 
 `True = True` (CallExpression):
+  grouped with `Boolean`, `True = True`
   has type `Boolean`
   is an expression
 
 `True = True` (ConstructorExpression):
+  assigned type `Boolean Boolean -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `True` (ConstructorExpression):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (False = False)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (False = False)`
   has type `()`
 
 `show (False = False)` (CallExpression):
+  grouped with `()`, `show (False = False)`
   has type `()`
   is an expression
 
 `False` (ConstructorExpression):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `False = False` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `False = False`, `value`
   has type `Boolean`
   is an expression
 
 `False = False` (CallExpression):
+  grouped with `Boolean`, `False = False`
   has type `Boolean`
   is an expression
 
 `False = False` (ConstructorExpression):
+  assigned type `Boolean Boolean -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `False` (ConstructorExpression):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (True = False)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (True = False)`
   has type `()`
 
 `show (True = False)` (CallExpression):
+  grouped with `()`, `show (True = False)`
   has type `()`
   is an expression
 
 `True` (ConstructorExpression):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `True = False` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `True = False`, `value`
   has type `Boolean`
   is an expression
 
 `True = False` (CallExpression):
+  grouped with `Boolean`, `True = False`
   has type `Boolean`
   is an expression
 
 `True = False` (ConstructorExpression):
+  assigned type `Boolean Boolean -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `False` (ConstructorExpression):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (2 > 1)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (2 > 1)`
   has type `()`
 
 `show (2 > 1)` (CallExpression):
+  grouped with `()`, `show (2 > 1)`
   has type `()`
   is an expression
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `2 > 1` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `2 > 1`, `value`
   has type `Boolean`
   is an expression
 
 `2 > 1` (CallExpression):
+  grouped with `Boolean`, `2 > 1`
   has type `Boolean`
   is an expression
 
 `2 > 1` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)`
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (1 >= 1)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (1 >= 1)`
   has type `()`
 
 `show (1 >= 1)` (CallExpression):
+  grouped with `()`, `show (1 >= 1)`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `1 >= 1` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `1 >= 1`, `value`
   has type `Boolean`
   is an expression
 
 `1 >= 1` (CallExpression):
+  grouped with `Boolean`, `1 >= 1`
   has type `Boolean`
   is an expression
 
 `1 >= 1` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Greater-Than-Or-Equal` `Number` (resolved as `instance (Greater-Than-Or-Equal value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Greater-Than-Or-Equal : value => trait (value value -> Boolean)`
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (4 < 3)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (4 < 3)`
   has type `()`
 
 `show (4 < 3)` (CallExpression):
+  grouped with `()`, `show (4 < 3)`
   has type `()`
   is an expression
 
 `4` (NumberExpression):
+  assigned type `Number`
+  grouped with `4`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `4 < 3` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `4 < 3`, `value`
   has type `Boolean`
   is an expression
 
 `4 < 3` (CallExpression):
+  grouped with `Boolean`, `4 < 3`
   has type `Boolean`
   is an expression
 
 `4 < 3` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Less-Than` `Number` (resolved as `instance (Less-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)`
 
 `3` (NumberExpression):
+  assigned type `Number`
+  grouped with `3`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (5 <= 6)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (5 <= 6)`
   has type `()`
 
 `show (5 <= 6)` (CallExpression):
+  grouped with `()`, `show (5 <= 6)`
   has type `()`
   is an expression
 
 `5` (NumberExpression):
+  assigned type `Number`
+  grouped with `5`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `5 <= 6` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `5 <= 6`, `value`
   has type `Boolean`
   is an expression
 
 `5 <= 6` (CallExpression):
+  grouped with `Boolean`, `5 <= 6`
   has type `Boolean`
   is an expression
 
 `5 <= 6` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Less-Than-Or-Equal` `Number` (resolved as `instance (Less-Than-Or-Equal value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Less-Than-Or-Equal : value => trait (value value -> Boolean)`
 
 `6` (NumberExpression):
+  assigned type `Number`
+  grouped with `6`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

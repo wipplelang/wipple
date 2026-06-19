@@ -21,7 +21,6 @@ use crate::{
         bounds::{Instance, Instances},
         constraints::bound_constraint::{BoundConstraint, IsBound},
         groups::Typed,
-        instantiate::Instantiated,
         solver::{Solver, Substitutions},
     },
     visit::{
@@ -49,15 +48,14 @@ pub struct TopLevel {
 pub fn default_filter(db: &Db, node: Node) -> bool {
     db.owned_nodes().any(|owned| owned == node)
         && db.contains::<Syntax>(node)
-        && !db.contains::<Instantiated>(node)
+        && !db.is_hidden(node)
 }
 
-pub fn compile<'a, K: Ord>(
+pub fn compile<'a>(
     db: &mut Db,
     top_level: &mut TopLevel,
     files: impl IntoIterator<Item = &'a AstKey>,
     mut checks: impl FnMut(&mut Db, &TopLevel),
-    mut group_order: impl FnMut(&Db, Node) -> K,
 ) -> (Node, Vec<Node>, Vec<Node>) {
     // Define/resolve names and collect constraints
 
@@ -104,7 +102,7 @@ pub fn compile<'a, K: Ord>(
         .collect::<Vec<_>>();
 
     for (definition_node, definition_constraints) in definition_constraints {
-        let mut solver = Solver::default();
+        let mut solver = Solver::new();
         solver.substitutions.extend(top_level.substitutions.clone());
 
         // If the definition is an instance, imply it inside itself
@@ -141,19 +139,21 @@ pub fn compile<'a, K: Ord>(
             }
         }
 
-        solver.constraints.extend(definition_constraints);
+        solver.constraints.extend_back(definition_constraints);
         solver.run(db);
 
-        set_groups(db, solver, &mut group_order);
+        set_groups(db, solver);
     }
 
     // Solve constraints from top-level expressions
-    let mut solver = Solver::default();
+    let mut solver = Solver::new();
     solver.trace = true;
-    solver.constraints.extend(visited.constraints.drain(..));
+    solver
+        .constraints
+        .extend_back(visited.constraints.drain(..));
     solver.substitutions.extend(top_level.substitutions.clone());
     solver.run(db);
-    set_groups(db, solver, &mut group_order);
+    set_groups(db, solver);
 
     // Run checks
     check_exhaustiveness(db);
@@ -162,8 +162,8 @@ pub fn compile<'a, K: Ord>(
     (root_node, source_files, visited.top_level_statements)
 }
 
-pub fn set_groups<K: Ord>(db: &mut Db, solver: Solver, mut key: impl FnMut(&Db, Node) -> K) {
-    let groups = solver.into_sorted_groups(db, |node| key(db, node));
+pub fn set_groups(db: &mut Db, solver: Solver) {
+    let groups = solver.into_groups(db);
 
     for group in groups {
         if group.nodes.is_empty() {

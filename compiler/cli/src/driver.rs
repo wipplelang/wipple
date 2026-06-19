@@ -14,7 +14,7 @@ use wipple_core::{
     render::RenderCtx,
 };
 use wipple_feedback::collect_feedback;
-use wipple_syntax::{GroupOrder, checks::run_checks};
+use wipple_syntax::checks::run_checks;
 
 pub struct Driver<'a, Out> {
     pub compile_options: &'a CompileOptions,
@@ -59,8 +59,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
 
         let start = Instant::now();
 
-        let (root_node, source_files, statements) =
-            compile(db, top_level, &self.files, run_checks, GroupOrder::new);
+        let (root_node, source_files, statements) = compile(db, top_level, &self.files, run_checks);
 
         if self.time {
             eprint!(" done ({:.0?})", start.elapsed());

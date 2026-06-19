@@ -6,7 +6,7 @@ use crate::{
     codegen::monomorphize::MonomorphizeCtx,
     db::{Db, Node},
     facts::Codegen,
-    typecheck::bounds::{Bounds, ResolvedBound, UnresolvedBound},
+    typecheck::bounds::Bounds,
 };
 use dyn_clone::DynClone;
 use std::{collections::BTreeMap, fmt::Debug};
@@ -85,7 +85,7 @@ impl CodegenCtx {
     pub fn definition_key(
         &mut self,
         definition: Node,
-        bounds: BTreeMap<Node, ir::Instance>,
+        bounds: BTreeMap<Vec<Node>, ir::Instance>,
         generic: bool,
     ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
         self.monomorphize_ctx
@@ -96,18 +96,17 @@ impl CodegenCtx {
         &mut self,
         db: &Db,
         definition: Node,
-        bounds: Vec<(Node, Result<ResolvedBound, UnresolvedBound>)>,
+        bound_path: &[Node],
+        bounds: &Bounds,
         generic: bool,
     ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
         let bounds = bounds
-            .into_iter()
-            .map(|(node, bound)| {
-                let bound =
-                    bound.map_err(|_| anyhow::format_err!("unresolved bound for {node:?}"))?;
-
-                let instance = self.codegen_instance(db, bound, true)?;
-
-                Ok((node, instance))
+            .0
+            .keys()
+            .filter(|other| other.starts_with(bound_path) && other.len() == bound_path.len() + 1)
+            .map(|other| {
+                self.codegen_instance(db, other, bounds, true)
+                    .map(|instance| (other.strip_prefix(bound_path).unwrap().to_vec(), instance))
             })
             .collect::<Result<BTreeMap<_, _>, CodegenError>>()?;
 
@@ -117,18 +116,26 @@ impl CodegenCtx {
     pub fn codegen_instance(
         &mut self,
         db: &Db,
-        bound: ResolvedBound,
+        bound_path: &[Node],
+        bounds: &Bounds,
         generic: bool,
     ) -> Result<ir::Instance, CodegenError> {
-        if bound.instance.is_from_bound {
-            return Ok(ir::Instance::Bound(bound.instance.node));
-        }
+        let bound = bounds
+            .0
+            .get(bound_path)
+            .ok_or_else(|| anyhow::format_err!("missing bound path {bound_path:?}"))?
+            .as_ref()
+            .map_err(|_| anyhow::format_err!("unresolved bound at {bound_path:?}"))?;
 
-        let Bounds(bounds) = db.get(bound.resolved_node).cloned().unwrap_or_default();
+        if bound.instance.is_from_bound {
+            // This is relative to the enclosing definition (see `codegen_constant`)
+            return Ok(ir::Instance::Bound(vec![bound.instance.node]));
+        }
 
         Ok(ir::Instance::Definition(self.codegen_constant(
             db,
             bound.instance.node,
+            bound_path,
             bounds,
             generic,
         )?))

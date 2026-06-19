@@ -1,5 +1,7 @@
+use crate::QueryCtx;
+use std::collections::BTreeSet;
 use wipple_core::{
-    db::{Db, Node},
+    db::Node,
     traces::Traces,
     typecheck::{
         groups::{Annotated, Typed},
@@ -8,7 +10,7 @@ use wipple_core::{
     },
 };
 
-pub fn has_type(db: &Db, node: Node) -> Option<&ConstructedTy> {
+pub fn has_type<'a>(db: &QueryCtx<'a>, node: Node) -> Option<&'a ConstructedTy> {
     let Typed(Some(group)) = db.get(node)? else {
         return None;
     };
@@ -16,24 +18,24 @@ pub fn has_type(db: &Db, node: Node) -> Option<&ConstructedTy> {
     group.tys.first()
 }
 
-pub fn in_group(db: &Db, node: Node) -> &[Node] {
+pub fn in_group(db: &QueryCtx<'_>, node: Node) -> impl Iterator<Item = Node> {
     let Some(Typed(Some(group))) = db.get(node) else {
-        return &[];
+        return Default::default();
     };
 
-    &group.nodes
+    group.nodes.iter().copied()
 }
 
 #[derive(Debug, Clone)]
 pub struct ConflictingTypes {
     pub source: Option<Node>,
     pub from: Node,
-    pub nodes: Vec<Node>,
+    pub nodes: BTreeSet<Node>,
     pub tys: Vec<ConstructedTy>,
     pub traces: Traces,
 }
 
-pub fn conflicting_types(db: &Db, node: Node) -> Option<ConflictingTypes> {
+pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTypes> {
     let Typed(Some(group)) = db.get(node)? else {
         return None;
     };
@@ -42,21 +44,19 @@ pub fn conflicting_types(db: &Db, node: Node) -> Option<ConflictingTypes> {
         return None;
     }
 
-    let mut nodes = group
-        .nodes
-        .iter()
-        .copied()
-        .filter(|other| *other != node)
-        .collect::<Vec<_>>();
+    let mut nodes = group.nodes.clone();
+    nodes.remove(&node);
 
     // Prioritize non-annotated nodes
-    if db.contains::<Annotated>(node) && nodes.iter().any(|&other| !db.contains::<Annotated>(other))
+    if db.contains::<Annotated>(node)
+        && nodes
+            .iter()
+            .any(|&other| !db.contains::<Annotated>(other) && db.filter(other))
     {
         return None;
     }
 
     let traces = db.traces_for(node, nodes.iter().copied());
-    nodes.extend(traces.nodes(db));
 
     let (source, from) = db
         .get::<Instantiated>(node)
@@ -72,7 +72,7 @@ pub fn conflicting_types(db: &Db, node: Node) -> Option<ConflictingTypes> {
     })
 }
 
-pub fn incomplete_type(db: &Db, node: Node) -> Option<(Node, &ConstructedTy)> {
+pub fn incomplete_type<'a>(db: &QueryCtx<'a>, node: Node) -> Option<(Node, &'a ConstructedTy)> {
     let Typed(Some(group)) = db.get(node)? else {
         return None;
     };
@@ -94,7 +94,7 @@ pub fn incomplete_type(db: &Db, node: Node) -> Option<(Node, &ConstructedTy)> {
     None
 }
 
-pub fn unknown_type(db: &Db, node: Node) -> bool {
+pub fn unknown_type(db: &QueryCtx<'_>, node: Node) -> bool {
     let Some(Typed(group)) = db.get(node) else {
         return false;
     };

@@ -1,6 +1,8 @@
 Facts (layer 2):
 
 `T : value => trait (value -> ())` (TraitDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`
   has 1 instances
   has definition constraints
   has type `value -> ()`
@@ -8,6 +10,8 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -15,81 +19,112 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `value -> ()` (FunctionType):
+  assigned type `value -> ()`
+  grouped with `T : value => trait (value -> ())`
   has type `value -> ()`
   is a type
   type is annotated
 
 `()` (UnitType):
+  assigned type `()`
   has type `()`
   is a type
   type is annotated
 
 `instance (T Number)` (InstanceDefinition):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`, `do {⋯}`
   has definition constraints
   has type `Number -> ()`
   is a definition
   resolved to 1 definition(s): `T : value => trait (value -> ())`
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `value`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `do {⋯}` (DoExpression):
+  assigned type `Number -> ()`
+  grouped with `_ -> ()`, `instance (T Number)`
   has type `Number -> ()`
   is an expression
 
 `{⋯}` (BlockExpression):
+  assigned type `{Number -> ()}`
   has type `{Number -> ()}`
   is an expression
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show "should appear second"` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show "should appear second"`
   has type `()`
 
 `show "should appear second"` (CallExpression):
+  grouped with `()`, `show "should appear second"`
   has type `()`
   is an expression
 
 `"should appear second"` (StringExpression):
+  assigned type `String`
+  grouped with `"should appear second"`, `value`
   has type `String`
   is an expression
-  type is annotated
 
 `_` (WildcardPattern):
+  assigned type `Number`
+  grouped with `value`
   has type `Number`
   is a pattern
 
 `_ -> ()` (ExpressionStatement):
+  assigned type `Number -> ()`
+  grouped with `_ -> ()`, `do {⋯}`
   has type `Number -> ()`
 
 `_ -> ()` (FunctionExpression):
+  assigned type `Number -> ()`
+  grouped with `_ -> ()`
   has type `Number -> ()`
   is an expression
 
 `()` (UnitExpression):
+  assigned type `()`
+  grouped with `()`
   has type `()`
   is an expression
 
 `f :: value -> () where (T value)` (ConstantDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`, `value -> do {⋯}`
   has definition constraints
   has type `value -> ()`
   has type parameters
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -97,11 +132,15 @@ Facts (layer 2):
   type is annotated
 
 `value -> ()` (FunctionType):
+  assigned type `value -> ()`
+  grouped with `f :: value -> () where (T value)`
   has type `value -> ()`
   is a type
   type is annotated
 
 `()` (UnitType):
+  assigned type `()`
+  grouped with `do {⋯}`
   has type `()`
   is a type
   type is annotated
@@ -112,86 +151,115 @@ Facts (layer 2):
   resolved to 1 definition(s): `T : value => trait (value -> ())`
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `f : value -> do {⋯}` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `value` (VariablePattern):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `value -> do {⋯}` (FunctionExpression):
+  assigned type `value -> ()`
+  grouped with `f :: value -> () where (T value)`
   has type `value -> ()`
   is an expression
 
 `do {⋯}` (DoExpression):
+  grouped with `T value`, `()`
   has type `()`
   is an expression
 
 `{⋯}` (BlockExpression):
+  assigned type `{()}`
   captures `value`
   has type `{()}`
   is an expression
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show "should appear first"` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show "should appear first"`
   has type `()`
 
 `show "should appear first"` (CallExpression):
+  grouped with `()`, `show "should appear first"`
   has type `()`
   is an expression
 
 `"should appear first"` (StringExpression):
+  assigned type `String`
+  grouped with `"should appear first"`, `value`
   has type `String`
   is an expression
-  type is annotated
 
 `T` (ConstructorExpression):
+  assigned type `value -> ()`
+  grouped with `value -> ()`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value -> ()`
   is an expression
   resolved to 1 definition(s): `T : value => trait (value -> ())`
 
 `T value` (ExpressionStatement):
+  assigned type `()`
+  grouped with `T value`, `do {⋯}`
   has type `()`
 
 `T value` (CallExpression):
+  grouped with `()`, `T value`
   has type `()`
   is an expression
 
 `value` (VariableExpression):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `value`
   type is annotated
 
 `f` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `T` `Number` (resolved as `instance (T Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `f :: value -> () where (T value)`
 
 `f 123` (ExpressionStatement):
+  assigned type `()`
+  grouped with `f 123`
   has type `()`
 
 `f 123` (CallExpression):
+  grouped with `()`, `f 123`
   has type `()`
   is an expression
 
 `123` (NumberExpression):
+  assigned type `Number`
+  grouped with `123`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

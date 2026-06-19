@@ -2,11 +2,10 @@ use crate::{
     db::{Db, Node},
     typecheck::{
         constraints::{
-            AnyConstraintTrace, Constraint, ConstraintTrace, RunResult, Solver,
-            group_constraint::GroupConstraint,
+            AnyConstraintTrace, Constraint, ConstraintKind, ConstraintTrace, RunResult, Solver,
         },
         instantiate::InstantiateCtx,
-        ty::{ConstructedTy, Ty},
+        ty::Ty,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -14,12 +13,12 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TyConstraint {
     pub node: Node,
-    pub ty: ConstructedTy,
+    pub ty: Ty,
     pub traces: Vec<AnyConstraintTrace>,
 }
 
 impl TyConstraint {
-    pub fn new(node: Node, ty: ConstructedTy) -> Self {
+    pub fn new(node: Node, ty: Ty) -> Self {
         TyConstraint {
             node,
             ty,
@@ -35,6 +34,10 @@ impl TyConstraint {
 
 #[typetag::serde]
 impl Constraint for TyConstraint {
+    fn kind(&self) -> ConstraintKind {
+        ConstraintKind::Ty
+    }
+
     fn node(&self) -> Node {
         self.node
     }
@@ -49,24 +52,15 @@ impl Constraint for TyConstraint {
         solver: &mut Solver,
         ctx: &mut InstantiateCtx,
     ) -> Option<Box<dyn Constraint>> {
-        let node = ctx.instantiate_node(db, solver, self.node);
-        let ty = ctx.instantiate_constructed_ty(db, solver, &self.ty);
-        let traces = ctx.instantiate_traces(db, solver, &self.traces);
-
-        match ty {
-            Ty::Node(other) => Some(Box::new(GroupConstraint {
-                traces,
-                ..GroupConstraint::new(node, other)
-            })),
-            Ty::Constructed(ty) => Some(Box::new(TyConstraint {
-                traces,
-                ..TyConstraint::new(node, ty)
-            })),
-        }
+        Some(Box::new(TyConstraint {
+            node: ctx.instantiate_node(db, solver, self.node),
+            ty: ctx.instantiate_ty(db, solver, &self.ty),
+            traces: ctx.instantiate_traces(db, solver, &self.traces),
+        }))
     }
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
-        solver.unify_with_ty(db, self.node, self.ty.clone(), None);
+        solver.unify(db, self.node, &self.ty, None);
         RunResult::None
     }
 }

@@ -1,119 +1,155 @@
 Facts (layer 2):
 
 `average` (VariablePattern):
+  assigned type `(List Number) -> Number`
+  grouped with `numbers -> sum numbers / count numbers`, `numbers -> sum numbers / count numbers`, `average`
   has type `(List Number) -> Number`
   is a definition
   is a pattern
 
 `average : numbers -> sum numbers / count numbers` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `numbers` (VariablePattern):
+  assigned type `List Number`
+  grouped with `numbers`, `numbers`, `1, 2, 3, 4, 5`
   has type `List Number`
   is a definition
   is a pattern
 
 `numbers -> sum numbers / count numbers` (FunctionExpression):
+  assigned type `(List Number) -> Number`
+  grouped with `average`, `average`
   has type `(List Number) -> Number`
   is an expression
 
 `sum` (VariableExpression):
-  has bound(s) `Initial` `Number` (resolved as `instance (Initial Number)`), `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`), `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
+  assigned type `(List Number) -> Number`
+  grouped with `container -> n`
+  has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`), `Initial` `Number` (resolved as `instance (Initial Number)`), `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `(List Number) -> Number`
   is an expression
   resolved to 1 definition(s): `sum :: container -> n where (As-Sequence container n) (Initial n) (Add n n n)`
 
 `sum numbers` (CallExpression):
+  grouped with `n`, `left`
   has type `Number`
   is an expression
 
 `sum numbers / count numbers` (OperatorExpression):
+  assigned type `Number`
+  grouped with `sum numbers / count numbers`, `average (1, 2, 3, 4, 5)`
   has type `Number`
   is an expression
 
 `sum numbers / count numbers` (CallExpression):
+  grouped with `quotient`, `sum numbers / count numbers`
   has type `Number`
   is an expression
 
 `sum numbers / count numbers` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> quotient`
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)`
 
 `numbers` (VariableExpression):
+  assigned type `List Number`
+  grouped with `numbers`, `container`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `numbers`
   type is annotated
 
 `count` (VariableExpression):
+  assigned type `(List Number) -> Number`
+  grouped with `collection -> Number`
   has bound(s) `Count` `(List Number)` (resolved as `instance (Count (List element))`)
   has type `(List Number) -> Number`
   is an expression
   resolved to 1 definition(s): `count :: collection -> Number where (Count collection)`
 
 `count numbers` (CallExpression):
+  grouped with `Number`, `right`
   has type `Number`
   is an expression
 
 `numbers` (VariableExpression):
+  assigned type `List Number`
+  grouped with `numbers`, `collection`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `numbers`
   type is annotated
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (average (1, 2, 3, 4, 5))` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (average (1, 2, 3, 4, 5))`
   has type `()`
 
 `show (average (1, 2, 3, 4, 5))` (CallExpression):
+  grouped with `()`, `show (average (1, 2, 3, 4, 5))`
   has type `()`
   is an expression
 
 `average` (VariableExpression):
+  assigned type `(List Number) -> Number`
+  grouped with `average`
   has type `(List Number) -> Number`
   is an expression
   resolved to 1 definition(s): `average`
   type is annotated
 
 `average (1, 2, 3, 4, 5)` (CallExpression):
+  grouped with `sum numbers / count numbers`, `value`
   has type `Number`
   is an expression
 
 `1` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `1`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `1, 2, 3, 4, 5` (CollectionExpression):
+  grouped with `5`, `numbers`
   has type `List Number`
   is an expression
 
 `2` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `2`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `3`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `4` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `4`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `5` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `5`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

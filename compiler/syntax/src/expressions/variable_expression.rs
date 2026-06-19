@@ -9,8 +9,8 @@ use wipple_core::{
     typecheck::{
         bounds::Bounds,
         constraints::{
-            ConstraintTrace, group_constraint::GroupConstraint,
-            instantiate_constraint::InstantiateConstraint,
+            ConstraintTrace, instantiate_constraint::InstantiateConstraint,
+            ty_constraint::TyConstraint,
         },
         groups::Annotated,
         ty::Ty,
@@ -84,7 +84,7 @@ impl Visit for VariableExpression {
 
                 visitor.constraint(
                     db,
-                    GroupConstraint::new(node, definition_node).with_trace(
+                    TyConstraint::new(node, Ty::Node(definition_node)).with_trace(
                         DefinitionConstraintTrace {
                             variable: true,
                             definition: definition_node,
@@ -113,17 +113,13 @@ impl Visit for VariableExpression {
 
                 visitor.constraint(
                     db,
-                    InstantiateConstraint {
-                        source_node: node,
-                        definition: definition_node,
-                        substitutions,
-                        traces: Vec::new(),
-                    }
-                    .with_trace(DefinitionConstraintTrace {
-                        variable: false,
-                        definition: definition_node,
-                        node,
-                    }),
+                    InstantiateConstraint::new(node, definition_node, substitutions).with_trace(
+                        DefinitionConstraintTrace {
+                            variable: false,
+                            definition: definition_node,
+                            node,
+                        },
+                    ),
                 );
 
                 visitor.codegen(
@@ -182,17 +178,18 @@ impl Render for DefinitionConstraintTrace {
         if !comments.is_empty() {
             ctx.comments(
                 db,
-                self.definition,
                 &Comments {
                     nodes: Default::default(),
                     comments: comments.to_vec(),
-                    links: get_links(db, self.definition, self.node),
+                    links: get_links(db, self.definition, self.node, |parameter| {
+                        instantiated_node_for(db, parameter, self.node)
+                    }),
                 },
             );
         } else {
             ctx.node(self.node);
             ctx.string(" is a ");
-            ctx.ty(db, &Ty::Node(self.node), Some(self.definition), true);
+            ctx.ty(db, &Ty::Node(self.node), true);
             ctx.string(".");
         }
     }
@@ -229,9 +226,9 @@ impl CodegenValue for VariableExpressionCodegen {
                 definition,
                 is_generic,
             } => {
-                let Bounds(bounds) = db.get(*node).cloned().unwrap_or_default();
+                let bounds = db.get::<Bounds>(*node).cloned().unwrap_or_default();
 
-                let key = ctx.codegen_constant(db, *definition, bounds, *is_generic)?;
+                let key = ctx.codegen_constant(db, *definition, &[], &bounds, *is_generic)?;
 
                 ctx.instruction(ir::Instruction::Value {
                     node: *node,

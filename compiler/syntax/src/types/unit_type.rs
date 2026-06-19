@@ -3,7 +3,10 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     db::{Db, Node},
     span::Span,
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::ConstructedTy},
+    typecheck::{
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
+    },
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -33,6 +36,9 @@ impl Visit for UnitType {
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_type(db, node, visitor);
 
-        visitor.constraint(db, TyConstraint::new(node, ConstructedTy::unit()));
+        visitor.constraint(
+            db,
+            TyConstraint::new(node, Ty::Constructed(ConstructedTy::unit())),
+        );
     }
 }

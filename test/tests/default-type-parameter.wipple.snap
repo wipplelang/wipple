@@ -1,26 +1,36 @@
 Facts (layer 2):
 
 `X : type` (TypeDefinition):
+  assigned type `X`
+  grouped with `X : type`
   has definition constraints
   has type `X`
   is a definition
 
 `X : type` (TypeDefinition):
+  assigned type `X`
+  grouped with `X : type`
   has definition constraints
   has type `X`
   is a definition
 
 `Y : type` (TypeDefinition):
+  assigned type `Y`
+  grouped with `Y : type`
   has definition constraints
   has type `Y`
   is a definition
 
 `Y : type` (TypeDefinition):
+  assigned type `Y`
+  grouped with `Y : type`
   has definition constraints
   has type `Y`
   is a definition
 
 `T : value => trait value` (TraitDefinition):
+  assigned type `value`
+  grouped with `value`
   has 2 instances
   has definition constraints
   has type `value`
@@ -28,6 +38,8 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -35,102 +47,139 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `T : value => trait value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `instance (T X)` (InstanceDefinition):
+  assigned type `X`
+  grouped with `value`, `X`
   has definition constraints
   has type `X`
   is a definition
   resolved to 1 definition(s): `T : value => trait value`
 
 `X` (NamedType):
+  assigned type `X`
+  grouped with `value`
   has type `X`
   is a type
   resolved to 1 definition(s): `X : type`
   type is annotated
 
 `X` (ConstructorExpression):
+  assigned type `X`
+  grouped with `X : type`, `instance (T X)`
   has type `X`
   is an expression
   resolved to 1 definition(s): `X : type`
 
 `instance (T Y)` (InstanceDefinition):
+  assigned type `Y`
+  grouped with `value`, `Y`
   has definition constraints
   has type `Y`
   is a definition
   resolved to 1 definition(s): `T : value => trait value`
 
 `Y` (NamedType):
+  assigned type `Y`
+  grouped with `value`
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y : type`
   type is annotated
 
 `Y` (ConstructorExpression):
+  assigned type `Y`
+  grouped with `Y : type`, `instance (T Y)`
   has type `Y`
   is an expression
   resolved to 1 definition(s): `Y : type`
 
 `instance (Describe X)` (InstanceDefinition):
+  assigned type `X -> String`
+  grouped with `value -> String`, `_ -> "X"`
   has definition constraints
   has type `X -> String`
   is a definition
   resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
 `X` (NamedType):
+  assigned type `X`
+  grouped with `value`
   has type `X`
   is a type
   resolved to 1 definition(s): `X : type`
   type is annotated
 
 `_` (WildcardPattern):
+  assigned type `X`
+  grouped with `value`
   has type `X`
   is a pattern
 
 `_ -> "X"` (FunctionExpression):
+  assigned type `X -> String`
+  grouped with `instance (Describe X)`
   has type `X -> String`
   is an expression
 
 `"X"` (StringExpression):
+  assigned type `String`
+  grouped with `"X"`, `String`
   has type `String`
   is an expression
-  type is annotated
 
 `instance (Describe Y)` (InstanceDefinition):
+  assigned type `Y -> String`
+  grouped with `value -> String`, `_ -> "Y"`
   has definition constraints
   has type `Y -> String`
   is a definition
   resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
 `Y` (NamedType):
+  assigned type `Y`
+  grouped with `value`
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y : type`
   type is annotated
 
 `_` (WildcardPattern):
+  assigned type `Y`
+  grouped with `value`
   has type `Y`
   is a pattern
 
 `_ -> "Y"` (FunctionExpression):
+  assigned type `Y -> String`
+  grouped with `instance (Describe Y)`
   has type `Y -> String`
   is an expression
 
 `"Y"` (StringExpression):
+  assigned type `String`
+  grouped with `"Y"`, `String`
   has type `String`
   is an expression
-  type is annotated
 
 `foo :: value where (value :: X) (T value)` (ConstantDefinition):
+  assigned type `value`
+  grouped with `value`, `T`
   has definition constraints
   has type `value`
   has type parameters
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `foo :: value where (value :: X) (T value)`, `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -141,12 +190,16 @@ Facts (layer 2):
   is a constraint
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `X` (NamedType):
+  assigned type `X`
   has type `X`
   is a type
   resolved to 1 definition(s): `X : type`
@@ -158,60 +211,81 @@ Facts (layer 2):
   resolved to 1 definition(s): `T : value => trait value`
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `foo : T` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `T` (ConstructorExpression):
+  assigned type `value`
+  grouped with `value`, `foo :: value where (value :: X) (T value)`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value`
   is an expression
   resolved to 1 definition(s): `T : value => trait value`
 
 `show` (VariableExpression):
+  assigned type `X -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `X` (resolved as `instance (Describe X)`)
   has type `X -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show foo` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show foo`
   has type `()`
 
 `show foo` (CallExpression):
+  grouped with `()`, `show foo`
   has type `()`
   is an expression
 
 `foo` (VariableExpression):
+  assigned type `X`
+  grouped with `value`, `value`
   has bound(s) `T` `X` (resolved as `instance (T X)`)
   has type `X`
   is an expression
   resolved to 1 definition(s): `foo :: value where (value :: X) (T value)`
 
 `show` (VariableExpression):
+  assigned type `Y -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Y` (resolved as `instance (Describe Y)`)
   has type `Y -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (foo :: Y)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (foo :: Y)`
   has type `()`
 
 `show (foo :: Y)` (CallExpression):
+  grouped with `()`, `show (foo :: Y)`
   has type `()`
   is an expression
 
 `foo` (VariableExpression):
+  assigned type `Y`
+  grouped with `value`, `Y`, `foo :: Y`
   has bound(s) `T` `Y` (resolved as `instance (T Y)`)
   has type `Y`
   is an expression
   resolved to 1 definition(s): `foo :: value where (value :: X) (T value)`
-  type is annotated
 
 `Y` (NamedType):
+  assigned type `Y`
+  grouped with `foo`
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y : type`

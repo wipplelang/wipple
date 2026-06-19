@@ -7,7 +7,10 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::ConstructedTy},
+    typecheck::{
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
+    },
     visit::{Visit, Visitor, exhaustiveness::MatchPathSegment},
 };
 use wipple_parse::{
@@ -76,7 +79,9 @@ impl Visit for TuplePattern {
             db,
             TyConstraint::new(
                 node,
-                ConstructedTy::tuple(elements.iter().map(|(_, temporary)| *temporary).collect()),
+                Ty::Constructed(ConstructedTy::tuple(
+                    elements.iter().map(|(_, temporary)| *temporary).collect(),
+                )),
             ),
         );
 

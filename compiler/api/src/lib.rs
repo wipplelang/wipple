@@ -9,7 +9,7 @@ use wipple_core::{
     LibraryArtifact,
     db::{Db, DbRef, Node},
 };
-use wipple_syntax::{GroupOrder, checks::run_checks, parse};
+use wipple_syntax::{checks::run_checks, parse};
 
 #[cfg(target_family = "wasm")]
 unsafe extern "C" {
@@ -73,13 +73,8 @@ pub fn compile(files: Vec<File>, library_name: Option<String>) -> Option<Compile
         .map(|file| parse(&mut db, file.path, file.code))
         .collect::<Vec<_>>();
 
-    let (root_node, source_files, statements) = wipple_core::compile(
-        &mut db,
-        &mut library.top_level.clone(),
-        &files,
-        run_checks,
-        GroupOrder::new,
-    );
+    let (root_node, source_files, statements) =
+        wipple_core::compile(&mut db, &mut library.top_level.clone(), &files, run_checks);
 
     Some(CompileResult {
         db,

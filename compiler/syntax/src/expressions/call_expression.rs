@@ -11,7 +11,7 @@ use wipple_core::{
     span::Span,
     typecheck::{
         constraints::{ConstraintTrace, ty_constraint::TyConstraint},
-        ty::ConstructedTy,
+        ty::{ConstructedTy, Ty},
     },
     visit::{Visit, Visitor, definitions::ConstantDefinition},
 };
@@ -70,7 +70,10 @@ impl Visit for CallExpression {
 
                 visitor.constraint(
                     db,
-                    TyConstraint::new(unit, ConstructedTy::function(vec![number], node)),
+                    TyConstraint::new(
+                        unit,
+                        Ty::Constructed(ConstructedTy::function(vec![number], node)),
+                    ),
                 );
 
                 db.graph.edge(number, node, "number");
@@ -98,9 +101,11 @@ impl Visit for CallExpression {
             .map(|input| visitor.visit(db, &input))
             .collect::<Vec<_>>();
 
-        let mut constraint =
-            TyConstraint::new(function, ConstructedTy::function(inputs.clone(), node))
-                .with_trace(CallOutputConstraintTrace { function, node });
+        let mut constraint = TyConstraint::new(
+            function,
+            Ty::Constructed(ConstructedTy::function(inputs.clone(), node)),
+        )
+        .with_trace(CallOutputConstraintTrace { function, node });
 
         for &input in &inputs {
             constraint = constraint.with_trace(CallInputConstraintTrace {

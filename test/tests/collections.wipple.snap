@@ -1,43 +1,55 @@
 Facts (layer 2):
 
 `my-list :: List Number` (ConstantDefinition):
+  assigned type `List Number`
+  grouped with `List Number`, `1, 2, 3`
   has definition constraints
   has type `List Number`
   is a definition
 
 `List Number` (NamedType):
+  assigned type `List Number`
+  grouped with `my-list :: List Number`
   has type `List Number`
   is a type
   resolved to 1 definition(s): `List : element => type`
   type is annotated
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `element`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `my-list : 1, 2, 3` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `1` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `1`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `1, 2, 3` (CollectionExpression):
+  assigned type `List Number`
+  grouped with `3`, `my-list :: List Number`
   has type `List Number`
   is an expression
 
 `2` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `2`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `3`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

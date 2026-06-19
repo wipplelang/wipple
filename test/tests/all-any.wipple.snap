@@ -1,340 +1,452 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show ((1, 2, 3) . all? (n -> n > 0))` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show ((1, 2, 3) . all? (n -> n > 0))`
   has type `()`
 
 `show ((1, 2, 3) . all? (n -> n > 0))` (CallExpression):
+  grouped with `()`, `show ((1, 2, 3) . all? (n -> n > 0))`
   has type `()`
   is an expression
 
 `1` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `1`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `1, 2, 3` (VisitAs):
+  grouped with `collection`, `3`, `collection`
   has type `List Number`
   is an expression
 
 `1, 2, 3) . all? (n -> n > 0)` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `all? (n -> n > 0)`, `value`
   has type `Boolean`
   is an expression
 
 `2` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `2`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `3`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `all?` (VariableExpression):
+  assigned type `(Number -> Boolean) -> (List Number) -> Boolean`
+  grouped with `(condition :: (element -> Boolean)) -> collection -> Boolean`
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `all? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
 
 `all? (n -> n > 0)` (CallExpression):
+  grouped with `Boolean`, `Boolean`, `1, 2, 3) . all? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
 `all? (n -> n > 0)` (VisitAs):
+  assigned type `(List Number) -> Boolean`
+  grouped with `collection -> Boolean`
   has type `(List Number) -> Boolean`
   is an expression
 
 `n` (VariablePattern):
+  assigned type `Number`
+  grouped with `n`, `element`
   has type `Number`
   is a definition
   is a pattern
 
 `n -> n > 0` (FunctionExpression):
+  assigned type `Number -> Boolean`
+  grouped with `condition :: (element -> Boolean)`
   has type `Number -> Boolean`
   is an expression
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `n > 0` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `n > 0`, `Boolean`
   has type `Boolean`
   is an expression
 
 `n > 0` (CallExpression):
+  grouped with `Boolean`, `n > 0`
   has type `Boolean`
   is an expression
 
 `n > 0` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)`
 
 `0` (NumberExpression):
+  assigned type `Number`
+  grouped with `0`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show ((1, -2, 3) . all? (n -> n > 0))` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show ((1, -2, 3) . all? (n -> n > 0))`
   has type `()`
 
 `show ((1, -2, 3) . all? (n -> n > 0))` (CallExpression):
+  grouped with `()`, `show ((1, -2, 3) . all? (n -> n > 0))`
   has type `()`
   is an expression
 
 `1` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `1`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `1, -2, 3` (VisitAs):
+  grouped with `collection`, `3`, `collection`
   has type `List Number`
   is an expression
 
 `1, -2, 3) . all? (n -> n > 0)` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `all? (n -> n > 0)`, `value`
   has type `Boolean`
   is an expression
 
 `-2` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `-2`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `3`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `all?` (VariableExpression):
+  assigned type `(Number -> Boolean) -> (List Number) -> Boolean`
+  grouped with `(condition :: (element -> Boolean)) -> collection -> Boolean`
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `all? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
 
 `all? (n -> n > 0)` (CallExpression):
+  grouped with `Boolean`, `Boolean`, `1, -2, 3) . all? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
 `all? (n -> n > 0)` (VisitAs):
+  assigned type `(List Number) -> Boolean`
+  grouped with `collection -> Boolean`
   has type `(List Number) -> Boolean`
   is an expression
 
 `n` (VariablePattern):
+  assigned type `Number`
+  grouped with `n`, `element`
   has type `Number`
   is a definition
   is a pattern
 
 `n -> n > 0` (FunctionExpression):
+  assigned type `Number -> Boolean`
+  grouped with `condition :: (element -> Boolean)`
   has type `Number -> Boolean`
   is an expression
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `n > 0` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `n > 0`, `Boolean`
   has type `Boolean`
   is an expression
 
 `n > 0` (CallExpression):
+  grouped with `Boolean`, `n > 0`
   has type `Boolean`
   is an expression
 
 `n > 0` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)`
 
 `0` (NumberExpression):
+  assigned type `Number`
+  grouped with `0`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show ((1, -2, 3) . any? (n -> n > 0))` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show ((1, -2, 3) . any? (n -> n > 0))`
   has type `()`
 
 `show ((1, -2, 3) . any? (n -> n > 0))` (CallExpression):
+  grouped with `()`, `show ((1, -2, 3) . any? (n -> n > 0))`
   has type `()`
   is an expression
 
 `1` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `1`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `1, -2, 3` (VisitAs):
+  grouped with `collection`, `3`, `collection`
   has type `List Number`
   is an expression
 
 `1, -2, 3) . any? (n -> n > 0)` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `any? (n -> n > 0)`, `value`
   has type `Boolean`
   is an expression
 
 `-2` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `-2`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `3`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `any?` (VariableExpression):
+  assigned type `(Number -> Boolean) -> (List Number) -> Boolean`
+  grouped with `(condition :: (element -> Boolean)) -> collection -> Boolean`
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `any? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
 
 `any? (n -> n > 0)` (CallExpression):
+  grouped with `Boolean`, `Boolean`, `1, -2, 3) . any? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
 `any? (n -> n > 0)` (VisitAs):
+  assigned type `(List Number) -> Boolean`
+  grouped with `collection -> Boolean`
   has type `(List Number) -> Boolean`
   is an expression
 
 `n` (VariablePattern):
+  assigned type `Number`
+  grouped with `n`, `element`
   has type `Number`
   is a definition
   is a pattern
 
 `n -> n > 0` (FunctionExpression):
+  assigned type `Number -> Boolean`
+  grouped with `condition :: (element -> Boolean)`
   has type `Number -> Boolean`
   is an expression
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `n > 0` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `n > 0`, `Boolean`
   has type `Boolean`
   is an expression
 
 `n > 0` (CallExpression):
+  grouped with `Boolean`, `n > 0`
   has type `Boolean`
   is an expression
 
 `n > 0` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)`
 
 `0` (NumberExpression):
+  assigned type `Number`
+  grouped with `0`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show ((-1, -2, -3) . any? (n -> n > 0))` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show ((-1, -2, -3) . any? (n -> n > 0))`
   has type `()`
 
 `show ((-1, -2, -3) . any? (n -> n > 0))` (CallExpression):
+  grouped with `()`, `show ((-1, -2, -3) . any? (n -> n > 0))`
   has type `()`
   is an expression
 
 `-1` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `-1`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `-1, -2, -3` (VisitAs):
+  grouped with `collection`, `-3`, `collection`
   has type `List Number`
   is an expression
 
 `-1, -2, -3) . any? (n -> n > 0)` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `any? (n -> n > 0)`, `value`
   has type `Boolean`
   is an expression
 
 `-2` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `-2`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `-3` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `-3`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `any?` (VariableExpression):
+  assigned type `(Number -> Boolean) -> (List Number) -> Boolean`
+  grouped with `(condition :: (element -> Boolean)) -> collection -> Boolean`
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `any? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
 
 `any? (n -> n > 0)` (CallExpression):
+  grouped with `Boolean`, `Boolean`, `-1, -2, -3) . any? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
 `any? (n -> n > 0)` (VisitAs):
+  assigned type `(List Number) -> Boolean`
+  grouped with `collection -> Boolean`
   has type `(List Number) -> Boolean`
   is an expression
 
 `n` (VariablePattern):
+  assigned type `Number`
+  grouped with `n`, `element`
   has type `Number`
   is a definition
   is a pattern
 
 `n -> n > 0` (FunctionExpression):
+  assigned type `Number -> Boolean`
+  grouped with `condition :: (element -> Boolean)`
   has type `Number -> Boolean`
   is an expression
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `n > 0` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `n > 0`, `Boolean`
   has type `Boolean`
   is an expression
 
 `n > 0` (CallExpression):
+  grouped with `Boolean`, `n > 0`
   has type `Boolean`
   is an expression
 
 `n > 0` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)`
 
 `0` (NumberExpression):
+  assigned type `Number`
+  grouped with `0`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

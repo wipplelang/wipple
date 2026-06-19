@@ -7,6 +7,7 @@ pub use writer::*;
 
 use std::sync::Arc;
 use wipple_core::db::{Db, Node};
+use wipple_queries::QueryCtx;
 
 pub fn collect_feedback<'a>(
     db: &'a Db,
@@ -79,7 +80,7 @@ impl<'a> FeedbackQueryItem<'a> for bool {
 struct FeedbackBuilder<'ctx, 'a, T: 'a> {
     ctx: &'ctx mut FeedbackCtx<'a>,
     id: String,
-    query: Option<Box<dyn Fn(&'a Db, Node) -> Box<dyn Iterator<Item = T> + 'a>>>,
+    query: Option<Box<dyn Fn(&QueryCtx<'a>, Node) -> Box<dyn Iterator<Item = T> + 'a>>>,
     rank: Option<fn(&T) -> FeedbackRank>,
     location: Option<fn(Node, &T) -> FeedbackLocation>,
     display: Option<fn(&Db, &mut FeedbackWriter<'_>, Node, &T)>,
@@ -89,9 +90,9 @@ struct FeedbackBuilder<'ctx, 'a, T: 'a> {
 impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
     fn query<I: FeedbackQueryItem<'a, Item = T>>(
         mut self,
-        query: impl Fn(&'a Db, Node) -> I + 'static,
+        query: impl Fn(&QueryCtx<'a>, Node) -> I + 'static,
     ) -> Self {
-        self.query = Some(Box::new(move |db, node| query(db, node).into_iter()));
+        self.query = Some(Box::new(move |ctx, node| query(ctx, node).into_iter()));
         self
     }
 
@@ -125,7 +126,8 @@ impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
         let show_graph = self.show_graph;
 
         self.ctx.queries.push(Box::new(move |db, node| {
-            let items = query(db, node);
+            let ctx = QueryCtx::new(db, filter.clone());
+            let items = query(&ctx, node);
 
             Box::new({
                 let id = id.clone();

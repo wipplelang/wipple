@@ -9,7 +9,7 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
-    typecheck::{constraints::group_constraint::GroupConstraint, groups::Typed},
+    typecheck::{constraints::ty_constraint::TyConstraint, groups::Typed, ty::Ty},
     visit::{Visit, Visitor},
 };
 use wipple_parse::parser::{ParseError, Parser};
@@ -51,7 +51,7 @@ impl Visit for ExpressionStatement {
 
         db.graph.replace(node, expression);
 
-        visitor.constraint(db, GroupConstraint::new(node, expression));
+        visitor.constraint(db, TyConstraint::new(node, Ty::Node(expression)));
 
         visitor.codegen(db, node, ExpressionStatementCodegen { node, expression });
     }

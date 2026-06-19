@@ -8,7 +8,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Traces {
     pub traces: Vec<TracesEntry>,
     pub edges: Vec<(usize, Option<usize>)>,

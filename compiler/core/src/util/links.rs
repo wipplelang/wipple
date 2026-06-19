@@ -1,20 +1,29 @@
 use crate::{
     db::{Db, Node},
-    facts::Syntax,
     span::Str,
-    typecheck::{groups::Typed, instantiate::Instantiated, solver::GroupedWith},
+    typecheck::{
+        groups::Typed,
+        instantiate::{Instantiated, InstantiatedParameters},
+        solver::GroupedWith,
+    },
     visit::{TypeParameters, definitions::Defined},
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, ops::ControlFlow};
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Link {
     pub node: Node,
+    pub force_type: bool,
     pub related: Vec<Node>,
 }
 
-pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<Str, Link> {
+pub fn get_links(
+    db: &Db,
+    definition_node: Node,
+    source_node: Node,
+    mut get_instantiated: impl FnMut(Node) -> Option<Node>,
+) -> BTreeMap<Str, Link> {
     let mut links = BTreeMap::new();
 
     let Some(Defined(definition)) = db.get(definition_node) else {
@@ -28,6 +37,7 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
             name.clone(),
             Link {
                 node: source_node,
+                force_type: false,
                 related: Vec::new(),
             },
         );
@@ -49,58 +59,68 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
         }
     }
 
-    for (name, name_node) in nodes {
-        let Some(instantiated_node) = instantiated_node_for(db, name_node, source_node) else {
-            continue;
-        };
-
-        let Some(Typed(Some(group))) = db.get(instantiated_node) else {
-            continue;
-        };
-
-        links.insert(
-            name,
-            Link {
-                node: instantiated_node,
-                related: group.nodes.clone(),
-            },
-        );
+    for (name, parameter_node) in nodes {
+        if let Some(instantiated_node) = get_instantiated(parameter_node)
+            && let Some(Typed(Some(group))) = db.get(instantiated_node)
+        {
+            links.insert(
+                name,
+                Link {
+                    node: instantiated_node,
+                    force_type: db.contains::<Instantiated>(instantiated_node),
+                    related: group.nodes.iter().copied().collect(),
+                },
+            );
+        }
     }
 
     links
 }
 
 pub fn instantiated_node_for(db: &Db, parameter: Node, source_node: Node) -> Option<Node> {
-    let instantiated_node = db.for_each_fact::<Instantiated, _>(&mut |_, node, instantiated| {
-        if instantiated.from == parameter && instantiated.source_node == source_node {
-            ControlFlow::Break(node)
-        } else {
-            ControlFlow::Continue(())
+    let InstantiatedParameters(parameters) = db.get(source_node).cloned().unwrap_or_default();
+
+    let instantiated_node = parameters.get(&parameter).copied()?;
+
+    // Collect all nodes related to the instantiated node
+    let mut paths = BTreeSet::from([vec![instantiated_node]]);
+    let mut seen = BTreeSet::new();
+    loop {
+        let mut progress = false;
+        for prefix in paths.clone() {
+            let node = *prefix.last().unwrap();
+            if !seen.insert(node) {
+                continue;
+            }
+
+            let GroupedWith(others) = db.get(node).cloned().unwrap_or_default();
+
+            for other in others {
+                let mut path = prefix.clone();
+                path.push(other);
+
+                progress |= paths.insert(path);
+            }
         }
+
+        if !progress {
+            break;
+        }
+    }
+
+    // Find a path terminating in a non-instantiated node
+
+    let path = paths.into_iter().find(|path| {
+        let (&last, prefix) = path.split_last().unwrap();
+
+        !db.contains::<Instantiated>(last)
+            && prefix.iter().all(|&node| db.contains::<Instantiated>(node))
     })?;
 
-    let Some(Typed(Some(group))) = db.get(instantiated_node) else {
-        return None;
-    };
-
-    // Prefer using the first node from the source that was grouped with
-    // `instantiated`
-    let node = db
-        .get(instantiated_node)
-        .and_then(|GroupedWith(nodes)| {
-            nodes
-                .iter()
-                .copied()
-                .find(|&node| !db.contains::<Instantiated>(node))
-        })
-        .or_else(|| {
-            group
-                .nodes
-                .iter()
-                .copied()
-                .find(|&node| db.contains::<Syntax>(node))
-        })
-        .unwrap_or(group.nodes[0]);
-
-    Some(node)
+    // Return the most recent node that has a type
+    path.into_iter().rev().find(|&node| {
+        db.get(node)
+            .and_then(|Typed(group)| group.as_ref())
+            .is_some()
+    })
 }

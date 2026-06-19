@@ -1,170 +1,224 @@
 Facts (layer 2):
 
 `fib` (VariablePattern):
+  assigned type `Number -> Number`
+  grouped with `n -> when n {⋯}`, `fib`, `fib`, `n -> when n {⋯}`, `fib`
   has type `Number -> Number`
   is a definition
   is a pattern
 
 `fib : n -> when n {⋯}` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `n` (VariablePattern):
+  assigned type `Number`
+  grouped with `n`, `n`, `n`, `n`, `n - 1`
   has type `Number`
   is a definition
   is a pattern
 
 `n -> when n {⋯}` (FunctionExpression):
+  assigned type `Number -> Number`
   captures `fib`
+  grouped with `fib`, `fib`
   has type `Number -> Number`
   is an expression
 
 `when n {⋯}` (WhenExpression):
+  grouped with `n`, `fib (n - 1) + fib (n - 2)`, `fib (n - 1)`
   has type `Number`
   is an expression
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `0 or 1`, `0`, `1`, `_`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `0` (NumberPattern):
+  assigned type `Number`
+  grouped with `n`, `0`, `0 or 1`
   has type `Number`
   is a pattern
-  type is annotated
 
 `0 or 1` (OrPattern):
+  assigned type `Number`
   captures `n`
+  grouped with `n`, `0`, `1`
   has type `Number`
   is a pattern
 
 `1` (NumberPattern):
+  assigned type `Number`
+  grouped with `n`, `1`, `0 or 1`
   has type `Number`
   is a pattern
-  type is annotated
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `when n {⋯}`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `_` (WildcardPattern):
+  assigned type `Number`
   captures `fib`, `n`
+  grouped with `n`
   has type `Number`
   is a pattern
 
 `fib` (VariableExpression):
+  assigned type `Number -> Number`
+  grouped with `fib`
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `fib`
   type is annotated
 
 `fib (n - 1)` (CallExpression):
+  grouped with `fib (n - 2)`, `left`, `when n {⋯}`, `fib 10`
   has type `Number`
   is an expression
 
 `fib (n - 1) + fib (n - 2)` (OperatorExpression):
+  assigned type `Number`
+  grouped with `fib (n - 1) + fib (n - 2)`, `when n {⋯}`
   has type `Number`
   is an expression
 
 `fib (n - 1) + fib (n - 2)` (CallExpression):
+  grouped with `sum`, `fib (n - 1) + fib (n - 2)`
   has type `Number`
   is an expression
 
 `fib (n - 1) + fib (n - 2)` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `n - 1` (OperatorExpression):
+  assigned type `Number`
+  grouped with `n - 1`, `n - 2`, `n`, `10`
   has type `Number`
   is an expression
 
 `n - 1` (CallExpression):
+  grouped with `difference`, `n - 1`
   has type `Number`
   is an expression
 
 `n - 1` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> difference`
   has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)`
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `fib` (VariableExpression):
+  assigned type `Number -> Number`
+  grouped with `fib`
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `fib`
   type is annotated
 
 `fib (n - 2)` (CallExpression):
+  grouped with `fib (n - 1)`, `right`
   has type `Number`
   is an expression
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `n - 2` (OperatorExpression):
+  assigned type `Number`
+  grouped with `n - 2`, `n - 1`
   has type `Number`
   is an expression
 
 `n - 2` (CallExpression):
+  grouped with `difference`, `n - 2`
   has type `Number`
   is an expression
 
 `n - 2` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> difference`
   has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)`
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (fib 10)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (fib 10)`
   has type `()`
 
 `show (fib 10)` (CallExpression):
+  grouped with `()`, `show (fib 10)`
   has type `()`
   is an expression
 
 `fib` (VariableExpression):
+  assigned type `Number -> Number`
+  grouped with `fib`
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `fib`
   type is annotated
 
 `fib 10` (CallExpression):
+  grouped with `fib (n - 1)`, `value`
   has type `Number`
   is an expression
 
 `10` (NumberExpression):
+  assigned type `Number`
+  grouped with `10`, `n - 1`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

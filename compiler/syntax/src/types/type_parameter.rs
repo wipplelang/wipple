@@ -7,12 +7,15 @@ use wipple_core::{
     span::{Span, Str},
     typecheck::{
         constraints::{
-            bound_constraint::InferredParameter, group_constraint::GroupConstraint,
+            bound_constraint::InferredParameter,
+            generic_constraint::{GenericConstraint, GenericConstraintMode},
             ty_constraint::TyConstraint,
         },
-        ty::ConstructedTy,
+        ty::{ConstructedTy, Ty},
     },
-    visit::{TypeParameters, Visit, Visitor, definitions::TypeParameterDefinition},
+    visit::{
+        ResolvedTypeParameter, TypeParameters, Visit, Visitor, definitions::TypeParameterDefinition,
+    },
 };
 use wipple_parse::{
     lexer::TokenKind,
@@ -105,7 +108,9 @@ impl Visit for TypeParameter {
             .into_iter()
             .next()
         {
-            visitor.constraint(db, GroupConstraint::new(node, existing_node));
+            visitor.constraint(db, TyConstraint::new(node, Ty::Node(existing_node)));
+
+            db.insert(node, ResolvedTypeParameter(existing_node));
         } else if visitor
             .current_definition
             .as_ref()
@@ -123,9 +128,23 @@ impl Visit for TypeParameter {
                 let value = visitor.visit(db, &value);
                 db.graph.edge(value, node, "value");
 
-                visitor.constraint(db, GroupConstraint::new(node, value));
+                visitor.constraint(db, TyConstraint::new(node, Ty::Node(value)));
+
+                visitor.constraint(
+                    db,
+                    GenericConstraint::new(
+                        Box::new(TyConstraint::new(
+                            node,
+                            Ty::Constructed(ConstructedTy::parameter(node)),
+                        )),
+                        GenericConstraintMode::SourceOnly,
+                    ),
+                );
             } else {
-                visitor.constraint(db, TyConstraint::new(node, ConstructedTy::parameter(node)));
+                visitor.constraint(
+                    db,
+                    TyConstraint::new(node, Ty::Constructed(ConstructedTy::parameter(node))),
+                );
             }
 
             if self.infer {

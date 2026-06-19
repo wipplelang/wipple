@@ -1,11 +1,11 @@
-use crate::comments_without_links;
+use crate::{QueryCtx, comments_without_links};
 use levenshtein::levenshtein;
 use std::{
     collections::{BTreeMap, BTreeSet},
     ops::ControlFlow,
 };
 use wipple_core::{
-    db::{Db, Node},
+    db::Node,
     facts::{Parent, Syntax},
     render::Comments,
     span::Str,
@@ -18,12 +18,12 @@ use wipple_core::{
     },
 };
 
-pub fn definitions(db: &Db, node: Node) -> Option<&BTreeSet<Node>> {
+pub fn definitions<'a>(db: &QueryCtx<'a>, node: Node) -> Option<&'a BTreeSet<Node>> {
     db.get::<Resolved>(node)
         .map(|resolved| &resolved.definitions)
 }
 
-pub fn references(db: &Db, node: Node) -> Vec<Node> {
+pub fn references(db: &QueryCtx<'_>, node: Node) -> Vec<Node> {
     let mut references = Vec::new();
     db.for_each_fact::<Resolved, ()>(&mut |_, other, resolved| {
         if resolved.definitions.contains(&node) {
@@ -36,7 +36,7 @@ pub fn references(db: &Db, node: Node) -> Vec<Node> {
     references
 }
 
-pub fn unresolved(db: &Db, node: Node) -> Option<(Str, Option<(Node, Str)>)> {
+pub fn unresolved(db: &QueryCtx<'_>, node: Node) -> Option<(Str, Option<(Node, Str)>)> {
     let resolved = db.get::<Resolved>(node)?;
 
     if !resolved.definitions.is_empty() {
@@ -65,7 +65,7 @@ pub fn unresolved(db: &Db, node: Node) -> Option<(Str, Option<(Node, Str)>)> {
     Some((resolved.name.clone(), suggestion))
 }
 
-pub fn ambiguous(db: &Db, node: Node) -> Option<(Node, Str, &BTreeSet<Node>)> {
+pub fn ambiguous<'a>(db: &QueryCtx<'a>, node: Node) -> Option<(Node, Str, &'a BTreeSet<Node>)> {
     let resolved = db.get::<Resolved>(node)?;
     (resolved.definitions.len() > 1).then_some((node, resolved.name.clone(), &resolved.definitions))
 }
@@ -78,7 +78,7 @@ pub struct Documentation {
     pub comments: Comments,
 }
 
-pub fn documentation(db: &Db, node: Node) -> Option<Documentation> {
+pub fn documentation(db: &QueryCtx<'_>, node: Node) -> Option<Documentation> {
     let Defined(definition) = db.get(node)?;
     let source = &db.ast(&db.get::<Syntax>(node)?.0).span(db).source;
 
@@ -123,7 +123,10 @@ pub fn documentation(db: &Db, node: Node) -> Option<Documentation> {
     })
 }
 
-pub fn scopes(db: &Db, node: Node) -> Vec<&BTreeMap<Str, BTreeMap<Node, Box<dyn Definition>>>> {
+pub fn scopes<'a>(
+    db: &QueryCtx<'a>,
+    node: Node,
+) -> Vec<&'a BTreeMap<Str, BTreeMap<Node, Box<dyn Definition>>>> {
     std::iter::successors(Some(node), |&node| {
         db.get(node).map(|Parent(parent)| *parent)
     })

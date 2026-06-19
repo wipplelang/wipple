@@ -5,7 +5,7 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::{Span, Str},
-    typecheck::constraints::group_constraint::GroupConstraint,
+    typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
     visit::{
         IsCaptured, IsMutated, Visit, Visitor, definitions::VariableDefinition,
         exhaustiveness::MatchPathSegment,
@@ -57,7 +57,10 @@ impl Visit for SetPattern {
             db.insert(node, InvalidSetPattern::Immutable(variable_definition_node));
         }
 
-        visitor.constraint(db, GroupConstraint::new(node, variable_definition_node));
+        visitor.constraint(
+            db,
+            TyConstraint::new(node, Ty::Node(variable_definition_node)),
+        );
 
         if visitor.capture(variable_definition_node) {
             db.insert(variable_definition_node, IsCaptured);

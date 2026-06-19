@@ -1,50 +1,65 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show ((negate 3) = -3)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show ((negate 3) = -3)`
   has type `()`
 
 `show ((negate 3) = -3)` (CallExpression):
+  grouped with `()`, `show ((negate 3) = -3)`
   has type `()`
   is an expression
 
 `negate` (VariableExpression):
+  assigned type `Number -> Number`
+  grouped with `(n :: Number) -> Number`
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `negate :: (n :: Number) -> Number`
 
 `negate 3` (CallExpression):
+  grouped with `Number`, `value`
   has type `Number`
   is an expression
 
 `negate 3) = -3` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `negate 3) = -3`, `value`
   has type `Boolean`
   is an expression
 
 `negate 3) = -3` (CallExpression):
+  grouped with `Boolean`, `negate 3) = -3`
   has type `Boolean`
   is an expression
 
 `negate 3) = -3` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `3` (NumberExpression):
+  assigned type `Number`
+  grouped with `3`, `n :: Number`
   has type `Number`
   is an expression
-  type is annotated
 
 `-3` (NumberExpression):
+  assigned type `Number`
+  grouped with `-3`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

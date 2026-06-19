@@ -9,7 +9,7 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
-    typecheck::constraints::group_constraint::GroupConstraint,
+    typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -108,7 +108,7 @@ impl Visit for WhenExpression {
 
                         visitor.pop_scope(db);
 
-                        visitor.constraint(db, GroupConstraint::new(value, node));
+                        visitor.constraint(db, TyConstraint::new(value, Ty::Node(node)));
 
                         (pattern, value)
                     },

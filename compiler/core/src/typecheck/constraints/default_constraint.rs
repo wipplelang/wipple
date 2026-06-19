@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, Node},
     typecheck::{
-        constraints::{AnyConstraintTrace, Constraint, RunResult, Solver},
+        constraints::{AnyConstraintTrace, Constraint, ConstraintKind, RunResult, Solver},
         instantiate::InstantiateCtx,
         ty::Ty,
     },
@@ -27,6 +27,10 @@ impl DefaultConstraint {
 
 #[typetag::serde]
 impl Constraint for DefaultConstraint {
+    fn kind(&self) -> ConstraintKind {
+        ConstraintKind::Bound
+    }
+
     fn node(&self) -> Node {
         self.node
     }
@@ -48,7 +52,7 @@ impl Constraint for DefaultConstraint {
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
         if let Ty::Node(node) = solver.apply_ty(db, &Ty::Node(self.node)) {
-            solver.unify_with_node(db, node, self.default, None);
+            solver.unify(db, node, &Ty::Node(self.default), None);
         }
 
         RunResult::None

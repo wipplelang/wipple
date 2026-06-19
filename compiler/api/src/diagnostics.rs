@@ -70,7 +70,7 @@ pub struct DiagnosticTraceEdge {
 impl CompileResult {
     #[wasm_bindgen]
     pub fn groups(&self) -> Vec<DiagnosticGroup> {
-        let mut groups = BTreeMap::<Vec<Node>, (usize, DiagnosticGroup)>::new();
+        let mut groups = BTreeMap::<BTreeSet<Node>, (usize, DiagnosticGroup)>::new();
 
         for node in self.db.owned_nodes() {
             let Some(span) = self
@@ -107,9 +107,8 @@ impl CompileResult {
                     .tys
                     .iter()
                     .map(|ty| {
-                        let (ty, _) = update_type(&self.db, &Ty::Constructed(ty.clone()), None);
-
-                        ty.display(&self.db, None, true)
+                        let ty = update_type(&self.db, &Ty::Constructed(ty.clone()), None);
+                        ty.display(&self.db, true)
                     })
                     .collect::<Vec<_>>();
 

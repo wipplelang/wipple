@@ -9,7 +9,7 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::{Span, Str},
-    typecheck::constraints::group_constraint::GroupConstraint,
+    typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
     visit::{Visit, VisitAs, Visitor},
 };
 use wipple_parse::{
@@ -68,8 +68,8 @@ impl Visit for LoopExpression {
         let control_flow_type = visitor.visit(db, &control_flow_syntax);
         db.hide(control_flow_type);
 
-        visitor.constraint(db, GroupConstraint::new(body, control_flow_type));
-        visitor.constraint(db, GroupConstraint::new(node, result));
+        visitor.constraint(db, TyConstraint::new(body, Ty::Node(control_flow_type)));
+        visitor.constraint(db, TyConstraint::new(node, Ty::Node(result)));
 
         visitor.codegen(db, node, LoopExpressionCodegen { node, body });
     }

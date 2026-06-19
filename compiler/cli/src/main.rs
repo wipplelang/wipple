@@ -15,7 +15,10 @@ use std::{
     ops::ControlFlow,
     path::{Path, PathBuf},
     process,
-    sync::atomic::{self, AtomicUsize},
+    sync::{
+        Arc,
+        atomic::{self, AtomicUsize},
+    },
 };
 use wipple_core::{
     LibraryArtifact, TopLevel,
@@ -29,6 +32,7 @@ use wipple_core::{
     visit::definitions::Defined,
 };
 use wipple_feedback::FeedbackWriter;
+use wipple_queries::QueryCtx;
 use wipple_syntax::parse;
 
 #[derive(Debug, clap::Parser)]
@@ -147,6 +151,9 @@ fn setup(
     }
 
     let mut db = Db::new(None);
+    if env::var("WIPPLE_DEBUG").is_ok() {
+        db.debug_enabled = true;
+    }
 
     let mut top_level = TopLevel::default();
 
@@ -428,15 +435,17 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
         .run(&mut db, &mut top_level, &name)?
         .ok_or_else(|| anyhow::format_err!("compilation failed"))?;
 
+    let ctx = QueryCtx::new(&db, Arc::new(default_filter));
+
     let mut items = HashMap::new();
     db.for_each_fact::<Defined, ()>(&mut |db, node, _| {
-        if let Some(documentation) = wipple_queries::documentation(db, node) {
+        if let Some(documentation) = wipple_queries::documentation(&ctx, node) {
             let Some(name) = documentation.name else {
                 return ControlFlow::Continue(());
             };
 
             let mut writer = FeedbackWriter::with_filter(&default_filter);
-            writer.comments(db, node, &documentation.comments);
+            writer.comments(db, &documentation.comments);
             let docs = writer
                 .finish(db, |db, segment| segment.markdown(db, false))
                 .message;

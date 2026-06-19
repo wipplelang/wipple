@@ -10,9 +10,10 @@ use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
 use std::{
     any::{Any, TypeId},
+    cmp::Reverse,
     collections::{BTreeMap, BTreeSet},
     fmt::{Debug, Display},
-    ops::{ControlFlow, Deref},
+    ops::{ControlFlow, Deref, RangeInclusive},
     str::FromStr,
     sync::Arc,
 };
@@ -77,8 +78,8 @@ pub struct Db {
     pub(crate) ast: Ast,
     pub graph: GraphBuilder,
     pub traces: Vec<TracesEntry>,
-    nodes: Vec<NodeInfo>,                // for owned nodes
-    overrides: BTreeMap<Node, NodeInfo>, // for parent nodes
+    nodes: Vec<Option<NodeInfo>>,                // for owned nodes
+    overrides: BTreeMap<Node, Option<NodeInfo>>, // for parent nodes
     cache: BTreeMap<TypeId, BTreeSet<Node>>,
 }
 
@@ -133,8 +134,8 @@ struct SerializedDb {
     graph: GraphBuilder,
     traces: Vec<TracesEntry>,
     ast: Ast,
-    nodes: Vec<NodeInfo>,
-    overrides: BTreeMap<Node, NodeInfo>,
+    nodes: Vec<Option<NodeInfo>>,
+    overrides: BTreeMap<Node, Option<NodeInfo>>,
 }
 
 impl From<&Db> for SerializedDb {
@@ -170,7 +171,7 @@ impl From<SerializedDb> for Db {
         };
 
         let mut cache = BTreeMap::<TypeId, BTreeSet<Node>>::new();
-        for (node, info) in db.owned_nodes_with_info() {
+        for (node, info) in db.owned_nodes_with_info_since(0) {
             for fact in info.facts.0.values() {
                 cache
                     .entry(fact.as_ref().type_id())
@@ -258,7 +259,7 @@ impl Db {
 
     pub fn node(&mut self) -> Node {
         let id = self.nodes.len();
-        self.nodes.push(NodeInfo::default());
+        self.nodes.push(Some(NodeInfo::default()));
 
         Node {
             layer: self.layer(),
@@ -277,37 +278,58 @@ impl Db {
         self.ast.insert(value)
     }
 
-    fn info(&self, node: Node) -> Option<&NodeInfo> {
+    fn info(&self, node: Node) -> Option<&Option<NodeInfo>> {
         if node.layer == self.layer() {
             Some(&self.nodes[node.index])
-        } else if let Some(info) = self.overrides.get(&node) {
-            Some(info)
         } else {
-            None
+            self.overrides.get(&node)
         }
     }
 
-    fn info_mut(&mut self, node: Node) -> &mut NodeInfo {
+    fn info_mut(&mut self, node: Node) -> &mut Option<NodeInfo> {
         if node.layer == self.layer() {
             &mut self.nodes[node.index]
         } else {
             self.overrides.entry(node).or_insert_with(|| {
                 self.parent
-                    .as_ref()
-                    .and_then(|parent| parent.info(node))
+                    .as_ref()?
+                    .info(node)
                     .cloned()
-                    .unwrap_or_default()
+                    .unwrap_or_else(|| Some(Default::default()))
             })
         }
     }
 
+    pub fn last_node(&self) -> Node {
+        assert!(!self.nodes.is_empty());
+
+        Node {
+            layer: self.layer(),
+            index: self.nodes.len() - 1,
+        }
+    }
+
+    pub fn delete(&mut self, node: Node) {
+        *self.info_mut(node) = None;
+    }
+
+    pub fn delete_range(&mut self, range: RangeInclusive<Node>) {
+        for info in &mut self.nodes[(range.start().index + 1)..=range.end().index] {
+            *info = None;
+        }
+    }
+
     pub fn hide(&mut self, node: Node) {
-        self.info_mut(node).hidden = true;
+        let Some(info) = self.info_mut(node) else {
+            return;
+        };
+
+        info.hidden = true;
     }
 
     pub fn is_hidden(&self, node: Node) -> bool {
         if let Some(info) = self.info(node) {
-            info.hidden
+            info.as_ref().is_some_and(|info| info.hidden)
         } else {
             self.parent
                 .as_ref()
@@ -315,9 +337,20 @@ impl Db {
         }
     }
 
+    pub fn is_deleted(&self, node: Node) -> bool {
+        if let Some(info) = self.info(node) {
+            info.is_none()
+        } else {
+            self.parent
+                .as_ref()
+                .is_some_and(|parent| parent.is_deleted(node))
+        }
+    }
+
     pub fn contains<T: Fact>(&self, node: Node) -> bool {
         if let Some(info) = self.info(node) {
-            info.facts.0.contains_key(&TypeId::of::<T>())
+            info.as_ref()
+                .is_some_and(|info| info.facts.0.contains_key(&TypeId::of::<T>()))
         } else {
             self.parent
                 .as_ref()
@@ -327,9 +360,8 @@ impl Db {
 
     pub fn get<T: Fact>(&self, node: Node) -> Option<&T> {
         if let Some(info) = self.info(node) {
-            info.facts
-                .0
-                .get(&TypeId::of::<T>())
+            info.as_ref()
+                .and_then(|info| info.facts.0.get(&TypeId::of::<T>()))
                 .map(|fact| fact.downcast_ref::<T>().unwrap())
         } else {
             self.parent
@@ -340,6 +372,7 @@ impl Db {
 
     pub fn get_mut<T: Fact>(&mut self, node: Node) -> Option<&mut T> {
         self.info_mut(node)
+            .as_mut()?
             .facts
             .0
             .get_mut(&TypeId::of::<T>())
@@ -353,6 +386,8 @@ impl Db {
             .insert(node);
 
         self.info_mut(node)
+            .as_mut()
+            .unwrap_or_else(|| panic!("{node:?} was deleted"))
             .facts
             .0
             .entry(TypeId::of::<T>())
@@ -362,15 +397,16 @@ impl Db {
     }
 
     pub fn insert<T: Fact>(&mut self, node: Node, fact: T) {
+        let Some(info) = self.info_mut(node) else {
+            return;
+        };
+
+        info.facts.0.insert(TypeId::of::<T>(), Box::new(fact));
+
         self.cache
             .entry(TypeId::of::<T>())
             .or_default()
             .insert(node);
-
-        self.info_mut(node)
-            .facts
-            .0
-            .insert(TypeId::of::<T>(), Box::new(fact));
     }
 
     pub fn for_each_fact<T: Fact, U>(
@@ -386,9 +422,11 @@ impl Db {
         let nodes = self.cache.get(&TypeId::of::<T>())?;
 
         for &node in nodes {
-            let fact = self
-                .info(node)
-                .unwrap()
+            let Some(Some(info)) = self.info(node) else {
+                continue;
+            };
+
+            let fact = info
                 .facts
                 .0
                 .get(&TypeId::of::<T>())
@@ -405,23 +443,29 @@ impl Db {
     }
 
     pub fn owned_nodes(&self) -> impl Iterator<Item = Node> {
-        self.owned_nodes_with_info().map(|(node, _)| node)
+        self.owned_nodes_with_info_since(0).map(|(node, _)| node)
     }
 
-    fn owned_nodes_with_info(&self) -> impl Iterator<Item = (Node, &NodeInfo)> {
-        self.nodes()
-            .chain(self.overrides.iter().map(|(&node, info)| (node, info)))
+    fn owned_nodes_with_info_since(&self, start: usize) -> impl Iterator<Item = (Node, &NodeInfo)> {
+        self.nodes_since(start).chain(
+            self.overrides
+                .iter()
+                .filter_map(|(&node, info)| Some((node, info.as_ref()?))),
+        )
     }
 
-    fn nodes(&self) -> impl Iterator<Item = (Node, &NodeInfo)> {
-        self.nodes.iter().enumerate().map(|(index, info)| {
-            let node = Node {
-                layer: self.layer(),
-                index,
-            };
+    fn nodes_since(&self, start: usize) -> impl Iterator<Item = (Node, &NodeInfo)> {
+        self.nodes[start..]
+            .iter()
+            .enumerate()
+            .filter_map(move |(index, info)| {
+                let node = Node {
+                    layer: self.layer(),
+                    index: index + start,
+                };
 
-            (node, info)
-        })
+                Some((node, info.as_ref()?))
+            })
     }
 
     pub fn gc(&mut self) {
@@ -430,7 +474,7 @@ impl Db {
 
     pub fn debug(&self, filter: impl Fn(&Self, Node) -> bool, show_span: bool) -> impl Display {
         let mut nodes = self
-            .nodes()
+            .nodes_since(0)
             .filter_map(|(node, info)| {
                 if !self.debug_enabled && (info.hidden || !filter(self, node)) {
                     return None;
@@ -450,8 +494,9 @@ impl Db {
             })
             .collect::<Vec<_>>();
 
-        nodes
-            .sort_by_key(|(_, _, syntax)| syntax.map(|Syntax(syntax)| syntax.get(self).span(self)));
+        nodes.sort_by_key(|(_, _, syntax)| {
+            Reverse(syntax.map(|Syntax(syntax)| Reverse(syntax.get(self).span(self))))
+        });
 
         let mut ctx = RenderCtx::with_filter(&filter);
         for (node, info, syntax) in nodes {

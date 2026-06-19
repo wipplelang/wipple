@@ -1,130 +1,176 @@
 Facts (layer 2):
 
 `list` (VariablePattern):
+  assigned type `List String`
+  grouped with `"a", "b", "c"`, `"a", "b", "c"`, `list`
   has type `List String`
   is a definition
   is a pattern
 
 `list : "a", "b", "c"` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `"a"` (VisitAs):
+  assigned type `String`
+  grouped with `_`, `"a"`, `element`
   has type `String`
   is an expression
-  type is annotated
 
 `"a", "b", "c"` (CollectionExpression):
+  grouped with `"c"`, `list`, `list`
   has type `List String`
   is an expression
 
 `"b"` (VisitAs):
+  assigned type `String`
+  grouped with `_`, `"b"`, `element`
   has type `String`
   is an expression
-  type is annotated
 
 `"c"` (VisitAs):
+  assigned type `String`
+  grouped with `_`, `"c"`, `element`
   has type `String`
   is an expression
-  type is annotated
 
 `list` (VisitAs):
+  assigned type `List String`
+  grouped with `collection`, `list`
   has type `List String`
   is an expression
   resolved to 1 definition(s): `list`
   type is annotated
 
 `list . enumerate` (VisitAs):
+  assigned type `Sequence (Number; String)`
+  grouped with `container`, `enumerate`, `container`
   has type `Sequence (Number; String)`
   is an expression
 
 `list . enumerate . each ((n; c) -> show ("_: _" n c))` (ExpressionStatement):
+  assigned type `()`
+  grouped with `list . enumerate . each ((n; c) -> show ("_: _" n c))`
   has type `()`
 
 `list . enumerate . each ((n; c) -> show ("_: _" n c))` (OperatorExpression):
+  assigned type `()`
+  grouped with `each ((n; c) -> show ("_: _" n c))`, `list . enumerate . each ((n; c) -> show ("_: _" n c))`
   has type `()`
   is an expression
 
 `enumerate` (CallExpression):
+  grouped with `Sequence (Number; element)`, `list . enumerate`
   has type `Sequence (Number; String)`
   is an expression
 
 `enumerate` (VisitAs):
+  assigned type `(List String) -> Sequence (Number; String)`
+  grouped with `collection -> Sequence (Number; element)`
   has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(List String) -> Sequence (Number; String)`
   is an expression
   resolved to 1 definition(s): `enumerate :: collection -> Sequence (Number; element) where (As-Sequence collection element)`
 
 `each` (VariableExpression):
+  assigned type `((Number; String) -> ()) -> (Sequence (Number; String)) -> ()`
+  grouped with `(action :: (element -> ())) -> container -> ()`
   has bound(s) `As-Sequence` `(Sequence (Number; String))` `(Number; String)` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `((Number; String) -> ()) -> (Sequence (Number; String)) -> ()`
   is an expression
   resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
 
 `each ((n; c) -> show ("_: _" n c))` (CallExpression):
+  grouped with `()`, `()`, `list . enumerate . each ((n; c) -> show ("_: _" n c))`
   has type `()`
   is an expression
 
 `each ((n; c) -> show ("_: _" n c))` (VisitAs):
+  assigned type `(Sequence (Number; String)) -> ()`
+  grouped with `container -> ()`
   has type `(Sequence (Number; String)) -> ()`
   is an expression
 
 `(n; c) -> show ("_: _" n c)` (FunctionExpression):
+  assigned type `(Number; String) -> ()`
+  grouped with `action :: (element -> ())`
   has type `(Number; String) -> ()`
   is an expression
 
 `n` (VariablePattern):
+  assigned type `Number`
+  grouped with `_`, `n`
   has type `Number`
   is a definition
   is a pattern
 
 `n; c` (TuplePattern):
+  assigned type `(Number; String)`
+  grouped with `element`
   has type `(Number; String)`
   is a pattern
 
 `c` (VariablePattern):
+  assigned type `String`
+  grouped with `_`, `c`
   has type `String`
   is a definition
   is a pattern
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show ("_: _" n c)` (CallExpression):
+  grouped with `()`, `()`
   has type `()`
   is an expression
 
 `"_: _" n c` (FormatExpression):
+  assigned type `String`
+  grouped with `"_: _" n c`, `value`
   has type `String`
   is an expression
 
 `"_: _" n c` (NamedType):
+  assigned type `String`
+  grouped with `"_: _" n c`, `String`, `_`, `_`, `_`, `_`, `String`, `_`, `_`, `_`, `_`, `_`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `"_: _" n c` (ConstructorExpression):
+  assigned type `Number -> String`
+  grouped with `value -> String`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> String`
   is an expression
   resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
 `"_: _" n c` (ConstructorExpression):
+  assigned type `String -> String`
+  grouped with `value -> String`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> String`
   is an expression
   resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `c` (VariableExpression):
+  assigned type `String`
+  grouped with `c`, `value`
   has type `String`
   is an expression
   resolved to 1 definition(s): `c`

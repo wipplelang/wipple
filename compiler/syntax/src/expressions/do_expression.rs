@@ -6,7 +6,10 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::ConstructedTy},
+    typecheck::{
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
+    },
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -43,7 +46,10 @@ impl Visit for DoExpression {
         let input = visitor.visit(db, &self.input);
         db.graph.edge(input, node, "input");
 
-        visitor.constraint(db, TyConstraint::new(input, ConstructedTy::block(node)));
+        visitor.constraint(
+            db,
+            TyConstraint::new(input, Ty::Constructed(ConstructedTy::block(node))),
+        );
         visitor.codegen(db, node, DoExpressionCodegen { node, input });
     }
 }

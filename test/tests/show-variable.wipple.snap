@@ -1,42 +1,58 @@
 Facts (layer 2):
 
 `Cannot-Be-Shown : type` (TypeDefinition):
+  assigned type `Cannot-Be-Shown`
+  grouped with `Cannot-Be-Shown : type`
   has definition constraints
   has type `Cannot-Be-Shown`
   is a definition
 
 `Cannot-Be-Shown : type` (TypeDefinition):
+  assigned type `Cannot-Be-Shown`
+  grouped with `Cannot-Be-Shown : type`
   has definition constraints
   has type `Cannot-Be-Shown`
   is a definition
 
 `my-variable` (VariablePattern):
+  assigned type `Cannot-Be-Shown`
+  grouped with `Cannot-Be-Shown`, `Cannot-Be-Shown`, `my-variable`
   has type `Cannot-Be-Shown`
   is a definition
   is a pattern
 
 `my-variable : Cannot-Be-Shown` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `Cannot-Be-Shown` (ConstructorExpression):
+  assigned type `Cannot-Be-Shown`
+  grouped with `Cannot-Be-Shown : type`, `my-variable`, `my-variable`
   has type `Cannot-Be-Shown`
   is an expression
   resolved to 1 definition(s): `Cannot-Be-Shown : type`
 
 `show` (VariableExpression):
+  assigned type `Cannot-Be-Shown -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Cannot-Be-Shown` (resolved as `default error instance (Describe value)`)
   has type `Cannot-Be-Shown -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show my-variable` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show my-variable`
   has type `()`
 
 `show my-variable` (CallExpression):
+  grouped with `()`, `show my-variable`
   has type `()`
   is an expression
 
 `my-variable` (VariableExpression):
+  assigned type `Cannot-Be-Shown`
+  grouped with `my-variable`, `value`
   has type `Cannot-Be-Shown`
   is an expression
   resolved to 1 definition(s): `my-variable`
@@ -53,6 +69,8 @@ Feedback:
   You can't display `my-variable` on the screen or use it in placeholders because
   it can't be converted into a string.
 
-  1. `show`: `show` displays `my-variable` on the screen.
+  1. `my-variable`: `my-variable` is `Cannot-Be-Shown`. This means `Cannot-Be-Shown`, `my-variable`, and `my-variable` must be a `Cannot-Be-Shown`.
 
-  (1 -> error)
+  2. `show`: `show` displays `my-variable` on the screen.
+
+  (2 -> error, 2 -> 1)

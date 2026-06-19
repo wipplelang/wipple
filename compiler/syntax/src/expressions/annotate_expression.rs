@@ -11,8 +11,8 @@ use wipple_core::{
     render::{Render, RenderCtx},
     span::Span,
     typecheck::{
-        constraints::{ConstraintTrace, group_constraint::GroupConstraint},
-        groups::Annotated,
+        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
+        ty::Ty,
     },
     visit::{Visit, Visitor},
 };
@@ -61,15 +61,13 @@ impl Visit for AnnotateExpression {
 
         visitor.constraint(
             db,
-            GroupConstraint::new(expression, ty).with_trace(AnnotateConstraintTrace {
+            TyConstraint::new(expression, Ty::Node(ty)).with_trace(AnnotateConstraintTrace {
                 value: expression,
                 ty,
             }),
         );
 
-        visitor.constraint(db, GroupConstraint::new(node, expression));
-
-        db.insert(expression, Annotated);
+        visitor.constraint(db, TyConstraint::new(node, Ty::Node(expression)));
 
         visitor.codegen(db, node, AnnotateExpressionCodegen { node, expression });
     }

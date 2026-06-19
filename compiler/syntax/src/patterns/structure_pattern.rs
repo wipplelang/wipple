@@ -132,12 +132,7 @@ impl Visit for StructurePattern {
 
         visitor.constraint(
             db,
-            InstantiateConstraint {
-                source_node: node,
-                definition: definition_node,
-                substitutions,
-                traces: Vec::new(),
-            },
+            InstantiateConstraint::new(node, definition_node, substitutions),
         );
 
         visitor.codegen(

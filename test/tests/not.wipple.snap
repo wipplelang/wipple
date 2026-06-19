@@ -1,134 +1,180 @@
 Facts (layer 2):
 
 `input` (VariablePattern):
+  assigned type `Number`
+  grouped with `3.14`, `3.14`, `input`, `input`
   has type `Number`
   is a definition
   is a pattern
 
 `input : 3.14` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `3.14` (NumberExpression):
+  assigned type `Number`
+  grouped with `3.14`, `input`, `input`
   has type `Number`
   is an expression
-  type is annotated
 
 `is-42?` (VariablePattern):
+  assigned type `Number -> Boolean`
+  grouped with `n -> n = 42`, `n -> n = 42`, `is-42?`, `is-42?`
   has type `Number -> Boolean`
   is a definition
   is a pattern
 
 `is-42? : n -> n = 42` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `n` (VariablePattern):
+  assigned type `Number`
+  grouped with `n`, `input`, `input`, `a`
   has type `Number`
   is a definition
   is a pattern
 
 `n -> n = 42` (FunctionExpression):
+  assigned type `Number -> Boolean`
+  grouped with `is-42?`, `is-42?`
   has type `Number -> Boolean`
   is an expression
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `n = 42` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `n = 42`, `(not is-42?) input`, `is-42? input`, `b`
   has type `Boolean`
   is an expression
 
 `n = 42` (CallExpression):
+  grouped with `Boolean`, `n = 42`
   has type `Boolean`
   is an expression
 
 `n = 42` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `42` (NumberExpression):
+  assigned type `Number`
+  grouped with `42`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show ((not is-42?) input = not (is-42? input))` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show ((not is-42?) input = not (is-42? input))`
   has type `()`
 
 `show ((not is-42?) input = not (is-42? input))` (CallExpression):
+  grouped with `()`, `show ((not is-42?) input = not (is-42? input))`
   has type `()`
   is an expression
 
 `(not is-42?) input` (CallExpression):
+  grouped with `n = 42`, `value`
   has type `Boolean`
   is an expression
 
 `(not is-42?) input = not (is-42? input)` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `(not is-42?) input = not (is-42? input)`, `value`
   has type `Boolean`
   is an expression
 
 `(not is-42?) input = not (is-42? input)` (CallExpression):
+  grouped with `Boolean`, `(not is-42?) input = not (is-42? input)`
   has type `Boolean`
   is an expression
 
 `(not is-42?) input = not (is-42? input)` (ConstructorExpression):
+  assigned type `Boolean Boolean -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `not` (VariableExpression):
+  assigned type `(Number -> Boolean) -> Number -> Boolean`
+  grouped with `value -> value`
   has bound(s) `Not` `(Number -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `Boolean` (resolved as `instance (Not Boolean)`)
   has type `(Number -> Boolean) -> Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)`
 
 `not is-42?` (CallExpression):
+  assigned type `Number -> Boolean`
+  grouped with `value`
   has type `Number -> Boolean`
   is an expression
 
 `is-42?` (VariableExpression):
+  assigned type `Number -> Boolean`
+  grouped with `is-42?`, `value`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `is-42?`
   type is annotated
 
 `input` (VariableExpression):
+  assigned type `Number`
+  grouped with `input`, `n`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `input`
   type is annotated
 
 `not` (VariableExpression):
+  assigned type `Boolean -> Boolean`
+  grouped with `value -> value`
   has bound(s) `Not` `Boolean` (resolved as `instance (Not Boolean)`)
   has type `Boolean -> Boolean`
   is an expression
   resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)`
 
 `not (is-42? input)` (CallExpression):
+  grouped with `value`, `value`
   has type `Boolean`
   is an expression
 
 `is-42?` (VariableExpression):
+  assigned type `Number -> Boolean`
+  grouped with `is-42?`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `is-42?`
   type is annotated
 
 `is-42? input` (CallExpression):
+  grouped with `n = 42`, `value`
   has type `Boolean`
   is an expression
 
 `input` (VariableExpression):
+  assigned type `Number`
+  grouped with `input`, `n`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `input`

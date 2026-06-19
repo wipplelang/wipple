@@ -1,6 +1,8 @@
 Facts (layer 2):
 
 `Do-Something : value => trait (value -> ())` (TraitDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`
   has 2 instances
   has definition constraints
   has type `value -> ()`
@@ -8,6 +10,8 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -15,22 +19,30 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `value -> ()` (FunctionType):
+  assigned type `value -> ()`
+  grouped with `Do-Something : value => trait (value -> ())`
   has type `value -> ()`
   is a type
   type is annotated
 
 `()` (UnitType):
+  assigned type `()`
   has type `()`
   is a type
   type is annotated
 
 `default instance (Do-Something value)` (InstanceDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`, `_ -> show "using default instance"`
   has definition constraints
   has type `value -> ()`
   has type parameters
@@ -38,6 +50,8 @@ Facts (layer 2):
   resolved to 1 definition(s): `Do-Something : value => trait (value -> ())`
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -45,116 +59,155 @@ Facts (layer 2):
   type is annotated
 
 `_` (WildcardPattern):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a pattern
 
 `_ -> show "using default instance"` (FunctionExpression):
+  assigned type `value -> ()`
+  grouped with `default instance (Do-Something value)`
   has type `value -> ()`
   is an expression
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show "using default instance"` (CallExpression):
+  grouped with `()`, `()`
   has type `()`
   is an expression
 
 `"using default instance"` (StringExpression):
+  assigned type `String`
+  grouped with `"using default instance"`, `value`
   has type `String`
   is an expression
-  type is annotated
 
 `instance (Do-Something String)` (InstanceDefinition):
+  assigned type `String -> ()`
+  grouped with `value -> ()`, `text -> show ("using specific instance: _" text)`
   has definition constraints
   has type `String -> ()`
   is a definition
   resolved to 1 definition(s): `Do-Something : value => trait (value -> ())`
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `value`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `text` (VariablePattern):
+  assigned type `String`
+  grouped with `text`, `value`
   has type `String`
   is a definition
   is a pattern
 
 `text -> show ("using specific instance: _" text)` (FunctionExpression):
+  assigned type `String -> ()`
+  grouped with `instance (Do-Something String)`
   has type `String -> ()`
   is an expression
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show ("using specific instance: _" text)` (CallExpression):
+  grouped with `()`, `()`
   has type `()`
   is an expression
 
 `"using specific instance: _" text` (FormatExpression):
+  assigned type `String`
+  grouped with `"using specific instance: _" text`, `value`
   has type `String`
   is an expression
 
 `"using specific instance: _" text` (NamedType):
+  assigned type `String`
+  grouped with `"using specific instance: _" text`, `String`, `_`, `_`, `_`, `_`, `_`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `"using specific instance: _" text` (ConstructorExpression):
+  assigned type `String -> String`
+  grouped with `value -> String`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> String`
   is an expression
   resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
 `text` (VariableExpression):
+  assigned type `String`
+  grouped with `text`, `value`
   has type `String`
   is an expression
   resolved to 1 definition(s): `text`
   type is annotated
 
 `Do-Something` (ConstructorExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Do-Something` `Number` (resolved as `default instance (Do-Something value)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `Do-Something : value => trait (value -> ())`
 
 `Do-Something 42` (ExpressionStatement):
+  assigned type `()`
+  grouped with `Do-Something 42`
   has type `()`
 
 `Do-Something 42` (CallExpression):
+  grouped with `()`, `Do-Something 42`
   has type `()`
   is an expression
 
 `42` (NumberExpression):
+  assigned type `Number`
+  grouped with `42`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `Do-Something` (ConstructorExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Do-Something` `String` (resolved as `instance (Do-Something String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `Do-Something : value => trait (value -> ())`
 
 `Do-Something "Hello, world!"` (ExpressionStatement):
+  assigned type `()`
+  grouped with `Do-Something "Hello, world!"`
   has type `()`
 
 `Do-Something "Hello, world!"` (CallExpression):
+  grouped with `()`, `Do-Something "Hello, world!"`
   has type `()`
   is an expression
 
 `"Hello, world!"` (StringExpression):
+  assigned type `String`
+  grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression
-  type is annotated
 
 
 Output:

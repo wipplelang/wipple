@@ -1,5 +1,8 @@
 use crate::CompileResult;
-use std::collections::{BTreeMap, HashMap};
+use std::{
+    collections::{BTreeMap, HashMap},
+    sync::Arc,
+};
 use wasm_bindgen::prelude::*;
 use wipple_core::{
     db::Node,
@@ -18,6 +21,7 @@ use wipple_core::{
     },
 };
 use wipple_feedback::{FeedbackWriter, collect_feedback};
+use wipple_queries::QueryCtx;
 use wipple_syntax::{
     expressions::{
         constructor_expression::ConstructorExpression, variable_expression::VariableExpression,
@@ -84,6 +88,12 @@ pub struct Ide {
     result: CompileResult,
 }
 
+impl Ide {
+    fn query_ctx(&self) -> QueryCtx<'_> {
+        QueryCtx::new(&self.result.db, Arc::new(default_filter))
+    }
+}
+
 #[wasm_bindgen]
 impl Ide {
     #[wasm_bindgen(constructor)]
@@ -131,19 +141,19 @@ impl Ide {
 
             let range = IdeRange::from(span);
 
-            if wipple_queries::highlight_type(&self.result.db, node) {
+            if wipple_queries::highlight_type(&self.query_ctx(), node) {
                 tokens.insert(range.clone(), String::from("type"));
             }
 
-            if wipple_queries::highlight_trait(&self.result.db, node) {
+            if wipple_queries::highlight_trait(&self.query_ctx(), node) {
                 tokens.insert(range.clone(), String::from("interface"));
             }
 
-            if wipple_queries::highlight_type_parameter(&self.result.db, node) {
+            if wipple_queries::highlight_type_parameter(&self.query_ctx(), node) {
                 tokens.insert(range.clone(), String::from("typeParameter"));
             }
 
-            if wipple_queries::highlight_function(&self.result.db, node) {
+            if wipple_queries::highlight_function(&self.query_ctx(), node) {
                 tokens.insert(range, String::from("function"));
             }
         }
@@ -185,7 +195,7 @@ impl Ide {
                 value: rendered.to_string(),
                 is_code: true,
             });
-        } else if let Some(ty) = wipple_queries::has_type(&self.result.db, node) {
+        } else if let Some(ty) = wipple_queries::has_type(&self.query_ctx(), node) {
             let mut ctx = RenderCtx::with_filter(&default_filter);
 
             if definition_node.is_some() {
@@ -193,7 +203,7 @@ impl Ide {
                 ctx.string(" :: ");
             }
 
-            ctx.ty(&self.result.db, &Ty::Constructed(ty.clone()), None, true);
+            ctx.ty(&self.result.db, &Ty::Constructed(ty.clone()), true);
 
             let (rendered, _) = ctx.finish(&self.result.db, |db, segment| segment.plain_text(db));
 
@@ -203,7 +213,7 @@ impl Ide {
             });
         }
 
-        for bound in wipple_queries::resolved_bounds(&self.result.db, node) {
+        for bound in wipple_queries::resolved_bounds(&self.query_ctx(), node) {
             let mut ctx = RenderCtx::with_filter(&default_filter);
             ctx.node(bound.instance.node);
 
@@ -233,9 +243,7 @@ impl Ide {
             return Vec::new();
         };
 
-        wipple_queries::in_group(&self.result.db, node)
-            .iter()
-            .copied()
+        wipple_queries::in_group(&self.query_ctx(), node)
             .filter(|&related| default_filter(&self.result.db, related))
             .filter_map(|related| self.result.db.get(related))
             .map(|Syntax(syntax)| IdeRange::from(syntax.get(&self.result.db).span(&self.result.db)))
@@ -245,7 +253,7 @@ impl Ide {
     pub fn definition(&self, line: usize, column: usize) -> Option<IdeRange> {
         let node = self.node_at(line, column)?;
 
-        let definition = wipple_queries::definitions(&self.result.db, node)?
+        let definition = wipple_queries::definitions(&self.query_ctx(), node)?
             .first()
             .copied()?;
 
@@ -264,13 +272,13 @@ impl Ide {
             return Vec::new();
         };
 
-        let nodes = wipple_queries::definitions(&self.result.db, node)
+        let nodes = wipple_queries::definitions(&self.query_ctx(), node)
             .map(|definitions| definitions.iter().copied())
             .unwrap_or_default();
 
         nodes
             .into_iter()
-            .flat_map(|node| wipple_queries::references(&self.result.db, node))
+            .flat_map(|node| wipple_queries::references(&self.query_ctx(), node))
             .filter(|&reference| default_filter(&self.result.db, reference))
             .filter_map(|reference| self.result.db.get(reference))
             .map(|Syntax(syntax)| IdeRange::from(syntax.get(&self.result.db).span(&self.result.db)))
@@ -317,7 +325,7 @@ impl Ide {
 
         let mut definitions = BTreeMap::<Node, &dyn Definition>::new();
         for node in nodes {
-            for scope in wipple_queries::scopes(&self.result.db, node) {
+            for scope in wipple_queries::scopes(&self.query_ctx(), node) {
                 for (name, scope_definitions) in scope {
                     if !name.starts_with(prefix.as_str()) {
                         continue;
@@ -409,10 +417,10 @@ impl Ide {
     }
 
     fn comments(&self, node: Node) -> Option<String> {
-        let comments = wipple_queries::comments_without_links(&self.result.db, node)?;
+        let comments = wipple_queries::comments_without_links(&self.query_ctx(), node)?;
 
         let mut writer = FeedbackWriter::with_filter(&default_filter);
-        writer.comments(&self.result.db, node, &comments);
+        writer.comments(&self.result.db, &comments);
 
         let feedback = writer.finish(&self.result.db, |db, segment| segment.markdown(db, false));
 

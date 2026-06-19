@@ -1,22 +1,26 @@
 Facts (layer 2):
 
 `Number : type` (TypeDefinition):
+  assigned type `Number`
   has definition constraints
   has type `Number`
   is a definition
 
 `String : type` (TypeDefinition):
+  assigned type `String`
   has definition constraints
   has type `String`
   is a definition
 
 `List : element => type` (TypeDefinition):
+  assigned type `List element`
   has definition constraints
   has type `List element`
   has type parameters
   is a definition
 
 `element` (TypeParameter):
+  assigned type `element`
   has type `element`
   is a definition
   is a type
@@ -24,12 +28,14 @@ Facts (layer 2):
   type is annotated
 
 `Set : element => type` (TypeDefinition):
+  assigned type `Set element`
   has definition constraints
   has type `Set element`
   has type parameters
   is a definition
 
 `element` (TypeParameter):
+  assigned type `element`
   has type `element`
   is a definition
   is a type
@@ -37,6 +43,8 @@ Facts (layer 2):
   type is annotated
 
 `Collect : element collection => trait (element -> collection)` (TraitDefinition):
+  assigned type `element -> collection`
+  grouped with `element -> collection`
   has 2 instances
   has definition constraints
   has type `element -> collection`
@@ -44,6 +52,8 @@ Facts (layer 2):
   is a definition
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`
   has type `element`
   is a definition
   is a type
@@ -51,6 +61,8 @@ Facts (layer 2):
   type is annotated
 
 `collection` (TypeParameter):
+  assigned type `collection`
+  grouped with `collection`
   has type `collection`
   is a definition
   is a type
@@ -58,23 +70,33 @@ Facts (layer 2):
   type is annotated
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  resolved to type parameter `element`
   type is annotated
 
 `element -> collection` (FunctionType):
+  assigned type `element -> collection`
+  grouped with `Collect : element collection => trait (element -> collection)`
   has type `element -> collection`
   is a type
   type is annotated
 
 `collection` (TypeParameter):
+  assigned type `collection`
+  grouped with `collection`
   has type `collection`
   is a type
   resolved to 1 definition(s): `collection`
+  resolved to type parameter `collection`
   type is annotated
 
 `instance (Collect element (List element))` (InstanceDefinition):
+  assigned type `element -> List element`
+  grouped with `element -> collection`, `_`
   has definition constraints
   has type `element -> List element`
   has type parameters
@@ -82,6 +104,8 @@ Facts (layer 2):
   resolved to 1 definition(s): `Collect : element collection => trait (element -> collection)`
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`, `element`
   has type `element`
   is a definition
   is a type
@@ -89,22 +113,31 @@ Facts (layer 2):
   type is annotated
 
 `List element` (NamedType):
+  assigned type `List element`
+  grouped with `collection`
   has type `List element`
   is a type
   resolved to 1 definition(s): `List : element => type`
   type is annotated
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`, `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  resolved to type parameter `element`
   type is annotated
 
 `_` (PlaceholderExpression):
+  assigned type `element -> List element`
+  grouped with `instance (Collect element (List element))`
   has type `element -> List element`
   is an expression
 
 `instance (Collect element (Set element))` (InstanceDefinition):
+  assigned type `element -> Set element`
+  grouped with `element -> collection`, `_`
   has definition constraints
   has type `element -> Set element`
   has type parameters
@@ -112,6 +145,8 @@ Facts (layer 2):
   resolved to 1 definition(s): `Collect : element collection => trait (element -> collection)`
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`, `element`
   has type `element`
   is a definition
   is a type
@@ -119,28 +154,39 @@ Facts (layer 2):
   type is annotated
 
 `Set element` (NamedType):
+  assigned type `Set element`
+  grouped with `collection`
   has type `Set element`
   is a type
   resolved to 1 definition(s): `Set : element => type`
   type is annotated
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`, `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  resolved to type parameter `element`
   type is annotated
 
 `_` (PlaceholderExpression):
+  assigned type `element -> Set element`
+  grouped with `instance (Collect element (Set element))`
   has type `element -> Set element`
   is an expression
 
 `collect :: element -> output where (output :: List element) (Collect element output)` (ConstantDefinition):
+  assigned type `element -> output`
+  grouped with `element -> output`, `_`
   has definition constraints
   has type `element -> output`
   has type parameters
   is a definition
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`, `element`
   has type `element`
   is a definition
   is a type
@@ -148,11 +194,15 @@ Facts (layer 2):
   type is annotated
 
 `element -> output` (FunctionType):
+  assigned type `element -> output`
+  grouped with `collect :: element -> output where (output :: List element) (Collect element output)`
   has type `element -> output`
   is a type
   type is annotated
 
 `output` (TypeParameter):
+  assigned type `output`
+  grouped with `output`, `output`
   has type `output`
   is a definition
   is a type
@@ -163,21 +213,28 @@ Facts (layer 2):
   is a constraint
 
 `output` (TypeParameter):
+  assigned type `output`
+  grouped with `output`
   has type `output`
   is a type
   resolved to 1 definition(s): `output`
+  resolved to type parameter `output`
   type is annotated
 
 `List element` (NamedType):
+  assigned type `List element`
   has type `List element`
   is a type
   resolved to 1 definition(s): `List : element => type`
   type is annotated
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`, `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  resolved to type parameter `element`
   type is annotated
 
 `(Collect element output)` (BoundConstraint):
@@ -186,76 +243,102 @@ Facts (layer 2):
   resolved to 1 definition(s): `Collect : element collection => trait (element -> collection)`
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  resolved to type parameter `element`
   type is annotated
 
 `output` (TypeParameter):
+  assigned type `output`
+  grouped with `output`
   has type `output`
   is a type
   resolved to 1 definition(s): `output`
+  resolved to type parameter `output`
   type is annotated
 
 `collect : _` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `_` (PlaceholderExpression):
+  assigned type `element -> output`
+  grouped with `collect :: element -> output where (output :: List element) (Collect element output)`
   has type `element -> output`
   is an expression
 
 `_` (WildcardPattern):
+  assigned type `List String`
+  grouped with `collect "hi"`, `collect "hi"`
   has type `List String`
   is a pattern
 
 `_ : collect "hi"` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `collect` (VariableExpression):
+  assigned type `String -> List String`
+  grouped with `element -> output`
   has bound(s) `Collect` `String` `(List String)` (resolved as `instance (Collect element (List element))`)
   has type `String -> List String`
   is an expression
   resolved to 1 definition(s): `collect :: element -> output where (output :: List element) (Collect element output)`
 
 `collect "hi"` (CallExpression):
+  grouped with `output`, `_`, `_`
   has type `List String`
   is an expression
 
 `"hi"` (StringExpression):
+  assigned type `String`
+  grouped with `"hi"`, `element`
   has type `String`
   is an expression
-  type is annotated
 
 `_` (WildcardPattern):
+  assigned type `Set String`
+  grouped with `collect "hi" :: Set _`, `collect "hi" :: Set _`
   has type `Set String`
   is a pattern
 
 `_ : (collect "hi" :: Set _)` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `collect` (VariableExpression):
+  assigned type `String -> Set String`
+  grouped with `element -> output`
   has bound(s) `Collect` `String` `(Set String)` (resolved as `instance (Collect element (Set element))`)
   has type `String -> Set String`
   is an expression
   resolved to 1 definition(s): `collect :: element -> output where (output :: List element) (Collect element output)`
 
 `collect "hi"` (CallExpression):
+  assigned type `Set String`
+  grouped with `output`, `Set _`, `collect "hi" :: Set _`
   has type `Set String`
   is an expression
-  type is annotated
 
 `"hi"` (StringExpression):
+  assigned type `String`
+  grouped with `"hi"`, `element`
   has type `String`
   is an expression
-  type is annotated
 
 `Set _` (NamedType):
+  assigned type `Set String`
+  grouped with `collect "hi"`
   has type `Set String`
   is a type
   resolved to 1 definition(s): `Set : element => type`
   type is annotated
 
 `_` (PlaceholderType):
+  grouped with `element`
   has type `String`
   is a type
   type is annotated

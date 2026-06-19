@@ -1,17 +1,23 @@
 Facts (layer 2):
 
 `my-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (ConstantDefinition):
+  assigned type `Boolean {value} {value} -> value`
+  grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`, `if`
   has definition constraints
   has type `Boolean {value} {value} -> value`
   has type parameters
   is a definition
 
 `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (FunctionType):
+  assigned type `Boolean {value} {value} -> value`
+  grouped with `my-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
   has type `Boolean {value} {value} -> value`
   is a type
   type is annotated
 
 `condition :: Boolean` (TypeParameter):
+  assigned type `Boolean`
+  grouped with `Boolean`, `condition :: Boolean`
   has type `Boolean`
   is a definition
   is a type
@@ -19,17 +25,23 @@ Facts (layer 2):
   type is annotated
 
 `Boolean` (NamedType):
+  assigned type `Boolean`
+  grouped with `condition :: Boolean`
   has type `Boolean`
   is a type
   resolved to 1 definition(s): `Boolean : type {⋯}`
   type is annotated
 
 `{(then :: value)}` (BlockType):
+  assigned type `{value}`
+  grouped with `{(then :: value)}`
   has type `{value}`
   is a type
   type is annotated
 
 `then :: value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `then :: value`
   has type `value`
   is a definition
   is a type
@@ -37,6 +49,8 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `then :: value`, `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -44,11 +58,15 @@ Facts (layer 2):
   type is annotated
 
 `{(else :: value)}` (BlockType):
+  assigned type `{value}`
+  grouped with `{(else :: value)}`
   has type `{value}`
   is a type
   type is annotated
 
 `else :: value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `else :: value`
   has type `value`
   is a definition
   is a type
@@ -56,12 +74,17 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `else :: value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `output :: value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `output :: value`
   has type `value`
   is a definition
   is a type
@@ -69,69 +92,95 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `output :: value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `my-if : if` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `if` (VariableExpression):
+  assigned type `Boolean {value} {value} -> value`
+  grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`, `my-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
   has type `Boolean {value} {value} -> value`
   is an expression
   resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (my-if True {123} {456})` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (my-if True {123} {456})`
   has type `()`
 
 `show (my-if True {123} {456})` (CallExpression):
+  grouped with `()`, `show (my-if True {123} {456})`
   has type `()`
   is an expression
 
 `my-if` (VariableExpression):
+  assigned type `Boolean {Number} {Number} -> Number`
+  grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
   has type `Boolean {Number} {Number} -> Number`
   is an expression
   resolved to 1 definition(s): `my-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
 
 `my-if True {123} {456}` (CallExpression):
+  grouped with `output :: value`, `value`
   has type `Number`
   is an expression
 
 `True` (ConstructorExpression):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `condition :: Boolean`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `{123}` (BlockExpression):
+  assigned type `{Number}`
+  grouped with `{(then :: value)}`
   has type `{Number}`
   is an expression
 
 `123` (ExpressionStatement):
+  assigned type `Number`
+  grouped with `123`, `then :: value`
   has type `Number`
 
 `123` (NumberExpression):
+  assigned type `Number`
+  grouped with `123`, `123`
   has type `Number`
   is an expression
-  type is annotated
 
 `{456}` (BlockExpression):
+  assigned type `{Number}`
+  grouped with `{(else :: value)}`
   has type `{Number}`
   is an expression
 
 `456` (ExpressionStatement):
+  assigned type `Number`
+  grouped with `456`, `else :: value`
   has type `Number`
 
 `456` (NumberExpression):
+  assigned type `Number`
+  grouped with `456`, `456`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

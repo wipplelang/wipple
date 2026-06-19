@@ -1,6 +1,5 @@
 use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank};
-use std::collections::BTreeSet;
-use wipple_core::{facts::Syntax, typecheck::ty::Ty};
+use wipple_core::typecheck::ty::Ty;
 use wipple_queries::{conflicting_types, fact, incomplete_type, unknown_type};
 use wipple_syntax::{
     checks::instances::OverlappingInstances,
@@ -18,7 +17,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             }
         })
         .location(|_, data| {
-            let mut secondary = data.nodes.iter().copied().collect::<BTreeSet<_>>();
+            let mut secondary = data.nodes.clone();
 
             if data.source.is_some_and(|source| data.from != source) {
                 secondary.insert(data.from);
@@ -43,50 +42,29 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 for ty in &data.tys {
                     let ty = ty.clone();
                     list.add(move |writer| {
-                        writer.ty(db, &Ty::Constructed(ty), None, true);
+                        writer.ty(db, &Ty::Constructed(ty), true);
                     });
                 }
             });
             writer.string(", but it can only be one of these.");
 
-            let from_span = db
-                .get(data.from)
-                .map(|Syntax(syntax)| db.ast(syntax).span(db).clone());
-
             let nodes = data
                 .nodes
                 .iter()
                 .copied()
-                .filter(|node| {
-                    db.get(*node).map(|Syntax(syntax)| db.ast(syntax).span(db))
-                        != from_span.as_ref()
-                })
+                .filter(|&node| writer.filter(db, node))
                 .collect::<Vec<_>>();
 
             if nodes.len() > 1 {
-                // Only render visible nodes
-                let mut seen = BTreeSet::new();
-                let nodes = nodes
-                    .into_iter()
-                    .filter_map(|node| {
-                        let Syntax(syntax) = db.get(node)?;
-                        seen.insert(db.ast(syntax).span(db)).then_some(node)
-                    })
-                    .collect::<Vec<_>>();
-
-                if !nodes.is_empty() {
-                    writer.line_break();
-                    writer.node(data.from);
-                    writer.string(" must be the same type as ");
-                    writer.list("and", |list| {
-                        for node in nodes {
-                            if list.filter(db, node) {
-                                list.add(move |writer| writer.node(node));
-                            }
-                        }
-                    });
-                    writer.string("; double-check these.");
-                }
+                writer.line_break();
+                writer.node(data.from);
+                writer.string(" must be the same type as ");
+                writer.list("and", |list| {
+                    for node in nodes {
+                        list.add(move |writer| writer.node(node));
+                    }
+                });
+                writer.string("; double-check these.");
             }
 
             writer.traces(db, &data.traces);
@@ -104,7 +82,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             writer.string(".");
             writer.line_break();
             writer.string("Wipple determined this code is a ");
-            writer.ty(db, &Ty::Constructed((*ty).clone()), None, true);
+            writer.ty(db, &Ty::Constructed((*ty).clone()), true);
             writer.string(", but it needs some more information for the ");
             writer.code("_");
             writer.string(" placeholders.");

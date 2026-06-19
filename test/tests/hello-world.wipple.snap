@@ -1,22 +1,28 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show "Hello, world!"` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show "Hello, world!"`
   has type `()`
 
 `show "Hello, world!"` (CallExpression):
+  grouped with `()`, `show "Hello, world!"`
   has type `()`
   is an expression
 
 `"Hello, world!"` (StringExpression):
+  assigned type `String`
+  grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression
-  type is annotated
 
 
 Output:

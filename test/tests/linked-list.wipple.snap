@@ -1,12 +1,16 @@
 Facts (layer 2):
 
 `Linked-List : value => type {⋯}` (TypeDefinition):
+  assigned type `Linked-List value`
+  grouped with `Nil`
   has definition constraints
   has type `Linked-List value`
   has type parameters
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -14,45 +18,61 @@ Facts (layer 2):
   type is annotated
 
 `Nil` (VariantDefinition):
+  assigned type `Linked-List value`
+  grouped with `Linked-List : value => type {⋯}`
   has definition constraints
   has type `Linked-List value`
   is a definition
 
 `Cons value (Linked-List value)` (VariantDefinition):
+  assigned type `value (Linked-List value) -> Linked-List value`
   has definition constraints
   has type `value (Linked-List value) -> Linked-List value`
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `Linked-List value` (NamedType):
+  assigned type `Linked-List value`
   has type `Linked-List value`
   is a type
   resolved to 1 definition(s): `Linked-List : value => type {⋯}`
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `reduce-linked-list :: (value result -> result) result (Linked-List value) -> result` (ConstantDefinition):
+  assigned type `(value result -> result) result (Linked-List value) -> result`
+  grouped with `(value result -> result) result (Linked-List value) -> result`, `f result l -> when l {⋯}`
   has definition constraints
   has type `(value result -> result) result (Linked-List value) -> result`
   has type parameters
   is a definition
 
 `(value result -> result) result (Linked-List value) -> result` (FunctionType):
+  assigned type `(value result -> result) result (Linked-List value) -> result`
+  grouped with `reduce-linked-list :: (value result -> result) result (Linked-List value) -> result`
   has type `(value result -> result) result (Linked-List value) -> result`
   is a type
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -60,11 +80,15 @@ Facts (layer 2):
   type is annotated
 
 `value result -> result` (FunctionType):
+  assigned type `value result -> result`
+  grouped with `f`
   has type `value result -> result`
   is a type
   type is annotated
 
 `result` (TypeParameter):
+  assigned type `result`
+  grouped with `result`, `result`, `result`, `result`
   has type `result`
   is a definition
   is a type
@@ -72,241 +96,323 @@ Facts (layer 2):
   type is annotated
 
 `result` (TypeParameter):
+  assigned type `result`
+  grouped with `result`, `result`
   has type `result`
   is a type
   resolved to 1 definition(s): `result`
+  resolved to type parameter `result`
   type is annotated
 
 `result` (TypeParameter):
+  assigned type `result`
+  grouped with `result`, `result`
   has type `result`
   is a type
   resolved to 1 definition(s): `result`
+  resolved to type parameter `result`
   type is annotated
 
 `Linked-List value` (NamedType):
+  assigned type `Linked-List value`
+  grouped with `l`
   has type `Linked-List value`
   is a type
   resolved to 1 definition(s): `Linked-List : value => type {⋯}`
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `result` (TypeParameter):
+  assigned type `result`
+  grouped with `result`, `when l {⋯}`
   has type `result`
   is a type
   resolved to 1 definition(s): `result`
+  resolved to type parameter `result`
   type is annotated
 
 `reduce-linked-list : f result l -> when l {⋯}` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `f` (VariablePattern):
+  assigned type `value result -> result`
+  grouped with `f`, `f`, `value result -> result`
   has type `value result -> result`
   is a definition
   is a pattern
 
 `f result l -> when l {⋯}` (FunctionExpression):
+  assigned type `(value result -> result) result (Linked-List value) -> result`
+  grouped with `reduce-linked-list :: (value result -> result) result (Linked-List value) -> result`
   has type `(value result -> result) result (Linked-List value) -> result`
   is an expression
 
 `result` (VariablePattern):
+  assigned type `result`
+  grouped with `result`, `result`, `result`
   has type `result`
   is a definition
   is a pattern
 
 `l` (VariablePattern):
+  assigned type `Linked-List value`
+  grouped with `l`, `Linked-List value`
   has type `Linked-List value`
   is a definition
   is a pattern
 
 `when l {⋯}` (WhenExpression):
+  grouped with `result`, `reduce-linked-list f (f x result) rest`, `result`
   has type `result`
   is an expression
 
 `l` (VariableExpression):
+  assigned type `Linked-List value`
+  grouped with `l`, `Nil`, `Cons x rest`
   has type `Linked-List value`
   is an expression
   resolved to 1 definition(s): `l`
   type is annotated
 
 `Nil` (ConstructorPattern):
+  assigned type `Linked-List value`
   captures `result`
+  grouped with `l`, `Linked-List : value => type {⋯}`
   has type `Linked-List value`
   is a pattern
   resolved to 1 definition(s): `Nil`
 
 `result` (VariableExpression):
+  assigned type `result`
+  grouped with `result`, `when l {⋯}`
   has type `result`
   is an expression
   resolved to 1 definition(s): `result`
   type is annotated
 
 `Cons x rest` (ConstructorPattern):
+  assigned type `Linked-List value`
   captures `f`, `result`
+  grouped with `l`, `Linked-List : value => type {⋯}`
   has type `Linked-List value`
   is a pattern
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `x` (VariablePattern):
+  assigned type `value`
+  grouped with `_`, `x`
   has type `value`
   is a definition
   is a pattern
 
 `rest` (VariablePattern):
+  assigned type `Linked-List value`
+  grouped with `_`, `rest`
   has type `Linked-List value`
   is a definition
   is a pattern
 
 `reduce-linked-list` (VariableExpression):
+  assigned type `(value result -> result) result (Linked-List value) -> result`
   has type `(value result -> result) result (Linked-List value) -> result`
   is an expression
   resolved to 1 definition(s): `reduce-linked-list :: (value result -> result) result (Linked-List value) -> result`
 
 `reduce-linked-list f (f x result) rest` (CallExpression):
+  assigned type `result`
+  grouped with `result`, `when l {⋯}`
   has type `result`
   is an expression
 
 `f` (VariableExpression):
+  assigned type `value result -> result`
+  grouped with `f`, `value result -> result`
   has type `value result -> result`
   is an expression
   resolved to 1 definition(s): `f`
   type is annotated
 
 `f` (VariableExpression):
+  assigned type `value result -> result`
+  grouped with `f`
   has type `value result -> result`
   is an expression
   resolved to 1 definition(s): `f`
   type is annotated
 
 `f x result` (CallExpression):
+  grouped with `result`, `result`
   has type `result`
   is an expression
 
 `x` (VariableExpression):
+  assigned type `value`
+  grouped with `x`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
   type is annotated
 
 `result` (VariableExpression):
+  assigned type `result`
+  grouped with `result`, `result`
   has type `result`
   is an expression
   resolved to 1 definition(s): `result`
   type is annotated
 
 `rest` (VariableExpression):
+  assigned type `Linked-List value`
+  grouped with `rest`, `Linked-List value`
   has type `Linked-List value`
   is an expression
   resolved to 1 definition(s): `rest`
   type is annotated
 
 `list` (VariablePattern):
+  assigned type `Linked-List Number`
+  grouped with `Cons 1 (Cons 2 (Cons 3 Nil))`, `Cons 1 (Cons 2 (Cons 3 Nil))`, `list`
   has type `Linked-List Number`
   is a definition
   is a pattern
 
 `list : Cons 1 (Cons 2 (Cons 3 Nil))` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `Cons` (ConstructorExpression):
+  assigned type `Number (Linked-List Number) -> Linked-List Number`
   has type `Number (Linked-List Number) -> Linked-List Number`
   is an expression
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `Cons 1 (Cons 2 (Cons 3 Nil))` (CallExpression):
+  grouped with `Linked-List : value => type {⋯}`, `list`, `list`
   has type `Linked-List Number`
   is an expression
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `Cons` (ConstructorExpression):
+  assigned type `Number (Linked-List Number) -> Linked-List Number`
   has type `Number (Linked-List Number) -> Linked-List Number`
   is an expression
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `Cons 2 (Cons 3 Nil)` (CallExpression):
+  grouped with `Linked-List : value => type {⋯}`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `Cons` (ConstructorExpression):
+  assigned type `Number (Linked-List Number) -> Linked-List Number`
   has type `Number (Linked-List Number) -> Linked-List Number`
   is an expression
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `Cons 3 Nil` (CallExpression):
+  grouped with `Linked-List : value => type {⋯}`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
 
 `3` (NumberExpression):
+  assigned type `Number`
+  grouped with `3`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `Nil` (ConstructorExpression):
+  assigned type `Linked-List Number`
+  grouped with `Linked-List : value => type {⋯}`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
   resolved to 1 definition(s): `Nil`
 
 `sum` (VariablePattern):
+  assigned type `Number`
+  grouped with `reduce-linked-list (+) 0 list`, `reduce-linked-list (+) 0 list`, `sum`
   has type `Number`
   is a definition
   is a pattern
 
 `sum : reduce-linked-list (+) 0 list` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `reduce-linked-list` (VariableExpression):
+  assigned type `(Number Number -> Number) Number (Linked-List Number) -> Number`
+  grouped with `(value result -> result) result (Linked-List value) -> result`
   has type `(Number Number -> Number) Number (Linked-List Number) -> Number`
   is an expression
   resolved to 1 definition(s): `reduce-linked-list :: (value result -> result) result (Linked-List value) -> result`
 
 `reduce-linked-list (+) 0 list` (CallExpression):
+  grouped with `result`, `sum`, `sum`
   has type `Number`
   is an expression
 
 `(+)` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> sum`, `value result -> result`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
 `0` (NumberExpression):
+  assigned type `Number`
+  grouped with `0`, `result`
   has type `Number`
   is an expression
-  type is annotated
 
 `list` (VariableExpression):
+  assigned type `Linked-List Number`
+  grouped with `list`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
   resolved to 1 definition(s): `list`
   type is annotated
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show sum` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show sum`
   has type `()`
 
 `show sum` (CallExpression):
+  grouped with `()`, `show sum`
   has type `()`
   is an expression
 
 `sum` (VariableExpression):
+  assigned type `Number`
+  grouped with `sum`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `sum`

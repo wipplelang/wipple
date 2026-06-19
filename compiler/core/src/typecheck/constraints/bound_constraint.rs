@@ -4,7 +4,7 @@ use crate::{
     typecheck::{
         bounds::{Bound, Bounds, Instance, Instances, ResolvedBound, UnresolvedBound},
         constraints::{
-            AnyConstraintTrace, Constraint, ConstraintTrace, RunResult, Solver,
+            AnyConstraintTrace, Constraint, ConstraintKind, ConstraintTrace, RunResult, Solver,
             instantiate_constraint::InstantiateConstraint,
         },
         instantiate::InstantiateCtx,
@@ -13,7 +13,7 @@ use crate::{
     visit::definitions::{Defined, InstanceDefinition},
 };
 use serde::{Deserialize, Serialize};
-use std::{any::TypeId, collections::BTreeMap};
+use std::{collections::BTreeMap, ops::RangeInclusive};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InferredParameter;
@@ -59,6 +59,10 @@ impl BoundConstraint {
 
 #[typetag::serde]
 impl Constraint for BoundConstraint {
+    fn kind(&self) -> ConstraintKind {
+        ConstraintKind::Bound
+    }
+
     fn node(&self) -> Node {
         self.node
     }
@@ -81,8 +85,12 @@ impl Constraint for BoundConstraint {
 
         let substitutions = solver.insert_substitutions(nodes, parameters);
 
+        let mut bound_path = ctx.bound_path.clone();
+        bound_path.extend_from_slice(&self.bound.bound_path);
+
         let bound = Bound {
             source_node: ctx.source_node,
+            bound_path,
             substitutions,
             ..self.bound
         };
@@ -119,24 +127,24 @@ impl Constraint for BoundConstraint {
 
         let instance_group_count = instance_groups.len();
 
-        let resolved_node = db.node();
-
-        let target_node = self.bound.target_node;
-
         struct Candidate {
             solver: Solver,
             instance: Instance,
             parameters: BTreeMap<Node, Ty>,
+            temporaries: RangeInclusive<Node>,
         }
 
         let mut candidates = Vec::new();
         for (index, (instances, keep_generic)) in instance_groups.into_iter().enumerate() {
             let is_last_instance_group = index + 1 == instance_group_count;
 
+            let mut temporaries = Vec::new();
             for instance in instances {
                 if instance.trait_node != self.bound.trait_node {
                     continue;
                 }
+
+                let start = db.last_node();
 
                 let mut copy = solver.copy();
 
@@ -145,27 +153,17 @@ impl Constraint for BoundConstraint {
                 let substitutions =
                     copy.insert_substitutions(Default::default(), Default::default());
 
-                copy.constraints.insert(Box::new(InstantiateConstraint {
-                    source_node: resolved_node,
-                    definition: instance.node,
-                    substitutions,
-                    traces: Vec::new(),
-                }));
+                copy.constraints
+                    .insert_front(Box::new(InstantiateConstraint {
+                        source_node: self.bound.source_node,
+                        bound_path: self.bound.bound_path.clone(),
+                        definition: instance.node,
+                        substitutions,
+                        traces: Vec::new(),
+                    }));
 
-                // Run the solver (excluding bounds) to populate `replacements`
-                copy.run_pass_until(db, Some(TypeId::of::<BoundConstraint>()));
-
-                // Propagate the target node to new bounds
-                for constraint in copy.constraints.iter_mut() {
-                    let Some(constraint) = constraint.downcast_mut::<BoundConstraint>() else {
-                        continue;
-                    };
-
-                    constraint
-                        .bound
-                        .target_node
-                        .get_or_insert_with(|| target_node.unwrap_or(self.bound.source_node));
-                }
+                // Evaluate type constraints to populate `replacements`
+                copy.run_pass(db, ConstraintKind::Ty);
 
                 // These are for the *trait's* parameters
                 let mut instance_parameters = BTreeMap::new();
@@ -176,7 +174,8 @@ impl Constraint for BoundConstraint {
                     } else {
                         let mut ctx = InstantiateCtx {
                             definition: instance.node,
-                            source_node: resolved_node,
+                            source_node: self.bound.source_node,
+                            bound_path: self.bound.bound_path.clone(),
                             substitutions,
                         };
 
@@ -198,7 +197,11 @@ impl Constraint for BoundConstraint {
                     Some(&mut error),
                 );
 
-                if !error {
+                let range = start..=db.last_node();
+
+                if error {
+                    temporaries.push(range);
+                } else {
                     copy.unify_parameters(db, &instance_inferred, &bound_inferred, None);
 
                     let (_, parameters) = copy.get_substitutions(substitutions);
@@ -207,8 +210,14 @@ impl Constraint for BoundConstraint {
                         solver: copy,
                         instance: instance.clone(),
                         parameters,
+                        temporaries: range,
                     });
                 }
+            }
+
+            // Delete the temporary nodes created while resolving non-matching instances
+            for range in temporaries {
+                db.delete_range(range);
             }
 
             let mut resolved_parameters = BTreeMap::new();
@@ -233,45 +242,37 @@ impl Constraint for BoundConstraint {
 
                 let constraints = solver.inherit(candidate.solver);
 
-                // Record the resolved bound on the current source node
-                // (necessary for codegen) and the original target node (set
-                // above; necessary for error reporting).
-                for node in [target_node, Some(self.bound.source_node)] {
-                    let Some(node) = node else {
-                        continue;
-                    };
-
-                    db.get_mut_or_default::<Bounds>(node).0.push((
-                        self.bound.bound_node,
+                db.get_mut_or_default::<Bounds>(self.bound.source_node)
+                    .0
+                    .insert(
+                        self.bound.bound_path.clone(),
                         Ok(ResolvedBound {
                             instance: instance.clone(),
                             instance_parameters: candidate.parameters.clone(),
-                            resolved_node,
                         }),
-                    ));
-                }
-
-                solver.progress = true;
+                    );
 
                 return RunResult::Enqueue(Vec::from_iter(constraints));
             } else if candidates.len() > 1 {
+                for candidate in candidates {
+                    db.delete_range(candidate.temporaries);
+                }
+
                 return RunResult::Enqueue(vec![self]); // ambiguous; try again
             }
 
             if is_last_instance_group && !self.bound.is_optional {
-                for node in [target_node, Some(self.bound.source_node)] {
-                    let Some(node) = node else {
-                        continue;
-                    };
-
-                    db.get_mut_or_default::<Bounds>(node).0.push((
-                        self.bound.bound_node,
+                db.get_mut_or_default::<Bounds>(self.bound.source_node)
+                    .0
+                    .insert(
+                        self.bound.bound_path.clone(),
                         Err(UnresolvedBound {
                             trait_node: self.bound.trait_node,
                             parameters: resolved_parameters.clone(),
                         }),
-                    ));
-                }
+                    );
+
+                break;
             }
         }
 

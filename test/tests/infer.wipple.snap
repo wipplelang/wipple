@@ -1,146 +1,195 @@
 Facts (layer 2):
 
 `languages` (VariablePattern):
+  assigned type `List String`
+  grouped with `"C", "Python", "Java", "JavaScript", "Wipple"`, `"C", "Python", "Java", "JavaScript", "Wipple"`, `languages`
   has type `List String`
   is a definition
   is a pattern
 
 `languages : "C", "Python", "Java", "JavaScript", "Wipple"` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `"C"` (VisitAs):
+  assigned type `String`
+  grouped with `_`, `"C"`, `element`
   has type `String`
   is an expression
-  type is annotated
 
 `"C", "Python", "Java", "JavaScript", "Wipple"` (CollectionExpression):
+  grouped with `"Wipple"`, `languages`, `languages`
   has type `List String`
   is an expression
 
 `"Python"` (VisitAs):
+  assigned type `String`
+  grouped with `_`, `"Python"`, `element`
   has type `String`
   is an expression
-  type is annotated
 
 `"Java"` (VisitAs):
+  assigned type `String`
+  grouped with `_`, `"Java"`, `element`
   has type `String`
   is an expression
-  type is annotated
 
 `"JavaScript"` (VisitAs):
+  assigned type `String`
+  grouped with `_`, `"JavaScript"`, `element`
   has type `String`
   is an expression
-  type is annotated
 
 `"Wipple"` (VisitAs):
+  assigned type `String`
+  grouped with `_`, `"Wipple"`, `element`
   has type `String`
   is an expression
-  type is annotated
 
 `short-names` (VariablePattern):
+  assigned type `Sequence String`
+  grouped with `languages . filter (name -> count name < 5)`, `languages . filter (name -> count name < 5)`, `short-names`
   has type `Sequence String`
   is a definition
   is a pattern
 
 `short-names : languages . filter (name -> count name < 5)` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `languages` (VisitAs):
+  assigned type `List String`
+  grouped with `container`, `languages`, `container`
   has type `List String`
   is an expression
   resolved to 1 definition(s): `languages`
   type is annotated
 
 `languages . filter (name -> count name < 5)` (OperatorExpression):
+  assigned type `Sequence String`
+  grouped with `filter (name -> count name < 5)`, `short-names`, `short-names`
   has type `Sequence String`
   is an expression
 
 `filter` (VariableExpression):
+  assigned type `(String -> Boolean) -> (List String) -> Sequence String`
+  grouped with `(condition :: (element -> Boolean)) -> container -> Sequence element`
   has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(String -> Boolean) -> (List String) -> Sequence String`
   is an expression
   resolved to 1 definition(s): `filter :: (condition :: (element -> Boolean)) -> container -> Sequence element where (As-Sequence container element)`
 
 `filter (name -> count name < 5)` (CallExpression):
+  grouped with `Sequence element`, `Sequence element`, `languages . filter (name -> count name < 5)`
   has type `Sequence String`
   is an expression
 
 `filter (name -> count name < 5)` (VisitAs):
+  assigned type `(List String) -> Sequence String`
+  grouped with `container -> Sequence element`
   has type `(List String) -> Sequence String`
   is an expression
 
 `name` (VariablePattern):
+  assigned type `String`
+  grouped with `name`, `element`
   has type `String`
   is a definition
   is a pattern
 
 `name -> count name < 5` (FunctionExpression):
+  assigned type `String -> Boolean`
+  grouped with `condition :: (element -> Boolean)`
   has type `String -> Boolean`
   is an expression
 
 `count` (VariableExpression):
+  assigned type `String -> Number`
+  grouped with `collection -> Number`
   has bound(s) `Count` `String` (resolved as `instance (Count String)`)
   has type `String -> Number`
   is an expression
   resolved to 1 definition(s): `count :: collection -> Number where (Count collection)`
 
 `count name` (CallExpression):
+  grouped with `Number`, `value`
   has type `Number`
   is an expression
 
 `count name < 5` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `count name < 5`, `Boolean`
   has type `Boolean`
   is an expression
 
 `count name < 5` (CallExpression):
+  grouped with `Boolean`, `count name < 5`
   has type `Boolean`
   is an expression
 
 `count name < 5` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Less-Than` `Number` (resolved as `instance (Less-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)`
 
 `name` (VariableExpression):
+  assigned type `String`
+  grouped with `name`, `collection`
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
   type is annotated
 
 `5` (NumberExpression):
+  assigned type `Number`
+  grouped with `5`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `short-names` (VisitAs):
+  assigned type `Sequence String`
+  grouped with `container`, `short-names`, `container`
   has type `Sequence String`
   is an expression
   resolved to 1 definition(s): `short-names`
   type is annotated
 
 `short-names . each show` (ExpressionStatement):
+  assigned type `()`
+  grouped with `short-names . each show`
   has type `()`
 
 `short-names . each show` (OperatorExpression):
+  assigned type `()`
+  grouped with `each show`, `short-names . each show`
   has type `()`
   is an expression
 
 `each` (VariableExpression):
+  assigned type `(String -> ()) -> (Sequence String) -> ()`
+  grouped with `(action :: (element -> ())) -> container -> ()`
   has bound(s) `As-Sequence` `(Sequence String)` `String` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `(String -> ()) -> (Sequence String) -> ()`
   is an expression
   resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
 
 `each show` (CallExpression):
+  grouped with `()`, `()`, `short-names . each show`
   has type `()`
   is an expression
 
 `each show` (VisitAs):
+  assigned type `(Sequence String) -> ()`
+  grouped with `container -> ()`
   has type `(Sequence String) -> ()`
   is an expression
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`, `action :: (element -> ())`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression

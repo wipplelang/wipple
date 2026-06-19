@@ -1,6 +1,8 @@
 Facts (layer 2):
 
 `T : value => trait (value -> ())` (TraitDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`
   has 2 instances
   has definition constraints
   has type `value -> ()`
@@ -8,6 +10,8 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -15,76 +19,106 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `value -> ()` (FunctionType):
+  assigned type `value -> ()`
+  grouped with `T : value => trait (value -> ())`
   has type `value -> ()`
   is a type
   type is annotated
 
 `()` (UnitType):
+  assigned type `()`
   has type `()`
   is a type
   type is annotated
 
 `instance (T Number)` (InstanceDefinition):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`, `_ -> ()`
   has definition constraints
   has type `Number -> ()`
   is a definition
   resolved to 1 definition(s): `T : value => trait (value -> ())`
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `value`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `_` (WildcardPattern):
+  assigned type `Number`
+  grouped with `value`
   has type `Number`
   is a pattern
 
 `_ -> ()` (FunctionExpression):
+  assigned type `Number -> ()`
+  grouped with `instance (T Number)`
   has type `Number -> ()`
   is an expression
 
 `()` (UnitExpression):
+  assigned type `()`
+  grouped with `()`
   has type `()`
   is an expression
 
 `instance (T String)` (InstanceDefinition):
+  assigned type `String -> ()`
+  grouped with `value -> ()`, `_ -> ()`
   has definition constraints
   has type `String -> ()`
   is a definition
   resolved to 1 definition(s): `T : value => trait (value -> ())`
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `value`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `_` (WildcardPattern):
+  assigned type `String`
+  grouped with `value`
   has type `String`
   is a pattern
 
 `_ -> ()` (FunctionExpression):
+  assigned type `String -> ()`
+  grouped with `instance (T String)`
   has type `String -> ()`
   is an expression
 
 `()` (UnitExpression):
+  assigned type `()`
+  grouped with `()`
   has type `()`
   is an expression
 
 `f :: (a; b) where (T a) (T b)` (ConstantDefinition):
+  assigned type `(a; b)`
+  grouped with `a; b`, `todo`
   has definition constraints
   has type `(a; b)`
   has type parameters
   is a definition
 
 `a` (TypeParameter):
+  assigned type `a`
+  grouped with `a`
   has type `a`
   is a definition
   is a type
@@ -92,11 +126,15 @@ Facts (layer 2):
   type is annotated
 
 `a; b` (TupleType):
+  assigned type `(a; b)`
+  grouped with `f :: (a; b) where (T a) (T b)`
   has type `(a; b)`
   is a type
   type is annotated
 
 `b` (TypeParameter):
+  assigned type `b`
+  grouped with `b`
   has type `b`
   is a definition
   is a type
@@ -109,9 +147,12 @@ Facts (layer 2):
   resolved to 1 definition(s): `T : value => trait (value -> ())`
 
 `a` (TypeParameter):
+  assigned type `a`
+  grouped with `a`, `b`, `b`
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
+  resolved to type parameter `a`
   type is annotated
 
 `(T b)` (BoundConstraint):
@@ -120,42 +161,56 @@ Facts (layer 2):
   resolved to 1 definition(s): `T : value => trait (value -> ())`
 
 `b` (TypeParameter):
+  assigned type `b`
+  grouped with `b`, `a`, `a`
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
+  resolved to type parameter `b`
   type is annotated
 
 `f : todo` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `todo` (VariableExpression):
+  assigned type `(a; b)`
+  grouped with `value`, `f :: (a; b) where (T a) (T b)`
   has type `(a; b)`
   is an expression
   resolved to 1 definition(s): `todo :: value`
 
 `-- `B` should not be inferred to be `Number`
 (f :: (Number; _))` (ExpressionStatement):
+  assigned type `(Number; _)`
+  grouped with `f :: (Number; _)`
   has type `(Number; _)`
 
 `f` (VariableExpression):
+  assigned type `(Number; _)`
+  grouped with `a; b`, `Number; _`, `f :: (Number; _)`
   has bound(s) `T` `Number` (resolved as `instance (T Number)`)
   has type `(Number; _)`
   is an expression
   resolved to 1 definition(s): `f :: (a; b) where (T a) (T b)`
-  type is annotated
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `a`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `Number; _` (TupleType):
+  assigned type `(Number; _)`
+  grouped with `f`
   has type `(Number; _)`
   is a type
   type is annotated
 
 `_` (PlaceholderType):
+  grouped with `b`
   is a type
   missing type (group: `_`, `b`, `b`, `b`)
   type is annotated
@@ -164,16 +219,18 @@ Facts (layer 2):
 
 Feedback:
 
-`f` (incomplete-type)
+`-- `B` should not be inferred to be `Number`
+(f :: (Number; _))` (incomplete-type)
 
-  Missing information for the type of `f`.
+  Missing information for the type of `-- `B` should not be inferred to be `Number`
+  (f :: (Number; _))`.
   
   Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
 
-`f :: (Number; _)` (incomplete-type)
+`f` (incomplete-type)
 
-  Missing information for the type of `f :: (Number; _)`.
+  Missing information for the type of `f`.
   
   Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
@@ -190,12 +247,3 @@ Feedback:
   Could not determine the type of `_`.
   
   Wipple needs to know the type of this code before running it. Try using a function or assigning it to a variable.
-
-
-`-- `B` should not be inferred to be `Number`
-(f :: (Number; _))` (incomplete-type)
-
-  Missing information for the type of `-- `B` should not be inferred to be `Number`
-  (f :: (Number; _))`.
-  
-  Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.

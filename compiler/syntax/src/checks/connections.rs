@@ -2,7 +2,7 @@ use crate::expressions::call_expression::ResolvedCall;
 use std::ops::ControlFlow;
 use wipple_core::{
     db::{Db, Node},
-    util::get_links,
+    util::{get_links, instantiated_node_for},
     visit::{
         Resolved,
         definitions::{ConstantDefinition, Defined},
@@ -26,7 +26,9 @@ pub fn create_connections(db: &mut Db, mut filter: impl FnMut(&Db, Node) -> bool
         {
             let definition = *definitions.first().unwrap();
 
-            let links = get_links(db, definition, call.function);
+            let links = get_links(db, definition, call.function, |parameter| {
+                instantiated_node_for(db, parameter, node)
+            });
 
             if let Some(attributes) = db
                 .get(definition)

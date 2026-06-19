@@ -221,7 +221,7 @@ impl GraphBuilder {
                         TyTag::Function | TyTag::Block => Some(String::from("function")),
                         _ => None,
                     },
-                    display: Ty::Constructed(ty).display(db, None, true),
+                    display: Ty::Constructed(ty).display(db, true),
                 })
                 .collect::<Vec<_>>();
 

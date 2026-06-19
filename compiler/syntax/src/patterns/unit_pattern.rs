@@ -4,7 +4,10 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue},
     db::{Db, Node},
     span::Span,
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::ConstructedTy},
+    typecheck::{
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
+    },
     visit::{Visit, Visitor, exhaustiveness::MatchPathSegment},
 };
 use wipple_parse::{
@@ -34,7 +37,10 @@ impl Visit for UnitPattern {
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_pattern(db, node, visitor, Some(MatchPathSegment::Match));
 
-        visitor.constraint(db, TyConstraint::new(node, ConstructedTy::unit()));
+        visitor.constraint(
+            db,
+            TyConstraint::new(node, Ty::Constructed(ConstructedTy::unit())),
+        );
         visitor.codegen(db, node, UnitPatternCodegen);
     }
 }

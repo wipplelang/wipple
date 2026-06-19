@@ -21,7 +21,6 @@ pub trait Render {
 
 pub struct RenderCtx<'a> {
     pub filter: &'a dyn Fn(&Db, Node) -> bool,
-    pub representative: Option<Node>,
     segments: Vec<RenderSegment>,
     nodes: BTreeSet<Node>,
 }
@@ -30,7 +29,6 @@ impl<'a> RenderCtx<'a> {
     pub fn with_filter(filter: &'a dyn Fn(&Db, Node) -> bool) -> Self {
         RenderCtx {
             filter,
-            representative: Default::default(),
             segments: Default::default(),
             nodes: Default::default(),
         }
@@ -87,8 +85,8 @@ impl RenderCtx<'_> {
         self.nodes.insert(node);
     }
 
-    pub fn ty(&mut self, db: &Db, ty: &Ty, representative: impl Into<Option<Node>>, root: bool) {
-        ty.render_into(db, self, representative, root);
+    pub fn ty(&mut self, db: &Db, ty: &Ty, root: bool) {
+        ty.render_into(db, self, root);
     }
 
     pub fn link(&mut self, label: impl Into<String>, node: Node) {
@@ -144,7 +142,7 @@ impl RenderCtx<'_> {
         }
     }
 
-    pub fn comments(&mut self, db: &Db, definition_node: Node, comments: &Comments) {
+    pub fn comments(&mut self, db: &Db, comments: &Comments) {
         static LINK_REGEX: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(r"(?s)\[`([^`]+)`\]").unwrap());
 
@@ -153,10 +151,10 @@ impl RenderCtx<'_> {
             links.insert(
                 name.to_string(),
                 Box::new(|ctx| {
-                    if link.node == definition_node {
-                        ctx.link(name.to_string(), link.node)
+                    if link.force_type {
+                        ctx.ty(db, &Ty::Node(link.node), true);
                     } else {
-                        ctx.node(link.node)
+                        ctx.node(link.node);
                     }
                 }),
             );
@@ -177,7 +175,7 @@ impl RenderCtx<'_> {
             links.insert(
                 format!("{name}@type"),
                 Box::new(|writer| {
-                    writer.ty(db, &Ty::Node(link.node), link.node, true);
+                    writer.ty(db, &Ty::Node(link.node), true);
                 }),
             );
         }

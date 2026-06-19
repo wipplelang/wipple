@@ -7,12 +7,8 @@ pub mod patterns;
 pub mod statements;
 pub mod types;
 
-use crate::{expressions::IsExpression, file::parse_file, patterns::IsPattern, types::IsType};
-use wipple_core::{
-    ast::AstKey,
-    db::{Db, Node},
-    span::Str,
-};
+use crate::file::parse_file;
+use wipple_core::{ast::AstKey, db::Db, span::Str};
 use wipple_parse::parser::Parser;
 
 pub fn parse(db: &mut Db, path: impl Into<Str>, source: impl Into<Str>) -> AstKey {
@@ -29,26 +25,4 @@ pub fn parse(db: &mut Db, path: impl Into<Str>, source: impl Into<Str>) -> AstKe
     db.gc();
 
     key
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum GroupOrder {
-    Pattern,
-    Expression,
-    Type,
-    Other,
-}
-
-impl GroupOrder {
-    pub fn new(db: &Db, node: Node) -> Self {
-        if db.contains::<IsPattern>(node) {
-            GroupOrder::Pattern
-        } else if db.contains::<IsExpression>(node) {
-            GroupOrder::Expression
-        } else if db.contains::<IsType>(node) {
-            GroupOrder::Type
-        } else {
-            GroupOrder::Other
-        }
-    }
 }

@@ -20,7 +20,7 @@ pub enum DefinitionKey {
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct ConstantDefinitionKey {
     pub node: Node,
-    pub bounds: BTreeMap<Node, Instance>,
+    pub bounds: BTreeMap<Vec<Node>, Instance>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -44,7 +44,7 @@ pub enum TypeRepresentation {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Instance {
-    Bound(Node),
+    Bound(Vec<Node>),
     Definition(ConstantDefinitionKey),
 }
 
@@ -74,7 +74,7 @@ pub enum Instruction {
 
 #[derive(Debug, Clone)]
 pub enum Value {
-    Bound(Node),
+    Bound(Vec<Node>),
     Call {
         function: Node,
         inputs: Vec<Node>,

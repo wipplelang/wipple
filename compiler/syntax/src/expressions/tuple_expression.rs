@@ -6,7 +6,10 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::Span,
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::ConstructedTy},
+    typecheck::{
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
+    },
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -65,7 +68,10 @@ impl Visit for TupleExpression {
 
         visitor.constraint(
             db,
-            TyConstraint::new(node, ConstructedTy::tuple(elements.clone())),
+            TyConstraint::new(
+                node,
+                Ty::Constructed(ConstructedTy::tuple(elements.clone())),
+            ),
         );
 
         visitor.codegen(db, node, TupleExpressionCodegen { node, elements });

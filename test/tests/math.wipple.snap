@@ -1,152 +1,200 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (1 + 2)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (1 + 2)`
   has type `()`
 
 `show (1 + 2)` (CallExpression):
+  grouped with `()`, `show (1 + 2)`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `left`
   has type `Number`
   is an expression
-  type is annotated
 
 `1 + 2` (OperatorExpression):
+  assigned type `Number`
+  grouped with `1 + 2`, `value`
   has type `Number`
   is an expression
 
 `1 + 2` (CallExpression):
+  grouped with `sum`, `1 + 2`
   has type `Number`
   is an expression
 
 `1 + 2` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (4 - 1)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (4 - 1)`
   has type `()`
 
 `show (4 - 1)` (CallExpression):
+  grouped with `()`, `show (4 - 1)`
   has type `()`
   is an expression
 
 `4` (NumberExpression):
+  assigned type `Number`
+  grouped with `4`, `left`
   has type `Number`
   is an expression
-  type is annotated
 
 `4 - 1` (OperatorExpression):
+  assigned type `Number`
+  grouped with `4 - 1`, `value`
   has type `Number`
   is an expression
 
 `4 - 1` (CallExpression):
+  grouped with `difference`, `4 - 1`
   has type `Number`
   is an expression
 
 `4 - 1` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> difference`
   has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)`
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (3 * 5)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (3 * 5)`
   has type `()`
 
 `show (3 * 5)` (CallExpression):
+  grouped with `()`, `show (3 * 5)`
   has type `()`
   is an expression
 
 `3` (NumberExpression):
+  assigned type `Number`
+  grouped with `3`, `left`
   has type `Number`
   is an expression
-  type is annotated
 
 `3 * 5` (OperatorExpression):
+  assigned type `Number`
+  grouped with `3 * 5`, `value`
   has type `Number`
   is an expression
 
 `3 * 5` (CallExpression):
+  grouped with `product`, `3 * 5`
   has type `Number`
   is an expression
 
 `3 * 5` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> product`
   has bound(s) `Multiply` `Number` `Number` `Number` (resolved as `instance (Multiply Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Multiply : left right (infer product) => trait (left right -> product)`
 
 `5` (NumberExpression):
+  assigned type `Number`
+  grouped with `5`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (10 / 4)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (10 / 4)`
   has type `()`
 
 `show (10 / 4)` (CallExpression):
+  grouped with `()`, `show (10 / 4)`
   has type `()`
   is an expression
 
 `10` (NumberExpression):
+  assigned type `Number`
+  grouped with `10`, `left`
   has type `Number`
   is an expression
-  type is annotated
 
 `10 / 4` (OperatorExpression):
+  assigned type `Number`
+  grouped with `10 / 4`, `value`
   has type `Number`
   is an expression
 
 `10 / 4` (CallExpression):
+  grouped with `quotient`, `10 / 4`
   has type `Number`
   is an expression
 
 `10 / 4` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> quotient`
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)`
 
 `4` (NumberExpression):
+  assigned type `Number`
+  grouped with `4`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

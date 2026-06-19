@@ -1,44 +1,59 @@
 Facts (layer 2):
 
 `transmute :: a -> b` (ConstantDefinition):
+  assigned type `a -> b`
+  grouped with `a -> b`, `x -> x`
   has definition constraints
-  has type `(a or b) -> a or b`
+  has type `(b or a) -> b or a`
   has type parameters
   is a definition
 
 `a` (TypeParameter):
-  has type `a` or `b`
+  assigned type `a`
+  grouped with `x`
+  has type `b` or `a`
   is a definition
   is a type
   resolved to 1 definition(s): `a`
   type is annotated
 
 `a -> b` (FunctionType):
-  has type `(a or b) -> a or b`
+  assigned type `a -> b`
+  grouped with `transmute :: a -> b`
+  has type `(b or a) -> b or a`
   is a type
   type is annotated
 
 `b` (TypeParameter):
-  has type `a` or `b`
+  assigned type `b`
+  grouped with `x`
+  has type `b` or `a`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
   type is annotated
 
 `transmute : x -> x` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `x` (VariablePattern):
-  has type `a` or `b`
+  assigned type `b or a`
+  grouped with `x`, `a`
+  has type `b` or `a`
   is a definition
   is a pattern
 
 `x -> x` (FunctionExpression):
-  has type `(a or b) -> a or b`
+  assigned type `(b or a) -> b or a`
+  grouped with `transmute :: a -> b`
+  has type `(b or a) -> b or a`
   is an expression
 
 `x` (VariableExpression):
-  has type `a` or `b`
+  assigned type `b or a`
+  grouped with `x`, `b`
+  has type `b` or `a`
   is an expression
   resolved to 1 definition(s): `x`
   type is annotated
@@ -49,6 +64,6 @@ Feedback:
 
 `x` (conflicting-types)
 
-  `x` is a `a` or a `b`, but it can only be one of these.
+  `x` is a `b` or a `a`, but it can only be one of these.
   
-  `x` must be the same type as `x`, `a`, and `b`; double-check these.
+  `x` must be the same type as `a`, `b`, and `x`; double-check these.

@@ -1,32 +1,40 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
-  has type `Number Number Number -> ()` or `Number -> ()`
+  has type `Number -> ()` or `Number Number Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show 1 2 3` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show 1 2 3`
   has type `()`
 
 `show 1 2 3` (CallExpression):
+  grouped with `()`, `show 1 2 3`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (NumberExpression):
+  assigned type `Number`
+  grouped with `3`
   has type `Number`
   is an expression
-  type is annotated
 
 
 
@@ -34,9 +42,7 @@ Feedback:
 
 `show` (conflicting-types)
 
-  `show` is a `Number Number Number -> ()` or a `Number -> ()`, but it can only be one of these.
-  
-  `show` must be the same type as `1`, `show 1 2 3`, `2`, and 1 other; double-check these.
+  `show` is a `Number -> ()` or a `Number Number Number -> ()`, but it can only be one of these.
 
   1. `show`: `show` displays `1` on the screen.
 

@@ -92,12 +92,7 @@ impl Visit for NamedType {
 
         visitor.constraint(
             db,
-            InstantiateConstraint {
-                source_node: node,
-                definition: type_definition_node,
-                substitutions,
-                traces: Vec::new(),
-            },
+            InstantiateConstraint::new(node, type_definition_node, substitutions),
         );
     }
 }

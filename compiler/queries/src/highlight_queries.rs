@@ -1,5 +1,6 @@
+use crate::QueryCtx;
 use wipple_core::{
-    db::{Db, Node},
+    db::Node,
     facts::Syntax,
     typecheck::{
         groups::Typed,
@@ -12,7 +13,7 @@ use wipple_core::{
 };
 use wipple_syntax::types::{IsType, type_parameter::TypeParameter};
 
-pub fn highlight_type(db: &Db, node: Node) -> bool {
+pub fn highlight_type(db: &QueryCtx<'_>, node: Node) -> bool {
     let Some(Syntax(syntax)) = db.get(node) else {
         return false;
     };
@@ -22,7 +23,7 @@ pub fn highlight_type(db: &Db, node: Node) -> bool {
         && db.ast(syntax).downcast_ref::<TypeParameter>().is_none()
 }
 
-pub fn highlight_trait(db: &Db, node: Node) -> bool {
+pub fn highlight_trait(db: &QueryCtx<'_>, node: Node) -> bool {
     let definition_node = db
         .get::<Resolved>(node)
         .and_then(|resolved| resolved.definitions.first().copied())
@@ -35,15 +36,15 @@ pub fn highlight_trait(db: &Db, node: Node) -> bool {
     definition.downcast_ref::<TraitDefinition>().is_some()
 }
 
-pub fn highlight_function(db: &Db, node: Node) -> bool {
+pub fn highlight_function(db: &QueryCtx<'_>, node: Node) -> bool {
     highlight_typed(db, node, |tag| matches!(tag, Function))
 }
 
-pub fn highlight_type_parameter(db: &Db, node: Node) -> bool {
+pub fn highlight_type_parameter(db: &QueryCtx<'_>, node: Node) -> bool {
     highlight_typed(db, node, |tag| matches!(tag, Parameter(_)))
 }
 
-fn highlight_typed(db: &Db, node: Node, match_tag: impl FnOnce(TyTag) -> bool) -> bool {
+fn highlight_typed(db: &QueryCtx<'_>, node: Node, match_tag: impl FnOnce(TyTag) -> bool) -> bool {
     let Some(Typed(Some(group))) = db.get(node) else {
         return false;
     };

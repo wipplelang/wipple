@@ -1,232 +1,315 @@
 Facts (layer 2):
 
 `Person : type {name :: String}` (TypeDefinition):
+  assigned type `Person`
+  grouped with `Person : type {name :: String}`
   has definition constraints
   has type `Person`
   is a definition
 
 `Person : type {name :: String}` (TypeDefinition):
+  assigned type `Person`
+  grouped with `Person : type {name :: String}`
   has definition constraints
   has type `Person`
   is a definition
 
 `String` (NamedType):
+  assigned type `String`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `alice` (VariablePattern):
+  assigned type `Person`
+  grouped with `Person {name : "Alice"}`, `Person {name : "Alice"}`, `alice`
   has type `Person`
   is a definition
   is a pattern
 
 `alice : Person {name : "Alice"}` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `Person {name : "Alice"}` (StructureExpression):
+  assigned type `Person`
+  grouped with `Person : type {name :: String}`, `alice`, `alice`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `Person : type {name :: String}`
 
 `"Alice"` (StringExpression):
+  assigned type `String`
+  grouped with `"Alice"`
   has type `String`
   is an expression
-  type is annotated
 
 `Person {name : name}` (StructurePattern):
+  assigned type `Person`
+  grouped with `alice`, `Person : type {name :: String}`, `alice`
   has type `Person`
   is a pattern
   resolved to 1 definition(s): `Person : type {name :: String}`
 
 `Person {name : name} : alice` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `name` (VariablePattern):
+  assigned type `String`
+  grouped with `_`, `name`
   has type `String`
   is a definition
   is a pattern
 
 `alice` (VariableExpression):
+  assigned type `Person`
+  grouped with `alice`, `Person {name : name}`, `Person {name : name}`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `alice`
   type is annotated
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show name` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show name`
   has type `()`
 
 `show name` (CallExpression):
+  grouped with `()`, `show name`
   has type `()`
   is an expression
 
 `name` (VariableExpression):
+  assigned type `String`
+  grouped with `name`, `value`
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
   type is annotated
 
 `get-name :: Person -> String` (ConstantDefinition):
+  assigned type `Person -> String`
+  grouped with `Person -> String`, `(Person {name : name}) -> name`
   has definition constraints
   has type `Person -> String`
   is a definition
 
 `Person` (NamedType):
+  assigned type `Person`
+  grouped with `Person {name : name}`
   has type `Person`
   is a type
   resolved to 1 definition(s): `Person : type {name :: String}`
   type is annotated
 
 `Person -> String` (FunctionType):
+  assigned type `Person -> String`
+  grouped with `get-name :: Person -> String`
   has type `Person -> String`
   is a type
   type is annotated
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `name`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `get-name : (Person {name : name}) -> name` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `(Person {name : name}) -> name` (FunctionExpression):
+  assigned type `Person -> String`
+  grouped with `get-name :: Person -> String`
   has type `Person -> String`
   is an expression
 
 `Person {name : name}` (StructurePattern):
+  assigned type `Person`
+  grouped with `Person : type {name :: String}`, `Person`
   has type `Person`
   is a pattern
   resolved to 1 definition(s): `Person : type {name :: String}`
 
 `name` (VariablePattern):
+  assigned type `String`
+  grouped with `_`, `name`
   has type `String`
   is a definition
   is a pattern
 
 `name` (VariableExpression):
+  assigned type `String`
+  grouped with `name`, `String`
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
   type is annotated
 
 `bob` (VariablePattern):
+  assigned type `Person`
+  grouped with `Person {name : "Bob"}`, `Person {name : "Bob"}`, `bob`
   has type `Person`
   is a definition
   is a pattern
 
 `bob : Person {name : "Bob"}` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `Person {name : "Bob"}` (StructureExpression):
+  assigned type `Person`
+  grouped with `Person : type {name :: String}`, `bob`, `bob`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `Person : type {name :: String}`
 
 `"Bob"` (StringExpression):
+  assigned type `String`
+  grouped with `"Bob"`
   has type `String`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (get-name bob)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (get-name bob)`
   has type `()`
 
 `show (get-name bob)` (CallExpression):
+  grouped with `()`, `show (get-name bob)`
   has type `()`
   is an expression
 
 `get-name` (VariableExpression):
+  assigned type `Person -> String`
+  grouped with `Person -> String`
   has type `Person -> String`
   is an expression
   resolved to 1 definition(s): `get-name :: Person -> String`
 
 `get-name bob` (CallExpression):
+  grouped with `String`, `value`
   has type `String`
   is an expression
 
 `bob` (VariableExpression):
+  assigned type `Person`
+  grouped with `bob`, `Person`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `bob`
   type is annotated
 
 `instance (Describe Person)` (InstanceDefinition):
+  assigned type `Person -> String`
+  grouped with `value -> String`, `(Person {name : name}) -> name`
   has definition constraints
   has type `Person -> String`
   is a definition
   resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
 `Person` (NamedType):
+  assigned type `Person`
+  grouped with `value`
   has type `Person`
   is a type
   resolved to 1 definition(s): `Person : type {name :: String}`
   type is annotated
 
 `(Person {name : name}) -> name` (FunctionExpression):
+  assigned type `Person -> String`
+  grouped with `instance (Describe Person)`
   has type `Person -> String`
   is an expression
 
 `Person {name : name}` (StructurePattern):
+  assigned type `Person`
+  grouped with `Person : type {name :: String}`, `value`
   has type `Person`
   is a pattern
   resolved to 1 definition(s): `Person : type {name :: String}`
 
 `name` (VariablePattern):
+  assigned type `String`
+  grouped with `_`, `name`
   has type `String`
   is a definition
   is a pattern
 
 `name` (VariableExpression):
+  assigned type `String`
+  grouped with `name`, `String`
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
   type is annotated
 
 `charlie` (VariablePattern):
+  assigned type `Person`
+  grouped with `Person {name : "Charlie"}`, `Person {name : "Charlie"}`, `charlie`
   has type `Person`
   is a definition
   is a pattern
 
 `charlie : Person {name : "Charlie"}` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `Person {name : "Charlie"}` (StructureExpression):
+  assigned type `Person`
+  grouped with `Person : type {name :: String}`, `charlie`, `charlie`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `Person : type {name :: String}`
 
 `"Charlie"` (StringExpression):
+  assigned type `String`
+  grouped with `"Charlie"`
   has type `String`
   is an expression
-  type is annotated
 
 `show` (VariableExpression):
+  assigned type `Person -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Person` (resolved as `instance (Describe Person)`)
   has type `Person -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show charlie` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show charlie`
   has type `()`
 
 `show charlie` (CallExpression):
+  grouped with `()`, `show charlie`
   has type `()`
   is an expression
 
 `charlie` (VariableExpression):
+  assigned type `Person`
+  grouped with `charlie`, `value`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `charlie`

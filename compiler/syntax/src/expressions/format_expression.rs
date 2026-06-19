@@ -13,8 +13,8 @@ use wipple_core::{
     render::Render,
     span::{Span, Str},
     typecheck::{
-        constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
-        ty::ConstructedTy,
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
     },
     visit::{Visit, Visitor},
 };
@@ -83,7 +83,7 @@ impl Visit for FormatExpression {
         );
         let string_type = visitor.visit(db, &string_type);
 
-        visitor.constraint(db, GroupConstraint::new(node, string_type));
+        visitor.constraint(db, TyConstraint::new(node, Ty::Node(string_type)));
 
         let inputs = self
             .inputs
@@ -108,21 +108,33 @@ impl Visit for FormatExpression {
                 db,
                 TyConstraint::new(
                     describe_node,
-                    ConstructedTy::function(vec![*input], string_type),
+                    Ty::Constructed(ConstructedTy::function(vec![*input], string_type)),
                 ),
             );
 
             let string_temporary = db.node();
-            visitor.constraint(db, GroupConstraint::new(string_temporary, string_type));
+            visitor.constraint(
+                db,
+                TyConstraint::new(string_temporary, Ty::Node(string_type)),
+            );
 
             let described_temporary = db.node();
-            visitor.constraint(db, GroupConstraint::new(described_temporary, string_type));
+            visitor.constraint(
+                db,
+                TyConstraint::new(described_temporary, Ty::Node(string_type)),
+            );
 
             let concat_temporary = db.node();
-            visitor.constraint(db, GroupConstraint::new(concat_temporary, string_type));
+            visitor.constraint(
+                db,
+                TyConstraint::new(concat_temporary, Ty::Node(string_type)),
+            );
 
             let output_temporary = db.node();
-            visitor.constraint(db, GroupConstraint::new(output_temporary, string_type));
+            visitor.constraint(
+                db,
+                TyConstraint::new(output_temporary, Ty::Node(string_type)),
+            );
 
             format_segments.push(FormatExpressionSegment {
                 string: segment.clone(),
@@ -144,7 +156,10 @@ impl Visit for FormatExpression {
         }
 
         let trailing_temporary = db.node();
-        visitor.constraint(db, GroupConstraint::new(trailing_temporary, string_type));
+        visitor.constraint(
+            db,
+            TyConstraint::new(trailing_temporary, Ty::Node(string_type)),
+        );
 
         visitor.codegen(
             db,

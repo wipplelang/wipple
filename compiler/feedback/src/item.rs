@@ -5,7 +5,6 @@ use wipple_core::{
     facts::Syntax,
     render::RenderSegment,
 };
-use wipple_syntax::GroupOrder;
 
 pub struct FeedbackItem<'a> {
     pub id: String,
@@ -66,6 +65,4 @@ pub fn sort_feedback(db: &Db, items: &mut Vec<FeedbackItem<'_>>) {
         db.get(item.location.primary)
             .map(|Syntax(syntax)| db.ast(syntax).span(db))
     });
-
-    items.sort_by_key(|item| GroupOrder::new(db, item.location.primary));
 }

@@ -1,5 +1,6 @@
+use crate::QueryCtx;
 use wipple_core::{
-    db::{Db, Node},
+    db::Node,
     facts::{Children, Parent, Syntax},
 };
 use wipple_syntax::{
@@ -7,7 +8,7 @@ use wipple_syntax::{
     statements::expression_statement::ExpressionStatement,
 };
 
-pub fn unused_block(db: &Db, node: Node) -> bool {
+pub fn unused_block(db: &QueryCtx<'_>, node: Node) -> bool {
     let Some(syntax) = db.get::<Syntax>(node) else {
         return false;
     };

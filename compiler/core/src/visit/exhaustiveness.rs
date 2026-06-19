@@ -263,7 +263,7 @@ fn collect_paths(
         return vec![vec![MatchPath(prefix.to_vec())]];
     }
 
-    let (mut ty, _) = update_type(db, &ty, None);
+    let mut ty = update_type(db, &ty, None);
 
     if let Ty::Constructed(inner) = &ty
         && let TyTag::Parameter(parameter) = inner.tag
@@ -272,7 +272,7 @@ fn collect_paths(
         ty = Ty::Node(*substitution);
     }
 
-    let (Ty::Constructed(ty), _) = update_type(db, &ty, None) else {
+    let Ty::Constructed(ty) = update_type(db, &ty, None) else {
         return Vec::new();
     };
 

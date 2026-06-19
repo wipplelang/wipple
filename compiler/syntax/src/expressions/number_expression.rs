@@ -7,8 +7,7 @@ use wipple_core::{
     render::{Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
-        constraints::{ConstraintTrace, group_constraint::GroupConstraint},
-        groups::Annotated,
+        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
         ty::Ty,
     },
     visit::{Visit, Visitor},
@@ -56,11 +55,9 @@ impl Visit for NumberExpression {
 
         visitor.constraint(
             db,
-            GroupConstraint::new(node, number_type)
+            TyConstraint::new(node, Ty::Node(number_type))
                 .with_trace(NumberConstraintTrace { node, number_type }),
         );
-
-        db.insert(node, Annotated);
 
         visitor.codegen(
             db,
@@ -94,7 +91,7 @@ impl Render for NumberConstraintTrace {
     fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.node(self.node);
         ctx.string(" is a ");
-        ctx.ty(db, &Ty::Node(self.number_type), self.number_type, true);
+        ctx.ty(db, &Ty::Node(self.number_type), true);
         ctx.string(".");
     }
 }

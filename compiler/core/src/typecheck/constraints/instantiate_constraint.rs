@@ -1,7 +1,9 @@
 use crate::{
     db::{Db, Node},
     typecheck::{
-        constraints::{AnyConstraintTrace, Constraint, ConstraintTrace, RunResult, Solver},
+        constraints::{
+            AnyConstraintTrace, Constraint, ConstraintKind, ConstraintTrace, RunResult, Solver,
+        },
         instantiate::InstantiateCtx,
         solver::SubstitutionsKey,
     },
@@ -12,12 +14,23 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InstantiateConstraint {
     pub source_node: Node,
+    pub bound_path: Vec<Node>,
     pub definition: Node,
     pub substitutions: SubstitutionsKey,
     pub traces: Vec<AnyConstraintTrace>,
 }
 
 impl InstantiateConstraint {
+    pub fn new(source_node: Node, definition: Node, substitutions: SubstitutionsKey) -> Self {
+        InstantiateConstraint {
+            source_node,
+            bound_path: Vec::new(),
+            definition,
+            substitutions,
+            traces: Vec::new(),
+        }
+    }
+
     pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
         self.traces.push(AnyConstraintTrace::new(trace));
         self
@@ -26,6 +39,10 @@ impl InstantiateConstraint {
 
 #[typetag::serde]
 impl Constraint for InstantiateConstraint {
+    fn kind(&self) -> ConstraintKind {
+        ConstraintKind::Ty
+    }
+
     fn node(&self) -> Node {
         self.source_node
     }
@@ -49,6 +66,7 @@ impl Constraint for InstantiateConstraint {
 
         Some(Box::new(InstantiateConstraint {
             source_node: ctx.source_node,
+            bound_path: ctx.bound_path.clone(),
             definition: self.definition,
             substitutions,
             traces: ctx.instantiate_traces(db, solver, &self.traces),
@@ -66,6 +84,7 @@ impl Constraint for InstantiateConstraint {
         let mut ctx = InstantiateCtx {
             definition: self.definition,
             source_node: self.source_node,
+            bound_path: self.bound_path.clone(),
             substitutions: self.substitutions,
         };
 

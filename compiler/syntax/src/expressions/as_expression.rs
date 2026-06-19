@@ -12,9 +12,9 @@ use wipple_core::{
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{
-        constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
+        constraints::ty_constraint::TyConstraint,
         groups::Annotated,
-        ty::ConstructedTy,
+        ty::{ConstructedTy, Ty},
     },
     visit::{Visit, Visitor},
 };
@@ -69,10 +69,13 @@ impl Visit for AsExpression {
 
         visitor.constraint(
             db,
-            TyConstraint::new(as_function, ConstructedTy::function(vec![left], right)),
+            TyConstraint::new(
+                as_function,
+                Ty::Constructed(ConstructedTy::function(vec![left], right)),
+            ),
         );
 
-        visitor.constraint(db, GroupConstraint::new(node, right));
+        visitor.constraint(db, TyConstraint::new(node, Ty::Node(right)));
 
         db.insert(left, Annotated);
 

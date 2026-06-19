@@ -49,7 +49,7 @@ impl Visit for File {
     }
 
     fn is_hidden(&self, _db: &Db) -> bool {
-        true
+        self.error.is_none()
     }
 
     fn visit(self: Box<Self>, db: &mut Db, _node: Node, visitor: &mut Visitor) {

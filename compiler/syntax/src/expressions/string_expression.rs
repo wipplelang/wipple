@@ -7,8 +7,7 @@ use wipple_core::{
     render::{Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
-        constraints::{ConstraintTrace, group_constraint::GroupConstraint},
-        groups::Annotated,
+        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
         ty::Ty,
     },
     visit::{Visit, Visitor},
@@ -56,11 +55,9 @@ impl Visit for StringExpression {
 
         visitor.constraint(
             db,
-            GroupConstraint::new(node, string_type)
+            TyConstraint::new(node, Ty::Node(string_type))
                 .with_trace(StringConstraintTrace { node, string_type }),
         );
-
-        db.insert(node, Annotated);
 
         visitor.codegen(
             db,
@@ -94,7 +91,7 @@ impl Render for StringConstraintTrace {
     fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.node(self.node);
         ctx.string(" is a ");
-        ctx.ty(db, &Ty::Node(self.string_type), self.string_type, true);
+        ctx.ty(db, &Ty::Node(self.string_type), true);
         ctx.string(".");
     }
 }

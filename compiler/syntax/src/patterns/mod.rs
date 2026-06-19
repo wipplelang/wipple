@@ -31,8 +31,9 @@ use wipple_core::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
-        constraints::{ConstraintTrace, group_constraint::GroupConstraint},
+        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
         groups::Typed,
+        ty::Ty,
     },
     visit::{Visitor, exhaustiveness::MatchPathSegment},
 };
@@ -156,7 +157,7 @@ pub fn visit_pattern(
         db.graph.edge(matching, node, "value")
     }
 
-    let mut constraint = GroupConstraint::new(node, matching);
+    let mut constraint = TyConstraint::new(node, Ty::Node(matching));
     if node != matching {
         constraint = constraint.with_trace(MatchingConstraintTrace {
             pattern: node,
@@ -188,4 +189,11 @@ impl ConstraintTrace for MatchingConstraintTrace {
     }
 }
 
-impl Render for MatchingConstraintTrace {}
+impl Render for MatchingConstraintTrace {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+        ctx.node(self.pattern);
+        ctx.string(" is ");
+        ctx.node(self.value);
+        ctx.string(".");
+    }
+}

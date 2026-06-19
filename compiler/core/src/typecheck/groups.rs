@@ -7,18 +7,21 @@ use crate::{
     },
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    slice,
+};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Group {
-    pub nodes: Vec<Node>,
+    pub nodes: BTreeSet<Node>,
     pub tys: Vec<ConstructedTy>,
 }
 
 impl Group {
     pub fn with_nodes(nodes: impl IntoIterator<Item = Node>) -> Self {
         Group {
-            nodes: Vec::from_iter(nodes),
+            nodes: BTreeSet::from_iter(nodes),
             ..Default::default()
         }
     }
@@ -140,14 +143,8 @@ impl Groups {
         self.0.values_mut().flatten()
     }
 
-    pub fn into_sorted_groups<K: Ord>(self, mut key: impl FnMut(Node) -> K) -> Vec<Group> {
-        let mut groups = self.0.into_values().flatten().collect::<Vec<_>>();
-
-        for group in &mut groups {
-            group.nodes.sort_by_key(|node| key(*node));
-        }
-
-        groups
+    pub fn into_vec(self) -> Vec<Group> {
+        self.0.into_values().flatten().collect()
     }
 }
 
@@ -194,6 +191,19 @@ impl Render for Typed {
     }
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AssignedType(pub Ty);
+
+#[typetag::serde]
+impl Fact for AssignedType {}
+
+impl Render for AssignedType {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+        ctx.string("assigned type ");
+        ctx.ty(db, &self.0, true);
+    }
+}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Annotated;
 
@@ -207,31 +217,34 @@ impl Render for Annotated {
 }
 
 pub fn types_of(db: &Db, node: Node) -> &[ConstructedTy] {
+    if let Some(AssignedType(ty)) = db.get(node)
+        && let Ty::Constructed(ty) = ty
+    {
+        return slice::from_ref(ty);
+    }
+
     db.get(node)
         .and_then(|Typed(group)| group.as_ref())
         .map(|group| group.tys.as_slice())
         .unwrap_or_default()
 }
 
-pub fn update_type(db: &Db, ty: &Ty, representative: impl Into<Option<Node>>) -> (Ty, Vec<Ty>) {
+pub fn update_type(db: &Db, ty: &Ty, representative: impl Into<Option<Node>>) -> Ty {
     match ty {
         Ty::Node(node) => {
             let tys = types_of(db, *node);
 
             if tys.is_empty() {
-                (Ty::Node(*node), Vec::new())
+                Ty::Node(*node)
             } else {
-                (
-                    Ty::Constructed(
-                        representative_ty(db, tys, representative.into().unwrap_or(*node))
-                            .unwrap_or_else(|| tys.first().unwrap())
-                            .clone(),
-                    ),
-                    tys.iter().cloned().map(Ty::Constructed).collect(),
+                Ty::Constructed(
+                    representative_ty(db, tys, representative.into().unwrap_or(*node))
+                        .unwrap_or_else(|| tys.first().unwrap())
+                        .clone(),
                 )
             }
         }
-        Ty::Constructed(ty) => (Ty::Constructed(ty.clone()), Vec::new()),
+        Ty::Constructed(ty) => Ty::Constructed(ty.clone()),
     }
 }
 

@@ -13,8 +13,8 @@ use wipple_core::{
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{
-        constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
-        ty::ConstructedTy,
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
     },
     visit::{Visit, VisitAs, Visitor},
 };
@@ -271,7 +271,7 @@ impl Visit for OperatorExpression {
 
         db.graph.replace(node, resolved);
 
-        visitor.constraint(db, GroupConstraint::new(node, resolved));
+        visitor.constraint(db, TyConstraint::new(node, Ty::Node(resolved)));
         visitor.codegen(db, node, OperatorExpressionCodegen { node, resolved });
     }
 }
@@ -320,14 +320,17 @@ fn visit_logic_operator(
     let block_node = db.node();
     visitor.constraint(
         db,
-        TyConstraint::new(block_node, ConstructedTy::block(right_node)),
+        TyConstraint::new(
+            block_node,
+            Ty::Constructed(ConstructedTy::block(right_node)),
+        ),
     );
 
     visitor.constraint(
         db,
         TyConstraint::new(
             operator_node,
-            ConstructedTy::function(vec![left_node, block_node], node),
+            Ty::Constructed(ConstructedTy::function(vec![left_node, block_node], node)),
         ),
     );
 
@@ -400,7 +403,10 @@ fn visit_apply_operator(db: &mut Db, visitor: &mut Visitor, left: AstKey, right:
 
     visitor.constraint(
         db,
-        TyConstraint::new(right_node, ConstructedTy::function(vec![left_node], node)),
+        TyConstraint::new(
+            right_node,
+            Ty::Constructed(ConstructedTy::function(vec![left_node], node)),
+        ),
     );
 
     let function = visitor.in_ast(

@@ -5,7 +5,10 @@ use wipple_core::{
     ast::AstKey,
     db::{Db, Node},
     span::Span,
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::ConstructedTy},
+    typecheck::{
+        constraints::ty_constraint::TyConstraint,
+        ty::{ConstructedTy, Ty},
+    },
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -63,7 +66,10 @@ impl Visit for FunctionType {
 
         visitor.constraint(
             db,
-            TyConstraint::new(node, ConstructedTy::function(inputs.clone(), output)),
+            TyConstraint::new(
+                node,
+                Ty::Constructed(ConstructedTy::function(inputs.clone(), output)),
+            ),
         );
     }
 }

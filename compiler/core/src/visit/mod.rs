@@ -10,7 +10,10 @@ use crate::{
     render::{Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
-        constraints::{Constraint, generic_constraint::GenericConstraint},
+        constraints::{
+            Constraint,
+            generic_constraint::{GenericConstraint, GenericConstraintMode},
+        },
         solver::{Substitutions, SubstitutionsKey},
         ty::Ty,
     },
@@ -90,6 +93,19 @@ impl Fact for TypeParameters {}
 impl Render for TypeParameters {
     fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("has type parameters");
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolvedTypeParameter(pub Node);
+
+#[typetag::serde]
+impl Fact for ResolvedTypeParameter {}
+
+impl Render for ResolvedTypeParameter {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+        ctx.string("resolved to type parameter ");
+        ctx.node(self.0);
     }
 }
 
@@ -431,7 +447,10 @@ impl Visitor {
         if let Some(definition) = &mut self.current_definition {
             let mut constraint = Box::new(constraint) as Box<dyn Constraint>;
             if definition.within_constant_value {
-                constraint = Box::new(GenericConstraint(constraint));
+                constraint = Box::new(GenericConstraint::new(
+                    constraint,
+                    GenericConstraintMode::DefinitionOnly,
+                ));
             }
 
             db.get_mut_or_default::<DefinitionConstraints>(definition.node)

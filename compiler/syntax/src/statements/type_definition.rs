@@ -12,9 +12,9 @@ use wipple_core::{
     render::Render,
     span::{Span, Str},
     typecheck::{
-        constraints::{group_constraint::GroupConstraint, ty_constraint::TyConstraint},
+        constraints::ty_constraint::TyConstraint,
         groups::Typed,
-        ty::ConstructedTy,
+        ty::{ConstructedTy, Ty},
     },
     visit::{
         DefinitionConstraints, Visit, Visitor,
@@ -319,7 +319,7 @@ impl Visit for TypeDefinition {
                     db,
                     TyConstraint::new(
                         node,
-                        ConstructedTy::named(node, definition.parameters.clone()),
+                        Ty::Constructed(ConstructedTy::named(node, definition.parameters.clone())),
                     ),
                 );
 
@@ -348,7 +348,8 @@ impl Visit for TypeDefinition {
                                     .0
                                     .extend(type_constraints.clone());
 
-                                visitor.constraint(db, GroupConstraint::new(constructor, node));
+                                visitor
+                                    .constraint(db, TyConstraint::new(constructor, Ty::Node(node)));
 
                                 if let Some(Syntax(syntax)) = db.get(node) {
                                     db.insert(constructor, Syntax(syntax.clone()));
@@ -390,7 +391,8 @@ impl Visit for TypeDefinition {
                                     .0
                                     .extend(type_constraints.clone());
 
-                                visitor.constraint(db, GroupConstraint::new(constructor, node));
+                                visitor
+                                    .constraint(db, TyConstraint::new(constructor, Ty::Node(node)));
 
                                 if let Some(Syntax(syntax)) = db.get(node) {
                                     db.insert(constructor, Syntax(syntax.clone()));
@@ -460,17 +462,17 @@ impl Visit for TypeDefinition {
                                             if definition.elements.is_empty() {
                                                 visitor.constraint(
                                                     db,
-                                                    GroupConstraint::new(constructor, node),
+                                                    TyConstraint::new(constructor, Ty::Node(node)),
                                                 );
                                             } else {
                                                 visitor.constraint(
                                                     db,
                                                     TyConstraint::new(
                                                         constructor,
-                                                        ConstructedTy::function(
+                                                        Ty::Constructed(ConstructedTy::function(
                                                             elements.clone(),
                                                             node,
-                                                        ),
+                                                        )),
                                                     ),
                                                 );
                                             }

@@ -1,23 +1,31 @@
 Facts (layer 2):
 
 `remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)` (ConstantDefinition):
+  assigned type `(List element) -> Sequence element`
+  grouped with `(List element) -> Sequence element`, `do {⋯}`
   has definition constraints
   has type `(List element) -> Sequence element`
   has type parameters
   is a definition
 
 `(List element) -> Sequence element` (FunctionType):
+  assigned type `(List element) -> Sequence element`
+  grouped with `remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)`
   has type `(List element) -> Sequence element`
   is a type
   type is annotated
 
 `List element` (NamedType):
+  assigned type `List element`
+  grouped with `container`
   has type `List element`
   is a type
   resolved to 1 definition(s): `List : element => type`
   type is annotated
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`, `element`, `element`, `element`, `element`
   has type `element`
   is a definition
   is a type
@@ -25,15 +33,20 @@ Facts (layer 2):
   type is annotated
 
 `Sequence element` (NamedType):
+  assigned type `Sequence element`
+  grouped with `Sequence element`
   has type `Sequence element`
   is a type
   resolved to 1 definition(s): `Sequence : element => type {next :: {Maybe element}}`
   type is annotated
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`, `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  resolved to type parameter `element`
   type is annotated
 
 `(Describe element)` (BoundConstraint):
@@ -42,9 +55,12 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe : value => trait (value -> String)`
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  resolved to type parameter `element`
   type is annotated
 
 `(Equal element)` (BoundConstraint):
@@ -53,9 +69,12 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`, `element`, `element`, `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  resolved to type parameter `element`
   type is annotated
 
 `(Hash element)` (BoundConstraint):
@@ -64,289 +83,387 @@ Facts (layer 2):
   resolved to 1 definition(s): `Hash : value => trait (value -> Number)`
 
 `element` (TypeParameter):
+  assigned type `element`
+  grouped with `element`, `element`, `element`, `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
+  resolved to type parameter `element`
   type is annotated
 
 `remove-duplicates : do {⋯}` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `do {⋯}` (DoExpression):
+  assigned type `(List element) -> Sequence element`
+  grouped with `filter (item -> (seen . (not contains?) item) and (do {⋯}))`, `remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)`
   has type `(List element) -> Sequence element`
   is an expression
 
 `{⋯}` (BlockExpression):
+  assigned type `{(List element) -> Sequence element}`
   has type `{(List element) -> Sequence element}`
   is an expression
 
 `seen` (VariablePattern):
+  assigned type `Set element`
+  grouped with `,`, `,`, `seen`, `seen`, `set seen`
   has type `Set element`
   is a definition
   is a pattern
   is mutated
 
 `seen : (,)` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `,` (CollectionExpression):
+  grouped with `,`, `seen`, `seen`
   has type `Set element`
   is an expression
 
 `filter` (VariableExpression):
+  assigned type `(element -> Boolean) -> (List element) -> Sequence element`
+  grouped with `(condition :: (element -> Boolean)) -> container -> Sequence element`
   has bound(s) `As-Sequence` `(List element)` `element` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(element -> Boolean) -> (List element) -> Sequence element`
   is an expression
   resolved to 1 definition(s): `filter :: (condition :: (element -> Boolean)) -> container -> Sequence element where (As-Sequence container element)`
 
 `filter (item -> (seen . (not contains?) item) and (do {⋯}))` (ExpressionStatement):
+  assigned type `(List element) -> Sequence element`
+  grouped with `filter (item -> (seen . (not contains?) item) and (do {⋯}))`, `do {⋯}`
   has type `(List element) -> Sequence element`
 
 `filter (item -> (seen . (not contains?) item) and (do {⋯}))` (CallExpression):
+  grouped with `container -> Sequence element`, `filter (item -> (seen . (not contains?) item) and (do {⋯}))`
   has type `(List element) -> Sequence element`
   is an expression
 
 `item` (VariablePattern):
+  assigned type `element`
+  grouped with `item`, `item`, `element`
   has type `element`
   is a definition
   is a pattern
 
 `item -> (seen . (not contains?) item) and (do {⋯})` (FunctionExpression):
+  assigned type `element -> Boolean`
   captures `seen`
+  grouped with `condition :: (element -> Boolean)`
   has type `element -> Boolean`
   is an expression
 
 `seen` (VisitAs):
+  assigned type `Set element`
+  grouped with `collection`, `seen`, `collection`
   has type `Set element`
   is an expression
   resolved to 1 definition(s): `seen`
   type is annotated
 
 `seen . (not contains?) item` (VisitAs):
+  assigned type `Boolean`
+  grouped with `(not contains?) item`, `left`
   has type `Boolean`
   is an expression
 
 `seen . (not contains?) item) and (do {⋯}` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `seen . (not contains?) item) and (do {⋯}`, `Boolean`
   has type `Boolean`
   is an expression
 
 `seen . (not contains?) item) and (do {⋯}` (CallExpression):
+  grouped with `output`, `seen . (not contains?) item) and (do {⋯}`
   has type `Boolean`
   is an expression
 
 `seen . (not contains?) item) and (do {⋯}` (ConstructorExpression):
+  assigned type `Boolean {Boolean} -> Boolean`
+  grouped with `left {right} -> output`
   has bound(s) `And` `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
   is an expression
   resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)`
 
 `(not contains?) item` (CallExpression):
+  grouped with `Boolean`, `Boolean`, `seen . (not contains?) item`
   has type `Boolean`
   is an expression
 
 `(not contains?) item` (VisitAs):
+  assigned type `(Set element) -> Boolean`
+  grouped with `collection -> Boolean`
   has type `(Set element) -> Boolean`
   is an expression
 
 `not` (VariableExpression):
+  assigned type `(element -> (Set element) -> Boolean) -> element -> (Set element) -> Boolean`
+  grouped with `value -> value`
   has bound(s) `Not` `(element -> (Set element) -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `((Set element) -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `Boolean` (resolved as `instance (Not Boolean)`)
   has type `(element -> (Set element) -> Boolean) -> element -> (Set element) -> Boolean`
   is an expression
   resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)`
 
 `not contains?` (CallExpression):
+  assigned type `element -> (Set element) -> Boolean`
+  grouped with `value`
   has type `element -> (Set element) -> Boolean`
   is an expression
 
 `contains?` (VariableExpression):
+  assigned type `element -> (Set element) -> Boolean`
+  grouped with `element -> collection -> Boolean`, `value`
   has bound(s) `Container` `(Set element)` `element` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `element` (resolved as `(Equal element)`), `Hash` `element` (resolved as `(Hash element)`)
   has type `element -> (Set element) -> Boolean`
   is an expression
   resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)`
 
 `item` (VariableExpression):
+  assigned type `element`
+  grouped with `item`, `element`
   has type `element`
   is an expression
   resolved to 1 definition(s): `item`
   type is annotated
 
 `do {⋯}` (VisitAs):
+  grouped with `True`, `do {⋯}`, `do {⋯}`, `right`
   has type `Boolean`
   is an expression
 
 `do {⋯}` (VisitAs):
+  assigned type `{Boolean}`
   captures `seen`, `item`
+  grouped with `{right}`
   has type `{Boolean}`
   is an expression
 
 `do {⋯}` (ExpressionStatement):
+  assigned type `Boolean`
+  grouped with `do {⋯}`, `do {⋯}`
   has type `Boolean`
 
 `{⋯}` (BlockExpression):
+  assigned type `{Boolean}`
   captures `seen`, `item`
   has type `{Boolean}`
   is an expression
 
 `set seen` (SetPattern):
+  assigned type `Set element`
+  grouped with `seen . insert item`, `seen`, `seen . insert item`
   has type `Set element`
   is a pattern
   resolved to 1 definition(s): `seen`
 
 `set seen : seen . insert item` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `seen` (VisitAs):
+  assigned type `Set element`
+  grouped with `set_ :: (Set element)`, `seen`, `set_ :: (Set element)`
   has type `Set element`
   is an expression
   resolved to 1 definition(s): `seen`
   type is annotated
 
 `seen . insert item` (OperatorExpression):
+  assigned type `Set element`
+  grouped with `insert item`, `set seen`, `set seen`
   has type `Set element`
   is an expression
 
 `insert` (VariableExpression):
+  assigned type `element -> (Set element) -> Set element`
+  grouped with `element -> (set_ :: (Set element)) -> Set element`
   has bound(s) `Equal` `element` (resolved as `(Equal element)`), `Hash` `element` (resolved as `(Hash element)`)
   has type `element -> (Set element) -> Set element`
   is an expression
   resolved to 1 definition(s): `insert :: element -> (set_ :: (Set element)) -> Set element where (Equal element) (Hash element)`
 
 `insert item` (CallExpression):
+  grouped with `Set element`, `Set element`, `seen . insert item`
   has type `Set element`
   is an expression
 
 `insert item` (VisitAs):
+  assigned type `(Set element) -> Set element`
+  grouped with `(set_ :: (Set element)) -> Set element`
   has type `(Set element) -> Set element`
   is an expression
 
 `item` (VariableExpression):
+  assigned type `element`
+  grouped with `item`, `element`
   has type `element`
   is an expression
   resolved to 1 definition(s): `item`
   type is annotated
 
 `True` (ExpressionStatement):
+  assigned type `Boolean`
+  grouped with `True`, `do {⋯}`
   has type `Boolean`
 
 `True` (ConstructorExpression):
+  assigned type `Boolean`
+  grouped with `Boolean : type {⋯}`, `True`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `numbers` (VariablePattern):
+  assigned type `List Number`
+  grouped with `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5`, `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5`, `numbers`
   has type `List Number`
   is a definition
   is a pattern
 
 `numbers : 5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `5` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `5`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (CollectionExpression):
+  grouped with `5`, `numbers`, `numbers`
   has type `List Number`
   is an expression
 
 `5` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `5`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `4` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `4`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `3`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `3`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `3`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `2` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `2`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `1` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `1`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `2` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `2`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `3` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `3`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `4` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `4`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `5` (VisitAs):
+  assigned type `Number`
+  grouped with `_`, `5`, `element`
   has type `Number`
   is an expression
-  type is annotated
 
 `numbers` (VisitAs):
+  assigned type `List Number`
+  grouped with `List element`, `numbers`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `numbers`
   type is annotated
 
 `numbers . remove-duplicates` (VisitAs):
+  assigned type `Sequence Number`
+  grouped with `container`, `remove-duplicates`, `container`
   has type `Sequence Number`
   is an expression
 
 `numbers . remove-duplicates . each show` (ExpressionStatement):
+  assigned type `()`
+  grouped with `numbers . remove-duplicates . each show`
   has type `()`
 
 `numbers . remove-duplicates . each show` (OperatorExpression):
+  assigned type `()`
+  grouped with `each show`, `numbers . remove-duplicates . each show`
   has type `()`
   is an expression
 
 `remove-duplicates` (CallExpression):
+  grouped with `Sequence element`, `numbers . remove-duplicates`
   has type `Sequence Number`
   is an expression
 
 `remove-duplicates` (VisitAs):
+  assigned type `(List Number) -> Sequence Number`
+  grouped with `(List element) -> Sequence element`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`), `Equal` `Number` (resolved as `instance (Equal Number)`), `Hash` `Number` (resolved as `instance (Hash Number)`)
   has type `(List Number) -> Sequence Number`
   is an expression
   resolved to 1 definition(s): `remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)`
 
 `each` (VariableExpression):
+  assigned type `(Number -> ()) -> (Sequence Number) -> ()`
+  grouped with `(action :: (element -> ())) -> container -> ()`
   has bound(s) `As-Sequence` `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `(Number -> ()) -> (Sequence Number) -> ()`
   is an expression
   resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
 
 `each show` (CallExpression):
+  grouped with `()`, `()`, `numbers . remove-duplicates . each show`
   has type `()`
   is an expression
 
 `each show` (VisitAs):
+  assigned type `(Sequence Number) -> ()`
+  grouped with `container -> ()`
   has type `(Sequence Number) -> ()`
   is an expression
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`, `action :: (element -> ())`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression

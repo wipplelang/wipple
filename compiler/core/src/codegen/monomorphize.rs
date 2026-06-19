@@ -17,7 +17,7 @@ impl MonomorphizeCtx {
     pub fn get_or_insert(
         &mut self,
         definition: Node,
-        bounds: BTreeMap<Node, ir::Instance>,
+        bounds: BTreeMap<Vec<Node>, ir::Instance>,
         generic: bool,
     ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
         let key = ir::ConstantDefinitionKey {
@@ -97,11 +97,14 @@ impl MonomorphizeCtx {
 
                             self.monomorphize_key(db, constant_key, &key.bounds, cache)?;
                         }
-                        ir::Value::Bound(bound) => {
+                        ir::Value::Bound(bound_path) => {
                             let Some(ir::Instance::Definition(mut resolved_key)) =
-                                key.bounds.get(bound).cloned()
+                                key.bounds.get(bound_path).cloned()
                             else {
-                                return Err(anyhow::format_err!("bound {bound:?} not resolved"));
+                                return Err(anyhow::format_err!(
+                                    "bound {bound_path:?} not resolved (bounds: {:?})",
+                                    key.bounds
+                                ));
                             };
 
                             self.monomorphize_key(db, &mut resolved_key, &key.bounds, cache)?;
@@ -128,7 +131,7 @@ impl MonomorphizeCtx {
         &mut self,
         db: &Db,
         key: &mut ir::ConstantDefinitionKey,
-        bounds: &BTreeMap<Node, ir::Instance>,
+        bounds: &BTreeMap<Vec<Node>, ir::Instance>,
         cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Function>>,
     ) -> Result<(), CodegenError> {
         for instance in key.bounds.values_mut() {
@@ -144,14 +147,14 @@ impl MonomorphizeCtx {
         &mut self,
         db: &Db,
         instance: &mut ir::Instance,
-        bounds: &BTreeMap<Node, ir::Instance>,
+        bounds: &BTreeMap<Vec<Node>, ir::Instance>,
         cache: &mut BTreeMap<ir::ConstantDefinitionKey, Option<ir::Function>>,
     ) -> Result<(), CodegenError> {
         match instance {
-            ir::Instance::Bound(bound) => {
+            ir::Instance::Bound(bound_path) => {
                 *instance = bounds
-                    .get(bound)
-                    .ok_or_else(|| anyhow::format_err!("no bound for {bound:?}"))?
+                    .get(bound_path)
+                    .ok_or_else(|| anyhow::format_err!("no bound for {bound_path:?}"))?
                     .clone();
             }
             ir::Instance::Definition(instance_key) => {

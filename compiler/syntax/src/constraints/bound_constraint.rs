@@ -106,9 +106,9 @@ impl Visit for BoundConstraint {
                 node,
                 Bound {
                     source_node: node,
+                    bound_path: vec![node],
                     bound_node: node,
                     trait_node,
-                    target_node: None,
                     substitutions,
                     is_optional: false,
                 },

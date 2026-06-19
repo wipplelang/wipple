@@ -8,6 +8,7 @@ use crate::{
         solver::{Solver, SubstitutionsKey},
         ty::{ConstructedTy, Ty, TyTag},
     },
+    visit::ResolvedTypeParameter,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -33,16 +34,25 @@ impl Render for Instantiated {
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct InstantiatedParameters(pub BTreeMap<Node, Node>);
+
+#[typetag::serde]
+impl Fact for InstantiatedParameters {}
+
+impl Render for InstantiatedParameters {}
+
 #[derive(Debug, Clone)]
 pub struct InstantiateCtx {
     pub definition: Node,
     pub source_node: Node,
+    pub bound_path: Vec<Node>,
     pub substitutions: SubstitutionsKey,
 }
 
 impl InstantiateCtx {
     pub fn instantiate_node(&mut self, db: &mut Db, solver: &mut Solver, node: Node) -> Node {
-        solver.with_substitutions_mut(self.substitutions, |_, substitutions| {
+        solver.with_substitutions_mut(self.substitutions, |solver, substitutions| {
             if let Some(replacement) = substitutions.nodes.get(&node) {
                 return *replacement;
             }
@@ -68,6 +78,11 @@ impl InstantiateCtx {
 
             if db.contains::<Annotated>(node) {
                 db.insert(replacement, Annotated);
+            }
+
+            if let Some(ResolvedTypeParameter(parameter)) = db.get(node).cloned() {
+                let parameter = self.instantiate_node(db, solver, parameter);
+                db.insert(replacement, ResolvedTypeParameter(parameter));
             }
 
             replacement
@@ -116,6 +131,10 @@ impl InstantiateCtx {
                         source_node: self.source_node,
                     },
                 );
+
+                db.get_mut_or_default::<InstantiatedParameters>(self.source_node)
+                    .0
+                    .insert(parameter, node);
 
                 db.insert(node, Annotated);
 

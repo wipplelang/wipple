@@ -1,74 +1,102 @@
 Facts (layer 2):
 
 `Grade : type {⋯}` (TypeDefinition):
+  assigned type `Grade`
+  grouped with `A`, `B`, `C`, `D`, `F`
   has definition constraints
   has type `Grade`
   is a definition
 
 `A` (VariantDefinition):
+  assigned type `Grade`
+  grouped with `Grade : type {⋯}`
   has definition constraints
   has type `Grade`
   is a definition
 
 `B` (VariantDefinition):
+  assigned type `Grade`
+  grouped with `Grade : type {⋯}`
   has definition constraints
   has type `Grade`
   is a definition
 
 `C` (VariantDefinition):
+  assigned type `Grade`
+  grouped with `Grade : type {⋯}`
   has definition constraints
   has type `Grade`
   is a definition
 
 `D` (VariantDefinition):
+  assigned type `Grade`
+  grouped with `Grade : type {⋯}`
   has definition constraints
   has type `Grade`
   is a definition
 
 `F` (VariantDefinition):
+  assigned type `Grade`
+  grouped with `Grade : type {⋯}`
   has definition constraints
   has type `Grade`
   is a definition
 
 `report-card :: Grade -> String` (ConstantDefinition):
+  assigned type `Grade -> String`
+  grouped with `Grade -> String`, `grade -> when grade {⋯}`
   has definition constraints
   has type `Grade -> String`
   is a definition
 
 `Grade` (NamedType):
+  assigned type `Grade`
+  grouped with `grade`
   has type `Grade`
   is a type
   resolved to 1 definition(s): `Grade : type {⋯}`
   type is annotated
 
 `Grade -> String` (FunctionType):
+  assigned type `Grade -> String`
+  grouped with `report-card :: Grade -> String`
   has type `Grade -> String`
   is a type
   type is annotated
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `when grade {⋯}`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `report-card : grade -> when grade {⋯}` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `grade` (VariablePattern):
+  assigned type `Grade`
+  grouped with `grade`, `Grade`
   has type `Grade`
   is a definition
   is a pattern
 
 `grade -> when grade {⋯}` (FunctionExpression):
+  assigned type `Grade -> String`
+  grouped with `report-card :: Grade -> String`
   has type `Grade -> String`
   is an expression
 
 `when grade {⋯}` (WhenExpression):
+  grouped with `"top of the class"`, `"good job"`, `"need to study"`, `String`
   has type `String`
   is an expression
 
 `grade` (VariableExpression):
+  assigned type `Grade`
+  grouped with `grade`, `A`, `B`, `C`
   has type `Grade`
   is an expression
   is missing patterns
@@ -76,34 +104,43 @@ Facts (layer 2):
   type is annotated
 
 `A` (ConstructorPattern):
+  assigned type `Grade`
+  grouped with `grade`, `Grade : type {⋯}`
   has type `Grade`
   is a pattern
   resolved to 1 definition(s): `A`
 
 `"top of the class"` (StringExpression):
+  assigned type `String`
+  grouped with `"top of the class"`, `when grade {⋯}`
   has type `String`
   is an expression
-  type is annotated
 
 `B` (ConstructorPattern):
+  assigned type `Grade`
+  grouped with `grade`, `Grade : type {⋯}`
   has type `Grade`
   is a pattern
   resolved to 1 definition(s): `B`
 
 `"good job"` (StringExpression):
+  assigned type `String`
+  grouped with `"good job"`, `when grade {⋯}`
   has type `String`
   is an expression
-  type is annotated
 
 `C` (ConstructorPattern):
+  assigned type `Grade`
+  grouped with `grade`, `Grade : type {⋯}`
   has type `Grade`
   is a pattern
   resolved to 1 definition(s): `C`
 
 `"need to study"` (StringExpression):
+  assigned type `String`
+  grouped with `"need to study"`, `when grade {⋯}`
   has type `String`
   is an expression
-  type is annotated
 
 
 

@@ -1,182 +1,245 @@
 Facts (layer 2):
 
 `Elephants : type {count :: Number}` (TypeDefinition):
+  assigned type `Elephants`
+  grouped with `Elephants : type {count :: Number}`
   has definition constraints
   has type `Elephants`
   is a definition
 
 `Elephants : type {count :: Number}` (TypeDefinition):
+  assigned type `Elephants`
+  grouped with `Elephants : type {count :: Number}`
   has definition constraints
   has type `Elephants`
   is a definition
 
 `Number` (NamedType):
+  assigned type `Number`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `instance (Equal Elephants)` (InstanceDefinition):
+  assigned type `Elephants Elephants -> Boolean`
+  grouped with `value value -> Boolean`, `(Elephants {count : a}) (Elephants {count : b}) -> a = b`
   has definition constraints
   has type `Elephants Elephants -> Boolean`
   is a definition
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `Elephants` (NamedType):
+  assigned type `Elephants`
+  grouped with `value`, `value`
   has type `Elephants`
   is a type
   resolved to 1 definition(s): `Elephants : type {count :: Number}`
   type is annotated
 
 `(Elephants {count : a}) (Elephants {count : b}) -> a = b` (FunctionExpression):
+  assigned type `Elephants Elephants -> Boolean`
+  grouped with `instance (Equal Elephants)`
   has type `Elephants Elephants -> Boolean`
   is an expression
 
 `Elephants {count : a}` (StructurePattern):
+  assigned type `Elephants`
+  grouped with `Elephants : type {count :: Number}`, `value`
   has type `Elephants`
   is a pattern
   resolved to 1 definition(s): `Elephants : type {count :: Number}`
 
 `a` (VariablePattern):
+  assigned type `Number`
+  grouped with `_`, `a`
   has type `Number`
   is a definition
   is a pattern
 
 `Elephants {count : b}` (StructurePattern):
+  assigned type `Elephants`
+  grouped with `Elephants : type {count :: Number}`, `value`
   has type `Elephants`
   is a pattern
   resolved to 1 definition(s): `Elephants : type {count :: Number}`
 
 `b` (VariablePattern):
+  assigned type `Number`
+  grouped with `_`, `b`
   has type `Number`
   is a definition
   is a pattern
 
 `a` (VariableExpression):
+  assigned type `Number`
+  grouped with `a`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `a`
   type is annotated
 
 `a = b` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `a = b`, `Boolean`
   has type `Boolean`
   is an expression
 
 `a = b` (CallExpression):
+  grouped with `Boolean`, `a = b`
   has type `Boolean`
   is an expression
 
 `a = b` (ConstructorExpression):
+  assigned type `Number Number -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `b` (VariableExpression):
+  assigned type `Number`
+  grouped with `b`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `b`
   type is annotated
 
 `elephants :: Number -> Elephants` (ConstantDefinition):
+  assigned type `Number -> Elephants`
+  grouped with `Number -> Elephants`, `count -> Elephants {count : count}`
   has definition constraints
   has type `Number -> Elephants`
   is a definition
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `count`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `Number -> Elephants` (FunctionType):
+  assigned type `Number -> Elephants`
+  grouped with `elephants :: Number -> Elephants`
   has type `Number -> Elephants`
   is a type
   type is annotated
 
 `Elephants` (NamedType):
+  assigned type `Elephants`
+  grouped with `Elephants {count : count}`
   has type `Elephants`
   is a type
   resolved to 1 definition(s): `Elephants : type {count :: Number}`
   type is annotated
 
 `elephants : count -> Elephants {count : count}` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `count` (VariablePattern):
+  assigned type `Number`
+  grouped with `count`, `Number`
   has type `Number`
   is a definition
   is a pattern
 
 `count -> Elephants {count : count}` (FunctionExpression):
+  assigned type `Number -> Elephants`
+  grouped with `elephants :: Number -> Elephants`
   has type `Number -> Elephants`
   is an expression
 
 `Elephants {count : count}` (StructureExpression):
+  assigned type `Elephants`
+  grouped with `Elephants : type {count :: Number}`, `Elephants`
   has type `Elephants`
   is an expression
   resolved to 1 definition(s): `Elephants : type {count :: Number}`
 
 `count` (VariableExpression):
+  assigned type `Number`
+  grouped with `count`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `count`
   type is annotated
 
 `show` (VariableExpression):
+  assigned type `Boolean -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (42 elephants = elephants 42)` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (42 elephants = elephants 42)`
   has type `()`
 
 `show (42 elephants = elephants 42)` (CallExpression):
+  grouped with `()`, `show (42 elephants = elephants 42)`
   has type `()`
   is an expression
 
 `42` (NumberExpression):
+  assigned type `Number`
+  grouped with `42`, `Number`
   has type `Number`
   is an expression
-  type is annotated
 
 `42 elephants` (CallExpression):
+  grouped with `Elephants`, `value`
   has type `Elephants`
   is an expression
 
 `42 elephants = elephants 42` (OperatorExpression):
+  assigned type `Boolean`
+  grouped with `42 elephants = elephants 42`, `value`
   has type `Boolean`
   is an expression
 
 `42 elephants = elephants 42` (CallExpression):
+  grouped with `Boolean`, `42 elephants = elephants 42`
   has type `Boolean`
   is an expression
 
 `42 elephants = elephants 42` (ConstructorExpression):
+  assigned type `Elephants Elephants -> Boolean`
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `Elephants` (resolved as `instance (Equal Elephants)`)
   has type `Elephants Elephants -> Boolean`
   is an expression
   resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
 
 `elephants` (VariableExpression):
+  assigned type `Number -> Elephants`
+  grouped with `Number -> Elephants`
   has type `Number -> Elephants`
   is an expression
   resolved to 1 definition(s): `elephants :: Number -> Elephants`
 
 `elephants` (VariableExpression):
+  assigned type `Number -> Elephants`
+  grouped with `Number -> Elephants`
   has type `Number -> Elephants`
   is an expression
   resolved to 1 definition(s): `elephants :: Number -> Elephants`
 
 `elephants 42` (CallExpression):
+  grouped with `Elephants`, `value`
   has type `Elephants`
   is an expression
 
 `42` (NumberExpression):
+  assigned type `Number`
+  grouped with `42`, `Number`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

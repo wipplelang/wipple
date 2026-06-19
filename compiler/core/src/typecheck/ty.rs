@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, Node},
     render::{Render, RenderCtx},
-    typecheck::groups::{types_of, update_type},
+    typecheck::groups::types_of,
     visit::definitions::Defined,
 };
 use dyn_clone::DynClone;
@@ -38,76 +38,52 @@ impl Ty {
             Ty::Constructed(ty) => ty.children.iter_mut().collect(),
         }
     }
-    pub fn display(&self, db: &Db, representative: impl Into<Option<Node>>, root: bool) -> String {
-        let representative = representative.into();
-
+    pub fn display(&self, db: &Db, root: bool) -> String {
         let render_unknown = || String::from("_");
 
         let render_children = |children: &[Node]| {
             children
                 .iter()
                 .map(|&node| -> Box<dyn Fn(&Db, bool) -> String> {
-                    Box::new(move |db, root| Ty::Node(node).display(db, representative, root))
+                    Box::new(move |db, root| Ty::Node(node).display(db, root))
                 })
                 .collect()
         };
 
-        match representative {
-            Some(representative) => {
-                let (ty, _) = update_type(db, self, representative);
+        let tys = match self {
+            Ty::Node(node) => types_of(db, *node),
+            Ty::Constructed(ty) => slice::from_ref(ty),
+        };
 
-                match ty {
-                    Ty::Node(_) => render_unknown(),
-                    Ty::Constructed(ty) => {
-                        let children = render_children(&ty.children);
+        if tys.is_empty() {
+            render_unknown()
+        } else {
+            let mut s = String::new();
 
-                        ty.display.display(db, children, root)
-                    }
-                }
+            if !root && tys.len() > 1 {
+                write!(s, "(").unwrap();
             }
-            None => {
-                let tys = match self {
-                    Ty::Node(node) => types_of(db, *node),
-                    Ty::Constructed(ty) => slice::from_ref(ty),
-                };
 
-                if tys.is_empty() {
-                    render_unknown()
-                } else {
-                    let mut s = String::new();
-
-                    if !root && tys.len() > 1 {
-                        write!(s, "(").unwrap();
-                    }
-
-                    for (index, ty) in tys.iter().enumerate() {
-                        if index > 0 {
-                            write!(s, " or ").unwrap();
-                        }
-
-                        let children = render_children(&ty.children);
-
-                        write!(s, "{}", ty.display.display(db, children, root)).unwrap();
-                    }
-
-                    if !root && tys.len() > 1 {
-                        write!(s, ")").unwrap();
-                    }
-
-                    s
+            for (index, ty) in tys.iter().enumerate() {
+                if index > 0 {
+                    write!(s, " or ").unwrap();
                 }
+
+                let children = render_children(&ty.children);
+
+                write!(s, "{}", ty.display.display(db, children, root)).unwrap();
             }
+
+            if !root && tys.len() > 1 {
+                write!(s, ")").unwrap();
+            }
+
+            s
         }
     }
 
-    pub fn render_into(
-        &self,
-        db: &Db,
-        ctx: &mut RenderCtx<'_>,
-        representative: impl Into<Option<Node>>,
-        root: bool,
-    ) {
-        let description = self.display(db, representative.into().or(ctx.representative), root);
+    pub fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>, root: bool) {
+        let description = self.display(db, root);
 
         let node = match self {
             Ty::Node(node) => Some(*node),
@@ -124,7 +100,7 @@ impl Ty {
 
 impl Render for Ty {
     fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        self.render_into(db, ctx, None, true);
+        self.render_into(db, ctx, true);
     }
 }
 

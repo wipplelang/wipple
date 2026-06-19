@@ -1,16 +1,20 @@
 Facts (layer 2):
 
 `Number : type` (TypeDefinition):
+  assigned type `Number`
   has definition constraints
   has type `Number`
   is a definition
 
 `String : type` (TypeDefinition):
+  assigned type `String`
   has definition constraints
   has type `String`
   is a definition
 
 `Add : left right sum => trait (left right -> sum)` (TraitDefinition):
+  assigned type `left right -> sum`
+  grouped with `left right -> sum`
   has 2 instances
   has definition constraints
   has type `left right -> sum`
@@ -18,6 +22,8 @@ Facts (layer 2):
   is a definition
 
 `left` (TypeParameter):
+  assigned type `left`
+  grouped with `left`
   has type `left`
   is a definition
   is a type
@@ -25,6 +31,8 @@ Facts (layer 2):
   type is annotated
 
 `right` (TypeParameter):
+  assigned type `right`
+  grouped with `right`
   has type `right`
   is a definition
   is a type
@@ -32,6 +40,8 @@ Facts (layer 2):
   type is annotated
 
 `sum` (TypeParameter):
+  assigned type `sum`
+  grouped with `sum`
   has type `sum`
   is a definition
   is a type
@@ -39,91 +49,126 @@ Facts (layer 2):
   type is annotated
 
 `left` (TypeParameter):
+  assigned type `left`
+  grouped with `left`
   has type `left`
   is a type
   resolved to 1 definition(s): `left`
+  resolved to type parameter `left`
   type is annotated
 
 `left right -> sum` (FunctionType):
+  assigned type `left right -> sum`
+  grouped with `Add : left right sum => trait (left right -> sum)`
   has type `left right -> sum`
   is a type
   type is annotated
 
 `right` (TypeParameter):
+  assigned type `right`
+  grouped with `right`
   has type `right`
   is a type
   resolved to 1 definition(s): `right`
+  resolved to type parameter `right`
   type is annotated
 
 `sum` (TypeParameter):
+  assigned type `sum`
+  grouped with `sum`
   has type `sum`
   is a type
   resolved to 1 definition(s): `sum`
+  resolved to type parameter `sum`
   type is annotated
 
 `instance (Add Number Number Number)` (InstanceDefinition):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> sum`, `_`
   has definition constraints
   has type `Number Number -> Number`
   is a definition
   resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)`
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `left`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `right`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `sum`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `_` (PlaceholderExpression):
+  assigned type `Number Number -> Number`
+  grouped with `instance (Add Number Number Number)`
   has type `Number Number -> Number`
   is an expression
 
 `instance (Add String String String)` (InstanceDefinition):
+  assigned type `String String -> String`
+  grouped with `left right -> sum`, `_`
   has definition constraints
   has type `String String -> String`
   is a definition
   resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)`
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `left`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `right`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `sum`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `_` (PlaceholderExpression):
+  assigned type `String String -> String`
+  grouped with `instance (Add String String String)`
   has type `String String -> String`
   is an expression
 
 `add :: left right -> sum where (Add left right sum)` (ConstantDefinition):
+  assigned type `left right -> sum`
+  grouped with `left right -> sum`, `_`
   has definition constraints
   has type `left right -> sum`
   has type parameters
   is a definition
 
 `left` (TypeParameter):
+  assigned type `left`
+  grouped with `left`
   has type `left`
   is a definition
   is a type
@@ -131,11 +176,15 @@ Facts (layer 2):
   type is annotated
 
 `left right -> sum` (FunctionType):
+  assigned type `left right -> sum`
+  grouped with `add :: left right -> sum where (Add left right sum)`
   has type `left right -> sum`
   is a type
   type is annotated
 
 `right` (TypeParameter):
+  assigned type `right`
+  grouped with `right`
   has type `right`
   is a definition
   is a type
@@ -143,6 +192,8 @@ Facts (layer 2):
   type is annotated
 
 `sum` (TypeParameter):
+  assigned type `sum`
+  grouped with `sum`
   has type `sum`
   is a definition
   is a type
@@ -155,65 +206,89 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add : left right sum => trait (left right -> sum)`
 
 `left` (TypeParameter):
+  assigned type `left`
+  grouped with `left`
   has type `left`
   is a type
   resolved to 1 definition(s): `left`
+  resolved to type parameter `left`
   type is annotated
 
 `right` (TypeParameter):
+  assigned type `right`
+  grouped with `right`
   has type `right`
   is a type
   resolved to 1 definition(s): `right`
+  resolved to type parameter `right`
   type is annotated
 
 `sum` (TypeParameter):
+  assigned type `sum`
+  grouped with `sum`
   has type `sum`
   is a type
   resolved to 1 definition(s): `sum`
+  resolved to type parameter `sum`
   type is annotated
 
 `add : _` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `_` (PlaceholderExpression):
+  assigned type `left right -> sum`
+  grouped with `add :: left right -> sum where (Add left right sum)`
   has type `left right -> sum`
   is an expression
 
 `_` (WildcardPattern):
+  assigned type `String`
+  grouped with `add 1 2 :: String`, `add 1 2 :: String`
   has type `String`
   is a pattern
 
 `_ : (add 1 2 :: String)` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `add` (VariableExpression):
+  assigned type `Number Number -> String`
+  grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `String` (unresolved)
   has type `Number Number -> String`
   is an expression
   resolved to 1 definition(s): `add :: left right -> sum where (Add left right sum)`
 
 `add 1 2` (CallExpression):
+  assigned type `String`
+  grouped with `sum`, `String`, `add 1 2 :: String`
   has type `String`
   is an expression
-  type is annotated
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `left`
   has type `Number`
   is an expression
-  type is annotated
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `add 1 2`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `Add-Infer : left right (infer sum) => trait (left right -> sum)` (TraitDefinition):
+  assigned type `left right -> sum`
+  grouped with `left right -> sum`
   has 2 instances
   has definition constraints
   has type `left right -> sum`
@@ -221,6 +296,8 @@ Facts (layer 2):
   is a definition
 
 `left` (TypeParameter):
+  assigned type `left`
+  grouped with `left`
   has type `left`
   is a definition
   is a type
@@ -228,6 +305,8 @@ Facts (layer 2):
   type is annotated
 
 `right` (TypeParameter):
+  assigned type `right`
+  grouped with `right`
   has type `right`
   is a definition
   is a type
@@ -235,6 +314,8 @@ Facts (layer 2):
   type is annotated
 
 `(infer sum)` (TypeParameter):
+  assigned type `sum`
+  grouped with `sum`
   has type `sum`
   is a definition
   is a type
@@ -243,91 +324,126 @@ Facts (layer 2):
   type is annotated
 
 `left` (TypeParameter):
+  assigned type `left`
+  grouped with `left`
   has type `left`
   is a type
   resolved to 1 definition(s): `left`
+  resolved to type parameter `left`
   type is annotated
 
 `left right -> sum` (FunctionType):
+  assigned type `left right -> sum`
+  grouped with `Add-Infer : left right (infer sum) => trait (left right -> sum)`
   has type `left right -> sum`
   is a type
   type is annotated
 
 `right` (TypeParameter):
+  assigned type `right`
+  grouped with `right`
   has type `right`
   is a type
   resolved to 1 definition(s): `right`
+  resolved to type parameter `right`
   type is annotated
 
 `sum` (TypeParameter):
+  assigned type `sum`
+  grouped with `(infer sum)`
   has type `sum`
   is a type
   resolved to 1 definition(s): `(infer sum)`
+  resolved to type parameter `(infer sum)`
   type is annotated
 
 `instance (Add-Infer Number Number Number)` (InstanceDefinition):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> sum`, `_`
   has definition constraints
   has type `Number Number -> Number`
   is a definition
   resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)`
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `left`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `right`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `(infer sum)`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `_` (PlaceholderExpression):
+  assigned type `Number Number -> Number`
+  grouped with `instance (Add-Infer Number Number Number)`
   has type `Number Number -> Number`
   is an expression
 
 `instance (Add-Infer String String String)` (InstanceDefinition):
+  assigned type `String String -> String`
+  grouped with `left right -> sum`, `_`
   has definition constraints
   has type `String String -> String`
   is a definition
   resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)`
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `left`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `right`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `(infer sum)`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `_` (PlaceholderExpression):
+  assigned type `String String -> String`
+  grouped with `instance (Add-Infer String String String)`
   has type `String String -> String`
   is an expression
 
 `add-infer :: left right -> sum where (Add-Infer left right sum)` (ConstantDefinition):
+  assigned type `left right -> sum`
+  grouped with `left right -> sum`, `_`
   has definition constraints
   has type `left right -> sum`
   has type parameters
   is a definition
 
 `left` (TypeParameter):
+  assigned type `left`
+  grouped with `left`
   has type `left`
   is a definition
   is a type
@@ -335,11 +451,15 @@ Facts (layer 2):
   type is annotated
 
 `left right -> sum` (FunctionType):
+  assigned type `left right -> sum`
+  grouped with `add-infer :: left right -> sum where (Add-Infer left right sum)`
   has type `left right -> sum`
   is a type
   type is annotated
 
 `right` (TypeParameter):
+  assigned type `right`
+  grouped with `right`
   has type `right`
   is a definition
   is a type
@@ -347,6 +467,8 @@ Facts (layer 2):
   type is annotated
 
 `sum` (TypeParameter):
+  assigned type `sum`
+  grouped with `sum`
   has type `sum`
   is a definition
   is a type
@@ -359,60 +481,82 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add-Infer : left right (infer sum) => trait (left right -> sum)`
 
 `left` (TypeParameter):
+  assigned type `left`
+  grouped with `left`
   has type `left`
   is a type
   resolved to 1 definition(s): `left`
+  resolved to type parameter `left`
   type is annotated
 
 `right` (TypeParameter):
+  assigned type `right`
+  grouped with `right`
   has type `right`
   is a type
   resolved to 1 definition(s): `right`
+  resolved to type parameter `right`
   type is annotated
 
 `sum` (TypeParameter):
+  assigned type `sum`
+  grouped with `sum`
   has type `sum`
   is a type
   resolved to 1 definition(s): `sum`
+  resolved to type parameter `sum`
   type is annotated
 
 `add-infer : _` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `_` (PlaceholderExpression):
+  assigned type `left right -> sum`
+  grouped with `add-infer :: left right -> sum where (Add-Infer left right sum)`
   has type `left right -> sum`
   is an expression
 
 `output` (VariablePattern):
+  assigned type `Number or String`
+  grouped with `add-infer 1 2 :: String`, `add-infer 1 2 :: String`
   has type `Number` or `String`
   is a definition
   is a pattern
 
 `output : (add-infer 1 2 :: String)` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `add-infer` (VariableExpression):
+  assigned type `Number Number -> Number or String`
+  grouped with `left right -> sum`
   has bound(s) `Add-Infer` `Number` `Number` `(Number or String)` (resolved as `instance (Add-Infer Number Number Number)`)
   has type `Number Number -> Number or String`
   is an expression
   resolved to 1 definition(s): `add-infer :: left right -> sum where (Add-Infer left right sum)`
 
 `add-infer 1 2` (CallExpression):
+  assigned type `String`
+  grouped with `sum`, `String`, `add-infer 1 2 :: String`
   has type `Number` or `String`
   is an expression
-  type is annotated
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `left`
   has type `Number`
   is an expression
-  type is annotated
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `add-infer 1 2`
   has type `Number` or `String`
   is a type
   resolved to 1 definition(s): `String : type`
@@ -426,31 +570,27 @@ Feedback:
 
   `output` is a `Number` or a `String`, but it can only be one of these.
   
-  `output` must be the same type as `add-infer 1 2`, `add-infer 1 2 :: String`, `String`, and 4 others; double-check these.
+  `output` must be the same type as `add-infer 1 2` and `String`; double-check these.
 
-  1. `add-infer`: `add-infer` is a `Number Number -> Number`.
+  1. `add-infer`: `add-infer` is a `Number Number -> Number or String`.
 
   2. `1`: `1` is a `Number`.
 
   3. `2`: `2` is a `Number`.
 
-  4. `add-infer 1 2`: `add-infer 1 2` is annotated with the type `String`.
-
-  (2 -> 1, 3 -> 1, 4 -> 1, 1 -> error)
+  (2 -> 1, 3 -> 1, 1 -> error)
 
 
-`add-infer 1 2 :: String` (conflicting-types)
+`add-infer 1 2` (conflicting-types)
 
-  `add-infer 1 2 :: String` is a `Number` or a `String`, but it can only be one of these.
+  `add-infer 1 2` is a `Number` or a `String`, but it can only be one of these.
   
-  `add-infer 1 2 :: String` must be the same type as `output`, `add-infer 1 2`, `String`, and 4 others; double-check these.
+  `add-infer 1 2` must be the same type as `String` and `output`; double-check these.
 
-  1. `add-infer`: `add-infer` is a `Number Number -> Number`.
+  1. `add-infer`: `add-infer` is a `Number Number -> Number or String`.
 
   2. `1`: `1` is a `Number`.
 
   3. `2`: `2` is a `Number`.
 
-  4. `add-infer 1 2`: `add-infer 1 2` is annotated with the type `String`.
-
-  (2 -> 1, 3 -> 1, 4 -> 1, 1 -> error)
+  (2 -> 1, 3 -> 1)

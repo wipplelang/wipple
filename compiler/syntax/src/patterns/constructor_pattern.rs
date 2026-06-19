@@ -10,7 +10,7 @@ use wipple_core::{
     typecheck::{
         constraints::{instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint},
         groups::Typed,
-        ty::ConstructedTy,
+        ty::{ConstructedTy, Ty},
     },
     visit::{
         Visit, Visitor,
@@ -105,12 +105,7 @@ impl Visit for ConstructorPattern {
 
                 visitor.constraint(
                     db,
-                    InstantiateConstraint {
-                        source_node: node,
-                        definition: definition_node,
-                        substitutions,
-                        traces: Vec::new(),
-                    },
+                    InstantiateConstraint::new(node, definition_node, substitutions),
                 );
 
                 visitor.codegen(db, node, ConstructorPatternCodegen::Marker);
@@ -149,12 +144,7 @@ impl Visit for ConstructorPattern {
 
                     visitor.constraint(
                         db,
-                        InstantiateConstraint {
-                            source_node: node,
-                            definition: definition_node,
-                            substitutions,
-                            traces: Vec::new(),
-                        },
+                        InstantiateConstraint::new(node, definition_node, substitutions),
                     );
                 } else {
                     let constructor_node = db.node();
@@ -167,22 +157,17 @@ impl Visit for ConstructorPattern {
 
                     visitor.constraint(
                         db,
-                        InstantiateConstraint {
-                            source_node: node,
-                            definition: definition_node,
-                            substitutions,
-                            traces: Vec::new(),
-                        },
+                        InstantiateConstraint::new(node, definition_node, substitutions),
                     );
 
                     visitor.constraint(
                         db,
                         TyConstraint::new(
                             constructor_node,
-                            ConstructedTy::function(
+                            Ty::Constructed(ConstructedTy::function(
                                 elements.iter().map(|(_, temporary)| *temporary).collect(),
                                 node,
-                            ),
+                            )),
                         ),
                     );
                 }

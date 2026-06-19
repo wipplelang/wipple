@@ -17,9 +17,7 @@ use wipple_core::{
     span::{Span, Str},
     typecheck::{
         bounds::{Instance, Instances},
-        constraints::{
-            group_constraint::GroupConstraint, instantiate_constraint::InstantiateConstraint,
-        },
+        constraints::{instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint},
         ty::Ty,
     },
     util::exact_for_each,
@@ -191,12 +189,7 @@ impl Visit for InstanceDefinition {
 
                             visitor.constraint(
                                 db,
-                                InstantiateConstraint {
-                                    source_node: node,
-                                    definition: definition_node,
-                                    substitutions,
-                                    traces: Vec::new(),
-                                },
+                                InstantiateConstraint::new(node, definition_node, substitutions),
                             );
                         },
                     );
@@ -215,7 +208,7 @@ impl Visit for InstanceDefinition {
 
                                 visitor.constraint(
                                     db,
-                                    GroupConstraint::new(instance_value_node, node),
+                                    TyConstraint::new(instance_value_node, Ty::Node(node)),
                                 );
                             },
                         );

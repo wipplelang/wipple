@@ -1,12 +1,9 @@
 pub mod connections;
 pub mod instances;
 
-use crate::{
-    GroupOrder,
-    checks::{
-        connections::create_connections,
-        instances::{check_for_overlapping_instances, run_mismatched_trait},
-    },
+use crate::checks::{
+    connections::create_connections,
+    instances::{check_for_overlapping_instances, run_mismatched_trait},
 };
 use std::ops::ControlFlow;
 use wipple_core::{
@@ -27,7 +24,7 @@ pub fn run_checks(db: &mut Db, top_level: &TopLevel) {
     });
 
     for (trait_node, instances) in all_instances {
-        let mut solver = Solver::default();
+        let mut solver = Solver::new();
         solver.substitutions.extend(top_level.substitutions.clone());
         check_for_overlapping_instances(db, &mut solver, trait_node, instances);
     }
@@ -45,7 +42,7 @@ pub fn run_checks(db: &mut Db, top_level: &TopLevel) {
             default_filter,
             |solver| solver.substitutions.extend(top_level.substitutions.clone()),
         ) {
-            set_groups(db, solver, GroupOrder::new);
+            set_groups(db, solver);
         }
     }
 

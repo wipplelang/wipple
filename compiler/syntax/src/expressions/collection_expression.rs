@@ -9,7 +9,7 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::{Span, Str},
-    typecheck::{constraints::group_constraint::GroupConstraint, groups::Typed},
+    typecheck::{constraints::ty_constraint::TyConstraint, groups::Typed, ty::Ty},
     visit::{Hidden, Visit, VisitAs, Visitor},
 };
 use wipple_parse::{
@@ -84,7 +84,7 @@ impl Visit for CollectionExpression {
         for element in &self.elements {
             let element_node = db.node();
             db.graph.edge(element_node, node, "element");
-            visitor.constraint(db, GroupConstraint::new(element_node, element_type));
+            visitor.constraint(db, TyConstraint::new(element_node, Ty::Node(element_type)));
 
             let function = visitor.in_ast(
                 db,
@@ -114,7 +114,7 @@ impl Visit for CollectionExpression {
 
         let collection_node = visitor.visit(db, &collection);
         db.graph.edge(collection_node, node, "collection");
-        visitor.constraint(db, GroupConstraint::new(collection_node, node));
+        visitor.constraint(db, TyConstraint::new(collection_node, Ty::Node(node)));
 
         visitor.codegen(
             db,

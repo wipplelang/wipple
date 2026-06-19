@@ -1,16 +1,20 @@
 Facts (layer 2):
 
 `Number : type` (TypeDefinition):
+  assigned type `Number`
   has definition constraints
   has type `Number`
   is a definition
 
 `String : type` (TypeDefinition):
+  assigned type `String`
   has definition constraints
   has type `String`
   is a definition
 
 `A : value => trait (value -> ())` (TraitDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`
   has 2 instances
   has definition constraints
   has type `value -> ()`
@@ -18,6 +22,8 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -25,54 +31,74 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `value -> ()` (FunctionType):
+  assigned type `value -> ()`
+  grouped with `A : value => trait (value -> ())`
   has type `value -> ()`
   is a type
   type is annotated
 
 `()` (UnitType):
+  assigned type `()`
   has type `()`
   is a type
   type is annotated
 
 `instance (A Number)` (InstanceDefinition):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`, `_`
   has definition constraints
   has type `Number -> ()`
   is a definition
   resolved to 1 definition(s): `A : value => trait (value -> ())`
 
 `Number` (NamedType):
+  assigned type `Number`
+  grouped with `value`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number : type`
   type is annotated
 
 `_` (PlaceholderExpression):
+  assigned type `Number -> ()`
+  grouped with `instance (A Number)`
   has type `Number -> ()`
   is an expression
 
 `instance (A String)` (InstanceDefinition):
+  assigned type `String -> ()`
+  grouped with `value -> ()`, `_`
   has definition constraints
   has type `String -> ()`
   is a definition
   resolved to 1 definition(s): `A : value => trait (value -> ())`
 
 `String` (NamedType):
+  assigned type `String`
+  grouped with `value`
   has type `String`
   is a type
   resolved to 1 definition(s): `String : type`
   type is annotated
 
 `_` (PlaceholderExpression):
+  assigned type `String -> ()`
+  grouped with `instance (A String)`
   has type `String -> ()`
   is an expression
 
 `B : value => trait (value -> ())` (TraitDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`
   has 1 instances
   has definition constraints
   has type `value -> ()`
@@ -80,6 +106,8 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a definition
   is a type
@@ -87,22 +115,30 @@ Facts (layer 2):
   type is annotated
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `value -> ()` (FunctionType):
+  assigned type `value -> ()`
+  grouped with `B : value => trait (value -> ())`
   has type `value -> ()`
   is a type
   type is annotated
 
 `()` (UnitType):
+  assigned type `()`
   has type `()`
   is a type
   type is annotated
 
 `instance (B value) where (A value)` (InstanceDefinition):
+  assigned type `value -> ()`
+  grouped with `value -> ()`, `_`
   has definition constraints
   has type `value -> ()`
   has type parameters
@@ -110,6 +146,8 @@ Facts (layer 2):
   resolved to 1 definition(s): `B : value => trait (value -> ())`
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -122,65 +160,89 @@ Facts (layer 2):
   resolved to 1 definition(s): `A : value => trait (value -> ())`
 
 `value` (TypeParameter):
+  assigned type `value`
+  grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
   type is annotated
 
 `_` (PlaceholderExpression):
+  assigned type `value -> ()`
+  grouped with `instance (B value) where (A value)`
   has type `value -> ()`
   is an expression
 
 `B` (ConstructorExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `B` `Number` (resolved as `instance (B value) where (A value)`), `A` `Number` (resolved as `instance (A Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `B : value => trait (value -> ())`
 
 `B 123` (ExpressionStatement):
+  assigned type `()`
+  grouped with `B 123`
   has type `()`
 
 `B 123` (CallExpression):
+  grouped with `()`, `B 123`
   has type `()`
   is an expression
 
 `123` (NumberExpression):
+  assigned type `Number`
+  grouped with `123`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `B` (ConstructorExpression):
+  assigned type `String -> ()`
+  grouped with `value -> ()`
   has bound(s) `B` `String` (resolved as `instance (B value) where (A value)`), `A` `String` (resolved as `instance (A String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `B : value => trait (value -> ())`
 
 `B "abc"` (ExpressionStatement):
+  assigned type `()`
+  grouped with `B "abc"`
   has type `()`
 
 `B "abc"` (CallExpression):
+  grouped with `()`, `B "abc"`
   has type `()`
   is an expression
 
 `"abc"` (StringExpression):
+  assigned type `String`
+  grouped with `"abc"`, `value`
   has type `String`
   is an expression
-  type is annotated
 
 `B` (ConstructorExpression):
+  assigned type `() -> ()`
+  grouped with `value -> ()`
   has bound(s) `B` `()` (resolved as `instance (B value) where (A value)`), `A` `()` (unresolved)
   has type `() -> ()`
   is an expression
   resolved to 1 definition(s): `B : value => trait (value -> ())`
 
 `B ()` (ExpressionStatement):
+  assigned type `()`
+  grouped with `B ()`
   has type `()`
 
 `B ()` (CallExpression):
+  grouped with `()`, `B ()`
   has type `()`
   is an expression
 
 `()` (UnitExpression):
+  assigned type `()`
+  grouped with `value`
   has type `()`
   is an expression
 
@@ -204,4 +266,4 @@ Feedback:
 
   5. `"abc"`: `"abc"` is a `String`.
 
-  (2 -> 1, 3 -> 1, 3 -> 2, 4 -> 2, 5 -> 3)
+  (1 -> error, 2 -> 1, 3 -> 1, 3 -> 2, 4 -> 2, 5 -> 3)

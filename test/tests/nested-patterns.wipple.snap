@@ -1,88 +1,120 @@
 Facts (layer 2):
 
 `E : type {⋯}` (TypeDefinition):
+  assigned type `E`
+  grouped with `A`, `B`
   has definition constraints
   has type `E`
   is a definition
 
 `A` (VariantDefinition):
+  assigned type `E`
+  grouped with `E : type {⋯}`
   has definition constraints
   has type `E`
   is a definition
 
 `B` (VariantDefinition):
+  assigned type `E`
+  grouped with `E : type {⋯}`
   has definition constraints
   has type `E`
   is a definition
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show (when (A; B) {⋯})` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show (when (A; B) {⋯})`
   has type `()`
 
 `show (when (A; B) {⋯})` (CallExpression):
+  grouped with `()`, `show (when (A; B) {⋯})`
   has type `()`
   is an expression
 
 `when (A; B) {⋯}` (WhenExpression):
+  grouped with `1`, `2`, `value`
   has type `Number`
   is an expression
 
 `A` (ConstructorExpression):
+  assigned type `E`
+  grouped with `E : type {⋯}`, `_`, `_`
   has type `E`
   is an expression
   resolved to 1 definition(s): `A`
 
 `A; B` (TupleExpression):
+  assigned type `(E; E)`
+  grouped with `A; A`, `x; y`
   has type `(E; E)`
   is an expression
 
 `B` (ConstructorExpression):
+  assigned type `E`
+  grouped with `E : type {⋯}`, `_`, `_`
   has type `E`
   is an expression
   resolved to 1 definition(s): `B`
 
 `A` (ConstructorPattern):
+  assigned type `E`
+  grouped with `_`, `E : type {⋯}`
   has type `E`
   is a pattern
   resolved to 1 definition(s): `A`
 
 `A; A` (TuplePattern):
+  assigned type `(E; E)`
+  grouped with `A; B`
   has type `(E; E)`
   is a pattern
 
 `A` (ConstructorPattern):
+  assigned type `E`
+  grouped with `_`, `E : type {⋯}`
   has type `E`
   is a pattern
   resolved to 1 definition(s): `A`
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `when (A; B) {⋯}`
   has type `Number`
   is an expression
-  type is annotated
 
 `x` (VariablePattern):
+  assigned type `E`
+  grouped with `_`
   has type `E`
   is a definition
   is a pattern
 
 `x; y` (TuplePattern):
+  assigned type `(E; E)`
+  grouped with `A; B`
   has type `(E; E)`
   is a pattern
 
 `y` (VariablePattern):
+  assigned type `E`
+  grouped with `_`
   has type `E`
   is a definition
   is a pattern
 
 `2` (NumberExpression):
+  assigned type `Number`
+  grouped with `2`, `when (A; B) {⋯}`
   has type `Number`
   is an expression
-  type is annotated
 
 
 Output:

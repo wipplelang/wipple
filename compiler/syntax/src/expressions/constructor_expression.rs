@@ -2,13 +2,12 @@ use crate::expressions::{variable_expression::DefinitionConstraintTrace, visit_e
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
-    anyhow,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     render::{Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
-        bounds::{Bound, Bounds, UnresolvedBound},
+        bounds::{Bound, Bounds, ResolvedBound, UnresolvedBound},
         constraints::{
             ConstraintTrace, bound_constraint::BoundConstraint,
             instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint,
@@ -54,14 +53,14 @@ impl Visit for ConstructorExpression {
 
         #[derive(Debug)]
         enum ConstructorDefinition {
-            Trait(TraitDefinition),
+            Trait,
             Variant(VariantConstructorDefinition),
             Marker,
         }
 
         let definition = visitor.resolve_matching(db, &self.constructor, node, |_, definition| {
-            if let Some(definition) = definition.downcast_ref::<TraitDefinition>() {
-                return Some(ConstructorDefinition::Trait(definition.clone()));
+            if definition.downcast_ref::<TraitDefinition>().is_some() {
+                return Some(ConstructorDefinition::Trait);
             }
 
             if let Some(definition) = definition.downcast_ref::<VariantConstructorDefinition>() {
@@ -84,37 +83,27 @@ impl Visit for ConstructorExpression {
 
         db.graph.edge(definition_node, node, "instantiated");
 
-        let mut parameters = BTreeMap::from([(definition_node, node)]);
-        if let ConstructorDefinition::Trait(trait_definition) = &definition {
-            for &parameter in &trait_definition.parameters {
-                let node = db.node();
-                parameters.insert(parameter, node);
-            }
-        }
-
-        let substitutions = visitor.substitutions(parameters.clone(), Default::default());
+        let substitutions = visitor.substitutions(
+            BTreeMap::from([(definition_node, node)]),
+            Default::default(),
+        );
 
         visitor.constraint(
             db,
-            InstantiateConstraint {
-                source_node: node,
-                definition: definition_node,
-                substitutions,
-                traces: Vec::new(),
-            },
+            InstantiateConstraint::new(node, definition_node, substitutions),
         );
 
         match definition {
-            ConstructorDefinition::Trait(_) => {
+            ConstructorDefinition::Trait => {
                 visitor.constraint(
                     db,
                     BoundConstraint::new(
                         node,
                         Bound {
                             source_node: node,
+                            bound_path: Vec::new(),
                             bound_node: node,
                             trait_node: definition_node,
-                            target_node: None,
                             substitutions,
                             is_optional: false,
                         },
@@ -127,7 +116,6 @@ impl Visit for ConstructorExpression {
                     .with_trace(TraitConstraintTrace {
                         node,
                         trait_node: definition_node,
-                        trait_parameters: parameters,
                     }),
                 );
 
@@ -159,7 +147,10 @@ impl Visit for ConstructorExpression {
 
                     visitor.constraint(
                         db,
-                        TyConstraint::new(node, ConstructedTy::function(elements.clone(), result)),
+                        TyConstraint::new(
+                            node,
+                            Ty::Constructed(ConstructedTy::function(elements.clone(), result)),
+                        ),
                     );
 
                     result
@@ -187,22 +178,22 @@ impl Visit for ConstructorExpression {
 struct TraitConstraintTrace {
     node: Node,
     trait_node: Node,
-    trait_parameters: BTreeMap<Node, Node>,
 }
 
 #[typetag::serde]
 impl ConstraintTrace for TraitConstraintTrace {
     fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        [&mut self.node]
-            .into_iter()
-            .chain(self.trait_parameters.values_mut())
-            .collect()
+        vec![&mut self.node]
     }
 
-    fn nodes(&self, _db: &Db) -> Vec<Node> {
+    fn nodes(&self, db: &Db) -> Vec<Node> {
         [self.node]
             .into_iter()
-            .chain(self.trait_parameters.values().copied())
+            .chain(
+                find_bound(db, self.node)
+                    .into_iter()
+                    .flat_map(|bound| bound_parameters(bound).keys().copied()),
+            )
             .collect()
     }
 }
@@ -211,11 +202,10 @@ impl Render for TraitConstraintTrace {
     fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let bound = UnresolvedBound {
             trait_node: self.trait_node,
-            parameters: self
-                .trait_parameters
-                .iter()
-                .map(|(&parameter, &node)| (parameter, Ty::Node(node)))
-                .collect(),
+            parameters: find_bound(db, self.node)
+                .map(bound_parameters)
+                .cloned()
+                .unwrap_or_default(),
         };
 
         ctx.node(self.node);
@@ -253,14 +243,9 @@ impl CodegenValue for ConstructorExpressionCodegen {
                 });
             }
             ConstructorExpressionCodegen::Trait { node, is_generic } => {
-                let resolved = db
-                    .get(*node)
-                    .and_then(|Bounds(bounds)| bounds.iter().find(|(other, _)| *other == *node))
-                    .and_then(|(_, result)| result.as_ref().ok())
-                    .ok_or_else(|| anyhow::format_err!("unresolved"))?
-                    .clone();
+                let bounds = db.get::<Bounds>(*node).cloned().unwrap_or_default();
 
-                match ctx.codegen_instance(db, resolved, *is_generic)? {
+                match ctx.codegen_instance(db, &[], &bounds, *is_generic)? {
                     ir::Instance::Bound(bound) => {
                         ctx.instruction(ir::Instruction::Value {
                             node: *node,
@@ -312,5 +297,20 @@ impl CodegenValue for ConstructorExpressionCodegen {
         }
 
         Ok(())
+    }
+}
+
+fn find_bound(db: &Db, node: Node) -> Option<Result<&ResolvedBound, &UnresolvedBound>> {
+    db.get(node)
+        .and_then(|Bounds(bounds)| bounds.get([node].as_slice()))
+        .map(|result| result.as_ref())
+}
+
+fn bound_parameters<'a>(
+    result: Result<&'a ResolvedBound, &'a UnresolvedBound>,
+) -> &'a BTreeMap<Node, Ty> {
+    match result {
+        Ok(resolved) => &resolved.instance.parameters,
+        Err(unresolved) => &unresolved.parameters,
     }
 }

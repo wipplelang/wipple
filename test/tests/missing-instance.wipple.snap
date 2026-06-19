@@ -1,29 +1,40 @@
 Facts (layer 2):
 
 `Foo : type` (TypeDefinition):
+  assigned type `Foo`
+  grouped with `Foo : type`
   has definition constraints
   has type `Foo`
   is a definition
 
 `Foo : type` (TypeDefinition):
+  assigned type `Foo`
+  grouped with `Foo : type`
   has definition constraints
   has type `Foo`
   is a definition
 
 `show` (VariableExpression):
+  assigned type `Foo -> ()`
+  grouped with `value -> ()`
   has bound(s) `Describe` `Foo` (resolved as `default error instance (Describe value)`)
   has type `Foo -> ()`
   is an expression
   resolved to 1 definition(s): `show :: value -> () where (Describe value)`
 
 `show Foo` (ExpressionStatement):
+  assigned type `()`
+  grouped with `show Foo`
   has type `()`
 
 `show Foo` (CallExpression):
+  grouped with `()`, `show Foo`
   has type `()`
   is an expression
 
 `Foo` (ConstructorExpression):
+  assigned type `Foo`
+  grouped with `Foo : type`, `value`
   has type `Foo`
   is an expression
   resolved to 1 definition(s): `Foo : type`

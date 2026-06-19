@@ -1,130 +1,174 @@
 Facts (layer 2):
 
 `numbers` (VariablePattern):
+  assigned type `Sequence Number`
+  grouped with `build-sequence (Some 0) (n -> Some (n + 1))`, `build-sequence (Some 0) (n -> Some (n + 1))`, `numbers`
   has type `Sequence Number`
   is a definition
   is a pattern
 
 `numbers : build-sequence (Some 0) (n -> Some (n + 1))` (AssignmentStatement):
+  assigned type `()`
   has type `()`
 
 `build-sequence` (VariableExpression):
+  assigned type `(Maybe Number) (Number -> Maybe Number) -> Sequence Number`
+  grouped with `(Maybe element) (element -> Maybe element) -> Sequence element`
   has type `(Maybe Number) (Number -> Maybe Number) -> Sequence Number`
   is an expression
   resolved to 1 definition(s): `build-sequence :: (Maybe element) (element -> Maybe element) -> Sequence element`
 
 `build-sequence (Some 0) (n -> Some (n + 1))` (CallExpression):
+  grouped with `Sequence element`, `numbers`, `numbers`
   has type `Sequence Number`
   is an expression
 
 `Some` (ConstructorExpression):
+  assigned type `Number -> Maybe Number`
   has type `Number -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `Some value`
 
 `Some 0` (CallExpression):
+  grouped with `Maybe : value => type {⋯}`, `Maybe element`
   has type `Maybe Number`
   is an expression
 
 `0` (NumberExpression):
+  assigned type `Number`
+  grouped with `0`, `value`
   has type `Number`
   is an expression
-  type is annotated
 
 `n` (VariablePattern):
+  assigned type `Number`
+  grouped with `n`, `element`
   has type `Number`
   is a definition
   is a pattern
 
 `n -> Some (n + 1)` (FunctionExpression):
+  assigned type `Number -> Maybe Number`
+  grouped with `element -> Maybe element`
   has type `Number -> Maybe Number`
   is an expression
 
 `Some` (ConstructorExpression):
+  assigned type `Number -> Maybe Number`
   has type `Number -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `Some value`
 
 `Some (n + 1)` (CallExpression):
+  grouped with `Maybe : value => type {⋯}`, `Maybe element`
   has type `Maybe Number`
   is an expression
 
 `n` (VariableExpression):
+  assigned type `Number`
+  grouped with `n`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
   type is annotated
 
 `n + 1` (OperatorExpression):
+  assigned type `Number`
+  grouped with `n + 1`, `value`
   has type `Number`
   is an expression
 
 `n + 1` (CallExpression):
+  grouped with `sum`, `n + 1`
   has type `Number`
   is an expression
 
 `n + 1` (ConstructorExpression):
+  assigned type `Number Number -> Number`
+  grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
 
 `1` (NumberExpression):
+  assigned type `Number`
+  grouped with `1`, `right`
   has type `Number`
   is an expression
-  type is annotated
 
 `numbers` (VisitAs):
+  assigned type `Sequence Number`
+  grouped with `collection`, `numbers`, `collection`
   has type `Sequence Number`
   is an expression
   resolved to 1 definition(s): `numbers`
   type is annotated
 
 `numbers . take 5` (VisitAs):
+  assigned type `Sequence Number`
+  grouped with `container`, `take 5`, `container`
   has type `Sequence Number`
   is an expression
 
 `numbers . take 5 . each show` (ExpressionStatement):
+  assigned type `()`
+  grouped with `numbers . take 5 . each show`
   has type `()`
 
 `numbers . take 5 . each show` (OperatorExpression):
+  assigned type `()`
+  grouped with `each show`, `numbers . take 5 . each show`
   has type `()`
   is an expression
 
 `take` (VariableExpression):
+  assigned type `Number -> (Sequence Number) -> Sequence Number`
+  grouped with `(count :: Number) -> collection -> Sequence element`
   has bound(s) `As-Sequence` `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `Number -> (Sequence Number) -> Sequence Number`
   is an expression
   resolved to 1 definition(s): `take :: (count :: Number) -> collection -> Sequence element where (As-Sequence collection element)`
 
 `take 5` (CallExpression):
+  grouped with `Sequence element`, `Sequence element`, `numbers . take 5`
   has type `Sequence Number`
   is an expression
 
 `take 5` (VisitAs):
+  assigned type `(Sequence Number) -> Sequence Number`
+  grouped with `collection -> Sequence element`
   has type `(Sequence Number) -> Sequence Number`
   is an expression
 
 `5` (NumberExpression):
+  assigned type `Number`
+  grouped with `5`, `count :: Number`
   has type `Number`
   is an expression
-  type is annotated
 
 `each` (VariableExpression):
+  assigned type `(Number -> ()) -> (Sequence Number) -> ()`
+  grouped with `(action :: (element -> ())) -> container -> ()`
   has bound(s) `As-Sequence` `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `(Number -> ()) -> (Sequence Number) -> ()`
   is an expression
   resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
 
 `each show` (CallExpression):
+  grouped with `()`, `()`, `numbers . take 5 . each show`
   has type `()`
   is an expression
 
 `each show` (VisitAs):
+  assigned type `(Sequence Number) -> ()`
+  grouped with `container -> ()`
   has type `(Sequence Number) -> ()`
   is an expression
 
 `show` (VariableExpression):
+  assigned type `Number -> ()`
+  grouped with `value -> ()`, `action :: (element -> ())`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
