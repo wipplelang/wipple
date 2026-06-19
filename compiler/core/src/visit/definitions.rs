@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
-    span::Str,
+    span::{Span, Str},
     visit::attributes::{
         ConnectionAttributeValue, StringAttributeValue, parse_attribute_named,
         parse_attribute_with_value, parse_attributes_with_value,
@@ -26,6 +26,7 @@ impl Render for Defined {
 #[typetag::serde]
 pub trait Definition: Debug + DynClone + Send + Sync + Any {
     fn name(&self) -> Option<Str>;
+    fn full_span(&self) -> Option<&Span>;
     fn comments(&self) -> &[Str];
 }
 
@@ -54,6 +55,10 @@ impl Definition for VariableDefinition {
         Some(self.name.clone())
     }
 
+    fn full_span(&self) -> Option<&Span> {
+        None
+    }
+
     fn comments(&self) -> &[Str] {
         &[]
     }
@@ -70,6 +75,7 @@ impl Render for ConstantValue {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstantDefinition {
     pub name: Str,
+    pub full_span: Span,
     pub comments: Vec<Str>,
     pub attributes: ConstantAttributes,
 }
@@ -78,6 +84,10 @@ pub struct ConstantDefinition {
 impl Definition for ConstantDefinition {
     fn name(&self) -> Option<Str> {
         Some(self.name.clone())
+    }
+
+    fn full_span(&self) -> Option<&Span> {
+        Some(&self.full_span)
     }
 
     fn comments(&self) -> &[Str] {
@@ -103,6 +113,7 @@ impl ConstantAttributes {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeDefinition {
     pub name: Str,
+    pub full_span: Span,
     pub comments: Vec<Str>,
     pub attributes: TypeDefinitionAttributes,
     pub parameters: Vec<Node>,
@@ -112,6 +123,10 @@ pub struct TypeDefinition {
 impl Definition for TypeDefinition {
     fn name(&self) -> Option<Str> {
         Some(self.name.clone())
+    }
+
+    fn full_span(&self) -> Option<&Span> {
+        Some(&self.full_span)
     }
 
     fn comments(&self) -> &[Str] {
@@ -138,6 +153,7 @@ impl TypeDefinitionAttributes {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraitDefinition {
     pub name: Str,
+    pub full_span: Span,
     pub comments: Vec<Str>,
     pub attributes: TraitDefinitionAttributes,
     pub parameters: Vec<Node>,
@@ -147,6 +163,10 @@ pub struct TraitDefinition {
 impl Definition for TraitDefinition {
     fn name(&self) -> Option<Str> {
         Some(self.name.clone())
+    }
+
+    fn full_span(&self) -> Option<&Span> {
+        Some(&self.full_span)
     }
 
     fn comments(&self) -> &[Str] {
@@ -186,6 +206,10 @@ impl Definition for InstanceDefinition {
         None
     }
 
+    fn full_span(&self) -> Option<&Span> {
+        None
+    }
+
     fn comments(&self) -> &[Str] {
         &self.comments
     }
@@ -211,6 +235,10 @@ impl Definition for TypeParameterDefinition {
         self.name.clone()
     }
 
+    fn full_span(&self) -> Option<&Span> {
+        None
+    }
+
     fn comments(&self) -> &[Str] {
         &[]
     }
@@ -226,6 +254,10 @@ pub struct MarkerConstructorDefinition {
 impl Definition for MarkerConstructorDefinition {
     fn name(&self) -> Option<Str> {
         Some(self.name.clone())
+    }
+
+    fn full_span(&self) -> Option<&Span> {
+        None
     }
 
     fn comments(&self) -> &[Str] {
@@ -246,6 +278,10 @@ impl Definition for StructureConstructorDefinition {
         Some(self.name.clone())
     }
 
+    fn full_span(&self) -> Option<&Span> {
+        None
+    }
+
     fn comments(&self) -> &[Str] {
         &self.comments
     }
@@ -263,6 +299,10 @@ pub struct VariantConstructorDefinition {
 impl Definition for VariantConstructorDefinition {
     fn name(&self) -> Option<Str> {
         Some(self.name.clone())
+    }
+
+    fn full_span(&self) -> Option<&Span> {
+        None
     }
 
     fn comments(&self) -> &[Str] {

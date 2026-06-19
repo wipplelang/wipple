@@ -1,18 +1,18 @@
 Facts (layer 2):
 
-`Number : type` (TypeDefinition):
+`Number` (TypeDefinition):
   assigned type `Number`
   has definition constraints
   has type `Number`
   is a definition
 
-`String : type` (TypeDefinition):
+`String` (TypeDefinition):
   assigned type `String`
   has definition constraints
   has type `String`
   is a definition
 
-`Boolean : type {⋯}` (TypeDefinition):
+`Boolean` (TypeDefinition):
   assigned type `Boolean`
   grouped with `True`, `False`
   has definition constraints
@@ -21,29 +21,29 @@ Facts (layer 2):
 
 `True` (VariantDefinition):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`
+  grouped with `Boolean`
   has definition constraints
   has type `Boolean`
   is a definition
 
 `False` (VariantDefinition):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`
+  grouped with `Boolean`
   has definition constraints
   has type `Boolean`
   is a definition
 
-`Sequence : element => type {⋯}` (TypeDefinition):
+`Sequence` (TypeDefinition):
   assigned type `Sequence element`
-  grouped with `Sequence : element => type {⋯}`
+  grouped with `Sequence`
   has definition constraints
   has type `Sequence element`
   has type parameters
   is a definition
 
-`Sequence : element => type {⋯}` (TypeDefinition):
+`Sequence` (TypeDefinition):
   assigned type `Sequence element`
-  grouped with `Sequence : element => type {⋯}`
+  grouped with `Sequence`
   has definition constraints
   has type `Sequence element`
   is a definition
@@ -72,17 +72,17 @@ Facts (layer 2):
   resolved to type parameter `element`
   type is annotated
 
-`Box : value => type {⋯}` (TypeDefinition):
+`Box` (TypeDefinition):
   assigned type `Box value`
-  grouped with `Box : value => type {⋯}`
+  grouped with `Box`
   has definition constraints
   has type `Box value`
   has type parameters
   is a definition
 
-`Box : value => type {⋯}` (TypeDefinition):
+`Box` (TypeDefinition):
   assigned type `Box value`
-  grouped with `Box : value => type {⋯}`
+  grouped with `Box`
   has definition constraints
   has type `Box value`
   is a definition
@@ -105,7 +105,7 @@ Facts (layer 2):
   resolved to type parameter `value`
   type is annotated
 
-`As-Sequence : collection (infer element) => trait (collection -> Sequence element)` (TraitDefinition):
+`As-Sequence` (TraitDefinition):
   assigned type `collection -> Sequence element`
   grouped with `collection -> Sequence element`
   has 1 instances
@@ -144,7 +144,7 @@ Facts (layer 2):
 
 `collection -> Sequence element` (FunctionType):
   assigned type `collection -> Sequence element`
-  grouped with `As-Sequence : collection (infer element) => trait (collection -> Sequence element)`
+  grouped with `As-Sequence`
   has type `collection -> Sequence element`
   is a type
   type is annotated
@@ -153,7 +153,7 @@ Facts (layer 2):
   assigned type `Sequence element`
   has type `Sequence element`
   is a type
-  resolved to 1 definition(s): `Sequence : element => type {⋯}`
+  resolved to 1 definition(s): `Sequence`
   type is annotated
 
 `element` (TypeParameter):
@@ -172,14 +172,14 @@ Facts (layer 2):
   has type `(Box value) -> Sequence value`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `As-Sequence : collection (infer element) => trait (collection -> Sequence element)`
+  resolved to 1 definition(s): `As-Sequence`
 
 `Box value` (NamedType):
   assigned type `Box value`
   grouped with `collection`
   has type `Box value`
   is a type
-  resolved to 1 definition(s): `Box : value => type {⋯}`
+  resolved to 1 definition(s): `Box`
   type is annotated
 
 `value` (TypeParameter):
@@ -206,7 +206,7 @@ Facts (layer 2):
   has type `(Box value) -> Sequence value`
   is an expression
 
-`filter :: (item -> Boolean) -> collection -> Sequence item where (As-Sequence collection item)` (ConstantDefinition):
+`filter` (ConstantDefinition):
   assigned type `(item -> Boolean) -> collection -> Sequence item`
   grouped with `(item -> Boolean) -> collection -> Sequence item`, `_`
   has definition constraints
@@ -216,7 +216,7 @@ Facts (layer 2):
 
 `(item -> Boolean) -> collection -> Sequence item` (FunctionType):
   assigned type `(item -> Boolean) -> collection -> Sequence item`
-  grouped with `filter :: (item -> Boolean) -> collection -> Sequence item where (As-Sequence collection item)`
+  grouped with `filter`
   has type `(item -> Boolean) -> collection -> Sequence item`
   is a type
   type is annotated
@@ -240,7 +240,7 @@ Facts (layer 2):
   assigned type `Boolean`
   has type `Boolean`
   is a type
-  resolved to 1 definition(s): `Boolean : type {⋯}`
+  resolved to 1 definition(s): `Boolean`
   type is annotated
 
 `collection` (TypeParameter):
@@ -262,7 +262,7 @@ Facts (layer 2):
   assigned type `Sequence item`
   has type `Sequence item`
   is a type
-  resolved to 1 definition(s): `Sequence : element => type {⋯}`
+  resolved to 1 definition(s): `Sequence`
   type is annotated
 
 `item` (TypeParameter):
@@ -277,7 +277,7 @@ Facts (layer 2):
 `(As-Sequence collection item)` (BoundConstraint):
   has bound(s) `As-Sequence` `collection` `item` (resolved as `(As-Sequence collection item)`)
   is a constraint
-  resolved to 1 definition(s): `As-Sequence : collection (infer element) => trait (collection -> Sequence element)`
+  resolved to 1 definition(s): `As-Sequence`
 
 `collection` (TypeParameter):
   assigned type `collection`
@@ -303,7 +303,7 @@ Facts (layer 2):
 
 `_` (PlaceholderExpression):
   assigned type `(item -> Boolean) -> collection -> Sequence item`
-  grouped with `filter :: (item -> Boolean) -> collection -> Sequence item where (As-Sequence collection item)`
+  grouped with `filter`
   has type `(item -> Boolean) -> collection -> Sequence item`
   is an expression
 
@@ -329,7 +329,7 @@ Facts (layer 2):
   grouped with `_`
   has type `Box (String or Number)`
   is a type
-  resolved to 1 definition(s): `Box : value => type {⋯}`
+  resolved to 1 definition(s): `Box`
   type is annotated
 
 `String` (NamedType):
@@ -337,7 +337,7 @@ Facts (layer 2):
   grouped with `value`
   has type `String` or `Number`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `positive?` (VariablePattern):
@@ -369,7 +369,7 @@ Facts (layer 2):
   grouped with `_`
   has type `String` or `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 `_` (PlaceholderExpression):
@@ -393,7 +393,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(Box (String or Number))` `(String or Number)` (resolved as `instance (As-Sequence (Box value) value)`)
   has type `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`
   is an expression
-  resolved to 1 definition(s): `filter :: (item -> Boolean) -> collection -> Sequence item where (As-Sequence collection item)`
+  resolved to 1 definition(s): `filter`
 
 `filter positive?` (CallExpression):
   assigned type `(Box (String or Number)) -> Sequence (String or Number)`

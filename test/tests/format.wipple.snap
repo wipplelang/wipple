@@ -1,15 +1,15 @@
 Facts (layer 2):
 
-`Person : type {name :: String}` (TypeDefinition):
+`Person` (TypeDefinition):
   assigned type `Person`
-  grouped with `Person : type {name :: String}`
+  grouped with `Person`
   has definition constraints
   has type `Person`
   is a definition
 
-`Person : type {name :: String}` (TypeDefinition):
+`Person` (TypeDefinition):
   assigned type `Person`
-  grouped with `Person : type {name :: String}`
+  grouped with `Person`
   has definition constraints
   has type `Person`
   is a definition
@@ -18,7 +18,7 @@ Facts (layer 2):
   assigned type `String`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `instance (Describe Person)` (InstanceDefinition):
@@ -27,14 +27,14 @@ Facts (layer 2):
   has definition constraints
   has type `Person -> String`
   is a definition
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `Person` (NamedType):
   assigned type `Person`
   grouped with `value`
   has type `Person`
   is a type
-  resolved to 1 definition(s): `Person : type {name :: String}`
+  resolved to 1 definition(s): `Person`
   type is annotated
 
 `(Person {name : name}) -> name` (FunctionExpression):
@@ -45,10 +45,10 @@ Facts (layer 2):
 
 `Person {name : name}` (StructurePattern):
   assigned type `Person`
-  grouped with `Person : type {name :: String}`, `value`
+  grouped with `Person`, `value`
   has type `Person`
   is a pattern
-  resolved to 1 definition(s): `Person : type {name :: String}`
+  resolved to 1 definition(s): `Person`
 
 `name` (VariablePattern):
   assigned type `String`
@@ -78,10 +78,10 @@ Facts (layer 2):
 
 `Person {name : "Bob"}` (StructureExpression):
   assigned type `Person`
-  grouped with `Person : type {name :: String}`, `bob`, `bob`
+  grouped with `Person`, `bob`, `bob`
   has type `Person`
   is an expression
-  resolved to 1 definition(s): `Person : type {name :: String}`
+  resolved to 1 definition(s): `Person`
 
 `"Bob"` (StringExpression):
   assigned type `String`
@@ -95,7 +95,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ("Hello, _!" bob)` (ExpressionStatement):
   assigned type `()`
@@ -118,7 +118,7 @@ Facts (layer 2):
   grouped with `"Hello, _!" bob`, `String`, `_`, `_`, `_`, `_`, `_`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `"Hello, _!" bob` (ConstructorExpression):
@@ -127,7 +127,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Person` (resolved as `instance (Describe Person)`)
   has type `Person -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `bob` (VariableExpression):
   assigned type `Person`

@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show nan` (ExpressionStatement):
   assigned type `()`
@@ -23,7 +23,7 @@ Facts (layer 2):
   grouped with `Number`, `value`
   has type `Number`
   is an expression
-  resolved to 1 definition(s): `nan :: Number`
+  resolved to 1 definition(s): `nan`
 
 `show` (VariableExpression):
   assigned type `Number -> ()`
@@ -31,7 +31,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (1 / 0)` (ExpressionStatement):
   assigned type `()`
@@ -66,7 +66,7 @@ Facts (layer 2):
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)`
+  resolved to 1 definition(s): `Divide`
 
 `0` (NumberExpression):
   assigned type `Number`
@@ -80,7 +80,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (0 / 0)` (ExpressionStatement):
   assigned type `()`
@@ -115,7 +115,7 @@ Facts (layer 2):
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)`
+  resolved to 1 definition(s): `Divide`
 
 `0` (NumberExpression):
   assigned type `Number`
@@ -129,7 +129,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (sqrt -1)` (ExpressionStatement):
   assigned type `()`
@@ -146,7 +146,7 @@ Facts (layer 2):
   grouped with `(n :: Number) -> Number`
   has type `Number -> Number`
   is an expression
-  resolved to 1 definition(s): `sqrt :: (n :: Number) -> Number`
+  resolved to 1 definition(s): `sqrt`
 
 `sqrt -1` (CallExpression):
   grouped with `Number`, `value`
@@ -165,7 +165,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (2 ^ 2 ^ 2 ^ 2048)` (ExpressionStatement):
   assigned type `()`
@@ -200,7 +200,7 @@ Facts (layer 2):
   has bound(s) `Power` `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)`
+  resolved to 1 definition(s): `Power`
 
 `2 ^ 2 ^ 2` (OperatorExpression):
   assigned type `Number`
@@ -219,7 +219,7 @@ Facts (layer 2):
   has bound(s) `Power` `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)`
+  resolved to 1 definition(s): `Power`
 
 `2 ^ 2 ^ 2 ^ 2048` (OperatorExpression):
   assigned type `Number`
@@ -238,7 +238,7 @@ Facts (layer 2):
   has bound(s) `Power` `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Power : left right (infer power) => trait (left right -> power)`
+  resolved to 1 definition(s): `Power`
 
 `2` (NumberExpression):
   assigned type `Number`

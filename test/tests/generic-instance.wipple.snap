@@ -1,16 +1,16 @@
 Facts (layer 2):
 
-`Box : value => type {value :: value}` (TypeDefinition):
+`Box` (TypeDefinition):
   assigned type `Box value`
-  grouped with `Box : value => type {value :: value}`
+  grouped with `Box`
   has definition constraints
   has type `Box value`
   has type parameters
   is a definition
 
-`Box : value => type {value :: value}` (TypeDefinition):
+`Box` (TypeDefinition):
   assigned type `Box value`
-  grouped with `Box : value => type {value :: value}`
+  grouped with `Box`
   has definition constraints
   has type `Box value`
   is a definition
@@ -33,7 +33,7 @@ Facts (layer 2):
   resolved to type parameter `value`
   type is annotated
 
-`Foo : a b => trait (a -> b)` (TraitDefinition):
+`Foo` (TraitDefinition):
   assigned type `a -> b`
   grouped with `a -> b`
   has 1 instances
@@ -71,7 +71,7 @@ Facts (layer 2):
 
 `a -> b` (FunctionType):
   assigned type `a -> b`
-  grouped with `Foo : a b => trait (a -> b)`
+  grouped with `Foo`
   has type `a -> b`
   is a type
   type is annotated
@@ -92,14 +92,14 @@ Facts (layer 2):
   has type `(Box value) -> value`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Foo : a b => trait (a -> b)`
+  resolved to 1 definition(s): `Foo`
 
 `Box value` (NamedType):
   assigned type `Box value`
   grouped with `a`
   has type `Box value`
   is a type
-  resolved to 1 definition(s): `Box : value => type {value :: value}`
+  resolved to 1 definition(s): `Box`
   type is annotated
 
 `value` (TypeParameter):
@@ -128,10 +128,10 @@ Facts (layer 2):
 
 `Box {value : value}` (StructurePattern):
   assigned type `Box value`
-  grouped with `Box : value => type {value :: value}`, `a`
+  grouped with `Box`, `a`
   has type `Box value`
   is a pattern
-  resolved to 1 definition(s): `Box : value => type {value :: value}`
+  resolved to 1 definition(s): `Box`
 
 `value` (VariablePattern):
   assigned type `value`
@@ -154,7 +154,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (Foo (Box {value : "Hello, world!"}))` (ExpressionStatement):
   assigned type `()`
@@ -172,7 +172,7 @@ Facts (layer 2):
   has bound(s) `Foo` `(Box String)` `String` (resolved as `instance (Foo (Box value) value)`)
   has type `(Box String) -> String`
   is an expression
-  resolved to 1 definition(s): `Foo : a b => trait (a -> b)`
+  resolved to 1 definition(s): `Foo`
 
 `Foo (Box {value : "Hello, world!"})` (CallExpression):
   grouped with `b`, `value`
@@ -181,10 +181,10 @@ Facts (layer 2):
 
 `Box {value : "Hello, world!"}` (StructureExpression):
   assigned type `Box String`
-  grouped with `Box : value => type {value :: value}`, `a`
+  grouped with `Box`, `a`
   has type `Box String`
   is an expression
-  resolved to 1 definition(s): `Box : value => type {value :: value}`
+  resolved to 1 definition(s): `Box`
 
 `"Hello, world!"` (StringExpression):
   assigned type `String`

@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`E : type {⋯}` (TypeDefinition):
+`E` (TypeDefinition):
   assigned type `E`
   grouped with `A`, `B`
   has definition constraints
@@ -9,14 +9,14 @@ Facts (layer 2):
 
 `A` (VariantDefinition):
   assigned type `E`
-  grouped with `E : type {⋯}`
+  grouped with `E`
   has definition constraints
   has type `E`
   is a definition
 
 `B` (VariantDefinition):
   assigned type `E`
-  grouped with `E : type {⋯}`
+  grouped with `E`
   has definition constraints
   has type `E`
   is a definition
@@ -27,7 +27,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (when (A; B) {⋯})` (ExpressionStatement):
   assigned type `()`
@@ -46,7 +46,7 @@ Facts (layer 2):
 
 `A` (ConstructorExpression):
   assigned type `E`
-  grouped with `E : type {⋯}`, `_`, `_`
+  grouped with `E`, `_`, `_`
   has type `E`
   is an expression
   resolved to 1 definition(s): `A`
@@ -59,14 +59,14 @@ Facts (layer 2):
 
 `B` (ConstructorExpression):
   assigned type `E`
-  grouped with `E : type {⋯}`, `_`, `_`
+  grouped with `E`, `_`, `_`
   has type `E`
   is an expression
   resolved to 1 definition(s): `B`
 
 `A` (ConstructorPattern):
   assigned type `E`
-  grouped with `_`, `E : type {⋯}`
+  grouped with `_`, `E`
   has type `E`
   is a pattern
   resolved to 1 definition(s): `A`
@@ -79,7 +79,7 @@ Facts (layer 2):
 
 `A` (ConstructorPattern):
   assigned type `E`
-  grouped with `_`, `E : type {⋯}`
+  grouped with `_`, `E`
   has type `E`
   is a pattern
   resolved to 1 definition(s): `A`

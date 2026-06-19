@@ -100,14 +100,14 @@ Facts (layer 2):
   has bound(s) `Initial` `(List Number)` (resolved as `instance (Initial (List element))`), `Initial` `(List String)` (resolved as `instance (Initial (List element))`), `As-Sequence` `(List (Number; String))` `(Number; String)` (resolved as `instance (As-Sequence (List element) element)`), `Extend` `(List Number)` `Number` (resolved as `instance (Extend (List element) element)`), `Extend` `(List String)` `String` (resolved as `instance (Extend (List element) element)`)
   has type `(List (Number; String)) -> (List Number; List String)`
   is an expression
-  resolved to 1 definition(s): `unzip :: collection -> (left; right) where (Initial left) (Initial right) (As-Sequence collection (left-element; right-element)) (Extend left left-element) (Extend right right-element)`
+  resolved to 1 definition(s): `unzip`
 
 `List _` (NamedType):
   assigned type `List Number`
   grouped with `left`
   has type `List Number`
   is a type
-  resolved to 1 definition(s): `List : element => type`
+  resolved to 1 definition(s): `List`
   type is annotated
 
 `List _; List _` (TupleType):
@@ -128,7 +128,7 @@ Facts (layer 2):
   grouped with `right`
   has type `List String`
   is a type
-  resolved to 1 definition(s): `List : element => type`
+  resolved to 1 definition(s): `List`
   type is annotated
 
 `_` (PlaceholderType):
@@ -143,7 +143,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show "Left:"` (ExpressionStatement):
   assigned type `()`
@@ -186,7 +186,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> ()) -> (List Number) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each`
 
 `each show` (CallExpression):
   grouped with `()`, `()`, `left . each show`
@@ -205,7 +205,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show` (VariableExpression):
   assigned type `String -> ()`
@@ -213,7 +213,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show "Right:"` (ExpressionStatement):
   assigned type `()`
@@ -256,7 +256,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(String -> ()) -> (List String) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each`
 
 `each show` (CallExpression):
   grouped with `()`, `()`, `right . each show`
@@ -275,7 +275,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 
 Output:

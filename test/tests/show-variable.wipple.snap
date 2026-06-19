@@ -1,15 +1,15 @@
 Facts (layer 2):
 
-`Cannot-Be-Shown : type` (TypeDefinition):
+`Cannot-Be-Shown` (TypeDefinition):
   assigned type `Cannot-Be-Shown`
-  grouped with `Cannot-Be-Shown : type`
+  grouped with `Cannot-Be-Shown`
   has definition constraints
   has type `Cannot-Be-Shown`
   is a definition
 
-`Cannot-Be-Shown : type` (TypeDefinition):
+`Cannot-Be-Shown` (TypeDefinition):
   assigned type `Cannot-Be-Shown`
-  grouped with `Cannot-Be-Shown : type`
+  grouped with `Cannot-Be-Shown`
   has definition constraints
   has type `Cannot-Be-Shown`
   is a definition
@@ -27,10 +27,10 @@ Facts (layer 2):
 
 `Cannot-Be-Shown` (ConstructorExpression):
   assigned type `Cannot-Be-Shown`
-  grouped with `Cannot-Be-Shown : type`, `my-variable`, `my-variable`
+  grouped with `Cannot-Be-Shown`, `my-variable`, `my-variable`
   has type `Cannot-Be-Shown`
   is an expression
-  resolved to 1 definition(s): `Cannot-Be-Shown : type`
+  resolved to 1 definition(s): `Cannot-Be-Shown`
 
 `show` (VariableExpression):
   assigned type `Cannot-Be-Shown -> ()`
@@ -38,7 +38,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Cannot-Be-Shown` (resolved as `default error instance (Describe value)`)
   has type `Cannot-Be-Shown -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show my-variable` (ExpressionStatement):
   assigned type `()`

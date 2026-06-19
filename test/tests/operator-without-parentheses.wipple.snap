@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show 1` (CallExpression):
   grouped with `()`, `left`
@@ -35,7 +35,7 @@ Facts (layer 2):
   has bound(s) `Add` `()` `Number` `_` (resolved as `error instance (Add () right sum)`)
   has type `() Number -> _`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `1` (NumberExpression):
   assigned type `Number`
@@ -55,7 +55,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show True` (VisitAs):
   grouped with `()`, `left`
@@ -84,18 +84,18 @@ Facts (layer 2):
   has bound(s) `Or` `()` `Boolean` `_` (unresolved)
   has type `() {Boolean} -> _`
   is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)`
+  resolved to 1 definition(s): `Or`
 
 `True` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `value`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `False` (VisitAs):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `False`, `False`, `right`
+  grouped with `Boolean`, `False`, `False`, `right`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
@@ -116,7 +116,7 @@ Facts (layer 2):
   grouped with `value -> ()`
   has type `_ -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (1 + "hi")` (ExpressionStatement):
   assigned type `()`
@@ -151,7 +151,7 @@ Facts (layer 2):
   has bound(s) `Add` `Number` `String` `_` (resolved as `default error instance (Add left right sum)`)
   has type `Number String -> _`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `"hi"` (StringExpression):
   assigned type `String`

@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`accepts-text :: String -> ()` (ConstantDefinition):
+`accepts-text` (ConstantDefinition):
   assigned type `String -> ()`
   grouped with `String -> ()`, `todo`
   has definition constraints
@@ -11,12 +11,12 @@ Facts (layer 2):
   assigned type `String`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `String -> ()` (FunctionType):
   assigned type `String -> ()`
-  grouped with `accepts-text :: String -> ()`
+  grouped with `accepts-text`
   has type `String -> ()`
   is a type
   type is annotated
@@ -33,10 +33,10 @@ Facts (layer 2):
 
 `todo` (VariableExpression):
   assigned type `String -> ()`
-  grouped with `value`, `accepts-text :: String -> ()`
+  grouped with `value`, `accepts-text`
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `todo :: value`
+  resolved to 1 definition(s): `todo`
 
 `-- should display 'expected `String`, found `Number`' rather than
 -- 'cannot find instance `Add Number Number String`'
@@ -50,7 +50,7 @@ accepts-text (1 + 2)` (ExpressionStatement):
   grouped with `String -> ()`
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `accepts-text :: String -> ()`
+  resolved to 1 definition(s): `accepts-text`
 
 `accepts-text (1 + 2)` (CallExpression):
   grouped with `()`, `-- should display 'expected `String`, found `Number`' rather than
@@ -83,7 +83,7 @@ accepts-text (1 + 2)`
   has bound(s) `Add` `Number` `Number` `(Number or String)` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number or String`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `2` (NumberExpression):
   assigned type `Number`

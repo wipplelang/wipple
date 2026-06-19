@@ -65,7 +65,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Dictionary String Number) ((Dictionary String Number) String -> Dictionary String Number) -> (List String) -> Dictionary String Number`
   is an expression
-  resolved to 1 definition(s): `reduce :: result (f :: (result element -> result)) -> container -> result where (As-Sequence container element)`
+  resolved to 1 definition(s): `reduce`
 
 `reduce (,) (sports sport -> sports . insert-entry sport (count sport))` (CallExpression):
   grouped with `result`, `result`, `sports . reduce (,) (sports sport -> sports . insert-entry sport (count sport))`
@@ -123,7 +123,7 @@ Facts (layer 2):
   has bound(s) `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String Number -> (Dictionary String Number) -> Dictionary String Number`
   is an expression
-  resolved to 1 definition(s): `insert-entry :: key value -> (dictionary :: (Dictionary key value)) -> Dictionary key value where (Equal key) (Hash key)`
+  resolved to 1 definition(s): `insert-entry`
 
 `insert-entry sport (count sport)` (CallExpression):
   grouped with `Dictionary key value`, `Dictionary key value`, `sports . insert-entry sport (count sport)`
@@ -150,7 +150,7 @@ Facts (layer 2):
   has bound(s) `Count` `String` (resolved as `instance (Count String)`)
   has type `String -> Number`
   is an expression
-  resolved to 1 definition(s): `count :: collection -> Number where (Count collection)`
+  resolved to 1 definition(s): `count`
 
 `count sport` (CallExpression):
   grouped with `Number`, `value`
@@ -190,7 +190,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(String -> ()) -> (List String) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each`
 
 `each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))` (CallExpression):
   grouped with `()`, `()`, `sports . each (sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable)))`
@@ -223,7 +223,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ("_ has _ letters" sport ((lengths . entry sport) or unreachable))` (CallExpression):
   grouped with `()`, `()`
@@ -241,7 +241,7 @@ Facts (layer 2):
   grouped with `"_ has _ letters" sport ((lengths . entry sport) or unreachable)`, `String`, `_`, `_`, `_`, `_`, `String`, `_`, `_`, `_`, `_`, `_`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `"_ has _ letters" sport ((lengths . entry sport) or unreachable)` (ConstructorExpression):
@@ -250,7 +250,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `"_ has _ letters" sport ((lengths . entry sport) or unreachable)` (ConstructorExpression):
   assigned type `Number -> String`
@@ -258,7 +258,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `sport` (VariableExpression):
   assigned type `String`
@@ -299,7 +299,7 @@ Facts (layer 2):
   has bound(s) `Or` `(Maybe Number)` `Number` `Number` (resolved as `instance (Or (Maybe value) value value)`)
   has type `(Maybe Number) {Number} -> Number`
   is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)`
+  resolved to 1 definition(s): `Or`
 
 `entry` (VariableExpression):
   assigned type `String -> (Dictionary String Number) -> Maybe Number`
@@ -307,7 +307,7 @@ Facts (layer 2):
   has bound(s) `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Dictionary String Number) -> Maybe Number`
   is an expression
-  resolved to 1 definition(s): `entry :: key -> (dictionary :: (Dictionary key value)) -> Maybe value where (Equal key) (Hash key)`
+  resolved to 1 definition(s): `entry`
 
 `entry sport` (CallExpression):
   grouped with `Maybe value`, `Maybe value`, `lengths . entry sport`
@@ -333,7 +333,7 @@ Facts (layer 2):
   grouped with `value`, `unreachable`, `unreachable`, `right`
   has type `Number`
   is an expression
-  resolved to 1 definition(s): `unreachable :: value`
+  resolved to 1 definition(s): `unreachable`
 
 `unreachable` (VisitAs):
   assigned type `{Number}`

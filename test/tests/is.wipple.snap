@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (Some 42 is Some _)` (ExpressionStatement):
   assigned type `()`
@@ -25,7 +25,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Some value`
 
 `Some 42` (CallExpression):
-  grouped with `Maybe : value => type {⋯}`, `Some _`
+  grouped with `Maybe`, `Some _`
   has type `Maybe Number`
   is an expression
 
@@ -37,14 +37,14 @@ Facts (layer 2):
 
 `Some 42 is Some _` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `Some 42 is Some _`
+  grouped with `Boolean`, `Some 42 is Some _`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `Some 42 is Some _` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `Some 42 is Some _`
+  grouped with `Boolean`, `Some 42 is Some _`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
@@ -57,7 +57,7 @@ Facts (layer 2):
 
 `Some _` (ConstructorPattern):
   assigned type `Maybe Number`
-  grouped with `Some 42`, `Maybe : value => type {⋯}`
+  grouped with `Some 42`, `Maybe`
   has type `Maybe Number`
   is a pattern
   resolved to 1 definition(s): `Some value`
@@ -74,7 +74,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (Some 42 is None)` (ExpressionStatement):
   assigned type `()`
@@ -93,7 +93,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Some value`
 
 `Some 42` (CallExpression):
-  grouped with `Maybe : value => type {⋯}`, `None`
+  grouped with `Maybe`, `None`
   has type `Maybe Number`
   is an expression
 
@@ -105,14 +105,14 @@ Facts (layer 2):
 
 `Some 42 is None` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `Some 42 is None`
+  grouped with `Boolean`, `Some 42 is None`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `Some 42 is None` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `Some 42 is None`
+  grouped with `Boolean`, `Some 42 is None`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
@@ -125,7 +125,7 @@ Facts (layer 2):
 
 `None` (ConstructorPattern):
   assigned type `Maybe Number`
-  grouped with `Some 42`, `Maybe : value => type {⋯}`
+  grouped with `Some 42`, `Maybe`
   has type `Maybe Number`
   is a pattern
   resolved to 1 definition(s): `None`

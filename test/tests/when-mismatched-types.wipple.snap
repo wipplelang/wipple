@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Describe` `(String or Number)` (resolved as `instance (Describe String)`)
   has type `(String or Number) -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (when True {⋯})` (ExpressionStatement):
   assigned type `()`
@@ -26,14 +26,14 @@ Facts (layer 2):
 
 `True` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `True`, `False`
+  grouped with `Boolean`, `True`, `False`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `True` (ConstructorPattern):
   assigned type `Boolean`
-  grouped with `True`, `Boolean : type {⋯}`
+  grouped with `True`, `Boolean`
   has type `Boolean`
   is a pattern
   resolved to 1 definition(s): `True`
@@ -46,7 +46,7 @@ Facts (layer 2):
 
 `False` (ConstructorPattern):
   assigned type `Boolean`
-  grouped with `True`, `Boolean : type {⋯}`
+  grouped with `True`, `Boolean`
   has type `Boolean`
   is a pattern
   resolved to 1 definition(s): `False`

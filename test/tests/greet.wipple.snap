@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`Greet : value => trait (value -> String)` (TraitDefinition):
+`Greet` (TraitDefinition):
   assigned type `value -> String`
   grouped with `value -> String`
   has 2 instances
@@ -29,7 +29,7 @@ Facts (layer 2):
 
 `value -> String` (FunctionType):
   assigned type `value -> String`
-  grouped with `Greet : value => trait (value -> String)`
+  grouped with `Greet`
   has type `value -> String`
   is a type
   type is annotated
@@ -38,10 +38,10 @@ Facts (layer 2):
   assigned type `String`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
-`greet :: value -> String where (Greet value)` (ConstantDefinition):
+`greet` (ConstantDefinition):
   assigned type `value -> String`
   grouped with `value -> String`, `x -> "Hello, _!" (Greet x)`
   has definition constraints
@@ -60,7 +60,7 @@ Facts (layer 2):
 
 `value -> String` (FunctionType):
   assigned type `value -> String`
-  grouped with `greet :: value -> String where (Greet value)`
+  grouped with `greet`
   has type `value -> String`
   is a type
   type is annotated
@@ -70,13 +70,13 @@ Facts (layer 2):
   grouped with `"Hello, _!" (Greet x)`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `(Greet value)` (BoundConstraint):
   has bound(s) `Greet` `value` (resolved as `(Greet value)`)
   is a constraint
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)`
+  resolved to 1 definition(s): `Greet`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -100,7 +100,7 @@ Facts (layer 2):
 
 `x -> "Hello, _!" (Greet x)` (FunctionExpression):
   assigned type `value -> String`
-  grouped with `greet :: value -> String where (Greet value)`
+  grouped with `greet`
   has type `value -> String`
   is an expression
 
@@ -115,7 +115,7 @@ Facts (layer 2):
   grouped with `"Hello, _!" (Greet x)`, `String`, `_`, `_`, `_`, `_`, `_`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `"Hello, _!" (Greet x)` (ConstructorExpression):
@@ -124,7 +124,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `Greet` (ConstructorExpression):
   assigned type `value -> String`
@@ -132,7 +132,7 @@ Facts (layer 2):
   has bound(s) `Greet` `value` (resolved as `(Greet value)`)
   has type `value -> String`
   is an expression
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)`
+  resolved to 1 definition(s): `Greet`
 
 `Greet x` (CallExpression):
   grouped with `String`, `value`
@@ -147,16 +147,16 @@ Facts (layer 2):
   resolved to 1 definition(s): `x`
   type is annotated
 
-`Person : type {name :: String}` (TypeDefinition):
+`Person` (TypeDefinition):
   assigned type `Person`
-  grouped with `Person : type {name :: String}`
+  grouped with `Person`
   has definition constraints
   has type `Person`
   is a definition
 
-`Person : type {name :: String}` (TypeDefinition):
+`Person` (TypeDefinition):
   assigned type `Person`
-  grouped with `Person : type {name :: String}`
+  grouped with `Person`
   has definition constraints
   has type `Person`
   is a definition
@@ -165,7 +165,7 @@ Facts (layer 2):
   assigned type `String`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `instance (Greet Person)` (InstanceDefinition):
@@ -174,14 +174,14 @@ Facts (layer 2):
   has definition constraints
   has type `Person -> String`
   is a definition
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)`
+  resolved to 1 definition(s): `Greet`
 
 `Person` (NamedType):
   assigned type `Person`
   grouped with `value`
   has type `Person`
   is a type
-  resolved to 1 definition(s): `Person : type {name :: String}`
+  resolved to 1 definition(s): `Person`
   type is annotated
 
 `(Person {name : name}) -> name` (FunctionExpression):
@@ -192,10 +192,10 @@ Facts (layer 2):
 
 `Person {name : name}` (StructurePattern):
   assigned type `Person`
-  grouped with `Person : type {name :: String}`, `value`
+  grouped with `Person`, `value`
   has type `Person`
   is a pattern
-  resolved to 1 definition(s): `Person : type {name :: String}`
+  resolved to 1 definition(s): `Person`
 
 `name` (VariablePattern):
   assigned type `String`
@@ -212,16 +212,16 @@ Facts (layer 2):
   resolved to 1 definition(s): `name`
   type is annotated
 
-`Earth : type` (TypeDefinition):
+`Earth` (TypeDefinition):
   assigned type `Earth`
-  grouped with `Earth : type`
+  grouped with `Earth`
   has definition constraints
   has type `Earth`
   is a definition
 
-`Earth : type` (TypeDefinition):
+`Earth` (TypeDefinition):
   assigned type `Earth`
-  grouped with `Earth : type`
+  grouped with `Earth`
   has definition constraints
   has type `Earth`
   is a definition
@@ -232,14 +232,14 @@ Facts (layer 2):
   has definition constraints
   has type `Earth -> String`
   is a definition
-  resolved to 1 definition(s): `Greet : value => trait (value -> String)`
+  resolved to 1 definition(s): `Greet`
 
 `Earth` (NamedType):
   assigned type `Earth`
   grouped with `value`
   has type `Earth`
   is a type
-  resolved to 1 definition(s): `Earth : type`
+  resolved to 1 definition(s): `Earth`
   type is annotated
 
 `_` (WildcardPattern):
@@ -266,7 +266,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (greet (Person {name : "Bob"}))` (ExpressionStatement):
   assigned type `()`
@@ -284,7 +284,7 @@ Facts (layer 2):
   has bound(s) `Greet` `Person` (resolved as `instance (Greet Person)`)
   has type `Person -> String`
   is an expression
-  resolved to 1 definition(s): `greet :: value -> String where (Greet value)`
+  resolved to 1 definition(s): `greet`
 
 `greet (Person {name : "Bob"})` (CallExpression):
   grouped with `String`, `value`
@@ -293,10 +293,10 @@ Facts (layer 2):
 
 `Person {name : "Bob"}` (StructureExpression):
   assigned type `Person`
-  grouped with `Person : type {name :: String}`, `value`
+  grouped with `Person`, `value`
   has type `Person`
   is an expression
-  resolved to 1 definition(s): `Person : type {name :: String}`
+  resolved to 1 definition(s): `Person`
 
 `"Bob"` (StringExpression):
   assigned type `String`
@@ -310,7 +310,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (greet Earth)` (ExpressionStatement):
   assigned type `()`
@@ -328,7 +328,7 @@ Facts (layer 2):
   has bound(s) `Greet` `Earth` (resolved as `instance (Greet Earth)`)
   has type `Earth -> String`
   is an expression
-  resolved to 1 definition(s): `greet :: value -> String where (Greet value)`
+  resolved to 1 definition(s): `greet`
 
 `greet Earth` (CallExpression):
   grouped with `String`, `value`
@@ -337,10 +337,10 @@ Facts (layer 2):
 
 `Earth` (ConstructorExpression):
   assigned type `Earth`
-  grouped with `Earth : type`, `value`
+  grouped with `Earth`, `value`
   has type `Earth`
   is an expression
-  resolved to 1 definition(s): `Earth : type`
+  resolved to 1 definition(s): `Earth`
 
 
 Output:

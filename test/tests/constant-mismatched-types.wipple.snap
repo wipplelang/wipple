@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`x :: Number` (ConstantDefinition):
+`x` (ConstantDefinition):
   assigned type `Number`
   grouped with `Number`, `"42"`
   has definition constraints
@@ -9,10 +9,10 @@ Facts (layer 2):
 
 `Number` (NamedType):
   assigned type `Number`
-  grouped with `x :: Number`
+  grouped with `x`
   has type `String` or `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 `x : "42"` (AssignmentStatement):
@@ -21,7 +21,7 @@ Facts (layer 2):
 
 `"42"` (StringExpression):
   assigned type `String`
-  grouped with `"42"`, `x :: Number`
+  grouped with `"42"`, `x`
   has type `String` or `Number`
   is an expression
 
@@ -29,15 +29,15 @@ Facts (layer 2):
 
 Feedback:
 
-`x :: Number` (conflicting-types)
+`x` (conflicting-types)
 
-  `x :: Number` is a `String` or a `Number`, but it can only be one of these.
+  `x` is a `String` or a `Number`, but it can only be one of these.
   
-  `x :: Number` must be the same type as `Number` and `"42"`; double-check these.
+  `x` must be the same type as `Number` and `"42"`; double-check these.
 
 
 `"42"` (conflicting-types)
 
   `"42"` is a `String` or a `Number`, but it can only be one of these.
   
-  `"42"` must be the same type as `x :: Number` and `Number`; double-check these.
+  `"42"` must be the same type as `x` and `Number`; double-check these.

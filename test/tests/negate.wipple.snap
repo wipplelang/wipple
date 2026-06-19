@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ((negate 3) = -3)` (ExpressionStatement):
   assigned type `()`
@@ -23,7 +23,7 @@ Facts (layer 2):
   grouped with `(n :: Number) -> Number`
   has type `Number -> Number`
   is an expression
-  resolved to 1 definition(s): `negate :: (n :: Number) -> Number`
+  resolved to 1 definition(s): `negate`
 
 `negate 3` (CallExpression):
   grouped with `Number`, `value`
@@ -47,7 +47,7 @@ Facts (layer 2):
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `3` (NumberExpression):
   assigned type `Number`

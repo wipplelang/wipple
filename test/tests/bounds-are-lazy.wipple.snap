@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`T : value => trait (value -> ())` (TraitDefinition):
+`T` (TraitDefinition):
   assigned type `value -> ()`
   grouped with `value -> ()`
   has 1 instances
@@ -29,7 +29,7 @@ Facts (layer 2):
 
 `value -> ()` (FunctionType):
   assigned type `value -> ()`
-  grouped with `T : value => trait (value -> ())`
+  grouped with `T`
   has type `value -> ()`
   is a type
   type is annotated
@@ -46,14 +46,14 @@ Facts (layer 2):
   has definition constraints
   has type `Number -> ()`
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())`
+  resolved to 1 definition(s): `T`
 
 `Number` (NamedType):
   assigned type `Number`
   grouped with `value`
   has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 `do {⋯}` (DoExpression):
@@ -73,7 +73,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show "should appear second"` (ExpressionStatement):
   assigned type `()`
@@ -114,7 +114,7 @@ Facts (layer 2):
   has type `()`
   is an expression
 
-`f :: value -> () where (T value)` (ConstantDefinition):
+`f` (ConstantDefinition):
   assigned type `value -> ()`
   grouped with `value -> ()`, `value -> do {⋯}`
   has definition constraints
@@ -133,7 +133,7 @@ Facts (layer 2):
 
 `value -> ()` (FunctionType):
   assigned type `value -> ()`
-  grouped with `f :: value -> () where (T value)`
+  grouped with `f`
   has type `value -> ()`
   is a type
   type is annotated
@@ -148,7 +148,7 @@ Facts (layer 2):
 `(T value)` (BoundConstraint):
   has bound(s) `T` `value` (resolved as `(T value)`)
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> ())`
+  resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -172,7 +172,7 @@ Facts (layer 2):
 
 `value -> do {⋯}` (FunctionExpression):
   assigned type `value -> ()`
-  grouped with `f :: value -> () where (T value)`
+  grouped with `f`
   has type `value -> ()`
   is an expression
 
@@ -193,7 +193,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show "should appear first"` (ExpressionStatement):
   assigned type `()`
@@ -217,7 +217,7 @@ Facts (layer 2):
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value -> ()`
   is an expression
-  resolved to 1 definition(s): `T : value => trait (value -> ())`
+  resolved to 1 definition(s): `T`
 
 `T value` (ExpressionStatement):
   assigned type `()`
@@ -243,7 +243,7 @@ Facts (layer 2):
   has bound(s) `T` `Number` (resolved as `instance (T Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `f :: value -> () where (T value)`
+  resolved to 1 definition(s): `f`
 
 `f 123` (ExpressionStatement):
   assigned type `()`

@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`T : value => trait ()` (TraitDefinition):
+`T` (TraitDefinition):
   assigned type `()`
   grouped with `()`
   has 4 instances
@@ -20,21 +20,21 @@ Facts (layer 2):
 
 `()` (UnitType):
   assigned type `()`
-  grouped with `T : value => trait ()`
+  grouped with `T`
   has type `()`
   is a type
   type is annotated
 
-`X : type` (TypeDefinition):
+`X` (TypeDefinition):
   assigned type `X`
-  grouped with `X : type`
+  grouped with `X`
   has definition constraints
   has type `X`
   is a definition
 
-`X : type` (TypeDefinition):
+`X` (TypeDefinition):
   assigned type `X`
-  grouped with `X : type`
+  grouped with `X`
   has definition constraints
   has type `X`
   is a definition
@@ -45,14 +45,14 @@ Facts (layer 2):
   has definition constraints
   has type `()`
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()`
+  resolved to 1 definition(s): `T`
 
 `X` (NamedType):
   assigned type `X`
   grouped with `value`
   has type `X`
   is a type
-  resolved to 1 definition(s): `X : type`
+  resolved to 1 definition(s): `X`
   type is annotated
 
 `()` (UnitExpression):
@@ -67,14 +67,14 @@ Facts (layer 2):
   has definition constraints
   has type `()`
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()`
+  resolved to 1 definition(s): `T`
 
 `X` (NamedType):
   assigned type `X`
   grouped with `value`
   has type `X`
   is a type
-  resolved to 1 definition(s): `X : type`
+  resolved to 1 definition(s): `X`
   type is annotated
 
 `()` (UnitExpression):
@@ -90,7 +90,7 @@ Facts (layer 2):
   has type `()`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()`
+  resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -107,7 +107,7 @@ Facts (layer 2):
   has type `()`
   is an expression
 
-`U : value => trait ()` (TraitDefinition):
+`U` (TraitDefinition):
   assigned type `()`
   grouped with `()`
   has definition constraints
@@ -125,7 +125,7 @@ Facts (layer 2):
 
 `()` (UnitType):
   assigned type `()`
-  grouped with `U : value => trait ()`
+  grouped with `U`
   has type `()`
   is a type
   type is annotated
@@ -137,7 +137,7 @@ Facts (layer 2):
   has type `()`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()`
+  resolved to 1 definition(s): `T`
 
 `a` (TypeParameter):
   assigned type `a`
@@ -151,7 +151,7 @@ Facts (layer 2):
 `(U a)` (BoundConstraint):
   has bound(s) `U` `a` (resolved as `(U a)`)
   is a constraint
-  resolved to 1 definition(s): `U : value => trait ()`
+  resolved to 1 definition(s): `U`
 
 `a` (TypeParameter):
   assigned type `a`
@@ -172,8 +172,8 @@ Facts (layer 2):
 
 Feedback:
 
-`T : value => trait ()` (conflicting-instances)
+`T` (conflicting-instances)
 
-  `T : value => trait ()` has multiple overlapping instances: `instance (T X)`, `instance (T X)`, `instance (T value)`, and 1 other.
+  `T` has multiple overlapping instances: `instance (T X)`, `instance (T X)`, `instance (T value)`, and 1 other.
   
   Only one of these instances can be defined at a time. Try making your instance more specific.

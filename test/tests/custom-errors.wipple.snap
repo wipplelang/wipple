@@ -1,18 +1,18 @@
 Facts (layer 2):
 
-`Number : type` (TypeDefinition):
+`Number` (TypeDefinition):
   assigned type `Number`
   has definition constraints
   has type `Number`
   is a definition
 
-`String : type` (TypeDefinition):
+`String` (TypeDefinition):
   assigned type `String`
   has definition constraints
   has type `String`
   is a definition
 
-`Add : left right (infer sum) => trait (left right -> sum)` (TraitDefinition):
+`Add` (TraitDefinition):
   assigned type `left right -> sum`
   grouped with `left right -> sum`
   has 4 instances
@@ -60,7 +60,7 @@ Facts (layer 2):
 
 `left right -> sum` (FunctionType):
   assigned type `left right -> sum`
-  grouped with `Add : left right (infer sum) => trait (left right -> sum)`
+  grouped with `Add`
   has type `left right -> sum`
   is a type
   type is annotated
@@ -89,14 +89,14 @@ Facts (layer 2):
   has definition constraints
   has type `Number Number -> Number`
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `Number` (NamedType):
   assigned type `Number`
   grouped with `left`
   has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 `Number` (NamedType):
@@ -104,7 +104,7 @@ Facts (layer 2):
   grouped with `right`
   has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 `Number` (NamedType):
@@ -112,7 +112,7 @@ Facts (layer 2):
   grouped with `(infer sum)`
   has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 `_` (PlaceholderExpression):
@@ -127,14 +127,14 @@ Facts (layer 2):
   has definition constraints
   has type `String String -> String`
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `String` (NamedType):
   assigned type `String`
   grouped with `left`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `String` (NamedType):
@@ -142,7 +142,7 @@ Facts (layer 2):
   grouped with `right`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `String` (NamedType):
@@ -150,7 +150,7 @@ Facts (layer 2):
   grouped with `(infer sum)`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `_` (PlaceholderExpression):
@@ -166,7 +166,7 @@ Facts (layer 2):
   has type `() right -> sum`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `()` (UnitType):
   assigned type `()`
@@ -200,7 +200,7 @@ Facts (layer 2):
   has type `left right -> sum`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `left` (TypeParameter):
   assigned type `left`
@@ -262,7 +262,7 @@ Facts (layer 2):
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `2` (NumberExpression):
   assigned type `Number`
@@ -303,7 +303,7 @@ Facts (layer 2):
   has bound(s) `Add` `String` `String` `String` (resolved as `instance (Add String String String)`)
   has type `String String -> String`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `"b"` (StringExpression):
   assigned type `String`
@@ -344,7 +344,7 @@ Facts (layer 2):
   has bound(s) `Add` `Number` `String` `_` (resolved as `default error instance (Add left right sum)`)
   has type `Number String -> _`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `"a"` (StringExpression):
   assigned type `String`
@@ -385,7 +385,7 @@ Facts (layer 2):
   has bound(s) `Add` `()` `Number` `_` (resolved as `error instance (Add () right sum)`)
   has type `() Number -> _`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `2` (NumberExpression):
   assigned type `Number`

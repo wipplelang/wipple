@@ -30,7 +30,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`), `Initial` `Number` (resolved as `instance (Initial Number)`), `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `(List Number) -> Number`
   is an expression
-  resolved to 1 definition(s): `sum :: container -> n where (As-Sequence container n) (Initial n) (Add n n n)`
+  resolved to 1 definition(s): `sum`
 
 `sum numbers` (CallExpression):
   grouped with `n`, `left`
@@ -54,7 +54,7 @@ Facts (layer 2):
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)`
+  resolved to 1 definition(s): `Divide`
 
 `numbers` (VariableExpression):
   assigned type `List Number`
@@ -70,7 +70,7 @@ Facts (layer 2):
   has bound(s) `Count` `(List Number)` (resolved as `instance (Count (List element))`)
   has type `(List Number) -> Number`
   is an expression
-  resolved to 1 definition(s): `count :: collection -> Number where (Count collection)`
+  resolved to 1 definition(s): `count`
 
 `count numbers` (CallExpression):
   grouped with `Number`, `right`
@@ -91,7 +91,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (average (1, 2, 3, 4, 5))` (ExpressionStatement):
   assigned type `()`

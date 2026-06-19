@@ -187,7 +187,12 @@ impl Ide {
             && definition.downcast_ref::<VariableDefinition>().is_none()
         {
             let mut ctx = RenderCtx::with_filter(&default_filter);
-            ctx.node(definition_node);
+
+            if let Some(span) = definition.full_span() {
+                ctx.code(span.source.as_str());
+            } else {
+                ctx.node(definition_node);
+            }
 
             let (rendered, _) = ctx.finish(&self.result.db, |db, segment| segment.plain_text(db));
 
@@ -417,7 +422,7 @@ impl Ide {
     }
 
     fn comments(&self, node: Node) -> Option<String> {
-        let comments = wipple_queries::comments_without_links(&self.query_ctx(), node)?;
+        let comments = wipple_queries::comments(&self.query_ctx(), node)?;
 
         let mut writer = FeedbackWriter::with_filter(&default_filter);
         writer.comments(&self.result.db, &comments);

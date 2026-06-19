@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`Linked-List : value => type {⋯}` (TypeDefinition):
+`Linked-List` (TypeDefinition):
   assigned type `Linked-List value`
   grouped with `Nil`
   has definition constraints
@@ -19,7 +19,7 @@ Facts (layer 2):
 
 `Nil` (VariantDefinition):
   assigned type `Linked-List value`
-  grouped with `Linked-List : value => type {⋯}`
+  grouped with `Linked-List`
   has definition constraints
   has type `Linked-List value`
   is a definition
@@ -43,7 +43,7 @@ Facts (layer 2):
   assigned type `Linked-List value`
   has type `Linked-List value`
   is a type
-  resolved to 1 definition(s): `Linked-List : value => type {⋯}`
+  resolved to 1 definition(s): `Linked-List`
   type is annotated
 
 `value` (TypeParameter):
@@ -55,7 +55,7 @@ Facts (layer 2):
   resolved to type parameter `value`
   type is annotated
 
-`reduce-linked-list :: (value result -> result) result (Linked-List value) -> result` (ConstantDefinition):
+`reduce-linked-list` (ConstantDefinition):
   assigned type `(value result -> result) result (Linked-List value) -> result`
   grouped with `(value result -> result) result (Linked-List value) -> result`, `f result l -> when l {⋯}`
   has definition constraints
@@ -65,7 +65,7 @@ Facts (layer 2):
 
 `(value result -> result) result (Linked-List value) -> result` (FunctionType):
   assigned type `(value result -> result) result (Linked-List value) -> result`
-  grouped with `reduce-linked-list :: (value result -> result) result (Linked-List value) -> result`
+  grouped with `reduce-linked-list`
   has type `(value result -> result) result (Linked-List value) -> result`
   is a type
   type is annotated
@@ -118,7 +118,7 @@ Facts (layer 2):
   grouped with `l`
   has type `Linked-List value`
   is a type
-  resolved to 1 definition(s): `Linked-List : value => type {⋯}`
+  resolved to 1 definition(s): `Linked-List`
   type is annotated
 
 `value` (TypeParameter):
@@ -152,7 +152,7 @@ Facts (layer 2):
 
 `f result l -> when l {⋯}` (FunctionExpression):
   assigned type `(value result -> result) result (Linked-List value) -> result`
-  grouped with `reduce-linked-list :: (value result -> result) result (Linked-List value) -> result`
+  grouped with `reduce-linked-list`
   has type `(value result -> result) result (Linked-List value) -> result`
   is an expression
 
@@ -186,7 +186,7 @@ Facts (layer 2):
 `Nil` (ConstructorPattern):
   assigned type `Linked-List value`
   captures `result`
-  grouped with `l`, `Linked-List : value => type {⋯}`
+  grouped with `l`, `Linked-List`
   has type `Linked-List value`
   is a pattern
   resolved to 1 definition(s): `Nil`
@@ -202,7 +202,7 @@ Facts (layer 2):
 `Cons x rest` (ConstructorPattern):
   assigned type `Linked-List value`
   captures `f`, `result`
-  grouped with `l`, `Linked-List : value => type {⋯}`
+  grouped with `l`, `Linked-List`
   has type `Linked-List value`
   is a pattern
   resolved to 1 definition(s): `Cons value (Linked-List value)`
@@ -225,7 +225,7 @@ Facts (layer 2):
   assigned type `(value result -> result) result (Linked-List value) -> result`
   has type `(value result -> result) result (Linked-List value) -> result`
   is an expression
-  resolved to 1 definition(s): `reduce-linked-list :: (value result -> result) result (Linked-List value) -> result`
+  resolved to 1 definition(s): `reduce-linked-list`
 
 `reduce-linked-list f (f x result) rest` (CallExpression):
   assigned type `result`
@@ -296,7 +296,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `Cons 1 (Cons 2 (Cons 3 Nil))` (CallExpression):
-  grouped with `Linked-List : value => type {⋯}`, `list`, `list`
+  grouped with `Linked-List`, `list`, `list`
   has type `Linked-List Number`
   is an expression
 
@@ -313,7 +313,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `Cons 2 (Cons 3 Nil)` (CallExpression):
-  grouped with `Linked-List : value => type {⋯}`, `Linked-List value`
+  grouped with `Linked-List`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
 
@@ -330,7 +330,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `Cons 3 Nil` (CallExpression):
-  grouped with `Linked-List : value => type {⋯}`, `Linked-List value`
+  grouped with `Linked-List`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
 
@@ -342,7 +342,7 @@ Facts (layer 2):
 
 `Nil` (ConstructorExpression):
   assigned type `Linked-List Number`
-  grouped with `Linked-List : value => type {⋯}`, `Linked-List value`
+  grouped with `Linked-List`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
   resolved to 1 definition(s): `Nil`
@@ -363,7 +363,7 @@ Facts (layer 2):
   grouped with `(value result -> result) result (Linked-List value) -> result`
   has type `(Number Number -> Number) Number (Linked-List Number) -> Number`
   is an expression
-  resolved to 1 definition(s): `reduce-linked-list :: (value result -> result) result (Linked-List value) -> result`
+  resolved to 1 definition(s): `reduce-linked-list`
 
 `reduce-linked-list (+) 0 list` (CallExpression):
   grouped with `result`, `sum`, `sum`
@@ -376,7 +376,7 @@ Facts (layer 2):
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `0` (NumberExpression):
   assigned type `Number`
@@ -398,7 +398,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show sum` (ExpressionStatement):
   assigned type `()`

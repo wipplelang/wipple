@@ -16,7 +16,7 @@ Facts (layer 2):
   grouped with `42`
   has type `Number` or `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 

@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`T1 : a b => trait (a -> b)` (TraitDefinition):
+`T1` (TraitDefinition):
   assigned type `a -> b`
   grouped with `a -> b`
   has 1 instances
@@ -38,7 +38,7 @@ Facts (layer 2):
 
 `a -> b` (FunctionType):
   assigned type `a -> b`
-  grouped with `T1 : a b => trait (a -> b)`
+  grouped with `T1`
   has type `a -> b`
   is a type
   type is annotated
@@ -58,7 +58,7 @@ Facts (layer 2):
   has definition constraints
   has type `() -> ()`
   is a definition
-  resolved to 1 definition(s): `T1 : a b => trait (a -> b)`
+  resolved to 1 definition(s): `T1`
 
 `()` (UnitType):
   assigned type `()`
@@ -92,7 +92,7 @@ Facts (layer 2):
   has type `()`
   is an expression
 
-`T2 : a => trait (a -> ())` (TraitDefinition):
+`T2` (TraitDefinition):
   assigned type `a -> ()`
   grouped with `a -> ()`
   has 1 instances
@@ -121,7 +121,7 @@ Facts (layer 2):
 
 `a -> ()` (FunctionType):
   assigned type `a -> ()`
-  grouped with `T2 : a => trait (a -> ())`
+  grouped with `T2`
   has type `a -> ()`
   is a type
   type is annotated
@@ -139,7 +139,7 @@ Facts (layer 2):
   has type `a -> ()`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T2 : a => trait (a -> ())`
+  resolved to 1 definition(s): `T2`
 
 `a` (TypeParameter):
   assigned type `a`
@@ -153,7 +153,7 @@ Facts (layer 2):
 `(T1 a b)` (BoundConstraint):
   has bound(s) `T1` `a` `b` (resolved as `(T1 a b)`)
   is a constraint
-  resolved to 1 definition(s): `T1 : a b => trait (a -> b)`
+  resolved to 1 definition(s): `T1`
 
 `a` (TypeParameter):
   assigned type `a`
@@ -214,7 +214,7 @@ Facts (layer 2):
   has bound(s) `T1` `a` `b` (resolved as `(T1 a b)`)
   has type `a -> b`
   is an expression
-  resolved to 1 definition(s): `T1 : a b => trait (a -> b)`
+  resolved to 1 definition(s): `T1`
 
 `T1 x` (CallExpression):
   grouped with `b`, `_`, `_`
@@ -235,7 +235,7 @@ Facts (layer 2):
   has bound(s) `T2` `()` (resolved as `instance (T2 a) where (T1 a b)`), `T1` `()` `()` (resolved as `instance (T1 () ())`)
   has type `() -> ()`
   is an expression
-  resolved to 1 definition(s): `T2 : a => trait (a -> ())`
+  resolved to 1 definition(s): `T2`
 
 `T2 ()` (ExpressionStatement):
   assigned type `()`
@@ -259,7 +259,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show "done"` (ExpressionStatement):
   assigned type `()`

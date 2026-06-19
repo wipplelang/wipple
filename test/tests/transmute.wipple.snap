@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`transmute :: a -> b` (ConstantDefinition):
+`transmute` (ConstantDefinition):
   assigned type `a -> b`
   grouped with `a -> b`, `x -> x`
   has definition constraints
@@ -19,7 +19,7 @@ Facts (layer 2):
 
 `a -> b` (FunctionType):
   assigned type `a -> b`
-  grouped with `transmute :: a -> b`
+  grouped with `transmute`
   has type `(b or a) -> b or a`
   is a type
   type is annotated
@@ -46,7 +46,7 @@ Facts (layer 2):
 
 `x -> x` (FunctionExpression):
   assigned type `(b or a) -> b or a`
-  grouped with `transmute :: a -> b`
+  grouped with `transmute`
   has type `(b or a) -> b or a`
   is an expression
 

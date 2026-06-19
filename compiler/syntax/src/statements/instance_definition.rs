@@ -70,7 +70,7 @@ pub fn parse_instance_definition_statement(
     let is_default = parser.soft_keyword("default")?;
     let is_error = parser.soft_keyword("error")?;
     let (bound, constraints) = parse_instance_constraints(parser)?;
-    let instance_span = span(parser);
+    let span = span(parser);
     let value = parser.parse_optional(|parser| {
         parser.token(TokenKind::AssignOperator)?;
         parser.commit("in this instance definition");
@@ -78,7 +78,7 @@ pub fn parse_instance_definition_statement(
         parse_expression(parser)
     })?;
     Ok(InstanceDefinition {
-        span: instance_span,
+        span,
         comments,
         attributes,
         is_default,

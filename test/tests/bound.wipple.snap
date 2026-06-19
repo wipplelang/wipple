@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`T : value => trait (value -> String)` (TraitDefinition):
+`T` (TraitDefinition):
   assigned type `value -> String`
   grouped with `value -> String`
   has 1 instances
@@ -29,7 +29,7 @@ Facts (layer 2):
 
 `value -> String` (FunctionType):
   assigned type `value -> String`
-  grouped with `T : value => trait (value -> String)`
+  grouped with `T`
   has type `value -> String`
   is a type
   type is annotated
@@ -38,10 +38,10 @@ Facts (layer 2):
   assigned type `String`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
-`foo :: value -> String where (T value)` (ConstantDefinition):
+`foo` (ConstantDefinition):
   assigned type `value -> String`
   grouped with `value -> String`, `x -> T x`
   has definition constraints
@@ -60,7 +60,7 @@ Facts (layer 2):
 
 `value -> String` (FunctionType):
   assigned type `value -> String`
-  grouped with `foo :: value -> String where (T value)`
+  grouped with `foo`
   has type `value -> String`
   is a type
   type is annotated
@@ -70,13 +70,13 @@ Facts (layer 2):
   grouped with `T x`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `(T value)` (BoundConstraint):
   has bound(s) `T` `value` (resolved as `(T value)`)
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> String)`
+  resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -100,7 +100,7 @@ Facts (layer 2):
 
 `x -> T x` (FunctionExpression):
   assigned type `value -> String`
-  grouped with `foo :: value -> String where (T value)`
+  grouped with `foo`
   has type `value -> String`
   is an expression
 
@@ -110,7 +110,7 @@ Facts (layer 2):
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value -> String`
   is an expression
-  resolved to 1 definition(s): `T : value => trait (value -> String)`
+  resolved to 1 definition(s): `T`
 
 `T x` (CallExpression):
   grouped with `String`, `String`
@@ -125,16 +125,16 @@ Facts (layer 2):
   resolved to 1 definition(s): `x`
   type is annotated
 
-`A : type` (TypeDefinition):
+`A` (TypeDefinition):
   assigned type `A`
-  grouped with `A : type`
+  grouped with `A`
   has definition constraints
   has type `A`
   is a definition
 
-`A : type` (TypeDefinition):
+`A` (TypeDefinition):
   assigned type `A`
-  grouped with `A : type`
+  grouped with `A`
   has definition constraints
   has type `A`
   is a definition
@@ -145,14 +145,14 @@ Facts (layer 2):
   has definition constraints
   has type `A -> String`
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> String)`
+  resolved to 1 definition(s): `T`
 
 `A` (NamedType):
   assigned type `A`
   grouped with `value`
   has type `A`
   is a type
-  resolved to 1 definition(s): `A : type`
+  resolved to 1 definition(s): `A`
   type is annotated
 
 `_` (WildcardPattern):
@@ -179,7 +179,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (foo A)` (ExpressionStatement):
   assigned type `()`
@@ -197,7 +197,7 @@ Facts (layer 2):
   has bound(s) `T` `A` (resolved as `instance (T A)`)
   has type `A -> String`
   is an expression
-  resolved to 1 definition(s): `foo :: value -> String where (T value)`
+  resolved to 1 definition(s): `foo`
 
 `foo A` (CallExpression):
   grouped with `String`, `value`
@@ -206,10 +206,10 @@ Facts (layer 2):
 
 `A` (ConstructorExpression):
   assigned type `A`
-  grouped with `A : type`, `value`
+  grouped with `A`, `value`
   has type `A`
   is an expression
-  resolved to 1 definition(s): `A : type`
+  resolved to 1 definition(s): `A`
 
 
 Output:

@@ -16,7 +16,7 @@ Facts (layer 2):
   grouped with `(left :: Number) -> (right :: Number) -> Boolean`
   has type `Number -> Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `divisible-by? :: (left :: Number) -> (right :: Number) -> Boolean`
+  resolved to 1 definition(s): `divisible-by?`
 
 `divisible-by? 2` (CallExpression):
   grouped with `(right :: Number) -> Boolean`, `even?`, `even?`
@@ -46,7 +46,7 @@ Facts (layer 2):
   has bound(s) `Not` `(Number -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `Boolean` (resolved as `instance (Not Boolean)`)
   has type `(Number -> Boolean) -> Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)`
+  resolved to 1 definition(s): `not`
 
 `not even?` (CallExpression):
   grouped with `value`, `odd?`, `odd?`
@@ -67,7 +67,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (even? 2)` (ExpressionStatement):
   assigned type `()`
@@ -104,7 +104,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (odd? 2)` (ExpressionStatement):
   assigned type `()`
@@ -141,7 +141,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (even? 3)` (ExpressionStatement):
   assigned type `()`
@@ -178,7 +178,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (odd? 3)` (ExpressionStatement):
   assigned type `()`

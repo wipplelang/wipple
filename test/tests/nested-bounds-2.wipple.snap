@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`T : value => trait ()` (TraitDefinition):
+`T` (TraitDefinition):
   assigned type `()`
   grouped with `()`
   has 1 instances
@@ -19,12 +19,12 @@ Facts (layer 2):
 
 `()` (UnitType):
   assigned type `()`
-  grouped with `T : value => trait ()`
+  grouped with `T`
   has type `()`
   is a type
   type is annotated
 
-`U : value => trait ()` (TraitDefinition):
+`U` (TraitDefinition):
   assigned type `()`
   grouped with `()`
   has 1 instances
@@ -43,12 +43,12 @@ Facts (layer 2):
 
 `()` (UnitType):
   assigned type `()`
-  grouped with `U : value => trait ()`
+  grouped with `U`
   has type `()`
   is a type
   type is annotated
 
-`V : value => trait ()` (TraitDefinition):
+`V` (TraitDefinition):
   assigned type `()`
   grouped with `()`
   has 1 instances
@@ -67,12 +67,12 @@ Facts (layer 2):
 
 `()` (UnitType):
   assigned type `()`
-  grouped with `V : value => trait ()`
+  grouped with `V`
   has type `()`
   is a type
   type is annotated
 
-`W : value => trait ()` (TraitDefinition):
+`W` (TraitDefinition):
   assigned type `()`
   grouped with `()`
   has definition constraints
@@ -90,7 +90,7 @@ Facts (layer 2):
 
 `()` (UnitType):
   assigned type `()`
-  grouped with `W : value => trait ()`
+  grouped with `W`
   has type `()`
   is a type
   type is annotated
@@ -102,7 +102,7 @@ Facts (layer 2):
   has type `()`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `T : value => trait ()`
+  resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -116,7 +116,7 @@ Facts (layer 2):
 `(U value)` (BoundConstraint):
   has bound(s) `U` `value` (resolved as `(U value)`)
   is a constraint
-  resolved to 1 definition(s): `U : value => trait ()`
+  resolved to 1 definition(s): `U`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -140,7 +140,7 @@ Facts (layer 2):
   has type `()`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `U : value => trait ()`
+  resolved to 1 definition(s): `U`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -154,7 +154,7 @@ Facts (layer 2):
 `(V value)` (BoundConstraint):
   has bound(s) `V` `value` (resolved as `(V value)`)
   is a constraint
-  resolved to 1 definition(s): `V : value => trait ()`
+  resolved to 1 definition(s): `V`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -178,7 +178,7 @@ Facts (layer 2):
   has type `()`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `V : value => trait ()`
+  resolved to 1 definition(s): `V`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -192,7 +192,7 @@ Facts (layer 2):
 `(W value)` (BoundConstraint):
   has bound(s) `W` `value` (resolved as `(W value)`)
   is a constraint
-  resolved to 1 definition(s): `W : value => trait ()`
+  resolved to 1 definition(s): `W`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -220,7 +220,7 @@ Facts (layer 2):
   has bound(s) `T` `_` (resolved as `instance (T value) where (U value)`), `U` `_` (resolved as `instance (U value) where (V value)`), `V` `_` (resolved as `instance (V value) where (W value)`), `W` `_` (unresolved)
   has type `()`
   is an expression
-  resolved to 1 definition(s): `T : value => trait ()`
+  resolved to 1 definition(s): `T`
 
 
 

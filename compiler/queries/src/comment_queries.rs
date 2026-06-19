@@ -11,22 +11,7 @@ use wipple_core::{
     },
 };
 
-pub fn comments_without_links(db: &QueryCtx<'_>, node: Node) -> Option<Comments> {
-    let definition_node = db
-        .get::<Resolved>(node)
-        .and_then(|resolved| resolved.definitions.first().copied())
-        .unwrap_or(node);
-
-    let Defined(definition) = db.get(definition_node)?;
-
-    Some(Comments {
-        nodes: vec![definition_node],
-        comments: definition.comments().to_vec(),
-        links: Default::default(),
-    })
-}
-
-pub fn comments_with_links(db: &QueryCtx<'_>, node: Node) -> Option<Comments> {
+pub fn comments(db: &QueryCtx<'_>, node: Node) -> Option<Comments> {
     let definition_node = db
         .get::<Resolved>(node)
         .and_then(|resolved| resolved.definitions.first().copied())

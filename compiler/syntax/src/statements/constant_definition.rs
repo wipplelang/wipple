@@ -24,6 +24,7 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstantDefinition {
     pub span: Span,
+    pub full_span: Span,
     pub comments: Vec<Str>,
     pub attributes: Vec<AstKey>,
     pub name: Str,
@@ -38,9 +39,11 @@ pub fn parse_constant_definition_statement(
     let attributes = parse_attributes(parser)?;
     let span = parser.spanned();
     let name = parse_variable_name(parser)?;
+    let name_span = span(parser);
     let (ty, constraints) = parse_constant_constraints(parser)?;
     Ok(ConstantDefinition {
-        span: span(parser),
+        span: name_span,
+        full_span: span(parser),
         comments,
         attributes,
         name,
@@ -84,6 +87,7 @@ impl Visit for ConstantDefinition {
             node,
             Box::new(definitions::ConstantDefinition {
                 name: self.name.clone(),
+                full_span: self.full_span.clone(),
                 comments: self.comments.clone(),
                 attributes: ConstantAttributes::parse(db, &attributes),
             }),

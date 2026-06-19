@@ -102,7 +102,7 @@ Facts (layer 2):
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `n` (VariableExpression):
   assigned type `Number`
@@ -129,7 +129,7 @@ Facts (layer 2):
   has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)`
+  resolved to 1 definition(s): `Subtract`
 
 `1` (NumberExpression):
   assigned type `Number`
@@ -175,7 +175,7 @@ Facts (layer 2):
   has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)`
+  resolved to 1 definition(s): `Subtract`
 
 `2` (NumberExpression):
   assigned type `Number`
@@ -189,7 +189,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (fib 10)` (ExpressionStatement):
   assigned type `()`

@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ((1, 2, 3) . all? (n -> n > 0))` (ExpressionStatement):
   assigned type `()`
@@ -53,7 +53,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `all? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
+  resolved to 1 definition(s): `all?`
 
 `all? (n -> n > 0)` (CallExpression):
   grouped with `Boolean`, `Boolean`, `1, 2, 3) . all? (n -> n > 0)`
@@ -104,7 +104,7 @@ Facts (layer 2):
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Greater-Than`
 
 `0` (NumberExpression):
   assigned type `Number`
@@ -118,7 +118,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ((1, -2, 3) . all? (n -> n > 0))` (ExpressionStatement):
   assigned type `()`
@@ -165,7 +165,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `all? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
+  resolved to 1 definition(s): `all?`
 
 `all? (n -> n > 0)` (CallExpression):
   grouped with `Boolean`, `Boolean`, `1, -2, 3) . all? (n -> n > 0)`
@@ -216,7 +216,7 @@ Facts (layer 2):
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Greater-Than`
 
 `0` (NumberExpression):
   assigned type `Number`
@@ -230,7 +230,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ((1, -2, 3) . any? (n -> n > 0))` (ExpressionStatement):
   assigned type `()`
@@ -277,7 +277,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `any? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
+  resolved to 1 definition(s): `any?`
 
 `any? (n -> n > 0)` (CallExpression):
   grouped with `Boolean`, `Boolean`, `1, -2, 3) . any? (n -> n > 0)`
@@ -328,7 +328,7 @@ Facts (layer 2):
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Greater-Than`
 
 `0` (NumberExpression):
   assigned type `Number`
@@ -342,7 +342,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ((-1, -2, -3) . any? (n -> n > 0))` (ExpressionStatement):
   assigned type `()`
@@ -389,7 +389,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `any? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)`
+  resolved to 1 definition(s): `any?`
 
 `any? (n -> n > 0)` (CallExpression):
   grouped with `Boolean`, `Boolean`, `-1, -2, -3) . any? (n -> n > 0)`
@@ -440,7 +440,7 @@ Facts (layer 2):
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Greater-Than`
 
 `0` (NumberExpression):
   assigned type `Number`

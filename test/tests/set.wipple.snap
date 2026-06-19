@@ -40,7 +40,7 @@ Facts (layer 2):
   grouped with `"Basketball", "Soccer", "Golf"`
   has type `Set String`
   is a type
-  resolved to 1 definition(s): `Set : element => type {dictionary :: Dictionary element ()}`
+  resolved to 1 definition(s): `Set`
   type is annotated
 
 `_` (PlaceholderType):
@@ -55,7 +55,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Basketball")` (ExpressionStatement):
   assigned type `()`
@@ -87,7 +87,7 @@ Facts (layer 2):
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)`
+  resolved to 1 definition(s): `contains?`
 
 `contains? "Basketball"` (CallExpression):
   grouped with `Boolean`, `Boolean`, `sports . contains? "Basketball"`
@@ -112,7 +112,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Soccer")` (ExpressionStatement):
   assigned type `()`
@@ -144,7 +144,7 @@ Facts (layer 2):
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)`
+  resolved to 1 definition(s): `contains?`
 
 `contains? "Soccer"` (CallExpression):
   grouped with `Boolean`, `Boolean`, `sports . contains? "Soccer"`
@@ -169,7 +169,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Golf")` (ExpressionStatement):
   assigned type `()`
@@ -201,7 +201,7 @@ Facts (layer 2):
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)`
+  resolved to 1 definition(s): `contains?`
 
 `contains? "Golf"` (CallExpression):
   grouped with `Boolean`, `Boolean`, `sports . contains? "Golf"`
@@ -226,7 +226,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Baseball")` (ExpressionStatement):
   assigned type `()`
@@ -258,7 +258,7 @@ Facts (layer 2):
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)`
+  resolved to 1 definition(s): `contains?`
 
 `contains? "Baseball"` (CallExpression):
   grouped with `Boolean`, `Boolean`, `sports . contains? "Baseball"`

@@ -54,7 +54,7 @@ Facts (layer 2):
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `1` (NumberExpression):
   assigned type `Number`
@@ -68,7 +68,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show x` (ExpressionStatement):
   assigned type `()`

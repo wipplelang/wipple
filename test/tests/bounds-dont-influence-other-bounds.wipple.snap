@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`T : value => trait (value -> ())` (TraitDefinition):
+`T` (TraitDefinition):
   assigned type `value -> ()`
   grouped with `value -> ()`
   has 2 instances
@@ -29,7 +29,7 @@ Facts (layer 2):
 
 `value -> ()` (FunctionType):
   assigned type `value -> ()`
-  grouped with `T : value => trait (value -> ())`
+  grouped with `T`
   has type `value -> ()`
   is a type
   type is annotated
@@ -46,14 +46,14 @@ Facts (layer 2):
   has definition constraints
   has type `Number -> ()`
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())`
+  resolved to 1 definition(s): `T`
 
 `Number` (NamedType):
   assigned type `Number`
   grouped with `value`
   has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 `_` (WildcardPattern):
@@ -80,14 +80,14 @@ Facts (layer 2):
   has definition constraints
   has type `String -> ()`
   is a definition
-  resolved to 1 definition(s): `T : value => trait (value -> ())`
+  resolved to 1 definition(s): `T`
 
 `String` (NamedType):
   assigned type `String`
   grouped with `value`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `_` (WildcardPattern):
@@ -108,7 +108,7 @@ Facts (layer 2):
   has type `()`
   is an expression
 
-`f :: (a; b) where (T a) (T b)` (ConstantDefinition):
+`f` (ConstantDefinition):
   assigned type `(a; b)`
   grouped with `a; b`, `todo`
   has definition constraints
@@ -127,7 +127,7 @@ Facts (layer 2):
 
 `a; b` (TupleType):
   assigned type `(a; b)`
-  grouped with `f :: (a; b) where (T a) (T b)`
+  grouped with `f`
   has type `(a; b)`
   is a type
   type is annotated
@@ -144,7 +144,7 @@ Facts (layer 2):
 `(T a)` (BoundConstraint):
   has bound(s) `T` `a` (resolved as `(T a)`)
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> ())`
+  resolved to 1 definition(s): `T`
 
 `a` (TypeParameter):
   assigned type `a`
@@ -158,7 +158,7 @@ Facts (layer 2):
 `(T b)` (BoundConstraint):
   has bound(s) `T` `b` (resolved as `(T b)`)
   is a constraint
-  resolved to 1 definition(s): `T : value => trait (value -> ())`
+  resolved to 1 definition(s): `T`
 
 `b` (TypeParameter):
   assigned type `b`
@@ -175,10 +175,10 @@ Facts (layer 2):
 
 `todo` (VariableExpression):
   assigned type `(a; b)`
-  grouped with `value`, `f :: (a; b) where (T a) (T b)`
+  grouped with `value`, `f`
   has type `(a; b)`
   is an expression
-  resolved to 1 definition(s): `todo :: value`
+  resolved to 1 definition(s): `todo`
 
 `-- `B` should not be inferred to be `Number`
 (f :: (Number; _))` (ExpressionStatement):
@@ -192,14 +192,14 @@ Facts (layer 2):
   has bound(s) `T` `Number` (resolved as `instance (T Number)`)
   has type `(Number; _)`
   is an expression
-  resolved to 1 definition(s): `f :: (a; b) where (T a) (T b)`
+  resolved to 1 definition(s): `f`
 
 `Number` (NamedType):
   assigned type `Number`
   grouped with `a`
   has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 `Number; _` (TupleType):

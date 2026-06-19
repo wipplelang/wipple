@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Repeat-Condition` `Number` (resolved as `error instance (Repeat-Condition (n :: Number))`)
   has type `Number {()} -> ()`
   is an expression
-  resolved to 1 definition(s): `repeat :: condition {body} -> () where (Repeat-Condition condition) (body :: ())`
+  resolved to 1 definition(s): `repeat`
 
 `repeat 5 {⋯}` (ExpressionStatement):
   assigned type `()`
@@ -36,7 +36,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show "Hello, world!"` (ExpressionStatement):
   assigned type `()`

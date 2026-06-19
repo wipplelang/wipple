@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)` (ConstantDefinition):
+`remove-duplicates` (ConstantDefinition):
   assigned type `(List element) -> Sequence element`
   grouped with `(List element) -> Sequence element`, `do {⋯}`
   has definition constraints
@@ -10,7 +10,7 @@ Facts (layer 2):
 
 `(List element) -> Sequence element` (FunctionType):
   assigned type `(List element) -> Sequence element`
-  grouped with `remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)`
+  grouped with `remove-duplicates`
   has type `(List element) -> Sequence element`
   is a type
   type is annotated
@@ -20,7 +20,7 @@ Facts (layer 2):
   grouped with `container`
   has type `List element`
   is a type
-  resolved to 1 definition(s): `List : element => type`
+  resolved to 1 definition(s): `List`
   type is annotated
 
 `element` (TypeParameter):
@@ -37,7 +37,7 @@ Facts (layer 2):
   grouped with `Sequence element`
   has type `Sequence element`
   is a type
-  resolved to 1 definition(s): `Sequence : element => type {next :: {Maybe element}}`
+  resolved to 1 definition(s): `Sequence`
   type is annotated
 
 `element` (TypeParameter):
@@ -52,7 +52,7 @@ Facts (layer 2):
 `(Describe element)` (BoundConstraint):
   has bound(s) `Describe` `element` (resolved as `(Describe element)`)
   is a constraint
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `element` (TypeParameter):
   assigned type `element`
@@ -66,7 +66,7 @@ Facts (layer 2):
 `(Equal element)` (BoundConstraint):
   has bound(s) `Equal` `element` (resolved as `(Equal element)`)
   is a constraint
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `element` (TypeParameter):
   assigned type `element`
@@ -80,7 +80,7 @@ Facts (layer 2):
 `(Hash element)` (BoundConstraint):
   has bound(s) `Hash` `element` (resolved as `(Hash element)`)
   is a constraint
-  resolved to 1 definition(s): `Hash : value => trait (value -> Number)`
+  resolved to 1 definition(s): `Hash`
 
 `element` (TypeParameter):
   assigned type `element`
@@ -97,7 +97,7 @@ Facts (layer 2):
 
 `do {⋯}` (DoExpression):
   assigned type `(List element) -> Sequence element`
-  grouped with `filter (item -> (seen . (not contains?) item) and (do {⋯}))`, `remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)`
+  grouped with `filter (item -> (seen . (not contains?) item) and (do {⋯}))`, `remove-duplicates`
   has type `(List element) -> Sequence element`
   is an expression
 
@@ -129,7 +129,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List element)` `element` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(element -> Boolean) -> (List element) -> Sequence element`
   is an expression
-  resolved to 1 definition(s): `filter :: (condition :: (element -> Boolean)) -> container -> Sequence element where (As-Sequence container element)`
+  resolved to 1 definition(s): `filter`
 
 `filter (item -> (seen . (not contains?) item) and (do {⋯}))` (ExpressionStatement):
   assigned type `(List element) -> Sequence element`
@@ -186,7 +186,7 @@ Facts (layer 2):
   has bound(s) `And` `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
   is an expression
-  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)`
+  resolved to 1 definition(s): `And`
 
 `(not contains?) item` (CallExpression):
   grouped with `Boolean`, `Boolean`, `seen . (not contains?) item`
@@ -205,7 +205,7 @@ Facts (layer 2):
   has bound(s) `Not` `(element -> (Set element) -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `((Set element) -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `Boolean` (resolved as `instance (Not Boolean)`)
   has type `(element -> (Set element) -> Boolean) -> element -> (Set element) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)`
+  resolved to 1 definition(s): `not`
 
 `not contains?` (CallExpression):
   assigned type `element -> (Set element) -> Boolean`
@@ -219,7 +219,7 @@ Facts (layer 2):
   has bound(s) `Container` `(Set element)` `element` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `element` (resolved as `(Equal element)`), `Hash` `element` (resolved as `(Hash element)`)
   has type `element -> (Set element) -> Boolean`
   is an expression
-  resolved to 1 definition(s): `contains? :: element -> collection -> Boolean where (Container collection element)`
+  resolved to 1 definition(s): `contains?`
 
 `item` (VariableExpression):
   assigned type `element`
@@ -283,7 +283,7 @@ Facts (layer 2):
   has bound(s) `Equal` `element` (resolved as `(Equal element)`), `Hash` `element` (resolved as `(Hash element)`)
   has type `element -> (Set element) -> Set element`
   is an expression
-  resolved to 1 definition(s): `insert :: element -> (set_ :: (Set element)) -> Set element where (Equal element) (Hash element)`
+  resolved to 1 definition(s): `insert`
 
 `insert item` (CallExpression):
   grouped with `Set element`, `Set element`, `seen . insert item`
@@ -311,7 +311,7 @@ Facts (layer 2):
 
 `True` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `True`
+  grouped with `Boolean`, `True`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
@@ -440,7 +440,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`), `Equal` `Number` (resolved as `instance (Equal Number)`), `Hash` `Number` (resolved as `instance (Hash Number)`)
   has type `(List Number) -> Sequence Number`
   is an expression
-  resolved to 1 definition(s): `remove-duplicates :: (List element) -> Sequence element where (Describe element) (Equal element) (Hash element)`
+  resolved to 1 definition(s): `remove-duplicates`
 
 `each` (VariableExpression):
   assigned type `(Number -> ()) -> (Sequence Number) -> ()`
@@ -448,7 +448,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `(Number -> ()) -> (Sequence Number) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each`
 
 `each show` (CallExpression):
   grouped with `()`, `()`, `numbers . remove-duplicates . each show`
@@ -467,7 +467,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 
 Output:

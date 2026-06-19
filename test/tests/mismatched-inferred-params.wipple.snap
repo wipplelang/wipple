@@ -40,7 +40,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List (String or Number))` `(String or Number)` (resolved as `instance (As-Sequence (List element) element)`)
   has type `((String or Number) -> String or Number) -> (List (String or Number)) -> Sequence (String or Number)`
   is an expression
-  resolved to 1 definition(s): `transform :: (input -> output) -> container -> Sequence output where (As-Sequence container input)`
+  resolved to 1 definition(s): `transform`
 
 `transform ((x :: String) -> x)` (CallExpression):
   grouped with `Sequence output`, `Sequence output`, `1, 2, 3) . transform ((x :: String) -> x)`
@@ -72,7 +72,7 @@ Facts (layer 2):
   grouped with `x`
   has type `String` or `Number`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `x` (VariableExpression):

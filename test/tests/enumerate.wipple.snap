@@ -70,7 +70,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(List String) -> Sequence (Number; String)`
   is an expression
-  resolved to 1 definition(s): `enumerate :: collection -> Sequence (Number; element) where (As-Sequence collection element)`
+  resolved to 1 definition(s): `enumerate`
 
 `each` (VariableExpression):
   assigned type `((Number; String) -> ()) -> (Sequence (Number; String)) -> ()`
@@ -78,7 +78,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(Sequence (Number; String))` `(Number; String)` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `((Number; String) -> ()) -> (Sequence (Number; String)) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each`
 
 `each ((n; c) -> show ("_: _" n c))` (CallExpression):
   grouped with `()`, `()`, `list . enumerate . each ((n; c) -> show ("_: _" n c))`
@@ -123,7 +123,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ("_: _" n c)` (CallExpression):
   grouped with `()`, `()`
@@ -141,7 +141,7 @@ Facts (layer 2):
   grouped with `"_: _" n c`, `String`, `_`, `_`, `_`, `_`, `String`, `_`, `_`, `_`, `_`, `_`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `"_: _" n c` (ConstructorExpression):
@@ -150,7 +150,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `"_: _" n c` (ConstructorExpression):
   assigned type `String -> String`
@@ -158,7 +158,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `n` (VariableExpression):
   assigned type `Number`

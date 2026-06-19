@@ -66,7 +66,7 @@ Facts (layer 2):
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `42` (NumberExpression):
   assigned type `Number`
@@ -80,7 +80,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ((not is-42?) input = not (is-42? input))` (ExpressionStatement):
   assigned type `()`
@@ -114,7 +114,7 @@ Facts (layer 2):
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `not` (VariableExpression):
   assigned type `(Number -> Boolean) -> Number -> Boolean`
@@ -122,7 +122,7 @@ Facts (layer 2):
   has bound(s) `Not` `(Number -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `Boolean` (resolved as `instance (Not Boolean)`)
   has type `(Number -> Boolean) -> Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)`
+  resolved to 1 definition(s): `not`
 
 `not is-42?` (CallExpression):
   assigned type `Number -> Boolean`
@@ -152,7 +152,7 @@ Facts (layer 2):
   has bound(s) `Not` `Boolean` (resolved as `instance (Not Boolean)`)
   has type `Boolean -> Boolean`
   is an expression
-  resolved to 1 definition(s): `not :: value -> value where (Not value) (value :: Boolean)`
+  resolved to 1 definition(s): `not`
 
 `not (is-42? input)` (CallExpression):
   grouped with `value`, `value`

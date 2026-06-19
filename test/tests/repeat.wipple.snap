@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Repeat-Condition` `Times` (resolved as `instance (Repeat-Condition Times)`)
   has type `Times {()} -> ()`
   is an expression
-  resolved to 1 definition(s): `repeat :: condition {body} -> () where (Repeat-Condition condition) (body :: ())`
+  resolved to 1 definition(s): `repeat`
 
 `repeat (4 times) {⋯}` (ExpressionStatement):
   assigned type `()`
@@ -34,7 +34,7 @@ Facts (layer 2):
   grouped with `(n :: Number) -> Times`
   has type `Number -> Times`
   is an expression
-  resolved to 1 definition(s): `times :: (n :: Number) -> Times`
+  resolved to 1 definition(s): `times`
 
 `{⋯}` (BlockExpression):
   assigned type `{()}`
@@ -48,7 +48,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show "Hello, world!"` (ExpressionStatement):
   assigned type `()`

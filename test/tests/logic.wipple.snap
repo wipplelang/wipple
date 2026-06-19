@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (if (True and False) {"a"} {"b"})` (ExpressionStatement):
   assigned type `()`
@@ -23,7 +23,7 @@ Facts (layer 2):
   grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
   has type `Boolean {String} {String} -> String`
   is an expression
-  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
+  resolved to 1 definition(s): `if`
 
 `if (True and False) {"a"} {"b"}` (CallExpression):
   grouped with `output :: value`, `value`
@@ -32,7 +32,7 @@ Facts (layer 2):
 
 `True` (VisitAs):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `left`
+  grouped with `Boolean`, `left`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
@@ -54,11 +54,11 @@ Facts (layer 2):
   has bound(s) `And` `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
   is an expression
-  resolved to 1 definition(s): `And : left (infer right) (infer output) => trait (left {right} -> output)`
+  resolved to 1 definition(s): `And`
 
 `False` (VisitAs):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `False`, `False`, `right`
+  grouped with `Boolean`, `False`, `False`, `right`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
@@ -114,7 +114,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (if (True or False) {"a"} {"b"})` (ExpressionStatement):
   assigned type `()`
@@ -131,7 +131,7 @@ Facts (layer 2):
   grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
   has type `Boolean {String} {String} -> String`
   is an expression
-  resolved to 1 definition(s): `if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
+  resolved to 1 definition(s): `if`
 
 `if (True or False) {"a"} {"b"}` (CallExpression):
   grouped with `output :: value`, `value`
@@ -140,7 +140,7 @@ Facts (layer 2):
 
 `True` (VisitAs):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `left`
+  grouped with `Boolean`, `left`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
@@ -162,11 +162,11 @@ Facts (layer 2):
   has bound(s) `Or` `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)`
+  resolved to 1 definition(s): `Or`
 
 `False` (VisitAs):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `False`, `False`, `right`
+  grouped with `Boolean`, `False`, `False`, `right`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`

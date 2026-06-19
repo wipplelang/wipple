@@ -1,4 +1,4 @@
-use crate::{QueryCtx, comments_without_links};
+use crate::{QueryCtx, comments};
 use levenshtein::levenshtein;
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -80,7 +80,11 @@ pub struct Documentation {
 
 pub fn documentation(db: &QueryCtx<'_>, node: Node) -> Option<Documentation> {
     let Defined(definition) = db.get(node)?;
-    let source = &db.ast(&db.get::<Syntax>(node)?.0).span(db).source;
+
+    let source = &definition
+        .full_span()
+        .or_else(|| Some(db.ast(&db.get::<Syntax>(node)?.0).span(db)))?
+        .source;
 
     let kind = if definition.downcast_ref::<VariableDefinition>().is_some() {
         "variable"
@@ -96,7 +100,7 @@ pub fn documentation(db: &QueryCtx<'_>, node: Node) -> Option<Documentation> {
         return None;
     };
 
-    let comments = comments_without_links(db, node)?;
+    let comments = comments(db, node)?;
 
     if comments.comments.is_empty() {
         return None;

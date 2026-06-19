@@ -25,6 +25,7 @@ use wipple_parse::{
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TraitDefinition {
     pub span: Span,
+    pub full_span: Span,
     pub comments: Vec<Str>,
     pub attributes: Vec<AstKey>,
     pub name: Str,
@@ -40,6 +41,7 @@ pub fn parse_trait_definition_statement(
     let attributes = parse_attributes(parser)?;
     let span = parser.spanned();
     let name = parse_type_name(parser)?;
+    let name_span = span(parser);
     parser.token(TokenKind::AssignOperator)?;
     parser.consume_line_breaks();
     let parameters = parse_type_parameters(parser)?;
@@ -47,7 +49,8 @@ pub fn parse_trait_definition_statement(
     parser.commit("in this trait definition");
     let (ty, constraints) = parse_trait_constraints(parser)?;
     Ok(TraitDefinition {
-        span: span(parser),
+        span: name_span,
+        full_span: span(parser),
         comments,
         attributes,
         name,
@@ -89,6 +92,7 @@ impl Visit for TraitDefinition {
             node,
             Box::new(definitions::TraitDefinition {
                 name: self.name.clone(),
+                full_span: self.full_span.clone(),
                 comments: self.comments.clone(),
                 attributes: TraitDefinitionAttributes::parse(db, &attributes),
                 parameters: self.parameters.iter().map(|_| db.node()).collect(),

@@ -59,7 +59,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(List (() or String or Number))` `(() or String or Number)` (resolved as `instance (As-Sequence (List element) element)`)
   has type `((() or String or Number) -> ()) -> (List (() or String or Number)) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each`
 
 `each show` (CallExpression):
   grouped with `()`, `()`, `my-list . each show`
@@ -78,7 +78,7 @@ Facts (layer 2):
   has bound(s) `Describe` `(() or String or Number)` (resolved as `default error instance (Describe value)`)
   has type `(() or String or Number) -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 
 

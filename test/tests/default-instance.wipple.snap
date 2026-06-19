@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`Do-Something : value => trait (value -> ())` (TraitDefinition):
+`Do-Something` (TraitDefinition):
   assigned type `value -> ()`
   grouped with `value -> ()`
   has 2 instances
@@ -29,7 +29,7 @@ Facts (layer 2):
 
 `value -> ()` (FunctionType):
   assigned type `value -> ()`
-  grouped with `Do-Something : value => trait (value -> ())`
+  grouped with `Do-Something`
   has type `value -> ()`
   is a type
   type is annotated
@@ -47,7 +47,7 @@ Facts (layer 2):
   has type `value -> ()`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Do-Something : value => trait (value -> ())`
+  resolved to 1 definition(s): `Do-Something`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -76,7 +76,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show "using default instance"` (CallExpression):
   grouped with `()`, `()`
@@ -95,14 +95,14 @@ Facts (layer 2):
   has definition constraints
   has type `String -> ()`
   is a definition
-  resolved to 1 definition(s): `Do-Something : value => trait (value -> ())`
+  resolved to 1 definition(s): `Do-Something`
 
 `String` (NamedType):
   assigned type `String`
   grouped with `value`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `text` (VariablePattern):
@@ -124,7 +124,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ("using specific instance: _" text)` (CallExpression):
   grouped with `()`, `()`
@@ -142,7 +142,7 @@ Facts (layer 2):
   grouped with `"using specific instance: _" text`, `String`, `_`, `_`, `_`, `_`, `_`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `"using specific instance: _" text` (ConstructorExpression):
@@ -151,7 +151,7 @@ Facts (layer 2):
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `text` (VariableExpression):
   assigned type `String`
@@ -167,7 +167,7 @@ Facts (layer 2):
   has bound(s) `Do-Something` `Number` (resolved as `default instance (Do-Something value)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `Do-Something : value => trait (value -> ())`
+  resolved to 1 definition(s): `Do-Something`
 
 `Do-Something 42` (ExpressionStatement):
   assigned type `()`
@@ -191,7 +191,7 @@ Facts (layer 2):
   has bound(s) `Do-Something` `String` (resolved as `instance (Do-Something String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `Do-Something : value => trait (value -> ())`
+  resolved to 1 definition(s): `Do-Something`
 
 `Do-Something "Hello, world!"` (ExpressionStatement):
   assigned type `()`

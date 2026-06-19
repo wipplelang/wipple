@@ -1,18 +1,18 @@
 Facts (layer 2):
 
-`Number : type` (TypeDefinition):
+`Number` (TypeDefinition):
   assigned type `Number`
   has definition constraints
   has type `Number`
   is a definition
 
-`String : type` (TypeDefinition):
+`String` (TypeDefinition):
   assigned type `String`
   has definition constraints
   has type `String`
   is a definition
 
-`A : value => trait (value -> ())` (TraitDefinition):
+`A` (TraitDefinition):
   assigned type `value -> ()`
   grouped with `value -> ()`
   has 2 instances
@@ -41,7 +41,7 @@ Facts (layer 2):
 
 `value -> ()` (FunctionType):
   assigned type `value -> ()`
-  grouped with `A : value => trait (value -> ())`
+  grouped with `A`
   has type `value -> ()`
   is a type
   type is annotated
@@ -58,14 +58,14 @@ Facts (layer 2):
   has definition constraints
   has type `Number -> ()`
   is a definition
-  resolved to 1 definition(s): `A : value => trait (value -> ())`
+  resolved to 1 definition(s): `A`
 
 `Number` (NamedType):
   assigned type `Number`
   grouped with `value`
   has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 `_` (PlaceholderExpression):
@@ -80,14 +80,14 @@ Facts (layer 2):
   has definition constraints
   has type `String -> ()`
   is a definition
-  resolved to 1 definition(s): `A : value => trait (value -> ())`
+  resolved to 1 definition(s): `A`
 
 `String` (NamedType):
   assigned type `String`
   grouped with `value`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `_` (PlaceholderExpression):
@@ -96,7 +96,7 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
 
-`B : value => trait (value -> ())` (TraitDefinition):
+`B` (TraitDefinition):
   assigned type `value -> ()`
   grouped with `value -> ()`
   has 1 instances
@@ -125,7 +125,7 @@ Facts (layer 2):
 
 `value -> ()` (FunctionType):
   assigned type `value -> ()`
-  grouped with `B : value => trait (value -> ())`
+  grouped with `B`
   has type `value -> ()`
   is a type
   type is annotated
@@ -143,7 +143,7 @@ Facts (layer 2):
   has type `value -> ()`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `B : value => trait (value -> ())`
+  resolved to 1 definition(s): `B`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -157,7 +157,7 @@ Facts (layer 2):
 `(A value)` (BoundConstraint):
   has bound(s) `A` `value` (resolved as `(A value)`)
   is a constraint
-  resolved to 1 definition(s): `A : value => trait (value -> ())`
+  resolved to 1 definition(s): `A`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -180,7 +180,7 @@ Facts (layer 2):
   has bound(s) `B` `Number` (resolved as `instance (B value) where (A value)`), `A` `Number` (resolved as `instance (A Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `B : value => trait (value -> ())`
+  resolved to 1 definition(s): `B`
 
 `B 123` (ExpressionStatement):
   assigned type `()`
@@ -204,7 +204,7 @@ Facts (layer 2):
   has bound(s) `B` `String` (resolved as `instance (B value) where (A value)`), `A` `String` (resolved as `instance (A String)`)
   has type `String -> ()`
   is an expression
-  resolved to 1 definition(s): `B : value => trait (value -> ())`
+  resolved to 1 definition(s): `B`
 
 `B "abc"` (ExpressionStatement):
   assigned type `()`
@@ -228,7 +228,7 @@ Facts (layer 2):
   has bound(s) `B` `()` (resolved as `instance (B value) where (A value)`), `A` `()` (unresolved)
   has type `() -> ()`
   is an expression
-  resolved to 1 definition(s): `B : value => trait (value -> ())`
+  resolved to 1 definition(s): `B`
 
 `B ()` (ExpressionStatement):
   assigned type `()`

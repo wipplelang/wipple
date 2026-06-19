@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Describe` `(Maybe (Maybe Number))` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe (Maybe Number)) -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (Some (Some 42))` (ExpressionStatement):
   assigned type `()`
@@ -25,7 +25,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Some value`
 
 `Some (Some 42)` (CallExpression):
-  grouped with `Maybe : value => type {⋯}`, `value`
+  grouped with `Maybe`, `value`
   has type `Maybe (Maybe Number)`
   is an expression
 
@@ -36,7 +36,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Some value`
 
 `Some 42` (CallExpression):
-  grouped with `Maybe : value => type {⋯}`, `value`
+  grouped with `Maybe`, `value`
   has type `Maybe Number`
   is an expression
 

@@ -16,7 +16,7 @@ Facts (layer 2):
   grouped with `(Maybe element) (element -> Maybe element) -> Sequence element`
   has type `(Maybe Number) (Number -> Maybe Number) -> Sequence Number`
   is an expression
-  resolved to 1 definition(s): `build-sequence :: (Maybe element) (element -> Maybe element) -> Sequence element`
+  resolved to 1 definition(s): `build-sequence`
 
 `build-sequence (Some 0) (n -> Some (n + 1))` (CallExpression):
   grouped with `Sequence element`, `numbers`, `numbers`
@@ -30,7 +30,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Some value`
 
 `Some 0` (CallExpression):
-  grouped with `Maybe : value => type {⋯}`, `Maybe element`
+  grouped with `Maybe`, `Maybe element`
   has type `Maybe Number`
   is an expression
 
@@ -60,7 +60,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Some value`
 
 `Some (n + 1)` (CallExpression):
-  grouped with `Maybe : value => type {⋯}`, `Maybe element`
+  grouped with `Maybe`, `Maybe element`
   has type `Maybe Number`
   is an expression
 
@@ -89,7 +89,7 @@ Facts (layer 2):
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `1` (NumberExpression):
   assigned type `Number`
@@ -128,7 +128,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `Number -> (Sequence Number) -> Sequence Number`
   is an expression
-  resolved to 1 definition(s): `take :: (count :: Number) -> collection -> Sequence element where (As-Sequence collection element)`
+  resolved to 1 definition(s): `take`
 
 `take 5` (CallExpression):
   grouped with `Sequence element`, `Sequence element`, `numbers . take 5`
@@ -153,7 +153,7 @@ Facts (layer 2):
   has bound(s) `As-Sequence` `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `(Number -> ()) -> (Sequence Number) -> ()`
   is an expression
-  resolved to 1 definition(s): `each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)`
+  resolved to 1 definition(s): `each`
 
 `each show` (CallExpression):
   grouped with `()`, `()`, `numbers . take 5 . each show`
@@ -172,7 +172,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 
 Output:

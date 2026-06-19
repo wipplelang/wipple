@@ -1,18 +1,18 @@
 Facts (layer 2):
 
-`Number : type` (TypeDefinition):
+`Number` (TypeDefinition):
   assigned type `Number`
   has definition constraints
   has type `Number`
   is a definition
 
-`String : type` (TypeDefinition):
+`String` (TypeDefinition):
   assigned type `String`
   has definition constraints
   has type `String`
   is a definition
 
-`Maybe : value => type` (TypeDefinition):
+`Maybe` (TypeDefinition):
   assigned type `Maybe value`
   has definition constraints
   has type `Maybe value`
@@ -27,7 +27,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
   type is annotated
 
-`Describe : value => trait (value -> String)` (TraitDefinition):
+`Describe` (TraitDefinition):
   assigned type `value -> String`
   grouped with `value -> String`
   has 2 instances
@@ -56,7 +56,7 @@ Facts (layer 2):
 
 `value -> String` (FunctionType):
   assigned type `value -> String`
-  grouped with `Describe : value => trait (value -> String)`
+  grouped with `Describe`
   has type `value -> String`
   is a type
   type is annotated
@@ -65,7 +65,7 @@ Facts (layer 2):
   assigned type `String`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `instance (Describe String)` (InstanceDefinition):
@@ -74,14 +74,14 @@ Facts (layer 2):
   has definition constraints
   has type `String -> String`
   is a definition
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `String` (NamedType):
   assigned type `String`
   grouped with `value`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `_` (PlaceholderExpression):
@@ -97,14 +97,14 @@ Facts (layer 2):
   has type `(Maybe value) -> String`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `Maybe value` (NamedType):
   assigned type `Maybe value`
   grouped with `value`, `value`
   has type `Maybe value`
   is a type
-  resolved to 1 definition(s): `Maybe : value => type`
+  resolved to 1 definition(s): `Maybe`
   type is annotated
 
 `value` (TypeParameter):
@@ -119,7 +119,7 @@ Facts (layer 2):
 `(Describe value)` (BoundConstraint):
   has bound(s) `Describe` `value` (resolved as `(Describe value)`)
   is a constraint
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -142,7 +142,7 @@ Facts (layer 2):
   has bound(s) `Describe` `(Maybe String)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `String` (resolved as `instance (Describe String)`)
   has type `(Maybe String) -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `Describe (_ :: Maybe String)` (ExpressionStatement):
   assigned type `String`
@@ -165,7 +165,7 @@ Facts (layer 2):
   grouped with `_`
   has type `Maybe String`
   is a type
-  resolved to 1 definition(s): `Maybe : value => type`
+  resolved to 1 definition(s): `Maybe`
   type is annotated
 
 `String` (NamedType):
@@ -173,7 +173,7 @@ Facts (layer 2):
   grouped with `value`
   has type `String`
   is a type
-  resolved to 1 definition(s): `String : type`
+  resolved to 1 definition(s): `String`
   type is annotated
 
 `Describe` (ConstructorExpression):
@@ -182,7 +182,7 @@ Facts (layer 2):
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (unresolved)
   has type `(Maybe Number) -> String`
   is an expression
-  resolved to 1 definition(s): `Describe : value => trait (value -> String)`
+  resolved to 1 definition(s): `Describe`
 
 `Describe (_ :: Maybe Number)` (ExpressionStatement):
   assigned type `String`
@@ -205,7 +205,7 @@ Facts (layer 2):
   grouped with `_`
   has type `Maybe Number`
   is a type
-  resolved to 1 definition(s): `Maybe : value => type`
+  resolved to 1 definition(s): `Maybe`
   type is annotated
 
 `Number` (NamedType):
@@ -213,7 +213,7 @@ Facts (layer 2):
   grouped with `value`
   has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 

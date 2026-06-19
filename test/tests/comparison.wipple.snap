@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (1 + 2 = 3)` (ExpressionStatement):
   assigned type `()`
@@ -41,7 +41,7 @@ Facts (layer 2):
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `1 + 2 = 3` (OperatorExpression):
   assigned type `Boolean`
@@ -60,7 +60,7 @@ Facts (layer 2):
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `2` (NumberExpression):
   assigned type `Number`
@@ -80,7 +80,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (1 = 2 or 1 = 1)` (ExpressionStatement):
   assigned type `()`
@@ -115,7 +115,7 @@ Facts (layer 2):
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `1 = 2 or 1 = 1` (OperatorExpression):
   assigned type `Boolean`
@@ -134,7 +134,7 @@ Facts (layer 2):
   has bound(s) `Or` `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Or : left (infer right) (infer output) => trait (left {right} -> output)`
+  resolved to 1 definition(s): `Or`
 
 `2` (NumberExpression):
   assigned type `Number`
@@ -176,7 +176,7 @@ Facts (layer 2):
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `1` (NumberExpression):
   assigned type `Number`
@@ -190,7 +190,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (2 /= 3)` (ExpressionStatement):
   assigned type `()`
@@ -225,7 +225,7 @@ Facts (layer 2):
   has bound(s) `Not-Equal` `Number` (resolved as `instance (Not-Equal value) where (Equal value)`), `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Not-Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Not-Equal`
 
 `3` (NumberExpression):
   assigned type `Number`
@@ -239,7 +239,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show ("hello" = "hello")` (ExpressionStatement):
   assigned type `()`
@@ -274,7 +274,7 @@ Facts (layer 2):
   has bound(s) `Equal` `String` (resolved as `instance (Equal String)`)
   has type `String String -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `"hello"` (StringExpression):
   assigned type `String`
@@ -288,7 +288,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (() = ())` (ExpressionStatement):
   assigned type `()`
@@ -323,7 +323,7 @@ Facts (layer 2):
   has bound(s) `Equal` `()` (resolved as `instance (Equal ())`)
   has type `() () -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `()` (UnitExpression):
   assigned type `()`
@@ -337,7 +337,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (True = True)` (ExpressionStatement):
   assigned type `()`
@@ -351,7 +351,7 @@ Facts (layer 2):
 
 `True` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `value`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
@@ -373,11 +373,11 @@ Facts (layer 2):
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `True` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `value`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
@@ -388,7 +388,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (False = False)` (ExpressionStatement):
   assigned type `()`
@@ -402,7 +402,7 @@ Facts (layer 2):
 
 `False` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `value`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
@@ -424,11 +424,11 @@ Facts (layer 2):
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `False` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `value`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
@@ -439,7 +439,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (True = False)` (ExpressionStatement):
   assigned type `()`
@@ -453,7 +453,7 @@ Facts (layer 2):
 
 `True` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `value`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
@@ -475,11 +475,11 @@ Facts (layer 2):
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Equal`
 
 `False` (ConstructorExpression):
   assigned type `Boolean`
-  grouped with `Boolean : type {⋯}`, `value`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
@@ -490,7 +490,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (2 > 1)` (ExpressionStatement):
   assigned type `()`
@@ -525,7 +525,7 @@ Facts (layer 2):
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Greater-Than : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Greater-Than`
 
 `1` (NumberExpression):
   assigned type `Number`
@@ -539,7 +539,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (1 >= 1)` (ExpressionStatement):
   assigned type `()`
@@ -574,7 +574,7 @@ Facts (layer 2):
   has bound(s) `Greater-Than-Or-Equal` `Number` (resolved as `instance (Greater-Than-Or-Equal value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Greater-Than-Or-Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Greater-Than-Or-Equal`
 
 `1` (NumberExpression):
   assigned type `Number`
@@ -588,7 +588,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (4 < 3)` (ExpressionStatement):
   assigned type `()`
@@ -623,7 +623,7 @@ Facts (layer 2):
   has bound(s) `Less-Than` `Number` (resolved as `instance (Less-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Less-Than : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Less-Than`
 
 `3` (NumberExpression):
   assigned type `Number`
@@ -637,7 +637,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (5 <= 6)` (ExpressionStatement):
   assigned type `()`
@@ -672,7 +672,7 @@ Facts (layer 2):
   has bound(s) `Less-Than-Or-Equal` `Number` (resolved as `instance (Less-Than-Or-Equal value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
-  resolved to 1 definition(s): `Less-Than-Or-Equal : value => trait (value value -> Boolean)`
+  resolved to 1 definition(s): `Less-Than-Or-Equal`
 
 `6` (NumberExpression):
   assigned type `Number`

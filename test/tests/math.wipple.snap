@@ -6,7 +6,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (1 + 2)` (ExpressionStatement):
   assigned type `()`
@@ -41,7 +41,7 @@ Facts (layer 2):
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Add : left right (infer sum) => trait (left right -> sum)`
+  resolved to 1 definition(s): `Add`
 
 `2` (NumberExpression):
   assigned type `Number`
@@ -55,7 +55,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (4 - 1)` (ExpressionStatement):
   assigned type `()`
@@ -90,7 +90,7 @@ Facts (layer 2):
   has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Subtract : left right (infer difference) => trait (left right -> difference)`
+  resolved to 1 definition(s): `Subtract`
 
 `1` (NumberExpression):
   assigned type `Number`
@@ -104,7 +104,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (3 * 5)` (ExpressionStatement):
   assigned type `()`
@@ -139,7 +139,7 @@ Facts (layer 2):
   has bound(s) `Multiply` `Number` `Number` `Number` (resolved as `instance (Multiply Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Multiply : left right (infer product) => trait (left right -> product)`
+  resolved to 1 definition(s): `Multiply`
 
 `5` (NumberExpression):
   assigned type `Number`
@@ -153,7 +153,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (10 / 4)` (ExpressionStatement):
   assigned type `()`
@@ -188,7 +188,7 @@ Facts (layer 2):
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
   is an expression
-  resolved to 1 definition(s): `Divide : left right (infer quotient) => trait (left right -> quotient)`
+  resolved to 1 definition(s): `Divide`
 
 `4` (NumberExpression):
   assigned type `Number`

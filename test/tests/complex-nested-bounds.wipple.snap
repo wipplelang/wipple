@@ -1,12 +1,12 @@
 Facts (layer 2):
 
-`Boolean : type` (TypeDefinition):
+`Boolean` (TypeDefinition):
   assigned type `Boolean`
   has definition constraints
   has type `Boolean`
   is a definition
 
-`Not : value => trait (value -> value)` (TraitDefinition):
+`Not` (TraitDefinition):
   assigned type `value -> value`
   grouped with `value -> value`
   has 2 instances
@@ -35,7 +35,7 @@ Facts (layer 2):
 
 `value -> value` (FunctionType):
   assigned type `value -> value`
-  grouped with `Not : value => trait (value -> value)`
+  grouped with `Not`
   has type `value -> value`
   is a type
   type is annotated
@@ -55,14 +55,14 @@ Facts (layer 2):
   has definition constraints
   has type `Boolean -> Boolean`
   is a definition
-  resolved to 1 definition(s): `Not : value => trait (value -> value)`
+  resolved to 1 definition(s): `Not`
 
 `Boolean` (NamedType):
   assigned type `Boolean`
   grouped with `value`
   has type `Boolean`
   is a type
-  resolved to 1 definition(s): `Boolean : type`
+  resolved to 1 definition(s): `Boolean`
   type is annotated
 
 `todo` (VariableExpression):
@@ -70,7 +70,7 @@ Facts (layer 2):
   grouped with `value`, `instance (Not Boolean)`
   has type `Boolean -> Boolean`
   is an expression
-  resolved to 1 definition(s): `todo :: value`
+  resolved to 1 definition(s): `todo`
 
 `instance (Not (a -> b)) where (Not b)` (InstanceDefinition):
   assigned type `(a -> b) -> a -> b`
@@ -79,7 +79,7 @@ Facts (layer 2):
   has type `(a -> b) -> a -> b`
   has type parameters
   is a definition
-  resolved to 1 definition(s): `Not : value => trait (value -> value)`
+  resolved to 1 definition(s): `Not`
 
 `a` (TypeParameter):
   assigned type `a`
@@ -109,7 +109,7 @@ Facts (layer 2):
 `(Not b)` (BoundConstraint):
   has bound(s) `Not` `b` (resolved as `(Not b)`)
   is a constraint
-  resolved to 1 definition(s): `Not : value => trait (value -> value)`
+  resolved to 1 definition(s): `Not`
 
 `b` (TypeParameter):
   assigned type `b`
@@ -153,7 +153,7 @@ Facts (layer 2):
   has bound(s) `Not` `b` (resolved as `(Not b)`)
   has type `b -> b`
   is an expression
-  resolved to 1 definition(s): `not :: value -> value where (Not value)`
+  resolved to 1 definition(s): `not`
 
 `not (f x)` (CallExpression):
   grouped with `value`, `b`, `f x`
@@ -181,7 +181,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `x`
   type is annotated
 
-`not :: value -> value where (Not value)` (ConstantDefinition):
+`not` (ConstantDefinition):
   assigned type `value -> value`
   grouped with `value -> value`, `Not`
   has definition constraints
@@ -200,7 +200,7 @@ Facts (layer 2):
 
 `value -> value` (FunctionType):
   assigned type `value -> value`
-  grouped with `not :: value -> value where (Not value)`
+  grouped with `not`
   has type `value -> value`
   is a type
   type is annotated
@@ -217,7 +217,7 @@ Facts (layer 2):
 `(Not value)` (BoundConstraint):
   has bound(s) `Not` `value` (resolved as `(Not value)`)
   is a constraint
-  resolved to 1 definition(s): `Not : value => trait (value -> value)`
+  resolved to 1 definition(s): `Not`
 
 `value` (TypeParameter):
   assigned type `value`
@@ -234,11 +234,11 @@ Facts (layer 2):
 
 `Not` (ConstructorExpression):
   assigned type `value -> value`
-  grouped with `value -> value`, `not :: value -> value where (Not value)`
+  grouped with `value -> value`, `not`
   has bound(s) `Not` `value` (resolved as `(Not value)`)
   has type `value -> value`
   is an expression
-  resolved to 1 definition(s): `Not : value => trait (value -> value)`
+  resolved to 1 definition(s): `Not`
 
 
 Output:

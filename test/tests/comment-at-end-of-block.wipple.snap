@@ -1,6 +1,6 @@
 Facts (layer 2):
 
-`block :: {Number}` (ConstantDefinition):
+`block` (ConstantDefinition):
   assigned type `{Number}`
   grouped with `{Number}`, `{⋯}`
   has definition constraints
@@ -9,7 +9,7 @@ Facts (layer 2):
 
 `{Number}` (BlockType):
   assigned type `{Number}`
-  grouped with `block :: {Number}`
+  grouped with `block`
   has type `{Number}`
   is a type
   type is annotated
@@ -19,7 +19,7 @@ Facts (layer 2):
   grouped with `42`
   has type `Number`
   is a type
-  resolved to 1 definition(s): `Number : type`
+  resolved to 1 definition(s): `Number`
   type is annotated
 
 `block : {⋯}` (AssignmentStatement):
@@ -28,7 +28,7 @@ Facts (layer 2):
 
 `{⋯}` (BlockExpression):
   assigned type `{Number}`
-  grouped with `block :: {Number}`
+  grouped with `block`
   has type `{Number}`
   is an expression
 
@@ -49,7 +49,7 @@ Facts (layer 2):
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
-  resolved to 1 definition(s): `show :: value -> () where (Describe value)`
+  resolved to 1 definition(s): `show`
 
 `show (do block)` (ExpressionStatement):
   assigned type `()`
@@ -71,7 +71,7 @@ Facts (layer 2):
   grouped with `{Number}`
   has type `{Number}`
   is an expression
-  resolved to 1 definition(s): `block :: {Number}`
+  resolved to 1 definition(s): `block`
 
 
 Output:
