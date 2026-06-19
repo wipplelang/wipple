@@ -68,5 +68,5 @@
     </Box>
 </div>
 
-<Handle type="target" position={Position.Left} class="opacity-0" />
-<Handle type="source" position={Position.Right} class="opacity-0" />
+<Handle type="target" position={Position.Top} class="opacity-0" />
+<Handle type="source" position={Position.Bottom} class="opacity-0" />

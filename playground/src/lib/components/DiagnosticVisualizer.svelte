@@ -84,7 +84,7 @@
         }
 
         const graph = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
-        graph.setGraph({ rankdir: "LR" });
+        graph.setGraph({ rankdir: "TD" });
 
         for (const node of layoutNodes) {
             console.log({ width: node.measured!.width, height: node.measured!.height });
