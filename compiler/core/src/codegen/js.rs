@@ -714,8 +714,8 @@ impl<'a> WriteContext<'a, '_> {
                 write!(
                     self.writer,
                     "Math.random() * ({} - {}) + {}",
-                    mangle_local(*min),
                     mangle_local(*max),
+                    mangle_local(*min),
                     mangle_local(*min)
                 )?;
             }

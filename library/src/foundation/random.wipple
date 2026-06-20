@@ -16,6 +16,6 @@ instance (Random (Range Number) Number) : (Range {
   intrinsic "random-number" min max
 }
 
-instance (Random (List element) (Maybe element)) : list -> list . nth (random-in (0 to count list))
+instance (Random (List element) (Maybe element)) : list -> list . nth (floor (random-in (0 to count list)))
 
 instance (Random () Boolean) : () -> floor (random-in (0 to 2)) = 1
