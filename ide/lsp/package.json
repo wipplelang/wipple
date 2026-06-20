@@ -1,0 +1,18 @@
+{
+    "name": "wipple-lsp",
+    "private": true,
+    "type": "module",
+    "main": "dist/index.js",
+    "scripts": {
+        "build": "node build.mjs"
+    },
+    "devDependencies": {
+        "@chialab/esbuild-plugin-meta-url": "^0.19.2",
+        "esbuild": "^0.28.1"
+    },
+    "dependencies": {
+        "vscode-languageserver": "^10.0.0",
+        "vscode-languageserver-textdocument": "^1.0.12",
+        "wipple": "file:../../compiler/api"
+    }
+}

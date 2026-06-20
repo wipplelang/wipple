@@ -84,11 +84,17 @@ tasks:
     dir: compiler-docs
     cmds:
       - mdbook build
-
-  vscode:
-    dir: vscode
+  build:lsp:
+    dir: ide/lsp
     deps:
       - build:api
       - build:library
+    cmds:
+      - npm run build
+
+  vscode:
+    dir: ide/vscode
+    deps:
+      - build:lsp
     cmds:
       - npm run extension

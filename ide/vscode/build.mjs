@@ -1,13 +1,14 @@
-import * as esbuild from "esbuild";
+/// <reference types="node" />
+
 import * as fs from "node:fs";
-import metaUrl from "@chialab/esbuild-plugin-meta-url";
+import esbuild from "esbuild";
 
 const outdir = "./dist";
 
 fs.rmSync(outdir, { recursive: true, force: true });
 
-esbuild.build({
-    entryPoints: ["src/extension.ts"],
+await esbuild.build({
+    entryPoints: ["extension.ts"],
     outdir,
     platform: "node",
     bundle: true,
@@ -15,5 +16,6 @@ esbuild.build({
     format: "cjs",
     loader: { ".wasm": "file" },
     external: ["vscode"],
-    plugins: [metaUrl()],
 });
+
+fs.cpSync("node_modules/wipple-lsp/dist", `${outdir}/wipple-lsp`, { recursive: true });
