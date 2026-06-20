@@ -7,7 +7,7 @@ import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import { readFileSync } from "node:fs";
 
 export const wippleLanguage = JSON.parse(
-    readFileSync("../vscode/syntaxes/wipple.tmLanguage.json", "utf8"),
+    readFileSync("../ide/vscode/syntaxes/wipple.tmLanguage.json", "utf8"),
 );
 
 // https://astro.build/config
