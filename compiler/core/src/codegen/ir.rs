@@ -103,13 +103,15 @@ pub enum Value {
     },
     Variable(Node),
     Variant {
+        name: String,
         index: usize,
         elements: Vec<Node>,
     },
     VariantElement {
         input: Node,
-        variant: usize,
-        index: usize,
+        variant_name: String,
+        variant_index: usize,
+        element: usize,
     },
 }
 
@@ -133,7 +135,8 @@ pub enum Condition {
     },
     EqualToVariant {
         input: Node,
-        variant: usize,
+        variant_name: String,
+        variant_index: usize,
     },
     Initialize {
         variable: Node,

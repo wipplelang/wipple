@@ -161,6 +161,7 @@ impl Visit for ConstructorExpression {
                     node,
                     ConstructorExpressionCodegen::Variant {
                         node,
+                        name: definition.name,
                         index: definition.index,
                         elements,
                         result,
@@ -223,6 +224,7 @@ enum ConstructorExpressionCodegen {
     },
     Variant {
         node: Node,
+        name: Str,
         index: usize,
         elements: Vec<Node>,
         result: Node,
@@ -262,6 +264,7 @@ impl CodegenValue for ConstructorExpressionCodegen {
             }
             ConstructorExpressionCodegen::Variant {
                 node,
+                name,
                 index,
                 elements,
                 result,
@@ -270,6 +273,7 @@ impl CodegenValue for ConstructorExpressionCodegen {
                     ctx.instruction(ir::Instruction::Value {
                         node: *node,
                         value: ir::Value::Variant {
+                            name: name.to_string(),
                             index: *index,
                             elements: Vec::new(),
                         },
@@ -283,6 +287,7 @@ impl CodegenValue for ConstructorExpressionCodegen {
                                 ir::Instruction::Value {
                                     node: *result,
                                     value: ir::Value::Variant {
+                                        name: name.to_string(),
                                         index: *index,
                                         elements: elements.clone(),
                                     },

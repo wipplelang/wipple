@@ -52,12 +52,7 @@ Order : value => trait (value value -> Ordering)
 -- because it doesn't support ordering.
 default error instance (Order value)
 
-instance (Order Number) : a b -> when (intrinsic "order" a b) {
-  -1 -> Is-Less-Than
-  0 -> Is-Equal-To
-  1 -> Is-Greater-Than
-  _ -> error "unreachable"
-}
+instance (Order Number) : a b -> intrinsic "order" a b
 
 -- [`Less-Than`] returns `True` if the left [`value@type`] is less than the right [`value@type`].
 Less-Than : value => trait (value value -> Boolean)
@@ -78,17 +73,9 @@ instance (Greater-Than-Or-Equal value) where (Order value) : a b -> (Order a b) 
 -- [`Equal`] returns `True` if both [`value@type`] values are equal.
 Equal : value => trait (value value -> Boolean)
 
-instance (Equal String) : a b -> when (intrinsic "equal" a b) {
-  0 -> False
-  1 -> True
-  _ -> error "unreachable"
-}
+instance (Equal String) : a b -> intrinsic "equal" a b
 
-instance (Equal Number) : a b -> when (intrinsic "equal" a b) {
-  0 -> False
-  1 -> True
-  _ -> error "unreachable"
-}
+instance (Equal Number) : a b -> intrinsic "equal" a b
 
 instance (Equal ()) : () () -> True
 

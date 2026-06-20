@@ -320,14 +320,16 @@ impl<'a> WriteContext<'a, '_> {
                     writeln!(self.writer, "while (true) {{")?;
                     self.write_instructions(body)?;
 
+                    let break_variant_name = "Break";
+
                     write!(
                         self.writer,
                         "if ({:?} in {}) {{ {} = {}[{:?}][0]; break; }}",
-                        mangle_variant(1),
+                        break_variant_name,
                         mangle_local(*result),
                         mangle_local(*node),
                         mangle_local(*result),
-                        mangle_variant(1)
+                        break_variant_name
                     )?;
                     writeln!(self.writer, "}}")?;
                 }
@@ -389,11 +391,15 @@ impl<'a> WriteContext<'a, '_> {
                     ir::Condition::EqualToString { input, value } => {
                         write!(self.writer, "{} === {:?}", mangle_local(*input), value)?;
                     }
-                    ir::Condition::EqualToVariant { input, variant } => {
+                    ir::Condition::EqualToVariant {
+                        input,
+                        variant_name,
+                        ..
+                    } => {
                         write!(
                             self.writer,
                             "{:?} in {}",
-                            mangle_variant(*variant),
+                            variant_name,
                             mangle_local(*input)
                         )?;
                     }
@@ -487,8 +493,8 @@ impl<'a> WriteContext<'a, '_> {
             ir::Value::Variable(node) => {
                 write!(self.writer, "{}", mangle_local(*node))?;
             }
-            ir::Value::Variant { index, elements } => {
-                write!(self.writer, "{{ {:?}: [", mangle_variant(*index))?;
+            ir::Value::Variant { name, elements, .. } => {
+                write!(self.writer, "{{ {name:?}: [")?;
                 for (i, element) in elements.iter().enumerate() {
                     if i > 0 {
                         write!(self.writer, ", ")?;
@@ -499,15 +505,16 @@ impl<'a> WriteContext<'a, '_> {
             }
             ir::Value::VariantElement {
                 input,
-                variant,
-                index,
+                variant_name,
+                element,
+                ..
             } => {
                 write!(
                     self.writer,
                     "{}[{:?}][{}]",
                     mangle_local(*input),
-                    mangle_variant(*variant),
-                    index
+                    variant_name,
+                    element
                 )?;
             }
         }
@@ -617,7 +624,7 @@ impl<'a> WriteContext<'a, '_> {
             ("equal", [left, right]) => {
                 write!(
                     self.writer,
-                    "{} === {} ? 1 : 0",
+                    "{} === {} ? {{ True: [] }} : {{ False: [] }}",
                     mangle_local(*left),
                     mangle_local(*right)
                 )?;
@@ -625,7 +632,7 @@ impl<'a> WriteContext<'a, '_> {
             ("order", [left, right]) => {
                 write!(
                     self.writer,
-                    "({} < {}) ? -1 : (({} > {}) ? 1 : 0)",
+                    "({} < {}) ? {{ \"Is-Less-Than\": [] }} : (({} > {}) ? {{ \"Is-Greater-Than\": [] }} : {{ \"Is-Equal-To\": [] }})",
                     mangle_local(*left),
                     mangle_local(*right),
                     mangle_local(*left),
@@ -716,7 +723,11 @@ impl<'a> WriteContext<'a, '_> {
                 write!(self.writer, "NaN")?;
             }
             ("is-nan", [input]) => {
-                write!(self.writer, "isNaN({}) ? 1 : 0", mangle_local(*input))?;
+                write!(
+                    self.writer,
+                    "isNaN({}) ? {{ True: [] }} : {{ False: [] }}",
+                    mangle_local(*input)
+                )?;
             }
             ("hash-string", [input]) => {
                 writeln!(self.writer, "(() => {{")?;
@@ -767,10 +778,6 @@ fn mangle_function<'a>(
 
 fn mangle_local(node: Node) -> String {
     format!("local_{}", mangle_node(node))
-}
-
-fn mangle_variant(index: usize) -> String {
-    format!("variant_{index}")
 }
 
 fn format_trace(span: &Span) -> String {

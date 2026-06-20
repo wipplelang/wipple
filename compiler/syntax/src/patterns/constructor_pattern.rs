@@ -187,6 +187,7 @@ impl Visit for ConstructorPattern {
                     node,
                     ConstructorPatternCodegen::Variant {
                         node,
+                        name: definition.name.clone(),
                         index: definition.index,
                         elements,
                     },
@@ -201,6 +202,7 @@ enum ConstructorPatternCodegen {
     Marker,
     Variant {
         node: Node,
+        name: Str,
         index: usize,
         elements: Vec<(Node, Node)>,
     },
@@ -213,6 +215,7 @@ impl CodegenValue for ConstructorPatternCodegen {
             ConstructorPatternCodegen::Marker => Ok(()),
             ConstructorPatternCodegen::Variant {
                 node,
+                name,
                 index,
                 elements,
             } => {
@@ -223,7 +226,8 @@ impl CodegenValue for ConstructorPatternCodegen {
 
                 ctx.condition(ir::Condition::EqualToVariant {
                     input: matching,
-                    variant: *index,
+                    variant_name: name.to_string(),
+                    variant_index: *index,
                 });
 
                 for (element_index, &(pattern, temporary)) in elements.iter().enumerate() {
@@ -232,8 +236,9 @@ impl CodegenValue for ConstructorPatternCodegen {
                         node: None,
                         value: ir::Value::VariantElement {
                             input: matching,
-                            variant: *index,
-                            index: element_index,
+                            variant_name: name.to_string(),
+                            variant_index: *index,
+                            element: element_index,
                         },
                         mutable: false,
                     });
