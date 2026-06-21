@@ -24,6 +24,7 @@ tasks:
       - setup:api
       - setup:playground
       - setup:site
+      - setup:docs
   setup:api:
     dir: compiler/api
     cmds:
