@@ -36,6 +36,10 @@ tasks:
     dir: site
     cmds:
       - npm install
+  setup:docs:
+    dir: docs
+    cmds:
+      - (cd theme/js && npm install)
 
   serve:site:
     dir: site
@@ -48,23 +52,24 @@ tasks:
     dir: playground
     cmds:
       - npm run dev -- --open
-  serve:compiler-docs:
-    dir: compiler-docs
+  serve:docs:
+    dir: docs
     cmds:
+      - (cd theme/js && npm run build)
       - mdbook serve
 
   build:
     deps:
       - build:library
       - build:playground
-      - build:compiler-docs
+      - build:docs
     dir: site
     cmds:
       - rm -rf dist
       - npm run build
       - cp -r ../library/dist/. dist/library
       - cp -r ../playground/build/. dist/playground
-      - cp -r ../compiler-docs/book/. dist/compiler-docs
+      - cp -r ../docs/book/. dist/docs
   build:library:
     dir: library
     cmds:
@@ -80,9 +85,10 @@ tasks:
     dir: compiler/api
     cmds:
       - npm run build
-  build:compiler-docs:
-    dir: compiler-docs
+  build:docs:
+    dir: docs
     cmds:
+      - (cd theme/js && npm run build)
       - mdbook build
   build:lsp:
     dir: ide/lsp

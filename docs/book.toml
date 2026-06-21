@@ -1,0 +1,9 @@
+[book]
+title = "Wipple Docs"
+language = "en"
+
+[output.html]
+site-url = "/docs/"
+no-section-label = true
+additional-css = ["theme/css/custom.css"]
+additional-js = ["theme/js/dist/custom.js"]

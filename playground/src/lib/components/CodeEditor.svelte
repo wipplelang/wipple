@@ -31,7 +31,7 @@
         enableHighlightingBefore,
         disableHighlightingAfter,
         tokensRegex,
-    } from "$lib/assets/tokens";
+    } from "../../tokens";
     import { stringifyAsset, type Asset } from "$lib/models/Asset";
     import runtimes from "$lib/runtimes";
     import widgets, { type WidgetType } from "$lib/widgets";
@@ -293,9 +293,9 @@
     const createMarkNumbers = () =>
         markRegex(
             new RegExp(
-                `\\((${tokens.number.source})` +
+                `\\((${tokens.number.regex.source})` +
                     / +/.source +
-                    `(${tokens.lowercaseName.source})\\)`,
+                    `(${tokens.lowercaseName.regex.source})\\)`,
                 "g",
             ),
             ([_text, number, unit], view) => {
@@ -344,7 +344,9 @@
 
     const markAssets = markRegex(
         new RegExp(
-            `\\((${tokens.lowercaseName.source})` + / */.source + `(${tokens.text.source})\\)`,
+            `\\((${tokens.lowercaseName.regex.source})` +
+                / */.source +
+                `(${tokens.text.regex.source})\\)`,
             "g",
         ),
         ([text, type, propsString], view) => {
@@ -405,7 +407,7 @@
     const markNames = new Compartment();
 
     const createMarkNames = (highlights: Record<string, any>) =>
-        markRegex(new RegExp(tokens.lowercaseName, "g"), (match, view, from, to) => {
+        markRegex(new RegExp(tokens.lowercaseName.regex, "g"), (match, view, from, to) => {
             const [name] = match;
 
             // Don't highlight nested names

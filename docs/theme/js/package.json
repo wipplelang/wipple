@@ -1,0 +1,11 @@
+{
+    "name": "theme",
+    "type": "module",
+    "private": true,
+    "scripts": {
+        "build": "node build.js"
+    },
+    "devDependencies": {
+        "esbuild": "^0.28.1"
+    }
+}
