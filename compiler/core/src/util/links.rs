@@ -18,12 +18,18 @@ pub struct Link {
     pub related: Vec<Node>,
 }
 
-pub fn get_links(
-    db: &Db,
-    definition_node: Node,
-    source_node: Node,
-    mut get_instantiated: impl FnMut(Node) -> Option<Node>,
-) -> BTreeMap<Str, Link> {
+pub fn get_linked_nodes(db: &Db, definition_node: Node, source_node: Node) -> BTreeSet<Node> {
+    let Some(TypeParameters(parameters)) = db.get(definition_node) else {
+        return BTreeSet::new();
+    };
+
+    parameters
+        .iter()
+        .filter_map(|&parameter| instantiated_node_for(db, parameter, source_node))
+        .collect()
+}
+
+pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<Str, Link> {
     let mut links = BTreeMap::new();
 
     let Some(Defined(definition)) = db.get(definition_node) else {
@@ -60,7 +66,7 @@ pub fn get_links(
     }
 
     for (name, parameter_node) in nodes {
-        if let Some(instantiated_node) = get_instantiated(parameter_node)
+        if let Some(instantiated_node) = instantiated_node_for(db, parameter_node, source_node)
             && let Some(Typed(Some(group))) = db.get(instantiated_node)
         {
             links.insert(
@@ -77,7 +83,7 @@ pub fn get_links(
     links
 }
 
-pub fn instantiated_node_for(db: &Db, parameter: Node, source_node: Node) -> Option<Node> {
+fn instantiated_node_for(db: &Db, parameter: Node, source_node: Node) -> Option<Node> {
     let InstantiatedParameters(parameters) = db.get(source_node).cloned().unwrap_or_default();
 
     let instantiated_node = parameters.get(&parameter).copied()?;

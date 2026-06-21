@@ -4,7 +4,7 @@ use wipple_core::{
     render::Comments,
     traces::Traces,
     typecheck::bounds::{Bounds, ResolvedBound},
-    util::{get_links, instantiated_node_for},
+    util::get_links,
     visit::{
         Resolved,
         definitions::{Defined, InstanceDefinition},
@@ -22,9 +22,7 @@ pub fn comments(db: &QueryCtx<'_>, node: Node) -> Option<Comments> {
     Some(Comments {
         nodes: vec![definition_node],
         comments: definition.comments().to_vec(),
-        links: get_links(db, definition_node, node, |parameter| {
-            instantiated_node_for(db, parameter, node)
-        }),
+        links: get_links(db, definition_node, node),
     })
 }
 
@@ -60,9 +58,7 @@ pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'
             let mut comments = Comments {
                 nodes: vec![bound.instance.node],
                 comments: instance_definition.comments.clone(),
-                links: get_links(db, bound.instance.node, node, |parameter| {
-                    instantiated_node_for(db, parameter, node)
-                }),
+                links: get_links(db, bound.instance.node, node),
             };
 
             let traces = db.traces_for(

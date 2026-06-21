@@ -15,9 +15,9 @@ use wipple_core::{
         groups::Annotated,
         ty::Ty,
     },
-    util::{get_links, instantiated_node_for},
+    util::{get_linked_nodes, get_links},
     visit::{
-        IsCaptured, IsMutated, TypeParameters, Visit, Visitor,
+        IsCaptured, IsMutated, Visit, Visitor,
         definitions::{ConstantDefinition, Defined, VariableDefinition},
     },
 };
@@ -154,15 +154,9 @@ impl ConstraintTrace for DefinitionConstraintTrace {
     }
 
     fn nodes(&self, db: &Db) -> Vec<Node> {
-        let TypeParameters(parameters) = db.get(self.definition).cloned().unwrap_or_default();
-
         [self.node, self.definition]
             .into_iter()
-            .chain(
-                parameters
-                    .into_iter()
-                    .filter_map(|parameter| instantiated_node_for(db, parameter, self.node)),
-            )
+            .chain(get_linked_nodes(db, self.definition, self.node))
             .collect()
     }
 }
@@ -181,9 +175,7 @@ impl Render for DefinitionConstraintTrace {
                 &Comments {
                     nodes: Default::default(),
                     comments: comments.to_vec(),
-                    links: get_links(db, self.definition, self.node, |parameter| {
-                        instantiated_node_for(db, parameter, self.node)
-                    }),
+                    links: get_links(db, self.definition, self.node),
                 },
             );
         } else {

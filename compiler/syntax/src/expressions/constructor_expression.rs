@@ -4,13 +4,12 @@ use std::collections::BTreeMap;
 use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    render::{Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
-        bounds::{Bound, Bounds, ResolvedBound, UnresolvedBound},
+        bounds::{Bound, Bounds},
         constraints::{
-            ConstraintTrace, bound_constraint::BoundConstraint,
-            instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint,
+            bound_constraint::BoundConstraint, instantiate_constraint::InstantiateConstraint,
+            ty_constraint::TyConstraint,
         },
         groups::Typed,
         ty::{ConstructedTy, Ty},
@@ -112,10 +111,6 @@ impl Visit for ConstructorExpression {
                         variable: false,
                         definition: definition_node,
                         node,
-                    })
-                    .with_trace(TraitConstraintTrace {
-                        node,
-                        trait_node: definition_node,
                     }),
                 );
 
@@ -172,47 +167,6 @@ impl Visit for ConstructorExpression {
                 visitor.codegen(db, node, ConstructorExpressionCodegen::Marker { node });
             }
         }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct TraitConstraintTrace {
-    node: Node,
-    trait_node: Node,
-}
-
-#[typetag::serde]
-impl ConstraintTrace for TraitConstraintTrace {
-    fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        vec![&mut self.node]
-    }
-
-    fn nodes(&self, db: &Db) -> Vec<Node> {
-        [self.node]
-            .into_iter()
-            .chain(
-                find_bound(db, self.node)
-                    .into_iter()
-                    .flat_map(|bound| bound_parameters(bound).keys().copied()),
-            )
-            .collect()
-    }
-}
-
-impl Render for TraitConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        let bound = UnresolvedBound {
-            trait_node: self.trait_node,
-            parameters: find_bound(db, self.node)
-                .map(bound_parameters)
-                .cloned()
-                .unwrap_or_default(),
-        };
-
-        ctx.node(self.node);
-        ctx.string(" requires the instance ");
-        bound.render_into(db, ctx);
-        ctx.string(".");
     }
 }
 
@@ -302,20 +256,5 @@ impl CodegenValue for ConstructorExpressionCodegen {
         }
 
         Ok(())
-    }
-}
-
-fn find_bound(db: &Db, node: Node) -> Option<Result<&ResolvedBound, &UnresolvedBound>> {
-    db.get(node)
-        .and_then(|Bounds(bounds)| bounds.get([node].as_slice()))
-        .map(|result| result.as_ref())
-}
-
-fn bound_parameters<'a>(
-    result: Result<&'a ResolvedBound, &'a UnresolvedBound>,
-) -> &'a BTreeMap<Node, Ty> {
-    match result {
-        Ok(resolved) => &resolved.instance.parameters,
-        Err(unresolved) => &unresolved.parameters,
     }
 }

@@ -40,8 +40,6 @@ digraph G {
   node_2_106 [label="numbers"]
   node_2_108 [label="each show"]
   node_2_110 [label="each show"]
-  node_2_111 [label="each"]
-  node_2_112 [label="show"]
   node_2_113 [label="remove-duplicates"]
   node_2_115 [label="remove-duplicates"]
   node_2_18 -> node_2_17 [label="input"]
@@ -85,8 +83,6 @@ digraph G {
   node_2_68 -> node_2_55 [label="element"]
   node_2_106 -> node_2_113 [label="input"]
   node_2_110 -> node_2_108 [label="function"]
-  node_2_111 -> node_2_110 [label="function"]
-  node_2_112 -> node_2_110 [label="input"]
   node_2_113 -> node_2_108 [label="input"]
   node_2_115 -> node_2_113 [label="function"]
 }
