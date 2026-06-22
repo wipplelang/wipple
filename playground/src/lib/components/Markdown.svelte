@@ -8,14 +8,15 @@
     interface Props {
         content: string;
         highlightGroups?: boolean;
+        fontSize?: number;
     }
 
-    const { content, highlightGroups }: Props = $props();
+    const { content, highlightGroups, fontSize }: Props = $props();
 
     const plugins: Plugin[] = [gfmPlugin(), { rehypePlugin: [rehypeRaw] }];
 </script>
 
-<div class="markdown text-wrap">
+<div class="markdown text-wrap" style:font-size={fontSize ? `${fontSize}px` : undefined}>
     <Markdown md={content} {plugins}>
         {#snippet code()}
             {@const ast = getAstNode().current}
@@ -35,6 +36,7 @@
                     {groups}
                     highlightedGroup={highlightGroups && group !== -1 ? group : undefined}
                     padding="0 1px"
+                    {fontSize}
                 />
             </span>
         {/snippet}

@@ -117,6 +117,6 @@
     </div>
 
     {#snippet content()}
-        <Documentation name={commandName} {command} />
+        <Documentation name={commandName} />
     {/snippet}
 </Tooltip>

@@ -1,12 +1,5 @@
 @reference "./fonts.css";
 
-:root {
-    /* Must be literal px values because they are parsed in JavaScript */
-    --code-editor-font-size: 16px;
-    --code-editor-line-height: 24px; /* line height of 1.5 */
-    --code-editor-line-spacing: 6px;
-}
-
 .code-editor {
     .cm-editor {
         @apply h-full outline-none;

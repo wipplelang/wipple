@@ -2,6 +2,8 @@
     import type * as wipple from "wipple";
     import type { Groups } from "$lib/models/Groups";
 
+    export const defaultFontSize = 16;
+
     export const createGroups = (count: number, locations: wipple.DiagnosticLocation[]) => {
         const groups: Groups = new Array(count).fill(undefined).map(() => ({ locations: [] }));
 
@@ -61,6 +63,7 @@
         };
         runningLine?: number;
         padding?: string;
+        fontSize?: number;
     }
 
     let {
@@ -72,6 +75,7 @@
         diagnostic,
         runningLine,
         padding,
+        fontSize = defaultFontSize,
     }: Props = $props();
 
     const playground = $derived(context.playground);
@@ -83,6 +87,12 @@
             return highlights;
         }, {}),
     );
+
+    const lineHeightRatio = 1.5;
+    const lineHeight = $derived(fontSize * lineHeightRatio);
+
+    const lineSpacingRatio = 0.375;
+    const lineSpacing = $derived(fontSize * lineSpacingRatio);
 
     let editorView: EditorView;
     const codemirror: Action = (node) => {
@@ -145,20 +155,6 @@
                 height: "0",
             };
         }
-
-        const lineHeight = parseFloat(
-            window
-                .getComputedStyle(editorView.contentDOM)
-                .getPropertyValue("--code-editor-line-height")
-                .replace(/px$/, ""),
-        );
-
-        const lineSpacing = parseFloat(
-            window
-                .getComputedStyle(editorView.contentDOM)
-                .getPropertyValue("--code-editor-line-spacing")
-                .replace(/px$/, ""),
-        );
 
         // Choose the closest line, and allow going one past the end
         const startLineNumber =
@@ -675,7 +671,10 @@
 <div
     use:codemirror
     class={["code-editor h-full w-full", diagnostic ? "has-diagnostic" : ""]}
-    style={padding ? `--code-editor-padding: ${padding};` : ""}
+    style:--code-editor-padding={padding}
+    style:--code-editor-font-size="{fontSize}px"
+    style:--code-editor-line-height="{lineHeight}px"
+    style:--code-editor-line-spacing="{lineSpacing}px"
 ></div>
 
 {#if hoverState != null}
