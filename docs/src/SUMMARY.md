@@ -5,7 +5,7 @@
 - [Getting started](./guide/getting-started.md)
 - [The type system](./guide/type-system.md)
 - [Modeling data](./guide/modeling-data.md)
-- [Custom feedback](./guide/custom-feedback.md)
+- [Documentation and error messages](./guide/documentation-and-error-messages.md)
 
 # Compiler
 

@@ -1,6 +1,6 @@
 # The trait system
 
-Wipple supports ad-hoc polymorphism using **traits**. Traits in Wipple are similar to multi-parameter type classes in Haskell. A trait is defined over one or more type parameters, and users can define **instances** replacing these type parameters with specific types. Wipple will select the appropriate instance automatically.
+Wipple supports ad-hoc polymorphism using _traits_. Traits in Wipple are similar to multi-parameter type classes in Haskell. A trait is defined over one or more type parameters, and users can define _instances_ replacing these type parameters with specific types. Wipple will select the appropriate instance automatically.
 
 For example, a common trait in Wipple is `Describe`, which is used by `show` to convert its input to a `String`:
 
@@ -11,7 +11,7 @@ instance (Describe String) : s -> s
 instance (Describe Boolean) : b -> if b {"True"} {"False"}
 ```
 
-To reference an instance of a trait, you write the trait's name (forming a **trait expression**), and the compiler will select the matching instance based on the data type of the trait expression.
+To reference an instance of a trait, you write the trait's name (forming a _trait expression_), and the compiler will select the matching instance based on the data type of the trait expression.
 
 ```wipple
 (Describe :: String -> String) -- instance (Describe String)
@@ -33,11 +33,11 @@ When the compiler encounters a trait expression, it first instantiates the trait
 
 Recall that Wipple's type checker operates on a list of ordered constraints, so each trait expression actually generates the following constraints:
 
-- A **group constraint** grouping the instantiated signature with the trait expression;
+- A _group constraint_ grouping the instantiated signature with the trait expression;
 
-- **Type constraints** for each concrete type in the signature; and
+- _Type constraints_ for each concrete type in the signature; and
 
-- A **bound constraint** to find the matching instance.
+- A _bound constraint_ to find the matching instance.
 
 Because all constraints of each type are evaluated before moving to the next type, the bound constraint won't be evaluated until all available type information from the context surrounding the trait expression is collected. For example, given the program `Describe True`, the constraint `True :: Boolean` will be evaluated before searching for a matching `Describe` instance, allowing the compiler to easily select `instance (Describe Boolean)`.
 
@@ -63,20 +63,20 @@ Assuming there is a single matching instance, the type checker will now contain 
 
 ## Implied instances
 
-Bounds placed on instance and constant definitions are the responsibility of the caller to satisfy. That means within the definitions, we can assume these bounds will have a single matching instance. Importantly, these bounds are _not_ instantiated and instead only apply to the specific type parameters they use — in other words, the type parameters are treated as concrete types. For example, `unzip` has two bounds for `Initial` containing different type parameters:
+Bounds placed on instance and constant definitions are the responsibility of the caller to satisfy. That means within the definitions, we can assume these bounds will have a single matching instance. Importantly, these bounds are **not** instantiated and instead only apply to the specific type parameters they use — in other words, the type parameters are treated as concrete types. For example, `unzip` has two bounds for `Initial` containing different type parameters:
 
 ```
 unzip :: collection -> (left; right)
   where (Initial left) (Initial right) ...
 ```
 
-When `unzip`'s implementation references `Initial`, it could refer to either of these bounds. If the bounds were instantiated like regular instances, then the trait expression `(Initial :: right)` would resolve to both `Initial <left>` _and_ `Initial <right>` (where `<left` and `<right>` are instantiated placeholders). However, since `Initial left` and `Initial right` are implied, they remain uninstantiated and only `Initial right` will be selected.
+When `unzip`'s implementation references `Initial`, it could refer to either of these bounds. If the bounds were instantiated like regular instances, then the trait expression `(Initial :: right)` would resolve to both `Initial <left>` **and** `Initial <right>` (where `<left` and `<right>` are instantiated placeholders). However, since `Initial left` and `Initial right` are implied, they remain uninstantiated and only `Initial right` will be selected.
 
 Finally, when type checking instance definitions, the instance being defined is also implied inside its own definition, allowing for recursive instances.
 
 ## Inferred parameters
 
-Traits can mark one or more of their type parameters as **inferred** using `infer`. During bound resolution, inferred parameters are _not_ checked and instead propagate back to the caller. If regular type parameters behave as "inputs" to the trait when searching for bounds, inferred parameters effectively behave as "outputs". For example, the `Add` trait defines its `sum` parameter as inferred:
+Traits can mark one or more of their type parameters as _inferred_ using `infer`. During bound resolution, inferred parameters are **not** checked and instead propagate back to the caller. If regular type parameters behave as "inputs" to the trait when searching for bounds, inferred parameters effectively behave as "outputs". For example, the `Add` trait defines its `sum` parameter as inferred:
 
 ```wipple
 Add : left right (infer sum) => trait (left right -> sum)

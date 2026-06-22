@@ -27,11 +27,11 @@ When a type parameter appears multiple times in a signature, only the first appe
 
 ## Use site
 
-During instantiation, instead of deeply applying the type of the definition once and then replacing encountered type parameters, Wipple creates a copy of _all_ the constraints generated — including bounds — while traversing the definition's signature (but not its implementation). Then, every node referenced in these constraints is replaced with a fresh node, and any type constraints involving type parameters are similarly replaced by fresh group constraints. Finally, these new constraints are enqueued in the type checker.
+During instantiation, instead of deeply applying the type of the definition once and then replacing encountered type parameters, Wipple creates a copy of **all** the constraints generated — including bounds — while traversing the definition's signature (but not its implementation). Then, every node referenced in these constraints is replaced with a fresh node, and any type constraints involving type parameters are similarly replaced by fresh group constraints. Finally, these new constraints are enqueued in the type checker.
 
-The mapping between generic and instantiated nodes/parameters is recorded in a mutable **substitutions** list, which can be shared across multiple instantiations using a key. This allows, for example, bound resolution to retrieve back the resolved parameters from each candidate.
+The mapping between generic and instantiated nodes/parameters is recorded in a mutable _substitutions_ list, which can be shared across multiple instantiations using a key. This allows, for example, bound resolution to retrieve back the resolved parameters from each candidate.
 
-In addition, the compiler passes around the **source node** responsible for instantiating a given definition. This source node is attached to all instantiated nodes via the `Instantiated` fact. When there are no non-generic nodes available (i.e., all relevant nodes are constants or traits), this allows diagnostics to show conflicts in instantiated type parameters on the source node, such as for the program below:
+In addition, the compiler passes around the _source node_ responsible for instantiating a given definition. This source node is attached to all instantiated nodes via the `Instantiated` fact. When there are no non-generic nodes available (i.e., all relevant nodes are constants or traits), this allows diagnostics to show conflicts in instantiated type parameters on the source node, such as for the program below:
 
 ```wipple
 f :: Number -> ()
