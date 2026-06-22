@@ -4,6 +4,7 @@ use crate::{
         constraints::{AnyConstraintTrace, ConstraintConsequence},
         groups::Typed,
     },
+    visit::definitions::Defined,
 };
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -33,6 +34,12 @@ impl Db {
     pub fn traces_for(&self, primary_node: Node, nodes: impl IntoIterator<Item = Node>) -> Traces {
         let mut traces = self.traces.clone();
 
+        let filter = |node: Node| {
+            // Exclude definitions because otherwise, all uses of the definition
+            // are included in the trace
+            !self.contains::<Defined>(node)
+        };
+
         let group_nodes = self
             .get(primary_node)
             .and_then(|Typed(group)| group.as_ref())
@@ -42,6 +49,7 @@ impl Db {
         let mut nodes = nodes
             .into_iter()
             .chain(group_nodes)
+            .filter(|&node| filter(node))
             .map(|node| (node, BTreeSet::new()))
             .collect::<BTreeMap<_, _>>();
 
@@ -61,6 +69,7 @@ impl Db {
 
                 let to_indices = trace_nodes
                     .iter()
+                    .filter(|&&node| filter(node))
                     .filter_map(|node| nodes.get(node).cloned())
                     .collect::<BTreeSet<_>>();
 
@@ -96,10 +105,12 @@ impl Db {
                     // Use grouped nodes as a fallback
                     if let Some(Typed(Some(group))) = self.get(node) {
                         for &node in group.nodes.iter() {
-                            let indices = nodes.entry(node).or_default();
+                            if filter(node) {
+                                let indices = nodes.entry(node).or_default();
 
-                            if indices.is_empty() {
-                                indices.insert(from_index);
+                                if indices.is_empty() {
+                                    indices.insert(from_index);
+                                }
                             }
                         }
                     }

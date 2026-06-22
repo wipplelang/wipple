@@ -407,28 +407,4 @@ Feedback:
 
   3. `() + 2`: `() + 2` is a `() Number -> _`. This requires `Add` `()` `Number` `_`.
 
-  4. `1 + 2`: `1 + 2` is a `Number Number -> Number`. This requires `Add` `Number` `Number` `Number`.
-
-  5. `"a" + "b"`: `"a" + "b"` is a `String String -> String`. This requires `Add` `String` `String` `String`.
-
-  6. `1 + "a"`: `1 + "a"` is a `Number String -> _`. This requires `Add` `Number` `String` `_`.
-
-  7. `1`: `1` is a `Number`.
-
-  8. `2`: `2` is a `Number`.
-
-  9. `_`: `_` is `1 + 2`. This means `1 + 2`, `1 + 2`, and `_` must be a `Number`.
-
-  10. `"a"`: `"a"` is a `String`.
-
-  11. `"b"`: `"b"` is a `String`.
-
-  12. `_`: `_` is `"a" + "b"`. This means `"a" + "b"`, `"a" + "b"`, and `_` must be a `String`.
-
-  13. `1`: `1` is a `Number`.
-
-  14. `"a"`: `"a"` is a `String`.
-
-  15. `_`: `_` is `1 + "a"`. This means `1 + "a"`, `1 + "a"`, and `_` must be a `_`.
-
-  (3 -> error, 3 -> 1, 4 -> 3, 5 -> 3, 5 -> 4, 6 -> 3, 6 -> 4, 6 -> 5, 7 -> 4, 8 -> 4, 9 -> 4, 10 -> 5, 11 -> 5, 12 -> 5, 13 -> 6, 14 -> 6, 15 -> 6)
+  (3 -> error, 3 -> 1)

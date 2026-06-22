@@ -258,12 +258,4 @@ Feedback:
 
   1. `B`: `B` is a `() -> ()`. This requires `B` `()`.
 
-  2. `B`: `B` is a `Number -> ()`. This requires `B` `Number`.
-
-  3. `B`: `B` is a `String -> ()`. This requires `B` `String`.
-
-  4. `123`: `123` is a `Number`.
-
-  5. `"abc"`: `"abc"` is a `String`.
-
-  (1 -> error, 2 -> 1, 3 -> 1, 3 -> 2, 4 -> 2, 5 -> 3)
+  (1 -> error)

@@ -230,8 +230,4 @@ Feedback:
 
   2. `_`: `_` is annotated with the type `Maybe Number`.
 
-  3. `Describe`: `Describe` is a `(Maybe String) -> String`. This requires `Describe` `(Maybe String)`.
-
-  4. `_`: `_` is annotated with the type `Maybe String`.
-
-  (1 -> error, 3 -> 1, 4 -> 3)
+  (1 -> error)
