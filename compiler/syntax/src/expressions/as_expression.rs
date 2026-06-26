@@ -13,7 +13,6 @@ use wipple_core::{
     span::{Span, Str},
     typecheck::{
         constraints::ty_constraint::TyConstraint,
-        groups::Annotated,
         ty::{ConstructedTy, Ty},
     },
     visit::{Visit, Visitor},
@@ -76,8 +75,6 @@ impl Visit for AsExpression {
         );
 
         visitor.constraint(db, TyConstraint::new(node, Ty::Node(right)));
-
-        db.insert(left, Annotated);
 
         visitor.codegen(
             db,

@@ -362,7 +362,6 @@ Facts (layer 2):
   grouped with `_ :: Number`, `Number`, `_ :: Number`
   has type `String` or `Number`
   is a pattern
-  type is annotated
 
 `Number` (NamedType):
   assigned type `Number`
@@ -421,46 +420,18 @@ Facts (layer 2):
 
 Feedback:
 
-`String` (conflicting-types)
-
-  `String` is a `String` or a `Number`, but it can only be one of these.
-  
-  `String` must be the same type as `_` and `Number`; double-check these.
-
-  1. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`. This requires `As-Sequence` `(Box (String or Number))` `(String or Number)`.
-
-  2. `_`: `_` is annotated with the type `Box String`.
-
-  3. `positive?`: `positive?` is `(_ :: Number) -> _`. This means `(_ :: Number) -> _`, `positive?`, and `positive?` must be a `(String or Number) -> Boolean`.
-
-  (2 -> 1)
-
-
 `_` (conflicting-types)
 
   `_` is a `String` or a `Number`, but it can only be one of these.
   
   `_` must be the same type as `String` and `Number`; double-check these.
 
-  1. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`. This requires `As-Sequence` `(Box (String or Number))` `(String or Number)`.
+  1. `_`: `_` is annotated with the type `Number`.
 
-  2. `_`: `_` is annotated with the type `Box String`.
+  2. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`. This requires `As-Sequence` `(Box (String or Number))` `(String or Number)`.
 
-  3. `positive?`: `positive?` is `(_ :: Number) -> _`. This means `(_ :: Number) -> _`, `positive?`, and `positive?` must be a `(String or Number) -> Boolean`.
+  3. `_`: `_` is annotated with the type `Box String`.
 
-  (2 -> 1)
+  4. `positive?`: `positive?` is `(_ :: Number) -> _`. This means `(_ :: Number) -> _`, `positive?`, and `positive?` must be a `(String or Number) -> Boolean`.
 
-
-`Number` (conflicting-types)
-
-  `Number` is a `String` or a `Number`, but it can only be one of these.
-  
-  `Number` must be the same type as `String` and `_`; double-check these.
-
-  1. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`. This requires `As-Sequence` `(Box (String or Number))` `(String or Number)`.
-
-  2. `_`: `_` is annotated with the type `Box String`.
-
-  3. `positive?`: `positive?` is `(_ :: Number) -> _`. This means `(_ :: Number) -> _`, `positive?`, and `positive?` must be a `(String or Number) -> Boolean`.
-
-  (2 -> 1)
+  (1 -> error, 3 -> 2)
