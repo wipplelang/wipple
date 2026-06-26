@@ -10,6 +10,11 @@ pixels : pixels -> Distance {pixels : pixels}
 -- Double-check your parentheses.
 error instance (Mismatched (n :: Number) Distance)
 
+-- Missing `degrees` after [`n`].
+--
+-- Double-check your parentheses.
+error instance (Mismatched (n :: Number) Angle)
+
 -- Move the turtle forward by a distance.
 forward :: Distance -> ()
 forward : (Distance {pixels : pixels}) -> external "forward" pixels
