@@ -4,6 +4,7 @@
     import Box from "./Box.svelte";
     import Markdown from "./Markdown.svelte";
     import CodeEditor from "./CodeEditor.svelte";
+    import "./HoverLink.svelte";
 
     interface Props {
         data: {

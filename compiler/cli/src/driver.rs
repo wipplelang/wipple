@@ -24,7 +24,7 @@ pub struct Driver<'a, Out> {
     pub time: bool,
     pub progress: Option<(usize, usize)>,
     pub hide_facts: bool,
-    pub show_span: bool,
+    pub rich: bool,
 }
 
 impl<'a, Out: io::Write> Driver<'a, Out> {
@@ -37,7 +37,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             time: false,
             progress: None,
             hide_facts: false,
-            show_span: true,
+            rich: false,
         }
     }
 
@@ -83,7 +83,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             };
 
             writeln!(self.out, "Facts (layer {}):\n", db.layer())?;
-            writeln!(self.out, "{}", db.debug(filter, self.show_span))?;
+            writeln!(self.out, "{}", db.debug(filter, self.rich))?;
         }
 
         if self.compile_options.graph && !self.hide_facts {
@@ -119,7 +119,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
                 let mut render_ctx = RenderCtx::with_filter(&filter);
                 render_ctx.node(node);
                 let (location, _) =
-                    render_ctx.finish(db, |db, segment| segment.markdown(db, self.show_span));
+                    render_ctx.finish(db, |db, segment| segment.markdown(db, self.rich));
                 location
             };
 
@@ -127,7 +127,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
 
             writeln!(self.out, "\n{} ({})\n", rendered_location, item.id)?;
 
-            let feedback = item.display(db, |db, segment| segment.markdown(db, false));
+            let feedback = item.display(db, |db, segment| segment.markdown(db, self.rich));
 
             for line in feedback.message.lines() {
                 writeln!(self.out, "  {line}")?;

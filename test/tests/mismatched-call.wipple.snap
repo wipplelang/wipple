@@ -99,7 +99,7 @@ Feedback:
 
   `1 + 2` is a `Number` or a `String`, but it can only be one of these.
 
-  1. `1 + 2`: `1 + 2` adds `1` and `2` together, returning a `Number`. This requires `Add` `Number` `Number` `(Number or String)`.
+  1. `1 + 2`: `1 + 2` adds `1` and `2` together, returning a `Number`.<wipple-hover-link>Add : left right (infer sum) => trait (left right -> sum)</wipple-hover-link> This requires `Add` `Number` `Number` `(Number or String)`.
 
   2. `accepts-text`: `accepts-text` is a `String -> ()`.
 
@@ -114,7 +114,7 @@ Feedback:
 
   `1 + 2` is a `Number` or a `String`, but it can only be one of these.
 
-  1. `1 + 2`: `1 + 2` adds `1` and `2` together, returning a `Number`. This requires `Add` `Number` `Number` `(Number or String)`.
+  1. `1 + 2`: `1 + 2` adds `1` and `2` together, returning a `Number`.<wipple-hover-link>Add : left right (infer sum) => trait (left right -> sum)</wipple-hover-link> This requires `Add` `Number` `Number` `(Number or String)`.
 
   2. `accepts-text`: `accepts-text` is a `String -> ()`.
 

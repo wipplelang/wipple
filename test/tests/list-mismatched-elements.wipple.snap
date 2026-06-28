@@ -94,9 +94,9 @@ Feedback:
 
   2. `1`: `1` is a `Number`.
 
-  3. `each`: `each` calls `show` for each `() or String or Number` in `my-list`. This requires `As-Sequence` `(List (() or String or Number))` `(() or String or Number)`.
+  3. `each`: `each` calls `show` for each `() or String or Number` in `my-list`.<wipple-hover-link>each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)</wipple-hover-link> This requires `As-Sequence` `(List (() or String or Number))` `(() or String or Number)`.
 
-  4. `show`: `show` displays `() or String or Number` on the screen. This requires `Describe` `(() or String or Number)`.
+  4. `show`: `show` displays `() or String or Number` on the screen.<wipple-hover-link>show :: value -> () where (Describe value)</wipple-hover-link> This requires `Describe` `(() or String or Number)`.
 
   5. `my-list`: `my-list` is `1, "hi", ()`. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List (() or String or Number)`.
 
@@ -113,9 +113,9 @@ Feedback:
 
   2. `1`: `1` is a `Number`.
 
-  3. `each`: `each` calls `show` for each `() or String or Number` in `my-list`. This requires `As-Sequence` `(List (() or String or Number))` `(() or String or Number)`.
+  3. `each`: `each` calls `show` for each `() or String or Number` in `my-list`.<wipple-hover-link>each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)</wipple-hover-link> This requires `As-Sequence` `(List (() or String or Number))` `(() or String or Number)`.
 
-  4. `show`: `show` displays `() or String or Number` on the screen. This requires `Describe` `(() or String or Number)`.
+  4. `show`: `show` displays `() or String or Number` on the screen.<wipple-hover-link>show :: value -> () where (Describe value)</wipple-hover-link> This requires `Describe` `(() or String or Number)`.
 
   5. `my-list`: `my-list` is `1, "hi", ()`. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List (() or String or Number)`.
 
@@ -132,9 +132,9 @@ Feedback:
 
   2. `1`: `1` is a `Number`.
 
-  3. `each`: `each` calls `show` for each `() or String or Number` in `my-list`. This requires `As-Sequence` `(List (() or String or Number))` `(() or String or Number)`.
+  3. `each`: `each` calls `show` for each `() or String or Number` in `my-list`.<wipple-hover-link>each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)</wipple-hover-link> This requires `As-Sequence` `(List (() or String or Number))` `(() or String or Number)`.
 
-  4. `show`: `show` displays `() or String or Number` on the screen. This requires `Describe` `(() or String or Number)`.
+  4. `show`: `show` displays `() or String or Number` on the screen.<wipple-hover-link>show :: value -> () where (Describe value)</wipple-hover-link> This requires `Describe` `(() or String or Number)`.
 
   5. `my-list`: `my-list` is `1, "hi", ()`. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List (() or String or Number)`.
 

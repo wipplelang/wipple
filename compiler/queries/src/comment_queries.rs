@@ -20,6 +20,7 @@ pub fn comments(db: &QueryCtx<'_>, node: Node) -> Option<Comments> {
     let Defined(definition) = db.get(definition_node)?;
 
     Some(Comments {
+        definition: definition_node,
         nodes: vec![definition_node],
         comments: definition.comments().to_vec(),
         links: get_links(db, definition_node, node),
@@ -56,6 +57,7 @@ pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'
             let instance_definition = definition.downcast_ref::<InstanceDefinition>()?;
 
             let mut comments = Comments {
+                definition: bound.instance.node,
                 nodes: vec![bound.instance.node],
                 comments: instance_definition.comments.clone(),
                 links: get_links(db, bound.instance.node, node),

@@ -117,7 +117,7 @@ impl Ide {
                 .get(&self.result.db)
                 .span(&self.result.db);
 
-            let feedback = item.display(&self.result.db, |db, segment| segment.markdown(db, false));
+            let feedback = item.display(&self.result.db, |db, segment| segment.markdown(db, true));
 
             Some(IdeDiagnostic {
                 range: span.into(),
@@ -427,7 +427,7 @@ impl Ide {
         let mut writer = FeedbackWriter::with_filter(&default_filter);
         writer.comments(&self.result.db, &comments);
 
-        let feedback = writer.finish(&self.result.db, |db, segment| segment.markdown(db, false));
+        let feedback = writer.finish(&self.result.db, |db, segment| segment.markdown(db, true));
 
         (!feedback.message.is_empty()).then_some(feedback.message)
     }

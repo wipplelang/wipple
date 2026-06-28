@@ -342,7 +342,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
         let mut out = Vec::new();
 
         let mut driver = Driver::new(options, vec![file], &mut out);
-        driver.show_span = false;
+        driver.rich = true;
         driver.progress = Some((counter.fetch_add(1, atomic::Ordering::Relaxed), files_count));
 
         if let Some((_, source_files, statements)) =
@@ -447,7 +447,7 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
             let mut writer = FeedbackWriter::with_filter(&default_filter);
             writer.comments(db, &documentation.comments);
             let docs = writer
-                .finish(db, |db, segment| segment.markdown(db, false))
+                .finish(db, |db, segment| segment.markdown(db, true))
                 .message;
 
             items.insert(

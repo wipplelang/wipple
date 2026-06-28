@@ -67,10 +67,10 @@ Feedback:
   Can't describe `my-variable`.
   
   You can't display `my-variable` on the screen or use it in placeholders because
-  it can't be converted into a string.
+  it can't be converted into a string.<wipple-hover-link>default error instance (Describe value)</wipple-hover-link>
 
   1. `my-variable`: `my-variable` is `Cannot-Be-Shown`. This means `Cannot-Be-Shown`, `my-variable`, and `my-variable` must be a `Cannot-Be-Shown`.
 
-  2. `show`: `show` displays `my-variable` on the screen. This requires `Describe` `Cannot-Be-Shown`.
+  2. `show`: `show` displays `my-variable` on the screen.<wipple-hover-link>show :: value -> () where (Describe value)</wipple-hover-link> This requires `Describe` `Cannot-Be-Shown`.
 
   (2 -> error, 2 -> 1)

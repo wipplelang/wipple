@@ -27,13 +27,16 @@
         });
     };
 
+    const [primaryMessage, ...secondaryMessages] = diagnostic.message.split("\n\n");
+    const secondaryMessage = secondaryMessages.join("\n\n");
+
     const entries = [
         {
             id: "error",
             code,
             location: diagnostic.locations[0],
-            message: diagnostic.message.split("\n\n")[0],
-            consequences: [],
+            message: primaryMessage,
+            consequences: [secondaryMessage],
         },
         ...diagnostic.traces.map((trace) => ({
             id: `trace${trace.index}`,

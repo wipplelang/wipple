@@ -173,6 +173,7 @@ impl Render for DefinitionConstraintTrace {
             ctx.comments(
                 db,
                 &Comments {
+                    definition: self.definition,
                     nodes: Default::default(),
                     comments: comments.to_vec(),
                     links: get_links(db, self.definition, self.node),

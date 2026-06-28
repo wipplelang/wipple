@@ -399,7 +399,7 @@ Feedback:
 
 `() + 2` (error-instance)
 
-  Missing parentheses around the inputs to `+`.
+  Missing parentheses around the inputs to `+`.<wipple-hover-link>error instance (Add () right sum)</wipple-hover-link>
 
   1. `2`: `2` is a `Number`.
 

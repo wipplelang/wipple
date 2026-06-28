@@ -472,7 +472,7 @@ impl Db {
         self.ast.gc();
     }
 
-    pub fn debug(&self, filter: impl Fn(&Self, Node) -> bool, show_span: bool) -> impl Display {
+    pub fn debug(&self, filter: impl Fn(&Self, Node) -> bool, rich: bool) -> impl Display {
         let mut nodes = self
             .nodes_since(0)
             .filter_map(|(node, info)| {
@@ -513,7 +513,7 @@ impl Db {
                     }
 
                     Some(
-                        ctx.finish(self, |db, segment| segment.markdown(db, show_span))
+                        ctx.finish(self, |db, segment| segment.markdown(db, rich))
                             .0
                             .to_string(),
                     )
@@ -537,7 +537,6 @@ impl Db {
             ctx.string("\n");
         }
 
-        ctx.finish(self, |db, segment| segment.markdown(db, show_span))
-            .0
+        ctx.finish(self, |db, segment| segment.markdown(db, rich)).0
     }
 }

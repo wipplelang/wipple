@@ -48,8 +48,8 @@ Feedback:
   Can't describe `Foo`.
   
   You can't display `Foo` on the screen or use it in placeholders because
-  it can't be converted into a string.
+  it can't be converted into a string.<wipple-hover-link>default error instance (Describe value)</wipple-hover-link>
 
-  1. `show`: `show` displays `Foo` on the screen. This requires `Describe` `Foo`.
+  1. `show`: `show` displays `Foo` on the screen.<wipple-hover-link>show :: value -> () where (Describe value)</wipple-hover-link> This requires `Describe` `Foo`.
 
   (1 -> error)

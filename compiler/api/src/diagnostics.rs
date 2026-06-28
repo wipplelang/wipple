@@ -156,7 +156,7 @@ impl CompileResult {
                     let (label, node) = match segment {
                         RenderSegment::Node(node) => (segment.plain_text(db), *node),
                         RenderSegment::Link(label, node) => (label.clone(), *node),
-                        _ => return segment.markdown(db, false),
+                        _ => return segment.markdown(db, true),
                     };
 
                     mask.insert(node);

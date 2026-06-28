@@ -168,13 +168,13 @@ Feedback:
   Missing parentheses around the inputs to `+`.
   
   Spaces group before operators do, so you need to put parentheses around just
-  the inputs to `+`.
+  the inputs to `+`.<wipple-hover-link>error instance (Add () right sum)</wipple-hover-link>
 
   1. `2`: `2` is a `Number`.
 
-  2. `show 1 + 2`: `show 1 + 2` adds `show 1` and `2` together, returning a `_`. This requires `Add` `()` `Number` `_`.
+  2. `show 1 + 2`: `show 1 + 2` adds `show 1` and `2` together, returning a `_`.<wipple-hover-link>Add : left right (infer sum) => trait (left right -> sum)</wipple-hover-link> This requires `Add` `()` `Number` `_`.
 
-  3. `show`: `show` displays `1` on the screen. This requires `Describe` `Number`.
+  3. `show`: `show` displays `1` on the screen.<wipple-hover-link>show :: value -> () where (Describe value)</wipple-hover-link> This requires `Describe` `Number`.
 
   4. `1`: `1` is a `Number`.
 

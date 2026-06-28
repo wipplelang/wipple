@@ -4,6 +4,7 @@ use crate::{
     span::Str,
     typecheck::ty::Ty,
     util::Link,
+    visit::definitions::Defined,
 };
 use regex::Regex;
 use std::{
@@ -41,6 +42,7 @@ impl<'a> RenderCtx<'a> {
 
 #[derive(Debug, Clone)]
 pub struct Comments {
+    pub definition: Node,
     pub nodes: Vec<Node>,
     pub comments: Vec<Str>,
     pub links: BTreeMap<Str, Link>,
@@ -91,6 +93,11 @@ impl RenderCtx<'_> {
 
     pub fn link(&mut self, label: impl Into<String>, node: Node) {
         self.segments.push(RenderSegment::Link(label.into(), node));
+        self.nodes.insert(node);
+    }
+
+    pub fn hover_link(&mut self, node: Node) {
+        self.segments.push(RenderSegment::HoverLink(node));
         self.nodes.insert(node);
     }
 
@@ -211,6 +218,8 @@ impl RenderCtx<'_> {
         }
 
         self.string(&comments_string[index..]);
+
+        self.hover_link(comments.definition);
     }
 
     pub fn render(&mut self, db: &Db, render: &impl Render) {
@@ -255,6 +264,7 @@ pub enum RenderSegment {
     Code(String),
     Node(Node),
     Link(String, Node),
+    HoverLink(Node),
 }
 
 impl RenderSegment {
@@ -268,10 +278,11 @@ impl RenderSegment {
                 None => String::from("_"),
             },
             RenderSegment::Link(label, _) => label.clone(),
+            RenderSegment::HoverLink(_) => String::new(),
         }
     }
 
-    pub fn markdown(&self, db: &Db, show_span: bool) -> String {
+    pub fn markdown(&self, db: &Db, rich: bool) -> String {
         match self {
             RenderSegment::LineBreak => String::from("\n\n"),
             RenderSegment::String(s) => s.clone(),
@@ -284,7 +295,7 @@ impl RenderSegment {
 
                     write!(s, "`{}`", format_source(&span.source)).unwrap();
 
-                    if show_span {
+                    if !rich {
                         write!(s, " ({span})").unwrap();
                     }
                 } else {
@@ -303,13 +314,27 @@ impl RenderSegment {
                 if let Some(Syntax(syntax)) = db.get(*node) {
                     let span = db.ast(syntax).span(db);
 
-                    if show_span {
+                    if !rich {
                         write!(s, " ({span})").unwrap();
                     }
                 }
 
                 if db.debug_enabled {
                     write!(s, " ({node:?})").unwrap();
+                }
+
+                s
+            }
+            RenderSegment::HoverLink(node) => {
+                let mut s = String::new();
+
+                if rich
+                    && let Some(Defined(definition)) = db.get(*node)
+                    && let Some(span) = definition
+                        .full_span()
+                        .or_else(|| db.get(*node).map(|Syntax(syntax)| db.ast(syntax).span(db)))
+                {
+                    write!(s, "<wipple-hover-link>{}</wipple-hover-link>", span.source).unwrap();
                 }
 
                 s
