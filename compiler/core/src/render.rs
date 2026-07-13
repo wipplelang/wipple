@@ -281,8 +281,29 @@ impl RenderSegment {
             RenderSegment::HoverLink(_) => String::new(),
         }
     }
+}
 
-    pub fn markdown(&self, db: &Db, rich: bool) -> String {
+#[non_exhaustive]
+#[derive(Debug, Clone, Copy, Default)]
+pub struct RenderMarkdownOptions {
+    pub rich: bool,
+    pub hover_links: bool,
+}
+
+impl RenderMarkdownOptions {
+    pub fn rich(mut self) -> Self {
+        self.rich = true;
+        self
+    }
+
+    pub fn hover_links(mut self) -> Self {
+        self.hover_links = true;
+        self
+    }
+}
+
+impl RenderSegment {
+    pub fn markdown(&self, db: &Db, options: RenderMarkdownOptions) -> String {
         match self {
             RenderSegment::LineBreak => String::from("\n\n"),
             RenderSegment::String(s) => s.clone(),
@@ -295,7 +316,7 @@ impl RenderSegment {
 
                     write!(s, "`{}`", format_source(&span.source)).unwrap();
 
-                    if !rich {
+                    if !options.rich {
                         write!(s, " ({span})").unwrap();
                     }
                 } else {
@@ -314,7 +335,7 @@ impl RenderSegment {
                 if let Some(Syntax(syntax)) = db.get(*node) {
                     let span = db.ast(syntax).span(db);
 
-                    if !rich {
+                    if !options.rich {
                         write!(s, " ({span})").unwrap();
                     }
                 }
@@ -328,7 +349,7 @@ impl RenderSegment {
             RenderSegment::HoverLink(node) => {
                 let mut s = String::new();
 
-                if rich
+                if options.hover_links
                     && let Some(Defined(definition)) = db.get(*node)
                     && let Some(span) = definition
                         .full_span()

@@ -11,7 +11,7 @@ use wipple_core::{
     db::{Db, Node, NodeId},
     default_filter,
     facts::Syntax,
-    render::RenderCtx,
+    render::{RenderCtx, RenderMarkdownOptions},
 };
 use wipple_feedback::collect_feedback;
 use wipple_syntax::checks::run_checks;
@@ -24,7 +24,7 @@ pub struct Driver<'a, Out> {
     pub time: bool,
     pub progress: Option<(usize, usize)>,
     pub hide_facts: bool,
-    pub rich: bool,
+    pub render_options: RenderMarkdownOptions,
 }
 
 impl<'a, Out: io::Write> Driver<'a, Out> {
@@ -37,7 +37,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             time: false,
             progress: None,
             hide_facts: false,
-            rich: false,
+            render_options: Default::default(),
         }
     }
 
@@ -83,7 +83,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             };
 
             writeln!(self.out, "Facts (layer {}):\n", db.layer())?;
-            writeln!(self.out, "{}", db.debug(filter, self.rich))?;
+            writeln!(self.out, "{}", db.debug(filter, self.render_options))?;
         }
 
         if self.compile_options.graph && !self.hide_facts {
@@ -119,7 +119,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
                 let mut render_ctx = RenderCtx::with_filter(&filter);
                 render_ctx.node(node);
                 let (location, _) =
-                    render_ctx.finish(db, |db, segment| segment.markdown(db, self.rich));
+                    render_ctx.finish(db, |db, segment| segment.markdown(db, self.render_options));
                 location
             };
 
@@ -127,7 +127,8 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
 
             writeln!(self.out, "\n{} ({})\n", rendered_location, item.id)?;
 
-            let feedback = item.display(db, |db, segment| segment.markdown(db, self.rich));
+            let feedback =
+                item.display(db, |db, segment| segment.markdown(db, self.render_options));
 
             for line in feedback.message.lines() {
                 writeln!(self.out, "  {line}")?;

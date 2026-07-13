@@ -8,7 +8,7 @@ use wipple_core::{
     db::Node,
     default_filter,
     facts::Syntax,
-    render::RenderSegment,
+    render::{RenderMarkdownOptions, RenderSegment},
     typecheck::{
         groups::{Group, Typed, update_type},
         instantiate::Instantiated,
@@ -156,7 +156,12 @@ impl CompileResult {
                     let (label, node) = match segment {
                         RenderSegment::Node(node) => (segment.plain_text(db), *node),
                         RenderSegment::Link(label, node) => (label.clone(), *node),
-                        _ => return segment.markdown(db, true),
+                        _ => {
+                            return segment.markdown(
+                                db,
+                                RenderMarkdownOptions::default().rich().hover_links(),
+                            );
+                        }
                     };
 
                     mask.insert(node);

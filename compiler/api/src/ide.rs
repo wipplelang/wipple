@@ -8,7 +8,7 @@ use wipple_core::{
     db::Node,
     default_filter,
     facts::Syntax,
-    render::RenderCtx,
+    render::{RenderCtx, RenderMarkdownOptions},
     span::Span,
     typecheck::ty::Ty,
     visit::{
@@ -117,7 +117,9 @@ impl Ide {
                 .get(&self.result.db)
                 .span(&self.result.db);
 
-            let feedback = item.display(&self.result.db, |db, segment| segment.markdown(db, true));
+            let feedback = item.display(&self.result.db, |db, segment| {
+                segment.markdown(db, RenderMarkdownOptions::default().rich())
+            });
 
             Some(IdeDiagnostic {
                 range: span.into(),
@@ -427,7 +429,9 @@ impl Ide {
         let mut writer = FeedbackWriter::with_filter(&default_filter);
         writer.comments(&self.result.db, &comments);
 
-        let feedback = writer.finish(&self.result.db, |db, segment| segment.markdown(db, true));
+        let feedback = writer.finish(&self.result.db, |db, segment| {
+            segment.markdown(db, RenderMarkdownOptions::default().rich())
+        });
 
         (!feedback.message.is_empty()).then_some(feedback.message)
     }
