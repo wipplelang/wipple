@@ -7,6 +7,14 @@
 
 @custom-variant printing (&:where([data-printing] *));
 
+@custom-variant dark {
+    @media (prefers-color-scheme: dark) {
+        &:not([data-printing]):not([data-printing] *) {
+            @slot;
+        }
+    }
+}
+
 @theme {
     --font-sans: "Inter Variable", sans-serif;
     --font-mono: "JetBrains Mono Variable", monospace;
@@ -30,7 +38,7 @@
     --color-placeholder: var(--theme-color-placeholder);
 }
 
-:root {
+html {
     --theme-color-primary: var(--color-black);
     --theme-color-secondary: var(--color-gray-700);
     --theme-color-destructive: var(--color-red-500);

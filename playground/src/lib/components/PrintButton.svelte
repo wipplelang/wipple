@@ -17,10 +17,10 @@
             width: width * 100,
             height: height * 100,
             useCORS: true,
-            onclone: (_document, element) => {
+            onclone: (document, element) => {
+                document.documentElement.dataset.printing = "printing";
                 element.style.width = `${width * 100}px`;
                 element.style.height = `${height * 100}px`;
-                element.dataset.printing = "printing";
             },
             ignoreElements: (element) => element.classList.contains("cm-widgetBuffer"),
         });
