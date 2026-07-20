@@ -18,7 +18,7 @@ use std::{
 
 #[derive(Debug, Clone, Copy)]
 pub struct Options<'a> {
-    pub file_name: &'a str,
+    pub file_name: Option<&'a str>,
     pub source_root: &'a str,
     pub trace: TraceOptions<'a>,
 }

@@ -163,12 +163,9 @@ impl Writer<'_> {
             "mappings": vlq,
         });
 
-        writeln!(
-            self.string,
-            "\n//# sourceMappingURL={}.map",
-            options.file_name
-        )
-        .unwrap();
+        if let Some(file_name) = options.file_name {
+            writeln!(self.string, "\n//# sourceMappingURL={file_name}.map").unwrap();
+        }
 
         JsResult {
             module: self.string,

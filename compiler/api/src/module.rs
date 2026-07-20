@@ -18,7 +18,7 @@ impl CompileResult {
             &self.db,
             &program,
             codegen::Options {
-                file_name: "out",
+                file_name: None,
                 source_root: "",
                 trace: codegen::TraceOptions::Files(&[&self.path]),
             },

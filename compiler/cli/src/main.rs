@@ -225,7 +225,7 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
         &db,
         &program,
         codegen::Options {
-            file_name: JS_FILE_NAME,
+            file_name: Some(JS_FILE_NAME),
             source_root: &format!("{}/", env::current_dir()?.display()),
             trace: if options.trace {
                 codegen::TraceOptions::All
@@ -355,7 +355,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
                 &db,
                 &program,
                 codegen::Options {
-                    file_name: JS_FILE_NAME,
+                    file_name: Some(JS_FILE_NAME),
                     source_root: "",
                     trace: Default::default(),
                 },
