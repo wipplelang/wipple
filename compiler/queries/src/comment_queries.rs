@@ -3,7 +3,7 @@ use wipple_core::{
     db::Node,
     render::Comments,
     traces::Traces,
-    typecheck::bounds::{Bounds, ResolvedBound},
+    typecheck::bounds::{ResolvedBound, ResolvedBounds},
     util::get_links,
     visit::{
         Resolved,
@@ -36,7 +36,7 @@ pub struct ErrorInstance<'a> {
 }
 
 pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'a>> {
-    let Some(Bounds(bounds)) = db.get(node) else {
+    let Some(ResolvedBounds(bounds)) = db.get(node) else {
         return Vec::new();
     };
 

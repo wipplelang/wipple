@@ -19,7 +19,7 @@ use wipple_core::{
         ty::Ty,
     },
     util::exact_for_each,
-    visit::{Visit, Visitor, definitions::TraitDefinition},
+    visit::{Bounds, Visit, Visitor, definitions::TraitDefinition},
 };
 use wipple_parse::{
     lexer::TokenKind,
@@ -119,6 +119,10 @@ impl Visit for BoundConstraint {
                 parameters: bound_parameters,
             }),
         );
+
+        db.get_mut_or_default::<Bounds>(visitor.current_definition.as_ref().unwrap().node)
+            .0
+            .insert(node);
     }
 }
 

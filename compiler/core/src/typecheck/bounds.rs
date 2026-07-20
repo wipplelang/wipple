@@ -28,12 +28,12 @@ impl Render for Instances {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Bounds(pub BTreeMap<Vec<Node>, Result<ResolvedBound, UnresolvedBound>>);
+pub struct ResolvedBounds(pub BTreeMap<Vec<Node>, Result<ResolvedBound, UnresolvedBound>>);
 
 #[typetag::serde]
-impl Fact for Bounds {}
+impl Fact for ResolvedBounds {}
 
-impl Render for Bounds {
+impl Render for ResolvedBounds {
     fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         if self.0.is_empty() {
             ctx.string("has no bounds");

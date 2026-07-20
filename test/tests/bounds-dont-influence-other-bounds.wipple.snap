@@ -111,6 +111,7 @@ Facts (layer 2):
 `f` (ConstantDefinition):
   assigned type `(a; b)`
   grouped with `a; b`, `todo`
+  has bounds
   has definition constraints
   has type `(a; b)`
   has type parameters

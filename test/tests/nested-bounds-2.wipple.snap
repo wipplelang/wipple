@@ -98,6 +98,7 @@ Facts (layer 2):
 `instance (T value) where (U value)` (InstanceDefinition):
   assigned type `()`
   grouped with `()`, `()`
+  has bounds
   has definition constraints
   has type `()`
   has type parameters
@@ -136,6 +137,7 @@ Facts (layer 2):
 `instance (U value) where (V value)` (InstanceDefinition):
   assigned type `()`
   grouped with `()`, `()`
+  has bounds
   has definition constraints
   has type `()`
   has type parameters
@@ -174,6 +176,7 @@ Facts (layer 2):
 `instance (V value) where (W value)` (InstanceDefinition):
   assigned type `()`
   grouped with `()`, `()`
+  has bounds
   has definition constraints
   has type `()`
   has type parameters

@@ -1,15 +1,20 @@
 pub mod ir;
 pub mod js;
-pub mod monomorphize;
 
 use crate::{
-    codegen::monomorphize::MonomorphizeCtx,
     db::{Db, Node},
     facts::Codegen,
-    typecheck::bounds::Bounds,
+    typecheck::bounds::ResolvedBounds,
+    visit::{
+        Bounds,
+        definitions::{ConstantDefinition, ConstantValue, Defined, InstanceDefinition},
+    },
 };
 use dyn_clone::DynClone;
-use std::{collections::BTreeMap, fmt::Debug};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Debug,
+};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Options<'a> {
@@ -36,7 +41,7 @@ dyn_clone::clone_trait_object!(CodegenValue);
 pub type CodegenError = anyhow::Error;
 
 pub struct CodegenCtx {
-    monomorphize_ctx: MonomorphizeCtx,
+    reachable_definitions: BTreeSet<ir::DefinitionKey>,
     instructions: Vec<Vec<ir::Instruction>>,
     conditions: Vec<Vec<ir::Condition>>,
 }
@@ -44,7 +49,7 @@ pub struct CodegenCtx {
 impl CodegenCtx {
     fn new() -> Self {
         CodegenCtx {
-            monomorphize_ctx: Default::default(),
+            reachable_definitions: Default::default(),
             instructions: vec![Vec::new()],
             conditions: Vec::new(),
         }
@@ -82,43 +87,34 @@ impl CodegenCtx {
         self.conditions.last_mut().unwrap().push(condition);
     }
 
-    pub fn definition_key(
-        &mut self,
-        definition: Node,
-        bounds: BTreeMap<Vec<Node>, ir::Instance>,
-        generic: bool,
-    ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
-        self.monomorphize_ctx
-            .get_or_insert(definition, bounds, generic)
+    pub fn mark_reachable(&mut self, definition: ir::DefinitionKey) {
+        self.reachable_definitions.insert(definition);
     }
 
-    pub fn codegen_constant(
+    pub fn bounds_for_constant(
         &mut self,
-        db: &Db,
         definition: Node,
         bound_path: &[Node],
-        bounds: &Bounds,
-        generic: bool,
-    ) -> Result<ir::ConstantDefinitionKey, CodegenError> {
-        let bounds = bounds
+        bounds: &ResolvedBounds,
+    ) -> Result<BTreeMap<Vec<Node>, ir::Instance>, CodegenError> {
+        self.reachable_definitions
+            .insert(ir::DefinitionKey::Constant(definition));
+
+        bounds
             .0
             .keys()
             .filter(|other| other.starts_with(bound_path) && other.len() == bound_path.len() + 1)
             .map(|other| {
-                self.codegen_instance(db, other, bounds, true)
+                self.bound_for_instance(other, bounds)
                     .map(|instance| (other.strip_prefix(bound_path).unwrap().to_vec(), instance))
             })
-            .collect::<Result<BTreeMap<_, _>, CodegenError>>()?;
-
-        self.definition_key(definition, bounds, generic)
+            .collect()
     }
 
-    pub fn codegen_instance(
+    pub fn bound_for_instance(
         &mut self,
-        db: &Db,
         bound_path: &[Node],
-        bounds: &Bounds,
-        generic: bool,
+        bounds: &ResolvedBounds,
     ) -> Result<ir::Instance, CodegenError> {
         let bound = bounds
             .0
@@ -132,13 +128,13 @@ impl CodegenCtx {
             return Ok(ir::Instance::Bound(vec![bound.instance.node]));
         }
 
-        Ok(ir::Instance::Definition(self.codegen_constant(
-            db,
-            bound.instance.node,
-            bound_path,
-            bounds,
-            generic,
-        )?))
+        self.reachable_definitions
+            .insert(ir::DefinitionKey::Constant(bound.instance.node));
+
+        Ok(ir::Instance::Instance {
+            definition: ir::DefinitionKey::Constant(bound.instance.node),
+            bounds: self.bounds_for_constant(bound.instance.node, bound_path, bounds)?,
+        })
     }
 }
 
@@ -148,27 +144,79 @@ pub fn codegen(
     statements: &[Node],
     lib_statements: &[Node],
 ) -> Result<ir::Program, CodegenError> {
-    let mut ctx = CodegenCtx::new();
-
     let mut program = ir::Program::default();
     program.source_files.extend(source_files);
 
-    for &statement in statements.iter().chain(lib_statements) {
-        ctx.codegen(db, statement)?;
-    }
+    let mut ctx = CodegenCtx::new();
 
-    program.definitions.insert(
-        ir::DefinitionKey::TopLevel,
-        ir::Function {
-            instructions: ctx.pop_instructions(),
-            ..Default::default()
-        },
-    );
+    ctx.reachable_definitions
+        .insert(ir::DefinitionKey::TopLevel);
 
-    for (key, definition) in ctx.monomorphize_ctx.monomorphize_definitions(db)? {
-        program
-            .definitions
-            .insert(ir::DefinitionKey::Constant(key), definition);
+    let mut visited = BTreeSet::new();
+    loop {
+        let mut progress = false;
+
+        for key in ctx.reachable_definitions.clone() {
+            if !visited.insert(key) {
+                continue;
+            }
+
+            match key {
+                ir::DefinitionKey::TopLevel => {
+                    for &statement in statements.iter().chain(lib_statements) {
+                        ctx.codegen(db, statement)?;
+                    }
+
+                    program.definitions.insert(
+                        ir::DefinitionKey::TopLevel,
+                        ir::Function {
+                            instructions: ctx.pop_instructions(),
+                            ..Default::default()
+                        },
+                    );
+                }
+                ir::DefinitionKey::Constant(node) => {
+                    let Defined(definition) = db
+                        .get(node)
+                        .ok_or_else(|| anyhow::format_err!("no definition for {node:?}"))?;
+
+                    let body = if definition.downcast_ref::<ConstantDefinition>().is_some() {
+                        db.get(node).map(|ConstantValue(value)| *value)
+                    } else if let Some(definition) = definition.downcast_ref::<InstanceDefinition>()
+                    {
+                        definition.value
+                    } else {
+                        None
+                    }
+                    .ok_or_else(|| anyhow::format_err!("definition {node:?} has no value"))?;
+
+                    let Bounds(bounds) = db.get(node).cloned().unwrap_or_default();
+
+                    let mut definition_ctx = CodegenCtx::new();
+                    definition_ctx.codegen(db, body)?;
+                    definition_ctx.instruction(ir::Instruction::Return { value: body });
+
+                    let function = ir::Function {
+                        bounds: Some(bounds),
+                        instructions: definition_ctx.pop_instructions(),
+                        ..Default::default()
+                    };
+
+                    program
+                        .definitions
+                        .insert(ir::DefinitionKey::Constant(node), function);
+
+                    ctx.reachable_definitions
+                        .extend(definition_ctx.reachable_definitions);
+                }
+            }
+
+            progress = true;
+        }
+
+        if !progress {
+            break;
+        }
     }
 
     Ok(program)

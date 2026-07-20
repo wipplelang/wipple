@@ -7,7 +7,7 @@ use wipple_core::{
     render::{Comments, Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
-        bounds::Bounds,
+        bounds::ResolvedBounds,
         constraints::{
             ConstraintTrace, instantiate_constraint::InstantiateConstraint,
             ty_constraint::TyConstraint,
@@ -128,7 +128,6 @@ impl Visit for VariableExpression {
                     VariableExpressionCodegen::Constant {
                         node,
                         definition: definition_node,
-                        is_generic: visitor.current_definition.is_some(),
                     },
                 );
             }
@@ -190,15 +189,8 @@ impl Render for DefinitionConstraintTrace {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum VariableExpressionCodegen {
-    Variable {
-        node: Node,
-        resolved: Node,
-    },
-    Constant {
-        node: Node,
-        definition: Node,
-        is_generic: bool,
-    },
+    Variable { node: Node, resolved: Node },
+    Constant { node: Node, definition: Node },
 }
 
 #[typetag::serde]
@@ -214,18 +206,17 @@ impl CodegenValue for VariableExpressionCodegen {
 
                 ctx.instruction(ir::Instruction::Value { node: *node, value });
             }
-            VariableExpressionCodegen::Constant {
-                node,
-                definition,
-                is_generic,
-            } => {
-                let bounds = db.get::<Bounds>(*node).cloned().unwrap_or_default();
+            VariableExpressionCodegen::Constant { node, definition } => {
+                let bounds = db.get::<ResolvedBounds>(*node).cloned().unwrap_or_default();
 
-                let key = ctx.codegen_constant(db, *definition, &[], &bounds, *is_generic)?;
+                let bounds = ctx.bounds_for_constant(*definition, &[], &bounds)?;
 
                 ctx.instruction(ir::Instruction::Value {
                     node: *node,
-                    value: ir::Value::Constant(ir::DefinitionKey::Constant(key)),
+                    value: ir::Value::Constant {
+                        definition: ir::DefinitionKey::Constant(*definition),
+                        bounds,
+                    },
                 });
             }
         }

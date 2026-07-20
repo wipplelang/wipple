@@ -93,6 +93,7 @@ Facts (layer 2):
 `instance (Describe (Maybe value)) where (Describe value)` (InstanceDefinition):
   assigned type `(Maybe value) -> String`
   grouped with `value -> String`, `_`
+  has bounds
   has definition constraints
   has type `(Maybe value) -> String`
   has type parameters

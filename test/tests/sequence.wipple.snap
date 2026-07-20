@@ -209,6 +209,7 @@ Facts (layer 2):
 `filter` (ConstantDefinition):
   assigned type `(item -> Boolean) -> collection -> Sequence item`
   grouped with `(item -> Boolean) -> collection -> Sequence item`, `_`
+  has bounds
   has definition constraints
   has type `(item -> Boolean) -> collection -> Sequence item`
   has type parameters

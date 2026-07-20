@@ -161,6 +161,7 @@ Facts (layer 2):
 `add` (ConstantDefinition):
   assigned type `left right -> sum`
   grouped with `left right -> sum`, `_`
+  has bounds
   has definition constraints
   has type `left right -> sum`
   has type parameters
@@ -436,6 +437,7 @@ Facts (layer 2):
 `add-infer` (ConstantDefinition):
   assigned type `left right -> sum`
   grouped with `left right -> sum`, `_`
+  has bounds
   has definition constraints
   has type `left right -> sum`
   has type parameters

@@ -109,6 +109,18 @@ impl Render for ResolvedTypeParameter {
     }
 }
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Bounds(pub BTreeSet<Node>);
+
+#[typetag::serde]
+impl Fact for Bounds {}
+
+impl Render for Bounds {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+        ctx.string("has bounds");
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Captures(pub BTreeSet<Node>);
 

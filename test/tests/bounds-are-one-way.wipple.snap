@@ -29,6 +29,7 @@ Facts (layer 2):
 `f` (ConstantDefinition):
   assigned type `Number`
   grouped with `Number`, `T`
+  has bounds
   has definition constraints
   has type `Number`
   has type parameters

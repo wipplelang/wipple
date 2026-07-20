@@ -179,6 +179,7 @@ Facts (layer 2):
 `collect` (ConstantDefinition):
   assigned type `element -> output`
   grouped with `element -> output`, `_`
+  has bounds
   has definition constraints
   has type `element -> output`
   has type parameters

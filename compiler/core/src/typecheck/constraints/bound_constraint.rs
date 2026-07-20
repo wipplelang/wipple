@@ -2,7 +2,7 @@ use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
-        bounds::{Bound, Bounds, Instance, Instances, ResolvedBound, UnresolvedBound},
+        bounds::{Bound, ResolvedBounds, Instance, Instances, ResolvedBound, UnresolvedBound},
         constraints::{
             AnyConstraintTrace, Constraint, ConstraintConsequence, ConstraintKind, ConstraintTrace,
             RunResult, Solver, instantiate_constraint::InstantiateConstraint,
@@ -241,7 +241,7 @@ impl Constraint for BoundConstraint {
 
                 let constraints = solver.inherit(candidate.solver);
 
-                db.get_mut_or_default::<Bounds>(self.bound.source_node)
+                db.get_mut_or_default::<ResolvedBounds>(self.bound.source_node)
                     .0
                     .insert(
                         self.bound.bound_path.clone(),
@@ -266,7 +266,7 @@ impl Constraint for BoundConstraint {
             }
 
             if is_last_instance_group && !self.bound.is_optional {
-                db.get_mut_or_default::<Bounds>(self.bound.source_node)
+                db.get_mut_or_default::<ResolvedBounds>(self.bound.source_node)
                     .0
                     .insert(
                         self.bound.bound_path.clone(),

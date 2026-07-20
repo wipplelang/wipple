@@ -139,6 +139,7 @@ Facts (layer 2):
 `instance (B value) where (A value)` (InstanceDefinition):
   assigned type `value -> ()`
   grouped with `value -> ()`, `_`
+  has bounds
   has definition constraints
   has type `value -> ()`
   has type parameters

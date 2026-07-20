@@ -4,7 +4,7 @@ use crate::{
     span::{Span, Str},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Default)]
 pub struct Program {
@@ -12,16 +12,10 @@ pub struct Program {
     pub definitions: BTreeMap<DefinitionKey, Function>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum DefinitionKey {
     TopLevel,
-    Constant(ConstantDefinitionKey),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct ConstantDefinitionKey {
-    pub node: Node,
-    pub bounds: BTreeMap<Vec<Node>, Instance>,
+    Constant(Node),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -43,10 +37,15 @@ pub enum TypeRepresentation {
     Enumeration(Vec<Vec<Type>>),
 }
 
+pub type BoundPath = Vec<Node>;
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Instance {
-    Bound(Vec<Node>),
-    Definition(ConstantDefinitionKey),
+    Bound(BoundPath),
+    Instance {
+        definition: DefinitionKey,
+        bounds: BTreeMap<BoundPath, Instance>,
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -75,12 +74,15 @@ pub enum Instruction {
 
 #[derive(Debug, Clone)]
 pub enum Value {
-    Bound(Vec<Node>),
+    Bound(BoundPath),
     Call {
         function: Node,
         inputs: Vec<Node>,
     },
-    Constant(DefinitionKey),
+    Constant {
+        definition: DefinitionKey,
+        bounds: BTreeMap<BoundPath, Instance>,
+    },
     Function(Function),
     Field {
         input: Node,
@@ -117,6 +119,7 @@ pub enum Value {
 
 #[derive(Debug, Clone, Default)]
 pub struct Function {
+    pub bounds: Option<BTreeSet<Node>>,
     pub inputs: Vec<Node>,
     pub instructions: Vec<Instruction>,
     pub closure: Option<(Node, Vec<Node>)>,

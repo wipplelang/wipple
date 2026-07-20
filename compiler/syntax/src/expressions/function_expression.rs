@@ -194,6 +194,7 @@ impl CodegenValue for FunctionExpressionCodegen {
         ctx.instruction(ir::Instruction::Value {
             node: self.node,
             value: ir::Value::Function(ir::Function {
+                bounds: None,
                 inputs: self.inputs.clone(),
                 instructions,
                 closure: Some((self.node, captures)),

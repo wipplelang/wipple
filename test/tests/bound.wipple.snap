@@ -44,6 +44,7 @@ Facts (layer 2):
 `foo` (ConstantDefinition):
   assigned type `value -> String`
   grouped with `value -> String`, `x -> T x`
+  has bounds
   has definition constraints
   has type `value -> String`
   has type parameters

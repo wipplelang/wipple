@@ -4,7 +4,10 @@ use crate::{
     facts::{DebugInfo, Syntax},
     span::Span,
 };
-use std::{collections::BTreeSet, fmt::Write};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    fmt::Write,
+};
 
 #[derive(Debug)]
 pub struct JsResult {
@@ -230,12 +233,28 @@ impl<'a> WriteContext<'a, '_> {
             writeln!(self.writer, "env = e;")?;
         } else {
             write!(self.writer, "(")?;
+
+            let mut wrote_bound = false;
+            if let Some(bounds) = &function.bounds {
+                for (index, bound) in bounds.iter().enumerate() {
+                    if index > 0 {
+                        write!(self.writer, ", ")?;
+                    }
+
+                    write!(self.writer, "{}", mangle_bound(*bound))?;
+
+                    wrote_bound = true;
+                }
+            }
+
             for (index, input) in function.inputs.iter().enumerate() {
-                if index > 0 {
+                if wrote_bound || index > 0 {
                     write!(self.writer, ", ")?;
                 }
+
                 write!(self.writer, "{}", mangle_local(*input))?;
             }
+
             writeln!(self.writer, ") {{")?;
         }
 
@@ -429,8 +448,8 @@ impl<'a> WriteContext<'a, '_> {
 
     fn write_value(&mut self, value: &'a ir::Value) -> Result<(), CodegenError> {
         match value {
-            ir::Value::Bound(node) => {
-                return Err(anyhow::format_err!("bound {node:?} not resolved"));
+            ir::Value::Bound(bound_path) => {
+                self.write_bound(bound_path)?;
             }
             ir::Value::Call { function, inputs } => {
                 write!(self.writer, "{}(", mangle_local(*function))?;
@@ -439,8 +458,8 @@ impl<'a> WriteContext<'a, '_> {
                 }
                 write!(self.writer, ")")?;
             }
-            ir::Value::Constant(key) => {
-                write!(self.writer, "{}()", mangle_function(key, self.definitions))?;
+            ir::Value::Constant { definition, bounds } => {
+                self.write_constant(definition, bounds)?;
             }
             ir::Value::Function(function) => {
                 self.write_function(None, function)?;
@@ -518,6 +537,45 @@ impl<'a> WriteContext<'a, '_> {
                 )?;
             }
         }
+
+        Ok(())
+    }
+
+    fn write_constant(
+        &mut self,
+        key: &'a ir::DefinitionKey,
+        bounds: &'a BTreeMap<ir::BoundPath, ir::Instance>,
+    ) -> Result<(), CodegenError> {
+        write!(self.writer, "{}(", mangle_function(key, self.definitions))?;
+
+        for (index, instance) in bounds.values().enumerate() {
+            if index > 0 {
+                write!(self.writer, ", ")?;
+            }
+
+            write!(self.writer, "() => ")?;
+
+            match instance {
+                ir::Instance::Bound(bound_path) => {
+                    self.write_bound(bound_path)?;
+                }
+                ir::Instance::Instance { definition, bounds } => {
+                    self.write_constant(definition, bounds)?;
+                }
+            };
+        }
+
+        write!(self.writer, ")")?;
+
+        Ok(())
+    }
+
+    fn write_bound(&mut self, bound_path: &'a ir::BoundPath) -> Result<(), CodegenError> {
+        let [bound] = bound_path.as_slice() else {
+            return Err(anyhow::format_err!("bound {bound_path:?} not resolved"));
+        };
+
+        write!(self.writer, "{}()", mangle_bound(*bound))?;
 
         Ok(())
     }
@@ -774,6 +832,10 @@ fn mangle_function<'a>(
     });
 
     format!("func_{index}")
+}
+
+fn mangle_bound(node: Node) -> String {
+    format!("bound_{}", mangle_node(node))
 }
 
 fn mangle_local(node: Node) -> String {

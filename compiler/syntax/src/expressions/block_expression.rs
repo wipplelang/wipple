@@ -138,6 +138,7 @@ impl CodegenValue for BlockExpressionCodegen {
         ctx.instruction(ir::Instruction::Value {
             node: self.node,
             value: ir::Value::Function(ir::Function {
+                bounds: None,
                 inputs: Vec::new(),
                 instructions,
                 closure: Some((self.node, captures)),

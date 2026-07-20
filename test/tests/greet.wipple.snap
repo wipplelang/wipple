@@ -44,6 +44,7 @@ Facts (layer 2):
 `greet` (ConstantDefinition):
   assigned type `value -> String`
   grouped with `value -> String`, `x -> "Hello, _!" (Greet x)`
+  has bounds
   has definition constraints
   has type `value -> String`
   has type parameters

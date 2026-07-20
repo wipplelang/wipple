@@ -6,7 +6,7 @@ use wipple_core::{
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{
-        bounds::{Bound, Bounds},
+        bounds::{Bound, ResolvedBounds},
         constraints::{
             bound_constraint::BoundConstraint, instantiate_constraint::InstantiateConstraint,
             ty_constraint::TyConstraint,
@@ -114,14 +114,7 @@ impl Visit for ConstructorExpression {
                     }),
                 );
 
-                visitor.codegen(
-                    db,
-                    node,
-                    ConstructorExpressionCodegen::Trait {
-                        node,
-                        is_generic: visitor.current_definition.is_some(),
-                    },
-                );
+                visitor.codegen(db, node, ConstructorExpressionCodegen::Trait { node });
             }
             ConstructorDefinition::Variant(definition) => {
                 let elements = definition
@@ -174,7 +167,6 @@ impl Visit for ConstructorExpression {
 enum ConstructorExpressionCodegen {
     Trait {
         node: Node,
-        is_generic: bool,
     },
     Variant {
         node: Node,
@@ -198,20 +190,22 @@ impl CodegenValue for ConstructorExpressionCodegen {
                     value: ir::Value::Marker,
                 });
             }
-            ConstructorExpressionCodegen::Trait { node, is_generic } => {
-                let bounds = db.get::<Bounds>(*node).cloned().unwrap_or_default();
+            ConstructorExpressionCodegen::Trait { node } => {
+                let bounds = db.get::<ResolvedBounds>(*node).cloned().unwrap_or_default();
 
-                match ctx.codegen_instance(db, &[], &bounds, *is_generic)? {
+                match ctx.bound_for_instance(&[], &bounds)? {
                     ir::Instance::Bound(bound) => {
                         ctx.instruction(ir::Instruction::Value {
                             node: *node,
                             value: ir::Value::Bound(bound),
                         });
                     }
-                    ir::Instance::Definition(key) => {
+                    ir::Instance::Instance { definition, bounds } => {
+                        ctx.mark_reachable(definition);
+
                         ctx.instruction(ir::Instruction::Value {
                             node: *node,
-                            value: ir::Value::Constant(ir::DefinitionKey::Constant(key)),
+                            value: ir::Value::Constant { definition, bounds },
                         });
                     }
                 }
@@ -236,6 +230,7 @@ impl CodegenValue for ConstructorExpressionCodegen {
                     ctx.instruction(ir::Instruction::Value {
                         node: *node,
                         value: ir::Value::Function(ir::Function {
+                            bounds: None,
                             inputs: elements.clone(),
                             instructions: vec![
                                 ir::Instruction::Value {

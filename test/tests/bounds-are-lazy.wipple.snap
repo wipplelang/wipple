@@ -117,6 +117,7 @@ Facts (layer 2):
 `f` (ConstantDefinition):
   assigned type `value -> ()`
   grouped with `value -> ()`, `value -> do {⋯}`
+  has bounds
   has definition constraints
   has type `value -> ()`
   has type parameters
