@@ -101,7 +101,7 @@ impl Ide {
         Ide { result }
     }
 
-    pub fn diagnostics(&self) -> Vec<IdeDiagnostic> {
+    pub fn diagnostics(&self, path: &str) -> Vec<IdeDiagnostic> {
         let filter = default_filter;
 
         collect_feedback(&self.result.db, filter, |item| {
@@ -117,6 +117,10 @@ impl Ide {
                 .get(&self.result.db)
                 .span(&self.result.db);
 
+            if span.path != path {
+                return None;
+            }
+
             let feedback = item.display(&self.result.db, |db, segment| {
                 segment.markdown(db, RenderMarkdownOptions::default().rich())
             });
@@ -129,7 +133,7 @@ impl Ide {
         .collect()
     }
 
-    pub fn semantic_tokens(&self) -> Vec<IdeSemanticToken> {
+    pub fn semantic_tokens(&self, path: &str) -> Vec<IdeSemanticToken> {
         let mut tokens = HashMap::<IdeRange, String>::new();
         for node in self.result.db.owned_nodes() {
             let Some(span) = self
@@ -140,6 +144,10 @@ impl Ide {
             else {
                 continue;
             };
+
+            if span.path != path {
+                continue;
+            }
 
             let range = IdeRange::from(span);
 
@@ -166,8 +174,8 @@ impl Ide {
             .collect()
     }
 
-    pub fn hover(&self, line: usize, column: usize) -> Option<IdeHover> {
-        let node = self.node_at(line, column)?;
+    pub fn hover(&self, path: &str, line: usize, column: usize) -> Option<IdeHover> {
+        let node = self.node_at(path, line, column)?;
         let span = self
             .result
             .db
@@ -245,20 +253,22 @@ impl Ide {
         })
     }
 
-    pub fn highlight(&self, line: usize, column: usize) -> Vec<IdeRange> {
-        let Some(node) = self.node_at(line, column) else {
+    pub fn highlight(&self, path: &str, line: usize, column: usize) -> Vec<IdeRange> {
+        let Some(node) = self.node_at(path, line, column) else {
             return Vec::new();
         };
 
         wipple_queries::in_group(&self.query_ctx(), node)
             .filter(|&related| default_filter(&self.result.db, related))
             .filter_map(|related| self.result.db.get(related))
-            .map(|Syntax(syntax)| IdeRange::from(syntax.get(&self.result.db).span(&self.result.db)))
+            .map(|Syntax(syntax)| syntax.get(&self.result.db).span(&self.result.db))
+            .filter(|span| span.path == path)
+            .map(IdeRange::from)
             .collect()
     }
 
-    pub fn definition(&self, line: usize, column: usize) -> Option<IdeRange> {
-        let node = self.node_at(line, column)?;
+    pub fn definition(&self, path: &str, line: usize, column: usize) -> Option<IdeRange> {
+        let node = self.node_at(path, line, column)?;
 
         let definition = wipple_queries::definitions(&self.query_ctx(), node)?
             .first()
@@ -274,8 +284,8 @@ impl Ide {
             .map(|Syntax(syntax)| IdeRange::from(syntax.get(&self.result.db).span(&self.result.db)))
     }
 
-    pub fn references(&self, line: usize, column: usize) -> Vec<IdeRange> {
-        let Some(node) = self.node_at(line, column) else {
+    pub fn references(&self, path: &str, line: usize, column: usize) -> Vec<IdeRange> {
+        let Some(node) = self.node_at(path, line, column) else {
             return Vec::new();
         };
 
@@ -292,10 +302,10 @@ impl Ide {
             .collect()
     }
 
-    pub fn autocomplete(&self, line: usize, column: usize) -> Vec<IdeDefinition> {
+    pub fn autocomplete(&self, path: &str, line: usize, column: usize) -> Vec<IdeDefinition> {
         let mut nodes = vec![self.result.root_node];
 
-        let node_at_position = self.node_at(line, column);
+        let node_at_position = self.node_at(path, line, column);
 
         if let Some(node) = node_at_position {
             nodes.push(node);
@@ -395,7 +405,7 @@ impl Ide {
             .collect()
     }
 
-    fn node_at(&self, line: usize, column: usize) -> Option<Node> {
+    fn node_at(&self, path: &str, line: usize, column: usize) -> Option<Node> {
         self.result
             .db
             .owned_nodes()
@@ -409,7 +419,8 @@ impl Ide {
                     .get(&self.result.db)
                     .span(&self.result.db);
 
-                if span.start.line == line
+                if span.path == path
+                    && span.start.line == line
                     && span.start.column <= column
                     && span.end.line == line
                     && span.end.column >= column

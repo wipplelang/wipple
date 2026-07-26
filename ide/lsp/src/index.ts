@@ -62,7 +62,7 @@ documents.onDidChangeContent(({ document }) => {
 
     connection.sendDiagnostics({
         uri: document.uri,
-        diagnostics: ide.diagnostics().map(
+        diagnostics: ide.diagnostics(document.uri).map(
             (diagnostic): lsp.Diagnostic => ({
                 range: convertRange(diagnostic.range),
                 message: capabilities.textDocument?.diagnostic?.markupMessageSupport
@@ -100,7 +100,7 @@ connection.onRequest("textDocument/semanticTokens/full", (params) => {
     }
 
     const builder = new lsp.SemanticTokensBuilder();
-    for (const token of state.ide.semantic_tokens()) {
+    for (const token of state.ide.semantic_tokens(params.textDocument.uri)) {
         const range = convertRange(token.range);
         if (range.start.line !== range.end.line) continue;
 
@@ -123,7 +123,12 @@ connection.onHover((params) => {
     const state = documentStates.get(document);
     if (state == null) return;
 
-    const hover = state.ide.hover(params.position.line + 1, params.position.character + 1);
+    const hover = state.ide.hover(
+        params.textDocument.uri,
+        params.position.line + 1,
+        params.position.character + 1,
+    );
+
     if (hover == null) return;
 
     return {
@@ -145,7 +150,7 @@ connection.onDocumentHighlight((params) => {
     if (state == null) return;
 
     return state.ide
-        .highlight(params.position.line + 1, params.position.character + 1)
+        .highlight(params.textDocument.uri, params.position.line + 1, params.position.character + 1)
         .map((range): lsp.DocumentHighlight => ({ range: convertRange(range) }));
 });
 
@@ -157,6 +162,7 @@ connection.onDefinition((params) => {
     if (state == null) return;
 
     const definition = state.ide.definition(
+        params.textDocument.uri,
         params.position.line + 1,
         params.position.character + 1,
     );
@@ -176,7 +182,11 @@ connection.onReferences((params) => {
     if (state == null) return;
 
     return state.ide
-        .references(params.position.line + 1, params.position.character + 1)
+        .references(
+            params.textDocument.uri,
+            params.position.line + 1,
+            params.position.character + 1,
+        )
         .map((range) => ({
             uri: document.uri,
             range: convertRange(range),
@@ -209,7 +219,11 @@ connection.onCompletion((params) => {
     if (state == null) return;
 
     return state.ide
-        .autocomplete(params.position.line + 1, params.position.character + 1)
+        .autocomplete(
+            params.textDocument.uri,
+            params.position.line + 1,
+            params.position.character + 1,
+        )
         .map(({ name, type, definition, comments }): lsp.CompletionItem => {
             const kind = {
                 variable: lsp.CompletionItemKind.Variable,
