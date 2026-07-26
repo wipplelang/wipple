@@ -36,7 +36,7 @@ Facts (layer 2):
 
 `transform` (VariableExpression):
   assigned type `((String or Number) -> String or Number) -> (List (String or Number)) -> Sequence (String or Number)`
-  grouped with `(input -> output) -> container -> Sequence output`
+  grouped with `(f :: (input -> output)) -> container -> Sequence output`
   has bound(s) `As-Sequence` `(List (String or Number))` `(String or Number)` (resolved as `instance (As-Sequence (List element) element)`)
   has type `((String or Number) -> String or Number) -> (List (String or Number)) -> Sequence (String or Number)`
   is an expression
@@ -55,7 +55,7 @@ Facts (layer 2):
 
 `(x :: String) -> x` (FunctionExpression):
   assigned type `(String or Number) -> String or Number`
-  grouped with `input -> output`
+  grouped with `f :: (input -> output)`
   has type `(String or Number) -> String or Number`
   is an expression
 
@@ -92,7 +92,7 @@ Feedback:
   
   `1` must be the same type as `x`, `String`, `x`, and 2 others; double-check these.
 
-  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `f`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
+  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `(x :: String) -> x`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
 
   2. `x`: `x` is annotated with the type `String`.
 
@@ -111,7 +111,7 @@ Feedback:
   
   `2` must be the same type as `x`, `String`, `x`, and 2 others; double-check these.
 
-  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `f`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
+  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `(x :: String) -> x`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
 
   2. `x`: `x` is annotated with the type `String`.
 
@@ -130,7 +130,7 @@ Feedback:
   
   `3` must be the same type as `x`, `String`, `x`, and 2 others; double-check these.
 
-  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `f`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
+  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `(x :: String) -> x`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
 
   2. `x`: `x` is annotated with the type `String`.
 
@@ -149,7 +149,7 @@ Feedback:
   
   `x` must be the same type as `String`, `x`, `1`, and 2 others; double-check these.
 
-  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `f`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
+  1. `transform`: `transform` transforms the `String or Number` elements in `1, 2, 3` into `String or Number` elements using `(x :: String) -> x`. This requires `As-Sequence` `(List (String or Number))` `(String or Number)`.
 
   2. `x`: `x` is annotated with the type `String`.
 

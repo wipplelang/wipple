@@ -66,7 +66,7 @@ instance (As-Sequence (Maybe element) element) : maybe -> do {
 }
 
 -- [`transform`] transforms the [`input@type`] elements in [`container`] into [`output@type`] elements using [`f`].
-transform :: (input -> output) -> container -> Sequence output where (As-Sequence container input)
+transform :: (f :: (input -> output)) -> container -> Sequence output where (As-Sequence container input)
 transform : f -> container -> do {
   base : As-Sequence container
 
@@ -92,7 +92,7 @@ filter : include? -> container -> do {
 }
 
 -- [`filter-by`] transforms the [`element@type`] elements in [`container`] into [`output@type`] elements using [`f`], keeping only the items that are `Some`.
-filter-by :: (input -> Maybe output) -> container -> Sequence output where (As-Sequence container input)
+filter-by :: (f :: (input -> Maybe output)) -> container -> Sequence output where (As-Sequence container input)
 filter-by : f -> container -> do {
   base : As-Sequence container
 
