@@ -61,6 +61,7 @@
         "fluentui-emoji": "^1.3.0",
         "html2canvas-pro": "^2.0.2",
         "jspdf": "^4.2.1",
+        "lines-and-columns": "^2.0.4",
         "plotly.js-basic-dist-min": "^3.5.1",
         "randomcolor": "^0.6.2",
         "real-turtle": "^1.1.6",

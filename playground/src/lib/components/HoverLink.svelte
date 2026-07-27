@@ -16,7 +16,6 @@
 
     let source = $state("");
     if (innerText) {
-        console.log("innerText:", innerText);
         source = innerText.textContent!;
         innerText?.remove();
     }

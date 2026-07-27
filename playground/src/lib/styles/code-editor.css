@@ -35,7 +35,8 @@
         }
 
         .cm-scroller {
-            @apply overflow-auto font-mono;
+            @apply font-mono;
+            overflow: hidden !important;
             display: initial !important;
             padding: var(--code-editor-padding);
         }

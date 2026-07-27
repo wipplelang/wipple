@@ -20,6 +20,7 @@
     import type { DocumentationItem } from "$lib/models/Documentation";
     import Visualizer from "$lib/components/Visualizer.svelte";
     import { debounce } from "$lib/util";
+    import DiagnosticsSidebar from "$lib/components/DiagnosticsSidebar.svelte";
 
     const loadPlayground = (): Playground | undefined => {
         const json = window.localStorage.getItem("playground");
@@ -185,13 +186,13 @@
 
 {#if playground}
     <div
-        class="flex h-full flex-1 flex-col gap-[10px]"
+        class="flex h-full overflow-hidden flex-1 flex-col"
         style:user-select={dragInfo ? "none" : "auto"}
         style:pointer-events={dragInfo ? "none" : "auto"}
     >
         <PrintingHeader />
 
-        <div class="flex h-full flex-1 flex-row gap-[10px] p-[10px]">
+        <div class="flex max-h-full overflow-hidden flex-1 flex-row gap-[10px] p-[10px]">
             <div class="printing:hidden flex h-full w-[250px] flex-col gap-[10px]">
                 <Logo />
 
@@ -251,48 +252,54 @@
                     </div>
                 </div>
 
-                <Box class="flex-1">
-                    <div
-                        class={[
-                            "relative h-full w-full transition-colors duration-75",
-                            dragInfo && "bg-background-button/10",
-                        ]}
-                    >
-                        <CodeEditor
-                            bind:this={editor}
-                            bind:code={playground.code}
-                            groups={runtime?.visualizerEnabled || context.diagnostic != null
-                                ? groups
-                                : undefined}
-                            diagnostic={dragInfo == null && context.diagnostic != null
-                                ? {
-                                      value: context.diagnostic,
-                                      onclose: () => (context.diagnostic = undefined),
-                                  }
-                                : undefined}
-                            runningLine={context.runningLine}
-                            padding="14px"
-                        />
+                <Box class="flex-1 relative overflow-scroll" scroll={false}>
+                    <div class="flex flex-row overflow-visible min-h-full">
+                        <div
+                            class={[
+                                "relative w-full transition-colors duration-75",
+                                dragInfo && "bg-background-button/10",
+                            ]}
+                        >
+                            <CodeEditor
+                                bind:this={editor}
+                                bind:code={playground.code}
+                                groups={runtime?.visualizerEnabled || context.diagnostic != null
+                                    ? groups
+                                    : undefined}
+                                diagnostic={dragInfo == null && context.diagnostic != null
+                                    ? {
+                                          value: context.diagnostic,
+                                          onclose: () => (context.diagnostic = undefined),
+                                      }
+                                    : undefined}
+                                runningLine={context.runningLine}
+                                padding="14px"
+                            />
 
-                        {#if dropParams}
-                            <div
-                                class={[
-                                    "border-background-button fixed border-collapse rounded-[6px]",
-                                    dropParams.startLineNumber === dropParams.endLineNumber
-                                        ? "border-[1px]"
-                                        : "border-[2px]",
-                                ]}
-                                style:top={dropParams.top}
-                                style:left={dropParams.left}
-                                style:width={dropParams.width}
-                                style:height={dropParams.height}
-                            ></div>
+                            {#if dropParams}
+                                <div
+                                    class={[
+                                        "border-background-button fixed border-collapse rounded-[6px]",
+                                        dropParams.startLineNumber === dropParams.endLineNumber
+                                            ? "border-[1px]"
+                                            : "border-[2px]",
+                                    ]}
+                                    style:top={dropParams.top}
+                                    style:left={dropParams.left}
+                                    style:width={dropParams.width}
+                                    style:height={dropParams.height}
+                                ></div>
+                            {/if}
+                        </div>
+
+                        {#if context.diagnostic}
+                            <DiagnosticsSidebar diagnostic={context.diagnostic} />
                         {/if}
                     </div>
                 </Box>
 
                 {#if runtime?.visualizerEnabled}
-                    <Box class="flex-1">
+                    <Box class="flex-1 shrink">
                         <Visualizer graph={context.graph} />
                     </Box>
                 {/if}
@@ -347,9 +354,10 @@
                 />
             </div>
         </div>
+
+        <Footer />
     </div>
 {:else}
     <Create onCreate={createPlayground} />
+    <Footer />
 {/if}
-
-<Footer />

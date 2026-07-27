@@ -29,7 +29,7 @@
                       ])
                     : []}
 
-            <span class="inline-flex size-fit">
+            <span class="inline-flex">
                 <CodeEditor
                     readOnly
                     {code}

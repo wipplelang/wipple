@@ -156,6 +156,7 @@
 
         runState = "compiling";
         onchangeline(undefined);
+        ondiagnostics([]);
 
         // Needed for runtimes that perform setup within a user event
         await runtimeOutput?._initializeOnClick?.();
@@ -184,14 +185,13 @@
 
     const stopRunning = async (force: boolean) => {
         runState = undefined;
+        onchangeline(undefined);
 
         if (force) {
             terminateRunnerWorker();
         }
 
         await runtimeOutput?._cleanup?.(force);
-
-        onchangeline(undefined);
     };
 </script>
 

@@ -3,6 +3,8 @@
     import type { Groups } from "$lib/models/Groups";
 
     export const defaultFontSize = 16;
+    export const lineHeightRatio = 1.5;
+    export const lineSpacingRatio = 0.375;
 
     export const createGroups = (count: number, locations: wipple.DiagnosticLocation[]) => {
         const groups: Groups = new Array(count).fill(undefined).map(() => ({ locations: [] }));
@@ -26,7 +28,6 @@
         markDecoration,
         accessoryDecoration,
         markRange,
-        blockDecoration,
         lineDecoration,
     } from "$lib/assets/decorations";
     import tokens, {
@@ -45,7 +46,6 @@
     import type { Action } from "svelte/action";
     import { type Command as CommandType } from "$lib/models/Command";
     import { compilerWorker, context } from "$lib/context.svelte";
-    import DiagnosticWidget from "$lib/widgets/DiagnosticWidget.svelte";
     import { nanoid } from "nanoid";
     import Tooltip from "./Tooltip.svelte";
     import CodeEditor from "./CodeEditor.svelte";
@@ -88,10 +88,7 @@
         }, {}),
     );
 
-    const lineHeightRatio = 1.5;
     const lineHeight = $derived(fontSize * lineHeightRatio);
-
-    const lineSpacingRatio = 0.375;
     const lineSpacing = $derived(fontSize * lineSpacingRatio);
 
     let editorView: EditorView;
@@ -109,7 +106,7 @@
                 markNames.of([]),
                 markRunningLine.of([]),
                 markDiagnostic.of([]),
-                diagnosticWidget.of([]),
+                markGroups.of([]),
                 placeholder("Type or drag your code here..."),
                 EditorView.editable.of(!readOnly),
                 EditorView.updateListener.of((update) => {
@@ -600,39 +597,7 @@
             : [];
     };
 
-    const diagnosticWidget = new Compartment();
-
-    const createDiagnosticWidget = (
-        { value, hideWidget, onclose }: NonNullable<typeof diagnostic>,
-        animate: boolean,
-    ) => {
-        if (hideWidget) {
-            return [];
-        }
-
-        const diagnosticWidget = new DiagnosticWidget.element!();
-        Object.assign(diagnosticWidget, {
-            code,
-            diagnostic: value,
-            animate,
-            onclose,
-        });
-
-        let pos: number;
-        try {
-            pos = editorView.state.doc.line(diagnosticLine!).to;
-        } catch {
-            // Position no longer valid; close the diagnostic
-            onclose?.();
-            return [];
-        }
-
-        return EditorView.decorations.of(
-            RangeSet.of([blockDecoration(diagnosticWidget).range(pos)]),
-        );
-    };
-
-    let prevDiagnostic = diagnostic?.value;
+    const markGroups = new Compartment();
 
     $effect(() => {
         code; // required to update the position of the diagnostic
@@ -648,21 +613,11 @@
                 markNames.reconfigure(createMarkNames(highlights)),
                 markRunningLine.reconfigure(createMarkRunningLine(runningLine)),
                 markDiagnostic.reconfigure([createMarkDiagnostic()]),
-                diagnosticWidget.reconfigure(
-                    diagnostic
-                        ? [
-                              createMarkGroups(diagnostic.hideWidget),
-                              createDiagnosticWidget(
-                                  diagnostic,
-                                  diagnostic.value !== prevDiagnostic,
-                              ),
-                          ]
-                        : [createMarkGroups()],
-                ),
+                markGroups.reconfigure([
+                    diagnostic ? createMarkGroups(diagnostic.hideWidget) : createMarkGroups(),
+                ]),
             ],
         });
-
-        prevDiagnostic = diagnostic?.value;
 
         hoverState = undefined;
     });
@@ -670,7 +625,7 @@
 
 <div
     use:codemirror
-    class={["code-editor h-full w-full", diagnostic ? "has-diagnostic" : ""]}
+    class={["code-editor h-full", diagnostic ? "has-diagnostic" : ""]}
     style:--code-editor-padding={padding}
     style:--code-editor-font-size="{fontSize}px"
     style:--code-editor-line-height="{lineHeight}px"
