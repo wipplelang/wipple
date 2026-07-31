@@ -63,6 +63,8 @@ enum Args {
         #[clap(flatten)]
         options: CompileOptions,
     },
+
+    Format,
 }
 
 #[derive(Debug, clap::Parser)]
@@ -125,6 +127,9 @@ fn main() -> anyhow::Result<()> {
         }
         Args::Doc { options } => {
             doc(&options)?;
+        }
+        Args::Format => {
+            format()?;
         }
     }
 
@@ -466,6 +471,17 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
     });
 
     println!("{}", serde_json::to_string_pretty(&items)?);
+
+    Ok(())
+}
+
+fn format() -> anyhow::Result<()> {
+    let source = io::read_to_string(io::stdin())?;
+
+    let formatted =
+        wipple_parse::format(&source).ok_or_else(|| anyhow::format_err!("syntax error"))?;
+
+    println!("{formatted}");
 
     Ok(())
 }

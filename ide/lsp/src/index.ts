@@ -206,7 +206,7 @@ connection.onDocumentFormatting((params) => {
                 start: { line: 0, character: 0 },
                 end: { line: document.lineCount, character: 0 },
             },
-            newText: formatted,
+            newText: formatted + "\n",
         },
     ];
 });

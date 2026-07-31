@@ -1073,6 +1073,7 @@ dependencies = [
  "tempfile",
  "wipple-core",
  "wipple-feedback",
+ "wipple-parse",
  "wipple-queries",
  "wipple-syntax",
 ]

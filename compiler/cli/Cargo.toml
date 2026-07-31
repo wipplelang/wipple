@@ -20,5 +20,6 @@ serde_json = "1"
 tempfile = "3"
 wipple-core = { path = "../core" }
 wipple-feedback = { path = "../feedback" }
+wipple-parse = { path = "../parse" }
 wipple-queries = { path = "../queries" }
 wipple-syntax = { path = "../syntax" }
