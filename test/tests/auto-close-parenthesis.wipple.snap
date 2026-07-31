@@ -8,13 +8,17 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (1 + 2)` (ExpressionStatement):
+`show (1 + 2
+` (ExpressionStatement):
   assigned type `()`
-  grouped with `show (1 + 2)`
+  grouped with `show (1 + 2
+`
   has type `()`
 
-`show (1 + 2)` (CallExpression):
-  grouped with `()`, `show (1 + 2)`
+`show (1 + 2
+` (CallExpression):
+  grouped with `()`, `show (1 + 2
+`
   has type `()`
   is an expression
 
