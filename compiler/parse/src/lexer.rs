@@ -181,6 +181,14 @@ pub fn tokenize(path: impl Into<Str>, source: impl Into<Str>) -> Result<Vec<Toke
         tokens.push(token);
     }
 
+    let end = Location {
+        line: current_line,
+        column: current_column,
+        index: source.len(),
+    };
+
+    fix(&mut tokens, path.clone(), end);
+
     Ok(tokens)
 }
 
@@ -189,6 +197,59 @@ fn trim(kind: TokenKind, range: Range<usize>) -> Range<usize> {
         TokenKind::Comment => range.start + 2..range.end,
         TokenKind::String => range.start + 1..range.end - 1,
         _ => range,
+    }
+}
+
+fn fix(tokens: &mut Vec<Token>, path: Str, location: Location) {
+    while tokens
+        .last()
+        .is_some_and(|token| token.kind == TokenKind::LineBreak)
+    {
+        tokens.pop();
+    }
+
+    let mut iter = tokens.iter().peekable();
+    let mut stack = Vec::new();
+    while let Some(token) = iter.next() {
+        let Some((opening, closing, closing_value)) = token.kind.pair() else {
+            continue;
+        };
+
+        if token.kind == opening {
+            let has_line_break = iter
+                .peek()
+                .is_some_and(|next| next.kind == TokenKind::LineBreak);
+
+            stack.push((opening, closing, closing_value, has_line_break));
+        } else if token.kind == closing {
+            stack.pop_if(|(other, _, _, _)| *other == opening);
+        }
+    }
+
+    for (_, closing, closing_value, has_line_break) in stack.into_iter().rev() {
+        if has_line_break {
+            tokens.push(Token {
+                kind: TokenKind::LineBreak,
+                value: Str::new_static("\n"),
+                span: Span {
+                    path: path.clone(),
+                    start: location.clone(),
+                    end: location.clone(),
+                    source: Str::new_static("\n"),
+                },
+            });
+        }
+
+        tokens.push(Token {
+            kind: closing,
+            value: Str::new_static(closing_value),
+            span: Span {
+                path: path.clone(),
+                start: location.clone(),
+                end: location.clone(),
+                source: Str::new_static(closing_value),
+            },
+        });
     }
 }
 
@@ -328,5 +389,20 @@ impl TokenKind {
             self,
             TokenKind::RightParenthesis | TokenKind::RightBracket | TokenKind::RightBrace
         )
+    }
+
+    pub fn pair(self) -> Option<(TokenKind, TokenKind, &'static str)> {
+        match self {
+            TokenKind::LeftParenthesis | TokenKind::RightParenthesis => {
+                Some((TokenKind::LeftParenthesis, TokenKind::RightParenthesis, ")"))
+            }
+            TokenKind::LeftBracket | TokenKind::RightBracket => {
+                Some((TokenKind::LeftBracket, TokenKind::RightBracket, "]"))
+            }
+            TokenKind::LeftBrace | TokenKind::RightBrace => {
+                Some((TokenKind::LeftBrace, TokenKind::RightBrace, "}"))
+            }
+            _ => None,
+        }
     }
 }
