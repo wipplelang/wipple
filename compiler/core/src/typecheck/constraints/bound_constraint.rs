@@ -2,7 +2,7 @@ use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
-        bounds::{Bound, ResolvedBounds, Instance, Instances, ResolvedBound, UnresolvedBound},
+        bounds::{Bound, Instance, Instances, ResolvedBound, ResolvedBounds, UnresolvedBound},
         constraints::{
             AnyConstraintTrace, Constraint, ConstraintConsequence, ConstraintKind, ConstraintTrace,
             RunResult, Solver, instantiate_constraint::InstantiateConstraint,
@@ -301,31 +301,22 @@ pub fn group_instances(
     db: &Db,
     instances: impl IntoIterator<Item = Instance>,
 ) -> Vec<Vec<Instance>> {
-    let mut regular_instances = Vec::new();
-    let mut error_instances = Vec::new();
+    let mut non_default_instances = Vec::new();
     let mut default_instances = Vec::new();
-    let mut default_error_instances = Vec::new();
     for instance in instances {
         let Some(definition) = db
             .get(instance.node)
             .and_then(|Defined(definition)| definition.downcast_ref::<InstanceDefinition>())
         else {
-            regular_instances.push(instance);
             continue;
         };
 
-        match (definition.default, definition.error) {
-            (false, false) => regular_instances.push(instance),
-            (true, false) => default_instances.push(instance),
-            (false, true) => error_instances.push(instance),
-            (true, true) => default_error_instances.push(instance),
+        if definition.default {
+            default_instances.push(instance);
+        } else {
+            non_default_instances.push(instance);
         }
     }
 
-    vec![
-        regular_instances,
-        error_instances,
-        default_instances,
-        default_error_instances,
-    ]
+    vec![non_default_instances, default_instances]
 }
