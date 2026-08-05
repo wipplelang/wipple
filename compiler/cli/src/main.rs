@@ -138,7 +138,6 @@ fn main() -> anyhow::Result<()> {
 
 fn setup(
     options: &CompileOptions,
-    time: bool,
     mut out: impl io::Write,
 ) -> anyhow::Result<(Db, TopLevel, Vec<Node>)> {
     if let Some(path) = options.lib.first()
@@ -174,7 +173,6 @@ fn setup(
 
         let mut driver = Driver::new(options, files, &mut out);
         driver.prefix = "Compiling ";
-        driver.time = time;
         driver.hide_facts = !options.lib_facts;
 
         let (_, lib_source_files, lib_statements) = driver
@@ -189,7 +187,7 @@ fn setup(
 }
 
 fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Result<bool> {
-    let (lib_db, mut top_level, lib_statements) = setup(options, true, io::stdout())?;
+    let (lib_db, mut top_level, lib_statements) = setup(options, io::stdout())?;
 
     if options.paths.is_empty() {
         return Ok(false);
@@ -218,7 +216,6 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
 
     let mut driver = Driver::new(options, files, io::stdout());
     driver.prefix = "Compiling ";
-    driver.time = true;
 
     let (_, source_files, statements) = driver
         .run(&mut db, &mut top_level, &name)?
@@ -311,7 +308,7 @@ fn run(
 
 fn test(options: &CompileOptions) -> anyhow::Result<()> {
     let mut out = Vec::new();
-    let (lib_db, top_level, lib_statements) = setup(options, false, &mut out)?;
+    let (lib_db, top_level, lib_statements) = setup(options, &mut out)?;
 
     let lib_db = DbRef::new(lib_db);
 
@@ -413,7 +410,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
 }
 
 fn doc(options: &CompileOptions) -> anyhow::Result<()> {
-    let (lib_db, mut top_level, _) = setup(options, true, io::stdout())?;
+    let (lib_db, mut top_level, _) = setup(options, io::stdout())?;
 
     let mut db = Db::new(Some(DbRef::new(lib_db)));
 
@@ -435,7 +432,6 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
 
     let mut driver = Driver::new(options, files, io::stdout());
     driver.prefix = "Compiling ";
-    driver.time = true;
 
     driver
         .run(&mut db, &mut top_level, &name)?

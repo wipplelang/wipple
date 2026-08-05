@@ -1,8 +1,8 @@
 use crate::CompileOptions;
+use colored::Colorize;
 use std::{
     collections::{BTreeMap, HashSet},
     io,
-    time::Instant,
 };
 use wipple_core::{
     TopLevel,
@@ -21,7 +21,6 @@ pub struct Driver<'a, Out> {
     pub files: Vec<AstKey>,
     pub out: Out,
     pub prefix: &'static str,
-    pub time: bool,
     pub progress: Option<(usize, usize)>,
     pub hide_facts: bool,
     pub render_options: RenderMarkdownOptions,
@@ -34,7 +33,6 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             files,
             out,
             prefix: "",
-            time: false,
             progress: None,
             hide_facts: false,
             render_options: Default::default(),
@@ -52,18 +50,9 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             eprint!("({}/{}) ", index + 1, total);
         }
 
-        eprint!("{}{}", self.prefix, name);
-        if self.time {
-            eprint!("...");
-        }
-
-        let start = Instant::now();
+        eprint!("{}{}", self.prefix.bold(), name);
 
         let (root_node, source_files, statements) = compile(db, top_level, &self.files, run_checks);
-
-        if self.time {
-            eprint!(" done ({:.0?})", start.elapsed());
-        }
 
         if self.progress.is_none() {
             eprintln!();

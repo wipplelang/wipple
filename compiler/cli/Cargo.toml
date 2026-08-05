@@ -13,6 +13,7 @@ workspace = true
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+colored = "3"
 rayon = "1"
 rmp-serde = "1"
 serde = { version = "1", features = ["derive"] }
