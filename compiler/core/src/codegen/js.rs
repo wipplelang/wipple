@@ -178,12 +178,7 @@ fn collect_locals(function: &ir::Function) -> Result<BTreeSet<Node>, CodegenErro
     let mut locals = BTreeSet::new();
     for instruction in &function.instructions {
         instruction.clone().for_each_node(false, &mut |node| {
-            if !function.inputs.contains(node)
-                && !function
-                    .closure
-                    .as_ref()
-                    .is_some_and(|(_, captures)| captures.contains(node))
-            {
+            if !function.inputs.contains(node) && !function.captures.contains(node) {
                 locals.insert(*node);
             }
 

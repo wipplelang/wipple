@@ -141,7 +141,7 @@ impl CodegenValue for BlockExpressionCodegen {
                 bounds: None,
                 inputs: Vec::new(),
                 instructions,
-                closure: Some((self.node, captures)),
+                captures,
             }),
         });
 

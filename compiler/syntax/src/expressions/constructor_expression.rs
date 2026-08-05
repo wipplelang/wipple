@@ -16,7 +16,10 @@ use wipple_core::{
     },
     visit::{
         Visit, Visitor,
-        definitions::{MarkerConstructorDefinition, TraitDefinition, VariantConstructorDefinition},
+        definitions::{
+            MarkerConstructorDefinition, TraitDefinition, VariantConstructorDefinition,
+            WrapperConstructorDefinition,
+        },
     },
 };
 use wipple_parse::{
@@ -50,27 +53,30 @@ impl Visit for ConstructorExpression {
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_expression(db, node, visitor);
 
+        #[expect(unused)]
         #[derive(Debug)]
         enum ConstructorDefinition {
-            Trait,
+            Trait(TraitDefinition),
+            Marker(MarkerConstructorDefinition),
+            Wrapper(WrapperConstructorDefinition),
             Variant(VariantConstructorDefinition),
-            Marker,
         }
 
         let definition = visitor.resolve_matching(db, &self.constructor, node, |_, definition| {
-            if definition.downcast_ref::<TraitDefinition>().is_some() {
-                return Some(ConstructorDefinition::Trait);
+            if let Some(definition) = definition.downcast_ref::<TraitDefinition>() {
+                return Some(ConstructorDefinition::Trait(definition.clone()));
+            }
+
+            if let Some(definition) = definition.downcast_ref::<MarkerConstructorDefinition>() {
+                return Some(ConstructorDefinition::Marker(definition.clone()));
+            }
+
+            if let Some(definition) = definition.downcast_ref::<WrapperConstructorDefinition>() {
+                return Some(ConstructorDefinition::Wrapper(definition.clone()));
             }
 
             if let Some(definition) = definition.downcast_ref::<VariantConstructorDefinition>() {
                 return Some(ConstructorDefinition::Variant(definition.clone()));
-            }
-
-            if definition
-                .downcast_ref::<MarkerConstructorDefinition>()
-                .is_some()
-            {
-                return Some(ConstructorDefinition::Marker);
             }
 
             None
@@ -93,7 +99,7 @@ impl Visit for ConstructorExpression {
         );
 
         match definition {
-            ConstructorDefinition::Trait => {
+            ConstructorDefinition::Trait(_) => {
                 visitor.constraint(
                     db,
                     BoundConstraint::new(
@@ -115,6 +121,34 @@ impl Visit for ConstructorExpression {
                 );
 
                 visitor.codegen(db, node, ConstructorExpressionCodegen::Trait { node });
+            }
+            ConstructorDefinition::Marker(_) => {
+                visitor.codegen(db, node, ConstructorExpressionCodegen::Marker { node });
+            }
+            ConstructorDefinition::Wrapper(_) => {
+                let value = db.node();
+                db.insert(value, Typed::default());
+
+                let result = db.node();
+                db.insert(result, Typed::default());
+
+                visitor.constraint(
+                    db,
+                    TyConstraint::new(
+                        node,
+                        Ty::Constructed(ConstructedTy::function(vec![value], result)),
+                    ),
+                );
+
+                visitor.codegen(
+                    db,
+                    node,
+                    ConstructorExpressionCodegen::Wrapper {
+                        node,
+                        value,
+                        result,
+                    },
+                );
             }
             ConstructorDefinition::Variant(definition) => {
                 let elements = definition
@@ -156,9 +190,6 @@ impl Visit for ConstructorExpression {
                     },
                 );
             }
-            ConstructorDefinition::Marker => {
-                visitor.codegen(db, node, ConstructorExpressionCodegen::Marker { node });
-            }
         }
     }
 }
@@ -168,6 +199,14 @@ enum ConstructorExpressionCodegen {
     Trait {
         node: Node,
     },
+    Marker {
+        node: Node,
+    },
+    Wrapper {
+        node: Node,
+        value: Node,
+        result: Node,
+    },
     Variant {
         node: Node,
         name: Str,
@@ -175,21 +214,12 @@ enum ConstructorExpressionCodegen {
         elements: Vec<Node>,
         result: Node,
     },
-    Marker {
-        node: Node,
-    },
 }
 
 #[typetag::serde]
 impl CodegenValue for ConstructorExpressionCodegen {
     fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
         match self {
-            ConstructorExpressionCodegen::Marker { node } => {
-                ctx.instruction(ir::Instruction::Value {
-                    node: *node,
-                    value: ir::Value::Marker,
-                });
-            }
             ConstructorExpressionCodegen::Trait { node } => {
                 let bounds = db.get::<ResolvedBounds>(*node).cloned().unwrap_or_default();
 
@@ -209,6 +239,34 @@ impl CodegenValue for ConstructorExpressionCodegen {
                         });
                     }
                 }
+            }
+            ConstructorExpressionCodegen::Marker { node } => {
+                ctx.instruction(ir::Instruction::Value {
+                    node: *node,
+                    value: ir::Value::Marker,
+                });
+            }
+            ConstructorExpressionCodegen::Wrapper {
+                node,
+                value,
+                result,
+            } => {
+                ctx.instruction(ir::Instruction::Value {
+                    node: *node,
+                    value: ir::Value::Function(ir::Function {
+                        bounds: None,
+                        inputs: vec![*value],
+                        instructions: vec![
+                            ir::Instruction::Value {
+                                node: *result,
+                                // Wrappers are transparent at runtime
+                                value: ir::Value::Variable(*value),
+                            },
+                            ir::Instruction::Return { value: *result },
+                        ],
+                        captures: Vec::new(),
+                    }),
+                });
             }
             ConstructorExpressionCodegen::Variant {
                 node,
@@ -243,7 +301,7 @@ impl CodegenValue for ConstructorExpressionCodegen {
                                 },
                                 ir::Instruction::Return { value: *result },
                             ],
-                            closure: Some((*node, Vec::new())),
+                            captures: Vec::new(),
                         }),
                     });
                 }

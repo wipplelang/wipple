@@ -1,20 +1,27 @@
 use crate::patterns::{ExtraElement, Matching, Temporaries, parse_atomic_pattern, visit_pattern};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    slice,
+};
 use wipple_core::{
     anyhow,
     ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
-    db::{Db, Node},
+    db::{Db, Fact, Node},
+    render::{Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
         constraints::{instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint},
         groups::Typed,
         ty::{ConstructedTy, Ty},
     },
+    util::exact_for_each,
     visit::{
         Visit, Visitor,
-        definitions::{MarkerConstructorDefinition, VariantConstructorDefinition},
+        definitions::{
+            MarkerConstructorDefinition, VariantConstructorDefinition, WrapperConstructorDefinition,
+        },
         exhaustiveness::MatchPathSegment,
     },
 };
@@ -22,6 +29,30 @@ use wipple_parse::{
     names::parse_constructor_name,
     parser::{ParseError, Parser},
 };
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MissingSubpatterns(pub Vec<Node>);
+
+#[typetag::serde]
+impl Fact for MissingSubpatterns {}
+
+impl Render for MissingSubpatterns {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+        ctx.string("missing subpatterns");
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExtraSubpattern;
+
+#[typetag::serde]
+impl Fact for ExtraSubpattern {}
+
+impl Render for ExtraSubpattern {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+        ctx.string("is extra subpattern");
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConstructorPattern {
@@ -62,22 +93,25 @@ impl Visit for ConstructorPattern {
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
+        #[expect(unused)]
         #[derive(Debug)]
         enum ConstructorDefinition {
-            Marker,
+            Marker(MarkerConstructorDefinition),
             Variant(VariantConstructorDefinition),
+            Wrapper(WrapperConstructorDefinition),
         }
 
         let definition = visitor.resolve_matching(db, &self.constructor, node, |_, definition| {
-            if definition
-                .downcast_ref::<MarkerConstructorDefinition>()
-                .is_some()
-            {
-                return Some(ConstructorDefinition::Marker);
+            if let Some(definition) = definition.downcast_ref::<MarkerConstructorDefinition>() {
+                return Some(ConstructorDefinition::Marker(definition.clone()));
             }
 
             if let Some(definition) = definition.downcast_ref::<VariantConstructorDefinition>() {
                 return Some(ConstructorDefinition::Variant(definition.clone()));
+            }
+
+            if let Some(definition) = definition.downcast_ref::<WrapperConstructorDefinition>() {
+                return Some(ConstructorDefinition::Wrapper(definition.clone()));
             }
 
             None
@@ -89,7 +123,7 @@ impl Visit for ConstructorPattern {
         };
 
         match definition {
-            ConstructorDefinition::Marker => {
+            ConstructorDefinition::Marker(_) => {
                 visit_pattern(db, node, visitor, Some(MatchPathSegment::Match));
 
                 for element in self.elements {
@@ -124,15 +158,15 @@ impl Visit for ConstructorPattern {
                     .into_iter()
                     .enumerate()
                     .map(|(index, element)| {
-                        let element = visitor.visit_matching(
+                        let (element, temporary) = visitor.visit_matching(
                             db,
                             &element,
                             MatchPathSegment::VariantElement(definition_node, index, element_count),
                         );
 
-                        db.graph.edge(element.0, node, "element");
+                        db.graph.edge(element, node, "element");
 
-                        element
+                        (element, temporary)
                     })
                     .collect::<Vec<_>>();
 
@@ -193,6 +227,69 @@ impl Visit for ConstructorPattern {
                     },
                 );
             }
+            ConstructorDefinition::Wrapper(definition) => {
+                visit_pattern(db, node, visitor, Some(MatchPathSegment::NoMatch));
+
+                let mut value = None;
+                let (missing, extra) = exact_for_each(
+                    slice::from_ref(&definition.value),
+                    &self.elements,
+                    |_, element| {
+                        value = Some(element);
+                    },
+                );
+
+                if !missing.is_empty() {
+                    db.insert(node, MissingSubpatterns(missing.to_vec()));
+                }
+
+                for pattern in extra {
+                    let pattern = visitor.visit(db, pattern);
+                    db.insert(pattern, ExtraSubpattern);
+                }
+
+                if let Some(value) = value {
+                    let (value, temporary) = visitor.visit_matching(
+                        db,
+                        value,
+                        MatchPathSegment::Wrapper(definition_node),
+                    );
+
+                    db.graph.edge(value, node, "value");
+
+                    let constructor_node = db.node();
+                    db.insert(constructor_node, Typed::default());
+
+                    let substitutions = visitor.substitutions(
+                        BTreeMap::from([(definition_node, constructor_node)]),
+                        Default::default(),
+                    );
+
+                    visitor.constraint(
+                        db,
+                        InstantiateConstraint::new(node, definition_node, substitutions),
+                    );
+
+                    visitor.constraint(
+                        db,
+                        TyConstraint::new(
+                            constructor_node,
+                            Ty::Constructed(ConstructedTy::function(vec![temporary], node)),
+                        ),
+                    );
+
+                    db.insert(node, Temporaries(BTreeSet::from([temporary])));
+
+                    visitor.codegen(
+                        db,
+                        node,
+                        ConstructorPatternCodegen::Wrapper {
+                            node,
+                            value: (value, temporary),
+                        },
+                    );
+                }
+            }
         }
     }
 }
@@ -205,6 +302,10 @@ enum ConstructorPatternCodegen {
         name: Str,
         index: usize,
         elements: Vec<(Node, Node)>,
+    },
+    Wrapper {
+        node: Node,
+        value: (Node, Node),
     },
 }
 
@@ -219,13 +320,12 @@ impl CodegenValue for ConstructorPatternCodegen {
                 index,
                 elements,
             } => {
-                let matching = db
-                    .get::<Matching>(*node)
-                    .ok_or_else(|| anyhow::format_err!("unresolved"))?
-                    .0;
+                let Matching(matching) = db
+                    .get(*node)
+                    .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
                 ctx.condition(ir::Condition::EqualToVariant {
-                    input: matching,
+                    input: *matching,
                     variant_name: name.to_string(),
                     variant_index: *index,
                 });
@@ -235,7 +335,7 @@ impl CodegenValue for ConstructorPatternCodegen {
                         variable: temporary,
                         node: None,
                         value: ir::Value::VariantElement {
-                            input: matching,
+                            input: *matching,
                             variant_name: name.to_string(),
                             variant_index: *index,
                             element: element_index,
@@ -245,6 +345,26 @@ impl CodegenValue for ConstructorPatternCodegen {
 
                     ctx.codegen(db, pattern)?;
                 }
+
+                Ok(())
+            }
+            ConstructorPatternCodegen::Wrapper {
+                node,
+                value: (pattern, temporary),
+            } => {
+                let Matching(matching) = db
+                    .get(*node)
+                    .ok_or_else(|| anyhow::format_err!("unresolved"))?;
+
+                ctx.condition(ir::Condition::Initialize {
+                    variable: *temporary,
+                    node: None,
+                    // Wrappers are transparent at runtime
+                    value: ir::Value::Variable(*matching),
+                    mutable: false,
+                });
+
+                ctx.codegen(db, *pattern)?;
 
                 Ok(())
             }

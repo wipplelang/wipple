@@ -3,8 +3,7 @@ use crate::{
     render::{Render, RenderCtx},
     span::{Span, Str},
     visit::attributes::{
-        ConnectionAttributeValue, StringAttributeValue, parse_attribute_named,
-        parse_attribute_with_value, parse_attributes_with_value,
+        ConnectionAttributeValue, parse_attribute_named, parse_attributes_with_value,
     },
 };
 use dyn_clone::DynClone;
@@ -137,15 +136,12 @@ impl Definition for TypeDefinition {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeDefinitionAttributes {
     pub intrinsic: bool,
-    pub representation: Option<Str>,
 }
 
 impl TypeDefinitionAttributes {
     pub fn parse(db: &mut Db, attributes: &[Node]) -> Self {
         TypeDefinitionAttributes {
             intrinsic: parse_attribute_named(db, attributes, "intrinsic"),
-            representation: parse_attribute_with_value(db, attributes, "representation")
-                .map(|syntax: StringAttributeValue| syntax.value.clone()),
         }
     }
 }
@@ -252,6 +248,28 @@ pub struct MarkerConstructorDefinition {
 
 #[typetag::serde]
 impl Definition for MarkerConstructorDefinition {
+    fn name(&self) -> Option<Str> {
+        Some(self.name.clone())
+    }
+
+    fn full_span(&self) -> Option<&Span> {
+        None
+    }
+
+    fn comments(&self) -> &[Str] {
+        &self.comments
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WrapperConstructorDefinition {
+    pub name: Str,
+    pub comments: Vec<Str>,
+    pub value: Node,
+}
+
+#[typetag::serde]
+impl Definition for WrapperConstructorDefinition {
     fn name(&self) -> Option<Str> {
         Some(self.name.clone())
     }

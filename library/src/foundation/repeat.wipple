@@ -25,14 +25,14 @@ Forever : type
 
 instance (Repeat-Condition Forever) : Forever -> always ()
 
-Times : type {times :: Number}
+Times : type Number
 
 -- Missing `times` after [`n`].
 --
 -- Try rewriting this code as `([`n`] times)`, or double-check your parentheses.
 error instance (Repeat-Condition (n :: Number))
 
-instance (Repeat-Condition Times) : (Times {times : n}) -> sequence {
+instance (Repeat-Condition Times) : (Times n) -> sequence {
   if (n > 0) {
     set n : n - 1
     Some ()
@@ -43,7 +43,7 @@ instance (Repeat-Condition Times) : (Times {times : n}) -> sequence {
 
 -- [`times`] repeats [`n`] times.
 [unit] times :: (n :: Number) -> Times
-times : times -> Times {times : times}
+times : Times
 
 -- [`repeat`] runs [`body`] repeatedly.
 repeat :: condition {body} -> () where (Repeat-Condition condition) (body :: ())

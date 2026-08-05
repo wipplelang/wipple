@@ -48,11 +48,11 @@ go : (Distance {pixels : x}) (Distance {pixels : y}) -> external "go" (x, y)
 
 -- Set the pen color.
 color :: Color -> ()
-color : (Color {color : color}) -> external "color" color
+color : (Color color) -> external "color" color
 
 -- Draw a path and fill it with a color.
 fill :: Color {result} -> result
-fill : (Color {color : color}) body -> do {
+fill : (Color color) body -> do {
   external "beginPath" ()
   result : do body
   external "endPath" color
@@ -64,11 +64,11 @@ speed :: Number -> ()
 speed : value -> external "speed" value
 
 -- An animal to use instead of the turtle.
-Animal : type {name :: String}
+Animal : type String
 
 animal-widget :: String -> Animal
-animal-widget : name -> Animal {name : name}
+animal-widget : Animal
 
 -- Change the animal being displayed.
 animal :: Animal -> ()
-animal : (Animal {name : name}) -> external "animal" name
+animal : (Animal name) -> external "animal" name

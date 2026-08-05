@@ -17,6 +17,7 @@ use wipple_core::{
             ConstantDefinition, Defined, Definition, MarkerConstructorDefinition,
             StructureConstructorDefinition, TraitDefinition, TypeDefinition,
             TypeParameterDefinition, VariableDefinition, VariantConstructorDefinition,
+            WrapperConstructorDefinition,
         },
     },
 };
@@ -380,6 +381,9 @@ impl Ide {
                 } else if definition
                     .downcast_ref::<MarkerConstructorDefinition>()
                     .is_some()
+                    || definition
+                        .downcast_ref::<WrapperConstructorDefinition>()
+                        .is_some()
                     || definition
                         .downcast_ref::<VariantConstructorDefinition>()
                         .is_some()

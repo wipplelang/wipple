@@ -1,7 +1,7 @@
-Box : value => type {value :: value}
+Box : value => type value
 
 Foo : a b => trait (a -> b)
 
-instance (Foo (Box value) value) : (Box {value : value}) -> value
+instance (Foo (Box value) value) : (Box value) -> value
 
-show (Foo (Box {value : "Hello, world!"}))
+show (Foo (Box "Hello, world!"))

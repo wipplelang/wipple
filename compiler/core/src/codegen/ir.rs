@@ -122,7 +122,7 @@ pub struct Function {
     pub bounds: Option<BTreeSet<Node>>,
     pub inputs: Vec<Node>,
     pub instructions: Vec<Instruction>,
-    pub closure: Option<(Node, Vec<Node>)>,
+    pub captures: Vec<Node>,
 }
 
 #[derive(Debug, Clone)]

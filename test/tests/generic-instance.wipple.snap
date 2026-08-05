@@ -2,17 +2,9 @@ Facts (layer 2):
 
 `Box` (TypeDefinition):
   assigned type `Box value`
-  grouped with `Box`
   has definition constraints
   has type `Box value`
   has type parameters
-  is a definition
-
-`Box` (TypeDefinition):
-  assigned type `Box value`
-  grouped with `Box`
-  has definition constraints
-  has type `Box value`
   is a definition
 
 `value` (TypeParameter):
@@ -87,7 +79,7 @@ Facts (layer 2):
 
 `instance (Foo (Box value) value)` (InstanceDefinition):
   assigned type `(Box value) -> value`
-  grouped with `a -> b`, `(Box {value : value}) -> value`
+  grouped with `a -> b`, `(Box value) -> value`
   has definition constraints
   has type `(Box value) -> value`
   has type parameters
@@ -120,18 +112,18 @@ Facts (layer 2):
   resolved to type parameter `value`
   type is annotated
 
-`(Box {value : value}) -> value` (FunctionExpression):
+`(Box value) -> value` (FunctionExpression):
   assigned type `(Box value) -> value`
   grouped with `instance (Foo (Box value) value)`
   has type `(Box value) -> value`
   is an expression
 
-`Box {value : value}` (StructurePattern):
+`Box value` (ConstructorPattern):
   assigned type `Box value`
   grouped with `Box`, `a`
   has type `Box value`
   is a pattern
-  resolved to 1 definition(s): `Box`
+  resolved to 1 definition(s): `_`
 
 `value` (VariablePattern):
   assigned type `value`
@@ -156,13 +148,13 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (Foo (Box {value : "Hello, world!"}))` (ExpressionStatement):
+`show (Foo (Box "Hello, world!"))` (ExpressionStatement):
   assigned type `()`
-  grouped with `show (Foo (Box {value : "Hello, world!"}))`
+  grouped with `show (Foo (Box "Hello, world!"))`
   has type `()`
 
-`show (Foo (Box {value : "Hello, world!"}))` (CallExpression):
-  grouped with `()`, `show (Foo (Box {value : "Hello, world!"}))`
+`show (Foo (Box "Hello, world!"))` (CallExpression):
+  grouped with `()`, `show (Foo (Box "Hello, world!"))`
   has type `()`
   is an expression
 
@@ -174,17 +166,21 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `Foo`
 
-`Foo (Box {value : "Hello, world!"})` (CallExpression):
+`Foo (Box "Hello, world!")` (CallExpression):
   grouped with `b`, `value`
   has type `String`
   is an expression
 
-`Box {value : "Hello, world!"}` (StructureExpression):
-  assigned type `Box String`
+`Box` (ConstructorExpression):
+  assigned type `String -> Box String`
+  has type `String -> Box String`
+  is an expression
+  resolved to 1 definition(s): `_`
+
+`Box "Hello, world!"` (CallExpression):
   grouped with `Box`, `a`
   has type `Box String`
   is an expression
-  resolved to 1 definition(s): `Box`
 
 `"Hello, world!"` (StringExpression):
   assigned type `String`

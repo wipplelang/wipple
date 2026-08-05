@@ -40,6 +40,17 @@ impl Fact for EnumerationVariants {}
 
 impl Render for EnumerationVariants {}
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct WrapperValue {
+    pub constructor: Node,
+    pub value: Node,
+}
+
+#[typetag::serde]
+impl Fact for WrapperValue {}
+
+impl Render for WrapperValue {}
+
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum MatchPathSegment {
     Match,
@@ -48,6 +59,7 @@ pub enum MatchPathSegment {
     TupleElement(usize, usize),
     Variant(Node),
     VariantElement(Node, usize, usize),
+    Wrapper(Node),
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -59,6 +71,7 @@ pub enum MatchTree {
     Field(Node, Box<MatchTree>),
     Tuple(Vec<MatchTree>),
     Variant(Node, Vec<MatchTree>),
+    Wrapper(Node, Box<MatchTree>),
 }
 
 impl MatchTree {
@@ -83,6 +96,9 @@ impl MatchTree {
                     let mut elements = vec![MatchTree::Wildcard; len];
                     elements[index] = coverage;
                     coverage = MatchTree::Variant(variant, elements);
+                }
+                MatchPathSegment::Wrapper(definition) => {
+                    coverage = MatchTree::Wrapper(definition, Box::new(coverage));
                 }
             }
         }
@@ -115,6 +131,9 @@ impl MatchTree {
                     left.merge(right);
                 }
             }
+            (MatchTree::Wrapper(_, left_value), MatchTree::Wrapper(_, right_value)) => {
+                left_value.merge(*right_value);
+            }
             _ => {}
         }
     }
@@ -123,14 +142,16 @@ impl MatchTree {
 impl Render for MatchTree {
     fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let node = match self {
-            MatchTree::Field(node, _) | MatchTree::Variant(node, _) => Some(node),
+            MatchTree::Field(node, _)
+            | MatchTree::Variant(node, _)
+            | MatchTree::Wrapper(node, _) => Some(node),
             _ => None,
         };
 
         if let Some(node) = node {
             ctx.link(self.to_string(db, true), *node);
         } else {
-            ctx.string(self.to_string(db, true));
+            ctx.code(self.to_string(db, true));
         }
     }
 }
@@ -160,6 +181,17 @@ impl MatchTree {
                     } else {
                         format!("({variant_name} {elements})")
                     }
+                }
+            }
+            MatchTree::Wrapper(definition, value) => {
+                let wrapper_name = db.get::<Defined>(*definition).unwrap().0.name().unwrap();
+
+                let value = value.to_string(db, false);
+
+                if root {
+                    format!("{wrapper_name} {value}")
+                } else {
+                    format!("({wrapper_name} {value})")
                 }
             }
         }
@@ -314,25 +346,25 @@ fn collect_paths(
             } else if let Some(EnumerationVariants(variants)) = db.get(definition) {
                 variants
                     .iter()
-                    .flat_map(|&(variant, ref fields)| {
-                        if fields.is_empty() {
+                    .flat_map(|&(variant, ref elements)| {
+                        if elements.is_empty() {
                             let mut prefix = prefix.to_vec();
                             prefix.push(MatchPathSegment::Variant(variant));
 
                             vec![vec![MatchPath(prefix)]]
                         } else {
-                            fields
+                            elements
                                 .iter()
                                 .enumerate()
-                                .map(|(index, &field)| {
+                                .map(|(index, &element)| {
                                     let mut prefix = prefix.to_vec();
                                     prefix.push(MatchPathSegment::VariantElement(
                                         variant,
                                         index,
-                                        fields.len(),
+                                        elements.len(),
                                     ));
 
-                                    collect_paths(db, Ty::Node(field), &parameters, &prefix, max)
+                                    collect_paths(db, Ty::Node(element), &parameters, &prefix, max)
                                 })
                                 .multi_cartesian_product()
                                 .map(|combination| combination.into_iter().flatten().collect())
@@ -341,6 +373,11 @@ fn collect_paths(
                         .into_iter()
                     })
                     .collect()
+            } else if let Some(WrapperValue { constructor, value }) = db.get(definition) {
+                let mut prefix = prefix.to_vec();
+                prefix.push(MatchPathSegment::Wrapper(*constructor));
+
+                collect_paths(db, Ty::Node(*value), &parameters, &prefix, max)
             } else {
                 Vec::new()
             }
@@ -397,6 +434,7 @@ fn matches_coverage(actual: &[MatchPath], expected: &[MatchPath]) -> bool {
                         MatchPathSegment::VariantElement(variant, index, len),
                         MatchPathSegment::VariantElement(other_variant, other_index, other_len),
                     ) if variant == other_variant && index == other_index && len == other_len => {}
+                    (MatchPathSegment::Wrapper(_), MatchPathSegment::Wrapper(_)) => {}
                     _ => return false,
                 }
             }

@@ -2,14 +2,6 @@ Facts (layer 2):
 
 `Elephants` (TypeDefinition):
   assigned type `Elephants`
-  grouped with `Elephants`
-  has definition constraints
-  has type `Elephants`
-  is a definition
-
-`Elephants` (TypeDefinition):
-  assigned type `Elephants`
-  grouped with `Elephants`
   has definition constraints
   has type `Elephants`
   is a definition
@@ -23,7 +15,7 @@ Facts (layer 2):
 
 `instance (Equal Elephants)` (InstanceDefinition):
   assigned type `Elephants Elephants -> Boolean`
-  grouped with `value value -> Boolean`, `(Elephants {count : a}) (Elephants {count : b}) -> a = b`
+  grouped with `value value -> Boolean`, `(Elephants a) (Elephants b) -> a = b`
   has definition constraints
   has type `Elephants Elephants -> Boolean`
   is a definition
@@ -37,18 +29,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `Elephants`
   type is annotated
 
-`(Elephants {count : a}) (Elephants {count : b}) -> a = b` (FunctionExpression):
+`(Elephants a) (Elephants b) -> a = b` (FunctionExpression):
   assigned type `Elephants Elephants -> Boolean`
   grouped with `instance (Equal Elephants)`
   has type `Elephants Elephants -> Boolean`
   is an expression
 
-`Elephants {count : a}` (StructurePattern):
+`Elephants a` (ConstructorPattern):
   assigned type `Elephants`
   grouped with `Elephants`, `value`
   has type `Elephants`
   is a pattern
-  resolved to 1 definition(s): `Elephants`
+  resolved to 1 definition(s): `_`
 
 `a` (VariablePattern):
   assigned type `Number`
@@ -57,12 +49,12 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`Elephants {count : b}` (StructurePattern):
+`Elephants b` (ConstructorPattern):
   assigned type `Elephants`
   grouped with `Elephants`, `value`
   has type `Elephants`
   is a pattern
-  resolved to 1 definition(s): `Elephants`
+  resolved to 1 definition(s): `_`
 
 `b` (VariablePattern):
   assigned type `Number`
@@ -108,14 +100,14 @@ Facts (layer 2):
 
 `elephants` (ConstantDefinition):
   assigned type `Number -> Elephants`
-  grouped with `Number -> Elephants`, `count -> Elephants {count : count}`
+  grouped with `Number -> Elephants`, `Elephants`
   has definition constraints
   has type `Number -> Elephants`
   is a definition
 
 `Number` (NamedType):
   assigned type `Number`
-  grouped with `count`
+  grouped with `Number`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
@@ -130,43 +122,22 @@ Facts (layer 2):
 
 `Elephants` (NamedType):
   assigned type `Elephants`
-  grouped with `Elephants {count : count}`
+  grouped with `Elephants`
   has type `Elephants`
   is a type
   resolved to 1 definition(s): `Elephants`
   type is annotated
 
-`elephants : count -> Elephants {count : count}` (AssignmentStatement):
+`elephants : Elephants` (AssignmentStatement):
   assigned type `()`
   has type `()`
 
-`count` (VariablePattern):
-  assigned type `Number`
-  grouped with `count`, `Number`
-  has type `Number`
-  is a definition
-  is a pattern
-
-`count -> Elephants {count : count}` (FunctionExpression):
+`Elephants` (ConstructorExpression):
   assigned type `Number -> Elephants`
   grouped with `elephants`
   has type `Number -> Elephants`
   is an expression
-
-`Elephants {count : count}` (StructureExpression):
-  assigned type `Elephants`
-  grouped with `Elephants`, `Elephants`
-  has type `Elephants`
-  is an expression
-  resolved to 1 definition(s): `Elephants`
-
-`count` (VariableExpression):
-  assigned type `Number`
-  grouped with `count`
-  has type `Number`
-  is an expression
-  resolved to 1 definition(s): `count`
-  type is annotated
+  resolved to 1 definition(s): `_`
 
 `show` (VariableExpression):
   assigned type `Boolean -> ()`

@@ -197,7 +197,7 @@ impl CodegenValue for FunctionExpressionCodegen {
                 bounds: None,
                 inputs: self.inputs.clone(),
                 instructions,
-                closure: Some((self.node, captures)),
+                captures,
             }),
         });
 

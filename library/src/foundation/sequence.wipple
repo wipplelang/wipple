@@ -1,13 +1,13 @@
 -- A container for a sequence that produces the next value on demand.
-Sequence : element => type {next :: {Maybe element}}
+Sequence : element => type ({Maybe element})
 
 -- [`next`] retrieves the next [`element@type`] in [`sequence`].
 next :: (sequence :: (Sequence element)) -> Maybe element
-next : (Sequence {next : next}) -> do next
+next : (Sequence next) -> do next
 
 -- Create a sequence of [`element@type`] values.
 sequence :: {Maybe element} -> Sequence element
-sequence : next -> Sequence {next : next}
+sequence : Sequence
 
 -- Create a sequence that produces [`element`] forever.
 --

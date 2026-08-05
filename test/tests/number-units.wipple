@@ -1,8 +1,8 @@
-Elephants : type {count :: Number}
+Elephants : type Number
 
-instance (Equal Elephants) : (Elephants {count : a}) (Elephants {count : b}) -> a = b
+instance (Equal Elephants) : (Elephants a) (Elephants b) -> a = b
 
 [unit] elephants :: Number -> Elephants
-elephants : count -> Elephants {count : count}
+elephants : Elephants
 
 show (42 elephants = elephants 42)

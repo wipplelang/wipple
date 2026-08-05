@@ -20,9 +20,9 @@ use wipple_core::{
         DefinitionConstraints, Visit, Visitor,
         definitions::{
             self, Definition, MarkerConstructorDefinition, StructureConstructorDefinition,
-            TypeDefinitionAttributes, VariantConstructorDefinition,
+            TypeDefinitionAttributes, VariantConstructorDefinition, WrapperConstructorDefinition,
         },
-        exhaustiveness::{EnumerationVariants, MarkerType, StructureFields},
+        exhaustiveness::{EnumerationVariants, MarkerType, StructureFields, WrapperValue},
     },
 };
 use wipple_parse::{
@@ -79,15 +79,21 @@ pub struct EnumerationTypeRepresentation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct VariantDefinition {
+    pub span: Span,
+    pub name: Str,
+    pub elements: Vec<AstKey>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MarkerTypeRepresentation {
     pub span: Span,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct VariantDefinition {
+pub struct WrapperTypeRepresentation {
     pub span: Span,
-    pub name: Str,
-    pub elements: Vec<AstKey>,
+    pub value: AstKey,
 }
 
 pub fn parse_type_definition_statement(
@@ -118,6 +124,7 @@ pub fn parse_type_representation(parser: &mut Parser<'_>) -> Result<AstKey, Pars
     parse_alt!(parser, {
         parse_structure_type_representation as value => parser.in_ast(value),
         parse_enumeration_type_representation as value => parser.in_ast(value),
+        parse_wrapper_type_representation as value => parser.in_ast(value),
         parse_marker_type_representation as value => parser.in_ast(value),
         _ => "Expected type representation",
     })
@@ -179,6 +186,17 @@ pub fn parse_variant_definition(parser: &mut Parser<'_>) -> Result<VariantDefini
         span: span(parser),
         name,
         elements,
+    })
+}
+
+pub fn parse_wrapper_type_representation(
+    parser: &mut Parser<'_>,
+) -> Result<WrapperTypeRepresentation, ParseError> {
+    let span = parser.spanned();
+    let value = parse_atomic_type(parser)?;
+    Ok(WrapperTypeRepresentation {
+        span: span(parser),
+        value,
     })
 }
 
@@ -293,6 +311,24 @@ impl Visit for TypeDefinition {
                 .collect::<Vec<_>>();
 
             db.insert(node, EnumerationVariants(constructors));
+        } else if db
+            .ast(&self.representation)
+            .downcast_ref::<WrapperTypeRepresentation>()
+            .is_some()
+        {
+            let constructor = db.node();
+            let value = db.node();
+
+            definitions.push((
+                constructor,
+                Box::new(definitions::WrapperConstructorDefinition {
+                    name: self.name.clone(),
+                    comments: self.comments.clone(),
+                    value,
+                }),
+            ));
+
+            db.insert(node, WrapperValue { constructor, value });
         }
 
         definitions
@@ -360,8 +396,6 @@ impl Visit for TypeDefinition {
                                 }
                             },
                         );
-
-                        visitor.pop_scope(db);
                     } else if let Some(representation) = db
                         .ast(&self.representation)
                         .downcast_ref::<StructureTypeRepresentation>()
@@ -403,8 +437,6 @@ impl Visit for TypeDefinition {
                                 }
                             },
                         );
-
-                        visitor.pop_scope(db);
                     } else if let Some(representation) = db
                         .ast(&self.representation)
                         .downcast_ref::<EnumerationTypeRepresentation>()
@@ -440,61 +472,77 @@ impl Visit for TypeDefinition {
 
                                     db.insert(constructor, Syntax(variant_definition));
 
-                                    visitor.within_definition::<VariantConstructorDefinition>(
-                                        db,
-                                        constructor,
-                                        |db, visitor, definition| {
-                                            for (&element_node, element) in
-                                                definition.elements.iter().zip(&variant.elements)
-                                            {
-                                                visitor.visit_as(
-                                                    db,
-                                                    &element.clone(),
-                                                    element_node,
-                                                );
-                                                db.graph.edge(element_node, constructor, "element");
-                                            }
+                                    for (&element_node, element) in
+                                        definition.elements.iter().zip(&variant.elements)
+                                    {
+                                        visitor.visit_as(db, &element.clone(), element_node);
+                                        db.graph.edge(element_node, constructor, "element");
+                                    }
 
-                                            db.insert(constructor, Typed::default());
+                                    db.insert(constructor, Typed::default());
 
-                                            db.get_mut_or_default::<DefinitionConstraints>(
+                                    db.get_mut_or_default::<DefinitionConstraints>(constructor)
+                                        .0
+                                        .extend(type_constraints.clone());
+
+                                    if definition.elements.is_empty() {
+                                        visitor.constraint(
+                                            db,
+                                            TyConstraint::new(constructor, Ty::Node(node)),
+                                        );
+                                    } else {
+                                        visitor.constraint(
+                                            db,
+                                            TyConstraint::new(
                                                 constructor,
-                                            )
-                                            .0
-                                            .extend(type_constraints.clone());
-
-                                            if definition.elements.is_empty() {
-                                                visitor.constraint(
-                                                    db,
-                                                    TyConstraint::new(constructor, Ty::Node(node)),
-                                                );
-                                            } else {
-                                                visitor.constraint(
-                                                    db,
-                                                    TyConstraint::new(
-                                                        constructor,
-                                                        Ty::Constructed(ConstructedTy::function(
-                                                            elements.clone(),
-                                                            node,
-                                                        )),
-                                                    ),
-                                                );
-                                            }
-                                        },
-                                    );
+                                                Ty::Constructed(ConstructedTy::function(
+                                                    elements.clone(),
+                                                    node,
+                                                )),
+                                            ),
+                                        );
+                                    }
 
                                     constructors.push(definition.clone());
                                 },
                             );
                         }
+                    } else if let Some(representation) = db
+                        .ast(&self.representation)
+                        .downcast_ref::<WrapperTypeRepresentation>()
+                        .cloned()
+                    {
+                        let WrapperValue { constructor, .. } = db.get(node).cloned().unwrap();
 
-                        visitor.pop_scope(db);
-                    } else {
-                        visitor.pop_scope(db);
+                        visitor.within_definition::<WrapperConstructorDefinition>(
+                            db,
+                            constructor,
+                            |db, visitor, definition| {
+                                visitor.visit_as(db, &representation.value, definition.value);
+                                db.graph.edge(definition.value, constructor, "value");
+
+                                db.insert(constructor, Typed::default());
+
+                                db.get_mut_or_default::<DefinitionConstraints>(constructor)
+                                    .0
+                                    .extend(type_constraints.clone());
+
+                                visitor.constraint(
+                                    db,
+                                    TyConstraint::new(
+                                        constructor,
+                                        Ty::Constructed(ConstructedTy::function(
+                                            vec![definition.value],
+                                            node,
+                                        )),
+                                    ),
+                                );
+                            },
+                        );
                     }
-                } else {
-                    visitor.pop_scope(db);
                 }
+
+                visitor.pop_scope(db);
             },
         );
     }
@@ -522,6 +570,13 @@ impl Visit for EnumerationTypeRepresentation {
 }
 
 #[typetag::serde]
+impl Visit for VariantDefinition {
+    fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
+        &self.span
+    }
+}
+
+#[typetag::serde]
 impl Visit for MarkerTypeRepresentation {
     fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
@@ -529,7 +584,7 @@ impl Visit for MarkerTypeRepresentation {
 }
 
 #[typetag::serde]
-impl Visit for VariantDefinition {
+impl Visit for WrapperTypeRepresentation {
     fn span<'a>(&'a self, _db: &'a Db) -> &'a Span {
         &self.span
     }

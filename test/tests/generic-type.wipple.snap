@@ -2,17 +2,9 @@ Facts (layer 2):
 
 `Foo` (TypeDefinition):
   assigned type `Foo value`
-  grouped with `Foo`
   has definition constraints
   has type `Foo value`
   has type parameters
-  is a definition
-
-`Foo` (TypeDefinition):
-  assigned type `Foo value`
-  grouped with `Foo`
-  has definition constraints
-  has type `Foo value`
   is a definition
 
 `value` (TypeParameter):
@@ -35,21 +27,25 @@ Facts (layer 2):
 
 `foo` (VariablePattern):
   assigned type `Foo String`
-  grouped with `Foo {inner : "Hello, world!"}`, `Foo {inner : "Hello, world!"}`, `foo`
+  grouped with `Foo "Hello, world!"`, `Foo "Hello, world!"`, `foo`
   has type `Foo String`
   is a definition
   is a pattern
 
-`foo : Foo {inner : "Hello, world!"}` (AssignmentStatement):
+`foo : Foo "Hello, world!"` (AssignmentStatement):
   assigned type `()`
   has type `()`
 
-`Foo {inner : "Hello, world!"}` (StructureExpression):
-  assigned type `Foo String`
+`Foo` (ConstructorExpression):
+  assigned type `String -> Foo String`
+  has type `String -> Foo String`
+  is an expression
+  resolved to 1 definition(s): `_`
+
+`Foo "Hello, world!"` (CallExpression):
   grouped with `Foo`, `foo`, `foo`
   has type `Foo String`
   is an expression
-  resolved to 1 definition(s): `Foo`
 
 `"Hello, world!"` (StringExpression):
   assigned type `String`
@@ -57,14 +53,14 @@ Facts (layer 2):
   has type `String`
   is an expression
 
-`Foo {inner : inner}` (StructurePattern):
+`Foo inner` (ConstructorPattern):
   assigned type `Foo String`
   grouped with `foo`, `Foo`, `foo`
   has type `Foo String`
   is a pattern
-  resolved to 1 definition(s): `Foo`
+  resolved to 1 definition(s): `_`
 
-`Foo {inner : inner} : foo` (AssignmentStatement):
+`Foo inner : foo` (AssignmentStatement):
   assigned type `()`
   has type `()`
 
@@ -77,7 +73,7 @@ Facts (layer 2):
 
 `foo` (VariableExpression):
   assigned type `Foo String`
-  grouped with `foo`, `Foo {inner : inner}`, `Foo {inner : inner}`
+  grouped with `foo`, `Foo inner`, `Foo inner`
   has type `Foo String`
   is an expression
   resolved to 1 definition(s): `foo`

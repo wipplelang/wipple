@@ -1,6 +1,6 @@
 -- Set the color of the graph.
 color :: Color -> ()
-color : (Color {color : color}) -> external "setColor" color
+color : (Color color) -> external "setColor" color
 
 -- Set the minimum x-value displayed by the graph.
 min-x :: Number -> ()

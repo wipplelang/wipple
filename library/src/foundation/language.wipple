@@ -1,4 +1,4 @@
-[intrinsic] [representation : "f64"] Number : type
+[intrinsic] Number : type
 [intrinsic] String : type
 
 Maybe : value => type {
@@ -52,7 +52,7 @@ instance (Initial (Maybe value)) : None
 Mismatched : actual expected => trait ()
 
 -- Display a dropdown with the provided options.
-Dropdown : type {value :: String}
+Dropdown : type String
 
 dropdown-widget :: String -> Dropdown
-dropdown-widget : value -> Dropdown {value : value}
+dropdown-widget : Dropdown
