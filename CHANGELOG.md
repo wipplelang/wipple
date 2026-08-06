@@ -2,15 +2,25 @@
 
 ## Unreleased
 
+## Wipple 2026.2 (2026-08-06)
+
 -   `when` and related pattern-matching expressions are now checked for exhaustiveness.
 
 -   Operators can be referenced in parentheses to refer to their underlying trait; e.g. `(+)` is the same as `Add`.
 
--   On instances, `error` and `default` are now keywords instead of attributes.
+-   On instances, `error` and `default` are now keywords instead of attributes. `error` no longer changes the instance resolution order.
 
--   Improved the accuracy of links within documentation comments.
+-   Improved the accuracy of links within documentation comments. In the playground, documentation comments included in error messages now have a link to the original definition.
 
--   Type inference error messages now include links to influencing expressions, which appear as a flowchart in the playground.
+-   Type inference error messages now include links to influencing expressions, which appear in a sidebar in the playground.
+
+-   The playground now supports hovering over an expression to view its type.
+
+-   Reimplemented the `wipple format` command.
+
+-   Unclosed parentheses, brackets, and braces are now auto-closed during lexing and readded when formatting.
+
+-   Reimplemented wrapper types.
 
 ## Wipple 2026.1 (2026-02-02)
 
