@@ -518,6 +518,10 @@ impl Visit for TypeDefinition {
                             db,
                             constructor,
                             |db, visitor, definition| {
+                                if let Some(Syntax(syntax)) = db.get(node) {
+                                    db.insert(constructor, Syntax(syntax.clone()));
+                                }
+
                                 visitor.visit_as(db, &representation.value, definition.value);
                                 db.graph.edge(definition.value, constructor, "value");
 

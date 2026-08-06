@@ -7,6 +7,12 @@ Facts (layer 2):
   has type parameters
   is a definition
 
+`Foo` (TypeDefinition):
+  assigned type `value -> Foo value`
+  has definition constraints
+  has type `value -> Foo value`
+  is a definition
+
 `value` (TypeParameter):
   assigned type `value`
   grouped with `value`
@@ -40,7 +46,7 @@ Facts (layer 2):
   assigned type `String -> Foo String`
   has type `String -> Foo String`
   is an expression
-  resolved to 1 definition(s): `_`
+  resolved to 1 definition(s): `Foo`
 
 `Foo "Hello, world!"` (CallExpression):
   grouped with `Foo`, `foo`, `foo`
@@ -58,7 +64,7 @@ Facts (layer 2):
   grouped with `foo`, `Foo`, `foo`
   has type `Foo String`
   is a pattern
-  resolved to 1 definition(s): `_`
+  resolved to 1 definition(s): `Foo`
 
 `Foo inner : foo` (AssignmentStatement):
   assigned type `()`

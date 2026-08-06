@@ -7,6 +7,12 @@ Facts (layer 2):
   has type parameters
   is a definition
 
+`Box` (TypeDefinition):
+  assigned type `value -> Box value`
+  has definition constraints
+  has type `value -> Box value`
+  is a definition
+
 `value` (TypeParameter):
   assigned type `value`
   grouped with `value`
@@ -123,7 +129,7 @@ Facts (layer 2):
   grouped with `Box`, `a`
   has type `Box value`
   is a pattern
-  resolved to 1 definition(s): `_`
+  resolved to 1 definition(s): `Box`
 
 `value` (VariablePattern):
   assigned type `value`
@@ -175,7 +181,7 @@ Facts (layer 2):
   assigned type `String -> Box String`
   has type `String -> Box String`
   is an expression
-  resolved to 1 definition(s): `_`
+  resolved to 1 definition(s): `Box`
 
 `Box "Hello, world!"` (CallExpression):
   grouped with `Box`, `a`

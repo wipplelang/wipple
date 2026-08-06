@@ -6,6 +6,12 @@ Facts (layer 2):
   has type `Elephants`
   is a definition
 
+`Elephants` (TypeDefinition):
+  assigned type `Number -> Elephants`
+  has definition constraints
+  has type `Number -> Elephants`
+  is a definition
+
 `Number` (NamedType):
   assigned type `Number`
   has type `Number`
@@ -40,7 +46,7 @@ Facts (layer 2):
   grouped with `Elephants`, `value`
   has type `Elephants`
   is a pattern
-  resolved to 1 definition(s): `_`
+  resolved to 1 definition(s): `Elephants`
 
 `a` (VariablePattern):
   assigned type `Number`
@@ -54,7 +60,7 @@ Facts (layer 2):
   grouped with `Elephants`, `value`
   has type `Elephants`
   is a pattern
-  resolved to 1 definition(s): `_`
+  resolved to 1 definition(s): `Elephants`
 
 `b` (VariablePattern):
   assigned type `Number`
@@ -137,7 +143,7 @@ Facts (layer 2):
   grouped with `elephants`
   has type `Number -> Elephants`
   is an expression
-  resolved to 1 definition(s): `_`
+  resolved to 1 definition(s): `Elephants`
 
 `show` (VariableExpression):
   assigned type `Boolean -> ()`
