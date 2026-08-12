@@ -11,6 +11,7 @@ impl CompileResult {
             &self.source_files,
             &self.statements,
             &self.lib_statements,
+            false,
         )
         .ok()?;
 
@@ -21,6 +22,7 @@ impl CompileResult {
                 file_name: None,
                 source_root: "",
                 trace: codegen::TraceOptions::Files(&[&self.path]),
+                incremental: false,
             },
         )
         .ok()?;

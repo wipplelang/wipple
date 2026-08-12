@@ -14,6 +14,7 @@ use dyn_clone::DynClone;
 use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
+    ops::ControlFlow,
 };
 
 #[derive(Debug, Clone, Copy)]
@@ -21,6 +22,7 @@ pub struct Options<'a> {
     pub file_name: Option<&'a str>,
     pub source_root: &'a str,
     pub trace: TraceOptions<'a>,
+    pub incremental: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -143,6 +145,7 @@ pub fn codegen(
     source_files: &[Node],
     statements: &[Node],
     lib_statements: &[Node],
+    include_all_definitions: bool,
 ) -> Result<ir::Program, CodegenError> {
     let mut program = ir::Program::default();
     program.source_files.extend(source_files);
@@ -151,6 +154,21 @@ pub fn codegen(
 
     ctx.reachable_definitions
         .insert(ir::DefinitionKey::TopLevel);
+
+    if include_all_definitions {
+        db.for_each_fact::<_, ()>(&mut |_, node, Defined(definition)| {
+            if definition.downcast_ref::<ConstantDefinition>().is_some()
+                || definition
+                    .downcast_ref::<InstanceDefinition>()
+                    .is_some_and(|definition| !definition.error)
+            {
+                ctx.reachable_definitions
+                    .insert(ir::DefinitionKey::Constant(node));
+            }
+
+            ControlFlow::Continue(())
+        });
+    }
 
     let mut visited = BTreeSet::new();
     loop {
@@ -162,19 +180,6 @@ pub fn codegen(
             }
 
             match key {
-                ir::DefinitionKey::TopLevel => {
-                    for &statement in statements.iter().chain(lib_statements) {
-                        ctx.codegen(db, statement)?;
-                    }
-
-                    program.definitions.insert(
-                        ir::DefinitionKey::TopLevel,
-                        ir::Function {
-                            instructions: ctx.pop_instructions(),
-                            ..Default::default()
-                        },
-                    );
-                }
                 ir::DefinitionKey::Constant(node) => {
                     let Defined(definition) = db
                         .get(node)
@@ -208,6 +213,19 @@ pub fn codegen(
 
                     ctx.reachable_definitions
                         .extend(definition_ctx.reachable_definitions);
+                }
+                ir::DefinitionKey::TopLevel => {
+                    for &statement in statements.iter().chain(lib_statements) {
+                        ctx.codegen(db, statement)?;
+                    }
+
+                    program.definitions.insert(
+                        ir::DefinitionKey::TopLevel,
+                        ir::Function {
+                            instructions: ctx.pop_instructions(),
+                            ..Default::default()
+                        },
+                    );
                 }
             }
 

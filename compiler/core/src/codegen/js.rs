@@ -28,42 +28,54 @@ pub fn to_js(
         sourcemap: parcel_sourcemap::SourceMap::new(""),
     };
 
-    writeln!(writer, "let env;")?;
+    let mut ctx = WriteContext {
+        db,
+        options,
+        definitions: &mut Vec::new(),
+        writer: &mut writer,
+    };
 
-    let mut definitions = Vec::new();
-    let mut exports = Vec::new();
-    for (key, function) in &program.definitions {
-        let export = match key {
-            ir::DefinitionKey::TopLevel => Some("default"),
-            ir::DefinitionKey::Constant(_) => None, // TODO: Allow exporting
-        };
+    if options.incremental {
+        for (key, function) in &program.definitions {
+            match key {
+                ir::DefinitionKey::Constant(_) => {
+                    ctx.write_function(Some(key), function)?;
+                }
+                ir::DefinitionKey::TopLevel => {
+                    ctx.write_function_body(function)?;
+                }
+            }
+        }
+    } else {
+        writeln!(ctx.writer, "let env;")?;
 
-        if let Some(export) = export {
-            exports.push((export, key));
+        let mut exports = Vec::new();
+        for (key, function) in &program.definitions {
+            let export = match key {
+                ir::DefinitionKey::Constant(_) => None, // TODO: Allow exporting
+                ir::DefinitionKey::TopLevel => Some("default"),
+            };
+
+            if let Some(export) = export {
+                exports.push((export, key));
+            }
+
+            ctx.write_function(Some(key), function)?;
+
+            writeln!(ctx.writer)?;
         }
 
-        let mut ctx = WriteContext {
-            db,
-            options,
-            definitions: &mut definitions,
-            writer: &mut writer,
-        };
-
-        ctx.write_function(Some(key), function)?;
-
-        writeln!(writer)?;
+        writeln!(ctx.writer, "export {{")?;
+        for (name, key) in exports {
+            writeln!(
+                ctx.writer,
+                "{} as {:?},",
+                mangle_function(key, ctx.definitions),
+                name
+            )?;
+        }
+        writeln!(ctx.writer, "}};")?;
     }
-
-    writeln!(writer, "export {{")?;
-    for (name, key) in exports {
-        writeln!(
-            writer,
-            "{} as {:?},",
-            mangle_function(key, &mut definitions),
-            name
-        )?;
-    }
-    writeln!(writer, "}};")?;
 
     Ok(writer.finish(db, program, options))
 }
@@ -250,13 +262,19 @@ impl<'a> WriteContext<'a, '_> {
             writeln!(self.writer, ") {{")?;
         }
 
+        self.write_function_body(function)?;
+
+        write!(self.writer, "}}")?;
+
+        Ok(())
+    }
+
+    fn write_function_body(&mut self, function: &'a ir::Function) -> Result<(), CodegenError> {
         for local in collect_locals(function)? {
             writeln!(self.writer, "let {};", mangle_local(local))?;
         }
 
         self.write_instructions(&function.instructions)?;
-
-        write!(self.writer, "}}")?;
 
         Ok(())
     }

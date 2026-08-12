@@ -5,6 +5,7 @@ mod read;
 
 use crate::{driver::Driver, read::read_dir};
 use clap::Parser;
+use colored::Colorize;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use serde::Serialize;
 use serde_json::json;
@@ -12,6 +13,7 @@ use std::{
     collections::{BTreeSet, HashMap},
     env, fs,
     io::{self, Write},
+    net,
     ops::ControlFlow,
     path::{Path, PathBuf},
     process,
@@ -50,6 +52,11 @@ enum Args {
         #[clap(short)]
         output: Option<PathBuf>,
 
+        #[clap(flatten)]
+        options: CompileOptions,
+    },
+
+    Repl {
         #[clap(flatten)]
         options: CompileOptions,
     },
@@ -114,13 +121,16 @@ fn main() -> anyhow::Result<()> {
                 None => (make_temp_dir()?, true),
             };
 
-            if compile(&options, Some(&output))? {
+            if compile(&options, Some(&output))?.is_some() {
                 run(&output, |cmd| cmd)?;
             }
 
             if cleanup {
                 fs::remove_dir_all(&output)?;
             }
+        }
+        Args::Repl { options } => {
+            repl(&options)?;
         }
         Args::Test { options } => {
             test(&options)?;
@@ -186,11 +196,14 @@ fn setup(
     Ok((db, top_level, statements))
 }
 
-fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Result<bool> {
+fn compile(
+    options: &CompileOptions,
+    output_path: Option<&Path>,
+) -> anyhow::Result<Option<JsResult>> {
     let (lib_db, mut top_level, lib_statements) = setup(options, io::stdout())?;
 
     if options.paths.is_empty() {
-        return Ok(false);
+        return Ok(None);
     }
 
     let mut db = Db::new(Some(DbRef::new(lib_db)));
@@ -221,7 +234,7 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
         .run(&mut db, &mut top_level, &name)?
         .ok_or_else(|| anyhow::format_err!("compilation failed"))?;
 
-    let program = codegen(&db, &source_files, &statements, &lib_statements)?;
+    let program = codegen(&db, &source_files, &statements, &lib_statements, false)?;
 
     let result = js::to_js(
         &db,
@@ -234,6 +247,7 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
             } else {
                 codegen::TraceOptions::None
             },
+            incremental: false,
         },
     )?;
 
@@ -254,32 +268,33 @@ fn compile(options: &CompileOptions, output_path: Option<&Path>) -> anyhow::Resu
         fs::write(path, bytes)?;
     }
 
-    write_js(&result, output_path)?;
+    if let Some(path) = output_path {
+        write_js(&result, path)?;
+    }
 
-    Ok(true)
+    Ok(Some(result))
 }
 
 static JS_FILE_NAME: &str = "main.js";
 
-fn write_js(js: &JsResult, output_path: Option<&Path>) -> anyhow::Result<()> {
-    if let Some(path) = output_path {
-        fs::create_dir_all(path)?;
+fn write_js(js: &JsResult, path: &Path) -> anyhow::Result<()> {
+    fs::create_dir_all(path)?;
 
-        fs::write(path.join(JS_FILE_NAME), &js.module)?;
-        fs::write(path.join(format!("{JS_FILE_NAME}.map")), &js.source_map)?;
+    fs::write(path.join(JS_FILE_NAME), &js.module)?;
+    fs::write(path.join(format!("{JS_FILE_NAME}.map")), &js.source_map)?;
 
-        macro_rules! copy {
-            ($name:literal) => {
-                fs::write(
-                    path.join($name),
-                    include_bytes!(concat!("../node-runtime/", $name)),
-                )?;
-            };
-        }
-
-        copy!("package.json");
-        copy!("index.js");
+    macro_rules! copy {
+        ($name:literal) => {
+            fs::write(
+                path.join($name),
+                include_bytes!(concat!("../node-runtime/", $name)),
+            )?;
+        };
     }
+
+    copy!("package.json");
+    copy!("index.js");
+    copy!("env.js");
 
     Ok(())
 }
@@ -304,6 +319,114 @@ fn run(
     }
 
     Ok(output)
+}
+
+fn repl(options: &CompileOptions) -> anyhow::Result<()> {
+    let (lib_db, mut top_level, lib_statements) = setup(options, io::stdout())?;
+
+    let addr = net::TcpListener::bind("127.0.0.1:0")?.local_addr()?;
+
+    eprintln!("{} (listening on port {})", "Wipple".bold(), addr.port());
+    eprintln!(
+        "{}",
+        "Press Return twice to run, `show` to display output, ^C to exit".dimmed()
+    );
+
+    let _repl = process::Command::new("/usr/bin/env")
+        .args([
+            "node",
+            "--enable-source-maps",
+            "-e",
+            concat!(
+                include_str!("../node-runtime/env.js"),
+                include_str!("../node-runtime/repl.js"),
+            ),
+            "--",
+            addr.port().to_string().as_str(),
+        ])
+        .env("WIPPLE_REPL", "1")
+        .stdin(process::Stdio::null())
+        .stdout(process::Stdio::inherit())
+        .stderr(process::Stdio::inherit())
+        .spawn()?;
+
+    let client = reqwest::blocking::Client::new();
+
+    #[derive(
+        Default, rustyline::Completer, rustyline::Helper, rustyline::Highlighter, rustyline::Hinter,
+    )]
+    struct Validator;
+
+    impl rustyline::validate::Validator for Validator {
+        fn validate(
+            &self,
+            ctx: &mut rustyline::validate::ValidationContext<'_>,
+        ) -> rustyline::Result<rustyline::validate::ValidationResult> {
+            // Require a second line break to submit
+            if ctx.input().ends_with("\n") {
+                Ok(rustyline::validate::ValidationResult::Valid(None))
+            } else {
+                Ok(rustyline::validate::ValidationResult::Incomplete)
+            }
+        }
+    }
+
+    let mut rl = rustyline::Editor::new()?;
+    rl.set_helper(Some(Validator));
+
+    let mut db = lib_db;
+    let mut first = true;
+    loop {
+        match rl.readline("\n> ") {
+            Ok(input) => {
+                rl.add_history_entry(input.trim_end())?;
+
+                db = Db::new(Some(DbRef::new(db)));
+                if env::var("WIPPLE_DEBUG").is_ok() {
+                    db.debug_enabled = true;
+                }
+
+                let name = format!("<repl#{}>", db.layer());
+
+                let files = vec![parse(&mut db, &name, &input)];
+
+                let mut driver = Driver::new(options, files, io::stdout());
+                driver.silent = true;
+
+                let Some((_, source_files, statements)) =
+                    driver.run(&mut db, &mut top_level, &name)?
+                else {
+                    continue;
+                };
+
+                let program = codegen(&db, &source_files, &statements, &lib_statements, first)?;
+
+                let result = js::to_js(
+                    &db,
+                    &program,
+                    codegen::Options {
+                        file_name: None,
+                        source_root: &name,
+                        trace: codegen::TraceOptions::None,
+                        incremental: true,
+                    },
+                )?;
+
+                client
+                    .post(format!("http://{addr}"))
+                    .body(result.module)
+                    .send()?;
+            }
+            Err(
+                rustyline::error::ReadlineError::Interrupted | rustyline::error::ReadlineError::Eof,
+            ) => break,
+            Err(err) => return Err(err.into()),
+        }
+
+        first = false;
+    }
+
+    Ok(())
 }
 
 fn test(options: &CompileOptions) -> anyhow::Result<()> {
@@ -351,7 +474,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
         if let Some((_, source_files, statements)) =
             driver.run(&mut db, &mut top_level.clone(), &name)?
         {
-            let program = codegen(&db, &source_files, &statements, &lib_statements)?;
+            let program = codegen(&db, &source_files, &statements, &lib_statements, false)?;
 
             let js = js::to_js(
                 &db,
@@ -360,11 +483,12 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
                     file_name: Some(JS_FILE_NAME),
                     source_root: "",
                     trace: Default::default(),
+                    incremental: false,
                 },
             )?;
 
             let output_path = make_temp_dir()?;
-            write_js(&js, Some(&output_path))?;
+            write_js(&js, &output_path)?;
 
             let output = run(&output_path, |cmd| cmd.stdout(process::Stdio::piped()))?.stdout;
             writeln!(out, "Output:")?;

@@ -1,6 +1,4 @@
 import main from "./main.js";
+import env from "./env.js";
 
-main({
-    display: (message) => console.log(message),
-    trace: (message) => process.stderr.write(`trace: ${message}\n`),
-});
+main(env);

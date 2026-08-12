@@ -14,8 +14,8 @@ pub struct Program {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum DefinitionKey {
-    TopLevel,
     Constant(Node),
+    TopLevel,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
