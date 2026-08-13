@@ -1,4 +1,4 @@
-import { makeChannel, readMessage, writeMessage, type Channel } from "sync-message";
+import { makeAtomicsChannel, readMessage, writeMessage, type Channel } from "sync-message";
 import * as Sentry from "@sentry/browser";
 
 export type Env = Record<string, (input: any) => Promise<any>>;
@@ -7,7 +7,7 @@ export type Env = Record<string, (input: any) => Promise<any>>;
 const globalMessageId = "";
 
 export const init = (worker: Worker, env: Env) => {
-    const channel = makeChannel()!;
+    const channel = makeAtomicsChannel();
 
     const done = new Promise<void>((resolve) => {
         worker.onmessage = async (e) => {
