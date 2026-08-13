@@ -1,5 +1,6 @@
+import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
-import { sveltekit } from "@sveltejs/kit/vite";
+import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { defineConfig, loadEnv, type Plugin, type PreviewServer, type ViteDevServer } from "vite";
 
@@ -7,9 +8,10 @@ export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), "");
 
     return {
+        base: "./",
         plugins: [
             tailwindcss(),
-            sveltekit(),
+            svelte(),
             crossOriginIsolation(),
             sentryVitePlugin({
                 org: env.SENTRY_ORG,
@@ -17,8 +19,12 @@ export default defineConfig(({ mode }) => {
                 authToken: env.SENTRY_AUTH_TOKEN,
             }),
         ],
+        resolve: {
+            alias: {
+                "@": path.resolve("./src"),
+            },
+        },
         worker: {
-            plugins: () => [sveltekit()],
             format: "es",
         },
         build: {

@@ -1,5 +1,6 @@
 /* eslint-disable no-useless-escape */
 
+/** @param {RegExp} regex */
 const withBoundary = (regex) => new RegExp(/(?<!\-|\w)/.source + regex.source + /(?!\-|\w)/.source);
 
 const tokens = {

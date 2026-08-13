@@ -31,8 +31,8 @@ jobs:
 
             - run: task build
               env:
-                  PUBLIC_VISUALIZER_URL: ${{ vars.PUBLIC_VISUALIZER_URL }}
-                  PUBLIC_SENTRY_DSN: ${{ vars.PUBLIC_SENTRY_DSN }}
+                  VITE_VISUALIZER_URL: ${{ vars.VITE_VISUALIZER_URL }}
+                  VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}
                   SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

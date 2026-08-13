@@ -69,7 +69,7 @@ tasks:
       - rm -rf dist
       - npm run build
       - cp -r ../library/dist/. dist/library
-      - cp -r ../playground/build/. dist/playground
+      - cp -r ../playground/dist/. dist/playground
       - cp -r ../docs/book/. dist/docs
   build:library:
     dir: library
