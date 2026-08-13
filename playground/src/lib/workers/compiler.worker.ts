@@ -79,29 +79,33 @@ const compile = async (
         module?: boolean;
     },
 ) => {
-    using result = wipple.compile([new wipple.File("input", options.code)], options.library);
+    const result = wipple.compile([new wipple.File("input", options.code)], options.library);
     if (result == null) {
         throw new Error("compilation failed");
     }
 
-    const groups = options.groups ? result.groups() : undefined;
+    try {
+        const groups = options.groups ? result.groups() : undefined;
 
-    const graph = options.graph ? result.graph() : undefined;
+        const graph = options.graph ? result.graph() : undefined;
 
-    const diagnostics = result.diagnostics();
-    if (diagnostics != null) {
-        return { groups, graph, diagnostics };
-    }
-
-    let module: string | undefined;
-    if (options.module) {
-        module = result.module();
-        if (module == null) {
-            throw new Error("missing module");
+        const diagnostics = result.diagnostics();
+        if (diagnostics != null) {
+            return { groups, graph, diagnostics };
         }
-    }
 
-    return { groups, graph, module };
+        let module: string | undefined;
+        if (options.module) {
+            module = result.module();
+            if (module == null) {
+                throw new Error("missing module");
+            }
+        }
+
+        return { groups, graph, module };
+    } finally {
+        result.free();
+    }
 };
 
 const documentation = async (options: PlaygroundMetadata) => {
