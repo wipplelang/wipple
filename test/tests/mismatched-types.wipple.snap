@@ -1,23 +1,19 @@
 Facts (layer 2):
 
 `(42 :: String)` (ExpressionStatement):
-  assigned type `Number or String`
   grouped with `42 :: String`
   has type `Number` or `String`
 
 `42` (NumberExpression):
-  assigned type `Number`
-  grouped with `42`, `String`, `42 :: String`
+  grouped with `42`, `String`
   has type `Number` or `String`
   is an expression
 
 `String` (NamedType):
-  assigned type `String`
-  grouped with `42`
+  grouped with `42`, `42 :: String`
   has type `Number` or `String`
   is a type
   resolved to 1 definition(s): `String`
-  type is annotated
 
 
 
@@ -26,20 +22,7 @@ Feedback:
 `(42 :: String)` (conflicting-types)
 
   `(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
-  
-  `(42 :: String)` must be the same type as `42` and `String`; double-check these.
 
-  1. `42`: `42` is a `Number`.
-
-  (1 -> error)
-
-
-`42` (conflicting-types)
-
-  `42` is a `Number` or a `String`, but it can only be one of these.
-  
-  `42` must be the same type as `(42 :: String)` and `String`; double-check these.
-
-  1. `42`: `42` is a `Number`.
+  1. `String`: `42` is annotated as a `String`. This means `(42 :: String)`, `42`, and `String` must be a `Number or String`.
 
   (1 -> error)

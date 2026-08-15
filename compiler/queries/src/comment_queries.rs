@@ -41,8 +41,8 @@ pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'
     };
 
     bounds
-        .iter()
-        .filter_map(|(_, result)| {
+        .values()
+        .filter_map(|result| {
             let bound = result.as_ref().ok()?;
 
             let instance = db

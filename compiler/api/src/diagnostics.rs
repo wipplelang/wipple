@@ -89,9 +89,11 @@ impl CompileResult {
                 continue;
             }
 
+            let nodes = group.nodes().collect::<BTreeSet<_>>();
+
             let group_index = groups
                 .iter()
-                .position(|(nodes, _)| nodes == &group.nodes)
+                .position(|(other, _)| *other == nodes)
                 .unwrap_or(groups.len());
 
             let location = DiagnosticLocation {
@@ -100,15 +102,14 @@ impl CompileResult {
                 group: group_index as i32,
             };
 
-            if let Some((_, group)) = groups.get_mut(&group.nodes) {
+            if let Some((_, group)) = groups.get_mut(&nodes) {
                 group.locations.push(location);
             } else {
                 let mut labels = group
-                    .tys
-                    .iter()
+                    .tys()
                     .map(|ty| {
-                        let ty = update_type(&self.db, &Ty::Constructed(ty.clone()), None);
-                        ty.display(&self.db, true)
+                        let ty = update_type(&self.db, &Ty::Constructed(ty.clone()));
+                        ty.display(&self.db, true, &[])
                     })
                     .collect::<Vec<_>>();
 
@@ -117,7 +118,7 @@ impl CompileResult {
                 }
 
                 groups.insert(
-                    group.nodes.clone(),
+                    nodes,
                     (
                         group_index,
                         DiagnosticGroup {
@@ -167,8 +168,9 @@ impl CompileResult {
                     mask.insert(node);
 
                     if let Some(Typed(Some(group))) = db.get(node)
-                        && let Some(index) =
-                            groups.iter().position(|other| other.nodes == group.nodes)
+                        && let Some(index) = groups.iter().position(|other| {
+                            BTreeSet::from_iter(other.nodes()) == BTreeSet::from_iter(group.nodes())
+                        })
                     {
                         format!("<code data-group=\"{index}\">{label}</code>")
                     } else {
@@ -256,7 +258,9 @@ impl CompileResult {
                 .get(node)
                 .and_then(|Typed(group)| group.as_ref())
                 .map_or(-1, |group| {
-                    match groups.iter().position(|other| other.nodes == group.nodes) {
+                    match groups.iter().position(|other| {
+                        BTreeSet::from_iter(other.nodes()) == BTreeSet::from_iter(group.nodes())
+                    }) {
                         Some(index) => index as i32,
                         None => {
                             let index = groups.len();

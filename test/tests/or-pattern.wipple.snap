@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -9,7 +8,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (when 3 {⋯})` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (when 3 {⋯})`
   has type `()`
 
@@ -24,55 +22,46 @@ Facts (layer 2):
   is an expression
 
 `3` (NumberExpression):
-  assigned type `Number`
   grouped with `3`, `1`, `2 or 3`, `2`, `3`, `_`
   has type `Number`
   is an expression
 
 `1` (NumberPattern):
-  assigned type `Number`
-  grouped with `3`, `1`
+  grouped with `3`, `1`, `1`
   has type `Number`
   is a pattern
 
 `"oh no"` (StringExpression):
-  assigned type `String`
   grouped with `"oh no"`, `when 3 {⋯}`
   has type `String`
   is an expression
 
 `2` (NumberPattern):
-  assigned type `Number`
-  grouped with `3`, `2`, `2 or 3`
+  grouped with `3`, `2`, `2`, `2 or 3`
   has type `Number`
   is a pattern
 
 `2 or 3` (OrPattern):
-  assigned type `Number`
   grouped with `3`, `2`, `3`
   has type `Number`
   is a pattern
 
 `3` (NumberPattern):
-  assigned type `Number`
-  grouped with `3`, `3`, `2 or 3`
+  grouped with `3`, `3`, `3`, `2 or 3`
   has type `Number`
   is a pattern
 
 `"yay"` (StringExpression):
-  assigned type `String`
   grouped with `"yay"`, `when 3 {⋯}`
   has type `String`
   is an expression
 
 `_` (WildcardPattern):
-  assigned type `Number`
   grouped with `3`
   has type `Number`
   is a pattern
 
 `"uh oh"` (StringExpression):
-  assigned type `String`
   grouped with `"uh oh"`, `when 3 {⋯}`
   has type `String`
   is an expression

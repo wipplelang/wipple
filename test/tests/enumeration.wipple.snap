@@ -1,59 +1,50 @@
 Facts (layer 2):
 
 `Grade` (TypeDefinition):
-  assigned type `Grade`
   grouped with `A`, `B`, `C`, `D`, `F`
   has definition constraints
   has type `Grade`
   is a definition
 
 `A` (VariantDefinition):
-  assigned type `Grade`
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `B` (VariantDefinition):
-  assigned type `Grade`
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `C` (VariantDefinition):
-  assigned type `Grade`
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `D` (VariantDefinition):
-  assigned type `Grade`
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `F` (VariantDefinition):
-  assigned type `Grade`
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `_` (WildcardPattern):
-  assigned type `Grade`
   grouped with `A`, `A`
   has type `Grade`
   is a pattern
 
 `_ : A` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `A` (ConstructorExpression):
-  assigned type `Grade`
   grouped with `Grade`, `_`, `_`
   has type `Grade`
   is an expression

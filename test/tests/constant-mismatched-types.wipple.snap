@@ -1,28 +1,23 @@
 Facts (layer 2):
 
 `x` (ConstantDefinition):
-  assigned type `Number`
   grouped with `Number`, `"42"`
   has definition constraints
-  has type `String` or `Number`
+  has type `Number` or `String`
   is a definition
 
 `Number` (NamedType):
-  assigned type `Number`
   grouped with `x`
-  has type `String` or `Number`
+  has type `Number` or `String`
   is a type
   resolved to 1 definition(s): `Number`
-  type is annotated
 
 `x : "42"` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `"42"` (StringExpression):
-  assigned type `String`
   grouped with `"42"`, `x`
-  has type `String` or `Number`
+  has type `Number` or `String`
   is an expression
 
 
@@ -31,13 +26,20 @@ Feedback:
 
 `x` (conflicting-types)
 
-  `x` is a `String` or a `Number`, but it can only be one of these.
+  `x` is a `Number` or a `String`, but it can only be one of these.
   
   `x` must be the same type as `Number` and `"42"`; double-check these.
 
 
+`Number` (conflicting-types)
+
+  `Number` is a `Number` or a `String`, but it can only be one of these.
+  
+  `Number` must be the same type as `x` and `"42"`; double-check these.
+
+
 `"42"` (conflicting-types)
 
-  `"42"` is a `String` or a `Number`, but it can only be one of these.
+  `"42"` is a `Number` or a `String`, but it can only be one of these.
   
   `"42"` must be the same type as `x` and `Number`; double-check these.

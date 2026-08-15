@@ -9,7 +9,6 @@ use wipple_core::{
     ast::AstKey,
     db::{Db, Node},
     span::{Span, Str},
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
     visit::{
         Visit, Visitor,
         definitions::{self, ConstantAttributes, Definition},
@@ -103,10 +102,8 @@ impl Visit for ConstantDefinition {
             visitor.with_definition_flag(
                 |d| &mut d.implicit_type_parameters,
                 |visitor| {
-                    let ty = visitor.visit(db, &self.ty);
+                    let ty = visitor.annotating(Some(node), |visitor| visitor.visit(db, &self.ty));
                     db.graph.edge(ty, node, "type");
-
-                    visitor.constraint(db, TyConstraint::new(node, Ty::Node(ty)));
 
                     for constraint in self.constraints {
                         let constraint = visitor.visit(db, &constraint);

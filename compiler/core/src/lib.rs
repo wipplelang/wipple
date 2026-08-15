@@ -146,16 +146,21 @@ pub fn compile<'a>(
     }
 
     // Solve constraints from top-level expressions
+
     let mut solver = Solver::new();
     solver.trace = true;
-    solver
-        .constraints
-        .extend_back(visited.constraints.drain(..));
-    solver.substitutions.extend(top_level.substitutions.clone());
+
+    solver.extend(
+        visited.constraints,
+        visited.ranks,
+        top_level.substitutions.clone(),
+    );
+
     solver.run(db);
     set_groups(db, solver);
 
     // Run checks
+
     check_exhaustiveness(db);
     checks(db, top_level);
 
@@ -166,12 +171,8 @@ pub fn set_groups(db: &mut Db, solver: Solver) {
     let groups = solver.into_groups(db);
 
     for group in groups {
-        if group.nodes.is_empty() {
-            continue;
-        }
-
         let mut nodes = Vec::new();
-        for &node in &group.nodes {
+        for node in group.nodes() {
             // Don't overwrite existing groups
             if db.get(node).is_some_and(|Typed(group)| group.is_some()) {
                 continue;
@@ -182,6 +183,8 @@ pub fn set_groups(db: &mut Db, solver: Solver) {
             nodes.push(node);
         }
 
-        db.graph.group(nodes, group.tys.clone());
+        if !nodes.is_empty() {
+            db.graph.group(nodes, group.tys().cloned().collect());
+        }
     }
 }

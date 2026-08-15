@@ -1,25 +1,21 @@
 Facts (layer 2):
 
 `x` (VariablePattern):
-  assigned type `Boolean`
   grouped with `True`, `True`, `x`
   has type `Boolean`
   is a definition
   is a pattern
 
 `x : True` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `True` (ConstructorExpression):
-  assigned type `Boolean`
   grouped with `Boolean`, `x`, `x`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `show` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -27,7 +23,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (when x {⋯})` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (when x {⋯})`
   has type `()`
 
@@ -42,35 +37,29 @@ Facts (layer 2):
   is an expression
 
 `x` (VariableExpression):
-  assigned type `Boolean`
   grouped with `x`, `True`, `False`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `x`
-  type is annotated
 
 `True` (ConstructorPattern):
-  assigned type `Boolean`
   grouped with `x`, `Boolean`
   has type `Boolean`
   is a pattern
   resolved to 1 definition(s): `True`
 
 `"Yay!"` (StringExpression):
-  assigned type `String`
   grouped with `"Yay!"`, `when x {⋯}`
   has type `String`
   is an expression
 
 `False` (ConstructorPattern):
-  assigned type `Boolean`
   grouped with `x`, `Boolean`
   has type `Boolean`
   is a pattern
   resolved to 1 definition(s): `False`
 
 `"Uh oh"` (StringExpression):
-  assigned type `String`
   grouped with `"Uh oh"`, `when x {⋯}`
   has type `String`
   is an expression

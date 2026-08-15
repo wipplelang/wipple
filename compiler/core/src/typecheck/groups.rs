@@ -1,83 +1,133 @@
 use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
-    typecheck::{
-        instantiate::Instantiated,
-        ty::{ConstructedTy, Ty},
-    },
+    typecheck::ty::{ConstructedTy, Ty},
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    slice,
-};
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Group {
-    pub nodes: BTreeSet<Node>,
-    pub tys: Vec<ConstructedTy>,
+pub struct Group(BTreeMap<Node, (NodeRank, Vec<ConstructedTy>)>);
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum NodeRank {
+    #[default]
+    Inherited,
+    Annotated,
 }
 
 impl Group {
     pub fn with_nodes(nodes: impl IntoIterator<Item = Node>) -> Self {
-        Group {
-            nodes: BTreeSet::from_iter(nodes),
-            ..Default::default()
-        }
+        Group(
+            nodes
+                .into_iter()
+                .map(|node| (node, Default::default()))
+                .collect(),
+        )
+    }
+
+    pub fn nodes(&self) -> impl Iterator<Item = Node> + '_ {
+        self.0.keys().copied()
+    }
+
+    pub fn tys(&self) -> impl Iterator<Item = &ConstructedTy> + '_ {
+        let mut seen = Vec::new();
+        self.0
+            .values()
+            .flat_map(|(_, tys)| tys.iter())
+            .filter(move |&ty| {
+                if seen.contains(&ty) {
+                    false
+                } else {
+                    seen.push(ty);
+                    true
+                }
+            })
+    }
+
+    pub fn entries(&self) -> impl Iterator<Item = (Node, NodeRank, &ConstructedTy)> {
+        self.0
+            .iter()
+            .flat_map(|(&node, &(rank, ref tys))| tys.iter().map(move |ty| (node, rank, ty)))
+    }
+
+    pub fn entries_mut(&mut self) -> impl Iterator<Item = (Node, NodeRank, &mut ConstructedTy)> {
+        self.0
+            .iter_mut()
+            .flat_map(|(&node, &mut (rank, ref mut tys))| {
+                tys.iter_mut().map(move |ty| (node, rank, ty))
+            })
     }
 
     pub fn unify(
         &mut self,
         db: &mut Db,
-        tys: &[ConstructedTy],
-        representative: Option<Node>,
+        other: &Self,
         error: Option<&mut bool>,
         mut unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy, Option<&mut bool>) -> bool,
     ) {
-        // Unify against the representative type
-        let Some(mut ty) = representative
-            .and_then(|representative| representative_ty(db, tys, representative))
-            .or_else(|| tys.first())
-            .cloned()
-        else {
+        // Merge in all the nodes even if unification fails
+        for (&node, &(rank, _)) in &other.0 {
+            self.set_rank(node, rank);
+        }
+
+        let mut other_entries = other.entries();
+        let Some((other_node, _, other_ty)) = other_entries.next() else {
             return;
         };
 
-        let index = tys.iter().position(|other| *other == ty).unwrap();
-
-        if ty.representative.is_none() {
-            ty.representative = representative;
+        // Add the first type to the group...
+        let mut queue = Some((other_node, other_ty));
+        if let Some((_, _, existing_ty)) = self.entries().next()
+            && unify(db, existing_ty, other_ty, error)
+        {
+            // ...unless it unifies
+            queue = None;
         }
 
-        if let Some(existing) = self.tys.iter_mut().find(|existing| **existing == ty) {
-            // If the type already exists in `self`, update its representative
-            let representative = match (existing.representative, ty.representative) {
-                (None, representative) | (representative, None) => representative,
-                (Some(existing), Some(representative)) => {
-                    // Prefer nodes that aren't type parameters
-                    if db.contains::<Instantiated>(existing)
-                        && !db.contains::<Instantiated>(representative)
-                    {
-                        Some(representative)
-                    } else {
-                        Some(existing)
-                    }
-                }
-            };
-
-            existing.representative = representative;
+        // And add the remaining types as-is
+        for (other_node, other_ty) in queue
+            .into_iter()
+            .chain(other_entries.map(|(node, _, ty)| (node, ty)))
+        {
+            self.0
+                .entry(other_node)
+                .or_default()
+                .1
+                .push(other_ty.clone());
         }
+    }
 
-        if self.tys.is_empty() || !unify(db, &self.tys[0], &ty, error) {
-            self.tys.push(ty.clone());
-        }
+    pub fn get_tys(&self, node: Node) -> &[ConstructedTy] {
+        self.0
+            .get(&node)
+            .map(|(_, tys)| tys.as_slice())
+            .unwrap_or_default()
+    }
 
-        // Add the remaining types as-is
-        for (other_index, other) in tys.iter().enumerate() {
-            if index != other_index {
-                self.tys.push(other.clone());
-            }
-        }
+    pub fn insert_ty(&mut self, node: Node, ty: ConstructedTy) {
+        self.0.entry(node).or_default().1.push(ty);
+    }
+
+    pub fn get_rank(&self, node: Node) -> NodeRank {
+        self.0.get(&node).map(|(rank, _)| *rank).unwrap_or_default()
+    }
+
+    pub fn set_rank(&mut self, node: Node, rank: NodeRank) {
+        self.0.entry(node).or_default().0 = rank;
+    }
+
+    pub fn min_ranked_nodes(&self) -> Option<(BTreeSet<Node>, NodeRank)> {
+        let mut nodes = self
+            .0
+            .iter()
+            .map(|(&node, (rank, _))| (node, *rank))
+            .collect::<BTreeMap<_, _>>();
+
+        let min_rank = nodes.values().copied().min()?;
+
+        nodes.retain(|_, rank| *rank == min_rank);
+        Some((nodes.into_keys().collect(), min_rank))
     }
 }
 
@@ -88,7 +138,7 @@ impl Groups {
     pub fn index_of(&self, node: Node) -> Option<usize> {
         self.0
             .iter()
-            .find(|(_, slot)| slot.as_ref().is_some_and(|slot| slot.nodes.contains(&node)))
+            .find(|(_, slot)| slot.as_ref().is_some_and(|slot| slot.0.contains_key(&node)))
             .map(|(index, _)| *index)
     }
 
@@ -128,8 +178,7 @@ impl Groups {
         error: Option<&mut bool>,
         unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy, Option<&mut bool>) -> bool,
     ) {
-        new_group.nodes.extend(old_group.nodes);
-        new_group.unify(db, &old_group.tys, None, error, unify);
+        new_group.unify(db, &old_group, error, unify);
     }
 
     pub fn indices(&self) -> impl Iterator<Item = usize> {
@@ -161,18 +210,18 @@ impl Render for Typed {
             return;
         };
 
-        if group.tys.is_empty() {
+        if group.tys().next().is_none() {
             ctx.string("missing type");
 
-            if group.nodes.len() > 1 {
+            if group.nodes().count() > 1 {
                 ctx.string(" (group: ");
 
-                for (index, node) in group.nodes.iter().enumerate() {
+                for (index, node) in group.nodes().enumerate() {
                     if index > 0 {
                         ctx.string(", ");
                     }
 
-                    ctx.node(*node);
+                    ctx.node(node);
                 }
 
                 ctx.string(")");
@@ -180,7 +229,7 @@ impl Render for Typed {
         } else {
             ctx.string("has type ");
 
-            for (index, ty) in group.tys.iter().enumerate() {
+            for (index, ty) in group.tys().enumerate() {
                 if index > 0 {
                     ctx.string(" or ");
                 }
@@ -191,76 +240,47 @@ impl Render for Typed {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AssignedType(pub Ty);
+pub fn representative_types_of<'a>(
+    db: &'a Db,
+    node: Node,
+    relevant: &[Node],
+) -> Vec<&'a ConstructedTy> {
+    let Some(Typed(Some(group))) = db.get(node) else {
+        return Vec::new();
+    };
 
-#[typetag::serde]
-impl Fact for AssignedType {}
+    // Prefer relevant nodes that belong to the same group
+    let candidates = [node]
+        .into_iter()
+        .chain(
+            relevant
+                .iter()
+                .copied()
+                .filter(|node| group.0.contains_key(node)),
+        )
+        .collect::<Vec<_>>();
 
-impl Render for AssignedType {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        ctx.string("assigned type ");
-        ctx.ty(db, &self.0, true);
-    }
-}
-
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Annotated;
-
-#[typetag::serde]
-impl Fact for Annotated {}
-
-impl Render for Annotated {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
-        ctx.string("type is annotated");
-    }
-}
-
-pub fn types_of(db: &Db, node: Node) -> &[ConstructedTy] {
-    if let Some(AssignedType(ty)) = db.get(node)
-        && let Ty::Constructed(ty) = ty
-    {
-        return slice::from_ref(ty);
+    for node in candidates {
+        let tys = group.get_tys(node);
+        if !tys.is_empty() {
+            return tys.iter().collect();
+        }
     }
 
-    db.get(node)
-        .and_then(|Typed(group)| group.as_ref())
-        .map(|group| group.tys.as_slice())
-        .unwrap_or_default()
+    group.tys().collect()
 }
 
-pub fn update_type(db: &Db, ty: &Ty, representative: impl Into<Option<Node>>) -> Ty {
+pub fn update_type(db: &Db, ty: &Ty) -> Ty {
     match ty {
         Ty::Node(node) => {
-            let tys = types_of(db, *node);
+            let tys = representative_types_of(db, *node, &[]);
 
-            if tys.is_empty() {
-                Ty::Node(*node)
+            if let Some(&ty) = tys.first() {
+                Ty::Constructed(ty.clone())
             } else {
-                Ty::Constructed(
-                    representative_ty(db, tys, representative.into().unwrap_or(*node))
-                        .unwrap_or_else(|| tys.first().unwrap())
-                        .clone(),
-                )
+                Ty::Node(*node)
             }
         }
         Ty::Constructed(ty) => Ty::Constructed(ty.clone()),
     }
-}
-
-pub fn representative_ty<'a>(
-    db: &Db,
-    tys: &'a [ConstructedTy],
-    representative: Node,
-) -> Option<&'a ConstructedTy> {
-    tys.iter()
-        .find(|ty| {
-            ty.representative.is_some_and(|node| {
-                node == representative
-                    || db
-                        .get::<Instantiated>(node)
-                        .is_some_and(|instantiated| instantiated.definition == representative)
-            })
-        })
-        .or_else(|| tys.first())
 }

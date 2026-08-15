@@ -30,6 +30,8 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
         })
         .show_graph()
         .display(|db, writer, _, data| {
+            writer.relevant.extend(data.traces.nodes(db));
+
             if let Some(source) = data.source {
                 writer.string("In ");
                 writer.node(source);

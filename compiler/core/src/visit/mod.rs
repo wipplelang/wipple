@@ -14,6 +14,7 @@ use crate::{
             Constraint,
             generic_constraint::{GenericConstraint, GenericConstraintMode},
         },
+        groups::NodeRank,
         solver::{Substitutions, SubstitutionsKey},
         ty::Ty,
     },
@@ -337,6 +338,7 @@ pub struct CurrentMatch {
 pub struct VisitResult {
     pub top_level_statements: Vec<Node>,
     pub constraints: Vec<Box<dyn Constraint>>,
+    pub ranks: BTreeMap<Node, NodeRank>,
     pub substitutions: Vec<Substitutions>,
     pub definitions: BTreeMap<Str, Vec<(Node, Box<dyn Definition>)>>,
     pub utilities: VisitUtilities,
@@ -351,9 +353,11 @@ pub struct Visitor {
     pub current_node: Node,
     pub current_definition: Option<CurrentDefinition>,
     pub current_match: Option<CurrentMatch>,
+    pub current_annotating: Option<Node>,
     scopes: Vec<(Option<Node>, ScopeValues)>,
     top_level_statements: Vec<(Node, AstKey)>,
     constraints: Vec<Box<dyn Constraint>>,
+    ranks: BTreeMap<Node, NodeRank>,
     substitutions: Vec<Substitutions>,
 }
 
@@ -383,9 +387,11 @@ impl Visitor {
             current_node: root,
             current_definition: None,
             current_match: None,
+            current_annotating: None,
             scopes: vec![(None, scope)],
             top_level_statements: Default::default(),
             constraints: Default::default(),
+            ranks: Default::default(),
             substitutions,
         };
 
@@ -471,6 +477,10 @@ impl Visitor {
         } else {
             self.constraints.push(Box::new(constraint));
         }
+    }
+
+    pub fn rank(&mut self, node: Node, rank: NodeRank) {
+        self.ranks.insert(node, rank);
     }
 
     pub fn substitutions(
@@ -677,6 +687,13 @@ impl Visitor {
         result
     }
 
+    pub fn annotating<T>(&mut self, value: Option<Node>, f: impl FnOnce(&mut Self) -> T) -> T {
+        let prev = mem::replace(&mut self.current_annotating, value);
+        let result = f(self);
+        self.current_annotating = prev;
+        result
+    }
+
     pub fn matching<T>(
         &mut self,
         value: Node,
@@ -763,6 +780,7 @@ impl Visitor {
         }
 
         result.constraints.append(&mut self.constraints);
+        result.ranks.append(&mut self.ranks);
         result.substitutions.append(&mut self.substitutions);
 
         for &name in UTILITIES {

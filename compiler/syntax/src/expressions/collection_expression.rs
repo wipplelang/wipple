@@ -8,8 +8,12 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
+    render::{Render, RenderCtx},
     span::{Span, Str},
-    typecheck::{constraints::ty_constraint::TyConstraint, groups::Typed, ty::Ty},
+    typecheck::{
+        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
+        ty::Ty,
+    },
     visit::{Hidden, Visit, VisitAs, Visitor},
 };
 use wipple_parse::{
@@ -69,10 +73,6 @@ impl Visit for CollectionExpression {
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_expression(db, node, visitor);
 
-        let element_type = db.node();
-        db.hide(element_type);
-        db.insert(element_type, Typed::default());
-
         let mut collection = visitor.in_ast(
             db,
             Hidden::new(ConstructorExpression {
@@ -81,40 +81,60 @@ impl Visit for CollectionExpression {
             }),
         );
 
-        for element in &self.elements {
-            let element_node = db.node();
-            db.graph.edge(element_node, node, "element");
-            visitor.constraint(db, TyConstraint::new(element_node, Ty::Node(element_type)));
+        let elements = self
+            .elements
+            .iter()
+            .map(|element| {
+                let element_node = db.node();
+                db.graph.edge(element_node, node, "element");
 
-            let function = visitor.in_ast(
-                db,
-                Hidden::new(ConstructorExpression {
-                    span: db.ast(element).span(db).clone(),
-                    constructor: Str::from("Build-Collection"),
-                }),
-            );
+                let function = visitor.in_ast(
+                    db,
+                    Hidden::new(ConstructorExpression {
+                        span: db.ast(element).span(db).clone(),
+                        constructor: Str::from("Build-Collection"),
+                    }),
+                );
 
-            let input = visitor.in_ast(
-                db,
-                Box::new(VisitAs {
-                    node: element_node,
-                    syntax: element.clone(),
-                }),
-            );
+                let input = visitor.in_ast(
+                    db,
+                    Box::new(VisitAs {
+                        node: element_node,
+                        syntax: element.clone(),
+                    }),
+                );
 
-            collection = visitor.in_ast(
-                db,
-                Hidden::new(CallExpression {
-                    span: db.ast(element).span(db).clone(),
-                    function,
-                    inputs: vec![input, collection],
-                }),
-            );
-        }
+                collection = visitor.in_ast(
+                    db,
+                    Hidden::new(CallExpression {
+                        span: db.ast(element).span(db).clone(),
+                        function,
+                        inputs: vec![input, collection.clone()],
+                    }),
+                );
+
+                element_node
+            })
+            .collect::<Vec<_>>();
+
+        let element_type = elements.first().copied().unwrap_or_else(|| {
+            let node = db.node();
+            db.hide(node);
+            node
+        });
 
         let collection_node = visitor.visit(db, &collection);
         db.graph.edge(collection_node, node, "collection");
-        visitor.constraint(db, TyConstraint::new(collection_node, Ty::Node(node)));
+        visitor.constraint(
+            db,
+            TyConstraint::new(collection_node, Ty::Node(node)).with_trace(
+                CollectionConstraintTrace {
+                    node,
+                    element_type,
+                    elements,
+                },
+            ),
+        );
 
         visitor.codegen(
             db,
@@ -124,6 +144,37 @@ impl Visit for CollectionExpression {
                 collection_node,
             },
         );
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CollectionConstraintTrace {
+    node: Node,
+    element_type: Node,
+    elements: Vec<Node>,
+}
+
+#[typetag::serde]
+impl ConstraintTrace for CollectionConstraintTrace {
+    fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        let mut nodes = vec![&mut self.node];
+        nodes.extend(&mut self.elements);
+        nodes
+    }
+
+    fn nodes(&self, _db: &Db) -> Vec<Node> {
+        let mut nodes = vec![self.node];
+        nodes.extend(&self.elements);
+        nodes
+    }
+}
+
+impl Render for CollectionConstraintTrace {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+        ctx.node(self.node);
+        ctx.string(" is a collection of ");
+        ctx.ty(db, &Ty::Node(self.element_type), true);
+        ctx.string(" elements.");
     }
 }
 

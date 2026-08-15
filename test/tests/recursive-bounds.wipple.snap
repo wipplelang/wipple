@@ -1,34 +1,28 @@
 Facts (layer 2):
 
 `Number` (TypeDefinition):
-  assigned type `Number`
   has definition constraints
   has type `Number`
   is a definition
 
 `String` (TypeDefinition):
-  assigned type `String`
   has definition constraints
   has type `String`
   is a definition
 
 `Maybe` (TypeDefinition):
-  assigned type `Maybe value`
   has definition constraints
   has type `Maybe value`
   has type parameters
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `Describe` (TraitDefinition):
-  assigned type `value -> String`
   grouped with `value -> String`
   has 2 instances
   has definition constraints
@@ -37,39 +31,30 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `value -> String` (FunctionType):
-  assigned type `value -> String`
   grouped with `Describe`
   has type `value -> String`
   is a type
-  type is annotated
 
 `String` (NamedType):
-  assigned type `String`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
-  type is annotated
 
 `instance (Describe String)` (InstanceDefinition):
-  assigned type `String -> String`
   grouped with `value -> String`, `_`
   has definition constraints
   has type `String -> String`
@@ -77,21 +62,17 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `String` (NamedType):
-  assigned type `String`
   grouped with `value`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
-  type is annotated
 
 `_` (PlaceholderExpression):
-  assigned type `String -> String`
   grouped with `instance (Describe String)`
   has type `String -> String`
   is an expression
 
 `instance (Describe (Maybe value)) where (Describe value)` (InstanceDefinition):
-  assigned type `(Maybe value) -> String`
   grouped with `value -> String`, `_`
   has bounds
   has definition constraints
@@ -101,21 +82,17 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `Maybe value` (NamedType):
-  assigned type `Maybe value`
   grouped with `value`, `value`
   has type `Maybe value`
   is a type
   resolved to 1 definition(s): `Maybe`
-  type is annotated
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `(Describe value)` (BoundConstraint):
   has bound(s) `Describe` `value` (resolved as `(Describe value)`)
@@ -123,22 +100,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`, `Maybe value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `_` (PlaceholderExpression):
-  assigned type `(Maybe value) -> String`
   grouped with `instance (Describe (Maybe value)) where (Describe value)`
   has type `(Maybe value) -> String`
   is an expression
 
 `Describe` (ConstructorExpression):
-  assigned type `(Maybe String) -> String`
   grouped with `value -> String`
   has bound(s) `Describe` `(Maybe String)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `String` (resolved as `instance (Describe String)`)
   has type `(Maybe String) -> String`
@@ -146,7 +119,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `Describe (_ :: Maybe String)` (ExpressionStatement):
-  assigned type `String`
   grouped with `Describe (_ :: Maybe String)`
   has type `String`
 
@@ -156,29 +128,23 @@ Facts (layer 2):
   is an expression
 
 `_` (PlaceholderExpression):
-  assigned type `Maybe String`
-  grouped with `Maybe String`, `_ :: Maybe String`
+  grouped with `Maybe String`
   has type `Maybe String`
   is an expression
 
 `Maybe String` (NamedType):
-  assigned type `Maybe String`
-  grouped with `_`
+  grouped with `_`, `_ :: Maybe String`
   has type `Maybe String`
   is a type
   resolved to 1 definition(s): `Maybe`
-  type is annotated
 
 `String` (NamedType):
-  assigned type `String`
   grouped with `value`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
-  type is annotated
 
 `Describe` (ConstructorExpression):
-  assigned type `(Maybe Number) -> String`
   grouped with `value -> String`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (unresolved)
   has type `(Maybe Number) -> String`
@@ -186,7 +152,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `Describe (_ :: Maybe Number)` (ExpressionStatement):
-  assigned type `String`
   grouped with `Describe (_ :: Maybe Number)`
   has type `String`
 
@@ -196,26 +161,21 @@ Facts (layer 2):
   is an expression
 
 `_` (PlaceholderExpression):
-  assigned type `Maybe Number`
-  grouped with `Maybe Number`, `_ :: Maybe Number`
+  grouped with `Maybe Number`
   has type `Maybe Number`
   is an expression
 
 `Maybe Number` (NamedType):
-  assigned type `Maybe Number`
-  grouped with `_`
+  grouped with `_`, `_ :: Maybe Number`
   has type `Maybe Number`
   is a type
   resolved to 1 definition(s): `Maybe`
-  type is annotated
 
 `Number` (NamedType):
-  assigned type `Number`
   grouped with `value`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
-  type is annotated
 
 
 
@@ -229,6 +189,6 @@ Feedback:
 
   1. `Describe`: `Describe` is a `(Maybe Number) -> String`. This requires `Describe` `(Maybe Number)`.
 
-  2. `_`: `_` is annotated with the type `Maybe Number`.
+  2. `Maybe Number`: `_` is annotated as a `Maybe Number`. This means `_` and `Maybe Number` must be a `Maybe Number`.
 
   (1 -> error)

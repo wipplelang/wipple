@@ -1,56 +1,46 @@
 Facts (layer 2):
 
 `sports` (VariablePattern):
-  assigned type `Set String`
   grouped with `("Basketball", "Soccer", "Golf") :: Set _`, `("Basketball", "Soccer", "Golf") :: Set _`, `sports`, `sports`, `sports`, `sports`
   has type `Set String`
   is a definition
   is a pattern
 
 `sports : ("Basketball", "Soccer", "Golf") :: Set _` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `"Basketball"` (VisitAs):
-  assigned type `String`
-  grouped with `_`, `"Basketball"`, `element`
+  grouped with `"Basketball"`, `element`
   has type `String`
   is an expression
 
 `"Basketball", "Soccer", "Golf"` (CollectionExpression):
-  assigned type `Set String`
-  grouped with `"Golf"`, `Set _`, `("Basketball", "Soccer", "Golf") :: Set _`
+  grouped with `"Golf"`, `Set _`
   has type `Set String`
   is an expression
 
 `"Soccer"` (VisitAs):
-  assigned type `String`
-  grouped with `_`, `"Soccer"`, `element`
+  grouped with `"Soccer"`, `element`
   has type `String`
   is an expression
 
 `"Golf"` (VisitAs):
-  assigned type `String`
-  grouped with `_`, `"Golf"`, `element`
+  grouped with `"Golf"`, `element`
   has type `String`
   is an expression
 
 `Set _` (NamedType):
-  assigned type `Set String`
-  grouped with `"Basketball", "Soccer", "Golf"`
+  grouped with `"Basketball", "Soccer", "Golf"`, `("Basketball", "Soccer", "Golf") :: Set _`
   has type `Set String`
   is a type
   resolved to 1 definition(s): `Set`
-  type is annotated
 
 `_` (PlaceholderType):
   grouped with `element`
   has type `String`
   is a type
-  type is annotated
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -58,7 +48,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Basketball")` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (sports . contains? "Basketball")`
   has type `()`
 
@@ -68,21 +57,17 @@ Facts (layer 2):
   is an expression
 
 `sports` (VisitAs):
-  assigned type `Set String`
   grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
-  type is annotated
 
 `sports . contains? "Basketball"` (OperatorExpression):
-  assigned type `Boolean`
   grouped with `contains? "Basketball"`, `value`
   has type `Boolean`
   is an expression
 
 `contains?` (VariableExpression):
-  assigned type `String -> (Set String) -> Boolean`
   grouped with `element -> collection -> Boolean`
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
@@ -95,19 +80,16 @@ Facts (layer 2):
   is an expression
 
 `contains? "Basketball"` (VisitAs):
-  assigned type `(Set String) -> Boolean`
   grouped with `collection -> Boolean`
   has type `(Set String) -> Boolean`
   is an expression
 
 `"Basketball"` (StringExpression):
-  assigned type `String`
   grouped with `"Basketball"`, `element`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -115,7 +97,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Soccer")` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (sports . contains? "Soccer")`
   has type `()`
 
@@ -125,21 +106,17 @@ Facts (layer 2):
   is an expression
 
 `sports` (VisitAs):
-  assigned type `Set String`
   grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
-  type is annotated
 
 `sports . contains? "Soccer"` (OperatorExpression):
-  assigned type `Boolean`
   grouped with `contains? "Soccer"`, `value`
   has type `Boolean`
   is an expression
 
 `contains?` (VariableExpression):
-  assigned type `String -> (Set String) -> Boolean`
   grouped with `element -> collection -> Boolean`
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
@@ -152,19 +129,16 @@ Facts (layer 2):
   is an expression
 
 `contains? "Soccer"` (VisitAs):
-  assigned type `(Set String) -> Boolean`
   grouped with `collection -> Boolean`
   has type `(Set String) -> Boolean`
   is an expression
 
 `"Soccer"` (StringExpression):
-  assigned type `String`
   grouped with `"Soccer"`, `element`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -172,7 +146,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Golf")` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (sports . contains? "Golf")`
   has type `()`
 
@@ -182,21 +155,17 @@ Facts (layer 2):
   is an expression
 
 `sports` (VisitAs):
-  assigned type `Set String`
   grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
-  type is annotated
 
 `sports . contains? "Golf"` (OperatorExpression):
-  assigned type `Boolean`
   grouped with `contains? "Golf"`, `value`
   has type `Boolean`
   is an expression
 
 `contains?` (VariableExpression):
-  assigned type `String -> (Set String) -> Boolean`
   grouped with `element -> collection -> Boolean`
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
@@ -209,19 +178,16 @@ Facts (layer 2):
   is an expression
 
 `contains? "Golf"` (VisitAs):
-  assigned type `(Set String) -> Boolean`
   grouped with `collection -> Boolean`
   has type `(Set String) -> Boolean`
   is an expression
 
 `"Golf"` (StringExpression):
-  assigned type `String`
   grouped with `"Golf"`, `element`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -229,7 +195,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Baseball")` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (sports . contains? "Baseball")`
   has type `()`
 
@@ -239,21 +204,17 @@ Facts (layer 2):
   is an expression
 
 `sports` (VisitAs):
-  assigned type `Set String`
   grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
-  type is annotated
 
 `sports . contains? "Baseball"` (OperatorExpression):
-  assigned type `Boolean`
   grouped with `contains? "Baseball"`, `value`
   has type `Boolean`
   is an expression
 
 `contains?` (VariableExpression):
-  assigned type `String -> (Set String) -> Boolean`
   grouped with `element -> collection -> Boolean`
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
@@ -266,13 +227,11 @@ Facts (layer 2):
   is an expression
 
 `contains? "Baseball"` (VisitAs):
-  assigned type `(Set String) -> Boolean`
   grouped with `collection -> Boolean`
   has type `(Set String) -> Boolean`
   is an expression
 
 `"Baseball"` (StringExpression):
-  assigned type `String`
   grouped with `"Baseball"`, `element`
   has type `String`
   is an expression

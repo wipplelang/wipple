@@ -43,12 +43,12 @@ impl Db {
         let group_nodes = self
             .get(primary_node)
             .and_then(|Typed(group)| group.as_ref())
-            .map(|group| group.nodes.clone())
+            .map(|group| group.nodes().collect::<BTreeSet<_>>())
             .unwrap_or_default();
 
         let mut nodes = nodes
             .into_iter()
-            .chain(group_nodes)
+            .chain(group_nodes.iter().copied())
             .filter(|&node| filter(node))
             .map(|node| (node, BTreeSet::new()))
             .collect::<BTreeMap<_, _>>();
@@ -104,7 +104,7 @@ impl Db {
 
                     // Use grouped nodes as a fallback
                     if let Some(Typed(Some(group))) = self.get(node) {
-                        for &node in group.nodes.iter() {
+                        for node in group.nodes() {
                             if filter(node) {
                                 let indices = nodes.entry(node).or_default();
 
@@ -156,8 +156,6 @@ impl Db {
 
 impl Traces {
     pub fn nodes(&self, db: &Db) -> impl Iterator<Item = Node> {
-        self.traces
-            .iter()
-            .flat_map(|entry| entry.trace.clone().nodes(db))
+        self.traces.iter().flat_map(|entry| entry.trace.nodes(db))
     }
 }

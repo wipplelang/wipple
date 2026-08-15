@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `repeat` (VariableExpression):
-  assigned type `Times {()} -> ()`
   grouped with `condition {body} -> ()`
   has bound(s) `Repeat-Condition` `Times` (resolved as `instance (Repeat-Condition Times)`)
   has type `Times {()} -> ()`
@@ -9,7 +8,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `repeat`
 
 `repeat (4 times) {⋯}` (ExpressionStatement):
-  assigned type `()`
   grouped with `repeat (4 times) {⋯}`
   has type `()`
 
@@ -19,7 +17,6 @@ Facts (layer 2):
   is an expression
 
 `4` (NumberExpression):
-  assigned type `Number`
   grouped with `4`, `n :: Number`
   has type `Number`
   is an expression
@@ -30,20 +27,17 @@ Facts (layer 2):
   is an expression
 
 `times` (VariableExpression):
-  assigned type `Number -> Times`
   grouped with `(n :: Number) -> Times`
   has type `Number -> Times`
   is an expression
   resolved to 1 definition(s): `times`
 
 `{⋯}` (BlockExpression):
-  assigned type `{()}`
   grouped with `{body}`
   has type `{()}`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -51,7 +45,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show "Hello, world!"` (ExpressionStatement):
-  assigned type `()`
   grouped with `show "Hello, world!"`, `body`
   has type `()`
 
@@ -61,7 +54,6 @@ Facts (layer 2):
   is an expression
 
 `"Hello, world!"` (StringExpression):
-  assigned type `String`
   grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression

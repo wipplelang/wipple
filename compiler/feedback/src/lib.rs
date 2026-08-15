@@ -142,7 +142,7 @@ impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
                     display: Box::new({
                         let filter = filter.clone();
                         move |db, render_segment| {
-                            let mut writer = FeedbackWriter::with_filter(filter.as_ref());
+                            let mut writer = FeedbackWriter::new(filter.as_ref(), Vec::new());
                             display(db, &mut writer, node, &item);
                             writer.finish(db, render_segment)
                         }

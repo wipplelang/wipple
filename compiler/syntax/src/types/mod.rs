@@ -23,7 +23,11 @@ use wipple_core::{
     db::{Db, Fact, Node},
     facts::GraphType,
     render::{Render, RenderCtx},
-    typecheck::groups::{Annotated, Typed},
+    typecheck::{
+        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
+        groups::{NodeRank, Typed},
+        ty::Ty,
+    },
     visit::Visitor,
 };
 use wipple_parse::{
@@ -108,9 +112,46 @@ pub fn parse_parenthesized_type(parser: &mut Parser<'_>) -> Result<AstKey, Parse
     Ok(value)
 }
 
-pub fn visit_type(db: &mut Db, node: Node, _visitor: &mut Visitor) {
+pub fn visit_type(db: &mut Db, node: Node, visitor: &mut Visitor) {
     db.insert(node, IsType);
     db.insert(node, GraphType);
     db.insert(node, Typed::default());
-    db.insert(node, Annotated);
+
+    visitor.rank(node, NodeRank::Annotated);
+
+    // Prefer to apply constraints on the annotated value directly to improve
+    // feedback
+    if let Some(value) = visitor.current_annotating {
+        visitor.constraint(
+            db,
+            TyConstraint::new(value, Ty::Node(node))
+                .with_trace(AnnotateConstraintTrace { ty: node, value }),
+        );
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AnnotateConstraintTrace {
+    pub ty: Node,
+    pub value: Node,
+}
+
+#[typetag::serde]
+impl ConstraintTrace for AnnotateConstraintTrace {
+    fn nodes_mut(&mut self) -> Vec<&mut Node> {
+        vec![&mut self.ty, &mut self.value]
+    }
+
+    fn nodes(&self, _db: &Db) -> Vec<Node> {
+        vec![self.ty, self.value]
+    }
+}
+
+impl Render for AnnotateConstraintTrace {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+        ctx.node(self.value);
+        ctx.string(" is annotated as a ");
+        ctx.node(self.ty);
+        ctx.string(".");
+    }
 }

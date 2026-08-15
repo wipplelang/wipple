@@ -8,12 +8,8 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    render::{Render, RenderCtx},
     span::Span,
-    typecheck::{
-        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
-        ty::Ty,
-    },
+    typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -56,46 +52,12 @@ impl Visit for AnnotateExpression {
         db.hide(node);
 
         let expression = visitor.visit(db, &self.expression);
-        let ty = visitor.visit(db, &self.ty);
+        let ty = visitor.annotating(Some(expression), |visitor| visitor.visit(db, &self.ty));
         db.graph.edge(ty, expression, "type");
 
-        visitor.constraint(
-            db,
-            TyConstraint::new(expression, Ty::Node(ty)).with_trace(AnnotateConstraintTrace {
-                value: expression,
-                ty,
-            }),
-        );
-
-        visitor.constraint(db, TyConstraint::new(node, Ty::Node(expression)));
+        visitor.constraint(db, TyConstraint::new(node, Ty::Node(ty)));
 
         visitor.codegen(db, node, AnnotateExpressionCodegen { node, expression });
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AnnotateConstraintTrace {
-    pub value: Node,
-    pub ty: Node,
-}
-
-#[typetag::serde]
-impl ConstraintTrace for AnnotateConstraintTrace {
-    fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        vec![&mut self.value, &mut self.ty]
-    }
-
-    fn nodes(&self, _db: &Db) -> Vec<Node> {
-        vec![self.value, self.ty]
-    }
-}
-
-impl Render for AnnotateConstraintTrace {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
-        ctx.node(self.value);
-        ctx.string(" is annotated with the type ");
-        ctx.node(self.ty);
-        ctx.string(".");
     }
 }
 

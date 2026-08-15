@@ -3,8 +3,8 @@ use crate::{
     render::{Render, RenderCtx},
     typecheck::{
         bounds::Instance,
-        constraints::{ConstraintConsequence, ConstraintKind, Constraints},
-        groups::{AssignedType, Group, Groups, representative_ty},
+        constraints::{Constraint, ConstraintConsequence, ConstraintKind, Constraints},
+        groups::{Group, Groups, NodeRank},
         ty::{ConstructedTy, Ty},
     },
 };
@@ -50,6 +50,7 @@ pub struct Solver {
     pub(crate) groups: Groups,
     pub(crate) implied_instances: Vec<Instance>,
     pub(crate) active_traces: Range<usize>,
+    iterations: usize,
 }
 
 impl Solver {
@@ -62,6 +63,7 @@ impl Solver {
             groups: self.groups.clone(),
             implied_instances: self.implied_instances.clone(),
             substitutions: self.substitutions.clone(),
+            iterations: self.iterations,
             ..Default::default()
         }
     }
@@ -69,7 +71,23 @@ impl Solver {
     pub fn inherit(&mut self, other: Self) -> Constraints {
         self.groups = other.groups;
         self.substitutions = other.substitutions;
+        self.iterations = other.iterations;
         other.constraints
+    }
+
+    pub fn extend(
+        &mut self,
+        constraints: impl IntoIterator<Item = Box<dyn Constraint>>,
+        ranks: impl IntoIterator<Item = (Node, NodeRank)>,
+        substitutions: impl IntoIterator<Item = Substitutions>,
+    ) {
+        self.constraints.extend_back(constraints);
+
+        for (node, rank) in ranks {
+            self.rank(node, rank);
+        }
+
+        self.substitutions.extend(substitutions);
     }
 
     pub fn into_groups(mut self, db: &Db) -> Vec<Group> {
@@ -78,16 +96,15 @@ impl Solver {
     }
 
     pub fn run(&mut self, db: &mut Db) {
-        let mut iterations = 0;
         while !self.constraints.is_empty() {
-            if iterations >= ITERATION_LIMIT {
+            if self.iterations >= ITERATION_LIMIT {
                 return;
             }
 
             self.run_pass(db, ConstraintKind::Ty);
             self.run_pass(db, ConstraintKind::Bound);
 
-            iterations += 1;
+            self.iterations += 1;
         }
     }
 
@@ -151,10 +168,6 @@ impl Solver {
     }
 
     pub fn unify(&mut self, db: &mut Db, node: Node, ty: &Ty, error: Option<&mut bool>) {
-        if !db.contains::<AssignedType>(node) {
-            db.insert(node, AssignedType(ty.clone()));
-        }
-
         self.unify_inner(db, &Ty::Node(node), ty, error);
     }
 
@@ -245,13 +258,7 @@ impl Solver {
         }
     }
 
-    pub fn merge(
-        &mut self,
-        db: &mut Db,
-        left_node: Node,
-        right_node: Node,
-        error: Option<&mut bool>,
-    ) {
+    fn merge(&mut self, db: &mut Db, left_node: Node, right_node: Node, error: Option<&mut bool>) {
         db.get_mut_or_default::<GroupedWith>(left_node)
             .0
             .push(right_node);
@@ -295,19 +302,35 @@ impl Solver {
         }
     }
 
-    pub fn insert(&mut self, db: &mut Db, node: Node, mut ty: ConstructedTy) {
-        if ty.representative.is_none() {
-            ty.representative = Some(node);
-        }
-
+    fn insert(&mut self, db: &mut Db, node: Node, ty: ConstructedTy) {
         self.add_consequence(db, ConstraintConsequence::Ty(node, ty.clone()));
 
+        self.with_group_mut(node, |group| {
+            group.insert_ty(node, ty);
+        });
+    }
+
+    pub fn rank_of(&self, node: Node) -> NodeRank {
+        self.groups
+            .index_of(node)
+            .map(|index| self.groups.get(index).get_rank(node))
+            .unwrap_or_default()
+    }
+
+    pub fn rank(&mut self, node: Node, rank: NodeRank) {
+        self.with_group_mut(node, |group| {
+            group.set_rank(node, rank);
+        })
+    }
+
+    fn with_group_mut<T>(&mut self, node: Node, f: impl FnOnce(&mut Group) -> T) -> T {
         if let Some(index) = self.groups.index_of(node) {
-            self.groups.get_mut(index).tys.push(ty);
+            f(self.groups.get_mut(index))
         } else {
             let mut group = Group::with_nodes([node]);
-            group.tys.push(ty);
+            let result = f(&mut group);
             self.groups.insert(group);
+            result
         }
     }
 
@@ -317,7 +340,7 @@ impl Solver {
         }
     }
 
-    pub fn apply_ty(&self, db: &Db, ty: &Ty) -> Ty {
+    pub fn apply_ty(&self, _db: &Db, ty: &Ty) -> Ty {
         let Ty::Node(node) = ty else {
             return ty.clone();
         };
@@ -328,7 +351,7 @@ impl Solver {
 
         let group = self.groups.get(index);
 
-        let Some(applied) = representative_ty(db, &group.tys, *node) else {
+        let Some(applied) = group.get_tys(*node).first().or_else(|| group.tys().next()) else {
             return ty.clone();
         };
 
@@ -341,7 +364,7 @@ impl Solver {
         for index in indices {
             let mut group = self.groups.remove_existing(index);
 
-            for ty in &mut group.tys {
+            for (_, _, ty) in &mut group.entries_mut() {
                 *ty = match self.apply_ty(db, &Ty::Constructed(ty.clone())) {
                     Ty::Constructed(ty) => ty,
                     Ty::Node(_) => {

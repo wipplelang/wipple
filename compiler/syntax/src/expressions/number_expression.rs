@@ -4,12 +4,8 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
-    render::{Render, RenderCtx},
     span::{Span, Str},
-    typecheck::{
-        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
-        ty::Ty,
-    },
+    typecheck::groups::NodeRank,
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -51,13 +47,12 @@ impl Visit for NumberExpression {
                 parameters: Vec::new(),
             }),
         );
-        visitor.visit_as(db, &syntax, number_type);
 
-        visitor.constraint(
-            db,
-            TyConstraint::new(node, Ty::Node(number_type))
-                .with_trace(NumberConstraintTrace { node, number_type }),
-        );
+        visitor.annotating(Some(node), |visitor| {
+            visitor.visit_as(db, &syntax, number_type);
+        });
+
+        visitor.rank(node, NodeRank::Annotated);
 
         visitor.codegen(
             db,
@@ -67,32 +62,6 @@ impl Visit for NumberExpression {
                 value: self.value.clone(),
             },
         );
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct NumberConstraintTrace {
-    node: Node,
-    number_type: Node,
-}
-
-#[typetag::serde]
-impl ConstraintTrace for NumberConstraintTrace {
-    fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        vec![&mut self.node, &mut self.number_type]
-    }
-
-    fn nodes(&self, _db: &Db) -> Vec<Node> {
-        vec![self.node, self.number_type]
-    }
-}
-
-impl Render for NumberConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        ctx.node(self.node);
-        ctx.string(" is a ");
-        ctx.ty(db, &Ty::Node(self.number_type), true);
-        ctx.string(".");
     }
 }
 

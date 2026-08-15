@@ -1,21 +1,18 @@
 Facts (layer 2):
 
 `Foo` (TypeDefinition):
-  assigned type `Foo`
   grouped with `Foo`
   has definition constraints
   has type `Foo`
   is a definition
 
 `Foo` (TypeDefinition):
-  assigned type `Foo`
   grouped with `Foo`
   has definition constraints
   has type `Foo`
   is a definition
 
 `show` (VariableExpression):
-  assigned type `Foo -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Foo` (resolved as `default error instance (Describe value)`)
   has type `Foo -> ()`
@@ -23,7 +20,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show Foo` (ExpressionStatement):
-  assigned type `()`
   grouped with `show Foo`
   has type `()`
 
@@ -33,7 +29,6 @@ Facts (layer 2):
   is an expression
 
 `Foo` (ConstructorExpression):
-  assigned type `Foo`
   grouped with `Foo`, `value`
   has type `Foo`
   is an expression
@@ -50,6 +45,6 @@ Feedback:
   You can't display `Foo` on the screen or use it in placeholders because
   it can't be converted into a string.
 
-  1. `show`: `show` displays `Foo` on the screen. This requires `Describe` `Foo`.
+  1. `show`: `show` displays `Foo` on the screen. This means `show` is a `Foo -> ()`. This requires `Describe` `Foo`.
 
   (1 -> error)

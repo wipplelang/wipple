@@ -81,9 +81,8 @@ impl Visit for FormatExpression {
                 parameters: Vec::new(),
             }),
         );
-        let string_type = visitor.visit(db, &string_type);
 
-        visitor.constraint(db, TyConstraint::new(node, Ty::Node(string_type)));
+        let string_type = visitor.annotating(Some(node), |visitor| visitor.visit(db, &string_type));
 
         let inputs = self
             .inputs

@@ -42,12 +42,15 @@ impl Visit for BlockType {
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_type(db, node, visitor);
 
-        let output = visitor.visit(db, &self.output);
+        let output = visitor.annotating(None, |visitor| visitor.visit(db, &self.output));
         db.graph.edge(output, node, "output");
 
         visitor.constraint(
             db,
-            TyConstraint::new(node, Ty::Constructed(ConstructedTy::block(output))),
+            TyConstraint::new(
+                visitor.current_annotating.unwrap_or(node),
+                Ty::Constructed(ConstructedTy::block(output)),
+            ),
         );
     }
 }

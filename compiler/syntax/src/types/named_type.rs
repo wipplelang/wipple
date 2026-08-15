@@ -55,7 +55,7 @@ impl Visit for NamedType {
         let parameters = self
             .parameters
             .into_iter()
-            .map(|parameter| visitor.visit(db, &parameter))
+            .map(|parameter| visitor.annotating(None, |visitor| visitor.visit(db, &parameter)))
             .collect::<Vec<_>>();
 
         for &parameter in &parameters {
@@ -86,13 +86,20 @@ impl Visit for NamedType {
         }
 
         let substitutions = visitor.substitutions(
-            BTreeMap::from([(type_definition_node, node)]),
+            BTreeMap::from([(
+                type_definition_node,
+                visitor.current_annotating.unwrap_or(node),
+            )]),
             ty_parameters,
         );
 
         visitor.constraint(
             db,
-            InstantiateConstraint::new(node, type_definition_node, substitutions),
+            InstantiateConstraint::new(
+                visitor.current_annotating.unwrap_or(node),
+                type_definition_node,
+                substitutions,
+            ),
         );
     }
 }

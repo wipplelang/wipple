@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
-  assigned type `Number -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -14,12 +13,10 @@ Facts (layer 2):
   is an expression
 
 `show 1 + 2` (ExpressionStatement):
-  assigned type `_`
   grouped with `show 1 + 2`
   missing type (group: `show 1 + 2`, `show 1 + 2`, `show 1 + 2`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `show 1 + 2` (OperatorExpression):
-  assigned type `_`
   grouped with `show 1 + 2`, `show 1 + 2`
   is an expression
   missing type (group: `show 1 + 2`, `show 1 + 2`, `show 1 + 2`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
@@ -30,7 +27,6 @@ Facts (layer 2):
   missing type (group: `show 1 + 2`, `show 1 + 2`, `show 1 + 2`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `show 1 + 2` (ConstructorExpression):
-  assigned type `() Number -> _`
   grouped with `left right -> sum`
   has bound(s) `Add` `()` `Number` `_` (resolved as `error instance (Add () right sum)`)
   has type `() Number -> _`
@@ -38,19 +34,16 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `1` (NumberExpression):
-  assigned type `Number`
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `2` (NumberExpression):
-  assigned type `Number`
   grouped with `2`, `right`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -63,12 +56,10 @@ Facts (layer 2):
   is an expression
 
 `show True or False` (ExpressionStatement):
-  assigned type `_`
   grouped with `show True or False`
   missing type (group: `show True or False`, `show True or False`, `show True or False`, `(infer output)`, `(infer output)`, `output`)
 
 `show True or False` (OperatorExpression):
-  assigned type `_`
   grouped with `show True or False`, `show True or False`
   is an expression
   missing type (group: `show True or False`, `show True or False`, `show True or False`, `(infer output)`, `(infer output)`, `output`)
@@ -79,7 +70,6 @@ Facts (layer 2):
   missing type (group: `show True or False`, `show True or False`, `show True or False`, `(infer output)`, `(infer output)`, `output`)
 
 `show True or False` (ConstructorExpression):
-  assigned type `() {Boolean} -> _`
   grouped with `left {right} -> output`
   has bound(s) `Or` `()` `Boolean` `_` (unresolved)
   has type `() {Boolean} -> _`
@@ -87,39 +77,33 @@ Facts (layer 2):
   resolved to 1 definition(s): `Or`
 
 `True` (ConstructorExpression):
-  assigned type `Boolean`
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `False` (VisitAs):
-  assigned type `Boolean`
   grouped with `Boolean`, `False`, `False`, `right`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `False` (VisitAs):
-  assigned type `{Boolean}`
   grouped with `{right}`
   has type `{Boolean}`
   is an expression
 
 `False` (ExpressionStatement):
-  assigned type `Boolean`
   grouped with `False`, `False`
   has type `Boolean`
 
 `show` (VariableExpression):
-  assigned type `_ -> ()`
   grouped with `value -> ()`
   has type `_ -> ()`
   is an expression
   resolved to 1 definition(s): `show`
 
 `show (1 + "hi")` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (1 + "hi")`
   has type `()`
 
@@ -129,13 +113,11 @@ Facts (layer 2):
   is an expression
 
 `1` (NumberExpression):
-  assigned type `Number`
   grouped with `1`, `left`
   has type `Number`
   is an expression
 
 `1 + "hi"` (OperatorExpression):
-  assigned type `_`
   grouped with `1 + "hi"`, `value`
   is an expression
   missing type (group: `1 + "hi"`, `1 + "hi"`, `value`, `value`, `value`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
@@ -146,7 +128,6 @@ Facts (layer 2):
   missing type (group: `1 + "hi"`, `1 + "hi"`, `value`, `value`, `value`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `1 + "hi"` (ConstructorExpression):
-  assigned type `Number String -> _`
   grouped with `left right -> sum`
   has bound(s) `Add` `Number` `String` `_` (resolved as `default error instance (Add left right sum)`)
   has type `Number String -> _`
@@ -154,7 +135,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `"hi"` (StringExpression):
-  assigned type `String`
   grouped with `"hi"`, `right`
   has type `String`
   is an expression
@@ -170,12 +150,8 @@ Feedback:
   Spaces group before operators do, so you need to put parentheses around just
   the inputs to `+`.
 
-  1. `2`: `2` is a `Number`.
+  1. `show`: `show` displays `1` on the screen. This requires `Describe` `Number`.
 
   2. `show 1 + 2`: `show 1 + 2` adds `show 1` and `2` together, returning a `_`. This requires `Add` `()` `Number` `_`.
 
-  3. `show`: `show` displays `1` on the screen. This requires `Describe` `Number`.
-
-  4. `1`: `1` is a `Number`.
-
-  (2 -> error, 2 -> 1, 4 -> 3)
+  (2 -> error)

@@ -374,35 +374,36 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
     let mut rl = rustyline::Editor::new()?;
     rl.set_helper(Some(Validator));
 
-    let mut db = lib_db;
+    let mut db = DbRef::new(lib_db);
     let mut first = true;
     loop {
         match rl.readline("\n> ") {
             Ok(input) => {
                 rl.add_history_entry(input.trim_end())?;
 
-                db = Db::new(Some(DbRef::new(db)));
+                let mut next_db = Db::new(Some(db.clone()));
                 if env::var("WIPPLE_DEBUG").is_ok() {
-                    db.debug_enabled = true;
+                    next_db.debug_enabled = true;
                 }
 
-                let name = format!("<repl#{}>", db.layer());
+                let name = format!("<repl#{}>", next_db.layer());
 
-                let files = vec![parse(&mut db, &name, &input)];
+                let files = vec![parse(&mut next_db, &name, &input)];
 
                 let mut driver = Driver::new(options, files, io::stdout());
                 driver.silent = true;
 
                 let Some((_, source_files, statements)) =
-                    driver.run(&mut db, &mut top_level, &name)?
+                    driver.run(&mut next_db, &mut top_level, &name)?
                 else {
                     continue;
                 };
 
-                let program = codegen(&db, &source_files, &statements, &lib_statements, first)?;
+                let program =
+                    codegen(&next_db, &source_files, &statements, &lib_statements, first)?;
 
                 let result = js::to_js(
-                    &db,
+                    &next_db,
                     &program,
                     codegen::Options {
                         file_name: None,
@@ -416,6 +417,8 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
                     .post(format!("http://{addr}"))
                     .body(result.module)
                     .send()?;
+
+                db = DbRef::new(next_db);
             }
             Err(
                 rustyline::error::ReadlineError::Interrupted | rustyline::error::ReadlineError::Eof,
@@ -570,7 +573,7 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
                 return ControlFlow::Continue(());
             };
 
-            let mut writer = FeedbackWriter::with_filter(&default_filter);
+            let mut writer = FeedbackWriter::new(&default_filter, Vec::new());
             writer.comments(db, &documentation.comments);
             let docs = writer
                 .finish(db, |db, segment| {

@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `repeat` (VariableExpression):
-  assigned type `Number {()} -> ()`
   grouped with `condition {body} -> ()`
   has bound(s) `Repeat-Condition` `Number` (resolved as `error instance (Repeat-Condition (n :: Number))`)
   has type `Number {()} -> ()`
@@ -9,7 +8,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `repeat`
 
 `repeat 5 {⋯}` (ExpressionStatement):
-  assigned type `()`
   grouped with `repeat 5 {⋯}`
   has type `()`
 
@@ -19,19 +17,16 @@ Facts (layer 2):
   is an expression
 
 `5` (NumberExpression):
-  assigned type `Number`
   grouped with `5`, `condition`
   has type `Number`
   is an expression
 
 `{⋯}` (BlockExpression):
-  assigned type `{()}`
   grouped with `{body}`
   has type `{()}`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -39,7 +34,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show "Hello, world!"` (ExpressionStatement):
-  assigned type `()`
   grouped with `show "Hello, world!"`, `body`
   has type `()`
 
@@ -49,7 +43,6 @@ Facts (layer 2):
   is an expression
 
 `"Hello, world!"` (StringExpression):
-  assigned type `String`
   grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression
@@ -64,12 +57,8 @@ Feedback:
   
   Try rewriting this code as `(`5` times)`, or double-check your parentheses.
 
-  1. `repeat`: `repeat` runs `show "Hello, world!"` repeatedly. This requires `Repeat-Condition` `Number`.
+  1. `repeat`: `repeat` runs `show "Hello, world!"` repeatedly. This means `repeat` is a `Number {()} -> ()`. This requires `Repeat-Condition` `Number`.
 
-  2. `5`: `5` is a `Number`.
+  2. `show`: `show` displays `"Hello, world!"` on the screen. This means `show` is a `String -> ()`. This requires `Describe` `String`.
 
-  3. `show`: `show` displays `"Hello, world!"` on the screen. This requires `Describe` `String`.
-
-  4. `"Hello, world!"`: `"Hello, world!"` is a `String`.
-
-  (1 -> error, 2 -> 1, 4 -> 3)
+  (1 -> error, 2 -> 1)

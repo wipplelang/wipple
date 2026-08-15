@@ -142,15 +142,14 @@ impl Render for ConstraintConsequence {
                 };
 
                 let nodes = group
-                    .nodes
-                    .iter()
-                    .filter(|&&node| ctx.filter(db, node))
+                    .nodes()
+                    .filter(|&node| ctx.filter(db, node))
                     .collect::<Vec<_>>();
 
                 if nodes.len() > 1 {
                     ctx.string("This means ");
                     ctx.list("and", |list| {
-                        for &node in &group.nodes {
+                        for node in group.nodes() {
                             if list.filter(db, node) {
                                 list.add(move |ctx| ctx.node(node));
                             }

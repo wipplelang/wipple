@@ -1,18 +1,15 @@
 Facts (layer 2):
 
 `even?` (VariablePattern):
-  assigned type `Number -> Boolean`
   grouped with `divisible-by? 2`, `divisible-by? 2`, `even?`, `even?`, `even?`
   has type `Number -> Boolean`
   is a definition
   is a pattern
 
 `even? : divisible-by? 2` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `divisible-by?` (VariableExpression):
-  assigned type `Number -> Number -> Boolean`
   grouped with `(left :: Number) -> (right :: Number) -> Boolean`
   has type `Number -> Number -> Boolean`
   is an expression
@@ -24,24 +21,20 @@ Facts (layer 2):
   is an expression
 
 `2` (NumberExpression):
-  assigned type `Number`
   grouped with `2`, `left :: Number`
   has type `Number`
   is an expression
 
 `odd?` (VariablePattern):
-  assigned type `Number -> Boolean`
   grouped with `not even?`, `not even?`, `odd?`, `odd?`
   has type `Number -> Boolean`
   is a definition
   is a pattern
 
 `odd? : not even?` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `not` (VariableExpression):
-  assigned type `(Number -> Boolean) -> Number -> Boolean`
   grouped with `value -> value`
   has bound(s) `Not` `(Number -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `Boolean` (resolved as `instance (Not Boolean)`)
   has type `(Number -> Boolean) -> Number -> Boolean`
@@ -54,15 +47,12 @@ Facts (layer 2):
   is an expression
 
 `even?` (VariableExpression):
-  assigned type `Number -> Boolean`
   grouped with `even?`, `value`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `even?`
-  type is annotated
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -70,7 +60,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (even? 2)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (even? 2)`
   has type `()`
 
@@ -80,12 +69,10 @@ Facts (layer 2):
   is an expression
 
 `even?` (VariableExpression):
-  assigned type `Number -> Boolean`
   grouped with `even?`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `even?`
-  type is annotated
 
 `even? 2` (CallExpression):
   grouped with `Boolean`, `value`
@@ -93,13 +80,11 @@ Facts (layer 2):
   is an expression
 
 `2` (NumberExpression):
-  assigned type `Number`
   grouped with `2`, `right :: Number`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -107,7 +92,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (odd? 2)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (odd? 2)`
   has type `()`
 
@@ -117,12 +101,10 @@ Facts (layer 2):
   is an expression
 
 `odd?` (VariableExpression):
-  assigned type `Number -> Boolean`
   grouped with `odd?`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `odd?`
-  type is annotated
 
 `odd? 2` (CallExpression):
   grouped with `Boolean`, `value`
@@ -130,13 +112,11 @@ Facts (layer 2):
   is an expression
 
 `2` (NumberExpression):
-  assigned type `Number`
   grouped with `2`, `right :: Number`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -144,7 +124,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (even? 3)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (even? 3)`
   has type `()`
 
@@ -154,12 +133,10 @@ Facts (layer 2):
   is an expression
 
 `even?` (VariableExpression):
-  assigned type `Number -> Boolean`
   grouped with `even?`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `even?`
-  type is annotated
 
 `even? 3` (CallExpression):
   grouped with `Boolean`, `value`
@@ -167,13 +144,11 @@ Facts (layer 2):
   is an expression
 
 `3` (NumberExpression):
-  assigned type `Number`
   grouped with `3`, `right :: Number`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -181,7 +156,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (odd? 3)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (odd? 3)`
   has type `()`
 
@@ -191,12 +165,10 @@ Facts (layer 2):
   is an expression
 
 `odd?` (VariableExpression):
-  assigned type `Number -> Boolean`
   grouped with `odd?`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `odd?`
-  type is annotated
 
 `odd? 3` (CallExpression):
   grouped with `Boolean`, `value`
@@ -204,7 +176,6 @@ Facts (layer 2):
   is an expression
 
 `3` (NumberExpression):
-  assigned type `Number`
   grouped with `3`, `right :: Number`
   has type `Number`
   is an expression

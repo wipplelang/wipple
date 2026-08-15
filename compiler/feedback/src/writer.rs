@@ -6,7 +6,7 @@ use wipple_core::{
     db::{Db, Node},
     render::{Render, RenderCtx, RenderSegment},
     traces::Traces,
-    typecheck::{groups::Annotated, instantiate::Instantiated},
+    typecheck::instantiate::Instantiated,
 };
 
 pub struct FeedbackWriter<'a> {
@@ -18,9 +18,9 @@ pub struct FeedbackWriter<'a> {
 }
 
 impl<'a> FeedbackWriter<'a> {
-    pub fn with_filter(filter: &'a dyn Fn(&Db, Node) -> bool) -> Self {
+    pub fn new(filter: &'a dyn Fn(&Db, Node) -> bool, relevant: Vec<Node>) -> Self {
         FeedbackWriter {
-            ctx: RenderCtx::with_filter(filter),
+            ctx: RenderCtx::new(filter, relevant),
             traces: Default::default(),
         }
     }
@@ -66,7 +66,9 @@ impl FeedbackWriter<'_> {
         let mut linked = BTreeSet::new();
         let mut indices = BTreeMap::new();
         for (trace_index, entry) in traces.traces.iter().enumerate() {
-            let Some(&node) = entry.trace.clone().nodes(db).first() else {
+            let nodes = entry.trace.clone().nodes(db);
+
+            let Some(&node) = nodes.first() else {
                 continue;
             };
 
@@ -74,13 +76,8 @@ impl FeedbackWriter<'_> {
                 continue;
             }
 
-            if db.contains::<Annotated>(node) {
-                // Hide obvious traces
-                continue;
-            }
-
-            let mut ctx = RenderCtx::with_filter(self.ctx.filter);
-            entry.trace.render_into(db, &mut ctx);
+            let mut ctx = RenderCtx::new(self.ctx.filter, self.ctx.relevant.clone());
+            ctx.with_relevant(&nodes, |ctx| entry.trace.render_into(db, ctx));
 
             if !ctx.is_empty() {
                 let index = indices.len();
@@ -99,19 +96,17 @@ impl FeedbackWriter<'_> {
             .into_iter()
             .enumerate()
             .filter_map(|(index, (node, ctx, entry))| {
+                let nodes = entry.trace.clone().nodes(db);
+
                 let mut consequence_ctxs = Vec::new();
                 for consequence in &entry.consequences {
                     if !linked.contains(&consequence.node()) {
                         continue;
                     }
 
-                    if db.contains::<Annotated>(consequence.node()) {
-                        // Hide obvious consequences
-                        continue;
-                    }
-
-                    let mut consequence_ctx = RenderCtx::with_filter(self.ctx.filter);
-                    consequence.render_into(db, &mut consequence_ctx);
+                    let mut consequence_ctx =
+                        RenderCtx::new(self.ctx.filter, self.ctx.relevant.clone());
+                    consequence_ctx.with_relevant(&nodes, |ctx| consequence.render_into(db, ctx));
                     if !consequence_ctx.is_empty() {
                         consequence_ctxs.push(consequence_ctx);
                     }

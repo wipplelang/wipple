@@ -22,14 +22,16 @@ pub trait Render {
 
 pub struct RenderCtx<'a> {
     pub filter: &'a dyn Fn(&Db, Node) -> bool,
+    pub relevant: Vec<Node>,
     segments: Vec<RenderSegment>,
     nodes: BTreeSet<Node>,
 }
 
 impl<'a> RenderCtx<'a> {
-    pub fn with_filter(filter: &'a dyn Fn(&Db, Node) -> bool) -> Self {
+    pub fn new(filter: &'a dyn Fn(&Db, Node) -> bool, relevant: Vec<Node>) -> Self {
         RenderCtx {
             filter,
+            relevant,
             segments: Default::default(),
             nodes: Default::default(),
         }
@@ -66,6 +68,14 @@ impl<'a> ListBuilder<'a, '_> {
 impl RenderCtx<'_> {
     pub fn line_break(&mut self) {
         self.segments.push(RenderSegment::LineBreak);
+    }
+
+    pub fn with_relevant<T>(&mut self, relevant: &[Node], f: impl FnOnce(&mut Self) -> T) -> T {
+        let prev = self.relevant.clone();
+        self.relevant = relevant.iter().chain(&prev).copied().collect();
+        let result = f(self);
+        self.relevant = prev;
+        result
     }
 
     pub fn string(&mut self, s: impl Into<String>) {
@@ -207,7 +217,7 @@ impl RenderCtx<'_> {
             self.string(&comments_string[index..capture.range().start]);
             index = capture.range().end;
 
-            let mut ctx = RenderCtx::with_filter(self.filter);
+            let mut ctx = RenderCtx::new(self.filter, self.relevant.clone());
             let name = captures.get(1).unwrap().as_str();
             match links.get(name) {
                 Some(link) => link(&mut ctx),

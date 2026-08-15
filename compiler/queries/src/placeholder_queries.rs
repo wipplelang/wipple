@@ -19,12 +19,7 @@ pub fn placeholder<'a>(
 
     Some((
         node,
-        group
-            .nodes
-            .iter()
-            .copied()
-            .filter(|other| *other != node)
-            .collect(),
-        group.tys.first(),
+        group.nodes().filter(|other| *other != node).collect(),
+        group.tys().next(),
     ))
 }

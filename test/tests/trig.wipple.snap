@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -9,7 +8,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sin (0 degrees) = 0)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (sin (0 degrees) = 0)`
   has type `()`
 
@@ -19,7 +17,6 @@ Facts (layer 2):
   is an expression
 
 `sin` (VariableExpression):
-  assigned type `Angle -> Number`
   grouped with `(angle :: Angle) -> Number`
   has type `Angle -> Number`
   is an expression
@@ -31,7 +28,6 @@ Facts (layer 2):
   is an expression
 
 `sin (0 degrees) = 0` (OperatorExpression):
-  assigned type `Boolean`
   grouped with `sin (0 degrees) = 0`, `value`
   has type `Boolean`
   is an expression
@@ -42,7 +38,6 @@ Facts (layer 2):
   is an expression
 
 `sin (0 degrees) = 0` (ConstructorExpression):
-  assigned type `Number Number -> Boolean`
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
@@ -50,7 +45,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `0` (NumberExpression):
-  assigned type `Number`
   grouped with `0`, `Number`
   has type `Number`
   is an expression
@@ -61,20 +55,17 @@ Facts (layer 2):
   is an expression
 
 `degrees` (VariableExpression):
-  assigned type `Number -> Angle`
   grouped with `Number -> Angle`
   has type `Number -> Angle`
   is an expression
   resolved to 1 definition(s): `degrees`
 
 `0` (NumberExpression):
-  assigned type `Number`
   grouped with `0`, `value`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -82,7 +73,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (cos (0 degrees) = 1)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (cos (0 degrees) = 1)`
   has type `()`
 
@@ -92,7 +82,6 @@ Facts (layer 2):
   is an expression
 
 `cos` (VariableExpression):
-  assigned type `Angle -> Number`
   grouped with `(angle :: Angle) -> Number`
   has type `Angle -> Number`
   is an expression
@@ -104,7 +93,6 @@ Facts (layer 2):
   is an expression
 
 `cos (0 degrees) = 1` (OperatorExpression):
-  assigned type `Boolean`
   grouped with `cos (0 degrees) = 1`, `value`
   has type `Boolean`
   is an expression
@@ -115,7 +103,6 @@ Facts (layer 2):
   is an expression
 
 `cos (0 degrees) = 1` (ConstructorExpression):
-  assigned type `Number Number -> Boolean`
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
@@ -123,7 +110,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `0` (NumberExpression):
-  assigned type `Number`
   grouped with `0`, `Number`
   has type `Number`
   is an expression
@@ -134,20 +120,17 @@ Facts (layer 2):
   is an expression
 
 `degrees` (VariableExpression):
-  assigned type `Number -> Angle`
   grouped with `Number -> Angle`
   has type `Number -> Angle`
   is an expression
   resolved to 1 definition(s): `degrees`
 
 `1` (NumberExpression):
-  assigned type `Number`
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -155,7 +138,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sin (45 degrees) / cos (45 degrees) = tan (45 degrees))` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (sin (45 degrees) / cos (45 degrees) = tan (45 degrees))`
   has type `()`
 
@@ -165,7 +147,6 @@ Facts (layer 2):
   is an expression
 
 `sin` (VariableExpression):
-  assigned type `Angle -> Number`
   grouped with `(angle :: Angle) -> Number`
   has type `Angle -> Number`
   is an expression
@@ -177,7 +158,6 @@ Facts (layer 2):
   is an expression
 
 `sin (45 degrees) / cos (45 degrees)` (OperatorExpression):
-  assigned type `Number`
   grouped with `sin (45 degrees) / cos (45 degrees)`, `value`
   has type `Number`
   is an expression
@@ -188,7 +168,6 @@ Facts (layer 2):
   is an expression
 
 `sin (45 degrees) / cos (45 degrees)` (ConstructorExpression):
-  assigned type `Number Number -> Number`
   grouped with `left right -> quotient`
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
@@ -196,7 +175,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Divide`
 
 `sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (OperatorExpression):
-  assigned type `Boolean`
   grouped with `sin (45 degrees) / cos (45 degrees) = tan (45 degrees)`, `value`
   has type `Boolean`
   is an expression
@@ -207,7 +185,6 @@ Facts (layer 2):
   is an expression
 
 `sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (ConstructorExpression):
-  assigned type `Number Number -> Boolean`
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
@@ -215,7 +192,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `45` (NumberExpression):
-  assigned type `Number`
   grouped with `45`, `Number`
   has type `Number`
   is an expression
@@ -226,14 +202,12 @@ Facts (layer 2):
   is an expression
 
 `degrees` (VariableExpression):
-  assigned type `Number -> Angle`
   grouped with `Number -> Angle`
   has type `Number -> Angle`
   is an expression
   resolved to 1 definition(s): `degrees`
 
 `cos` (VariableExpression):
-  assigned type `Angle -> Number`
   grouped with `(angle :: Angle) -> Number`
   has type `Angle -> Number`
   is an expression
@@ -245,7 +219,6 @@ Facts (layer 2):
   is an expression
 
 `45` (NumberExpression):
-  assigned type `Number`
   grouped with `45`, `Number`
   has type `Number`
   is an expression
@@ -256,14 +229,12 @@ Facts (layer 2):
   is an expression
 
 `degrees` (VariableExpression):
-  assigned type `Number -> Angle`
   grouped with `Number -> Angle`
   has type `Number -> Angle`
   is an expression
   resolved to 1 definition(s): `degrees`
 
 `tan` (VariableExpression):
-  assigned type `Angle -> Number`
   grouped with `(angle :: Angle) -> Number`
   has type `Angle -> Number`
   is an expression
@@ -275,7 +246,6 @@ Facts (layer 2):
   is an expression
 
 `45` (NumberExpression):
-  assigned type `Number`
   grouped with `45`, `Number`
   has type `Number`
   is an expression
@@ -286,7 +256,6 @@ Facts (layer 2):
   is an expression
 
 `degrees` (VariableExpression):
-  assigned type `Number -> Angle`
   grouped with `Number -> Angle`
   has type `Number -> Angle`
   is an expression

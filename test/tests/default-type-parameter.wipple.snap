@@ -1,35 +1,30 @@
 Facts (layer 2):
 
 `X` (TypeDefinition):
-  assigned type `X`
   grouped with `X`
   has definition constraints
   has type `X`
   is a definition
 
 `X` (TypeDefinition):
-  assigned type `X`
   grouped with `X`
   has definition constraints
   has type `X`
   is a definition
 
 `Y` (TypeDefinition):
-  assigned type `Y`
   grouped with `Y`
   has definition constraints
   has type `Y`
   is a definition
 
 `Y` (TypeDefinition):
-  assigned type `Y`
   grouped with `Y`
   has definition constraints
   has type `Y`
   is a definition
 
 `T` (TraitDefinition):
-  assigned type `value`
   grouped with `value`
   has 2 instances
   has definition constraints
@@ -38,25 +33,20 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`, `T`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `instance (T X)` (InstanceDefinition):
-  assigned type `X`
   grouped with `value`, `X`
   has definition constraints
   has type `X`
@@ -64,22 +54,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `X` (NamedType):
-  assigned type `X`
   grouped with `value`
   has type `X`
   is a type
   resolved to 1 definition(s): `X`
-  type is annotated
 
 `X` (ConstructorExpression):
-  assigned type `X`
   grouped with `X`, `instance (T X)`
   has type `X`
   is an expression
   resolved to 1 definition(s): `X`
 
 `instance (T Y)` (InstanceDefinition):
-  assigned type `Y`
   grouped with `value`, `Y`
   has definition constraints
   has type `Y`
@@ -87,22 +73,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `Y` (NamedType):
-  assigned type `Y`
   grouped with `value`
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y`
-  type is annotated
 
 `Y` (ConstructorExpression):
-  assigned type `Y`
   grouped with `Y`, `instance (T Y)`
   has type `Y`
   is an expression
   resolved to 1 definition(s): `Y`
 
 `instance (Describe X)` (InstanceDefinition):
-  assigned type `X -> String`
   grouped with `value -> String`, `_ -> "X"`
   has definition constraints
   has type `X -> String`
@@ -110,33 +92,27 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `X` (NamedType):
-  assigned type `X`
   grouped with `value`
   has type `X`
   is a type
   resolved to 1 definition(s): `X`
-  type is annotated
 
 `_` (WildcardPattern):
-  assigned type `X`
   grouped with `value`
   has type `X`
   is a pattern
 
 `_ -> "X"` (FunctionExpression):
-  assigned type `X -> String`
   grouped with `instance (Describe X)`
   has type `X -> String`
   is an expression
 
 `"X"` (StringExpression):
-  assigned type `String`
   grouped with `"X"`, `String`
   has type `String`
   is an expression
 
 `instance (Describe Y)` (InstanceDefinition):
-  assigned type `Y -> String`
   grouped with `value -> String`, `_ -> "Y"`
   has definition constraints
   has type `Y -> String`
@@ -144,33 +120,27 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `Y` (NamedType):
-  assigned type `Y`
   grouped with `value`
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y`
-  type is annotated
 
 `_` (WildcardPattern):
-  assigned type `Y`
   grouped with `value`
   has type `Y`
   is a pattern
 
 `_ -> "Y"` (FunctionExpression):
-  assigned type `Y -> String`
   grouped with `instance (Describe Y)`
   has type `Y -> String`
   is an expression
 
 `"Y"` (StringExpression):
-  assigned type `String`
   grouped with `"Y"`, `String`
   has type `String`
   is an expression
 
 `foo` (ConstantDefinition):
-  assigned type `value`
   grouped with `value`, `T`
   has bounds
   has definition constraints
@@ -179,32 +149,26 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `foo`, `value`, `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `(value :: X)` (DefaultConstraint):
   is a constraint
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `X` (NamedType):
-  assigned type `X`
   has type `X`
   is a type
   resolved to 1 definition(s): `X`
-  type is annotated
 
 `(T value)` (BoundConstraint):
   has bound(s) `T` `value` (resolved as `(T value)`)
@@ -212,20 +176,16 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `foo : T` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `T` (ConstructorExpression):
-  assigned type `value`
   grouped with `value`, `foo`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value`
@@ -233,7 +193,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `show` (VariableExpression):
-  assigned type `X -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `X` (resolved as `instance (Describe X)`)
   has type `X -> ()`
@@ -241,7 +200,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show foo` (ExpressionStatement):
-  assigned type `()`
   grouped with `show foo`
   has type `()`
 
@@ -251,15 +209,13 @@ Facts (layer 2):
   is an expression
 
 `foo` (VariableExpression):
-  assigned type `X`
-  grouped with `value`, `value`
+  grouped with `value`, `value`, `value`
   has bound(s) `T` `X` (resolved as `instance (T X)`)
   has type `X`
   is an expression
   resolved to 1 definition(s): `foo`
 
 `show` (VariableExpression):
-  assigned type `Y -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Y` (resolved as `instance (Describe Y)`)
   has type `Y -> ()`
@@ -267,7 +223,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (foo :: Y)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (foo :: Y)`
   has type `()`
 
@@ -277,20 +232,17 @@ Facts (layer 2):
   is an expression
 
 `foo` (VariableExpression):
-  assigned type `Y`
-  grouped with `value`, `Y`, `foo :: Y`
+  grouped with `value`, `value`, `Y`
   has bound(s) `T` `Y` (resolved as `instance (T Y)`)
   has type `Y`
   is an expression
   resolved to 1 definition(s): `foo`
 
 `Y` (NamedType):
-  assigned type `Y`
-  grouped with `foo`
+  grouped with `foo`, `foo :: Y`
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y`
-  type is annotated
 
 
 Output:

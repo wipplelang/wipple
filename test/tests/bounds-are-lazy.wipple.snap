@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `T` (TraitDefinition):
-  assigned type `value -> ()`
   grouped with `value -> ()`
   has 1 instances
   has definition constraints
@@ -10,38 +9,29 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `value -> ()` (FunctionType):
-  assigned type `value -> ()`
   grouped with `T`
   has type `value -> ()`
   is a type
-  type is annotated
 
 `()` (UnitType):
-  assigned type `()`
   has type `()`
   is a type
-  type is annotated
 
 `instance (T Number)` (InstanceDefinition):
-  assigned type `Number -> ()`
   grouped with `value -> ()`, `do {⋯}`
   has definition constraints
   has type `Number -> ()`
@@ -49,26 +39,21 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `Number` (NamedType):
-  assigned type `Number`
   grouped with `value`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
-  type is annotated
 
 `do {⋯}` (DoExpression):
-  assigned type `Number -> ()`
   grouped with `_ -> ()`, `instance (T Number)`
   has type `Number -> ()`
   is an expression
 
 `{⋯}` (BlockExpression):
-  assigned type `{Number -> ()}`
   has type `{Number -> ()}`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -76,7 +61,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show "should appear second"` (ExpressionStatement):
-  assigned type `()`
   grouped with `show "should appear second"`
   has type `()`
 
@@ -86,36 +70,30 @@ Facts (layer 2):
   is an expression
 
 `"should appear second"` (StringExpression):
-  assigned type `String`
   grouped with `"should appear second"`, `value`
   has type `String`
   is an expression
 
 `_` (WildcardPattern):
-  assigned type `Number`
   grouped with `value`
   has type `Number`
   is a pattern
 
 `_ -> ()` (ExpressionStatement):
-  assigned type `Number -> ()`
   grouped with `_ -> ()`, `do {⋯}`
   has type `Number -> ()`
 
 `_ -> ()` (FunctionExpression):
-  assigned type `Number -> ()`
   grouped with `_ -> ()`
   has type `Number -> ()`
   is an expression
 
 `()` (UnitExpression):
-  assigned type `()`
   grouped with `()`
   has type `()`
   is an expression
 
 `f` (ConstantDefinition):
-  assigned type `value -> ()`
   grouped with `value -> ()`, `value -> do {⋯}`
   has bounds
   has definition constraints
@@ -124,27 +102,21 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `value -> ()` (FunctionType):
-  assigned type `value -> ()`
   grouped with `f`
   has type `value -> ()`
   is a type
-  type is annotated
 
 `()` (UnitType):
-  assigned type `()`
   grouped with `do {⋯}`
   has type `()`
   is a type
-  type is annotated
 
 `(T value)` (BoundConstraint):
   has bound(s) `T` `value` (resolved as `(T value)`)
@@ -152,27 +124,22 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `f : value -> do {⋯}` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `value` (VariablePattern):
-  assigned type `value`
   grouped with `value`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `value -> do {⋯}` (FunctionExpression):
-  assigned type `value -> ()`
   grouped with `f`
   has type `value -> ()`
   is an expression
@@ -183,13 +150,11 @@ Facts (layer 2):
   is an expression
 
 `{⋯}` (BlockExpression):
-  assigned type `{()}`
   captures `value`
   has type `{()}`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -197,7 +162,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show "should appear first"` (ExpressionStatement):
-  assigned type `()`
   grouped with `show "should appear first"`
   has type `()`
 
@@ -207,13 +171,11 @@ Facts (layer 2):
   is an expression
 
 `"should appear first"` (StringExpression):
-  assigned type `String`
   grouped with `"should appear first"`, `value`
   has type `String`
   is an expression
 
 `T` (ConstructorExpression):
-  assigned type `value -> ()`
   grouped with `value -> ()`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value -> ()`
@@ -221,7 +183,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `T value` (ExpressionStatement):
-  assigned type `()`
   grouped with `T value`, `do {⋯}`
   has type `()`
 
@@ -231,15 +192,12 @@ Facts (layer 2):
   is an expression
 
 `value` (VariableExpression):
-  assigned type `value`
   grouped with `value`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `f` (VariableExpression):
-  assigned type `Number -> ()`
   grouped with `value -> ()`
   has bound(s) `T` `Number` (resolved as `instance (T Number)`)
   has type `Number -> ()`
@@ -247,7 +205,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `f`
 
 `f 123` (ExpressionStatement):
-  assigned type `()`
   grouped with `f 123`
   has type `()`
 
@@ -257,7 +214,6 @@ Facts (layer 2):
   is an expression
 
 `123` (NumberExpression):
-  assigned type `Number`
   grouped with `123`, `value`
   has type `Number`
   is an expression

@@ -1,30 +1,25 @@
 Facts (layer 2):
 
 `"abc"` (VisitAs):
-  assigned type `String`
   grouped with `element`, `"abc"`, `element`
   has type `String`
   is an expression
 
 `"abc" . replicate 3` (VisitAs):
-  assigned type `Sequence String`
   grouped with `container`, `replicate 3`, `container`
   has type `Sequence String`
   is an expression
 
 `"abc" . replicate 3 . each show` (ExpressionStatement):
-  assigned type `()`
   grouped with `"abc" . replicate 3 . each show`
   has type `()`
 
 `"abc" . replicate 3 . each show` (OperatorExpression):
-  assigned type `()`
   grouped with `each show`, `"abc" . replicate 3 . each show`
   has type `()`
   is an expression
 
 `replicate` (VariableExpression):
-  assigned type `Number -> String -> Sequence String`
   grouped with `(n :: Number) -> element -> Sequence element`
   has type `Number -> String -> Sequence String`
   is an expression
@@ -36,19 +31,16 @@ Facts (layer 2):
   is an expression
 
 `replicate 3` (VisitAs):
-  assigned type `String -> Sequence String`
   grouped with `element -> Sequence element`
   has type `String -> Sequence String`
   is an expression
 
 `3` (NumberExpression):
-  assigned type `Number`
   grouped with `3`, `n :: Number`
   has type `Number`
   is an expression
 
 `each` (VariableExpression):
-  assigned type `(String -> ()) -> (Sequence String) -> ()`
   grouped with `(action :: (element -> ())) -> container -> ()`
   has bound(s) `As-Sequence` `(Sequence String)` `String` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `(String -> ()) -> (Sequence String) -> ()`
@@ -61,13 +53,11 @@ Facts (layer 2):
   is an expression
 
 `each show` (VisitAs):
-  assigned type `(Sequence String) -> ()`
   grouped with `container -> ()`
   has type `(Sequence String) -> ()`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `value -> ()`, `action :: (element -> ())`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`

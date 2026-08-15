@@ -197,7 +197,7 @@ impl Ide {
             && let Some(Defined(definition)) = self.result.db.get(definition_node)
             && definition.downcast_ref::<VariableDefinition>().is_none()
         {
-            let mut ctx = RenderCtx::with_filter(&default_filter);
+            let mut ctx = RenderCtx::new(&default_filter, Vec::new());
 
             if let Some(span) = definition.full_span() {
                 ctx.code(span.source.as_str());
@@ -212,7 +212,7 @@ impl Ide {
                 is_code: true,
             });
         } else if let Some(ty) = wipple_queries::has_type(&self.query_ctx(), node) {
-            let mut ctx = RenderCtx::with_filter(&default_filter);
+            let mut ctx = RenderCtx::new(&default_filter, Vec::new());
 
             if definition_node.is_some() {
                 ctx.node(node);
@@ -230,7 +230,7 @@ impl Ide {
         }
 
         for bound in wipple_queries::resolved_bounds(&self.query_ctx(), node) {
-            let mut ctx = RenderCtx::with_filter(&default_filter);
+            let mut ctx = RenderCtx::new(&default_filter, Vec::new());
             ctx.node(bound.instance.node);
 
             let (rendered, _) = ctx.finish(&self.result.db, |db, segment| segment.plain_text(db));
@@ -393,7 +393,7 @@ impl Ide {
                     return None;
                 };
 
-                let mut ctx = RenderCtx::with_filter(&default_filter);
+                let mut ctx = RenderCtx::new(&default_filter, Vec::new());
                 ctx.node(node);
 
                 let (rendered, _) =
@@ -441,7 +441,7 @@ impl Ide {
     fn comments(&self, node: Node) -> Option<String> {
         let comments = wipple_queries::comments(&self.query_ctx(), node)?;
 
-        let mut writer = FeedbackWriter::with_filter(&default_filter);
+        let mut writer = FeedbackWriter::new(&default_filter, Vec::new());
         writer.comments(&self.result.db, &comments);
 
         let feedback = writer.finish(&self.result.db, |db, segment| {

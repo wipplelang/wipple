@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `T1` (TraitDefinition):
-  assigned type `a -> b`
   grouped with `a -> b`
   has 1 instances
   has definition constraints
@@ -10,50 +9,39 @@ Facts (layer 2):
   is a definition
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`
   has type `a`
   is a definition
   is a type
   resolved to 1 definition(s): `a`
-  type is annotated
 
 `b` (TypeParameter):
-  assigned type `b`
   grouped with `b`
   has type `b`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
-  type is annotated
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
   resolved to type parameter `a`
-  type is annotated
 
 `a -> b` (FunctionType):
-  assigned type `a -> b`
   grouped with `T1`
   has type `a -> b`
   is a type
-  type is annotated
 
 `b` (TypeParameter):
-  assigned type `b`
   grouped with `b`
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
   resolved to type parameter `b`
-  type is annotated
 
 `instance (T1 () ())` (InstanceDefinition):
-  assigned type `() -> ()`
   grouped with `a -> b`, `() -> ()`
   has definition constraints
   has type `() -> ()`
@@ -61,39 +49,31 @@ Facts (layer 2):
   resolved to 1 definition(s): `T1`
 
 `()` (UnitType):
-  assigned type `()`
   grouped with `a`
   has type `()`
   is a type
-  type is annotated
 
 `()` (UnitType):
-  assigned type `()`
   grouped with `b`
   has type `()`
   is a type
-  type is annotated
 
 `()` (UnitPattern):
-  assigned type `()`
   grouped with `a`
   has type `()`
   is a pattern
 
 `() -> ()` (FunctionExpression):
-  assigned type `() -> ()`
   grouped with `instance (T1 () ())`
   has type `() -> ()`
   is an expression
 
 `()` (UnitExpression):
-  assigned type `()`
   grouped with `b`
   has type `()`
   is an expression
 
 `T2` (TraitDefinition):
-  assigned type `a -> ()`
   grouped with `a -> ()`
   has 1 instances
   has definition constraints
@@ -102,38 +82,29 @@ Facts (layer 2):
   is a definition
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`
   has type `a`
   is a definition
   is a type
   resolved to 1 definition(s): `a`
-  type is annotated
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
   resolved to type parameter `a`
-  type is annotated
 
 `a -> ()` (FunctionType):
-  assigned type `a -> ()`
   grouped with `T2`
   has type `a -> ()`
   is a type
-  type is annotated
 
 `()` (UnitType):
-  assigned type `()`
   has type `()`
   is a type
-  type is annotated
 
 `instance (T2 a) where (T1 a b)` (InstanceDefinition):
-  assigned type `a -> ()`
   grouped with `a -> ()`, `x -> do {_ : T1 x}`
   has bounds
   has definition constraints
@@ -143,13 +114,11 @@ Facts (layer 2):
   resolved to 1 definition(s): `T2`
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`, `a`
   has type `a`
   is a definition
   is a type
   resolved to 1 definition(s): `a`
-  type is annotated
 
 `(T1 a b)` (BoundConstraint):
   has bound(s) `T1` `a` `b` (resolved as `(T1 a b)`)
@@ -157,32 +126,26 @@ Facts (layer 2):
   resolved to 1 definition(s): `T1`
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`, `a`
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
   resolved to type parameter `a`
-  type is annotated
 
 `b` (TypeParameter):
-  assigned type `b`
   grouped with `b`
   has type `b`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
-  type is annotated
 
 `x` (VariablePattern):
-  assigned type `a`
   grouped with `x`, `a`
   has type `a`
   is a definition
   is a pattern
 
 `x -> do {_ : T1 x}` (FunctionExpression):
-  assigned type `a -> ()`
   grouped with `instance (T2 a) where (T1 a b)`
   has type `a -> ()`
   is an expression
@@ -193,24 +156,20 @@ Facts (layer 2):
   is an expression
 
 `{_ : T1 x}` (BlockExpression):
-  assigned type `{()}`
   captures `x`
   has type `{()}`
   is an expression
 
 `_` (WildcardPattern):
-  assigned type `b`
   grouped with `T1 x`, `T1 x`
   has type `b`
   is a pattern
 
 `_ : T1 x` (AssignmentStatement):
-  assigned type `()`
   grouped with `do {_ : T1 x}`
   has type `()`
 
 `T1` (ConstructorExpression):
-  assigned type `a -> b`
   grouped with `a -> b`
   has bound(s) `T1` `a` `b` (resolved as `(T1 a b)`)
   has type `a -> b`
@@ -223,15 +182,12 @@ Facts (layer 2):
   is an expression
 
 `x` (VariableExpression):
-  assigned type `a`
   grouped with `x`, `a`
   has type `a`
   is an expression
   resolved to 1 definition(s): `x`
-  type is annotated
 
 `T2` (ConstructorExpression):
-  assigned type `() -> ()`
   grouped with `a -> ()`
   has bound(s) `T2` `()` (resolved as `instance (T2 a) where (T1 a b)`), `T1` `()` `()` (resolved as `instance (T1 () ())`)
   has type `() -> ()`
@@ -239,7 +195,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `T2`
 
 `T2 ()` (ExpressionStatement):
-  assigned type `()`
   grouped with `T2 ()`
   has type `()`
 
@@ -249,13 +204,11 @@ Facts (layer 2):
   is an expression
 
 `()` (UnitExpression):
-  assigned type `()`
   grouped with `a`
   has type `()`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -263,7 +216,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show "done"` (ExpressionStatement):
-  assigned type `()`
   grouped with `show "done"`
   has type `()`
 
@@ -273,7 +225,6 @@ Facts (layer 2):
   is an expression
 
 `"done"` (StringExpression):
-  assigned type `String`
   grouped with `"done"`, `value`
   has type `String`
   is an expression

@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -9,7 +8,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show "Hello, world!"` (ExpressionStatement):
-  assigned type `()`
   grouped with `show "Hello, world!"`
   has type `()`
 
@@ -19,7 +17,6 @@ Facts (layer 2):
   is an expression
 
 `"Hello, world!"` (StringExpression):
-  assigned type `String`
   grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression

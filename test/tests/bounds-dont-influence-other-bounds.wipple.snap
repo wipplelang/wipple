@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `T` (TraitDefinition):
-  assigned type `value -> ()`
   grouped with `value -> ()`
   has 2 instances
   has definition constraints
@@ -10,38 +9,29 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `value -> ()` (FunctionType):
-  assigned type `value -> ()`
   grouped with `T`
   has type `value -> ()`
   is a type
-  type is annotated
 
 `()` (UnitType):
-  assigned type `()`
   has type `()`
   is a type
-  type is annotated
 
 `instance (T Number)` (InstanceDefinition):
-  assigned type `Number -> ()`
   grouped with `value -> ()`, `_ -> ()`
   has definition constraints
   has type `Number -> ()`
@@ -49,33 +39,27 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `Number` (NamedType):
-  assigned type `Number`
   grouped with `value`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
-  type is annotated
 
 `_` (WildcardPattern):
-  assigned type `Number`
   grouped with `value`
   has type `Number`
   is a pattern
 
 `_ -> ()` (FunctionExpression):
-  assigned type `Number -> ()`
   grouped with `instance (T Number)`
   has type `Number -> ()`
   is an expression
 
 `()` (UnitExpression):
-  assigned type `()`
   grouped with `()`
   has type `()`
   is an expression
 
 `instance (T String)` (InstanceDefinition):
-  assigned type `String -> ()`
   grouped with `value -> ()`, `_ -> ()`
   has definition constraints
   has type `String -> ()`
@@ -83,33 +67,27 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `String` (NamedType):
-  assigned type `String`
   grouped with `value`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
-  type is annotated
 
 `_` (WildcardPattern):
-  assigned type `String`
   grouped with `value`
   has type `String`
   is a pattern
 
 `_ -> ()` (FunctionExpression):
-  assigned type `String -> ()`
   grouped with `instance (T String)`
   has type `String -> ()`
   is an expression
 
 `()` (UnitExpression):
-  assigned type `()`
   grouped with `()`
   has type `()`
   is an expression
 
 `f` (ConstantDefinition):
-  assigned type `(a; b)`
   grouped with `a; b`, `todo`
   has bounds
   has definition constraints
@@ -118,29 +96,23 @@ Facts (layer 2):
   is a definition
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`
   has type `a`
   is a definition
   is a type
   resolved to 1 definition(s): `a`
-  type is annotated
 
 `a; b` (TupleType):
-  assigned type `(a; b)`
   grouped with `f`
   has type `(a; b)`
   is a type
-  type is annotated
 
 `b` (TypeParameter):
-  assigned type `b`
   grouped with `b`
   has type `b`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
-  type is annotated
 
 `(T a)` (BoundConstraint):
   has bound(s) `T` `a` (resolved as `(T a)`)
@@ -148,13 +120,11 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`, `b`, `b`
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
   resolved to type parameter `a`
-  type is annotated
 
 `(T b)` (BoundConstraint):
   has bound(s) `T` `b` (resolved as `(T b)`)
@@ -162,59 +132,48 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `b` (TypeParameter):
-  assigned type `b`
   grouped with `b`, `a`, `a`
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
   resolved to type parameter `b`
-  type is annotated
 
 `f : todo` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `todo` (VariableExpression):
-  assigned type `(a; b)`
-  grouped with `value`, `f`
+  grouped with `value`, `value`, `f`
   has type `(a; b)`
   is an expression
   resolved to 1 definition(s): `todo`
 
 `-- `B` should not be inferred to be `Number`
 (f :: (Number; _))` (ExpressionStatement):
-  assigned type `(Number; _)`
   grouped with `f :: (Number; _)`
   has type `(Number; _)`
 
 `f` (VariableExpression):
-  assigned type `(Number; _)`
-  grouped with `a; b`, `Number; _`, `f :: (Number; _)`
+  grouped with `a; b`, `Number; _`
   has bound(s) `T` `Number` (resolved as `instance (T Number)`)
   has type `(Number; _)`
   is an expression
   resolved to 1 definition(s): `f`
 
 `Number` (NamedType):
-  assigned type `Number`
   grouped with `a`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
-  type is annotated
 
 `Number; _` (TupleType):
-  assigned type `(Number; _)`
-  grouped with `f`
+  grouped with `f`, `f :: (Number; _)`
   has type `(Number; _)`
   is a type
-  type is annotated
 
 `_` (PlaceholderType):
   grouped with `b`
   is a type
   missing type (group: `_`, `b`, `b`, `b`)
-  type is annotated
 
 
 

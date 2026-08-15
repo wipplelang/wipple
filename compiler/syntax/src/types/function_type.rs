@@ -54,20 +54,20 @@ impl Visit for FunctionType {
         let inputs = self
             .inputs
             .into_iter()
-            .map(|input| visitor.visit(db, &input))
+            .map(|input| visitor.annotating(None, |visitor| visitor.visit(db, &input)))
             .collect::<Vec<_>>();
 
         for &input in &inputs {
             db.graph.edge(input, node, "input");
         }
 
-        let output = visitor.visit(db, &self.output);
+        let output = visitor.annotating(None, |visitor| visitor.visit(db, &self.output));
         db.graph.edge(output, node, "output");
 
         visitor.constraint(
             db,
             TyConstraint::new(
-                node,
+                visitor.current_annotating.unwrap_or(node),
                 Ty::Constructed(ConstructedTy::function(inputs.clone(), output)),
             ),
         );

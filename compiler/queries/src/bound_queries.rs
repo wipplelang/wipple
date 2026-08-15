@@ -11,8 +11,8 @@ pub fn resolved_bounds<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<&'a ResolvedBou
     };
 
     bounds
-        .iter()
-        .filter_map(|(_, result)| result.as_ref().ok())
+        .values()
+        .filter_map(|result| result.as_ref().ok())
         .collect()
 }
 

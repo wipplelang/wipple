@@ -1,12 +1,10 @@
 Facts (layer 2):
 
 `show` (ExpressionStatement):
-  assigned type `_ -> ()`
   grouped with `show`
   has type `_ -> ()`
 
 `show` (VariableExpression):
-  assigned type `_ -> ()`
   grouped with `value -> ()`, `show`
   has type `_ -> ()`
   is an expression

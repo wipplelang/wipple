@@ -3,7 +3,7 @@ use crate::{
     span::Str,
     typecheck::{
         groups::Typed,
-        instantiate::{Instantiated, InstantiatedParameters},
+        instantiate::{Instantiated, InstantiatedTypes},
         solver::GroupedWith,
     },
     visit::{TypeParameters, definitions::Defined},
@@ -16,17 +16,6 @@ pub struct Link {
     pub node: Node,
     pub force_type: bool,
     pub related: Vec<Node>,
-}
-
-pub fn get_linked_nodes(db: &Db, definition_node: Node, source_node: Node) -> BTreeSet<Node> {
-    let Some(TypeParameters(parameters)) = db.get(definition_node) else {
-        return BTreeSet::new();
-    };
-
-    parameters
-        .iter()
-        .filter_map(|&parameter| instantiated_node_for(db, parameter, source_node))
-        .collect()
 }
 
 pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<Str, Link> {
@@ -66,7 +55,7 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
     }
 
     for (name, parameter_node) in nodes {
-        if let Some(instantiated_node) = instantiated_node_for(db, parameter_node, source_node)
+        if let Some(instantiated_node) = linked_node_for(db, parameter_node, source_node)
             && let Some(Typed(Some(group))) = db.get(instantiated_node)
         {
             links.insert(
@@ -74,7 +63,7 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
                 Link {
                     node: instantiated_node,
                     force_type: db.contains::<Instantiated>(instantiated_node),
-                    related: group.nodes.iter().copied().collect(),
+                    related: group.nodes().collect(),
                 },
             );
         }
@@ -83,10 +72,10 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
     links
 }
 
-fn instantiated_node_for(db: &Db, parameter: Node, source_node: Node) -> Option<Node> {
-    let InstantiatedParameters(parameters) = db.get(source_node).cloned().unwrap_or_default();
+fn linked_node_for(db: &Db, parameter: Node, source_node: Node) -> Option<Node> {
+    let InstantiatedTypes(instantiated_tys) = db.get(source_node).cloned().unwrap_or_default();
 
-    let instantiated_node = parameters.get(&parameter).copied()?;
+    let instantiated_node = instantiated_tys.get(&parameter).copied()?;
 
     // Collect all nodes related to the instantiated node
     let mut paths = BTreeSet::from([vec![instantiated_node]]);

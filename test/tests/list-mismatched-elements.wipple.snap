@@ -1,63 +1,53 @@
 Facts (layer 2):
 
 `my-list` (VariablePattern):
-  assigned type `List (() or String or Number)`
   grouped with `1, "hi", ()`, `1, "hi", ()`, `my-list`
-  has type `List (() or String or Number)`
+  has type `List (String or () or Number)`
   is a definition
   is a pattern
 
 `my-list : 1, "hi", ()` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `1` (VisitAs):
-  assigned type `() or String or Number`
-  grouped with `_`, `1`, `element`
-  has type `()` or `String` or `Number`
+  grouped with `1`, `element`
+  has type `String` or `()` or `Number`
   is an expression
 
 `1, "hi", ()` (CollectionExpression):
   grouped with `()`, `my-list`, `my-list`
-  has type `List (() or String or Number)`
+  has type `List (String or () or Number)`
   is an expression
 
 `"hi"` (VisitAs):
-  assigned type `() or String or Number`
-  grouped with `_`, `"hi"`, `element`
-  has type `()` or `String` or `Number`
+  grouped with `"hi"`, `element`
+  has type `String` or `()` or `Number`
   is an expression
 
 `()` (VisitAs):
-  assigned type `() or String or Number`
-  grouped with `_`, `element`
-  has type `()` or `String` or `Number`
+  grouped with `element`
+  has type `String` or `()` or `Number`
   is an expression
 
 `my-list` (VisitAs):
-  assigned type `List (() or String or Number)`
   grouped with `container`, `my-list`, `container`
-  has type `List (() or String or Number)`
+  has type `List (String or () or Number)`
   is an expression
   resolved to 1 definition(s): `my-list`
-  type is annotated
 
 `my-list . each show` (ExpressionStatement):
-  assigned type `()`
   grouped with `my-list . each show`
   has type `()`
 
 `my-list . each show` (OperatorExpression):
-  assigned type `()`
   grouped with `each show`, `my-list . each show`
   has type `()`
   is an expression
 
 `each` (VariableExpression):
-  assigned type `((() or String or Number) -> ()) -> (List (() or String or Number)) -> ()`
   grouped with `(action :: (element -> ())) -> container -> ()`
-  has bound(s) `As-Sequence` `(List (() or String or Number))` `(() or String or Number)` (resolved as `instance (As-Sequence (List element) element)`)
-  has type `((() or String or Number) -> ()) -> (List (() or String or Number)) -> ()`
+  has bound(s) `As-Sequence` `(List (String or () or Number))` `(String or () or Number)` (resolved as `instance (As-Sequence (List element) element)`)
+  has type `((String or () or Number) -> ()) -> (List (String or () or Number)) -> ()`
   is an expression
   resolved to 1 definition(s): `each`
 
@@ -67,16 +57,14 @@ Facts (layer 2):
   is an expression
 
 `each show` (VisitAs):
-  assigned type `(List (() or String or Number)) -> ()`
   grouped with `container -> ()`
-  has type `(List (() or String or Number)) -> ()`
+  has type `(List (String or () or Number)) -> ()`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `(() or String or Number) -> ()`
   grouped with `value -> ()`, `action :: (element -> ())`
-  has bound(s) `Describe` `(() or String or Number)` (resolved as `default error instance (Describe value)`)
-  has type `(() or String or Number) -> ()`
+  has bound(s) `Describe` `(String or () or Number)` (resolved as `instance (Describe Number)`)
+  has type `(String or () or Number) -> ()`
   is an expression
   resolved to 1 definition(s): `show`
 
@@ -84,58 +72,18 @@ Facts (layer 2):
 
 Feedback:
 
-`1` (conflicting-types)
-
-  `1` is a `()`, `String`, or a `Number`, but it can only be one of these.
-  
-  `1` must be the same type as `"hi"` and `()`; double-check these.
-
-  1. `"hi"`: `"hi"` is a `String`.
-
-  2. `1`: `1` is a `Number`.
-
-  3. `each`: `each` calls `show` for each `() or String or Number` in `my-list`. This requires `As-Sequence` `(List (() or String or Number))` `(() or String or Number)`.
-
-  4. `show`: `show` displays `() or String or Number` on the screen. This requires `Describe` `(() or String or Number)`.
-
-  5. `my-list`: `my-list` is `1, "hi", ()`. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List (() or String or Number)`.
-
-  (2 -> error, 2 -> 1, 3 -> 1, 4 -> 1, 4 -> 3, 5 -> 3)
-
-
-`"hi"` (conflicting-types)
-
-  `"hi"` is a `()`, `String`, or a `Number`, but it can only be one of these.
-  
-  `"hi"` must be the same type as `1` and `()`; double-check these.
-
-  1. `"hi"`: `"hi"` is a `String`.
-
-  2. `1`: `1` is a `Number`.
-
-  3. `each`: `each` calls `show` for each `() or String or Number` in `my-list`. This requires `As-Sequence` `(List (() or String or Number))` `(() or String or Number)`.
-
-  4. `show`: `show` displays `() or String or Number` on the screen. This requires `Describe` `(() or String or Number)`.
-
-  5. `my-list`: `my-list` is `1, "hi", ()`. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List (() or String or Number)`.
-
-  (1 -> error, 2 -> 1, 3 -> 1, 4 -> 1, 4 -> 3, 5 -> 3)
-
-
 `()` (conflicting-types)
 
-  `()` is a `()`, `String`, or a `Number`, but it can only be one of these.
-  
-  `()` must be the same type as `1` and `"hi"`; double-check these.
+  `()` is a `String`, `()`, or a `Number`, but it can only be one of these.
 
-  1. `"hi"`: `"hi"` is a `String`.
+  1. `1, "hi", ()`: `1, "hi", ()` is a collection of `String` elements. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List String`.
 
-  2. `1`: `1` is a `Number`.
+  2. `my-list`: `my-list` is `1, "hi", ()`. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List String`.
 
-  3. `each`: `each` calls `show` for each `() or String or Number` in `my-list`. This requires `As-Sequence` `(List (() or String or Number))` `(() or String or Number)`.
+  3. `each`: `each` calls `show` for each `String` in `my-list`. This means `each` is a `(String -> ()) -> (List String) -> ()`. This requires `As-Sequence` `(List String)` `String`.
 
-  4. `show`: `show` displays `() or String or Number` on the screen. This requires `Describe` `(() or String or Number)`.
+  4. `show`: `show` displays `String` on the screen. This means `show` is a `String -> ()`. This requires `Describe` `String`.
 
-  5. `my-list`: `my-list` is `1, "hi", ()`. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List (() or String or Number)`.
+  5. `my-list`: `my-list` is a `List String`. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List String`.
 
-  (2 -> 1, 3 -> 1, 4 -> 1, 4 -> 3, 5 -> 3, 1 -> error)
+  (2 -> 1, 3 -> 1, 4 -> 1, 4 -> 3, 5 -> 1, 5 -> 3, 1 -> error)

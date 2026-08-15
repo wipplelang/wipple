@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -9,7 +8,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (Some 42 is Some _)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (Some 42 is Some _)`
   has type `()`
 
@@ -19,7 +17,6 @@ Facts (layer 2):
   is an expression
 
 `Some` (ConstructorExpression):
-  assigned type `Number -> Maybe Number`
   has type `Number -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `Some value`
@@ -30,46 +27,39 @@ Facts (layer 2):
   is an expression
 
 `Some 42 is Some _` (IsExpression):
-  assigned type `Boolean`
   grouped with `Some 42 is Some _`, `Some 42 is Some _`, `value`
   has type `Boolean`
   is an expression
 
 `Some 42 is Some _` (ConstructorExpression):
-  assigned type `Boolean`
   grouped with `Boolean`, `Some 42 is Some _`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `Some 42 is Some _` (ConstructorExpression):
-  assigned type `Boolean`
   grouped with `Boolean`, `Some 42 is Some _`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `42` (NumberExpression):
-  assigned type `Number`
   grouped with `42`, `value`
   has type `Number`
   is an expression
 
 `Some _` (ConstructorPattern):
-  assigned type `Maybe Number`
   grouped with `Some 42`, `Maybe`
   has type `Maybe Number`
   is a pattern
   resolved to 1 definition(s): `Some value`
 
 `_` (WildcardPattern):
-  assigned type `Number`
   grouped with `_`
   has type `Number`
   is a pattern
 
 `show` (VariableExpression):
-  assigned type `Boolean -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -77,7 +67,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (Some 42 is None)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (Some 42 is None)`
   has type `()`
 
@@ -87,7 +76,6 @@ Facts (layer 2):
   is an expression
 
 `Some` (ConstructorExpression):
-  assigned type `Number -> Maybe Number`
   has type `Number -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `Some value`
@@ -98,33 +86,28 @@ Facts (layer 2):
   is an expression
 
 `Some 42 is None` (IsExpression):
-  assigned type `Boolean`
   grouped with `Some 42 is None`, `Some 42 is None`, `value`
   has type `Boolean`
   is an expression
 
 `Some 42 is None` (ConstructorExpression):
-  assigned type `Boolean`
   grouped with `Boolean`, `Some 42 is None`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `Some 42 is None` (ConstructorExpression):
-  assigned type `Boolean`
   grouped with `Boolean`, `Some 42 is None`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `42` (NumberExpression):
-  assigned type `Number`
   grouped with `42`, `value`
   has type `Number`
   is an expression
 
 `None` (ConstructorPattern):
-  assigned type `Maybe Number`
   grouped with `Some 42`, `Maybe`
   has type `Maybe Number`
   is a pattern

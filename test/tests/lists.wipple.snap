@@ -1,19 +1,16 @@
 Facts (layer 2):
 
 `my-list` (VariablePattern):
-  assigned type `List Number`
   grouped with `1, 2, 3`, `1, 2, 3`, `my-list`, `my-list`, `my-list`, `my-list`, `my-list`
   has type `List Number`
   is a definition
   is a pattern
 
 `my-list : 1, 2, 3` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `1` (VisitAs):
-  assigned type `Number`
-  grouped with `_`, `1`, `element`
+  grouped with `1`, `element`
   has type `Number`
   is an expression
 
@@ -23,19 +20,16 @@ Facts (layer 2):
   is an expression
 
 `2` (VisitAs):
-  assigned type `Number`
-  grouped with `_`, `2`, `element`
+  grouped with `2`, `element`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
-  assigned type `Number`
-  grouped with `_`, `3`, `element`
+  grouped with `3`, `element`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `(Maybe Number) -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe Number) -> ()`
@@ -43,7 +37,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (my-list . first)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (my-list . first)`
   has type `()`
 
@@ -53,15 +46,12 @@ Facts (layer 2):
   is an expression
 
 `my-list` (VisitAs):
-  assigned type `List Number`
   grouped with `list :: (List element)`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
-  type is annotated
 
 `my-list . first` (OperatorExpression):
-  assigned type `Maybe Number`
   grouped with `first`, `value`
   has type `Maybe Number`
   is an expression
@@ -72,14 +62,12 @@ Facts (layer 2):
   is an expression
 
 `first` (VisitAs):
-  assigned type `(List Number) -> Maybe Number`
   grouped with `(list :: (List element)) -> Maybe element`
   has type `(List Number) -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `first`
 
 `show` (VariableExpression):
-  assigned type `(Maybe Number) -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe Number) -> ()`
@@ -87,7 +75,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (my-list . last)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (my-list . last)`
   has type `()`
 
@@ -97,15 +84,12 @@ Facts (layer 2):
   is an expression
 
 `my-list` (VisitAs):
-  assigned type `List Number`
   grouped with `list :: (List element)`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
-  type is annotated
 
 `my-list . last` (OperatorExpression):
-  assigned type `Maybe Number`
   grouped with `last`, `value`
   has type `Maybe Number`
   is an expression
@@ -116,14 +100,12 @@ Facts (layer 2):
   is an expression
 
 `last` (VisitAs):
-  assigned type `(List Number) -> Maybe Number`
   grouped with `(list :: (List element)) -> Maybe element`
   has type `(List Number) -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `last`
 
 `show` (VariableExpression):
-  assigned type `(Maybe Number) -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe Number) -> ()`
@@ -131,7 +113,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show ((my-list . initial) or unreachable . last)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show ((my-list . initial) or unreachable . last)`
   has type `()`
 
@@ -141,21 +122,17 @@ Facts (layer 2):
   is an expression
 
 `my-list` (VisitAs):
-  assigned type `List Number`
   grouped with `list :: (List element)`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
-  type is annotated
 
 `my-list . initial` (VisitAs):
-  assigned type `Maybe (List Number)`
   grouped with `initial`, `left`
   has type `Maybe (List Number)`
   is an expression
 
 `my-list . initial) or unreachable` (VisitAs):
-  assigned type `List Number`
   grouped with `list :: (List element)`, `my-list . initial) or unreachable`
   has type `List Number`
   is an expression
@@ -166,7 +143,6 @@ Facts (layer 2):
   is an expression
 
 `my-list . initial) or unreachable` (ConstructorExpression):
-  assigned type `(Maybe (List Number)) {List Number} -> List Number`
   grouped with `left {right} -> output`
   has bound(s) `Or` `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)`)
   has type `(Maybe (List Number)) {List Number} -> List Number`
@@ -174,7 +150,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Or`
 
 `my-list . initial) or unreachable . last` (OperatorExpression):
-  assigned type `Maybe Number`
   grouped with `last`, `value`
   has type `Maybe Number`
   is an expression
@@ -185,27 +160,23 @@ Facts (layer 2):
   is an expression
 
 `initial` (VisitAs):
-  assigned type `(List Number) -> Maybe (List Number)`
   grouped with `(list :: (List element)) -> Maybe (List element)`
   has type `(List Number) -> Maybe (List Number)`
   is an expression
   resolved to 1 definition(s): `initial`
 
 `unreachable` (VisitAs):
-  assigned type `List Number`
-  grouped with `value`, `unreachable`, `unreachable`, `right`
+  grouped with `value`, `value`, `unreachable`, `unreachable`, `right`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `unreachable`
 
 `unreachable` (VisitAs):
-  assigned type `{List Number}`
   grouped with `{right}`
   has type `{List Number}`
   is an expression
 
 `unreachable` (ExpressionStatement):
-  assigned type `List Number`
   grouped with `unreachable`, `unreachable`
   has type `List Number`
 
@@ -215,14 +186,12 @@ Facts (layer 2):
   is an expression
 
 `last` (VisitAs):
-  assigned type `(List Number) -> Maybe Number`
   grouped with `(list :: (List element)) -> Maybe element`
   has type `(List Number) -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `last`
 
 `show` (VariableExpression):
-  assigned type `(Maybe Number) -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe Number) -> ()`
@@ -230,7 +199,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show ((my-list . tail) or unreachable . first)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show ((my-list . tail) or unreachable . first)`
   has type `()`
 
@@ -240,21 +208,17 @@ Facts (layer 2):
   is an expression
 
 `my-list` (VisitAs):
-  assigned type `List Number`
   grouped with `list :: (List element)`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
-  type is annotated
 
 `my-list . tail` (VisitAs):
-  assigned type `Maybe (List Number)`
   grouped with `tail`, `left`
   has type `Maybe (List Number)`
   is an expression
 
 `my-list . tail) or unreachable` (VisitAs):
-  assigned type `List Number`
   grouped with `list :: (List element)`, `my-list . tail) or unreachable`
   has type `List Number`
   is an expression
@@ -265,7 +229,6 @@ Facts (layer 2):
   is an expression
 
 `my-list . tail) or unreachable` (ConstructorExpression):
-  assigned type `(Maybe (List Number)) {List Number} -> List Number`
   grouped with `left {right} -> output`
   has bound(s) `Or` `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)`)
   has type `(Maybe (List Number)) {List Number} -> List Number`
@@ -273,7 +236,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Or`
 
 `my-list . tail) or unreachable . first` (OperatorExpression):
-  assigned type `Maybe Number`
   grouped with `first`, `value`
   has type `Maybe Number`
   is an expression
@@ -284,27 +246,23 @@ Facts (layer 2):
   is an expression
 
 `tail` (VisitAs):
-  assigned type `(List Number) -> Maybe (List Number)`
   grouped with `(list :: (List element)) -> Maybe (List element)`
   has type `(List Number) -> Maybe (List Number)`
   is an expression
   resolved to 1 definition(s): `tail`
 
 `unreachable` (VisitAs):
-  assigned type `List Number`
-  grouped with `value`, `unreachable`, `unreachable`, `right`
+  grouped with `value`, `value`, `unreachable`, `unreachable`, `right`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `unreachable`
 
 `unreachable` (VisitAs):
-  assigned type `{List Number}`
   grouped with `{right}`
   has type `{List Number}`
   is an expression
 
 `unreachable` (ExpressionStatement):
-  assigned type `List Number`
   grouped with `unreachable`, `unreachable`
   has type `List Number`
 
@@ -314,14 +272,12 @@ Facts (layer 2):
   is an expression
 
 `first` (VisitAs):
-  assigned type `(List Number) -> Maybe Number`
   grouped with `(list :: (List element)) -> Maybe element`
   has type `(List Number) -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `first`
 
 `show` (VariableExpression):
-  assigned type `(Maybe Number) -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe Number) -> ()`
@@ -329,7 +285,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (my-list . nth 1)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (my-list . nth 1)`
   has type `()`
 
@@ -339,21 +294,17 @@ Facts (layer 2):
   is an expression
 
 `my-list` (VisitAs):
-  assigned type `List Number`
   grouped with `list :: (List element)`, `my-list`, `list :: (List element)`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
-  type is annotated
 
 `my-list . nth 1` (OperatorExpression):
-  assigned type `Maybe Number`
   grouped with `nth 1`, `value`
   has type `Maybe Number`
   is an expression
 
 `nth` (VariableExpression):
-  assigned type `Number -> (List Number) -> Maybe Number`
   grouped with `Number -> (list :: (List element)) -> Maybe element`
   has type `Number -> (List Number) -> Maybe Number`
   is an expression
@@ -365,13 +316,11 @@ Facts (layer 2):
   is an expression
 
 `nth 1` (VisitAs):
-  assigned type `(List Number) -> Maybe Number`
   grouped with `(list :: (List element)) -> Maybe element`
   has type `(List Number) -> Maybe Number`
   is an expression
 
 `1` (NumberExpression):
-  assigned type `Number`
   grouped with `1`, `Number`
   has type `Number`
   is an expression

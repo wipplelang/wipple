@@ -116,7 +116,7 @@ pub fn run_mismatched_trait(
             return ControlFlow::Continue(());
         };
 
-        if !filter(db, node) || group.tys.len() <= 1 {
+        if !filter(db, node) || group.tys().count() <= 1 {
             return ControlFlow::Continue(());
         }
 
@@ -127,7 +127,7 @@ pub fn run_mismatched_trait(
 
     let mut solvers = Vec::new();
     for (node, group) in groups {
-        for permutations in group.tys.clone().into_iter().permutations(2) {
+        for permutations in group.tys().cloned().permutations(2) {
             let mut permutations = permutations.into_iter();
             let left = permutations.next().unwrap();
             let right = permutations.next().unwrap();

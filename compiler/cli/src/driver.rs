@@ -109,7 +109,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             }
 
             let render_location = |db: &Db, node: Node| {
-                let mut render_ctx = RenderCtx::with_filter(&filter);
+                let mut render_ctx = RenderCtx::new(&filter, Vec::new());
                 render_ctx.node(node);
                 let (location, _) =
                     render_ctx.finish(db, |db, segment| segment.markdown(db, self.render_options));

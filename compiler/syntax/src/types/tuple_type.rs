@@ -58,7 +58,7 @@ impl Visit for TupleType {
         let elements = self
             .elements
             .into_iter()
-            .map(|element| visitor.visit(db, &element))
+            .map(|element| visitor.annotating(None, |visitor| visitor.visit(db, &element)))
             .collect::<Vec<_>>();
 
         for &element in &elements {
@@ -68,7 +68,7 @@ impl Visit for TupleType {
         visitor.constraint(
             db,
             TyConstraint::new(
-                node,
+                visitor.current_annotating.unwrap_or(node),
                 Ty::Constructed(ConstructedTy::tuple(elements.clone())),
             ),
         );

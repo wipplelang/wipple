@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
-  assigned type `Number -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -10,7 +9,6 @@ Facts (layer 2):
 
 `show (1 + 2
 ` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (1 + 2
 `
   has type `()`
@@ -23,13 +21,11 @@ Facts (layer 2):
   is an expression
 
 `1` (NumberExpression):
-  assigned type `Number`
   grouped with `1`, `left`
   has type `Number`
   is an expression
 
 `1 + 2` (OperatorExpression):
-  assigned type `Number`
   grouped with `1 + 2`, `value`
   has type `Number`
   is an expression
@@ -40,7 +36,6 @@ Facts (layer 2):
   is an expression
 
 `1 + 2` (ConstructorExpression):
-  assigned type `Number Number -> Number`
   grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
@@ -48,7 +43,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `2` (NumberExpression):
-  assigned type `Number`
   grouped with `2`, `right`
   has type `Number`
   is an expression

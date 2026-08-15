@@ -9,7 +9,6 @@ use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
     span::{Span, Str},
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
     visit::{Visit, Visitor, exhaustiveness::MatchPathSegment},
 };
 use wipple_parse::{
@@ -51,9 +50,10 @@ impl Visit for StringPattern {
                 parameters: Vec::new(),
             }),
         );
-        visitor.visit_as(db, &syntax, string_type);
 
-        visitor.constraint(db, TyConstraint::new(node, Ty::Node(string_type)));
+        visitor.annotating(Some(node), |visitor| {
+            visitor.visit_as(db, &syntax, string_type);
+        });
 
         visitor.codegen(
             db,

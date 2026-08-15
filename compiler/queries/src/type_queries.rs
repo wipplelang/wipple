@@ -3,11 +3,7 @@ use std::collections::BTreeSet;
 use wipple_core::{
     db::Node,
     traces::Traces,
-    typecheck::{
-        groups::{Annotated, Typed},
-        instantiate::Instantiated,
-        ty::ConstructedTy,
-    },
+    typecheck::{groups::Typed, instantiate::Instantiated, ty::ConstructedTy},
 };
 
 pub fn has_type<'a>(db: &QueryCtx<'a>, node: Node) -> Option<&'a ConstructedTy> {
@@ -15,7 +11,7 @@ pub fn has_type<'a>(db: &QueryCtx<'a>, node: Node) -> Option<&'a ConstructedTy> 
         return None;
     };
 
-    group.tys.first()
+    group.tys().next()
 }
 
 pub fn in_group(db: &QueryCtx<'_>, node: Node) -> impl Iterator<Item = Node> {
@@ -23,7 +19,7 @@ pub fn in_group(db: &QueryCtx<'_>, node: Node) -> impl Iterator<Item = Node> {
         return Default::default();
     };
 
-    group.nodes.iter().copied()
+    group.nodes().collect::<Vec<_>>().into_iter()
 }
 
 #[derive(Debug, Clone)]
@@ -40,19 +36,13 @@ pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTyp
         return None;
     };
 
-    if group.tys.len() <= 1 {
+    if group.tys().count() <= 1 {
         return None;
     }
 
-    let mut nodes = group.nodes.clone();
-    nodes.remove(&node);
+    let (mut nodes, _) = group.min_ranked_nodes().unwrap_or_default();
 
-    // Prioritize non-annotated nodes
-    if db.contains::<Annotated>(node)
-        && nodes
-            .iter()
-            .any(|&other| !db.contains::<Annotated>(other) && db.filter(other))
-    {
+    if !nodes.remove(&node) {
         return None;
     }
 
@@ -67,7 +57,7 @@ pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTyp
         source,
         from,
         nodes,
-        tys: group.tys.clone(),
+        tys: group.tys().cloned().collect(),
         traces,
     })
 }
@@ -77,16 +67,17 @@ pub fn incomplete_type<'a>(db: &QueryCtx<'a>, node: Node) -> Option<(Node, &'a C
         return None;
     };
 
-    if group.tys.len() != 1 {
+    let mut tys = group.tys();
+    let ty = tys.next()?;
+
+    if tys.next().is_some() {
         return None;
     }
-
-    let ty = &group.tys[0];
 
     if ty.children.iter().any(|&ty| {
         db.get(ty)
             .and_then(|Typed(group)| group.as_ref())
-            .is_some_and(|group| group.tys.is_empty())
+            .is_some_and(|group| group.tys().next().is_none())
     }) {
         return Some((node, ty));
     }
@@ -103,5 +94,5 @@ pub fn unknown_type(db: &QueryCtx<'_>, node: Node) -> bool {
         return true;
     };
 
-    group.tys.is_empty()
+    group.tys().next().is_none()
 }

@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
-  assigned type `Number -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()` or `Number Number Number -> ()`
@@ -9,7 +8,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show 1 2 3` (ExpressionStatement):
-  assigned type `()`
   grouped with `show 1 2 3`
   has type `()`
 
@@ -19,19 +17,16 @@ Facts (layer 2):
   is an expression
 
 `1` (NumberExpression):
-  assigned type `Number`
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `2` (NumberExpression):
-  assigned type `Number`
   grouped with `2`
   has type `Number`
   is an expression
 
 `3` (NumberExpression):
-  assigned type `Number`
   grouped with `3`
   has type `Number`
   is an expression
@@ -44,12 +39,6 @@ Feedback:
 
   `show` is a `Number -> ()` or a `Number Number Number -> ()`, but it can only be one of these.
 
-  1. `show`: `show` displays `1` on the screen. This requires `Describe` `Number`.
+  1. `show`: `show` displays `1` on the screen. This means `show` is a `Number -> ()`. This requires `Describe` `Number`.
 
-  2. `1`: `1` is a `Number`.
-
-  3. `2`: `2` is a `Number`.
-
-  4. `3`: `3` is a `Number`.
-
-  (1 -> error, 2 -> 1)
+  (1 -> error)

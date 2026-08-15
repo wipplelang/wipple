@@ -12,10 +12,11 @@ use wipple_core::{
             ConstraintTrace, instantiate_constraint::InstantiateConstraint,
             ty_constraint::TyConstraint,
         },
-        groups::Annotated,
+        groups::NodeRank,
+        instantiate::InstantiatedTypes,
         ty::Ty,
     },
-    util::{get_linked_nodes, get_links},
+    util::get_links,
     visit::{
         IsCaptured, IsMutated, Visit, Visitor,
         definitions::{ConstantDefinition, Defined, VariableDefinition},
@@ -94,7 +95,7 @@ impl Visit for VariableExpression {
                 );
 
                 // Prefer showing conflicts on the definition rather than its uses
-                db.insert(node, Annotated);
+                visitor.rank(node, NodeRank::Annotated);
 
                 visitor.codegen(
                     db,
@@ -153,9 +154,19 @@ impl ConstraintTrace for DefinitionConstraintTrace {
     }
 
     fn nodes(&self, db: &Db) -> Vec<Node> {
+        let instantiated_nodes = db
+            .get(self.node)
+            .map(|InstantiatedTypes(instantiated)| instantiated.values().copied())
+            .unwrap_or_default();
+
         [self.node, self.definition]
             .into_iter()
-            .chain(get_linked_nodes(db, self.definition, self.node))
+            .chain(instantiated_nodes)
+            .chain(
+                get_links(db, self.definition, self.node)
+                    .into_values()
+                    .map(|link| link.node),
+            )
             .collect()
     }
 }
@@ -180,7 +191,11 @@ impl Render for DefinitionConstraintTrace {
             );
         } else {
             ctx.node(self.node);
-            ctx.string(" is a ");
+            if definition.downcast_ref::<ConstantDefinition>().is_some() {
+                ctx.string(" is defined as a ");
+            } else {
+                ctx.string(" is a ");
+            }
             ctx.ty(db, &Ty::Node(self.node), true);
             ctx.string(".");
         }

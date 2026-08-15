@@ -1,15 +1,12 @@
 use crate::{
     db::{Db, Node},
     render::{Render, RenderCtx},
-    typecheck::groups::types_of,
+    typecheck::groups::representative_types_of,
     visit::definitions::Defined,
 };
 use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
-use std::{
-    fmt::{Debug, Write},
-    slice,
-};
+use std::fmt::{Debug, Write};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Ty {
@@ -38,25 +35,15 @@ impl Ty {
             Ty::Constructed(ty) => ty.children.iter_mut().collect(),
         }
     }
-    pub fn display(&self, db: &Db, root: bool) -> String {
-        let render_unknown = || String::from("_");
 
-        let render_children = |children: &[Node]| {
-            children
-                .iter()
-                .map(|&node| -> Box<dyn Fn(&Db, bool) -> String> {
-                    Box::new(move |db, root| Ty::Node(node).display(db, root))
-                })
-                .collect()
-        };
-
+    pub fn display(&self, db: &Db, root: bool, relevant: &[Node]) -> String {
         let tys = match self {
-            Ty::Node(node) => types_of(db, *node),
-            Ty::Constructed(ty) => slice::from_ref(ty),
+            Ty::Node(node) => representative_types_of(db, *node, relevant),
+            Ty::Constructed(ty) => vec![ty],
         };
 
         if tys.is_empty() {
-            render_unknown()
+            String::from("_")
         } else {
             let mut s = String::new();
 
@@ -69,7 +56,14 @@ impl Ty {
                     write!(s, " or ").unwrap();
                 }
 
-                let children = render_children(&ty.children);
+                let children = ty
+                    .children
+                    .iter()
+                    .map(|&node| -> Box<dyn FnOnce(&Db, bool) -> String> {
+                        let relevant = relevant.to_vec();
+                        Box::new(move |db, root| Ty::Node(node).display(db, root, &relevant))
+                    })
+                    .collect::<Vec<_>>();
 
                 write!(s, "{}", ty.display.display(db, children, root)).unwrap();
             }
@@ -83,11 +77,11 @@ impl Ty {
     }
 
     pub fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>, root: bool) {
-        let description = self.display(db, root);
+        let description = self.display(db, root, &ctx.relevant);
 
         let node = match self {
             Ty::Node(node) => Some(*node),
-            Ty::Constructed(ty) => ty.representative.or_else(|| ty.definition()),
+            Ty::Constructed(ty) => ty.definition(),
         };
 
         if let Some(node) = node {
@@ -118,7 +112,7 @@ trait TyDisplay: Debug + DynClone + Send + Sync + 'static {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Box<dyn Fn(&Db, bool) -> String>>,
+        children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
         root: bool,
     ) -> String;
 }
@@ -127,7 +121,6 @@ dyn_clone::clone_trait_object!(TyDisplay);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ConstructedTy {
-    pub representative: Option<Node>,
     pub tag: TyTag,
     pub children: Vec<Node>,
     display: Box<dyn TyDisplay>,
@@ -136,7 +129,6 @@ pub struct ConstructedTy {
 impl Debug for ConstructedTy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("ConstructedTy")
-            .field("representative", &self.representative)
             .field("tag", &self.tag)
             .field("children", &self.children)
             .finish()
@@ -154,7 +146,6 @@ impl Eq for ConstructedTy {}
 impl ConstructedTy {
     fn new(tag: TyTag, children: Vec<Node>, display: impl TyDisplay) -> Self {
         ConstructedTy {
-            representative: None,
             tag,
             children,
             display: Box::new(display),
@@ -179,7 +170,7 @@ impl TyDisplay for NamedTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Box<dyn Fn(&Db, bool) -> String>>,
+        children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
         root: bool,
     ) -> String {
         let wrap = !root && !children.is_empty();
@@ -220,10 +211,12 @@ impl TyDisplay for FunctionTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Box<dyn Fn(&Db, bool) -> String>>,
+        children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
         root: bool,
     ) -> String {
-        let (output, inputs) = children.split_first().unwrap();
+        let mut children = children.into_iter();
+        let output = children.next().unwrap();
+        let inputs = children;
 
         let mut result = String::new();
         for input in inputs {
@@ -256,12 +249,12 @@ impl TyDisplay for TupleTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Box<dyn Fn(&Db, bool) -> String>>,
+        children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
         _root: bool,
     ) -> String {
         match children.len() {
             0 => String::from("()"),
-            1 => format!("({};)", children.first().unwrap()(db, false)),
+            1 => format!("({};)", children.into_iter().next().unwrap()(db, false)),
             _ => {
                 let mut result = String::from("(");
 
@@ -298,10 +291,10 @@ impl TyDisplay for BlockTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Box<dyn Fn(&Db, bool) -> String>>,
+        children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
         _root: bool,
     ) -> String {
-        let output = children.first().unwrap();
+        let output = children.into_iter().next().unwrap();
         format!("{{{}}}", output(db, true))
     }
 }
@@ -322,7 +315,7 @@ impl TyDisplay for ParameterTyDisplay {
     fn display(
         &self,
         db: &Db,
-        _children: Vec<Box<dyn Fn(&Db, bool) -> String>>,
+        _children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
         _root: bool,
     ) -> String {
         db.get::<Defined>(self.definition)

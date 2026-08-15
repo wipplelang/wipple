@@ -1,79 +1,6 @@
 Facts (layer 2):
 
-`Number` (TypeDefinition):
-  assigned type `Number`
-  has definition constraints
-  has type `Number`
-  is a definition
-
-`String` (TypeDefinition):
-  assigned type `String`
-  has definition constraints
-  has type `String`
-  is a definition
-
-`Boolean` (TypeDefinition):
-  assigned type `Boolean`
-  grouped with `True`, `False`
-  has definition constraints
-  has type `Boolean`
-  is a definition
-
-`True` (VariantDefinition):
-  assigned type `Boolean`
-  grouped with `Boolean`
-  has definition constraints
-  has type `Boolean`
-  is a definition
-
-`False` (VariantDefinition):
-  assigned type `Boolean`
-  grouped with `Boolean`
-  has definition constraints
-  has type `Boolean`
-  is a definition
-
-`Sequence` (TypeDefinition):
-  assigned type `Sequence element`
-  grouped with `Sequence`
-  has definition constraints
-  has type `Sequence element`
-  has type parameters
-  is a definition
-
-`Sequence` (TypeDefinition):
-  assigned type `Sequence element`
-  grouped with `Sequence`
-  has definition constraints
-  has type `Sequence element`
-  is a definition
-
-`element` (TypeParameter):
-  assigned type `element`
-  grouped with `element`
-  has type `element`
-  is a definition
-  is a type
-  resolved to 1 definition(s): `element`
-  type is annotated
-
-`{element}` (BlockType):
-  assigned type `{element}`
-  has type `{element}`
-  is a type
-  type is annotated
-
-`element` (TypeParameter):
-  assigned type `element`
-  grouped with `element`
-  has type `element`
-  is a type
-  resolved to 1 definition(s): `element`
-  resolved to type parameter `element`
-  type is annotated
-
 `Box` (TypeDefinition):
-  assigned type `Box value`
   grouped with `Box`
   has definition constraints
   has type `Box value`
@@ -81,93 +8,19 @@ Facts (layer 2):
   is a definition
 
 `Box` (TypeDefinition):
-  assigned type `Box value`
   grouped with `Box`
   has definition constraints
   has type `Box value`
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
-  grouped with `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
-
-`value` (TypeParameter):
-  assigned type `value`
-  grouped with `value`
-  has type `value`
-  is a type
-  resolved to 1 definition(s): `value`
-  resolved to type parameter `value`
-  type is annotated
-
-`As-Sequence` (TraitDefinition):
-  assigned type `collection -> Sequence element`
-  grouped with `collection -> Sequence element`
-  has 1 instances
-  has definition constraints
-  has type `collection -> Sequence element`
-  has type parameters
-  is a definition
-
-`collection` (TypeParameter):
-  assigned type `collection`
-  grouped with `collection`
-  has type `collection`
-  is a definition
-  is a type
-  resolved to 1 definition(s): `collection`
-  type is annotated
-
-`(infer element)` (TypeParameter):
-  assigned type `element`
-  grouped with `element`
-  has type `element`
-  is a definition
-  is a type
-  is inferred type parameter
-  resolved to 1 definition(s): `(infer element)`
-  type is annotated
-
-`collection` (TypeParameter):
-  assigned type `collection`
-  grouped with `collection`
-  has type `collection`
-  is a type
-  resolved to 1 definition(s): `collection`
-  resolved to type parameter `collection`
-  type is annotated
-
-`collection -> Sequence element` (FunctionType):
-  assigned type `collection -> Sequence element`
-  grouped with `As-Sequence`
-  has type `collection -> Sequence element`
-  is a type
-  type is annotated
-
-`Sequence element` (NamedType):
-  assigned type `Sequence element`
-  has type `Sequence element`
-  is a type
-  resolved to 1 definition(s): `Sequence`
-  type is annotated
-
-`element` (TypeParameter):
-  assigned type `element`
-  grouped with `(infer element)`, `element`
-  has type `element`
-  is a type
-  resolved to 1 definition(s): `(infer element)`
-  resolved to type parameter `(infer element)`
-  type is annotated
 
 `instance (As-Sequence (Box value) value)` (InstanceDefinition):
-  assigned type `(Box value) -> Sequence value`
-  grouped with `collection -> Sequence element`, `_`
+  grouped with `container -> Sequence element`, `_`
   has definition constraints
   has type `(Box value) -> Sequence value`
   has type parameters
@@ -175,202 +28,80 @@ Facts (layer 2):
   resolved to 1 definition(s): `As-Sequence`
 
 `Box value` (NamedType):
-  assigned type `Box value`
-  grouped with `collection`
+  grouped with `container`
   has type `Box value`
   is a type
   resolved to 1 definition(s): `Box`
-  type is annotated
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`, `(infer element)`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `_` (PlaceholderExpression):
-  assigned type `(Box value) -> Sequence value`
   grouped with `instance (As-Sequence (Box value) value)`
   has type `(Box value) -> Sequence value`
   is an expression
 
-`filter` (ConstantDefinition):
-  assigned type `(item -> Boolean) -> collection -> Sequence item`
-  grouped with `(item -> Boolean) -> collection -> Sequence item`, `_`
-  has bounds
-  has definition constraints
-  has type `(item -> Boolean) -> collection -> Sequence item`
-  has type parameters
-  is a definition
-
-`(item -> Boolean) -> collection -> Sequence item` (FunctionType):
-  assigned type `(item -> Boolean) -> collection -> Sequence item`
-  grouped with `filter`
-  has type `(item -> Boolean) -> collection -> Sequence item`
-  is a type
-  type is annotated
-
-`item` (TypeParameter):
-  assigned type `item`
-  grouped with `item`, `item`
-  has type `item`
-  is a definition
-  is a type
-  resolved to 1 definition(s): `item`
-  type is annotated
-
-`item -> Boolean` (FunctionType):
-  assigned type `item -> Boolean`
-  has type `item -> Boolean`
-  is a type
-  type is annotated
-
-`Boolean` (NamedType):
-  assigned type `Boolean`
-  has type `Boolean`
-  is a type
-  resolved to 1 definition(s): `Boolean`
-  type is annotated
-
-`collection` (TypeParameter):
-  assigned type `collection`
-  grouped with `collection`
-  has type `collection`
-  is a definition
-  is a type
-  resolved to 1 definition(s): `collection`
-  type is annotated
-
-`collection -> Sequence item` (FunctionType):
-  assigned type `collection -> Sequence item`
-  has type `collection -> Sequence item`
-  is a type
-  type is annotated
-
-`Sequence item` (NamedType):
-  assigned type `Sequence item`
-  has type `Sequence item`
-  is a type
-  resolved to 1 definition(s): `Sequence`
-  type is annotated
-
-`item` (TypeParameter):
-  assigned type `item`
-  grouped with `item`, `element`
-  has type `item`
-  is a type
-  resolved to 1 definition(s): `item`
-  resolved to type parameter `item`
-  type is annotated
-
-`(As-Sequence collection item)` (BoundConstraint):
-  has bound(s) `As-Sequence` `collection` `item` (resolved as `(As-Sequence collection item)`)
-  is a constraint
-  resolved to 1 definition(s): `As-Sequence`
-
-`collection` (TypeParameter):
-  assigned type `collection`
-  grouped with `collection`
-  has type `collection`
-  is a type
-  resolved to 1 definition(s): `collection`
-  resolved to type parameter `collection`
-  type is annotated
-
-`item` (TypeParameter):
-  assigned type `item`
-  grouped with `item`
-  has type `item`
-  is a type
-  resolved to 1 definition(s): `item`
-  resolved to type parameter `item`
-  type is annotated
-
-`filter : _` (AssignmentStatement):
-  assigned type `()`
-  has type `()`
-
-`_` (PlaceholderExpression):
-  assigned type `(item -> Boolean) -> collection -> Sequence item`
-  grouped with `filter`
-  has type `(item -> Boolean) -> collection -> Sequence item`
-  is an expression
-
 `box` (VariablePattern):
-  assigned type `Box (String or Number)`
   grouped with `_ :: Box String`, `_ :: Box String`, `box`
   has type `Box (String or Number)`
   is a definition
   is a pattern
 
 `box : (_ :: Box String)` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `_` (PlaceholderExpression):
-  assigned type `Box (String or Number)`
-  grouped with `Box String`, `_ :: Box String`
+  grouped with `Box String`
   has type `Box (String or Number)`
   is an expression
 
 `Box String` (NamedType):
-  assigned type `Box (String or Number)`
-  grouped with `_`
+  grouped with `_`, `_ :: Box String`
   has type `Box (String or Number)`
   is a type
   resolved to 1 definition(s): `Box`
-  type is annotated
 
 `String` (NamedType):
-  assigned type `String`
   grouped with `value`
   has type `String` or `Number`
   is a type
   resolved to 1 definition(s): `String`
-  type is annotated
 
 `positive?` (VariablePattern):
-  assigned type `(String or Number) -> Boolean`
   grouped with `(_ :: Number) -> _`, `(_ :: Number) -> _`, `positive?`
   has type `(String or Number) -> Boolean`
   is a definition
   is a pattern
 
 `positive? : (_ :: Number) -> _` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `(_ :: Number) -> _` (FunctionExpression):
-  assigned type `(String or Number) -> Boolean`
   grouped with `positive?`, `positive?`
   has type `(String or Number) -> Boolean`
   is an expression
 
 `_` (WildcardPattern):
-  assigned type `String or Number`
-  grouped with `_ :: Number`, `Number`, `_ :: Number`
+  grouped with `_ :: Number`, `Number`
   has type `String` or `Number`
   is a pattern
 
 `Number` (NamedType):
-  assigned type `Number`
-  grouped with `_`
+  grouped with `_`, `_ :: Number`
   has type `String` or `Number`
   is a type
   resolved to 1 definition(s): `Number`
-  type is annotated
 
 `_` (PlaceholderExpression):
   grouped with `Boolean`
@@ -378,44 +109,37 @@ Facts (layer 2):
   is an expression
 
 `(filter positive?) box` (ExpressionStatement):
-  assigned type `Sequence (String or Number)`
   grouped with `(filter positive?) box`
   has type `Sequence (String or Number)`
 
 `(filter positive?) box` (CallExpression):
-  grouped with `Sequence item`, `(filter positive?) box`
+  grouped with `Sequence element`, `(filter positive?) box`
   has type `Sequence (String or Number)`
   is an expression
 
 `filter` (VariableExpression):
-  assigned type `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`
-  grouped with `(item -> Boolean) -> collection -> Sequence item`
+  grouped with `(condition :: (element -> Boolean)) -> container -> Sequence element`
   has bound(s) `As-Sequence` `(Box (String or Number))` `(String or Number)` (resolved as `instance (As-Sequence (Box value) value)`)
   has type `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`
   is an expression
   resolved to 1 definition(s): `filter`
 
 `filter positive?` (CallExpression):
-  assigned type `(Box (String or Number)) -> Sequence (String or Number)`
-  grouped with `collection -> Sequence item`
+  grouped with `container -> Sequence element`
   has type `(Box (String or Number)) -> Sequence (String or Number)`
   is an expression
 
 `positive?` (VariableExpression):
-  assigned type `(String or Number) -> Boolean`
-  grouped with `positive?`, `item -> Boolean`
+  grouped with `positive?`, `condition :: (element -> Boolean)`
   has type `(String or Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `positive?`
-  type is annotated
 
 `box` (VariableExpression):
-  assigned type `Box (String or Number)`
-  grouped with `box`, `collection`
+  grouped with `box`, `container`
   has type `Box (String or Number)`
   is an expression
   resolved to 1 definition(s): `box`
-  type is annotated
 
 
 
@@ -424,15 +148,15 @@ Feedback:
 `_` (conflicting-types)
 
   `_` is a `String` or a `Number`, but it can only be one of these.
-  
-  `_` must be the same type as `String` and `Number`; double-check these.
 
-  1. `_`: `_` is annotated with the type `Number`.
+  1. `Number`: `_` is annotated as a `Number`. This means `String`, `_`, and `Number` must be a `Number`.
 
-  2. `filter`: `filter` is a `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`. This requires `As-Sequence` `(Box (String or Number))` `(String or Number)`.
+  2. `filter`: `filter` keeps the elements in `box` that satisfy `positive?`. This means `filter` is a `(Number -> Boolean) -> (Box Number) -> Sequence Number`. This requires `As-Sequence` `(Box Number)` `Number`.
 
-  3. `_`: `_` is annotated with the type `Box String`.
+  3. `positive?`: `positive?` is a `Number -> Boolean`. This means `(_ :: Number) -> _`, `positive?`, and `positive?` must be a `Number -> Boolean`.
 
-  4. `positive?`: `positive?` is `(_ :: Number) -> _`. This means `(_ :: Number) -> _`, `positive?`, and `positive?` must be a `(String or Number) -> Boolean`.
+  4. `Box String`: `_` is annotated as a `Box String`. This means `_`, `Box String`, `box`, and 1 other must be a `Box Number`.
 
-  (1 -> error, 3 -> 2)
+  5. `positive?`: `positive?` is `(_ :: Number) -> _`. This means `(_ :: Number) -> _`, `positive?`, and `positive?` must be a `Number -> Boolean`.
+
+  (3 -> 2, 4 -> 2, 1 -> error)

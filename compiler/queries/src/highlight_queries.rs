@@ -49,5 +49,5 @@ fn highlight_typed(db: &QueryCtx<'_>, node: Node, match_tag: impl FnOnce(TyTag) 
         return false;
     };
 
-    db.contains::<Resolved>(node) && group.tys.first().is_some_and(|ty| match_tag(ty.tag))
+    db.contains::<Resolved>(node) && group.tys().next().is_some_and(|ty| match_tag(ty.tag))
 }

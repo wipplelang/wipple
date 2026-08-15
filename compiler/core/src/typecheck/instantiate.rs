@@ -4,7 +4,7 @@ use crate::{
     render::{Render, RenderCtx},
     typecheck::{
         constraints::AnyConstraintTrace,
-        groups::{Annotated, Typed},
+        groups::Typed,
         solver::{Solver, SubstitutionsKey},
         ty::{ConstructedTy, Ty, TyTag},
     },
@@ -35,12 +35,12 @@ impl Render for Instantiated {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct InstantiatedParameters(pub BTreeMap<Node, Node>);
+pub struct InstantiatedTypes(pub BTreeMap<Node, Node>);
 
 #[typetag::serde]
-impl Fact for InstantiatedParameters {}
+impl Fact for InstantiatedTypes {}
 
-impl Render for InstantiatedParameters {}
+impl Render for InstantiatedTypes {}
 
 #[derive(Debug, Clone)]
 pub struct InstantiateCtx {
@@ -76,14 +76,17 @@ impl InstantiateCtx {
                 },
             );
 
-            if db.contains::<Annotated>(node) {
-                db.insert(replacement, Annotated);
-            }
+            solver.rank(replacement, solver.rank_of(node));
 
             if let Some(ResolvedTypeParameter(parameter)) = db.get(node).cloned() {
                 let parameter = self.instantiate_node(db, solver, parameter);
                 db.insert(replacement, ResolvedTypeParameter(parameter));
             }
+
+            db.get_mut_or_default::<InstantiatedTypes>(self.source_node)
+                .0
+                .entry(node)
+                .or_insert(replacement);
 
             replacement
         })
@@ -132,11 +135,9 @@ impl InstantiateCtx {
                     },
                 );
 
-                db.get_mut_or_default::<InstantiatedParameters>(self.source_node)
+                db.get_mut_or_default::<InstantiatedTypes>(self.source_node)
                     .0
                     .insert(parameter, node);
-
-                db.insert(node, Annotated);
 
                 instantiated_ty = Ty::Node(node);
             });

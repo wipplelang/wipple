@@ -1,38 +1,31 @@
 Facts (layer 2):
 
 `Box` (TypeDefinition):
-  assigned type `Box value`
   has definition constraints
   has type `Box value`
   has type parameters
   is a definition
 
 `Box` (TypeDefinition):
-  assigned type `value -> Box value`
   has definition constraints
   has type `value -> Box value`
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `Foo` (TraitDefinition):
-  assigned type `a -> b`
   grouped with `a -> b`
   has 1 instances
   has definition constraints
@@ -41,50 +34,39 @@ Facts (layer 2):
   is a definition
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`
   has type `a`
   is a definition
   is a type
   resolved to 1 definition(s): `a`
-  type is annotated
 
 `b` (TypeParameter):
-  assigned type `b`
   grouped with `b`
   has type `b`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
-  type is annotated
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
   resolved to type parameter `a`
-  type is annotated
 
 `a -> b` (FunctionType):
-  assigned type `a -> b`
   grouped with `Foo`
   has type `a -> b`
   is a type
-  type is annotated
 
 `b` (TypeParameter):
-  assigned type `b`
   grouped with `b`
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
   resolved to type parameter `b`
-  type is annotated
 
 `instance (Foo (Box value) value)` (InstanceDefinition):
-  assigned type `(Box value) -> value`
   grouped with `a -> b`, `(Box value) -> value`
   has definition constraints
   has type `(Box value) -> value`
@@ -93,61 +75,49 @@ Facts (layer 2):
   resolved to 1 definition(s): `Foo`
 
 `Box value` (NamedType):
-  assigned type `Box value`
   grouped with `a`
   has type `Box value`
   is a type
   resolved to 1 definition(s): `Box`
-  type is annotated
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`, `b`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
-  type is annotated
 
 `(Box value) -> value` (FunctionExpression):
-  assigned type `(Box value) -> value`
   grouped with `instance (Foo (Box value) value)`
   has type `(Box value) -> value`
   is an expression
 
 `Box value` (ConstructorPattern):
-  assigned type `Box value`
   grouped with `Box`, `a`
   has type `Box value`
   is a pattern
   resolved to 1 definition(s): `Box`
 
 `value` (VariablePattern):
-  assigned type `value`
   grouped with `_`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `value` (VariableExpression):
-  assigned type `value`
   grouped with `value`, `b`
   has type `value`
   is an expression
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `show` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -155,7 +125,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (Foo (Box "Hello, world!"))` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (Foo (Box "Hello, world!"))`
   has type `()`
 
@@ -165,7 +134,6 @@ Facts (layer 2):
   is an expression
 
 `Foo` (ConstructorExpression):
-  assigned type `(Box String) -> String`
   grouped with `a -> b`
   has bound(s) `Foo` `(Box String)` `String` (resolved as `instance (Foo (Box value) value)`)
   has type `(Box String) -> String`
@@ -178,7 +146,6 @@ Facts (layer 2):
   is an expression
 
 `Box` (ConstructorExpression):
-  assigned type `String -> Box String`
   has type `String -> Box String`
   is an expression
   resolved to 1 definition(s): `Box`
@@ -189,7 +156,6 @@ Facts (layer 2):
   is an expression
 
 `"Hello, world!"` (StringExpression):
-  assigned type `String`
   grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression

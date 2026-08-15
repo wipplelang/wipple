@@ -1,50 +1,40 @@
 Facts (layer 2):
 
 `block` (ConstantDefinition):
-  assigned type `{Number}`
   grouped with `{Number}`, `{⋯}`
   has definition constraints
   has type `{Number}`
   is a definition
 
 `{Number}` (BlockType):
-  assigned type `{Number}`
   grouped with `block`
   has type `{Number}`
   is a type
-  type is annotated
 
 `Number` (NamedType):
-  assigned type `Number`
   grouped with `42`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
-  type is annotated
 
 `block : {⋯}` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `{⋯}` (BlockExpression):
-  assigned type `{Number}`
   grouped with `block`
   has type `{Number}`
   is an expression
 
 `42` (ExpressionStatement):
-  assigned type `Number`
   grouped with `42`, `Number`
   has type `Number`
 
 `42` (NumberExpression):
-  assigned type `Number`
   grouped with `42`, `42`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Number -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -52,7 +42,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (do block)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (do block)`
   has type `()`
 
@@ -67,7 +56,6 @@ Facts (layer 2):
   is an expression
 
 `block` (VariableExpression):
-  assigned type `{Number}`
   grouped with `{Number}`
   has type `{Number}`
   is an expression

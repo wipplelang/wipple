@@ -1,69 +1,78 @@
 Facts (layer 2):
 
 `transmute` (ConstantDefinition):
-  assigned type `a -> b`
   grouped with `a -> b`, `x -> x`
   has definition constraints
-  has type `(b or a) -> b or a`
+  has type `(a or b) -> a or b`
   has type parameters
   is a definition
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `x`
-  has type `b` or `a`
+  has type `a` or `b`
   is a definition
   is a type
   resolved to 1 definition(s): `a`
-  type is annotated
 
 `a -> b` (FunctionType):
-  assigned type `a -> b`
   grouped with `transmute`
-  has type `(b or a) -> b or a`
+  has type `(a or b) -> a or b`
   is a type
-  type is annotated
 
 `b` (TypeParameter):
-  assigned type `b`
   grouped with `x`
-  has type `b` or `a`
+  has type `a` or `b`
   is a definition
   is a type
   resolved to 1 definition(s): `b`
-  type is annotated
 
 `transmute : x -> x` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `x` (VariablePattern):
-  assigned type `b or a`
   grouped with `x`, `a`
-  has type `b` or `a`
+  has type `a` or `b`
   is a definition
   is a pattern
 
 `x -> x` (FunctionExpression):
-  assigned type `(b or a) -> b or a`
   grouped with `transmute`
-  has type `(b or a) -> b or a`
+  has type `(a or b) -> a or b`
   is an expression
 
 `x` (VariableExpression):
-  assigned type `b or a`
   grouped with `x`, `b`
-  has type `b` or `a`
+  has type `a` or `b`
   is an expression
   resolved to 1 definition(s): `x`
-  type is annotated
 
 
 
 Feedback:
 
+`a` (conflicting-types)
+
+  `a` is a `a` or a `b`, but it can only be one of these.
+  
+  `a` must be the same type as `b`, `x`, and `x`; double-check these.
+
+
+`b` (conflicting-types)
+
+  `b` is a `a` or a `b`, but it can only be one of these.
+  
+  `b` must be the same type as `a`, `x`, and `x`; double-check these.
+
+
 `x` (conflicting-types)
 
-  `x` is a `b` or a `a`, but it can only be one of these.
+  `x` is a `a` or a `b`, but it can only be one of these.
+  
+  `x` must be the same type as `a`, `b`, and `x`; double-check these.
+
+
+`x` (conflicting-types)
+
+  `x` is a `a` or a `b`, but it can only be one of these.
   
   `x` must be the same type as `a`, `b`, and `x`; double-check these.

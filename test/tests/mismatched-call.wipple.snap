@@ -1,39 +1,30 @@
 Facts (layer 2):
 
 `accepts-text` (ConstantDefinition):
-  assigned type `String -> ()`
   grouped with `String -> ()`, `todo`
   has definition constraints
   has type `String -> ()`
   is a definition
 
 `String` (NamedType):
-  assigned type `String`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
-  type is annotated
 
 `String -> ()` (FunctionType):
-  assigned type `String -> ()`
   grouped with `accepts-text`
   has type `String -> ()`
   is a type
-  type is annotated
 
 `()` (UnitType):
-  assigned type `()`
   has type `()`
   is a type
-  type is annotated
 
 `accepts-text : todo` (AssignmentStatement):
-  assigned type `()`
   has type `()`
 
 `todo` (VariableExpression):
-  assigned type `String -> ()`
-  grouped with `value`, `accepts-text`
+  grouped with `value`, `value`, `accepts-text`
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `todo`
@@ -41,12 +32,10 @@ Facts (layer 2):
 `-- should display 'expected `String`, found `Number`' rather than
 -- 'cannot find instance `Add Number Number String`'
 accepts-text (1 + 2)` (ExpressionStatement):
-  assigned type `()`
   grouped with `accepts-text (1 + 2)`
   has type `()`
 
 `accepts-text` (VariableExpression):
-  assigned type `String -> ()`
   grouped with `String -> ()`
   has type `String -> ()`
   is an expression
@@ -60,33 +49,28 @@ accepts-text (1 + 2)`
   is an expression
 
 `1` (NumberExpression):
-  assigned type `Number`
   grouped with `1`, `left`
   has type `Number`
   is an expression
 
 `1 + 2` (OperatorExpression):
-  assigned type `Number`
   grouped with `1 + 2`, `String`
-  has type `Number` or `String`
+  has type `String` or `Number`
   is an expression
 
 `1 + 2` (CallExpression):
-  assigned type `Number`
   grouped with `sum`, `1 + 2`
-  has type `Number` or `String`
+  has type `String` or `Number`
   is an expression
 
 `1 + 2` (ConstructorExpression):
-  assigned type `Number Number -> Number or String`
   grouped with `left right -> sum`
-  has bound(s) `Add` `Number` `Number` `(Number or String)` (resolved as `instance (Add Number Number Number)`)
-  has type `Number Number -> Number or String`
+  has bound(s) `Add` `Number` `Number` `(String or Number)` (resolved as `instance (Add Number Number Number)`)
+  has type `Number Number -> String or Number`
   is an expression
   resolved to 1 definition(s): `Add`
 
 `2` (NumberExpression):
-  assigned type `Number`
   grouped with `2`, `right`
   has type `Number`
   is an expression
@@ -97,29 +81,21 @@ Feedback:
 
 `1 + 2` (conflicting-types)
 
-  `1 + 2` is a `Number` or a `String`, but it can only be one of these.
+  `1 + 2` is a `String` or a `Number`, but it can only be one of these.
 
-  1. `1 + 2`: `1 + 2` adds `1` and `2` together, returning a `Number`. This requires `Add` `Number` `Number` `(Number or String)`.
+  1. `accepts-text`: `accepts-text` is defined as a `String -> ()`. This means `accepts-text` is a `String -> ()`.
 
-  2. `accepts-text`: `accepts-text` is a `String -> ()`.
+  2. `1 + 2`: `1 + 2` adds `1` and `2` together, returning a `Number`. This requires `Add` `Number` `Number` `Number`.
 
-  3. `1`: `1` is a `Number`.
-
-  4. `2`: `2` is a `Number`.
-
-  (3 -> 1, 4 -> 1)
+  (2 -> 1, 1 -> error)
 
 
 `1 + 2` (conflicting-types)
 
-  `1 + 2` is a `Number` or a `String`, but it can only be one of these.
+  `1 + 2` is a `String` or a `Number`, but it can only be one of these.
 
-  1. `1 + 2`: `1 + 2` adds `1` and `2` together, returning a `Number`. This requires `Add` `Number` `Number` `(Number or String)`.
+  1. `accepts-text`: `accepts-text` is defined as a `String -> ()`. This means `accepts-text` is a `String -> ()`.
 
-  2. `accepts-text`: `accepts-text` is a `String -> ()`.
+  2. `1 + 2`: `1 + 2` adds `1` and `2` together, returning a `Number`. This requires `Add` `Number` `Number` `Number`.
 
-  3. `1`: `1` is a `Number`.
-
-  4. `2`: `2` is a `Number`.
-
-  (3 -> 1, 4 -> 1)
+  (2 -> 1)

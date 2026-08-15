@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `T` (TraitDefinition):
-  assigned type `()`
   grouped with `()`
   has 4 instances
   has 4 overlapping instances
@@ -11,36 +10,29 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `()` (UnitType):
-  assigned type `()`
   grouped with `T`
   has type `()`
   is a type
-  type is annotated
 
 `X` (TypeDefinition):
-  assigned type `X`
   grouped with `X`
   has definition constraints
   has type `X`
   is a definition
 
 `X` (TypeDefinition):
-  assigned type `X`
   grouped with `X`
   has definition constraints
   has type `X`
   is a definition
 
 `instance (T X)` (InstanceDefinition):
-  assigned type `()`
   grouped with `()`, `()`
   has definition constraints
   has type `()`
@@ -48,21 +40,17 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `X` (NamedType):
-  assigned type `X`
   grouped with `value`
   has type `X`
   is a type
   resolved to 1 definition(s): `X`
-  type is annotated
 
 `()` (UnitExpression):
-  assigned type `()`
   grouped with `instance (T X)`
   has type `()`
   is an expression
 
 `instance (T X)` (InstanceDefinition):
-  assigned type `()`
   grouped with `()`, `()`
   has definition constraints
   has type `()`
@@ -70,21 +58,17 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `X` (NamedType):
-  assigned type `X`
   grouped with `value`
   has type `X`
   is a type
   resolved to 1 definition(s): `X`
-  type is annotated
 
 `()` (UnitExpression):
-  assigned type `()`
   grouped with `instance (T X)`
   has type `()`
   is an expression
 
 `instance (T value)` (InstanceDefinition):
-  assigned type `()`
   grouped with `()`, `()`
   has definition constraints
   has type `()`
@@ -93,22 +77,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
-  assigned type `value`
   grouped with `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `()` (UnitExpression):
-  assigned type `()`
   grouped with `instance (T value)`
   has type `()`
   is an expression
 
 `U` (TraitDefinition):
-  assigned type `()`
   grouped with `()`
   has definition constraints
   has type `()`
@@ -116,22 +96,17 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
-  assigned type `value`
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
-  type is annotated
 
 `()` (UnitType):
-  assigned type `()`
   grouped with `U`
   has type `()`
   is a type
-  type is annotated
 
 `instance (T a) where (U a)` (InstanceDefinition):
-  assigned type `()`
   grouped with `()`, `()`
   has bounds
   has definition constraints
@@ -141,13 +116,11 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`, `value`
   has type `a`
   is a definition
   is a type
   resolved to 1 definition(s): `a`
-  type is annotated
 
 `(U a)` (BoundConstraint):
   has bound(s) `U` `a` (resolved as `(U a)`)
@@ -155,16 +128,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `U`
 
 `a` (TypeParameter):
-  assigned type `a`
   grouped with `a`
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
   resolved to type parameter `a`
-  type is annotated
 
 `()` (UnitExpression):
-  assigned type `()`
   grouped with `instance (T a) where (U a)`
   has type `()`
   is an expression

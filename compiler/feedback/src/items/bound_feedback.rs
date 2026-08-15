@@ -32,10 +32,10 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
 
             for link in error.comments.links.values() {
                 secondary.insert(link.node);
-                secondary.extend(link.related.iter().copied());
+                secondary.extend(&link.related);
             }
 
-            secondary.extend(error.comments.nodes.iter().copied());
+            secondary.extend(&error.comments.nodes);
 
             FeedbackLocation {
                 primary: node,

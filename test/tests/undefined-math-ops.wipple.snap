@@ -1,7 +1,6 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
-  assigned type `Number -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -9,7 +8,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show nan` (ExpressionStatement):
-  assigned type `()`
   grouped with `show nan`
   has type `()`
 
@@ -19,14 +17,12 @@ Facts (layer 2):
   is an expression
 
 `nan` (VariableExpression):
-  assigned type `Number`
   grouped with `Number`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `nan`
 
 `show` (VariableExpression):
-  assigned type `Number -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -34,7 +30,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (1 / 0)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (1 / 0)`
   has type `()`
 
@@ -44,13 +39,11 @@ Facts (layer 2):
   is an expression
 
 `1` (NumberExpression):
-  assigned type `Number`
   grouped with `1`, `left`
   has type `Number`
   is an expression
 
 `1 / 0` (OperatorExpression):
-  assigned type `Number`
   grouped with `1 / 0`, `value`
   has type `Number`
   is an expression
@@ -61,7 +54,6 @@ Facts (layer 2):
   is an expression
 
 `1 / 0` (ConstructorExpression):
-  assigned type `Number Number -> Number`
   grouped with `left right -> quotient`
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
@@ -69,13 +61,11 @@ Facts (layer 2):
   resolved to 1 definition(s): `Divide`
 
 `0` (NumberExpression):
-  assigned type `Number`
   grouped with `0`, `right`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Number -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -83,7 +73,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (0 / 0)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (0 / 0)`
   has type `()`
 
@@ -93,13 +82,11 @@ Facts (layer 2):
   is an expression
 
 `0` (NumberExpression):
-  assigned type `Number`
   grouped with `0`, `left`
   has type `Number`
   is an expression
 
 `0 / 0` (OperatorExpression):
-  assigned type `Number`
   grouped with `0 / 0`, `value`
   has type `Number`
   is an expression
@@ -110,7 +97,6 @@ Facts (layer 2):
   is an expression
 
 `0 / 0` (ConstructorExpression):
-  assigned type `Number Number -> Number`
   grouped with `left right -> quotient`
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
@@ -118,13 +104,11 @@ Facts (layer 2):
   resolved to 1 definition(s): `Divide`
 
 `0` (NumberExpression):
-  assigned type `Number`
   grouped with `0`, `right`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Number -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -132,7 +116,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sqrt -1)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (sqrt -1)`
   has type `()`
 
@@ -142,7 +125,6 @@ Facts (layer 2):
   is an expression
 
 `sqrt` (VariableExpression):
-  assigned type `Number -> Number`
   grouped with `(n :: Number) -> Number`
   has type `Number -> Number`
   is an expression
@@ -154,13 +136,11 @@ Facts (layer 2):
   is an expression
 
 `-1` (NumberExpression):
-  assigned type `Number`
   grouped with `-1`, `n :: Number`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
-  assigned type `Number -> ()`
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -168,7 +148,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (2 ^ 2 ^ 2 ^ 2048)` (ExpressionStatement):
-  assigned type `()`
   grouped with `show (2 ^ 2 ^ 2 ^ 2048)`
   has type `()`
 
@@ -178,13 +157,11 @@ Facts (layer 2):
   is an expression
 
 `2` (NumberExpression):
-  assigned type `Number`
   grouped with `2`, `left`
   has type `Number`
   is an expression
 
 `2 ^ 2` (OperatorExpression):
-  assigned type `Number`
   grouped with `2 ^ 2`, `value`
   has type `Number`
   is an expression
@@ -195,7 +172,6 @@ Facts (layer 2):
   is an expression
 
 `2 ^ 2` (ConstructorExpression):
-  assigned type `Number Number -> Number`
   grouped with `left right -> power`
   has bound(s) `Power` `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)`)
   has type `Number Number -> Number`
@@ -203,7 +179,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Power`
 
 `2 ^ 2 ^ 2` (OperatorExpression):
-  assigned type `Number`
   grouped with `2 ^ 2 ^ 2`, `left`
   has type `Number`
   is an expression
@@ -214,7 +189,6 @@ Facts (layer 2):
   is an expression
 
 `2 ^ 2 ^ 2` (ConstructorExpression):
-  assigned type `Number Number -> Number`
   grouped with `left right -> power`
   has bound(s) `Power` `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)`)
   has type `Number Number -> Number`
@@ -222,7 +196,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `Power`
 
 `2 ^ 2 ^ 2 ^ 2048` (OperatorExpression):
-  assigned type `Number`
   grouped with `2 ^ 2 ^ 2 ^ 2048`, `left`
   has type `Number`
   is an expression
@@ -233,7 +206,6 @@ Facts (layer 2):
   is an expression
 
 `2 ^ 2 ^ 2 ^ 2048` (ConstructorExpression):
-  assigned type `Number Number -> Number`
   grouped with `left right -> power`
   has bound(s) `Power` `Number` `Number` `Number` (resolved as `instance (Power Number Number Number)`)
   has type `Number Number -> Number`
@@ -241,19 +213,16 @@ Facts (layer 2):
   resolved to 1 definition(s): `Power`
 
 `2` (NumberExpression):
-  assigned type `Number`
   grouped with `2`, `right`
   has type `Number`
   is an expression
 
 `2` (NumberExpression):
-  assigned type `Number`
   grouped with `2`, `right`
   has type `Number`
   is an expression
 
 `2048` (NumberExpression):
-  assigned type `Number`
   grouped with `2048`, `right`
   has type `Number`
   is an expression

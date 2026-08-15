@@ -51,7 +51,10 @@ impl Visit for NumberPattern {
                 parameters: Vec::new(),
             }),
         );
-        visitor.visit_as(db, &syntax, number_type);
+
+        visitor.annotating(Some(node), |visitor| {
+            visitor.visit_as(db, &syntax, number_type);
+        });
 
         visitor.constraint(db, TyConstraint::new(node, Ty::Node(number_type)));
 

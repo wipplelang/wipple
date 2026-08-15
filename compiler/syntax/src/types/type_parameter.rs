@@ -108,7 +108,13 @@ impl Visit for TypeParameter {
             .into_iter()
             .next()
         {
-            visitor.constraint(db, TyConstraint::new(node, Ty::Node(existing_node)));
+            visitor.constraint(
+                db,
+                TyConstraint::new(
+                    visitor.current_annotating.unwrap_or(node),
+                    Ty::Node(existing_node),
+                ),
+            );
 
             db.insert(node, ResolvedTypeParameter(existing_node));
         } else if visitor
@@ -125,16 +131,19 @@ impl Visit for TypeParameter {
             );
 
             if let Some(value) = self.value {
-                let value = visitor.visit(db, &value);
+                let value = visitor.annotating(None, |visitor| visitor.visit(db, &value));
                 db.graph.edge(value, node, "value");
 
-                visitor.constraint(db, TyConstraint::new(node, Ty::Node(value)));
+                visitor.constraint(
+                    db,
+                    TyConstraint::new(visitor.current_annotating.unwrap_or(node), Ty::Node(value)),
+                );
 
                 visitor.constraint(
                     db,
                     GenericConstraint::new(
                         Box::new(TyConstraint::new(
-                            node,
+                            visitor.current_annotating.unwrap_or(node),
                             Ty::Constructed(ConstructedTy::parameter(node)),
                         )),
                         GenericConstraintMode::SourceOnly,
@@ -143,7 +152,10 @@ impl Visit for TypeParameter {
             } else {
                 visitor.constraint(
                     db,
-                    TyConstraint::new(node, Ty::Constructed(ConstructedTy::parameter(node))),
+                    TyConstraint::new(
+                        visitor.current_annotating.unwrap_or(node),
+                        Ty::Constructed(ConstructedTy::parameter(node)),
+                    ),
                 );
             }
 
