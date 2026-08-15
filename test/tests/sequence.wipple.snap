@@ -153,10 +153,6 @@ Feedback:
 
   2. `filter`: `filter` keeps the elements in `box` that satisfy `positive?`. This means `filter` is a `(Number -> Boolean) -> (Box Number) -> Sequence Number`. This requires `As-Sequence` `(Box Number)` `Number`.
 
-  3. `positive?`: `positive?` is a `Number -> Boolean`. This means `(_ :: Number) -> _`, `positive?`, and `positive?` must be a `Number -> Boolean`.
+  3. `Box String`: `_` is annotated as a `Box String`. This means `_`, `Box String`, `box`, and 1 other must be a `Box Number`.
 
-  4. `Box String`: `_` is annotated as a `Box String`. This means `_`, `Box String`, `box`, and 1 other must be a `Box Number`.
-
-  5. `positive?`: `positive?` is `(_ :: Number) -> _`. This means `(_ :: Number) -> _`, `positive?`, and `positive?` must be a `Number -> Boolean`.
-
-  (3 -> 2, 4 -> 2, 1 -> error)
+  (2 -> 1, 3 -> 2, 1 -> error)

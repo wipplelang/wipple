@@ -330,8 +330,6 @@ Feedback:
 
   Missing parentheses around the inputs to `+`.
 
-  1. `_`: `_` is `() + 2`. This means `() + 2`, `() + 2`, and `_` must be a `_`.
+  1. `() + 2`: `() + 2` is a `() Number -> _`. This requires `Add` `()` `Number` `_`.
 
-  2. `() + 2`: `() + 2` is a `() Number -> _`. This requires `Add` `()` `Number` `_`.
-
-  (2 -> error)
+  (1 -> error)

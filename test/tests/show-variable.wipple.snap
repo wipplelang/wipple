@@ -60,10 +60,6 @@ Feedback:
   You can't display `my-variable` on the screen or use it in placeholders because
   it can't be converted into a string.
 
-  1. `my-variable`: `my-variable` is `Cannot-Be-Shown`. This means `Cannot-Be-Shown`, `my-variable`, and `my-variable` must be a `Cannot-Be-Shown`.
+  1. `show`: `show` displays `my-variable` on the screen. This means `show` is a `Cannot-Be-Shown -> ()`. This requires `Describe` `Cannot-Be-Shown`.
 
-  2. `show`: `show` displays `my-variable` on the screen. This means `show` is a `Cannot-Be-Shown -> ()`. This requires `Describe` `Cannot-Be-Shown`.
-
-  3. `my-variable`: `my-variable` is a `Cannot-Be-Shown`. This means `Cannot-Be-Shown`, `my-variable`, and `my-variable` must be a `Cannot-Be-Shown`.
-
-  (2 -> error, 2 -> 1, 3 -> 1, 3 -> 2)
+  (1 -> error)

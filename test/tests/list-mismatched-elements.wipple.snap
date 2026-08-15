@@ -78,12 +78,8 @@ Feedback:
 
   1. `1, "hi", ()`: `1, "hi", ()` is a collection of `String` elements. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List String`.
 
-  2. `my-list`: `my-list` is `1, "hi", ()`. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List String`.
+  2. `each`: `each` calls `show` for each `String` in `my-list`. This means `each` is a `(String -> ()) -> (List String) -> ()`. This requires `As-Sequence` `(List String)` `String`.
 
-  3. `each`: `each` calls `show` for each `String` in `my-list`. This means `each` is a `(String -> ()) -> (List String) -> ()`. This requires `As-Sequence` `(List String)` `String`.
+  3. `show`: `show` displays `String` on the screen. This means `show` is a `String -> ()`. This requires `Describe` `String`.
 
-  4. `show`: `show` displays `String` on the screen. This means `show` is a `String -> ()`. This requires `Describe` `String`.
-
-  5. `my-list`: `my-list` is a `List String`. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List String`.
-
-  (2 -> 1, 3 -> 1, 4 -> 1, 4 -> 3, 5 -> 1, 5 -> 3, 1 -> error)
+  (2 -> 1, 3 -> 1, 3 -> 2, 1 -> error)

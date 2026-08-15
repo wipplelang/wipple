@@ -30,11 +30,7 @@ use wipple_core::{
     ast::AstKey,
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
-    typecheck::{
-        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
-        groups::Typed,
-        ty::Ty,
-    },
+    typecheck::{constraints::ty_constraint::TyConstraint, groups::Typed, ty::Ty},
     visit::{Visitor, exhaustiveness::MatchPathSegment},
 };
 use wipple_parse::{
@@ -157,43 +153,5 @@ pub fn visit_pattern(
         db.graph.edge(matching, node, "value")
     }
 
-    let mut constraint = TyConstraint::new(node, Ty::Node(matching));
-    if node != matching {
-        constraint = constraint.with_trace(MatchingConstraintTrace {
-            pattern: node,
-            value: matching,
-        });
-    }
-
-    visitor.constraint(db, constraint);
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct MatchingConstraintTrace {
-    pattern: Node,
-    value: Node,
-}
-
-#[typetag::serde]
-impl ConstraintTrace for MatchingConstraintTrace {
-    fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        vec![&mut self.pattern, &mut self.value]
-    }
-
-    fn nodes(&self, _db: &Db) -> Vec<Node> {
-        vec![self.pattern, self.value]
-    }
-
-    fn allow_hidden_nodes(&self) -> bool {
-        false
-    }
-}
-
-impl Render for MatchingConstraintTrace {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
-        ctx.node(self.pattern);
-        ctx.string(" is ");
-        ctx.node(self.value);
-        ctx.string(".");
-    }
+    visitor.constraint(db, TyConstraint::new(node, Ty::Node(matching)));
 }
