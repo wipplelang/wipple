@@ -11,10 +11,7 @@ use wipple_core::{
 
 pub struct FeedbackWriter<'a> {
     ctx: RenderCtx<'a>,
-    traces: Option<(
-        BTreeMap<usize, (Node, RenderCtx<'a>, Vec<RenderCtx<'a>>)>,
-        Vec<(usize, Option<usize>)>,
-    )>,
+    traces: Option<Vec<(Node, RenderCtx<'a>, Vec<RenderCtx<'a>>)>>,
 }
 
 impl<'a> FeedbackWriter<'a> {
@@ -94,8 +91,7 @@ impl FeedbackWriter<'_> {
 
         let result = result
             .into_iter()
-            .enumerate()
-            .filter_map(|(index, (node, ctx, entry))| {
+            .filter_map(|(node, ctx, entry)| {
                 let nodes = entry.trace.clone().nodes(db);
 
                 let mut consequence_ctxs = Vec::new();
@@ -116,33 +112,18 @@ impl FeedbackWriter<'_> {
                     return None;
                 }
 
-                Some((index, (node, ctx, consequence_ctxs)))
-            })
-            .collect::<BTreeMap<_, _>>();
-
-        let edges = traces
-            .edges
-            .iter()
-            .filter_map(|(from, to)| {
-                Some((
-                    *indices.get(from)?,
-                    match to {
-                        Some(to) => Some(*indices.get(to)?),
-                        None => None,
-                    },
-                ))
+                Some((node, ctx, consequence_ctxs))
             })
             .collect::<Vec<_>>();
 
-        self.traces = Some((result, edges));
+        self.traces = Some(result);
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Feedback {
     pub message: String,
-    pub traces: BTreeMap<usize, (Node, String, Vec<String>)>,
-    pub trace_edges: Vec<(usize, Option<usize>)>,
+    pub traces: Vec<(Node, String, Vec<String>)>,
     pub nodes: BTreeSet<Node>,
 }
 
@@ -154,11 +135,11 @@ impl FeedbackWriter<'_> {
     ) -> Feedback {
         let (message, mut nodes) = self.ctx.finish(db, &mut render_segment);
 
-        let (traces, trace_edges) = self.traces.unwrap_or_default();
+        let traces = self.traces.unwrap_or_default();
 
         let traces = traces
             .into_iter()
-            .map(|(index, (node, ctx, consequence_ctxs))| {
+            .map(|(node, ctx, consequence_ctxs)| {
                 let (message, trace_nodes) = ctx.finish(db, &mut render_segment);
                 nodes.extend(trace_nodes);
 
@@ -171,14 +152,13 @@ impl FeedbackWriter<'_> {
                     })
                     .collect::<Vec<_>>();
 
-                (index, (node, message, consequences))
+                (node, message, consequences)
             })
-            .collect::<BTreeMap<_, _>>();
+            .collect::<Vec<_>>();
 
         Feedback {
             message,
             traces,
-            trace_edges,
             nodes,
         }
     }

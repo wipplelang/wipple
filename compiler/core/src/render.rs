@@ -297,6 +297,7 @@ impl RenderSegment {
 #[derive(Debug, Clone, Copy, Default)]
 pub struct RenderMarkdownOptions {
     pub rich: bool,
+    pub color: bool,
     pub hover_links: bool,
 }
 
@@ -306,10 +307,23 @@ impl RenderMarkdownOptions {
         self
     }
 
+    pub fn color(mut self) -> Self {
+        self.color = true;
+        self
+    }
+
     pub fn hover_links(mut self) -> Self {
         self.hover_links = true;
         self
     }
+}
+
+fn bold(s: &str) -> String {
+    format!("\x1b[1m{s}\x1b[22m")
+}
+
+fn dim(s: &str) -> String {
+    format!("\x1b[2m{s}\x1b[22m")
 }
 
 impl RenderSegment {
@@ -317,20 +331,44 @@ impl RenderSegment {
         match self {
             RenderSegment::LineBreak => String::from("\n\n"),
             RenderSegment::String(s) => s.clone(),
-            RenderSegment::Code(s) => format!("`{s}`"),
+            RenderSegment::Code(s) => {
+                if options.color {
+                    bold(s)
+                } else {
+                    format!("`{s}`")
+                }
+            }
             RenderSegment::Node(node) => {
                 let mut s = String::new();
 
                 if let Some(Syntax(syntax)) = db.get(*node) {
                     let span = db.ast(syntax).span(db);
 
-                    write!(s, "`{}`", format_source(&span.source)).unwrap();
+                    let source = format_source(&span.source);
+
+                    if options.color {
+                        write!(s, "{}", bold(&source)).unwrap();
+                    } else {
+                        write!(s, "`{source}`").unwrap();
+                    }
 
                     if !options.rich {
-                        write!(s, " ({span})").unwrap();
+                        let span = format!(" ({span})");
+
+                        if options.color {
+                            write!(s, "{}", dim(&span)).unwrap();
+                        } else {
+                            write!(s, "{span}").unwrap();
+                        }
                     }
                 } else {
-                    write!(s, "`_`").unwrap();
+                    let placeholder = "_";
+
+                    if options.color {
+                        write!(s, "{}", dim(placeholder)).unwrap();
+                    } else {
+                        write!(s, "`{placeholder}`").unwrap();
+                    }
                 }
 
                 if db.debug_enabled {
@@ -340,13 +378,23 @@ impl RenderSegment {
                 s
             }
             RenderSegment::Link(label, node) => {
-                let mut s = format!("`{label}`");
+                let mut s = if options.color {
+                    bold(label)
+                } else {
+                    format!("`{label}`")
+                };
 
                 if let Some(Syntax(syntax)) = db.get(*node) {
                     let span = db.ast(syntax).span(db);
 
                     if !options.rich {
-                        write!(s, " ({span})").unwrap();
+                        let span = format!(" ({span})");
+
+                        if options.color {
+                            write!(s, "{}", dim(&span)).unwrap();
+                        } else {
+                            write!(s, "{span}").unwrap();
+                        }
                     }
                 }
 

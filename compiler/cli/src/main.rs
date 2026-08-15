@@ -184,6 +184,7 @@ fn setup(
         let mut driver = Driver::new(options, files, &mut out);
         driver.prefix = "Compiling ";
         driver.hide_facts = !options.lib_facts;
+        driver.render_options = RenderMarkdownOptions::default().rich().color();
 
         let (_, lib_source_files, lib_statements) = driver
             .run(&mut db, &mut top_level, &name)?
@@ -229,6 +230,7 @@ fn compile(
 
     let mut driver = Driver::new(options, files, io::stdout());
     driver.prefix = "Compiling ";
+    driver.render_options = RenderMarkdownOptions::default().rich().color();
 
     let (_, source_files, statements) = driver
         .run(&mut db, &mut top_level, &name)?
@@ -392,7 +394,7 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
 
                 let mut driver = Driver::new(options, files, io::stdout());
                 driver.silent = true;
-                driver.render_options = RenderMarkdownOptions::default().rich();
+                driver.render_options = RenderMarkdownOptions::default().rich().color();
 
                 let Some((_, source_files, statements)) =
                     driver.run(&mut next_db, &mut top_level, &name)?

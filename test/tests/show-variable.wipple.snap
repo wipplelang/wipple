@@ -50,16 +50,15 @@ Facts (layer 2):
   resolved to 1 definition(s): `my-variable`
 
 
+error: 
+  --> show-variable.wipple:4:1
+  |
+4 | show my-variable
+  | ^^^^
+  | |
+  | Can't describe `my-variable`.
 
-Feedback:
+You can't display `my-variable` on the screen or use it in placeholders because
+it can't be converted into a string.
+  | `show` displays `my-variable` on the screen. This means `show` is a `Cannot-Be-Shown -> ()`. This requires `Describe` `Cannot-Be-Shown`.
 
-`show` (error-instance)
-
-  Can't describe `my-variable`.
-  
-  You can't display `my-variable` on the screen or use it in placeholders because
-  it can't be converted into a string.
-
-  1. `show`: `show` displays `my-variable` on the screen. This means `show` is a `Cannot-Be-Shown -> ()`. This requires `Describe` `Cannot-Be-Shown`.
-
-  (1 -> error)

@@ -186,15 +186,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 
+error: 
+   --> nested-bounds-2.wipple:10:1
+   |
+10 | T
+   | ^
+   | |
+   | `T` requires the instance `W` `_`, but this instance isn't defined.
 
-Feedback:
+Double-check that these types are correct.
+   | `T` is a `()`. This requires `T` `_`.
 
-`T` (unresolved-bound)
-
-  `T` requires the instance `W` `_`, but this instance isn't defined.
-  
-  Double-check that these types are correct.
-
-  1. `T`: `T` is a `()`. This requires `T` `_`.
-
-  (1 -> error)

@@ -140,18 +140,16 @@ Facts (layer 2):
   is an expression
 
 
+error: 
+  --> operator-without-parentheses.wipple:1:1
+  |
+1 | show 1 + 2
+  | ^^^^^^^^^^
+  | |
+  | Missing parentheses around the inputs to `+`.
 
-Feedback:
+Spaces group before operators do, so you need to put parentheses around just
+the inputs to `+`.
+  | `show 1 + 2` adds `show 1` and `2` together, returning a `_`. This requires `Add` `()` `Number` `_`.
+  | `show` displays `1` on the screen. This requires `Describe` `Number`.
 
-`show 1 + 2` (error-instance)
-
-  Missing parentheses around the inputs to `+`.
-  
-  Spaces group before operators do, so you need to put parentheses around just
-  the inputs to `+`.
-
-  1. `show`: `show` displays `1` on the screen. This requires `Describe` `Number`.
-
-  2. `show 1 + 2`: `show 1 + 2` adds `show 1` and `2` together, returning a `_`. This requires `Add` `()` `Number` `_`.
-
-  (2 -> error)

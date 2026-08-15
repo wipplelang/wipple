@@ -178,17 +178,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `Number`
 
 
+error: 
+   --> recursive-bounds.wipple:10:1
+   |
+10 | Describe (_ :: Maybe Number)
+   | ^^^^^^^^       ------------ `_` is annotated as a `Maybe Number`. This means `_` and `Maybe Number` must be a `Maybe Number`.
+   | |               
+   | `Describe` requires the instance `Describe` `Number`, but this instance isn't defined.
 
-Feedback:
+Double-check that these types are correct.
+   | `Describe` is a `(Maybe Number) -> String`. This requires `Describe` `(Maybe Number)`.
 
-`Describe` (unresolved-bound)
-
-  `Describe` requires the instance `Describe` `Number`, but this instance isn't defined.
-  
-  Double-check that these types are correct.
-
-  1. `Describe`: `Describe` is a `(Maybe Number) -> String`. This requires `Describe` `(Maybe Number)`.
-
-  2. `Maybe Number`: `_` is annotated as a `Maybe Number`. This means `_` and `Maybe Number` must be a `Maybe Number`.
-
-  (1 -> error)

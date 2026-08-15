@@ -166,11 +166,11 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 
+error: 
+  --> implied-instance.wipple:7:38
+  |
+7 | instance (T value) where (U value) : _
+  |                                      ^ Found a placeholder of type `value -> ()`.
 
-Feedback:
+Add a `value -> ()` value here before running your program.
 
-`_` (placeholder)
-
-  Found a placeholder of type `value -> ()`.
-  
-  Add a `value -> ()` value here before running your program.

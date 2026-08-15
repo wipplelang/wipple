@@ -24,7 +24,6 @@ pub struct Diagnostic {
     pub groups: usize,
     pub message: String,
     pub traces: Vec<DiagnosticTrace>,
-    pub trace_edges: Vec<DiagnosticTraceEdge>,
     pub graph: Option<Graph>,
 }
 
@@ -53,7 +52,6 @@ pub struct DiagnosticLine {
 #[wasm_bindgen(getter_with_clone, inspectable)]
 #[derive(Debug, Clone)]
 pub struct DiagnosticTrace {
-    pub index: usize,
     pub location: DiagnosticLocation,
     pub message: String,
     pub consequences: Vec<String>,
@@ -191,7 +189,7 @@ impl CompileResult {
                     traces: feedback
                         .traces
                         .into_iter()
-                        .filter_map(|(index, (node, message, consequences))| {
+                        .filter_map(|(node, message, consequences)| {
                             let span = self
                                 .db
                                 .get(node)
@@ -204,17 +202,11 @@ impl CompileResult {
                             };
 
                             Some(DiagnosticTrace {
-                                index,
                                 location,
                                 message,
                                 consequences,
                             })
                         })
-                        .collect(),
-                    trace_edges: feedback
-                        .trace_edges
-                        .into_iter()
-                        .map(|(from, to)| DiagnosticTraceEdge { from, to })
                         .collect(),
                     graph,
                 }

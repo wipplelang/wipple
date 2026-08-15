@@ -50,13 +50,14 @@ Facts (layer 2):
   is an expression
 
 
+error: 
+  --> when-mismatched-types.wipple:1:7
+  |  
+1 |   show (when True {
+  |   ---- `show` displays `when True {⋯}` on the screen. This means `show` is a `Number -> ()`. This requires `Describe` `Number`.
+  | /-------^
+2 | |   True -> 42
+3 | |   False -> "hi"
+4 | | })
+  | \-^ `when True {⋯}` is a `String` or a `Number`, but it can only be one of these.
 
-Feedback:
-
-`when True {⋯}` (conflicting-types)
-
-  `when True {⋯}` is a `String` or a `Number`, but it can only be one of these.
-
-  1. `show`: `show` displays `when True {⋯}` on the screen. This means `show` is a `Number -> ()`. This requires `Describe` `Number`.
-
-  (1 -> error)

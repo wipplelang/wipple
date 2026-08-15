@@ -13,6 +13,7 @@ workspace = true
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive"] }
+codespan-reporting = "0.13"
 colored = "3"
 rayon = "1"
 reqwest = { version = "0.13", features = ["blocking"] }

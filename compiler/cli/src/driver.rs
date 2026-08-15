@@ -1,7 +1,8 @@
 use crate::CompileOptions;
 use colored::Colorize;
 use std::{
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet, hash_map::Entry},
+    fmt::Write,
     io,
 };
 use wipple_core::{
@@ -11,7 +12,7 @@ use wipple_core::{
     db::{Db, Node, NodeId},
     default_filter,
     facts::Syntax,
-    render::{RenderCtx, RenderMarkdownOptions},
+    render::RenderMarkdownOptions,
 };
 use wipple_feedback::collect_feedback;
 use wipple_syntax::checks::run_checks;
@@ -101,85 +102,94 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
         });
 
         let mut feedback_count = 0;
+        let mut feedback_files = codespan_reporting::files::SimpleFiles::new();
+        let mut feedback_file_ids = HashMap::new();
+        let mut feedback_diagnostics = Vec::new();
         for item in feedback_items {
-            if feedback_count == 0 {
-                writeln!(self.out, "\nFeedback:")?;
-            } else {
-                writeln!(self.out)?;
-            }
-
-            let render_location = |db: &Db, node: Node| {
-                let mut render_ctx = RenderCtx::new(&filter, Vec::new());
-                render_ctx.node(node);
-                let (location, _) =
-                    render_ctx.finish(db, |db, segment| segment.markdown(db, self.render_options));
-                location
+            let Some(span) = db
+                .get(item.location.primary)
+                .map(|Syntax(key)| key.get(db).span(db))
+            else {
+                continue;
             };
 
-            let rendered_location = render_location(db, item.location.primary);
+            let file_id = match feedback_file_ids.entry(&span.path) {
+                Entry::Occupied(entry) => *entry.get(),
+                Entry::Vacant(entry) => {
+                    let Some(file_span) = self
+                        .files
+                        .iter()
+                        .map(|key| key.get(db).span(db))
+                        .find(|other| other.path == span.path)
+                    else {
+                        continue;
+                    };
 
-            writeln!(self.out, "\n{} ({})\n", rendered_location, item.id)?;
+                    *entry.insert(feedback_files.add(&file_span.path, &file_span.source))
+                }
+            };
+
+            let mut labels = Vec::new();
 
             let feedback =
                 item.display(db, |db, segment| segment.markdown(db, self.render_options));
 
-            for line in feedback.message.lines() {
-                writeln!(self.out, "  {line}")?;
-            }
+            labels.push(
+                codespan_reporting::diagnostic::Label::primary(
+                    file_id,
+                    span.start.index..span.end.index,
+                )
+                .with_message(feedback.message),
+            );
 
-            if !feedback.traces.is_empty() {
-                let mut indices = BTreeMap::new();
+            for (node, trace, consequences) in feedback.traces.into_iter() {
+                let Some(span) = db.get(node).map(|Syntax(key)| key.get(db).span(db)) else {
+                    continue;
+                };
 
-                for (index, (trace_index, (node, trace, consequences))) in
-                    feedback.traces.into_iter().enumerate()
-                {
-                    indices.insert(trace_index, index);
-
-                    let location = render_location(db, node);
-                    write!(self.out, "\n  {}. {}: {}", index + 1, location, trace)?;
-                    for consequence in consequences {
-                        write!(self.out, " {consequence}")?;
-                    }
-                    writeln!(self.out)?;
+                let mut message = trace;
+                for consequence in consequences {
+                    write!(message, " {consequence}")?;
                 }
 
-                if !feedback.trace_edges.is_empty() {
-                    let mut first = true;
-                    for (from, to) in feedback.trace_edges {
-                        let Some(from) = indices.get(&from) else {
-                            continue;
-                        };
-
-                        let to = match to {
-                            Some(to) => match indices.get(&to) {
-                                Some(to) => Some(to),
-                                None => continue,
-                            },
-                            None => None,
-                        };
-
-                        if first {
-                            write!(self.out, "\n  (")?;
-                            first = false;
-                        } else {
-                            write!(self.out, ", ")?;
-                        }
-
-                        write!(
-                            self.out,
-                            "{} -> {}",
-                            from + 1,
-                            to.map_or_else(|| String::from("error"), |to| (to + 1).to_string())
-                        )?;
-                    }
-
-                    if !first {
-                        writeln!(self.out, ")")?;
-                    }
-                }
+                labels.push(
+                    codespan_reporting::diagnostic::Label::secondary(
+                        file_id,
+                        span.start.index..span.end.index,
+                    )
+                    .with_message(message),
+                );
             }
+
+            feedback_diagnostics
+                .push(codespan_reporting::diagnostic::Diagnostic::error().with_labels(labels));
 
             feedback_count += 1;
+        }
+
+        let config = codespan_reporting::term::Config {
+            chars: codespan_reporting::term::Chars::ascii(),
+            ..Default::default()
+        };
+
+        for diagnostic in feedback_diagnostics {
+            let mut f: Box<dyn codespan_reporting::term::WriteStyle> = if self.render_options.color
+            {
+                Box::new(codespan_reporting::term::termcolor::Ansi::new(
+                    &mut self.out,
+                ))
+            } else {
+                Box::new(codespan_reporting::term::termcolor::NoColor::new(
+                    &mut self.out,
+                ))
+            };
+
+            codespan_reporting::term::emit_to_write_style(
+                f.as_mut(),
+                &config,
+                &feedback_files,
+                &diagnostic,
+            )?;
         }
 
         Ok((feedback_count == 0).then_some((root_node, source_files, statements)))

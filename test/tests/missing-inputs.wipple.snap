@@ -11,18 +11,19 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 
+error: 
+  --> missing-inputs.wipple:1:1
+  |
+1 | show
+  | ^^^^ Missing information for the type of `show`.
 
-Feedback:
+Wipple determined this code is a `_ -> ()`, but it needs some more information for the `_` placeholders.
 
-`show` (incomplete-type)
+error: 
+  --> missing-inputs.wipple:1:1
+  |
+1 | show
+  | ^^^^ Missing information for the type of `show`.
 
-  Missing information for the type of `show`.
-  
-  Wipple determined this code is a `_ -> ()`, but it needs some more information for the `_` placeholders.
+Wipple determined this code is a `_ -> ()`, but it needs some more information for the `_` placeholders.
 
-
-`show` (incomplete-type)
-
-  Missing information for the type of `show`.
-  
-  Wipple determined this code is a `_ -> ()`, but it needs some more information for the `_` placeholders.

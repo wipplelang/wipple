@@ -176,34 +176,37 @@ Facts (layer 2):
   missing type (group: `_`, `b`, `b`, `b`)
 
 
+error: 
+   --> bounds-dont-influence-other-bounds.wipple:9:1
+   |  
+ 9 | / -- `B` should not be inferred to be `Number`
+10 | | (f :: (Number; _))
+   | \------------------^ Missing information for the type of `-- `B` should not be inferred to be `Number`
+(f :: (Number; _))`.
 
-Feedback:
+Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
-`-- `B` should not be inferred to be `Number`
-(f :: (Number; _))` (incomplete-type)
+error: 
+   --> bounds-dont-influence-other-bounds.wipple:10:2
+   |
+10 | (f :: (Number; _))
+   |  ^ Missing information for the type of `f`.
 
-  Missing information for the type of `-- `B` should not be inferred to be `Number`
-  (f :: (Number; _))`.
-  
-  Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
+Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
+error: 
+   --> bounds-dont-influence-other-bounds.wipple:10:8
+   |
+10 | (f :: (Number; _))
+   |        ^^^^^^^^^ Missing information for the type of `Number; _`.
 
-`f` (incomplete-type)
+Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
-  Missing information for the type of `f`.
-  
-  Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
+error: 
+   --> bounds-dont-influence-other-bounds.wipple:10:16
+   |
+10 | (f :: (Number; _))
+   |                ^ Could not determine the type of `_`.
 
+Wipple needs to know the type of this code before running it. Try using a function or assigning it to a variable.
 
-`Number; _` (incomplete-type)
-
-  Missing information for the type of `Number; _`.
-  
-  Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
-
-
-`_` (unknown-type)
-
-  Could not determine the type of `_`.
-  
-  Wipple needs to know the type of this code before running it. Try using a function or assigning it to a variable.

@@ -69,17 +69,16 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 
+error: 
+  --> list-mismatched-elements.wipple:1:20
+  |
+1 | my-list : 1, "hi", ()
+  |           ---------^^
+  |           |        |
+  |           |        `()` is a `String`, `()`, or a `Number`, but it can only be one of these.
+  |           `1, "hi", ()` is a collection of `String` elements. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List String`.
+2 | my-list . each show
+  |           ---- ---- `show` displays `String` on the screen. This means `show` is a `String -> ()`. This requires `Describe` `String`.
+  |           |     
+  |           `each` calls `show` for each `String` in `my-list`. This means `each` is a `(String -> ()) -> (List String) -> ()`. This requires `As-Sequence` `(List String)` `String`.
 
-Feedback:
-
-`()` (conflicting-types)
-
-  `()` is a `String`, `()`, or a `Number`, but it can only be one of these.
-
-  1. `1, "hi", ()`: `1, "hi", ()` is a collection of `String` elements. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List String`.
-
-  2. `each`: `each` calls `show` for each `String` in `my-list`. This means `each` is a `(String -> ()) -> (List String) -> ()`. This requires `As-Sequence` `(List String)` `String`.
-
-  3. `show`: `show` displays `String` on the screen. This means `show` is a `String -> ()`. This requires `Describe` `String`.
-
-  (2 -> 1, 3 -> 1, 3 -> 2, 1 -> error)

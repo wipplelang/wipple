@@ -205,15 +205,14 @@ Facts (layer 2):
   is an expression
 
 
+error: 
+   --> nested-bounds.wipple:13:1
+   |
+13 | B ()
+   | ^
+   | |
+   | `B` requires the instance `A` `()`, but this instance isn't defined.
 
-Feedback:
+Double-check that these types are correct.
+   | `B` is a `() -> ()`. This requires `B` `()`.
 
-`B` (unresolved-bound)
-
-  `B` requires the instance `A` `()`, but this instance isn't defined.
-  
-  Double-check that these types are correct.
-
-  1. `B`: `B` is a `() -> ()`. This requires `B` `()`.
-
-  (1 -> error)

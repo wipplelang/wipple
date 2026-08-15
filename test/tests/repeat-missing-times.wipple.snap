@@ -48,17 +48,16 @@ Facts (layer 2):
   is an expression
 
 
+error: 
+  --> repeat-missing-times.wipple:1:1
+  |
+1 | repeat 5 {
+  | ^^^^^^
+  | |
+  | Missing `times` after `5`.
 
-Feedback:
+Try rewriting this code as `(`5` times)`, or double-check your parentheses.
+  | `repeat` runs `show "Hello, world!"` repeatedly. This means `repeat` is a `Number {()} -> ()`. This requires `Repeat-Condition` `Number`.
+2 |   show "Hello, world!"
+  |   ---- `show` displays `"Hello, world!"` on the screen. This means `show` is a `String -> ()`. This requires `Describe` `String`.
 
-`repeat` (error-instance)
-
-  Missing `times` after `5`.
-  
-  Try rewriting this code as `(`5` times)`, or double-check your parentheses.
-
-  1. `repeat`: `repeat` runs `show "Hello, world!"` repeatedly. This means `repeat` is a `Number {()} -> ()`. This requires `Repeat-Condition` `Number`.
-
-  2. `show`: `show` displays `"Hello, world!"` on the screen. This means `show` is a `String -> ()`. This requires `Describe` `String`.
-
-  (1 -> error, 2 -> 1)

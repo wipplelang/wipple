@@ -16,13 +16,12 @@ Facts (layer 2):
   resolved to 1 definition(s): `String`
 
 
+error: 
+  --> mismatched-types.wipple:1:1
+  |
+1 | (42 :: String)
+  | ^^^^^^^^^^^^^^
+  | |      |
+  | |      `42` is annotated as a `String`. This means `(42 :: String)`, `42`, and `String` must be a `Number or String`.
+  | `(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
 
-Feedback:
-
-`(42 :: String)` (conflicting-types)
-
-  `(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
-
-  1. `String`: `42` is annotated as a `String`. This means `(42 :: String)`, `42`, and `String` must be a `Number or String`.
-
-  (1 -> error)

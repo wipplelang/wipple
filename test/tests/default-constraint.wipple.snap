@@ -279,25 +279,27 @@ Facts (layer 2):
   is a type
 
 
+error: 
+  --> default-constraint.wipple:7:45
+  |
+7 | instance (Collect element (List element)) : _
+  |                                             ^ Found a placeholder of type `element -> List element`.
 
-Feedback:
+Add a `element -> List element` value here before running your program.
 
-`_` (placeholder)
+error: 
+  --> default-constraint.wipple:8:44
+  |
+8 | instance (Collect element (Set element)) : _
+  |                                            ^ Found a placeholder of type `element -> Set element`.
 
-  Found a placeholder of type `element -> List element`.
-  
-  Add a `element -> List element` value here before running your program.
+Add a `element -> Set element` value here before running your program.
 
+error: 
+   --> default-constraint.wipple:12:11
+   |
+12 | collect : _
+   |           ^ Found a placeholder of type `element -> output`.
 
-`_` (placeholder)
+Add a `element -> output` value here before running your program.
 
-  Found a placeholder of type `element -> Set element`.
-  
-  Add a `element -> Set element` value here before running your program.
-
-
-`_` (placeholder)
-
-  Found a placeholder of type `element -> output`.
-  
-  Add a `element -> output` value here before running your program.
