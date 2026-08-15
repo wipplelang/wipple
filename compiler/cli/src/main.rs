@@ -392,6 +392,7 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
 
                 let mut driver = Driver::new(options, files, io::stdout());
                 driver.silent = true;
+                driver.render_options = RenderMarkdownOptions::default().rich();
 
                 let Some((_, source_files, statements)) =
                     driver.run(&mut next_db, &mut top_level, &name)?
