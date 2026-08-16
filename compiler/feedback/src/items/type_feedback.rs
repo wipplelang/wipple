@@ -16,17 +16,9 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 FeedbackRank::DirectConflicts
             }
         })
-        .location(|_, data| {
-            let mut secondary = data.nodes.clone();
-
-            if data.source.is_some_and(|source| data.from != source) {
-                secondary.insert(data.from);
-            }
-
-            FeedbackLocation {
-                primary: data.source.unwrap_or(data.from),
-                secondary,
-            }
+        .location(|_, data| FeedbackLocation {
+            primary: data.source.unwrap_or(data.from),
+            secondary: data.group.clone(),
         })
         .show_graph()
         .display(|db, writer, _, data| {
@@ -50,19 +42,19 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             });
             writer.string(", but it can only be one of these.");
 
-            let nodes = data
-                .nodes
+            let related = data
+                .related
                 .iter()
                 .copied()
                 .filter(|&node| writer.filter(db, node))
                 .collect::<Vec<_>>();
 
-            if nodes.len() > 1 {
+            if related.len() > 1 {
                 writer.line_break();
                 writer.node(data.from);
                 writer.string(" must be the same type as ");
                 writer.list("and", |list| {
-                    for node in nodes {
+                    for node in related {
                         list.add(move |writer| writer.node(node));
                     }
                 });

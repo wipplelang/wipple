@@ -4,7 +4,7 @@ use crate::{
     typecheck::ty::{ConstructedTy, Ty},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Group(BTreeMap<Node, (NodeRank, Vec<ConstructedTy>)>);
@@ -117,17 +117,12 @@ impl Group {
         self.0.entry(node).or_default().0 = rank;
     }
 
-    pub fn min_ranked_nodes(&self) -> Option<(BTreeSet<Node>, NodeRank)> {
-        let mut nodes = self
-            .0
-            .iter()
-            .map(|(&node, (rank, _))| (node, *rank))
-            .collect::<BTreeMap<_, _>>();
-
-        let min_rank = nodes.values().copied().min()?;
-
-        nodes.retain(|_, rank| *rank == min_rank);
-        Some((nodes.into_keys().collect(), min_rank))
+    pub fn min_rank(&self) -> NodeRank {
+        self.0
+            .values()
+            .map(|(rank, _)| *rank)
+            .min()
+            .unwrap_or_default()
     }
 }
 

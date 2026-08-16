@@ -3,7 +3,11 @@ use std::collections::BTreeSet;
 use wipple_core::{
     db::Node,
     traces::Traces,
-    typecheck::{groups::Typed, instantiate::Instantiated, ty::ConstructedTy},
+    typecheck::{
+        groups::{NodeRank, Typed},
+        instantiate::Instantiated,
+        ty::ConstructedTy,
+    },
 };
 
 pub fn has_type<'a>(db: &QueryCtx<'a>, node: Node) -> Option<&'a ConstructedTy> {
@@ -26,7 +30,8 @@ pub fn in_group(db: &QueryCtx<'_>, node: Node) -> impl Iterator<Item = Node> {
 pub struct ConflictingTypes {
     pub source: Option<Node>,
     pub from: Node,
-    pub nodes: BTreeSet<Node>,
+    pub related: BTreeSet<Node>,
+    pub group: BTreeSet<Node>,
     pub tys: Vec<ConstructedTy>,
     pub traces: Traces,
 }
@@ -40,23 +45,25 @@ pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTyp
         return None;
     }
 
-    let (mut nodes, _) = group.min_ranked_nodes().unwrap_or_default();
-
-    if !nodes.remove(&node) {
+    if group.get_rank(node) > group.min_rank() {
         return None;
     }
 
-    let traces = db.traces_for(node, nodes.iter().copied());
+    let traces = db.traces_for(node, group.nodes());
 
-    let (source, from) = db
+    let source = db
         .get::<Instantiated>(node)
-        .map(|instantiated| (Some(instantiated.source_node), instantiated.from))
-        .unwrap_or((None, node));
+        .map(|instantiated| instantiated.source_node);
+
+    let mut related = group.nodes().collect::<BTreeSet<_>>();
+    related.remove(&node);
+    related.retain(|&node| group.get_rank(node) <= NodeRank::Inherited);
 
     Some(ConflictingTypes {
         source,
-        from,
-        nodes,
+        from: node,
+        related,
+        group: group.nodes().collect(),
         tys: group.tys().cloned().collect(),
         traces,
     })
