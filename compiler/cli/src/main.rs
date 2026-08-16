@@ -17,6 +17,7 @@ use std::{
     ops::ControlFlow,
     path::{Path, PathBuf},
     process,
+    str::FromStr,
     sync::{
         Arc,
         atomic::{self, AtomicUsize},
@@ -29,7 +30,7 @@ use wipple_core::{
         self, codegen,
         js::{self, JsResult},
     },
-    db::{Db, DbRef, Node},
+    db::{Db, DbRef, Node, NodeId},
     default_filter,
     render::RenderMarkdownOptions,
     visit::definitions::Defined,
@@ -89,7 +90,7 @@ struct CompileOptions {
     lib_facts: bool,
 
     #[clap(long)]
-    filter_facts: Option<String>,
+    filter_facts: Vec<FilterFacts>,
 
     #[clap(long)]
     graph: bool,
@@ -98,12 +99,35 @@ struct CompileOptions {
     filter_feedback: Vec<String>,
 
     #[clap(long)]
+    all_feedback: bool,
+
+    #[clap(long)]
     trace: bool,
 
     #[clap(long)]
     source_map: bool,
 
     paths: Vec<PathBuf>,
+}
+
+#[derive(Debug, Clone)]
+enum FilterFacts {
+    Feedback,
+    Node(NodeId),
+}
+
+impl FromStr for FilterFacts {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s == "feedback" {
+            Ok(FilterFacts::Feedback)
+        } else if let Ok(id) = s.parse::<NodeId>() {
+            Ok(FilterFacts::Node(id))
+        } else {
+            Err(anyhow::format_err!("invalid filter {s:?}"))
+        }
+    }
 }
 
 fn make_temp_dir() -> io::Result<PathBuf> {

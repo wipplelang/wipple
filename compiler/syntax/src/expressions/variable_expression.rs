@@ -4,6 +4,7 @@ use std::collections::BTreeMap;
 use wipple_core::{
     codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
     db::{Db, Node},
+    facts::Syntax,
     render::{Comments, Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
@@ -168,6 +169,25 @@ impl ConstraintTrace for DefinitionConstraintTrace {
                     .map(|link| link.node),
             )
             .collect()
+    }
+
+    fn primary_node(&self, db: &Db) -> Node {
+        if db.get(self.definition).is_some_and(|Defined(definition)| {
+            // Prefer showing the use node if the definition has documentation comments
+            definition.comments().is_empty()
+        }) && db
+            .get(self.definition)
+            .map(|Syntax(key)| key.get(db).span(db))
+            .zip(db.get(self.node).map(|Syntax(key)| key.get(db).span(db)))
+            .is_some_and(|(definition_span, node_span)| {
+                // Prefer showing the use node if the definition is in a different file
+                definition_span.path == node_span.path
+            })
+        {
+            self.definition
+        } else {
+            self.node
+        }
     }
 }
 

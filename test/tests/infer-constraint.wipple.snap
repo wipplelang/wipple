@@ -454,18 +454,11 @@ Facts (layer 2):
 error: 
    --> infer-constraint.wipple:20:1
    |
+17 | add-infer :: left right -> sum where (Add-Infer left right sum)
+   | --------- `add-infer` is defined as a `Number Number -> Number`. This requires `Add-Infer` `Number` `Number` `Number`.
+   .
 20 | output : (add-infer 1 2 :: String)
-   | ^^^^^^    ---------        ------ `add-infer 1 2` is annotated as a `String`.
-   | |         |                 
-   | |         `add-infer` is defined as a `Number Number -> Number`. This requires `Add-Infer` `Number` `Number` `Number`.
+   | ^^^^^^                     ------ `add-infer 1 2` is annotated as a `String`.
+   | |                           
    | `output` is a `String` or a `Number`, but it can only be one of these.
-
-error: 
-   --> infer-constraint.wipple:20:11
-   |
-20 | output : (add-infer 1 2 :: String)
-   |           ^^^^^^^^^^^^^    ------ `add-infer 1 2` is annotated as a `String`.
-   |           |                 
-   |           `add-infer 1 2` is a `String` or a `Number`, but it can only be one of these.
-   |           `add-infer` is defined as a `Number Number -> Number`. This requires `Add-Infer` `Number` `Number` `Number`.
 

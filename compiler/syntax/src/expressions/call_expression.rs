@@ -154,6 +154,10 @@ impl ConstraintTrace for CallInputConstraintTrace {
     fn nodes(&self, _db: &Db) -> Vec<Node> {
         vec![self.node, self.function, self.input]
     }
+
+    fn primary_node(&self, _db: &Db) -> Node {
+        self.node
+    }
 }
 
 impl Render for CallInputConstraintTrace {}
@@ -172,6 +176,10 @@ impl ConstraintTrace for CallOutputConstraintTrace {
 
     fn nodes(&self, _db: &Db) -> Vec<Node> {
         vec![self.node, self.function]
+    }
+
+    fn primary_node(&self, _db: &Db) -> Node {
+        self.node
     }
 }
 

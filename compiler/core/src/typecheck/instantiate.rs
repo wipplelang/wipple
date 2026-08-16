@@ -4,7 +4,7 @@ use crate::{
     render::{Render, RenderCtx},
     typecheck::{
         constraints::AnyConstraintTrace,
-        groups::Typed,
+        groups::{NodeRank, Typed},
         solver::{Solver, SubstitutionsKey},
         ty::{ConstructedTy, Ty, TyTag},
     },
@@ -87,6 +87,8 @@ impl InstantiateCtx {
                 .0
                 .entry(node)
                 .or_insert(replacement);
+
+            solver.rank(replacement, NodeRank::Annotated);
 
             replacement
         })

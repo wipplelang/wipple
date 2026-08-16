@@ -61,6 +61,8 @@ pub trait ConstraintTrace: Debug + DynClone + Any + Send + Sync + Render {
 
     fn nodes(&self, db: &Db) -> Vec<Node>;
 
+    fn primary_node(&self, db: &Db) -> Node;
+
     fn allow_hidden_nodes(&self) -> bool {
         true
     }

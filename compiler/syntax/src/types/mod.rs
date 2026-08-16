@@ -145,6 +145,10 @@ impl ConstraintTrace for AnnotateConstraintTrace {
     fn nodes(&self, _db: &Db) -> Vec<Node> {
         vec![self.ty, self.value]
     }
+
+    fn primary_node(&self, _db: &Db) -> Node {
+        self.ty
+    }
 }
 
 impl Render for AnnotateConstraintTrace {

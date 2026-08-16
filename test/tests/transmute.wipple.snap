@@ -55,27 +55,3 @@ error:
 
 `a` must be the same type as `b`, `x`, and `x`; double-check these.
 
-error: 
-  --> transmute.wipple:1:19
-  |
-1 | transmute :: a -> b
-  |                   ^ `b` is a `a` or a `b`, but it can only be one of these.
-
-`b` must be the same type as `a`, `x`, and `x`; double-check these.
-
-error: 
-  --> transmute.wipple:2:13
-  |
-2 | transmute : x -> x
-  |             ^ `x` is a `a` or a `b`, but it can only be one of these.
-
-`x` must be the same type as `a`, `b`, and `x`; double-check these.
-
-error: 
-  --> transmute.wipple:2:18
-  |
-2 | transmute : x -> x
-  |                  ^ `x` is a `a` or a `b`, but it can only be one of these.
-
-`x` must be the same type as `a`, `b`, and `x`; double-check these.
-

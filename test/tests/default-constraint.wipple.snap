@@ -287,19 +287,3 @@ error:
 
 Add a `element -> List element` value here before running your program.
 
-error: 
-  --> default-constraint.wipple:8:44
-  |
-8 | instance (Collect element (Set element)) : _
-  |                                            ^ Found a placeholder of type `element -> Set element`.
-
-Add a `element -> Set element` value here before running your program.
-
-error: 
-   --> default-constraint.wipple:12:11
-   |
-12 | collect : _
-   |           ^ Found a placeholder of type `element -> output`.
-
-Add a `element -> output` value here before running your program.
-

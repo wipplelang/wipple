@@ -186,27 +186,3 @@ error:
 
 Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
-error: 
-   --> bounds-dont-influence-other-bounds.wipple:10:2
-   |
-10 | (f :: (Number; _))
-   |  ^ Missing information for the type of `f`.
-
-Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
-
-error: 
-   --> bounds-dont-influence-other-bounds.wipple:10:8
-   |
-10 | (f :: (Number; _))
-   |        ^^^^^^^^^ Missing information for the type of `Number; _`.
-
-Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
-
-error: 
-   --> bounds-dont-influence-other-bounds.wipple:10:16
-   |
-10 | (f :: (Number; _))
-   |                ^ Could not determine the type of `_`.
-
-Wipple needs to know the type of this code before running it. Try using a function or assigning it to a variable.
-

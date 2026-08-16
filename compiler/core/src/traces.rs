@@ -79,7 +79,10 @@ impl Db {
 
                 added.insert(trace_index);
 
-                let trace_primary_node = *entry.trace.source_node.get_or_insert(trace_nodes[0]);
+                let trace_primary_node = *entry
+                    .trace
+                    .source_node
+                    .get_or_insert(entry.trace.primary_node(self));
 
                 if self.is_hidden(trace_primary_node) {
                     continue;
@@ -96,7 +99,7 @@ impl Db {
                         edges.push((index, None));
                     }
 
-                    result.push((trace_index, trace_primary_node, entry.clone()));
+                    result.push((trace_index, entry.clone()));
                 }
 
                 for node in trace_nodes {
@@ -123,7 +126,7 @@ impl Db {
 
                     // Apply consequences from influencing traces
                     for &other_index in &entry.trace.from {
-                        for (index, _, other_entry) in &mut result {
+                        for (index, other_entry) in &mut result {
                             if *index == other_index {
                                 other_entry.consequences.extend(entry.consequences.clone());
                             }
@@ -148,7 +151,7 @@ impl Db {
         }
 
         Traces {
-            traces: result.into_iter().map(|(_, _, entry)| entry).collect(),
+            traces: result.into_iter().map(|(_, entry)| entry).collect(),
             edges,
         }
     }

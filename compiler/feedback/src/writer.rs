@@ -63,15 +63,13 @@ impl FeedbackWriter<'_> {
         let mut linked = BTreeSet::new();
         let mut indices = BTreeMap::new();
         for (trace_index, entry) in traces.traces.iter().enumerate() {
-            let nodes = entry.trace.clone().nodes(db);
-
-            let Some(&node) = nodes.first() else {
-                continue;
-            };
+            let node = entry.trace.primary_node(db);
 
             if !self.ctx.filter(db, node) || !seen.insert(node) {
                 continue;
             }
+
+            let nodes = entry.trace.clone().nodes(db);
 
             let mut ctx = RenderCtx::new(self.ctx.filter, self.ctx.relevant.clone());
             ctx.with_relevant(&nodes, |ctx| entry.trace.render_into(db, ctx));

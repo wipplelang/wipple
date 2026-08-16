@@ -189,11 +189,11 @@ Facts (layer 2):
 error: 
    --> nested-bounds-2.wipple:10:1
    |
+ 1 | T : value => trait ()
+   | - `T` is a `()`. This requires `T` `_`.
+   .
 10 | T
-   | ^
-   | |
-   | `T` requires the instance `W` `_`, but this instance isn't defined.
+   | ^ `T` requires the instance `W` `_`, but this instance isn't defined.
 
 Double-check that these types are correct.
-   | `T` is a `()`. This requires `T` `_`.
 

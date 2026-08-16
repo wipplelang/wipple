@@ -167,6 +167,10 @@ impl ConstraintTrace for CollectionConstraintTrace {
         nodes.extend(&self.elements);
         nodes
     }
+
+    fn primary_node(&self, _db: &Db) -> Node {
+        self.node
+    }
 }
 
 impl Render for CollectionConstraintTrace {

@@ -52,7 +52,7 @@ impl Visit for StringExpression {
             visitor.visit_as(db, &syntax, string_type);
         });
 
-        visitor.rank(node, NodeRank::Annotated);
+        visitor.rank(node, NodeRank::Literal);
 
         visitor.codegen(
             db,

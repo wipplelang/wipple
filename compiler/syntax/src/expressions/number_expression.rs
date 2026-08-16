@@ -52,7 +52,7 @@ impl Visit for NumberExpression {
             visitor.visit_as(db, &syntax, number_type);
         });
 
-        visitor.rank(node, NodeRank::Annotated);
+        visitor.rank(node, NodeRank::Literal);
 
         visitor.codegen(
             db,

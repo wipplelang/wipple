@@ -149,6 +149,10 @@ impl ConstraintTrace for BoundConstraintTrace {
             .collect()
     }
 
+    fn primary_node(&self, _db: &Db) -> Node {
+        self.node
+    }
+
     fn allow_hidden_nodes(&self) -> bool {
         false
     }

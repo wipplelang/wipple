@@ -326,9 +326,9 @@ Facts (layer 2):
 error: 
    --> custom-errors.wipple:17:5
    |
+ 4 | Add : left right (infer sum) => trait (left right -> sum)
+   | --- `() + 2` is a `() Number -> _`. This requires `Add` `()` `Number` `_`.
+   .
 17 | _ : () + 2
-   |     ^^^^^^
-   |     |
-   |     Missing parentheses around the inputs to `+`.
-   |     `() + 2` is a `() Number -> _`. This requires `Add` `()` `Number` `_`.
+   |     ^^^^^^ Missing parentheses around the inputs to `+`.
 

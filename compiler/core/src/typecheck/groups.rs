@@ -13,6 +13,7 @@ pub struct Group(BTreeMap<Node, (NodeRank, Vec<ConstructedTy>)>);
 pub enum NodeRank {
     #[default]
     Inherited,
+    Literal,
     Annotated,
 }
 

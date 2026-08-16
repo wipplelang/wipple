@@ -1,4 +1,4 @@
-use crate::CompileOptions;
+use crate::{CompileOptions, FilterFacts};
 use colored::Colorize;
 use std::{
     collections::{BTreeMap, HashMap, HashSet, hash_map::Entry},
@@ -9,7 +9,7 @@ use wipple_core::{
     TopLevel,
     ast::AstKey,
     compile,
-    db::{Db, Node, NodeId},
+    db::{Db, Node},
     default_filter,
     facts::Syntax,
     render::RenderMarkdownOptions,
@@ -63,14 +63,51 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             eprintln!();
         }
 
+        let mut seen_feedback = BTreeMap::<Node, HashSet<String>>::new();
+        let feedback_items = collect_feedback(db, default_filter, |item| {
+            default_filter(db, item.location.primary)
+                && (self.compile_options.filter_feedback.is_empty()
+                    || self.compile_options.filter_feedback.contains(&item.id))
+                && seen_feedback
+                    .entry(item.location.primary)
+                    .or_default()
+                    .insert(item.id.clone())
+        })
+        .into_iter()
+        .filter_map(|item| {
+            let span = db
+                .get(item.location.primary)
+                .map(|Syntax(key)| key.get(db).span(db))?;
+
+            let feedback =
+                item.display(db, |db, segment| segment.markdown(db, self.render_options));
+
+            Some((span, feedback))
+        })
+        .take(if self.compile_options.all_feedback {
+            usize::MAX
+        } else {
+            1
+        })
+        .collect::<Vec<_>>();
+
         if self.compile_options.facts && !self.hide_facts {
             let filter = |db: &Db, node: Node| {
-                if let Some(filters) = &self.compile_options.filter_facts {
-                    for filter in filters.split(",") {
-                        if let Ok(filter) = filter.parse::<NodeId>() {
-                            return node.id() == filter;
+                if !self.compile_options.filter_facts.is_empty() {
+                    for filter in &self.compile_options.filter_facts {
+                        let matches = match filter {
+                            FilterFacts::Feedback => feedback_items
+                                .iter()
+                                .any(|(_, feedback)| feedback.nodes.contains(&node)),
+                            FilterFacts::Node(id) => node.id() == *id,
+                        };
+
+                        if matches {
+                            return true;
                         }
                     }
+
+                    return false;
                 }
 
                 db.contains::<Syntax>(node)
@@ -88,31 +125,11 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             writeln!(self.out, "{dot}")?;
         }
 
-        let filter = default_filter;
-
-        let mut seen_feedback = BTreeMap::<Node, HashSet<String>>::new();
-        let feedback_items = collect_feedback(db, filter, |item| {
-            filter(db, item.location.primary)
-                && (self.compile_options.filter_feedback.is_empty()
-                    || self.compile_options.filter_feedback.contains(&item.id))
-                && seen_feedback
-                    .entry(item.location.primary)
-                    .or_default()
-                    .insert(item.id.clone())
-        });
-
         let mut feedback_count = 0;
         let mut feedback_files = codespan_reporting::files::SimpleFiles::new();
         let mut feedback_file_ids = HashMap::new();
         let mut feedback_diagnostics = Vec::new();
-        for item in feedback_items {
-            let Some(span) = db
-                .get(item.location.primary)
-                .map(|Syntax(key)| key.get(db).span(db))
-            else {
-                continue;
-            };
-
+        for (span, feedback) in feedback_items {
             let file_id = match feedback_file_ids.entry(&span.path) {
                 Entry::Occupied(entry) => *entry.get(),
                 Entry::Vacant(entry) => {
@@ -130,9 +147,6 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             };
 
             let mut labels = Vec::new();
-
-            let feedback =
-                item.display(db, |db, segment| segment.markdown(db, self.render_options));
 
             labels.push(
                 codespan_reporting::diagnostic::Label::primary(

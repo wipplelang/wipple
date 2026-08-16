@@ -208,11 +208,11 @@ Facts (layer 2):
 error: 
    --> nested-bounds.wipple:13:1
    |
+ 8 | B : value => trait (value -> ())
+   | - `B` is a `() -> ()`. This requires `B` `()`.
+   .
 13 | B ()
-   | ^
-   | |
-   | `B` requires the instance `A` `()`, but this instance isn't defined.
+   | ^ `B` requires the instance `A` `()`, but this instance isn't defined.
 
 Double-check that these types are correct.
-   | `B` is a `() -> ()`. This requires `B` `()`.
 
