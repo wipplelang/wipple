@@ -74,10 +74,9 @@ error:
   --> mismatched-inferred-params.wipple:1:25
   |
 1 | (1, 2, 3) . transform ((x :: String) -> x)
-  |  -------    ---------   ^    ------     - `x` is a `String`. This means `x`, `String`, `x`, and 3 others must be a `String`.
-  |  |          |           |    |           
-  |  |          |           |    `x` is annotated as a `String`. This means `x`, `String`, `x`, and 3 others must be a `String`.
+  |  -------    ---------   ^    ------ `x` is annotated as a `String`.
+  |  |          |           |     
   |  |          |           `x` is a `String` or a `Number`, but it can only be one of these.
-  |  |          `transform` transforms the `String` elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`. This means `transform` is a `(String -> String) -> (List String) -> Sequence String`. This requires `As-Sequence` `(List String)` `String`.
+  |  |          `transform` transforms the `String` elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`. This requires `As-Sequence` `(List String)` `String`.
   |  `1, 2, 3` is a collection of `Number` elements.
 

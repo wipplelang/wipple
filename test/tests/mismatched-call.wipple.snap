@@ -84,7 +84,7 @@ error:
   | |             |
   | |             `1 + 2` is a `String` or a `Number`, but it can only be one of these.
   | |             `1 + 2` adds `1` and `2` together, returning a `Number`. This requires `Add` `Number` `Number` `Number`.
-  | `accepts-text` is defined as a `String -> ()`. This means `accepts-text` is a `String -> ()`.
+  | `accepts-text` is defined as a `String -> ()`.
 
 error: 
   --> mismatched-call.wipple:6:15
@@ -94,5 +94,5 @@ error:
   | |             |
   | |             `1 + 2` is a `String` or a `Number`, but it can only be one of these.
   | |             `1 + 2` adds `1` and `2` together, returning a `Number`. This requires `Add` `Number` `Number` `Number`.
-  | `accepts-text` is defined as a `String -> ()`. This means `accepts-text` is a `String -> ()`.
+  | `accepts-text` is defined as a `String -> ()`.
 

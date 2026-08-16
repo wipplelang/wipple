@@ -455,17 +455,17 @@ error:
    --> infer-constraint.wipple:20:1
    |
 20 | output : (add-infer 1 2 :: String)
-   | ^^^^^^    ---------        ------ `add-infer 1 2` is annotated as a `String`. This means `add-infer 1 2`, `String`, and `output` must be a `String`.
+   | ^^^^^^    ---------        ------ `add-infer 1 2` is annotated as a `String`.
    | |         |                 
-   | |         `add-infer` is defined as a `Number Number -> Number`. This means `add-infer` is a `Number Number -> Number`. This requires `Add-Infer` `Number` `Number` `Number`.
+   | |         `add-infer` is defined as a `Number Number -> Number`. This requires `Add-Infer` `Number` `Number` `Number`.
    | `output` is a `String` or a `Number`, but it can only be one of these.
 
 error: 
    --> infer-constraint.wipple:20:11
    |
 20 | output : (add-infer 1 2 :: String)
-   |           ^^^^^^^^^^^^^    ------ `add-infer 1 2` is annotated as a `String`. This means `add-infer 1 2`, `String`, and `output` must be a `String`.
+   |           ^^^^^^^^^^^^^    ------ `add-infer 1 2` is annotated as a `String`.
    |           |                 
    |           `add-infer 1 2` is a `String` or a `Number`, but it can only be one of these.
-   |           `add-infer` is defined as a `Number Number -> Number`. This means `add-infer` is a `Number Number -> Number`. This requires `Add-Infer` `Number` `Number` `Number`.
+   |           `add-infer` is defined as a `Number Number -> Number`. This requires `Add-Infer` `Number` `Number` `Number`.
 

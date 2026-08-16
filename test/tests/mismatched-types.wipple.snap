@@ -22,6 +22,6 @@ error:
 1 | (42 :: String)
   | ^^^^^^^^^^^^^^
   | |      |
-  | |      `42` is annotated as a `String`. This means `(42 :: String)`, `42`, and `String` must be a `Number or String`.
+  | |      `42` is annotated as a `String`.
   | `(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
 

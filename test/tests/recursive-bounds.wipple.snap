@@ -182,7 +182,7 @@ error:
    --> recursive-bounds.wipple:10:1
    |
 10 | Describe (_ :: Maybe Number)
-   | ^^^^^^^^       ------------ `_` is annotated as a `Maybe Number`. This means `_` and `Maybe Number` must be a `Maybe Number`.
+   | ^^^^^^^^       ------------ `_` is annotated as a `Maybe Number`.
    | |               
    | `Describe` requires the instance `Describe` `Number`, but this instance isn't defined.
 

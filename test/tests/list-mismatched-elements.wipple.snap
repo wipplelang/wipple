@@ -76,9 +76,9 @@ error:
   |           ---------^^
   |           |        |
   |           |        `()` is a `String`, `()`, or a `Number`, but it can only be one of these.
-  |           `1, "hi", ()` is a collection of `String` elements. This means `1, "hi", ()`, `my-list`, and `my-list` must be a `List String`.
+  |           `1, "hi", ()` is a collection of `String` elements.
 2 | my-list . each show
-  |           ---- ---- `show` displays `String` on the screen. This means `show` is a `String -> ()`. This requires `Describe` `String`.
+  |           ---- ---- `show` displays `String` on the screen. This requires `Describe` `String`.
   |           |     
-  |           `each` calls `show` for each `String` in `my-list`. This means `each` is a `(String -> ()) -> (List String) -> ()`. This requires `As-Sequence` `(List String)` `String`.
+  |           `each` calls `show` for each `String` in `my-list`. This requires `As-Sequence` `(List String)` `String`.
 

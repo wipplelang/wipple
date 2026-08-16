@@ -8,13 +8,7 @@ use crate::{
     db::{Db, Node},
     render::{Render, RenderCtx},
     traces::TracesEntry,
-    typecheck::{
-        bounds::Instance,
-        groups::Typed,
-        instantiate::InstantiateCtx,
-        solver::Solver,
-        ty::{ConstructedTy, Ty},
-    },
+    typecheck::{bounds::Instance, instantiate::InstantiateCtx, solver::Solver, ty::ConstructedTy},
 };
 use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
@@ -135,43 +129,14 @@ impl ConstraintConsequence {
 
 impl Render for ConstraintConsequence {
     fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+        #[expect(clippy::single_match)]
         match self {
-            ConstraintConsequence::Group(node) => {
-                let Some(Typed(Some(group))) = db.get(*node) else {
-                    return;
-                };
-
-                let nodes = group
-                    .nodes()
-                    .filter(|&node| ctx.filter(db, node))
-                    .collect::<Vec<_>>();
-
-                if nodes.len() > 1 {
-                    ctx.string("This means ");
-                    ctx.list("and", |list| {
-                        for node in group.nodes() {
-                            if list.filter(db, node) {
-                                list.add(move |ctx| ctx.node(node));
-                            }
-                        }
-                    });
-                    ctx.string(" must be a ");
-                    ctx.ty(db, &Ty::Node(*node), true);
-                    ctx.string(".");
-                }
-            }
-            ConstraintConsequence::Ty(node, ty) => {
-                ctx.string("This means ");
-                ctx.node(*node);
-                ctx.string(" is a ");
-                ctx.ty(db, &Ty::Constructed(ty.clone()), true);
-                ctx.string(".");
-            }
             ConstraintConsequence::Instance(_, instance) => {
                 ctx.string("This requires ");
                 ctx.render(db, instance);
                 ctx.string(".");
             }
+            _ => {}
         }
     }
 }

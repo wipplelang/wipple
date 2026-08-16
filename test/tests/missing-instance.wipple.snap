@@ -45,5 +45,5 @@ error:
 
 You can't display `Foo` on the screen or use it in placeholders because
 it can't be converted into a string.
-  | `show` displays `Foo` on the screen. This means `show` is a `Foo -> ()`. This requires `Describe` `Foo`.
+  | `show` displays `Foo` on the screen. This requires `Describe` `Foo`.
 

@@ -57,7 +57,7 @@ error:
   | Missing `times` after `5`.
 
 Try rewriting this code as `(`5` times)`, or double-check your parentheses.
-  | `repeat` runs `show "Hello, world!"` repeatedly. This means `repeat` is a `Number {()} -> ()`. This requires `Repeat-Condition` `Number`.
+  | `repeat` runs `show "Hello, world!"` repeatedly. This requires `Repeat-Condition` `Number`.
 2 |   show "Hello, world!"
-  |   ---- `show` displays `"Hello, world!"` on the screen. This means `show` is a `String -> ()`. This requires `Describe` `String`.
+  |   ---- `show` displays `"Hello, world!"` on the screen. This requires `Describe` `String`.
 

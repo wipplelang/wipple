@@ -146,11 +146,11 @@ error:
   --> sequence.wipple:6:14
   |
 5 | box : (_ :: Box String)
-  |             ---------- `_` is annotated as a `Box String`. This means `_`, `Box String`, `box`, and 1 other must be a `Box Number`.
+  |             ---------- `_` is annotated as a `Box String`.
 6 | positive? : (_ :: Number) -> _
-  |              ^    ------ `_` is annotated as a `Number`. This means `String`, `_`, and `Number` must be a `Number`.
+  |              ^    ------ `_` is annotated as a `Number`.
   |              |     
   |              `_` is a `String` or a `Number`, but it can only be one of these.
 7 | (filter positive?) box
-  |  ------ `filter` keeps the elements in `box` that satisfy `positive?`. This means `filter` is a `(Number -> Boolean) -> (Box Number) -> Sequence Number`. This requires `As-Sequence` `(Box Number)` `Number`.
+  |  ------ `filter` keeps the elements in `box` that satisfy `positive?`. This requires `As-Sequence` `(Box Number)` `Number`.
 
