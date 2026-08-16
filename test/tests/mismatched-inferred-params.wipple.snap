@@ -77,6 +77,6 @@ error:
   |  -------    ---------   ^    ------ `x` is annotated as a `String`.
   |  |          |           |     
   |  |          |           `x` is a `String` or a `Number`, but it can only be one of these.
-  |  |          `transform` transforms the `String` elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`. This requires `As-Sequence` `(List String)` `String`.
+  |  |          `transform` transforms the `String` elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`.
   |  `1, 2, 3` is a collection of `Number` elements.
 

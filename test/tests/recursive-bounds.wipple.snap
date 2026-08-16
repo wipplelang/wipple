@@ -182,7 +182,7 @@ error:
    --> recursive-bounds.wipple:10:1
    |
  5 | Describe : value => trait (value -> String)
-   | -------- `Describe` is a `(Maybe Number) -> String`. This requires `Describe` `(Maybe Number)`.
+   | -------- `Describe` is a `(Maybe Number) -> String`.
    .
 10 | Describe (_ :: Maybe Number)
    | ^^^^^^^^       ------------ `_` is annotated as a `Maybe Number`.

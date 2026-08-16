@@ -253,7 +253,7 @@ impl Constraint for BoundConstraint {
 
                 solver.add_consequence(
                     db,
-                    ConstraintConsequence::Instance(self.bound.source_node, instance),
+                    ConstraintConsequence::Instance(self.bound.source_node, instance, true),
                 );
 
                 return RunResult::Enqueue(Vec::from_iter(constraints));
@@ -286,6 +286,7 @@ impl Constraint for BoundConstraint {
                             parameters: resolved_parameters.clone(),
                             is_from_bound: false,
                         },
+                        false,
                     ),
                 );
 

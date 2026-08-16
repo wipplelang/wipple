@@ -54,7 +54,7 @@ error:
   --> when-mismatched-types.wipple:1:7
   |  
 1 |   show (when True {
-  |   ---- `show` displays `when True {⋯}` on the screen. This requires `Describe` `Number`.
+  |   ---- `show` displays `when True {⋯}` on the screen.
   | /-------^
 2 | |   True -> 42
 3 | |   False -> "hi"

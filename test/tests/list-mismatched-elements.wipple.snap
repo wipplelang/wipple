@@ -78,7 +78,7 @@ error:
   |           |        `()` is a `String`, `()`, or a `Number`, but it can only be one of these.
   |           `1, "hi", ()` is a collection of `String` elements.
 2 | my-list . each show
-  |           ---- ---- `show` displays `String` on the screen. This requires `Describe` `String`.
+  |           ---- ---- `show` displays `String` on the screen.
   |           |     
-  |           `each` calls `show` for each `String` in `my-list`. This requires `As-Sequence` `(List String)` `String`.
+  |           `each` calls `show` for each `String` in `my-list`.
 

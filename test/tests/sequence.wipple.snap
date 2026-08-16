@@ -152,5 +152,5 @@ error:
   |              |     
   |              `_` is a `String` or a `Number`, but it can only be one of these.
 7 | (filter positive?) box
-  |  ------ `filter` keeps the elements in `box` that satisfy `positive?`. This requires `As-Sequence` `(Box Number)` `Number`.
+  |  ------ `filter` keeps the elements in `box` that satisfy `positive?`.
 

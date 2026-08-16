@@ -190,7 +190,7 @@ error:
    --> nested-bounds-2.wipple:10:1
    |
  1 | T : value => trait ()
-   | - `T` is a `()`. This requires `T` `_`.
+   | - `T` is a `()`.
    .
 10 | T
    | ^ `T` requires the instance `W` `_`, but this instance isn't defined.

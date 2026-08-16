@@ -9,6 +9,7 @@ use crate::{
     render::{Render, RenderCtx},
     traces::TracesEntry,
     typecheck::{bounds::Instance, instantiate::InstantiateCtx, solver::Solver, ty::ConstructedTy},
+    visit::definitions::{Defined, InstanceDefinition},
 };
 use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
@@ -116,7 +117,7 @@ impl DerefMut for AnyConstraintTrace {
 pub enum ConstraintConsequence {
     Group(Node),
     Ty(Node, ConstructedTy),
-    Instance(Node, Instance),
+    Instance(Node, Instance, bool),
 }
 
 impl ConstraintConsequence {
@@ -124,16 +125,23 @@ impl ConstraintConsequence {
         match *self {
             ConstraintConsequence::Group(node) => node,
             ConstraintConsequence::Ty(node, _) => node,
-            ConstraintConsequence::Instance(node, _) => node,
+            ConstraintConsequence::Instance(node, _, _) => node,
         }
     }
 }
 
 impl Render for ConstraintConsequence {
     fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        #[expect(clippy::single_match)]
         match self {
-            ConstraintConsequence::Instance(_, instance) => {
+            ConstraintConsequence::Instance(_, instance, resolved)
+                if !*resolved
+                    || db
+                        .get(instance.node)
+                        .and_then(|Defined(definition)| {
+                            definition.downcast_ref::<InstanceDefinition>()
+                        })
+                        .is_some_and(|definition| definition.error) =>
+            {
                 ctx.string("This requires ");
                 ctx.render(db, instance);
                 ctx.string(".");

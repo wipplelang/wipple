@@ -151,5 +151,5 @@ error:
 Spaces group before operators do, so you need to put parentheses around just
 the inputs to `+`.
   | `show 1 + 2` adds `show 1` and `2` together, returning a `_`. This requires `Add` `()` `Number` `_`.
-  | `show` displays `1` on the screen. This requires `Describe` `Number`.
+  | `show` displays `1` on the screen.
 

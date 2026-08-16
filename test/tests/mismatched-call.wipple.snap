@@ -86,5 +86,5 @@ error:
   |               ^^^^^
   |               |
   |               `1 + 2` is a `String` or a `Number`, but it can only be one of these.
-  |               `1 + 2` adds `1` and `2` together, returning a `Number`. This requires `Add` `Number` `Number` `Number`.
+  |               `1 + 2` adds `1` and `2` together, returning a `Number`.
 

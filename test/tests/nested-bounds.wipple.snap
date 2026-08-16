@@ -209,7 +209,7 @@ error:
    --> nested-bounds.wipple:13:1
    |
  8 | B : value => trait (value -> ())
-   | - `B` is a `() -> ()`. This requires `B` `()`.
+   | - `B` is a `() -> ()`.
    .
 13 | B ()
    | ^ `B` requires the instance `A` `()`, but this instance isn't defined.
