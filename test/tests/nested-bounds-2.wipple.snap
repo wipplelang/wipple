@@ -193,7 +193,5 @@ error:
    | - `T` is a `()`.
    .
 10 | T
-   | ^ `T` requires the instance `W` `_`, but this instance isn't defined.
-
-Double-check that these types are correct.
+   | ^ `T` requires the instance `W` `_`, but this instance isn't defined. (Double-check that these types are correct.)
 

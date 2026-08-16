@@ -144,7 +144,5 @@ error:
   --> colliding-instances.wipple:1:1
   |
 1 | T : value => trait ()
-  | ^ `T` has multiple overlapping instances: `instance (T X)`, `instance (T X)`, `instance (T value)`, and 1 other.
-
-Only one of these instances can be defined at a time. Try making your instance more specific.
+  | ^ `T` has multiple overlapping instances: `instance (T X)`, `instance (T X)`, `instance (T value)`, and 1 other. (Only one of these instances can be defined at a time. Try making your instance more specific.)
 

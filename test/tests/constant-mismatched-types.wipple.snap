@@ -25,7 +25,5 @@ error:
   --> constant-mismatched-types.wipple:1:1
   |
 1 | x :: Number
-  | ^ `x` is a `Number` or a `String`, but it can only be one of these.
-
-`x` must be the same type as `Number` and `"42"`; double-check these.
+  | ^ `x` is a `Number` or a `String`, but it can only be one of these. (`x` must be the same type as `Number` and `"42"`; double-check these.)
 

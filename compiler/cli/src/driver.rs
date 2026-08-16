@@ -13,6 +13,7 @@ use wipple_core::{
     default_filter,
     facts::Syntax,
     render::RenderMarkdownOptions,
+    span::Span,
 };
 use wipple_feedback::collect_feedback;
 use wipple_syntax::checks::run_checks;
@@ -130,31 +131,51 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
         let mut feedback_file_ids = HashMap::new();
         let mut feedback_diagnostics = Vec::new();
         for (span, feedback) in feedback_items {
-            let file_id = match feedback_file_ids.entry(&span.path) {
-                Entry::Occupied(entry) => *entry.get(),
-                Entry::Vacant(entry) => {
-                    let Some(file_span) = self
-                        .files
-                        .iter()
-                        .map(|key| key.get(db).span(db))
-                        .find(|other| other.path == span.path)
-                    else {
-                        continue;
-                    };
+            let mut labels = Vec::new();
+            let mut add_label = |span: &Span, message: &str, primary: bool| {
+                let file_id = match feedback_file_ids.entry(span.path.clone()) {
+                    Entry::Occupied(entry) => *entry.get(),
+                    Entry::Vacant(entry) => {
+                        let Some(file_span) = self
+                            .files
+                            .iter()
+                            .map(|key| key.get(db).span(db))
+                            .find(|other| other.path == span.path)
+                        else {
+                            return;
+                        };
 
-                    *entry.insert(feedback_files.add(&file_span.path, &file_span.source))
-                }
+                        *entry.insert(feedback_files.add(&file_span.path, &file_span.source))
+                    }
+                };
+
+                let range = span.start.index..span.end.index;
+
+                let message = if let Some((primary_message, secondary_message)) =
+                    message.split_once("\n\n")
+                {
+                    format!("{} ({})", primary_message.trim(), secondary_message.trim())
+                } else {
+                    message.trim().to_string()
+                };
+
+                let label = if primary {
+                    codespan_reporting::diagnostic::Label::primary(file_id, range.clone())
+                } else {
+                    codespan_reporting::diagnostic::Label::secondary(file_id, range.clone())
+                };
+
+                let message = message
+                    .lines()
+                    .map(|line| line.trim())
+                    .filter(|line| !line.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" ");
+
+                labels.push(label.with_message(message));
             };
 
-            let mut labels = Vec::new();
-
-            labels.push(
-                codespan_reporting::diagnostic::Label::primary(
-                    file_id,
-                    span.start.index..span.end.index,
-                )
-                .with_message(feedback.message),
-            );
+            add_label(span, &feedback.message, true);
 
             for (node, trace, consequences) in feedback.traces.into_iter() {
                 let Some(span) = db.get(node).map(|Syntax(key)| key.get(db).span(db)) else {
@@ -166,13 +187,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
                     write!(message, " {consequence}")?;
                 }
 
-                labels.push(
-                    codespan_reporting::diagnostic::Label::secondary(
-                        file_id,
-                        span.start.index..span.end.index,
-                    )
-                    .with_message(message),
-                );
+                add_label(span, &message, false);
             }
 
             feedback_diagnostics

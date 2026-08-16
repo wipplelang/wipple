@@ -146,10 +146,7 @@ error:
 1 | show 1 + 2
   | ^^^^^^^^^^
   | |
-  | Missing parentheses around the inputs to `+`.
-
-Spaces group before operators do, so you need to put parentheses around just
-the inputs to `+`.
+  | Missing parentheses around the inputs to `+`. (Spaces group before operators do, so you need to put parentheses around just the inputs to `+`.)
   | `show 1 + 2` adds `show 1` and `2` together, returning a `_`. This requires `Add` `()` `Number` `_`.
   | `show` displays `1` on the screen.
 

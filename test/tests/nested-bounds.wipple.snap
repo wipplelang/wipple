@@ -212,7 +212,5 @@ error:
    | - `B` is a `() -> ()`.
    .
 13 | B ()
-   | ^ `B` requires the instance `A` `()`, but this instance isn't defined.
-
-Double-check that these types are correct.
+   | ^ `B` requires the instance `A` `()`, but this instance isn't defined. (Double-check that these types are correct.)
 

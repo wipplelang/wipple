@@ -123,7 +123,5 @@ error:
    --> exhaustiveness-checking.wipple:10:29
    |
 10 | report-card : grade -> when grade {
-   |                             ^^^^^ `grade` could be `D` or `F`, but these patterns are missing.
-
-Try adding patterns to cover these cases using `or`, `when`, or a variable.
+   |                             ^^^^^ `grade` could be `D` or `F`, but these patterns are missing. (Try adding patterns to cover these cases using `or`, `when`, or a variable.)
 

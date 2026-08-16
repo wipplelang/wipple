@@ -181,8 +181,5 @@ error:
    |  
  9 | / -- `B` should not be inferred to be `Number`
 10 | | (f :: (Number; _))
-   | \------------------^ Missing information for the type of `-- `B` should not be inferred to be `Number`
-(f :: (Number; _))`.
-
-Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
+   | \------------------^ Missing information for the type of `-- `B` should not be inferred to be `Number` (f :: (Number; _))`. (Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.)
 

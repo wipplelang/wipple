@@ -187,7 +187,5 @@ error:
 10 | Describe (_ :: Maybe Number)
    | ^^^^^^^^       ------------ `_` is annotated as a `Maybe Number`.
    | |               
-   | `Describe` requires the instance `Describe` `Number`, but this instance isn't defined.
-
-Double-check that these types are correct.
+   | `Describe` requires the instance `Describe` `Number`, but this instance isn't defined. (Double-check that these types are correct.)
 

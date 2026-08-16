@@ -56,9 +56,6 @@ error:
 4 | show my-variable
   | ^^^^
   | |
-  | Can't describe `my-variable`.
-
-You can't display `my-variable` on the screen or use it in placeholders because
-it can't be converted into a string.
+  | Can't describe `my-variable`. (You can't display `my-variable` on the screen or use it in placeholders because it can't be converted into a string.)
   | `show` displays `my-variable` on the screen. This requires `Describe` `Cannot-Be-Shown`.
 
