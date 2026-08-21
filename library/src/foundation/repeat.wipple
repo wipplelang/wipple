@@ -29,7 +29,7 @@ Times : type Number
 
 -- Missing `times` after [`n`].
 --
--- Try rewriting this code as `([`n`] times)`, or double-check your parentheses.
+-- Try rewriting this code as `(`[`n`]` times)`, or double-check your parentheses.
 error instance (Repeat-Condition (n :: Number))
 
 instance (Repeat-Condition Times) : (Times n) -> sequence {
