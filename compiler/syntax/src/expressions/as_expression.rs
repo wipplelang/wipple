@@ -8,7 +8,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{
@@ -96,13 +96,13 @@ struct AsExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for AsExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
-        ctx.codegen(db, self.as_function)?;
-        ctx.codegen(db, self.left)?;
-        ctx.instruction(ir::Instruction::Value {
+impl hir::Write for AsExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
+        ctx.write(db, self.as_function)?;
+        ctx.write(db, self.left)?;
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Call {
+            value: hir::Value::Call {
                 function: self.as_function,
                 inputs: vec![self.left],
             },

@@ -6,7 +6,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::Span,
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
@@ -128,27 +128,27 @@ struct WhenExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for WhenExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
-        ctx.codegen(db, self.input)?;
+impl hir::Write for WhenExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
+        ctx.write(db, self.input)?;
 
         let branches = self
             .arms
             .iter()
             .map(|(pattern, value)| {
                 ctx.push_conditions();
-                ctx.codegen(db, *pattern)?;
+                ctx.write(db, *pattern)?;
                 let conditions = ctx.pop_conditions();
 
                 ctx.push_instructions();
-                ctx.codegen(db, *value)?;
+                ctx.write(db, *value)?;
                 let instructions = ctx.pop_instructions();
 
                 Ok((conditions, instructions, Some(*value)))
             })
             .collect::<Result<Vec<_>, CodegenError>>()?;
 
-        ctx.instruction(ir::Instruction::If {
+        ctx.instruction(hir::Instruction::If {
             node: Some(self.node),
             branches,
             else_branch: None,

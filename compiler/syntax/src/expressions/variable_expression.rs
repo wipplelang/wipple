@@ -2,7 +2,7 @@ use crate::expressions::visit_expression;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     facts::Syntax,
     render::{Comments, Render, RenderCtx},
@@ -229,27 +229,27 @@ enum VariableExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for VariableExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for VariableExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         match self {
             VariableExpressionCodegen::Variable { node, resolved } => {
                 let value = if db.contains::<IsMutated>(*resolved) {
-                    ir::Value::MutableVariable(*resolved)
+                    hir::Value::MutableVariable(*resolved)
                 } else {
-                    ir::Value::Variable(*resolved)
+                    hir::Value::Variable(*resolved)
                 };
 
-                ctx.instruction(ir::Instruction::Value { node: *node, value });
+                ctx.instruction(hir::Instruction::Value { node: *node, value });
             }
             VariableExpressionCodegen::Constant { node, definition } => {
                 let bounds = db.get::<ResolvedBounds>(*node).cloned().unwrap_or_default();
 
                 let bounds = ctx.bounds_for_constant(*definition, &[], &bounds)?;
 
-                ctx.instruction(ir::Instruction::Value {
+                ctx.instruction(hir::Instruction::Value {
                     node: *node,
-                    value: ir::Value::Constant {
-                        definition: ir::DefinitionKey::Constant(*definition),
+                    value: hir::Value::Constant {
+                        definition: hir::DefinitionKey::Constant(*definition),
                         bounds,
                     },
                 });

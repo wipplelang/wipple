@@ -92,12 +92,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `(U value)` (BoundConstraint):
+  grouped with `()`
   has bound(s) `U` `value` (resolved as `(U value)`)
+  has type `()`
   is a constraint
   resolved to 1 definition(s): `U`
 
 `value` (TypeParameter):
-  grouped with `value`
+  grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
@@ -125,12 +127,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `(V value)` (BoundConstraint):
+  grouped with `()`
   has bound(s) `V` `value` (resolved as `(V value)`)
+  has type `()`
   is a constraint
   resolved to 1 definition(s): `V`
 
 `value` (TypeParameter):
-  grouped with `value`
+  grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
@@ -158,12 +162,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `(W value)` (BoundConstraint):
+  grouped with `()`
   has bound(s) `W` `value` (resolved as `(W value)`)
+  has type `()`
   is a constraint
   resolved to 1 definition(s): `W`
 
 `value` (TypeParameter):
-  grouped with `value`
+  grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`

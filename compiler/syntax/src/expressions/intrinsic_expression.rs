@@ -3,7 +3,7 @@ use crate::expressions::{parse_atomic_expression, visit_expression};
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     visit::{Visit, Visitor},
@@ -74,15 +74,15 @@ struct IntrinsicExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for IntrinsicExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for IntrinsicExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         for &input in &self.inputs {
-            ctx.codegen(db, input)?;
+            ctx.write(db, input)?;
         }
 
-        ctx.instruction(ir::Instruction::Value {
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Runtime {
+            value: hir::Value::Runtime {
                 name: self.name.to_string(),
                 inputs: self.inputs.clone(),
             },

@@ -87,12 +87,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `b`
 
 `(Not b)` (BoundConstraint):
+  grouped with `value -> value`
   has bound(s) `Not` `b` (resolved as `(Not b)`)
+  has type `b -> b`
   is a constraint
   resolved to 1 definition(s): `Not`
 
 `b` (TypeParameter):
-  grouped with `b`, `value`, `a -> b`
+  grouped with `b`, `value`, `value`, `a -> b`
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
@@ -178,12 +180,14 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `(Not value)` (BoundConstraint):
+  grouped with `value -> value`
   has bound(s) `Not` `value` (resolved as `(Not value)`)
+  has type `value -> value`
   is a constraint
   resolved to 1 definition(s): `Not`
 
 `value` (TypeParameter):
-  grouped with `value`, `value`
+  grouped with `value`, `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`

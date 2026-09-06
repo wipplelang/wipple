@@ -162,6 +162,38 @@ pub fn parse_attribute_with_value<T: Visit + Clone>(
     result
 }
 
+pub fn parse_attribute_with_optional_value<T: Visit + Clone>(
+    db: &mut Db,
+    attributes: &[Node],
+    name: &str,
+) -> Option<Option<T>> {
+    let mut result = None;
+    for &node in attributes {
+        let Some(attribute) = db
+            .get(node)
+            .and_then(|Syntax(syntax)| db.ast(syntax).downcast_ref::<Attribute>())
+        else {
+            continue;
+        };
+
+        if attribute.name == name {
+            if let Some(value) = &attribute.value {
+                let value = db.ast(value).as_ref().downcast_ref::<T>().cloned();
+
+                if value.is_none() {
+                    db.insert(node, MismatchedAttributeValue);
+                }
+
+                result = Some(value);
+            } else {
+                result = Some(None);
+            }
+        }
+    }
+
+    result
+}
+
 pub fn parse_attributes_with_value<T: Visit + Clone>(
     db: &mut Db,
     attributes: &[Node],

@@ -326,7 +326,7 @@ fn collect_paths(
                 parameters.insert(*parameter, ty);
             }
 
-            if attributes.intrinsic {
+            if attributes.intrinsic.is_some() {
                 let mut prefix = prefix.to_vec();
                 prefix.push(MatchPathSegment::NoMatch);
 

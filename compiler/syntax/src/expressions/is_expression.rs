@@ -8,7 +8,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
@@ -110,23 +110,23 @@ struct IsExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for IsExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
-        ctx.codegen(db, self.left)?;
+impl hir::Write for IsExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
+        ctx.write(db, self.left)?;
 
         ctx.push_conditions();
-        ctx.codegen(db, self.right)?;
+        ctx.write(db, self.right)?;
         let conditions = ctx.pop_conditions();
 
         ctx.push_instructions();
-        ctx.codegen(db, self.true_node)?;
+        ctx.write(db, self.true_node)?;
         let true_instructions = ctx.pop_instructions();
 
         ctx.push_instructions();
-        ctx.codegen(db, self.false_node)?;
+        ctx.write(db, self.false_node)?;
         let false_instructions = ctx.pop_instructions();
 
-        ctx.instruction(ir::Instruction::If {
+        ctx.instruction(hir::Instruction::If {
             node: Some(self.node),
             branches: vec![(conditions, true_instructions, Some(self.true_node))],
             else_branch: Some((false_instructions, Some(self.false_node))),

@@ -302,18 +302,18 @@ pub struct RenderMarkdownOptions {
 }
 
 impl RenderMarkdownOptions {
-    pub fn rich(mut self) -> Self {
-        self.rich = true;
+    pub fn rich(mut self, rich: bool) -> Self {
+        self.rich = rich;
         self
     }
 
-    pub fn color(mut self) -> Self {
-        self.color = true;
+    pub fn color(mut self, color: bool) -> Self {
+        self.color = color;
         self
     }
 
-    pub fn hover_links(mut self) -> Self {
-        self.hover_links = true;
+    pub fn hover_links(mut self, hover_links: bool) -> Self {
+        self.hover_links = hover_links;
         self
     }
 }

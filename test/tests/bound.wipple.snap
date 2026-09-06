@@ -59,12 +59,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `String`
 
 `(T value)` (BoundConstraint):
+  grouped with `value -> String`
   has bound(s) `T` `value` (resolved as `(T value)`)
+  has type `value -> String`
   is a constraint
   resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
-  grouped with `value`, `value`
+  grouped with `value`, `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`

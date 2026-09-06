@@ -3,7 +3,8 @@ use crate::{
     render::{Render, RenderCtx},
     span::{Span, Str},
     visit::attributes::{
-        ConnectionAttributeValue, parse_attribute_named, parse_attributes_with_value,
+        ConnectionAttributeValue, StringAttributeValue, parse_attribute_named,
+        parse_attribute_with_optional_value, parse_attributes_with_value,
     },
 };
 use dyn_clone::DynClone;
@@ -135,13 +136,13 @@ impl Definition for TypeDefinition {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TypeDefinitionAttributes {
-    pub intrinsic: bool,
+    pub intrinsic: Option<Option<StringAttributeValue>>,
 }
 
 impl TypeDefinitionAttributes {
     pub fn parse(db: &mut Db, attributes: &[Node]) -> Self {
         TypeDefinitionAttributes {
-            intrinsic: parse_attribute_named(db, attributes, "intrinsic"),
+            intrinsic: parse_attribute_with_optional_value(db, attributes, "intrinsic"),
         }
     }
 }

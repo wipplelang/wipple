@@ -123,7 +123,7 @@ impl Ide {
             }
 
             let feedback = item.display(&self.result.db, |db, segment| {
-                segment.markdown(db, RenderMarkdownOptions::default().rich())
+                segment.markdown(db, RenderMarkdownOptions::default().rich(true))
             });
 
             Some(IdeDiagnostic {
@@ -445,7 +445,7 @@ impl Ide {
         writer.comments(&self.result.db, &comments);
 
         let feedback = writer.finish(&self.result.db, |db, segment| {
-            segment.markdown(db, RenderMarkdownOptions::default().rich())
+            segment.markdown(db, RenderMarkdownOptions::default().rich(true))
         });
 
         (!feedback.message.is_empty()).then_some(feedback.message)

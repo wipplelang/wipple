@@ -6,7 +6,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::Span,
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
@@ -65,8 +65,8 @@ struct AnnotatePatternCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for AnnotatePatternCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
-        ctx.codegen(db, self.pattern)
+impl hir::Write for AnnotatePatternCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
+        ctx.write(db, self.pattern)
     }
 }

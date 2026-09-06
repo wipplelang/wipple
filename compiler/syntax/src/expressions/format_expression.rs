@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     anyhow,
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Fact, Node},
     render::Render,
     span::{Span, Str},
@@ -193,42 +193,42 @@ struct FormatExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for FormatExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for FormatExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         let mut prev = None;
         for segment in &self.segments {
-            ctx.instruction(ir::Instruction::Value {
+            ctx.instruction(hir::Instruction::Value {
                 node: segment.string_temporary,
-                value: ir::Value::String(segment.string.clone()),
+                value: hir::Value::String(segment.string.clone()),
             });
 
-            ctx.codegen(db, segment.describe_node)?;
-            ctx.codegen(db, segment.describe_input)?;
+            ctx.write(db, segment.describe_node)?;
+            ctx.write(db, segment.describe_input)?;
 
-            ctx.instruction(ir::Instruction::Value {
+            ctx.instruction(hir::Instruction::Value {
                 node: segment.described_temporary,
-                value: ir::Value::Call {
+                value: hir::Value::Call {
                     function: segment.describe_node,
                     inputs: vec![segment.describe_input],
                 },
             });
 
-            ctx.instruction(ir::Instruction::Value {
+            ctx.instruction(hir::Instruction::Value {
                 node: segment.concat_temporary,
-                value: ir::Value::Runtime {
+                value: hir::Value::Runtime {
                     name: String::from("string-concat"),
                     inputs: vec![segment.string_temporary, segment.described_temporary],
                 },
             });
 
-            ctx.instruction(ir::Instruction::Value {
+            ctx.instruction(hir::Instruction::Value {
                 node: segment.output_temporary,
                 value: match prev {
-                    Some(prev) => ir::Value::Runtime {
+                    Some(prev) => hir::Value::Runtime {
                         name: String::from("string-concat"),
                         inputs: vec![prev, segment.concat_temporary],
                     },
-                    None => ir::Value::Variable(segment.concat_temporary),
+                    None => hir::Value::Variable(segment.concat_temporary),
                 },
             });
 
@@ -237,14 +237,14 @@ impl CodegenValue for FormatExpressionCodegen {
 
         let prev = prev.ok_or_else(|| anyhow::format_err!("no inputs to format string"))?;
 
-        ctx.instruction(ir::Instruction::Value {
+        ctx.instruction(hir::Instruction::Value {
             node: self.trailing_temporary,
-            value: ir::Value::String(self.trailing.clone()),
+            value: hir::Value::String(self.trailing.clone()),
         });
 
-        ctx.instruction(ir::Instruction::Value {
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Runtime {
+            value: hir::Value::Runtime {
                 name: String::from("string-concat"),
                 inputs: vec![prev, self.trailing_temporary],
             },

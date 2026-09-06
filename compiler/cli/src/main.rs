@@ -26,10 +26,7 @@ use std::{
 use wipple_core::{
     LibraryArtifact, TopLevel,
     ast::AstKey,
-    codegen::{
-        self, codegen,
-        js::{self, JsResult},
-    },
+    codegen::{self, backends::Backend},
     db::{Db, DbRef, Node, NodeId},
     default_filter,
     render::RenderMarkdownOptions,
@@ -208,7 +205,9 @@ fn setup(
         let mut driver = Driver::new(options, files, &mut out);
         driver.prefix = "Compiling ";
         driver.hide_facts = !options.lib_facts;
-        driver.render_options = RenderMarkdownOptions::default().rich().color();
+        driver.render_options = RenderMarkdownOptions::default()
+            .rich(true)
+            .color(supports_color());
 
         let (_, lib_source_files, lib_statements) = driver
             .run(&mut db, &mut top_level, &name)?
@@ -224,12 +223,14 @@ fn setup(
 fn compile(
     options: &CompileOptions,
     output_path: Option<&Path>,
-) -> anyhow::Result<Option<JsResult>> {
+) -> anyhow::Result<Option<codegen::backends::js::Output>> {
     let (lib_db, mut top_level, lib_statements) = setup(options, io::stdout())?;
 
     if options.paths.is_empty() {
         return Ok(None);
     }
+
+    let source_root = format!("{}/", env::current_dir()?.display());
 
     let mut db = Db::new(Some(DbRef::new(lib_db)));
     if env::var("WIPPLE_DEBUG").is_ok() {
@@ -254,28 +255,44 @@ fn compile(
 
     let mut driver = Driver::new(options, files, io::stdout());
     driver.prefix = "Compiling ";
-    driver.render_options = RenderMarkdownOptions::default().rich().color();
+    driver.render_options = RenderMarkdownOptions::default()
+        .rich(true)
+        .color(supports_color());
 
     let (_, source_files, statements) = driver
         .run(&mut db, &mut top_level, &name)?
         .ok_or_else(|| anyhow::format_err!("compilation failed"))?;
 
-    let program = codegen(&db, &source_files, &statements, &lib_statements, false)?;
-
-    let result = js::to_js(
+    let hir = codegen::hir::Program::from_statements(
         &db,
-        &program,
-        codegen::Options {
-            file_name: Some(JS_FILE_NAME),
-            source_root: &format!("{}/", env::current_dir()?.display()),
+        &source_files,
+        &statements,
+        &lib_statements,
+        false,
+    )?;
+
+    let mir = codegen::mir::Program::from_hir(
+        &db,
+        &hir,
+        codegen::mir::Options {
             trace: if options.trace {
-                codegen::TraceOptions::All
+                codegen::mir::TraceOptions::All
             } else {
-                codegen::TraceOptions::None
+                codegen::mir::TraceOptions::None
             },
-            incremental: false,
         },
     )?;
+
+    let backend = codegen::backends::js::Backend::new(
+        &db,
+        codegen::backends::js::Options {
+            file_name: Some(JS_FILE_NAME),
+            source_root: &source_root,
+            include_prelude: true,
+        },
+    );
+
+    let result = backend.run(&mir)?;
 
     if let Some(path) = &options.lib_artifact {
         if path.extension().and_then(|ext| ext.to_str()) != Some("bin") {
@@ -303,7 +320,7 @@ fn compile(
 
 static JS_FILE_NAME: &str = "main.js";
 
-fn write_js(js: &JsResult, path: &Path) -> anyhow::Result<()> {
+fn write_js(js: &codegen::backends::js::Output, path: &Path) -> anyhow::Result<()> {
     fs::create_dir_all(path)?;
 
     fs::write(path.join(JS_FILE_NAME), &js.module)?;
@@ -418,7 +435,9 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
 
                 let mut driver = Driver::new(options, files, io::stdout());
                 driver.silent = true;
-                driver.render_options = RenderMarkdownOptions::default().rich().color();
+                driver.render_options = RenderMarkdownOptions::default()
+                    .rich(true)
+                    .color(supports_color());
 
                 let Some((_, source_files, statements)) =
                     driver.run(&mut next_db, &mut top_level, &name)?
@@ -426,19 +445,28 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
                     continue;
                 };
 
-                let program =
-                    codegen(&next_db, &source_files, &statements, &lib_statements, first)?;
-
-                let result = js::to_js(
+                let hir = codegen::hir::Program::from_statements(
                     &next_db,
-                    &program,
-                    codegen::Options {
+                    &source_files,
+                    &statements,
+                    &lib_statements,
+                    first,
+                )?;
+
+                let mir = codegen::mir::Program::from_hir(&next_db, &hir, Default::default())?;
+
+                let backend = codegen::backends::js::Backend::new(
+                    &next_db,
+                    codegen::backends::js::Options {
                         file_name: None,
                         source_root: &name,
-                        trace: codegen::TraceOptions::None,
-                        incremental: true,
+                        include_prelude: false,
                     },
-                )?;
+                );
+
+                let result = backend.run(&mir)?;
+
+                eprintln!("{}", result.module);
 
                 client
                     .post(format!("http://{addr}"))
@@ -498,24 +526,32 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
         let mut out = Vec::new();
 
         let mut driver = Driver::new(options, vec![file], &mut out);
-        driver.render_options = RenderMarkdownOptions::default().rich();
+        driver.render_options = RenderMarkdownOptions::default().rich(true);
         driver.progress = Some((counter.fetch_add(1, atomic::Ordering::Relaxed), files_count));
 
         if let Some((_, source_files, statements)) =
             driver.run(&mut db, &mut top_level.clone(), &name)?
         {
-            let program = codegen(&db, &source_files, &statements, &lib_statements, false)?;
-
-            let js = js::to_js(
+            let hir = codegen::hir::Program::from_statements(
                 &db,
-                &program,
-                codegen::Options {
+                &source_files,
+                &statements,
+                &lib_statements,
+                false,
+            )?;
+
+            let mir = codegen::mir::Program::from_hir(&db, &hir, Default::default())?;
+
+            let backend = codegen::backends::js::Backend::new(
+                &db,
+                codegen::backends::js::Options {
                     file_name: Some(JS_FILE_NAME),
                     source_root: "",
-                    trace: Default::default(),
-                    incremental: false,
+                    include_prelude: true,
                 },
-            )?;
+            );
+
+            let js = backend.run(&mir)?;
 
             let output_path = make_temp_dir()?;
             write_js(&js, &output_path)?;
@@ -604,7 +640,7 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
             writer.comments(db, &documentation.comments);
             let docs = writer
                 .finish(db, |db, segment| {
-                    segment.markdown(db, RenderMarkdownOptions::default().rich())
+                    segment.markdown(db, RenderMarkdownOptions::default().rich(true))
                 })
                 .message;
 
@@ -634,4 +670,8 @@ fn format() -> anyhow::Result<()> {
     println!("{formatted}");
 
     Ok(())
+}
+
+fn supports_color() -> bool {
+    supports_color::on(supports_color::Stream::Stdout).is_some()
 }

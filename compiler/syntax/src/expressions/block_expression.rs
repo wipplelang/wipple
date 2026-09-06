@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     anyhow,
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     facts::Syntax,
     span::Span,
@@ -101,8 +101,8 @@ struct BlockExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for BlockExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for BlockExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         let captures = db
             .get::<Captures>(self.node)
             .map(|captures| captures.0.iter().copied().collect())
@@ -111,12 +111,12 @@ impl CodegenValue for BlockExpressionCodegen {
         ctx.push_instructions();
 
         if let Some(unit_value) = self.unit_value {
-            ctx.instruction(ir::Instruction::Value {
+            ctx.instruction(hir::Instruction::Value {
                 node: unit_value,
-                value: ir::Value::Tuple(Vec::new()),
+                value: hir::Value::Tuple(Vec::new()),
             });
 
-            ctx.instruction(ir::Instruction::Return { value: unit_value });
+            ctx.instruction(hir::Instruction::Return { value: unit_value });
         } else {
             for (index, &statement) in self.statements.iter().enumerate() {
                 let span = db
@@ -124,20 +124,21 @@ impl CodegenValue for BlockExpressionCodegen {
                     .map(|Syntax(syntax)| db.ast(syntax).span(db).clone())
                     .ok_or_else(|| anyhow::format_err!("missing span"))?;
 
-                ctx.instruction(ir::Instruction::Trace { span });
+                ctx.instruction(hir::Instruction::Trace { span });
 
-                ctx.codegen(db, statement)?;
+                ctx.write(db, statement)?;
 
                 if index + 1 == self.statements.len() {
-                    ctx.instruction(ir::Instruction::Return { value: statement });
+                    ctx.instruction(hir::Instruction::Return { value: statement });
                 }
             }
         }
 
         let instructions = ctx.pop_instructions();
-        ctx.instruction(ir::Instruction::Value {
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Function(ir::Function {
+            value: hir::Value::Function(hir::Function {
+                type_parameters: Vec::new(),
                 bounds: None,
                 inputs: Vec::new(),
                 instructions,

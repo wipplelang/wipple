@@ -370,7 +370,7 @@ impl Visit for TypeDefinition {
                     .constraints(db)
                     .to_vec();
 
-                if !definition.attributes.intrinsic {
+                if definition.attributes.intrinsic.is_none() {
                     if db
                         .ast(&self.representation)
                         .downcast_ref::<MarkerTypeRepresentation>()

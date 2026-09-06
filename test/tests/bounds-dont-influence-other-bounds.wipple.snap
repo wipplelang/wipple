@@ -115,24 +115,28 @@ Facts (layer 2):
   resolved to 1 definition(s): `b`
 
 `(T a)` (BoundConstraint):
+  grouped with `value -> ()`
   has bound(s) `T` `a` (resolved as `(T a)`)
+  has type `a -> ()`
   is a constraint
   resolved to 1 definition(s): `T`
 
 `a` (TypeParameter):
-  grouped with `a`, `b`, `b`
+  grouped with `a`, `value`, `b`, `b`
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
   resolved to type parameter `a`
 
 `(T b)` (BoundConstraint):
+  grouped with `value -> ()`
   has bound(s) `T` `b` (resolved as `(T b)`)
+  has type `b -> ()`
   is a constraint
   resolved to 1 definition(s): `T`
 
 `b` (TypeParameter):
-  grouped with `b`, `a`, `a`
+  grouped with `b`, `value`, `a`, `a`
   has type `b`
   is a type
   resolved to 1 definition(s): `b`
@@ -173,7 +177,7 @@ Facts (layer 2):
 `_` (PlaceholderType):
   grouped with `b`
   is a type
-  missing type (group: `_`, `b`, `b`, `b`)
+  missing type (group: `_`, `b`, `b`, `b`, `value`, `value`)
 
 
 error: 

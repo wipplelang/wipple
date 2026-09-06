@@ -6,7 +6,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     render::Render,
     span::Span,
@@ -171,8 +171,8 @@ struct FunctionExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for FunctionExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for FunctionExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         let captures = db
             .get::<Captures>(self.node)
             .map(|captures| captures.0.iter().copied().collect())
@@ -182,26 +182,27 @@ impl CodegenValue for FunctionExpressionCodegen {
         ctx.push_conditions();
 
         for &input in &self.inputs {
-            ctx.codegen(db, input)?;
+            ctx.write(db, input)?;
         }
 
         let conditions = ctx.pop_conditions();
 
-        ctx.instruction(ir::Instruction::If {
+        ctx.instruction(hir::Instruction::If {
             node: None,
             branches: vec![(conditions, Vec::new(), None)],
             else_branch: None,
         });
 
-        ctx.codegen(db, self.output)?;
+        ctx.write(db, self.output)?;
 
-        ctx.instruction(ir::Instruction::Return { value: self.output });
+        ctx.instruction(hir::Instruction::Return { value: self.output });
 
         let instructions = ctx.pop_instructions();
 
-        ctx.instruction(ir::Instruction::Value {
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Function(ir::Function {
+            value: hir::Value::Function(hir::Function {
+                type_parameters: Vec::new(),
                 bounds: None,
                 inputs: self.inputs.clone(),
                 instructions,

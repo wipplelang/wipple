@@ -15,7 +15,9 @@ use wipple_core::{
         constraints::{
             ConstraintTrace,
             bound_constraint::{BoundConstraint as TypecheckBoundConstraint, IsBound},
+            instantiate_constraint::InstantiateConstraint,
         },
+        groups::Typed,
         ty::Ty,
     },
     util::exact_for_each,
@@ -61,6 +63,7 @@ impl Visit for BoundConstraint {
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_constraint(db, node, visitor);
+        db.insert(node, Typed::default());
         db.insert(node, IsBound);
 
         let Some((trait_node, trait_definition)) =
@@ -93,11 +96,16 @@ impl Visit for BoundConstraint {
         }
 
         let substitutions = visitor.substitutions(
-            Default::default(),
+            BTreeMap::from([(trait_node, node)]),
             bound_parameters
                 .iter()
                 .map(|(&parameter, &substitution)| (parameter, Ty::Node(substitution)))
                 .collect(),
+        );
+
+        visitor.constraint(
+            db,
+            InstantiateConstraint::new(node, trait_node, substitutions),
         );
 
         visitor.constraint(

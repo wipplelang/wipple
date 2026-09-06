@@ -1,7 +1,7 @@
 use crate::expressions::visit_expression;
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::Span,
     typecheck::{
@@ -51,11 +51,11 @@ struct UnitExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for UnitExpressionCodegen {
-    fn codegen(&self, _db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
-        ctx.instruction(ir::Instruction::Value {
+impl hir::Write for UnitExpressionCodegen {
+    fn write(&self, _db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Tuple(Vec::new()),
+            value: hir::Value::Tuple(Vec::new()),
         });
 
         Ok(())

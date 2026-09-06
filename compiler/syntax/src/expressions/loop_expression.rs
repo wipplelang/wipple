@@ -6,7 +6,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
@@ -82,13 +82,13 @@ struct LoopExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for LoopExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for LoopExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         ctx.push_instructions();
-        ctx.codegen(db, self.body)?;
+        ctx.write(db, self.body)?;
         let body = ctx.pop_instructions();
 
-        ctx.instruction(ir::Instruction::Loop {
+        ctx.instruction(hir::Instruction::Loop {
             node: self.node,
             body,
             result: self.body,

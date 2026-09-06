@@ -6,7 +6,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     anyhow,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
@@ -76,14 +76,14 @@ struct NumberPatternCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for NumberPatternCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for NumberPatternCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         let matching = db
             .get::<Matching>(self.node)
             .ok_or_else(|| anyhow::format_err!("unresolved"))?
             .0;
 
-        ctx.condition(ir::Condition::EqualToNumber {
+        ctx.condition(hir::Condition::EqualToNumber {
             input: matching,
             value: self.value.to_string(),
         });

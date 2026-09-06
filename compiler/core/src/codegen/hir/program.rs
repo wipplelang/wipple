@@ -1,10 +1,6 @@
-use crate::{
-    codegen::CodegenError,
-    db::Node,
-    span::{Span, Str},
-};
+use crate::{db::Node, span::Span};
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Default)]
 pub struct Program {
@@ -31,10 +27,17 @@ pub enum Type {
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TypeRepresentation {
-    Intrinsic { representation: Option<Str> },
+    Intrinsic(IntrinsicRepresentation),
     Marker,
     Structure(Vec<Type>),
     Enumeration(Vec<Vec<Type>>),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum IntrinsicRepresentation {
+    Opaque,
+    Number,
+    String,
 }
 
 pub type BoundPath = Vec<Node>;
@@ -98,7 +101,7 @@ pub enum Value {
         inputs: Vec<Node>,
     },
     String(String),
-    Structure(Vec<(String, Node)>),
+    Structure(Vec<(usize, String, Node)>),
     TupleElement {
         input: Node,
         index: usize,
@@ -119,7 +122,8 @@ pub enum Value {
 
 #[derive(Debug, Clone, Default)]
 pub struct Function {
-    pub bounds: Option<BTreeSet<Node>>,
+    pub type_parameters: Vec<Node>,
+    pub bounds: Option<Vec<Node>>,
     pub inputs: Vec<Node>,
     pub instructions: Vec<Instruction>,
     pub captures: Vec<Node>,
@@ -164,11 +168,7 @@ impl Instruction {
         }
     }
 
-    pub fn for_each_node(
-        &mut self,
-        traverse_functions: bool,
-        f: &mut dyn FnMut(&mut Node) -> Result<(), CodegenError>,
-    ) -> Result<(), CodegenError> {
+    pub fn for_each_node<E>(&self, f: &mut dyn FnMut(Node) -> Result<(), E>) -> Result<(), E> {
         match self {
             Instruction::If {
                 node,
@@ -176,66 +176,54 @@ impl Instruction {
                 else_branch,
             } => {
                 if let Some(node) = node {
-                    f(node)?;
+                    f(*node)?;
                 }
 
                 for (conditions, instructions, then_node) in branches {
                     for condition in conditions {
-                        for node in condition.nodes_mut() {
+                        for node in condition.nodes() {
                             f(node)?;
                         }
                     }
 
                     for instruction in instructions {
-                        instruction.for_each_node(traverse_functions, f)?;
+                        instruction.for_each_node(f)?;
                     }
 
                     if let Some(node) = then_node {
-                        f(node)?;
+                        f(*node)?;
                     }
                 }
 
                 if let Some((instructions, else_node)) = else_branch {
                     for instruction in instructions {
-                        instruction.for_each_node(traverse_functions, f)?;
+                        instruction.for_each_node(f)?;
                     }
 
                     if let Some(node) = else_node {
-                        f(node)?;
+                        f(*node)?;
                     }
                 }
             }
-            Instruction::Return { value } => f(value)?,
+            Instruction::Return { value } => f(*value)?,
             Instruction::Loop { node, body, result } => {
-                f(node)?;
+                f(*node)?;
                 for instruction in body {
-                    instruction.for_each_node(traverse_functions, f)?;
+                    instruction.for_each_node(f)?;
                 }
-                f(result)?;
+                f(*result)?;
             }
             Instruction::Trace { .. } => {}
-            Instruction::Value { node, value } => {
-                f(node)?;
-
-                if traverse_functions && let Value::Function(function) = value {
-                    for input in &mut function.inputs {
-                        f(input)?;
-                    }
-
-                    for instruction in &mut function.instructions {
-                        instruction.for_each_node(true, f)?;
-                    }
-                }
-            }
+            Instruction::Value { node, .. } => f(*node)?,
         }
 
         Ok(())
     }
 
-    pub fn traverse_mut(
+    pub fn traverse_mut<E>(
         &mut self,
-        f: &mut dyn FnMut(&mut Self) -> Result<(), CodegenError>,
-    ) -> Result<(), CodegenError> {
+        f: &mut dyn FnMut(&mut Self) -> Result<(), E>,
+    ) -> Result<(), E> {
         f(self)?;
 
         match self {
@@ -276,10 +264,10 @@ impl Instruction {
     }
 }
 
-pub fn traverse_instructions(
+pub fn traverse_instructions<E>(
     instructions: &mut Vec<Instruction>,
-    f: &mut dyn FnMut(&mut Vec<Instruction>) -> Result<(), CodegenError>,
-) -> Result<(), CodegenError> {
+    f: &mut dyn FnMut(&mut Vec<Instruction>) -> Result<(), E>,
+) -> Result<(), E> {
     f(instructions)?;
 
     for instruction in instructions {
@@ -325,18 +313,18 @@ impl Condition {
         }
     }
 
-    pub fn nodes_mut(&mut self) -> Vec<&mut Node> {
+    pub fn nodes(&self) -> Vec<Node> {
         match self {
             Condition::Or(conditions) => conditions
-                .iter_mut()
+                .iter()
                 .flatten()
-                .flat_map(|condition| condition.nodes_mut())
+                .flat_map(|condition| condition.nodes())
                 .collect(),
-            Condition::EqualToNumber { input, .. } => vec![input],
-            Condition::EqualToString { input, .. } => vec![input],
-            Condition::EqualToVariant { input, .. } => vec![input],
-            Condition::Initialize { variable, .. } => vec![variable],
-            Condition::Mutate { input, variable } => vec![input, variable],
+            Condition::EqualToNumber { input, .. } => vec![*input],
+            Condition::EqualToString { input, .. } => vec![*input],
+            Condition::EqualToVariant { input, .. } => vec![*input],
+            Condition::Initialize { variable, .. } => vec![*variable],
+            Condition::Mutate { input, variable } => vec![*input, *variable],
         }
     }
 }

@@ -191,19 +191,21 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `(Collect element output)` (BoundConstraint):
+  grouped with `element -> collection`
   has bound(s) `Collect` `element` `output` (resolved as `(Collect element output)`)
+  has type `element -> output`
   is a constraint
   resolved to 1 definition(s): `Collect`
 
 `element` (TypeParameter):
-  grouped with `element`
+  grouped with `element`, `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
   resolved to type parameter `element`
 
 `output` (TypeParameter):
-  grouped with `output`
+  grouped with `output`, `collection`
   has type `output`
   is a type
   resolved to 1 definition(s): `output`

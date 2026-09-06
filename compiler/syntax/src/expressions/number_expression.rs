@@ -2,7 +2,7 @@ use crate::{expressions::visit_expression, types::named_type::NamedType};
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     typecheck::groups::NodeRank,
@@ -72,11 +72,11 @@ struct NumberExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for NumberExpressionCodegen {
-    fn codegen(&self, _db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
-        ctx.instruction(ir::Instruction::Value {
+impl hir::Write for NumberExpressionCodegen {
+    fn write(&self, _db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Number(self.value.to_string()),
+            value: hir::Value::Number(self.value.to_string()),
         });
 
         Ok(())

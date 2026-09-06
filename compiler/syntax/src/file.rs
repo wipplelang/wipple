@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     anyhow,
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     facts::Syntax,
     span::Span,
@@ -63,7 +63,7 @@ impl Visit for File {
 
 pub fn codegen_top_level_statements(
     db: &Db,
-    ctx: &mut CodegenCtx,
+    ctx: &mut hir::Ctx,
     statements: impl IntoIterator<Item = Node>,
 ) -> Result<(), CodegenError> {
     for statement in statements {
@@ -72,9 +72,9 @@ pub fn codegen_top_level_statements(
             .map(|Syntax(syntax)| db.ast(syntax).span(db).clone())
             .ok_or_else(|| anyhow::format_err!("missing span"))?;
 
-        ctx.instruction(ir::Instruction::Trace { span });
+        ctx.instruction(hir::Instruction::Trace { span });
 
-        ctx.codegen(db, statement)?;
+        ctx.write(db, statement)?;
     }
 
     Ok(())

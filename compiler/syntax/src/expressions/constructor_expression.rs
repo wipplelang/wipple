@@ -2,7 +2,7 @@ use crate::expressions::{variable_expression::DefinitionConstraintTrace, visit_e
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{
@@ -217,33 +217,33 @@ enum ConstructorExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for ConstructorExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for ConstructorExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         match self {
             ConstructorExpressionCodegen::Trait { node } => {
                 let bounds = db.get::<ResolvedBounds>(*node).cloned().unwrap_or_default();
 
                 match ctx.bound_for_instance(&[], &bounds)? {
-                    ir::Instance::Bound(bound) => {
-                        ctx.instruction(ir::Instruction::Value {
+                    hir::Instance::Bound(bound) => {
+                        ctx.instruction(hir::Instruction::Value {
                             node: *node,
-                            value: ir::Value::Bound(bound),
+                            value: hir::Value::Bound(bound),
                         });
                     }
-                    ir::Instance::Instance { definition, bounds } => {
+                    hir::Instance::Instance { definition, bounds } => {
                         ctx.mark_reachable(definition);
 
-                        ctx.instruction(ir::Instruction::Value {
+                        ctx.instruction(hir::Instruction::Value {
                             node: *node,
-                            value: ir::Value::Constant { definition, bounds },
+                            value: hir::Value::Constant { definition, bounds },
                         });
                     }
                 }
             }
             ConstructorExpressionCodegen::Marker { node } => {
-                ctx.instruction(ir::Instruction::Value {
+                ctx.instruction(hir::Instruction::Value {
                     node: *node,
-                    value: ir::Value::Marker,
+                    value: hir::Value::Marker,
                 });
             }
             ConstructorExpressionCodegen::Wrapper {
@@ -251,18 +251,19 @@ impl CodegenValue for ConstructorExpressionCodegen {
                 value,
                 result,
             } => {
-                ctx.instruction(ir::Instruction::Value {
+                ctx.instruction(hir::Instruction::Value {
                     node: *node,
-                    value: ir::Value::Function(ir::Function {
+                    value: hir::Value::Function(hir::Function {
+                        type_parameters: Vec::new(),
                         bounds: None,
                         inputs: vec![*value],
                         instructions: vec![
-                            ir::Instruction::Value {
+                            hir::Instruction::Value {
                                 node: *result,
                                 // Wrappers are transparent at runtime
-                                value: ir::Value::Variable(*value),
+                                value: hir::Value::Variable(*value),
                             },
-                            ir::Instruction::Return { value: *result },
+                            hir::Instruction::Return { value: *result },
                         ],
                         captures: Vec::new(),
                     }),
@@ -276,30 +277,31 @@ impl CodegenValue for ConstructorExpressionCodegen {
                 result,
             } => {
                 if elements.is_empty() {
-                    ctx.instruction(ir::Instruction::Value {
+                    ctx.instruction(hir::Instruction::Value {
                         node: *node,
-                        value: ir::Value::Variant {
+                        value: hir::Value::Variant {
                             name: name.to_string(),
                             index: *index,
                             elements: Vec::new(),
                         },
                     });
                 } else {
-                    ctx.instruction(ir::Instruction::Value {
+                    ctx.instruction(hir::Instruction::Value {
                         node: *node,
-                        value: ir::Value::Function(ir::Function {
+                        value: hir::Value::Function(hir::Function {
+                            type_parameters: Vec::new(),
                             bounds: None,
                             inputs: elements.clone(),
                             instructions: vec![
-                                ir::Instruction::Value {
+                                hir::Instruction::Value {
                                     node: *result,
-                                    value: ir::Value::Variant {
+                                    value: hir::Value::Variant {
                                         name: name.to_string(),
                                         index: *index,
                                         elements: elements.clone(),
                                     },
                                 },
-                                ir::Instruction::Return { value: *result },
+                                hir::Instruction::Return { value: *result },
                             ],
                             captures: Vec::new(),
                         }),

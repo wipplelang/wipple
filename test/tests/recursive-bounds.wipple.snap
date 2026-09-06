@@ -95,12 +95,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `(Describe value)` (BoundConstraint):
+  grouped with `value -> String`
   has bound(s) `Describe` `value` (resolved as `(Describe value)`)
+  has type `value -> String`
   is a constraint
   resolved to 1 definition(s): `Describe`
 
 `value` (TypeParameter):
-  grouped with `value`, `Maybe value`
+  grouped with `value`, `value`, `Maybe value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`

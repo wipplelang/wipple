@@ -9,7 +9,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{
@@ -446,13 +446,13 @@ struct OperatorExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for OperatorExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
-        ctx.codegen(db, self.resolved)?;
+impl hir::Write for OperatorExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
+        ctx.write(db, self.resolved)?;
 
-        ctx.instruction(ir::Instruction::Value {
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Variable(self.resolved),
+            value: hir::Value::Variable(self.resolved),
         });
 
         Ok(())

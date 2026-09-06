@@ -158,7 +158,9 @@ impl CompileResult {
                         _ => {
                             return segment.markdown(
                                 db,
-                                RenderMarkdownOptions::default().rich().hover_links(),
+                                RenderMarkdownOptions::default()
+                                    .rich(true)
+                                    .hover_links(true),
                             );
                         }
                     };

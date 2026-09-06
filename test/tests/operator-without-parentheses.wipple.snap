@@ -120,12 +120,12 @@ Facts (layer 2):
 `1 + "hi"` (OperatorExpression):
   grouped with `1 + "hi"`, `value`
   is an expression
-  missing type (group: `1 + "hi"`, `1 + "hi"`, `value`, `value`, `value`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
+  missing type (group: `1 + "hi"`, `1 + "hi"`, `value`, `value`, `value`, `value`, `value`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `1 + "hi"` (CallExpression):
   grouped with `sum`, `1 + "hi"`
   is an expression
-  missing type (group: `1 + "hi"`, `1 + "hi"`, `value`, `value`, `value`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
+  missing type (group: `1 + "hi"`, `1 + "hi"`, `value`, `value`, `value`, `value`, `value`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `1 + "hi"` (ConstructorExpression):
   grouped with `left right -> sum`

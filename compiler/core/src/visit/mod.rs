@@ -4,7 +4,7 @@ pub mod exhaustiveness;
 
 use crate::{
     ast::AstKey,
-    codegen::CodegenValue,
+    codegen::hir,
     db::{Db, Fact, Node},
     facts::{Children, Codegen, Parent, Syntax},
     render::{Render, RenderCtx},
@@ -495,7 +495,7 @@ impl Visitor {
         key
     }
 
-    pub fn codegen(&mut self, db: &mut Db, node: Node, value: impl CodegenValue) {
+    pub fn codegen(&mut self, db: &mut Db, node: Node, value: impl hir::Write) {
         db.insert(node, Codegen(Box::new(value)));
     }
 

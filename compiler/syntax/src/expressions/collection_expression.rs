@@ -6,7 +6,7 @@ use crate::expressions::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     render::{Render, RenderCtx},
     span::{Span, Str},
@@ -189,13 +189,13 @@ struct CollectionExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for CollectionExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
-        ctx.codegen(db, self.collection_node)?;
+impl hir::Write for CollectionExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
+        ctx.write(db, self.collection_node)?;
 
-        ctx.instruction(ir::Instruction::Value {
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Variable(self.collection_node),
+            value: hir::Value::Variable(self.collection_node),
         });
 
         Ok(())

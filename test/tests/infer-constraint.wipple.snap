@@ -160,26 +160,28 @@ Facts (layer 2):
   resolved to 1 definition(s): `sum`
 
 `(Add left right sum)` (BoundConstraint):
+  grouped with `left right -> sum`
   has bound(s) `Add` `left` `right` `sum` (resolved as `(Add left right sum)`)
+  has type `left right -> sum`
   is a constraint
   resolved to 1 definition(s): `Add`
 
 `left` (TypeParameter):
-  grouped with `left`
+  grouped with `left`, `left`
   has type `left`
   is a type
   resolved to 1 definition(s): `left`
   resolved to type parameter `left`
 
 `right` (TypeParameter):
-  grouped with `right`
+  grouped with `right`, `right`
   has type `right`
   is a type
   resolved to 1 definition(s): `right`
   resolved to type parameter `right`
 
 `sum` (TypeParameter):
-  grouped with `sum`
+  grouped with `sum`, `sum`
   has type `sum`
   is a type
   resolved to 1 definition(s): `sum`
@@ -380,26 +382,28 @@ Facts (layer 2):
   resolved to 1 definition(s): `sum`
 
 `(Add-Infer left right sum)` (BoundConstraint):
+  grouped with `left right -> sum`
   has bound(s) `Add-Infer` `left` `right` `sum` (resolved as `(Add-Infer left right sum)`)
+  has type `left right -> sum`
   is a constraint
   resolved to 1 definition(s): `Add-Infer`
 
 `left` (TypeParameter):
-  grouped with `left`
+  grouped with `left`, `left`
   has type `left`
   is a type
   resolved to 1 definition(s): `left`
   resolved to type parameter `left`
 
 `right` (TypeParameter):
-  grouped with `right`
+  grouped with `right`, `right`
   has type `right`
   is a type
   resolved to 1 definition(s): `right`
   resolved to type parameter `right`
 
 `sum` (TypeParameter):
-  grouped with `sum`
+  grouped with `sum`, `(infer sum)`
   has type `sum`
   is a type
   resolved to 1 definition(s): `sum`

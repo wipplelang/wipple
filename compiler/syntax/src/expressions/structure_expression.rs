@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Fact, Node},
     render::Render,
     span::{Span, Str},
@@ -167,21 +167,21 @@ struct StructureExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for StructureExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for StructureExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         let mut fields = self.fields.clone();
         fields.sort_by_key(|(index, _, _)| *index);
 
         for (_, _, field) in &fields {
-            ctx.codegen(db, *field)?;
+            ctx.write(db, *field)?;
         }
 
-        ctx.instruction(ir::Instruction::Value {
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Structure(
+            value: hir::Value::Structure(
                 fields
                     .into_iter()
-                    .map(|(_, name, value)| (name.to_string(), value))
+                    .map(|(index, name, value)| (index, name.to_string(), value))
                     .collect(),
             ),
         });

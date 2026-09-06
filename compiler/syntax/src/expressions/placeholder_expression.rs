@@ -1,7 +1,7 @@
 use crate::expressions::visit_expression;
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    codegen::{CodegenCtx, CodegenError, CodegenValue},
+    codegen::{CodegenError, hir},
     db::{Db, Fact, Node},
     render::Render,
     span::Span,
@@ -51,8 +51,8 @@ impl Visit for PlaceholderExpression {
 struct PlaceholderExpressionCodegen;
 
 #[typetag::serde]
-impl CodegenValue for PlaceholderExpressionCodegen {
-    fn codegen(&self, _db: &Db, _ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for PlaceholderExpressionCodegen {
+    fn write(&self, _db: &Db, _ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         Ok(())
     }
 }

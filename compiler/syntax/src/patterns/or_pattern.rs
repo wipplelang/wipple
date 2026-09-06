@@ -3,7 +3,7 @@ use crate::patterns::{InvalidOrPattern, parse_pattern_element, visit_pattern};
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::Span,
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
@@ -81,16 +81,16 @@ struct OrPatternCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for OrPatternCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for OrPatternCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         let mut conditions = Vec::new();
         for &pattern in &self.patterns {
             ctx.push_conditions();
-            ctx.codegen(db, pattern)?;
+            ctx.write(db, pattern)?;
             conditions.push(ctx.pop_conditions());
         }
 
-        ctx.condition(ir::Condition::Or(conditions));
+        ctx.condition(hir::Condition::Or(conditions));
 
         Ok(())
     }

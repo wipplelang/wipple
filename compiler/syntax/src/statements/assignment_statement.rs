@@ -9,7 +9,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::Span,
     typecheck::{
@@ -166,8 +166,8 @@ enum AssignmentStatementCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for AssignmentStatementCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for AssignmentStatementCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         match *self {
             AssignmentStatementCodegen::Constant => {}
             AssignmentStatementCodegen::Variable {
@@ -175,21 +175,21 @@ impl CodegenValue for AssignmentStatementCodegen {
                 pattern,
                 value,
             } => {
-                ctx.codegen(db, value)?;
+                ctx.write(db, value)?;
 
                 ctx.push_conditions();
-                ctx.codegen(db, pattern)?;
+                ctx.write(db, pattern)?;
                 let conditions = ctx.pop_conditions();
 
-                ctx.instruction(ir::Instruction::If {
+                ctx.instruction(hir::Instruction::If {
                     node: None,
                     branches: vec![(conditions, Vec::new(), None)],
                     else_branch: None,
                 });
 
-                ctx.instruction(ir::Instruction::Value {
+                ctx.instruction(hir::Instruction::Value {
                     node,
-                    value: ir::Value::Tuple(Vec::new()),
+                    value: hir::Value::Tuple(Vec::new()),
                 });
             }
         }

@@ -5,7 +5,7 @@ use crate::expressions::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Fact, Node},
     render::Render,
     span::Span,
@@ -200,36 +200,36 @@ enum CallExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for CallExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for CallExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         match self {
             CallExpressionCodegen::Function {
                 node,
                 function,
                 inputs,
             } => {
-                ctx.codegen(db, *function)?;
+                ctx.write(db, *function)?;
 
                 for &input in inputs {
-                    ctx.codegen(db, input)?;
+                    ctx.write(db, input)?;
                 }
 
-                ctx.instruction(ir::Instruction::Value {
+                ctx.instruction(hir::Instruction::Value {
                     node: *node,
-                    value: ir::Value::Call {
+                    value: hir::Value::Call {
                         function: *function,
                         inputs: inputs.clone(),
                     },
                 });
             }
             CallExpressionCodegen::Unit { node, number, unit } => {
-                ctx.codegen(db, *number)?;
+                ctx.write(db, *number)?;
 
-                ctx.codegen(db, *unit)?;
+                ctx.write(db, *unit)?;
 
-                ctx.instruction(ir::Instruction::Value {
+                ctx.instruction(hir::Instruction::Value {
                     node: *node,
-                    value: ir::Value::Call {
+                    value: hir::Value::Call {
                         function: *unit,
                         inputs: vec![*number],
                     },

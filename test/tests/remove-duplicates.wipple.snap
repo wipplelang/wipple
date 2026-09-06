@@ -40,36 +40,42 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `(Describe element)` (BoundConstraint):
+  grouped with `value -> String`
   has bound(s) `Describe` `element` (resolved as `(Describe element)`)
+  has type `element -> String`
   is a constraint
   resolved to 1 definition(s): `Describe`
 
 `element` (TypeParameter):
-  grouped with `element`
+  grouped with `element`, `value`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
   resolved to type parameter `element`
 
 `(Equal element)` (BoundConstraint):
+  grouped with `value value -> Boolean`
   has bound(s) `Equal` `element` (resolved as `(Equal element)`)
+  has type `element element -> Boolean`
   is a constraint
   resolved to 1 definition(s): `Equal`
 
 `element` (TypeParameter):
-  grouped with `element`, `element`, `element`, `element`
+  grouped with `element`, `value`, `element`, `element`, `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`
   resolved to type parameter `element`
 
 `(Hash element)` (BoundConstraint):
+  grouped with `value -> Number`
   has bound(s) `Hash` `element` (resolved as `(Hash element)`)
+  has type `element -> Number`
   is a constraint
   resolved to 1 definition(s): `Hash`
 
 `element` (TypeParameter):
-  grouped with `element`, `element`, `element`, `element`
+  grouped with `element`, `value`, `element`, `element`, `element`
   has type `element`
   is a type
   resolved to 1 definition(s): `element`

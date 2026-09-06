@@ -3,7 +3,7 @@ use crate::expressions::{parse_expression_element, visit_expression};
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::Span,
     typecheck::{
@@ -85,15 +85,15 @@ struct TupleExpressionCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for TupleExpressionCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for TupleExpressionCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         for &element in &self.elements {
-            ctx.codegen(db, element)?;
+            ctx.write(db, element)?;
         }
 
-        ctx.instruction(ir::Instruction::Value {
+        ctx.instruction(hir::Instruction::Value {
             node: self.node,
-            value: ir::Value::Tuple(self.elements.clone()),
+            value: hir::Value::Tuple(self.elements.clone()),
         });
 
         Ok(())

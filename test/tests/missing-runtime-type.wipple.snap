@@ -121,19 +121,21 @@ Facts (layer 2):
   resolved to 1 definition(s): `a`
 
 `(T1 a b)` (BoundConstraint):
+  grouped with `a -> b`
   has bound(s) `T1` `a` `b` (resolved as `(T1 a b)`)
+  has type `a -> b`
   is a constraint
   resolved to 1 definition(s): `T1`
 
 `a` (TypeParameter):
-  grouped with `a`, `a`
+  grouped with `a`, `a`, `a`
   has type `a`
   is a type
   resolved to 1 definition(s): `a`
   resolved to type parameter `a`
 
 `b` (TypeParameter):
-  grouped with `b`
+  grouped with `b`, `b`
   has type `b`
   is a definition
   is a type

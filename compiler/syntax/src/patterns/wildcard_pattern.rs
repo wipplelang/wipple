@@ -1,7 +1,7 @@
 use crate::patterns::visit_pattern;
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    codegen::{CodegenCtx, CodegenError, CodegenValue},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::Span,
     visit::{Visit, Visitor, exhaustiveness::MatchPathSegment},
@@ -40,8 +40,8 @@ impl Visit for WildcardPattern {
 struct WildcardPatternCodegen;
 
 #[typetag::serde]
-impl CodegenValue for WildcardPatternCodegen {
-    fn codegen(&self, _db: &Db, _ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for WildcardPatternCodegen {
+    fn write(&self, _db: &Db, _ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         Ok(())
     }
 }

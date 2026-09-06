@@ -1,6 +1,6 @@
 use crate::{
     ast::AstKey,
-    codegen::CodegenValue,
+    codegen::hir,
     db::{Fact, Node},
     render::Render,
 };
@@ -15,7 +15,7 @@ impl Fact for Syntax {}
 impl Render for Syntax {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Codegen(pub Box<dyn CodegenValue>);
+pub struct Codegen(pub Box<dyn hir::Write>);
 
 #[typetag::serde]
 impl Fact for Codegen {}

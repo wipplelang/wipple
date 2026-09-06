@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use wipple_core::{
     anyhow,
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     typecheck::constraints::instantiate_constraint::InstantiateConstraint,
@@ -153,8 +153,8 @@ struct StructurePatternCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for StructurePatternCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for StructurePatternCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         let matching = db
             .get::<Matching>(self.node)
             .ok_or_else(|| anyhow::format_err!("unresolved"))?
@@ -163,10 +163,10 @@ impl CodegenValue for StructurePatternCodegen {
         for (index, name, pattern, temporary) in &self.fields {
             let index = index.ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-            ctx.condition(ir::Condition::Initialize {
+            ctx.condition(hir::Condition::Initialize {
                 variable: *temporary,
                 node: None,
-                value: ir::Value::Field {
+                value: hir::Value::Field {
                     input: matching,
                     field_name: name.to_string(),
                     field_index: index,
@@ -174,7 +174,7 @@ impl CodegenValue for StructurePatternCodegen {
                 mutable: false,
             });
 
-            ctx.codegen(db, *pattern)?;
+            ctx.write(db, *pattern)?;
         }
 
         Ok(())

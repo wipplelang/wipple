@@ -7,7 +7,7 @@ use std::{
 use wipple_core::{
     anyhow,
     ast::AstKey,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     span::{Span, Str},
@@ -310,8 +310,8 @@ enum ConstructorPatternCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for ConstructorPatternCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for ConstructorPatternCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         match self {
             ConstructorPatternCodegen::Marker => Ok(()),
             ConstructorPatternCodegen::Variant {
@@ -324,17 +324,17 @@ impl CodegenValue for ConstructorPatternCodegen {
                     .get(*node)
                     .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-                ctx.condition(ir::Condition::EqualToVariant {
+                ctx.condition(hir::Condition::EqualToVariant {
                     input: *matching,
                     variant_name: name.to_string(),
                     variant_index: *index,
                 });
 
                 for (element_index, &(pattern, temporary)) in elements.iter().enumerate() {
-                    ctx.condition(ir::Condition::Initialize {
+                    ctx.condition(hir::Condition::Initialize {
                         variable: temporary,
                         node: None,
-                        value: ir::Value::VariantElement {
+                        value: hir::Value::VariantElement {
                             input: *matching,
                             variant_name: name.to_string(),
                             variant_index: *index,
@@ -343,7 +343,7 @@ impl CodegenValue for ConstructorPatternCodegen {
                         mutable: false,
                     });
 
-                    ctx.codegen(db, pattern)?;
+                    ctx.write(db, pattern)?;
                 }
 
                 Ok(())
@@ -356,15 +356,15 @@ impl CodegenValue for ConstructorPatternCodegen {
                     .get(*node)
                     .ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-                ctx.condition(ir::Condition::Initialize {
+                ctx.condition(hir::Condition::Initialize {
                     variable: *temporary,
                     node: None,
                     // Wrappers are transparent at runtime
-                    value: ir::Value::Variable(*matching),
+                    value: hir::Value::Variable(*matching),
                     mutable: false,
                 });
 
-                ctx.codegen(db, *pattern)?;
+                ctx.write(db, *pattern)?;
 
                 Ok(())
             }

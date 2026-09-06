@@ -1,7 +1,7 @@
 use crate::patterns::visit_pattern;
 use serde::{Deserialize, Serialize};
 use wipple_core::{
-    codegen::{CodegenCtx, CodegenError, CodegenValue},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::Span,
     typecheck::{
@@ -49,8 +49,8 @@ impl Visit for UnitPattern {
 struct UnitPatternCodegen;
 
 #[typetag::serde]
-impl CodegenValue for UnitPatternCodegen {
-    fn codegen(&self, _db: &Db, _ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for UnitPatternCodegen {
+    fn write(&self, _db: &Db, _ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         Ok(())
     }
 }

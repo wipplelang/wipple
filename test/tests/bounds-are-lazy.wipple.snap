@@ -119,12 +119,14 @@ Facts (layer 2):
   is a type
 
 `(T value)` (BoundConstraint):
+  grouped with `value -> ()`
   has bound(s) `T` `value` (resolved as `(T value)`)
+  has type `value -> ()`
   is a constraint
   resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
-  grouped with `value`, `value`
+  grouped with `value`, `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`

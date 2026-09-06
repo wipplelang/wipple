@@ -6,7 +6,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     anyhow,
-    codegen::{CodegenCtx, CodegenError, CodegenValue, ir},
+    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     visit::{Visit, Visitor, exhaustiveness::MatchPathSegment},
@@ -73,14 +73,14 @@ struct StringPatternCodegen {
 }
 
 #[typetag::serde]
-impl CodegenValue for StringPatternCodegen {
-    fn codegen(&self, db: &Db, ctx: &mut CodegenCtx) -> Result<(), CodegenError> {
+impl hir::Write for StringPatternCodegen {
+    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
         let matching = db
             .get::<Matching>(self.node)
             .ok_or_else(|| anyhow::format_err!("unresolved"))?
             .0;
 
-        ctx.condition(ir::Condition::EqualToString {
+        ctx.condition(hir::Condition::EqualToString {
             input: matching,
             value: self.value.to_string(),
         });
