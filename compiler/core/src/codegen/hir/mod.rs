@@ -126,23 +126,60 @@ impl Ctx {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct IncludeDefinitions {
+    pub defined: bool,
+    pub referenced: bool,
+}
+
+impl Default for IncludeDefinitions {
+    fn default() -> Self {
+        IncludeDefinitions {
+            defined: false,
+            referenced: true,
+        }
+    }
+}
+
+impl IncludeDefinitions {
+    pub fn for_library() -> Self {
+        IncludeDefinitions {
+            defined: true,
+            referenced: false,
+        }
+    }
+
+    pub fn for_repl() -> Self {
+        IncludeDefinitions {
+            defined: true,
+            referenced: true,
+        }
+    }
+}
+
 impl Program {
     pub fn from_statements(
         db: &Db,
         source_files: &[Node],
         statements: &[Node],
         lib_statements: &[Node],
-        include_all_definitions: bool,
+        include_definitions: IncludeDefinitions,
     ) -> Result<Program, CodegenError> {
-        let mut program = Program::default();
-        program.source_files.extend(source_files);
+        let mut program = Program {
+            layer: db.layer(),
+            source_files: source_files.to_vec(),
+            definitions: Default::default(),
+        };
 
         let mut ctx = Ctx::new();
-
         ctx.reachable_definitions.insert(DefinitionKey::TopLevel);
 
-        if include_all_definitions {
-            db.for_each_fact::<_, ()>(&mut |_, node, Defined(definition)| {
+        if include_definitions.defined {
+            db.for_each_fact::<_, ()>(&mut |db, node, Defined(definition)| {
+                if include_definitions.referenced && !db.owns(node) {
+                    return ControlFlow::Continue(());
+                }
+
                 if definition.downcast_ref::<ConstantDefinition>().is_some()
                     || definition
                         .downcast_ref::<InstanceDefinition>()
@@ -226,6 +263,13 @@ impl Program {
             if !progress {
                 break;
             }
+        }
+
+        if include_definitions.defined && include_definitions.referenced {
+            program.definitions.retain(|&key, _| match key {
+                DefinitionKey::Constant(node) => db.owns(node),
+                DefinitionKey::TopLevel => true,
+            });
         }
 
         Ok(program)

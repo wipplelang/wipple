@@ -1,9 +1,10 @@
 #![allow(clippy::print_stderr)]
 
 mod driver;
+mod interpreter;
 mod read;
 
-use crate::{driver::Driver, read::read_dir};
+use crate::{driver::Driver, interpreter::create_interpreter, read::read_dir};
 use clap::Parser;
 use colored::Colorize;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
@@ -13,10 +14,8 @@ use std::{
     collections::{BTreeSet, HashMap},
     env, fs,
     io::{self, Write},
-    net,
     ops::ControlFlow,
-    path::{Path, PathBuf},
-    process,
+    path::PathBuf,
     str::FromStr,
     sync::{
         Arc,
@@ -26,7 +25,7 @@ use std::{
 use wipple_core::{
     LibraryArtifact, TopLevel,
     ast::AstKey,
-    codegen::{self, backends::Backend},
+    codegen,
     db::{Db, DbRef, Node, NodeId},
     default_filter,
     render::RenderMarkdownOptions,
@@ -39,17 +38,11 @@ use wipple_syntax::parse;
 #[derive(Debug, clap::Parser)]
 enum Args {
     Compile {
-        #[clap(short)]
-        output: Option<PathBuf>,
-
         #[clap(flatten)]
         options: CompileOptions,
     },
 
     Run {
-        #[clap(short)]
-        output: Option<PathBuf>,
-
         #[clap(flatten)]
         options: CompileOptions,
     },
@@ -127,27 +120,15 @@ impl FromStr for FilterFacts {
     }
 }
 
-fn make_temp_dir() -> io::Result<PathBuf> {
-    Ok(tempfile::Builder::new().prefix("wipple").tempdir()?.keep())
-}
-
 fn main() -> anyhow::Result<()> {
     match Args::parse() {
-        Args::Compile { output, options } => {
-            compile(&options, output.as_deref())?;
+        Args::Compile { options } => {
+            compile(&options)?;
         }
-        Args::Run { output, options } => {
-            let (output, cleanup) = match output.as_deref() {
-                Some(path) => (path.to_path_buf(), false),
-                None => (make_temp_dir()?, true),
-            };
-
-            if compile(&options, Some(&output))?.is_some() {
-                run(&output, |cmd| cmd)?;
-            }
-
-            if cleanup {
-                fs::remove_dir_all(&output)?;
+        Args::Run { options } => {
+            if let Some(mir) = compile(&options)? {
+                let interpreter = create_interpreter(io::stdout());
+                interpreter.run(&mir)?;
             }
         }
         Args::Repl { options } => {
@@ -220,17 +201,12 @@ fn setup(
     Ok((db, top_level, statements))
 }
 
-fn compile(
-    options: &CompileOptions,
-    output_path: Option<&Path>,
-) -> anyhow::Result<Option<codegen::backends::js::Output>> {
+fn compile(options: &CompileOptions) -> anyhow::Result<Option<codegen::mir::Program>> {
     let (lib_db, mut top_level, lib_statements) = setup(options, io::stdout())?;
 
     if options.paths.is_empty() {
         return Ok(None);
     }
-
-    let source_root = format!("{}/", env::current_dir()?.display());
 
     let mut db = Db::new(Some(DbRef::new(lib_db)));
     if env::var("WIPPLE_DEBUG").is_ok() {
@@ -268,12 +244,14 @@ fn compile(
         &source_files,
         &statements,
         &lib_statements,
-        false,
+        Default::default(),
     )?;
 
-    let mir = codegen::mir::Program::from_hir(
+    let mut mir = codegen::mir::Program::default();
+    mir.extend_from_hir(
         &db,
         &hir,
+        &mut Default::default(),
         codegen::mir::Options {
             trace: if options.trace {
                 codegen::mir::TraceOptions::All
@@ -282,17 +260,6 @@ fn compile(
             },
         },
     )?;
-
-    let backend = codegen::backends::js::Backend::new(
-        &db,
-        codegen::backends::js::Options {
-            file_name: Some(JS_FILE_NAME),
-            source_root: &source_root,
-            include_prelude: true,
-        },
-    );
-
-    let result = backend.run(&mir)?;
 
     if let Some(path) = &options.lib_artifact {
         if path.extension().and_then(|ext| ext.to_str()) != Some("bin") {
@@ -311,89 +278,58 @@ fn compile(
         fs::write(path, bytes)?;
     }
 
-    if let Some(path) = output_path {
-        write_js(&result, path)?;
-    }
-
-    Ok(Some(result))
-}
-
-static JS_FILE_NAME: &str = "main.js";
-
-fn write_js(js: &codegen::backends::js::Output, path: &Path) -> anyhow::Result<()> {
-    fs::create_dir_all(path)?;
-
-    fs::write(path.join(JS_FILE_NAME), &js.module)?;
-    fs::write(path.join(format!("{JS_FILE_NAME}.map")), &js.source_map)?;
-
-    macro_rules! copy {
-        ($name:literal) => {
-            fs::write(
-                path.join($name),
-                include_bytes!(concat!("../node-runtime/", $name)),
-            )?;
-        };
-    }
-
-    copy!("package.json");
-    copy!("index.js");
-    copy!("env.js");
-
-    Ok(())
-}
-
-fn run(
-    path: &Path,
-    setup: impl FnOnce(&mut process::Command) -> &mut process::Command,
-) -> anyhow::Result<process::Output> {
-    let output = setup(process::Command::new("/usr/bin/env").args([
-        "node".as_ref(),
-        "--enable-source-maps".as_ref(),
-        path,
-    ]))
-    .spawn()?
-    .wait_with_output()?;
-
-    if !output.status.success() {
-        return Err(anyhow::format_err!(
-            "script exited with status {}",
-            output.status
-        ));
-    }
-
-    Ok(output)
+    Ok(Some(mir))
 }
 
 fn repl(options: &CompileOptions) -> anyhow::Result<()> {
     let (lib_db, mut top_level, lib_statements) = setup(options, io::stdout())?;
 
-    let addr = net::TcpListener::bind("127.0.0.1:0")?.local_addr()?;
+    let mut program = codegen::mir::Program::default();
 
-    eprintln!("{} (listening on port {})", "Wipple".bold(), addr.port());
+    let mut map = codegen::mir::IndexMap::default();
+    let mut codegen = move |program: &mut codegen::mir::Program,
+                            db: &Db,
+                            include_definitions: codegen::hir::IncludeDefinitions,
+                            source_files: &[Node],
+                            statements: &[Node]|
+          -> Result<(), codegen::CodegenError> {
+        let hir = codegen::hir::Program::from_statements(
+            db,
+            source_files,
+            statements,
+            &lib_statements,
+            include_definitions,
+        )?;
+
+        program.extend_from_hir(
+            db,
+            &hir,
+            &mut map,
+            codegen::mir::Options {
+                trace: if options.trace {
+                    codegen::mir::TraceOptions::All
+                } else {
+                    codegen::mir::TraceOptions::None
+                },
+            },
+        )?;
+
+        Ok(())
+    };
+
+    codegen(
+        &mut program,
+        &lib_db,
+        codegen::hir::IncludeDefinitions::for_library(),
+        &[],
+        &[],
+    )?;
+
+    eprintln!("{}", "Wipple".bold());
     eprintln!(
         "{}",
         "Press Return twice to run, `show` to display output, ^C to exit".dimmed()
     );
-
-    let _repl = process::Command::new("/usr/bin/env")
-        .args([
-            "node",
-            "--enable-source-maps",
-            "-e",
-            concat!(
-                include_str!("../node-runtime/env.js"),
-                include_str!("../node-runtime/repl.js"),
-            ),
-            "--",
-            addr.port().to_string().as_str(),
-        ])
-        .env("WIPPLE_REPL", "1")
-        .stdin(process::Stdio::null())
-        .stdout(process::Stdio::inherit())
-        .stderr(process::Stdio::inherit())
-        .spawn()?;
-
-    let client = reqwest::blocking::Client::new();
 
     #[derive(
         Default, rustyline::Completer, rustyline::Helper, rustyline::Highlighter, rustyline::Hinter,
@@ -418,7 +354,6 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
     rl.set_helper(Some(Validator));
 
     let mut db = DbRef::new(lib_db);
-    let mut first = true;
     loop {
         match rl.readline("\n> ") {
             Ok(input) => {
@@ -429,7 +364,7 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
                     next_db.debug_enabled = true;
                 }
 
-                let name = format!("<repl#{}>", next_db.layer());
+                let name = format!("repl#{}", next_db.layer());
 
                 let files = vec![parse(&mut next_db, &name, &input)];
 
@@ -445,33 +380,16 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
                     continue;
                 };
 
-                let hir = codegen::hir::Program::from_statements(
+                codegen(
+                    &mut program,
                     &next_db,
+                    codegen::hir::IncludeDefinitions::for_repl(),
                     &source_files,
                     &statements,
-                    &lib_statements,
-                    first,
                 )?;
 
-                let mir = codegen::mir::Program::from_hir(&next_db, &hir, Default::default())?;
-
-                let backend = codegen::backends::js::Backend::new(
-                    &next_db,
-                    codegen::backends::js::Options {
-                        file_name: None,
-                        source_root: &name,
-                        include_prelude: false,
-                    },
-                );
-
-                let result = backend.run(&mir)?;
-
-                eprintln!("{}", result.module);
-
-                client
-                    .post(format!("http://{addr}"))
-                    .body(result.module)
-                    .send()?;
+                let interpreter = create_interpreter(io::stdout());
+                interpreter.run(&program)?;
 
                 db = DbRef::new(next_db);
             }
@@ -480,8 +398,6 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
             ) => break,
             Err(err) => return Err(err.into()),
         }
-
-        first = false;
     }
 
     Ok(())
@@ -537,30 +453,16 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
                 &source_files,
                 &statements,
                 &lib_statements,
-                false,
+                Default::default(),
             )?;
 
-            let mir = codegen::mir::Program::from_hir(&db, &hir, Default::default())?;
+            let mut mir = codegen::mir::Program::default();
+            mir.extend_from_hir(&db, &hir, &mut Default::default(), Default::default())?;
 
-            let backend = codegen::backends::js::Backend::new(
-                &db,
-                codegen::backends::js::Options {
-                    file_name: Some(JS_FILE_NAME),
-                    source_root: "",
-                    include_prelude: true,
-                },
-            );
-
-            let js = backend.run(&mir)?;
-
-            let output_path = make_temp_dir()?;
-            write_js(&js, &output_path)?;
-
-            let output = run(&output_path, |cmd| cmd.stdout(process::Stdio::piped()))?.stdout;
             writeln!(out, "Output:")?;
-            out.write_all(&output)?;
 
-            fs::remove_dir_all(output_path)?;
+            let interpreter = create_interpreter(&mut out);
+            interpreter.run(&mir)?;
         }
 
         let mask = db

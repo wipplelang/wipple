@@ -1,4 +1,3 @@
-pub mod backends;
 pub mod hir;
 pub mod mir;
 

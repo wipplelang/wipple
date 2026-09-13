@@ -1,7 +1,8 @@
+mod codegen;
 mod diagnostics;
 mod graph;
 mod ide;
-mod module;
+mod run;
 
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
 use wasm_bindgen::prelude::*;

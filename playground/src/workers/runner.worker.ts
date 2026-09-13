@@ -1,5 +1,8 @@
 import { makeAtomicsChannel, readMessage, writeMessage, type Channel } from "sync-message";
+import initWipple, * as wipple from "wipple";
 import * as Sentry from "@sentry/browser";
+
+await initWipple({ module_or_path: fetch(wipple.modulePath) });
 
 export type Env = Record<string, (input: any) => Promise<any>>;
 
@@ -27,14 +30,14 @@ export const init = (worker: Worker, env: Env) => {
     });
 
     return {
-        run: async (module: string) => {
-            worker.postMessage({ type: "run", channel, module });
+        run: async (program: ArrayBufferLike) => {
+            worker.postMessage({ type: "run", channel, program }, [program]);
             await done;
         },
     };
 };
 
-const run = async (channel: Channel, moduleString: string) => {
+const run = async (channel: Channel, program: ArrayBufferLike) => {
     const env = new Proxy(
         {},
         {
@@ -46,13 +49,8 @@ const run = async (channel: Channel, moduleString: string) => {
         },
     );
 
-    const blob = new Blob([moduleString], { type: "application/javascript" });
-    const url = URL.createObjectURL(blob);
-    const { default: main } = await import(/* @vite-ignore */ url);
-    URL.revokeObjectURL(url);
-
     try {
-        main(env);
+        wipple.run(new Uint8Array(program), env);
     } catch (e) {
         console.error(e);
         Sentry.captureException(e);
@@ -65,7 +63,7 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
     onmessage = (e) => {
         switch (e.data.type) {
             case "run": {
-                run(e.data.channel, e.data.module);
+                run(e.data.channel, e.data.program);
                 break;
             }
             default:

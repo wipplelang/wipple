@@ -1,40 +1,33 @@
 use crate::CompileResult;
 use wasm_bindgen::prelude::*;
-use wipple_core::codegen::{self, backends::Backend};
+use wipple_core::codegen;
 
 #[wasm_bindgen]
 impl CompileResult {
     #[wasm_bindgen]
-    pub fn module(&self) -> Option<String> {
+    pub fn codegen(&self) -> Option<Vec<u8>> {
         let hir = codegen::hir::Program::from_statements(
             &self.db,
             &self.source_files,
             &self.statements,
             &self.lib_statements,
-            false,
+            Default::default(),
         )
         .ok()?;
 
-        let mir = codegen::mir::Program::from_hir(
+        let mut mir = codegen::mir::Program::default();
+        mir.extend_from_hir(
             &self.db,
             &hir,
+            &mut Default::default(),
             codegen::mir::Options {
                 trace: codegen::mir::TraceOptions::Files(&[&self.path]),
             },
         )
         .ok()?;
 
-        let backend = codegen::backends::js::Backend::new(
-            &self.db,
-            codegen::backends::js::Options {
-                file_name: None,
-                source_root: "",
-                include_prelude: true,
-            },
-        );
+        let bytes = rmp_serde::to_vec(&mir).ok()?;
 
-        let result = backend.run(&mir).ok()?;
-
-        Some(result.module)
+        Some(bytes)
     }
 }

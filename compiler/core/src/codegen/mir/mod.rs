@@ -9,7 +9,6 @@ use crate::{
     },
     db::{Db, Node},
     facts::Syntax,
-    span::Span,
     visit::IsMutated,
 };
 use std::collections::BTreeMap;
@@ -27,24 +26,30 @@ pub enum TraceOptions<'a> {
     Files(&'a [&'a str]),
 }
 
-const FALSE_VARIANT: usize = 0;
-const TRUE_VARIANT: usize = 1;
-const IS_LESS_THAN_VARIANT: usize = 0;
-const IS_EQUAL_VARIANT: usize = 1;
-const IS_GREATER_THAN_VARIANT: usize = 2;
-const BREAK_VARIANT: usize = 1;
+pub mod builtin_variants {
+    pub const FALSE: usize = 0;
+    pub const TRUE: usize = 1;
+    pub const NONE: usize = 0;
+    pub const SOME: usize = 1;
+    pub const IS_LESS_THAN: usize = 0;
+    pub const IS_EQUAL: usize = 1;
+    pub const IS_GREATER_THAN: usize = 2;
+    pub const BREAK: usize = 1;
+}
 
-impl<'a> Program {
-    pub fn from_hir(
+impl Program {
+    pub fn extend_from_hir(
+        &mut self,
         db: &Db,
-        program: &'a hir::Program,
+        program: &hir::Program,
+        map: &mut IndexMap,
         options: Options<'_>,
-    ) -> Result<Self, CodegenError> {
+    ) -> Result<(), CodegenError> {
         let mut writer = Writer {
             db,
             options,
-            program: Default::default(),
-            map: Default::default(),
+            program: self,
+            map,
         };
 
         for &file in &program.source_files {
@@ -55,8 +60,8 @@ impl<'a> Program {
         }
 
         for key in program.definitions.keys() {
-            let index = FunctionIndex(writer.map.functions.len());
-            writer.map.functions.insert(key, index);
+            let index = FunctionIndex::new(program.layer, writer.map.functions.len());
+            writer.map.functions.insert(*key, index);
         }
 
         for (definition, function) in &program.definitions {
@@ -64,7 +69,7 @@ impl<'a> Program {
                 continue;
             };
 
-            let function = writer.function(definition, function)?;
+            let function = writer.function(*definition, function)?;
 
             writer.program.functions.insert(index, function);
 
@@ -73,7 +78,7 @@ impl<'a> Program {
             }
         }
 
-        Ok(writer.program)
+        Ok(())
     }
 }
 
@@ -81,22 +86,22 @@ impl<'a> Program {
 struct Writer<'a> {
     db: &'a Db,
     options: Options<'a>,
-    program: Program,
-    map: IndexMap<'a>,
+    program: &'a mut Program,
+    map: &'a mut IndexMap,
 }
 
-impl<'a> Writer<'a> {
+impl Writer<'_> {
     fn function(
         &mut self,
-        definition: &'a hir::DefinitionKey,
-        function: &'a hir::Function,
+        definition: hir::DefinitionKey,
+        function: &hir::Function,
     ) -> Result<Function, CodegenError> {
         let type_parameters = function
             .type_parameters
             .iter()
             .enumerate()
             .map(|(index, &node)| {
-                let index = TyParameterIndex(index);
+                let index = TyParameterIndex::new(node.layer, index);
                 self.map.ty_parameters.insert(node, index);
                 Ok((index, TyParameter {}))
             })
@@ -114,7 +119,7 @@ impl<'a> Writer<'a> {
                 let ty = self.ty(&hir::type_of(self.db, input)?)?;
                 let mutable = self.db.contains::<IsMutated>(input);
 
-                let index = LocalIndex(offset + index);
+                let index = LocalIndex::new(input.layer, offset + index);
 
                 self.map
                     .locals
@@ -133,7 +138,7 @@ impl<'a> Writer<'a> {
                     let ty = self.ty(&hir::type_of(self.db, node)?)?;
                     let mutable = self.db.contains::<IsMutated>(node);
 
-                    let index = LocalIndex(offset + inputs.len() + locals.len());
+                    let index = LocalIndex::new(node.layer, offset + inputs.len() + locals.len());
                     locals.insert(index, Local { ty, mutable });
                     self.map
                         .locals
@@ -158,8 +163,8 @@ impl<'a> Writer<'a> {
 
     fn instructions(
         &mut self,
-        definition: &'a hir::DefinitionKey,
-        instructions: &'a [hir::Instruction],
+        definition: hir::DefinitionKey,
+        instructions: &[hir::Instruction],
     ) -> Result<Vec<Statement>, CodegenError> {
         let mut statements = Vec::new();
         for instruction in instructions {
@@ -220,7 +225,12 @@ impl<'a> Writer<'a> {
                 }
                 hir::Instruction::Return { value } => {
                     statements.push(Statement::Return {
-                        value: self.map.local_index(definition, *value)?,
+                        value: SourceMapped::new(
+                            Some(*value),
+                            Expression::Local {
+                                local: self.map.local_index(definition, *value)?,
+                            },
+                        ),
                     });
                 }
                 hir::Instruction::Loop { node, body, result } => {
@@ -235,7 +245,7 @@ impl<'a> Writer<'a> {
                                         local: self.map.local_index(definition, *result)?,
                                     },
                                 ),
-                                variant: BREAK_VARIANT,
+                                variant: builtin_variants::BREAK,
                             },
                             vec![
                                 Statement::Assign {
@@ -244,7 +254,7 @@ impl<'a> Writer<'a> {
                                         node: Some(*node),
                                         inner: Expression::VariantElement {
                                             value: self.map.local_index(definition, *result)?,
-                                            variant: BREAK_VARIANT,
+                                            variant: builtin_variants::BREAK,
                                             index: 0,
                                         },
                                     },
@@ -265,9 +275,7 @@ impl<'a> Writer<'a> {
                     };
 
                     if can_trace {
-                        statements.push(Statement::Trace {
-                            trace: format_trace(span),
-                        });
+                        statements.push(Statement::Trace { span: span.clone() });
                     }
                 }
                 hir::Instruction::Value { node, value } => statements.push(Statement::Assign {
@@ -282,8 +290,8 @@ impl<'a> Writer<'a> {
 
     fn condition(
         &mut self,
-        definition: &'a hir::DefinitionKey,
-        conditions: &'a [hir::Condition],
+        definition: hir::DefinitionKey,
+        conditions: &[hir::Condition],
     ) -> Result<Condition, CodegenError> {
         conditions
             .iter()
@@ -318,12 +326,12 @@ impl<'a> Writer<'a> {
                                                 value: value.clone(),
                                             }),
                                         ),
-                                        true_variant: TRUE_VARIANT,
-                                        false_variant: FALSE_VARIANT,
+                                        true_variant: builtin_variants::TRUE,
+                                        false_variant: builtin_variants::FALSE,
                                     },
                                 },
                             ),
-                            variant: TRUE_VARIANT,
+                            variant: builtin_variants::TRUE,
                         },
                         hir::Condition::EqualToString { input, value } => Condition::Variant {
                             value: SourceMapped::new(
@@ -342,12 +350,12 @@ impl<'a> Writer<'a> {
                                                 value: value.clone(),
                                             }),
                                         ),
-                                        true_variant: TRUE_VARIANT,
-                                        false_variant: FALSE_VARIANT,
+                                        true_variant: builtin_variants::TRUE,
+                                        false_variant: builtin_variants::FALSE,
                                     },
                                 },
                             ),
-                            variant: TRUE_VARIANT,
+                            variant: builtin_variants::TRUE,
                         },
                         hir::Condition::EqualToVariant {
                             input,
@@ -382,8 +390,8 @@ impl<'a> Writer<'a> {
 
     fn expression(
         &mut self,
-        definition: &'a hir::DefinitionKey,
-        value: &'a hir::Value,
+        definition: hir::DefinitionKey,
+        value: &hir::Value,
     ) -> Result<Expression, CodegenError> {
         Ok(match value {
             hir::Value::Bound(bound_path) => Expression::Bound {
@@ -399,7 +407,7 @@ impl<'a> Writer<'a> {
             hir::Value::Constant {
                 definition: constant_definition,
                 bounds,
-            } => self.constant(definition, constant_definition, bounds)?,
+            } => self.constant(definition, *constant_definition, bounds)?,
             hir::Value::Function(function) => {
                 Expression::Closure(self.function(definition, function)?)
             }
@@ -472,9 +480,9 @@ impl<'a> Writer<'a> {
 
     fn constant(
         &mut self,
-        definition: &'a hir::DefinitionKey,
-        constant_definition: &'a hir::DefinitionKey,
-        bounds: &'a BTreeMap<hir::BoundPath, hir::Instance>,
+        definition: hir::DefinitionKey,
+        constant_definition: hir::DefinitionKey,
+        bounds: &BTreeMap<hir::BoundPath, hir::Instance>,
     ) -> Result<Expression, CodegenError> {
         Ok(Expression::Function {
             index: self.map.function_index(constant_definition)?,
@@ -491,7 +499,7 @@ impl<'a> Writer<'a> {
                             bounds,
                         } => SourceMapped::new(
                             None,
-                            self.constant(definition, instance_definition, bounds)?,
+                            self.constant(definition, *instance_definition, bounds)?,
                         ),
                     })
                 })
@@ -501,8 +509,8 @@ impl<'a> Writer<'a> {
 
     fn bound(
         &mut self,
-        definition: &'a hir::DefinitionKey,
-        bound_path: &'a hir::BoundPath,
+        definition: hir::DefinitionKey,
+        bound_path: &hir::BoundPath,
     ) -> Result<LocalIndex, CodegenError> {
         let [node] = bound_path.as_slice() else {
             return Err(anyhow::format_err!("bound {bound_path:?} not resolved"));
@@ -557,17 +565,17 @@ impl<'a> Writer<'a> {
             "cos" => Cos(value),
             "tan" => Tan(value),
             "string-equal" => StringEqual(left, right) {
-                true_variant: TRUE_VARIANT,
-                false_variant: FALSE_VARIANT,
+                true_variant: builtin_variants::TRUE,
+                false_variant: builtin_variants::FALSE,
             },
             "number-equal" => NumberEqual(left, right) {
-                true_variant: TRUE_VARIANT,
-                false_variant: FALSE_VARIANT,
+                true_variant: builtin_variants::TRUE,
+                false_variant: builtin_variants::FALSE,
             },
             "order" => Order(left, right) {
-                is_less_than_variant: IS_LESS_THAN_VARIANT,
-                is_equal_variant: IS_EQUAL_VARIANT,
-                is_greater_than_variant: IS_GREATER_THAN_VARIANT,
+                is_less_than_variant: builtin_variants::IS_LESS_THAN,
+                is_equal_variant: builtin_variants::IS_EQUAL,
+                is_greater_than_variant: builtin_variants::IS_GREATER_THAN,
             },
             "empty-list" => EmptyList(),
             "list-count" => ListCount(value),
@@ -584,8 +592,8 @@ impl<'a> Writer<'a> {
             "random-number" => RandomNumber(min, max),
             "nan" => Nan(),
             "is-nan" => IsNan(value) {
-                true_variant: TRUE_VARIANT,
-                false_variant: FALSE_VARIANT,
+                true_variant: builtin_variants::TRUE,
+                false_variant: builtin_variants::FALSE,
             },
             "hash-string" => HashString(value),
             "unreachable" => Unreachable(),
@@ -633,7 +641,7 @@ impl<'a> Writer<'a> {
             return Ok(*index);
         }
 
-        let index = NamedTyIndex(self.map.named_tys.len());
+        let index = NamedTyIndex::new(definition.layer, self.map.named_tys.len());
         self.map.named_tys.insert(definition, index);
 
         let (parameters, representation) = hir::representation(self.db, definition, parameters)?;
@@ -642,16 +650,20 @@ impl<'a> Writer<'a> {
             .into_iter()
             .enumerate()
             .map(|(index, node)| {
-                self.map.ty_parameters.insert(node, TyParameterIndex(index));
+                self.map
+                    .ty_parameters
+                    .insert(node, TyParameterIndex::new(node.layer, index));
 
                 Ok(TyParameter {})
             })
             .collect::<Result<Vec<_>, CodegenError>>()?;
 
         let representation = match representation {
-            hir::TypeRepresentation::Intrinsic(representation) => {
-                TyRepresentation::Intrinsic(representation)
-            }
+            hir::TypeRepresentation::Intrinsic(representation) => match representation {
+                hir::IntrinsicRepresentation::Opaque => TyRepresentation::Opaque,
+                hir::IntrinsicRepresentation::Number => TyRepresentation::Number,
+                hir::IntrinsicRepresentation::String => TyRepresentation::String,
+            },
             hir::TypeRepresentation::Marker => TyRepresentation::Marker,
             hir::TypeRepresentation::Structure(fields) => TyRepresentation::Structure {
                 fields: fields
@@ -680,20 +692,20 @@ impl<'a> Writer<'a> {
 }
 
 #[derive(Debug, Default)]
-struct IndexMap<'a> {
-    functions: BTreeMap<&'a hir::DefinitionKey, FunctionIndex>,
+pub struct IndexMap {
+    functions: BTreeMap<hir::DefinitionKey, FunctionIndex>,
     named_tys: BTreeMap<Node, NamedTyIndex>,
     ty_parameters: BTreeMap<Node, TyParameterIndex>,
-    locals: BTreeMap<&'a hir::DefinitionKey, BTreeMap<Node, LocalIndex>>,
+    locals: BTreeMap<hir::DefinitionKey, BTreeMap<Node, LocalIndex>>,
 }
 
-impl<'a> IndexMap<'a> {
+impl IndexMap {
     fn function_index(
         &self,
-        definition: &'a hir::DefinitionKey,
+        definition: hir::DefinitionKey,
     ) -> Result<FunctionIndex, CodegenError> {
         self.functions
-            .get(definition)
+            .get(&definition)
             .copied()
             .ok_or_else(|| anyhow::format_err!("missing function {definition:?}"))
     }
@@ -707,20 +719,12 @@ impl<'a> IndexMap<'a> {
 
     fn local_index(
         &self,
-        definition: &hir::DefinitionKey,
+        definition: hir::DefinitionKey,
         node: Node,
     ) -> Result<LocalIndex, CodegenError> {
         self.locals
-            .get(definition)
+            .get(&definition)
             .and_then(|locals| locals.get(&node).copied())
             .ok_or_else(|| anyhow::format_err!("missing local {node:?}"))
     }
-}
-
-fn format_trace(span: &Span) -> serde_json::Value {
-    serde_json::json!({
-        "path": span.path,
-        "start": span.start,
-        "end": span.end,
-    })
 }

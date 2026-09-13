@@ -10,10 +10,14 @@ crate-type = ["cdylib"]
 workspace = true
 
 [dependencies]
+js-sys = "0.3"
 rmp-serde = "1"
+serde = { version = "1", features = ["derive"] }
+serde-wasm-bindgen = "0.6"
 wasm-bindgen = "0.2"
 wipple-core = { path = "../core" }
 wipple-feedback = { path = "../feedback" }
+wipple-interpreter = { path = "../interpreter" }
 wipple-parse = { path = "../parse" }
 wipple-queries = { path = "../queries" }
 wipple-syntax = { path = "../syntax" }

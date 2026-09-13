@@ -101,7 +101,7 @@
     let runtimeOutput = $state<any>();
 
     let isCompiling = false;
-    export const compile = async ({ module = false } = {}) => {
+    export const compile = async ({ program = false } = {}) => {
         if (playground == null) {
             return undefined;
         }
@@ -119,7 +119,7 @@
                 library,
                 groups: visualizerEnabled,
                 graph: visualizerEnabled,
-                module,
+                program,
             });
         } catch (error) {
             console.error(error);
@@ -137,14 +137,14 @@
         }
 
         if ("diagnostics" in response && response.diagnostics != null) {
-            if (module) {
+            if (program) {
                 ondiagnostics(response.diagnostics);
             }
 
             return;
         }
 
-        return response.module;
+        return response.program;
     };
 
     export const run = async () => {
@@ -161,8 +161,8 @@
         // Needed for runtimes that perform setup within a user event
         await runtimeOutput?._initializeOnClick?.();
 
-        const module = await compile({ module: true });
-        if (module == null) {
+        const program = await compile({ program: true });
+        if (program == null) {
             return;
         }
 
@@ -172,7 +172,7 @@
 
         try {
             await runtimeOutput?._initialize?.();
-            await runnerMethods.run(module);
+            await runnerMethods.run(program);
         } finally {
             await stopRunning(false);
         }
@@ -187,9 +187,7 @@
         runState = undefined;
         onchangeline(undefined);
 
-        if (force) {
-            terminateRunnerWorker();
-        }
+        terminateRunnerWorker();
 
         await runtimeOutput?._cleanup?.(force);
     };

@@ -76,7 +76,7 @@ const compile = async (
         code: string;
         groups?: boolean;
         graph?: boolean;
-        module?: boolean;
+        program?: boolean;
     },
 ) => {
     const result = wipple.compile([new wipple.File("input", options.code)], options.library);
@@ -94,15 +94,15 @@ const compile = async (
             return { groups, graph, diagnostics };
         }
 
-        let module: string | undefined;
-        if (options.module) {
-            module = result.module();
-            if (module == null) {
-                throw new Error("missing module");
+        let program: ArrayBufferLike | undefined;
+        if (options.program) {
+            program = result.codegen()?.buffer;
+            if (program == null) {
+                throw new Error("missing program");
             }
         }
 
-        return { groups, graph, module };
+        return { groups, graph, program };
     } finally {
         result.free();
     }
@@ -167,9 +167,13 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
         }
 
         let result = await methods[method](e.data[method]);
+        const transfer: Transferable[] = [];
         if (result != null) {
             const convert = (obj: any): any => {
-                if (typeof obj === "object" && obj != null) {
+                if (obj instanceof ArrayBuffer) {
+                    transfer.push(obj);
+                    return obj;
+                } else if (typeof obj === "object" && obj != null) {
                     // Expose the Wasm object properties
                     if (obj.toJSON != null) {
                         return convert(obj.toJSON());
@@ -194,7 +198,7 @@ if (typeof WorkerGlobalScope !== "undefined" && self instanceof WorkerGlobalScop
             console.log(`compiler(${method}) response:`, result);
         }
 
-        postMessage(result);
+        postMessage(result, transfer);
     };
 
     postMessage("ready");

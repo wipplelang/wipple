@@ -1,0 +1,16 @@
+[package]
+name = "wipple-interpreter"
+version = "0.0.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow = "1"
+rand = "0.10"
+unicode-segmentation = "1"
+wipple-core = { path = "../core" }
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "*", features = ["wasm_js"] }

@@ -20,7 +20,7 @@ use std::{
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub struct Node {
-    layer: usize,
+    pub layer: usize,
     index: usize,
 }
 
@@ -444,6 +444,10 @@ impl Db {
 
     pub fn owned_nodes(&self) -> impl Iterator<Item = Node> {
         self.owned_nodes_with_info_since(0).map(|(node, _)| node)
+    }
+
+    pub fn owns(&self, node: Node) -> bool {
+        node.layer == self.layer()
     }
 
     fn owned_nodes_with_info_since(&self, start: usize) -> impl Iterator<Item = (Node, &NodeInfo)> {

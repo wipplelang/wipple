@@ -1,19 +1,34 @@
-use crate::{codegen::hir, db::Node, span::Span};
+use crate::{db::Node, span::Span};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct FunctionIndex(pub usize);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+pub struct Index {
+    pub layer: usize,
+    pub index: usize,
+}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NamedTyIndex(pub usize);
+macro_rules! index {
+    ($name:ident) => {
+        #[derive(
+            Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
+        )]
+        pub struct $name(pub Index);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TyParameterIndex(pub usize);
+        impl $name {
+            pub fn new(layer: usize, index: usize) -> Self {
+                $name(Index { layer, index })
+            }
+        }
+    };
+}
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct LocalIndex(pub usize);
+index!(FunctionIndex);
+index!(NamedTyIndex);
+index!(TyParameterIndex);
+index!(LocalIndex);
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Program {
     pub source_files: Vec<Span>,
     pub functions: BTreeMap<FunctionIndex, Function>,
@@ -22,7 +37,7 @@ pub struct Program {
     pub source_map: BTreeMap<Node, Span>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Function {
     pub type_parameters: BTreeMap<TyParameterIndex, TyParameter>,
     pub inputs: BTreeMap<LocalIndex, Local>,
@@ -30,20 +45,20 @@ pub struct Function {
     pub body: Vec<Statement>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct Local {
     pub ty: Ty,
     pub mutable: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Statement {
     If {
         branches: Vec<(Condition, Vec<Statement>)>,
         else_branch: Option<Vec<Statement>>,
     },
     Return {
-        value: LocalIndex,
+        value: SourceMapped<Expression>,
     },
     Loop {
         body: Vec<Statement>,
@@ -54,11 +69,11 @@ pub enum Statement {
         value: SourceMapped<Expression>,
     },
     Trace {
-        trace: serde_json::Value,
+        span: Span,
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Condition {
     True,
     False,
@@ -69,9 +84,6 @@ pub enum Condition {
     Or {
         left: Box<Condition>,
         right: Box<Condition>,
-    },
-    Intrinsic {
-        intrinsic: Intrinsic<SourceMapped<Box<Expression>>>,
     },
     Variant {
         value: SourceMapped<Expression>,
@@ -87,7 +99,7 @@ pub enum Condition {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Expression {
     Function {
         index: FunctionIndex,
@@ -138,7 +150,7 @@ pub enum Expression {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Intrinsic<T> {
     Debug {
         value: T,
@@ -280,16 +292,16 @@ pub enum Intrinsic<T> {
     Unreachable,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct NamedTy {
     pub parameters: Vec<TyParameter>,
     pub representation: TyRepresentation,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct TyParameter {}
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum Ty {
     Named {
         index: NamedTyIndex,
@@ -307,15 +319,17 @@ pub enum Ty {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub enum TyRepresentation {
-    Intrinsic(hir::IntrinsicRepresentation),
+    Opaque,
+    Number,
+    String,
     Marker,
     Structure { fields: Vec<Ty> },
     Enumeration { variants: Vec<Vec<Ty>> },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct SourceMapped<T> {
     pub node: Option<Node>,
     pub inner: T,

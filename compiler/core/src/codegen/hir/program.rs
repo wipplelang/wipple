@@ -2,8 +2,9 @@ use crate::{db::Node, span::Span};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub struct Program {
+    pub layer: usize,
     pub source_files: Vec<Node>,
     pub definitions: BTreeMap<DefinitionKey, Function>,
 }
