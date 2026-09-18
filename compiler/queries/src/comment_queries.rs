@@ -70,6 +70,7 @@ pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'
                         [link.node].into_iter().chain(link.related.iter().copied())
                     }),
                 ),
+                false,
             );
 
             comments.nodes.extend(traces.nodes(db));

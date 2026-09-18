@@ -31,7 +31,12 @@ impl TracesEntry {
 }
 
 impl Db {
-    pub fn traces_for(&self, primary_node: Node, nodes: impl IntoIterator<Item = Node>) -> Traces {
+    pub fn traces_for(
+        &self,
+        primary_node: Node,
+        nodes: impl IntoIterator<Item = Node>,
+        include_related: bool,
+    ) -> Traces {
         let mut traces = self.traces.clone();
 
         let filter = |node: Node| {
@@ -105,8 +110,7 @@ impl Db {
                 for node in trace_nodes {
                     nodes.entry(node).or_default().insert(from_index);
 
-                    // Use grouped nodes as a fallback
-                    if let Some(Typed(Some(group))) = self.get(node) {
+                    if include_related && let Some(Typed(Some(group))) = self.get(node) {
                         for node in group.nodes() {
                             if filter(node) {
                                 let indices = nodes.entry(node).or_default();

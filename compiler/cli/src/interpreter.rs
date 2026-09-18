@@ -13,7 +13,7 @@ pub fn create_interpreter<'a>(mut out: impl io::Write + 'a) -> Interpreter<'a, (
 
                 writeln!(out, "{string}")?;
 
-                Ok(Handle::unit())
+                Ok(Handle::Unit)
             }
             _ => Err(anyhow::format_err!("unsupported external {name:?}")),
         }

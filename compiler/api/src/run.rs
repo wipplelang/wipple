@@ -66,6 +66,7 @@ fn js_value_from_handle(
                 .into(),
         },
         Handle::External(value) => value,
+        Handle::Unit => JsValue::NULL,
         Handle::Value(_) => return Err(anyhow::format_err!("unsupported value")),
     })
 }
@@ -75,7 +76,9 @@ fn handle_from_js_value<'a>(
 ) -> Result<wipple_interpreter::Handle<'a, JsValue>, anyhow::Error> {
     use wipple_interpreter::{Handle, Primitive};
 
-    if let Some(string) = value.as_string() {
+    if value.is_null_or_undefined() {
+        Ok(Handle::Unit)
+    } else if let Some(string) = value.as_string() {
         Ok(Handle::Primitive(Primitive::String(Arc::from(string))))
     } else if let Some(number) = value.as_f64() {
         Ok(Handle::Primitive(Primitive::Number(number)))

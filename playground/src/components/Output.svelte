@@ -6,7 +6,6 @@
     import * as runner from "@/workers/runner.worker";
     import RunnerWorker from "@/workers/runner.worker?worker";
     import type { OutputItem, PromptOutputItem } from "@/models/OutputItem";
-    import type { Groups } from "@/models/Groups";
     import Markdown from "./Markdown.svelte";
     import Prompt from "./Prompt.svelte";
     import type * as wipple from "wipple";
@@ -17,7 +16,7 @@
         runState: RunState | undefined;
         ondiagnostics: (diagnostics: wipple.Diagnostic[]) => void;
         ongraph: (graph: wipple.Graph) => void;
-        ongroups: (groups: Groups) => void;
+        ongroups: (groups: wipple.DiagnosticGroup[]) => void;
         onchangeline: (line: number | undefined) => void;
     }
 

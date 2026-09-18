@@ -1,4 +1,7 @@
-export type Groups = {
-    labels?: string[];
-    locations: { start: number; end: number; primary?: boolean }[];
-}[];
+export type Groups = Record<
+    string,
+    {
+        labels?: string[];
+        locations: { start: number; end: number; primary?: boolean }[];
+    }
+>;

@@ -32,7 +32,7 @@ instance (Read String) : Some
 
 instance (Read Number) : string -> do {
   n : intrinsic "string-to-number" string
-  if (intrinsic "is-nan" n) {Some n} {None}
+  if (intrinsic "is-nan" n) {None} {Some n}
 }
 
 -- [`prompt`] asks the user to enter a [`value@type`].

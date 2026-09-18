@@ -20,7 +20,7 @@
     import type { DocumentationItem } from "@/models/Documentation";
     import Visualizer from "@/components/Visualizer.svelte";
     import { debounce } from "@/util";
-    import DiagnosticsSidebar from "@/components/DiagnosticsSidebar.svelte";
+    import type { Diagnostic, DiagnosticGroup } from "wipple";
 
     const loadPlayground = (): Playground | undefined => {
         const json = window.localStorage.getItem("playground");
@@ -171,15 +171,23 @@
     $effect(() => {
         playground?.code;
         context.diagnostic = undefined;
-        context.groups = [];
+        context.groups = {};
+        context.highlightedGroup = undefined;
         compile();
     });
 
-    const groups = $derived(
-        context.diagnostic
-            ? createGroups(context.diagnostic.groups, context.diagnostic.locations)
-            : context.groups,
-    );
+    const ondiagnostics = (diagnostics: Diagnostic[]) => {
+        const [diagnostic] = diagnostics;
+        context.diagnostic = diagnostic;
+
+        if (diagnostic != null) {
+            context.groups = createGroups(diagnostic.locations, { primary: "first" });
+        }
+    };
+
+    const ongroups = (groups: DiagnosticGroup[]) => {
+        context.groups = Object.fromEntries(groups.map((group, index) => [`group${index}`, group]));
+    };
 </script>
 
 <svelte:window onbeforeunload={() => savePlayground(playground)} />
@@ -263,9 +271,7 @@
                             <CodeEditor
                                 bind:this={editor}
                                 bind:code={playground.code}
-                                groups={runtime?.visualizerEnabled || context.diagnostic != null
-                                    ? groups
-                                    : undefined}
+                                groups={context.groups}
                                 diagnostic={dragInfo == null && context.diagnostic != null
                                     ? {
                                           value: context.diagnostic,
@@ -291,10 +297,6 @@
                                 ></div>
                             {/if}
                         </div>
-
-                        {#if context.diagnostic}
-                            <DiagnosticsSidebar diagnostic={context.diagnostic} />
-                        {/if}
                     </div>
                 </Box>
 
@@ -342,12 +344,8 @@
                     onchangeline={(line) => {
                         context.runningLine = line;
                     }}
-                    ondiagnostics={(diagnostics) => {
-                        context.diagnostic = diagnostics[0];
-                    }}
-                    ongroups={(groups) => {
-                        context.groups = groups;
-                    }}
+                    {ondiagnostics}
+                    {ongroups}
                     ongraph={(graph) => {
                         context.graph = graph;
                     }}

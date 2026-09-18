@@ -3,15 +3,14 @@
     import { gfmPlugin } from "svelte-exmarkdown/gfm";
     import rehypeRaw from "rehype-raw";
     import CodeEditor, { createGroups } from "./CodeEditor.svelte";
-    import { context } from "@/context.svelte";
+    import { DiagnosticLocation } from "wipple";
 
     interface Props {
         content: string;
-        highlightGroups?: boolean;
         fontSize?: number;
     }
 
-    const { content, highlightGroups, fontSize }: Props = $props();
+    const { content, fontSize }: Props = $props();
 
     const plugins: Plugin[] = [gfmPlugin(), { rehypePlugin: [rehypeRaw] }];
 </script>
@@ -23,21 +22,14 @@
             {@const group = parseFloat((ast.properties?.dataGroup as string) ?? "-1")}
             {@const code = ast.children?.[0]?.value ?? ""}
             {@const groups =
-                highlightGroups && context.diagnostic != null
-                    ? createGroups(context.diagnostic.groups, [
-                          { start: 0, end: code.length, group },
-                      ])
-                    : []}
+                group !== -1
+                    ? createGroups([{ start: 0, end: code.length, group } as DiagnosticLocation], {
+                          primary: false,
+                      })
+                    : {}}
 
             <span class="inline-flex">
-                <CodeEditor
-                    readOnly
-                    {code}
-                    {groups}
-                    highlightedGroup={highlightGroups && group !== -1 ? group : undefined}
-                    padding="0 1px"
-                    {fontSize}
-                />
+                <CodeEditor readOnly {code} {groups} padding="0 1px" {fontSize} />
             </span>
         {/snippet}
     </Markdown>

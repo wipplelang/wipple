@@ -2,7 +2,9 @@
     import * as Sentry from "@sentry/browser";
 
     const onreportissue = (e: MouseEvent) => {
-        Sentry.getFeedback()?.attachTo(e.target as HTMLElement, {
+        e.preventDefault();
+
+        Sentry.getFeedback()?.attachTo(document.body, {
             formTitle: "Report Issue",
             showName: false,
             showEmail: false,

@@ -6,15 +6,24 @@
     export const lineHeightRatio = 1.5;
     export const lineSpacingRatio = 0.375;
 
-    export const createGroups = (count: number, locations: wipple.DiagnosticLocation[]) => {
-        const groups: Groups = new Array(count).fill(undefined).map(() => ({ locations: [] }));
+    export const createGroups = (
+        locations: wipple.DiagnosticLocation[],
+        { primary }: { primary: "first" | boolean },
+    ) => {
+        const groups: Groups = {};
 
         for (const [index, { start, end, group }] of (locations ?? []).entries()) {
             if (group === -1) {
                 continue;
             }
 
-            groups[group].locations.push({ start, end, primary: index === 0 });
+            const id = `group${group}`;
+
+            (groups[id] ??= { locations: [] }).locations.push({
+                start,
+                end,
+                primary: primary === "first" ? index === 0 : primary,
+            });
         }
 
         return groups;
@@ -29,6 +38,7 @@
         accessoryDecoration,
         markRange,
         lineDecoration,
+        blockDecoration,
     } from "@/assets/decorations";
     import tokens, {
         enableHighlightingBefore,
@@ -49,16 +59,14 @@
     import { nanoid } from "nanoid";
     import Tooltip from "./Tooltip.svelte";
     import CodeEditor from "./CodeEditor.svelte";
+    import DiagnosticWidget from "@/widgets/DiagnosticWidget.svelte";
 
     interface Props {
         readOnly?: boolean;
         code: string;
         groups?: Groups;
-        highlightedGroup?: number;
-        highlightedGroupIsPrimary?: boolean;
         diagnostic?: {
             value: { locations: wipple.DiagnosticLocation[] };
-            hideWidget?: boolean;
             onclose?: () => void;
         };
         runningLine?: number;
@@ -69,14 +77,14 @@
     let {
         readOnly = false,
         code = $bindable(),
-        groups = [],
-        highlightedGroup,
-        highlightedGroupIsPrimary = false,
+        groups = {},
         diagnostic,
         runningLine,
         padding,
         fontSize = defaultFontSize,
     }: Props = $props();
+
+    const id = `code-editor-${nanoid()}`;
 
     const playground = $derived(context.playground);
     const ideInfo = $derived(context.ideInfo);
@@ -463,26 +471,30 @@
 
     const markDiagnostic = new Compartment();
 
+    const createDiagnosticWidget = ({ value, onclose }: NonNullable<typeof diagnostic>) => {
+        const diagnosticWidget = new DiagnosticWidget.element!();
+        Object.assign(diagnosticWidget, { diagnostic: value, onclose });
+
+        let pos: number;
+        try {
+            pos = editorView.state.doc.line(diagnosticLine!).to;
+        } catch {
+            // Position no longer valid; close the diagnostic
+            onclose?.();
+            return [];
+        }
+
+        return EditorView.decorations.of(
+            RangeSet.of([blockDecoration(diagnosticWidget).range(pos)]),
+        );
+    };
+
     let hoverState = $state<{ element: HTMLElement; labels: string[] }>();
-
-    const allMarkGroupDecorations = () =>
-        [...document.querySelectorAll("[data-group-decoration-id]")]
-            .flatMap((node) => {
-                const element = node as HTMLElement;
-
-                return [
-                    {
-                        element,
-                        label: parseFloat(element.dataset.groupLabel!) - 1,
-                    },
-                ];
-            })
-            .filter(({ label }) => label !== -1);
 
     const getMarkGroupDecoration = (options: {
         start: number;
         end: number;
-        group: number;
+        group: string;
         labels: string[] | undefined;
         primary: boolean;
     }) => {
@@ -494,15 +506,11 @@
             return undefined;
         }
 
-        const id = nanoid();
-
-        if (options.group === -1) {
-            return undefined;
-        }
+        const decorationId = nanoid();
 
         const attributes = {
-            "data-group-decoration-id": id,
-            "data-group-label": (options.group + 1).toString(),
+            "data-group-decoration-id": decorationId,
+            "data-group-label": options.group,
         };
 
         const decoration = markDecoration(
@@ -513,7 +521,7 @@
 
         requestAnimationFrame(() => {
             const element = document.querySelector(
-                `[data-group-decoration-id="${id}"]`,
+                `[data-group-decoration-id="${decorationId}"]`,
             ) as HTMLElement;
 
             if (element == null) return;
@@ -521,15 +529,7 @@
             element.addEventListener("mouseover", (e) => {
                 e.stopPropagation();
 
-                for (const { element, label } of allMarkGroupDecorations()) {
-                    element.classList.remove("group-highlighted", "group-dimmed");
-
-                    if (label === options.group) {
-                        element.classList.add("group-highlighted");
-                    } else {
-                        element.classList.add("group-dimmed");
-                    }
-                }
+                context.highlightedGroup = options.group;
 
                 if (options.labels != null) {
                     hoverState = { element, labels: options.labels };
@@ -539,16 +539,7 @@
             element.addEventListener("mouseout", (e) => {
                 e.stopPropagation();
 
-                for (const { element } of allMarkGroupDecorations()) {
-                    if (element.classList.contains("group-primary")) {
-                        element.classList.add("group-highlighted");
-                        element.classList.remove("group-dimmed");
-                    } else {
-                        element.classList.add("group-dimmed");
-                        element.classList.remove("group-highlighted");
-                    }
-                }
-
+                context.highlightedGroup = undefined;
                 hoverState = undefined;
             });
         });
@@ -556,15 +547,44 @@
         return decoration.range(options.start, options.end);
     };
 
-    const createMarkGroups = (hideWidget = true) => {
-        const decorations = groups.flatMap(({ labels, locations }, group) =>
-            locations.flatMap(({ start, end, primary }) => {
+    $effect(() => {
+        const allMarkGroupDecorations = () =>
+            [...document.querySelectorAll<HTMLElement>(`#${id} [data-group-decoration-id]`)]
+                .map((element) => ({ element, label: element.dataset.groupLabel! }))
+                .filter(({ label }) => label != null);
+
+        if (context.highlightedGroup != null) {
+            for (const { element, label } of allMarkGroupDecorations()) {
+                element.classList.remove("group-highlighted", "group-dimmed");
+
+                if (label === context.highlightedGroup) {
+                    element.classList.add("group-highlighted");
+                } else {
+                    element.classList.add("group-dimmed");
+                }
+            }
+        } else {
+            for (const { element } of allMarkGroupDecorations()) {
+                if (element.classList.contains("group-primary")) {
+                    element.classList.add("group-highlighted");
+                    element.classList.remove("group-dimmed");
+                } else {
+                    element.classList.add("group-dimmed");
+                    element.classList.remove("group-highlighted");
+                }
+            }
+        }
+    });
+
+    const createMarkGroups = () => {
+        const decorations = Object.entries(groups).flatMap(([group, { labels, locations }]) =>
+            locations.flatMap(({ start, end, primary = false }) => {
                 const decoration = getMarkGroupDecoration({
                     start,
                     end,
                     group,
                     labels,
-                    primary: primary ? !hideWidget : false,
+                    primary,
                 });
 
                 return decoration != null ? [decoration] : [];
@@ -576,46 +596,24 @@
         });
     };
 
-    const createMarkDiagnostic = () => {
-        const decoration =
-            highlightedGroup != null
-                ? getMarkGroupDecoration({
-                      start: highlightedGroupIsPrimary ? groups[0].locations[0].start : 0,
-                      end: highlightedGroupIsPrimary
-                          ? groups[0].locations[0].end
-                          : editorView.state.doc.length,
-                      group: highlightedGroup,
-                      labels: undefined,
-                      primary: highlightedGroupIsPrimary,
-                  })
-                : undefined;
-
-        return decoration != null
-            ? ViewPlugin.fromClass(class {}, {
-                  decorations: () => RangeSet.of([decoration], true),
-              })
-            : [];
-    };
-
     const markGroups = new Compartment();
 
     $effect(() => {
-        code; // required to update the position of the diagnostic
-        groups;
-        highlightedGroup;
+        code; // required to update the position of markings
         diagnostic;
-        runningLine;
         highlights;
+        runningLine;
+        groups;
 
         editorView.dispatch({
             effects: [
                 markNumbers.reconfigure(createMarkNumbers()),
                 markNames.reconfigure(createMarkNames(highlights)),
                 markRunningLine.reconfigure(createMarkRunningLine(runningLine)),
-                markDiagnostic.reconfigure([createMarkDiagnostic()]),
-                markGroups.reconfigure([
-                    diagnostic ? createMarkGroups(diagnostic.hideWidget) : createMarkGroups(),
-                ]),
+                markDiagnostic.reconfigure(
+                    diagnostic != null ? createDiagnosticWidget(diagnostic) : [],
+                ),
+                markGroups.reconfigure([createMarkGroups()]),
             ],
         });
 
@@ -624,6 +622,7 @@
 </script>
 
 <div
+    {id}
     use:codemirror
     class={["code-editor h-full", diagnostic ? "has-diagnostic" : ""]}
     style:--code-editor-padding={padding}

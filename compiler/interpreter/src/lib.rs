@@ -29,6 +29,7 @@ pub struct Debugger<'ctx, Ext> {
 pub enum Handle<'a, Ext> {
     External(Ext),
     Primitive(Primitive<Self>),
+    Unit,
     Value(ValueHandle<'a, Ext>),
 }
 
@@ -724,6 +725,7 @@ impl<'a, Ext> From<Value<'a, Ext>> for Handle<'a, Ext> {
         match value {
             Value::External(value) => Handle::External(value),
             Value::Primitive(primitive) => Handle::Primitive(primitive.into()),
+            Value::Tuple(elements) if elements.is_empty() => Handle::Unit,
             _ => Handle::Value(ValueHandle(value)),
         }
     }
@@ -734,6 +736,7 @@ impl<'a, Ext> From<Handle<'a, Ext>> for Value<'a, Ext> {
         match primitive {
             Handle::External(ext) => Value::External(ext),
             Handle::Primitive(primitive) => Value::Primitive(primitive.into()),
+            Handle::Unit => Value::Tuple(Box::new([])),
             Handle::Value(ValueHandle(value)) => value,
         }
     }
@@ -760,11 +763,5 @@ impl<'a, Ext> From<Primitive<Handle<'a, Ext>>> for Primitive<Value<'a, Ext>> {
                 Primitive::List(elements.into_iter().map(Value::from).collect())
             }
         }
-    }
-}
-
-impl<'a, Ext> Handle<'a, Ext> {
-    pub fn unit() -> Self {
-        Handle::Value(ValueHandle(Value::Tuple(Box::new([]))))
     }
 }

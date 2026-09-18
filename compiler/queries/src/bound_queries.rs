@@ -33,6 +33,7 @@ pub fn unresolved_bounds<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<(&'a Unresolv
                         .parameters
                         .values()
                         .flat_map(|ty| ty.referenced_nodes()),
+                    false,
                 ),
             )
         })

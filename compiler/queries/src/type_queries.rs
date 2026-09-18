@@ -49,7 +49,7 @@ pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTyp
         return None;
     }
 
-    let traces = db.traces_for(node, group.nodes());
+    let traces = db.traces_for(node, group.nodes(), true);
 
     let source = db
         .get::<Instantiated>(node)
