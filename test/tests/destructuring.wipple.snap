@@ -1,64 +1,76 @@
 Facts (layer 2):
 
 `Person` (TypeDefinition):
+  at destructuring.wipple:1:1-1:7
   grouped with `Person`
   has definition constraints
   has type `Person`
   is a definition
 
 `Person` (TypeDefinition):
+  at destructuring.wipple:1:1-1:7
   grouped with `Person`
   has definition constraints
   has type `Person`
   is a definition
 
 `String` (NamedType):
+  at destructuring.wipple:1:24-1:30
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `alice` (VariablePattern):
+  at destructuring.wipple:3:1-3:6
   grouped with `Person {name : "Alice"}`, `Person {name : "Alice"}`, `alice`
   has type `Person`
   is a definition
   is a pattern
 
 `alice : Person {name : "Alice"}` (AssignmentStatement):
+  at destructuring.wipple:3:1-3:32
   has type `()`
 
 `Person {name : "Alice"}` (StructureExpression):
+  at destructuring.wipple:3:9-3:32
   grouped with `Person`, `alice`, `alice`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `Person`
 
 `"Alice"` (StringExpression):
+  at destructuring.wipple:3:24-3:31
   grouped with `"Alice"`
   has type `String`
   is an expression
 
 `Person {name : name}` (StructurePattern):
+  at destructuring.wipple:4:1-4:21
   grouped with `alice`, `Person`, `alice`
   has type `Person`
   is a pattern
   resolved to 1 definition(s): `Person`
 
 `Person {name : name} : alice` (AssignmentStatement):
+  at destructuring.wipple:4:1-4:29
   has type `()`
 
 `name` (VariablePattern):
+  at destructuring.wipple:4:16-4:20
   grouped with `_`, `name`
   has type `String`
   is a definition
   is a pattern
 
 `alice` (VariableExpression):
+  at destructuring.wipple:4:24-4:29
   grouped with `alice`, `Person {name : name}`, `Person {name : name}`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `alice`
 
 `show` (VariableExpression):
+  at destructuring.wipple:5:1-5:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -66,90 +78,107 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show name` (ExpressionStatement):
+  at destructuring.wipple:5:1-5:10
   grouped with `show name`
   has type `()`
 
 `show name` (CallExpression):
+  at destructuring.wipple:5:1-5:10
   grouped with `()`, `show name`
   has type `()`
   is an expression
 
 `name` (VariableExpression):
+  at destructuring.wipple:5:6-5:10
   grouped with `name`, `value`
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
 
 `get-name` (ConstantDefinition):
+  at destructuring.wipple:7:1-7:9
   grouped with `Person -> String`, `(Person {name : name}) -> name`
   has definition constraints
   has type `Person -> String`
   is a definition
 
 `Person` (NamedType):
+  at destructuring.wipple:7:13-7:19
   grouped with `Person {name : name}`
   has type `Person`
   is a type
   resolved to 1 definition(s): `Person`
 
 `Person -> String` (FunctionType):
+  at destructuring.wipple:7:13-7:29
   grouped with `get-name`
   has type `Person -> String`
   is a type
 
 `String` (NamedType):
+  at destructuring.wipple:7:23-7:29
   grouped with `name`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `get-name : (Person {name : name}) -> name` (AssignmentStatement):
+  at destructuring.wipple:8:1-8:42
   has type `()`
 
 `(Person {name : name}) -> name` (FunctionExpression):
+  at destructuring.wipple:8:12-8:42
   grouped with `get-name`
   has type `Person -> String`
   is an expression
 
 `Person {name : name}` (StructurePattern):
+  at destructuring.wipple:8:13-8:33
   grouped with `Person`, `Person`
   has type `Person`
   is a pattern
   resolved to 1 definition(s): `Person`
 
 `name` (VariablePattern):
+  at destructuring.wipple:8:28-8:32
   grouped with `_`, `name`
   has type `String`
   is a definition
   is a pattern
 
 `name` (VariableExpression):
+  at destructuring.wipple:8:38-8:42
   grouped with `name`, `String`
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
 
 `bob` (VariablePattern):
+  at destructuring.wipple:10:1-10:4
   grouped with `Person {name : "Bob"}`, `Person {name : "Bob"}`, `bob`
   has type `Person`
   is a definition
   is a pattern
 
 `bob : Person {name : "Bob"}` (AssignmentStatement):
+  at destructuring.wipple:10:1-10:28
   has type `()`
 
 `Person {name : "Bob"}` (StructureExpression):
+  at destructuring.wipple:10:7-10:28
   grouped with `Person`, `bob`, `bob`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `Person`
 
 `"Bob"` (StringExpression):
+  at destructuring.wipple:10:22-10:27
   grouped with `"Bob"`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
+  at destructuring.wipple:11:1-11:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -157,32 +186,38 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (get-name bob)` (ExpressionStatement):
+  at destructuring.wipple:11:1-11:20
   grouped with `show (get-name bob)`
   has type `()`
 
 `show (get-name bob)` (CallExpression):
+  at destructuring.wipple:11:1-11:20
   grouped with `()`, `show (get-name bob)`
   has type `()`
   is an expression
 
 `get-name` (VariableExpression):
+  at destructuring.wipple:11:7-11:15
   grouped with `Person -> String`
   has type `Person -> String`
   is an expression
   resolved to 1 definition(s): `get-name`
 
 `get-name bob` (CallExpression):
+  at destructuring.wipple:11:7-11:19
   grouped with `String`, `value`
   has type `String`
   is an expression
 
 `bob` (VariableExpression):
+  at destructuring.wipple:11:16-11:19
   grouped with `bob`, `Person`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `bob`
 
 `instance (Describe Person)` (InstanceDefinition):
+  at destructuring.wipple:13:1-13:27
   grouped with `value -> String`, `(Person {name : name}) -> name`
   has definition constraints
   has type `Person -> String`
@@ -190,55 +225,65 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `Person` (NamedType):
+  at destructuring.wipple:13:20-13:26
   grouped with `value`
   has type `Person`
   is a type
   resolved to 1 definition(s): `Person`
 
 `(Person {name : name}) -> name` (FunctionExpression):
+  at destructuring.wipple:13:30-13:60
   grouped with `instance (Describe Person)`
   has type `Person -> String`
   is an expression
 
 `Person {name : name}` (StructurePattern):
+  at destructuring.wipple:13:31-13:51
   grouped with `Person`, `value`
   has type `Person`
   is a pattern
   resolved to 1 definition(s): `Person`
 
 `name` (VariablePattern):
+  at destructuring.wipple:13:46-13:50
   grouped with `_`, `name`
   has type `String`
   is a definition
   is a pattern
 
 `name` (VariableExpression):
+  at destructuring.wipple:13:56-13:60
   grouped with `name`, `String`
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
 
 `charlie` (VariablePattern):
+  at destructuring.wipple:15:1-15:8
   grouped with `Person {name : "Charlie"}`, `Person {name : "Charlie"}`, `charlie`
   has type `Person`
   is a definition
   is a pattern
 
 `charlie : Person {name : "Charlie"}` (AssignmentStatement):
+  at destructuring.wipple:15:1-15:36
   has type `()`
 
 `Person {name : "Charlie"}` (StructureExpression):
+  at destructuring.wipple:15:11-15:36
   grouped with `Person`, `charlie`, `charlie`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `Person`
 
 `"Charlie"` (StringExpression):
+  at destructuring.wipple:15:26-15:35
   grouped with `"Charlie"`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
+  at destructuring.wipple:16:1-16:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Person` (resolved as `instance (Describe Person)`)
   has type `Person -> ()`
@@ -246,15 +291,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show charlie` (ExpressionStatement):
+  at destructuring.wipple:16:1-16:13
   grouped with `show charlie`
   has type `()`
 
 `show charlie` (CallExpression):
+  at destructuring.wipple:16:1-16:13
   grouped with `()`, `show charlie`
   has type `()`
   is an expression
 
 `charlie` (VariableExpression):
+  at destructuring.wipple:16:6-16:13
   grouped with `charlie`, `value`
   has type `Person`
   is an expression

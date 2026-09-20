@@ -91,8 +91,10 @@ impl Constraint for BoundConstraint {
         let bound = Bound {
             source_node: ctx.source_node,
             bound_path,
+            bound_node: node,
+            trait_node: self.bound.trait_node,
             substitutions,
-            ..self.bound
+            is_optional: self.bound.is_optional,
         };
 
         Some(Box::new(BoundConstraint {
@@ -248,6 +250,7 @@ impl Constraint for BoundConstraint {
                         Ok(ResolvedBound {
                             instance: instance.clone(),
                             instance_parameters: candidate.parameters.clone(),
+                            temporary: self.bound.bound_node,
                         }),
                     );
 

@@ -5,9 +5,10 @@ use std::{
     borrow::Borrow,
     cell::{RefCell, RefMut},
     cmp,
-    collections::{BTreeMap, hash_map::DefaultHasher},
+    collections::hash_map::DefaultHasher,
     fmt::Debug,
     hash::{Hash, Hasher},
+    rc::Rc,
     sync::Arc,
 };
 use unicode_segmentation::UnicodeSegmentation;
@@ -15,14 +16,13 @@ use wipple_core::codegen::mir;
 
 pub use wipple_core::span::Span;
 
-pub struct Interpreter<'ctx, Ext> {
-    external:
-        Box<dyn for<'a> FnMut(&str, Handle<'a, Ext>) -> Result<Handle<'a, Ext>, Error> + 'ctx>,
-    debugger: Option<Debugger<'ctx, Ext>>,
+pub struct Interpreter<'ctx, Ext, Err> {
+    external: Box<dyn for<'a> FnMut(&str, Handle<'a, Ext>) -> Result<Handle<'a, Ext>, Err> + 'ctx>,
+    debugger: Option<Debugger<'ctx, Ext, Err>>,
 }
 
-pub struct Debugger<'ctx, Ext> {
-    debug: Box<dyn FnMut(DebugEvent<'_, Ext>) -> Result<(), Error> + 'ctx>,
+pub struct Debugger<'ctx, Ext, Err> {
+    debug: Box<dyn FnMut(DebugEvent<'_, Ext>) -> Result<(), Err> + 'ctx>,
 }
 
 #[derive(Debug, Clone)]
@@ -49,11 +49,9 @@ pub enum DebugEvent<'a, Ext> {
     Value(Handle<'a, Ext>),
 }
 
-pub type Error = anyhow::Error;
-
-impl<'ctx, Ext> Interpreter<'ctx, Ext> {
+impl<'ctx, Ext, Err> Interpreter<'ctx, Ext, Err> {
     pub fn new(
-        external: impl for<'a> FnMut(&str, Handle<'a, Ext>) -> Result<Handle<'a, Ext>, Error> + 'ctx,
+        external: impl for<'a> FnMut(&str, Handle<'a, Ext>) -> Result<Handle<'a, Ext>, Err> + 'ctx,
     ) -> Self {
         Interpreter {
             external: Box::new(external),
@@ -61,29 +59,25 @@ impl<'ctx, Ext> Interpreter<'ctx, Ext> {
         }
     }
 
-    pub fn with_debugger(mut self, debugger: Debugger<'ctx, Ext>) -> Self {
+    pub fn with_debugger(mut self, debugger: Debugger<'ctx, Ext, Err>) -> Self {
         self.debugger = Some(debugger);
         self
     }
 }
 
-impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
-    pub fn run(mut self, program: &mir::Program) -> Result<(), Error> {
+impl<'ctx, Ext: Debug + Clone, Err> Interpreter<'ctx, Ext, Err> {
+    pub fn run(mut self, program: &mir::Program) -> Result<(), Err> {
         if let Some(main) = program.main {
-            let function = program
-                .functions
-                .get(&main)
-                .ok_or_else(|| anyhow::format_err!("unknown function {main:?}"))?;
-
-            self.run_function(program, function, Vec::new(), &[])?;
+            let function = &program.functions[main];
+            self.run_function(program, function, Vec::new(), Vec::new())?;
         }
 
         Ok(())
     }
 }
 
-impl<'ctx, Ext> Debugger<'ctx, Ext> {
-    pub fn new(debug: impl FnMut(DebugEvent<'_, Ext>) -> Result<(), Error> + 'ctx) -> Self {
+impl<'ctx, Ext, Err> Debugger<'ctx, Ext, Err> {
+    pub fn new(debug: impl FnMut(DebugEvent<'_, Ext>) -> Result<(), Err> + 'ctx) -> Self {
         Debugger {
             debug: Box::new(debug),
         }
@@ -94,14 +88,13 @@ impl<'ctx, Ext> Debugger<'ctx, Ext> {
 enum Value<'a, Ext> {
     External(Ext),
     Primitive(Primitive<Self>),
-    Bound(&'a mir::SourceMapped<mir::Expression>, Vec<Locals<'a, Ext>>),
-    Closure(&'a mir::Function, Vec<Locals<'a, Ext>>),
+    Closure(&'a mir::Function, Locals<'a, Ext>),
     Tuple(Box<[Self]>),
     Marker,
     Variant(usize, Box<[Self]>),
 }
 
-type Locals<'a, Ext> = Arc<BTreeMap<mir::LocalIndex, RefCell<Option<Value<'a, Ext>>>>>;
+type Locals<'a, Ext> = Vec<Rc<RefCell<Option<Value<'a, Ext>>>>>;
 
 #[derive(Debug)]
 enum ControlFlow<'a, Ext> {
@@ -109,28 +102,30 @@ enum ControlFlow<'a, Ext> {
     Return(Value<'a, Ext>),
 }
 
-impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
+impl<'ctx, Ext: Debug + Clone, Err> Interpreter<'ctx, Ext, Err> {
     fn run_function<'a>(
         &mut self,
         program: &'a mir::Program,
         function: &'a mir::Function,
+        captures: Locals<'a, Ext>,
         inputs: Vec<Value<'a, Ext>>,
-        locals: &[Locals<'a, Ext>],
-    ) -> Result<Option<Value<'a, Ext>>, Error> {
-        let mut function_locals = BTreeMap::default();
-        for (index, input) in function.inputs.keys().zip(inputs) {
-            function_locals.insert(*index, RefCell::new(Some(input)));
-        }
-        for local in function.locals.keys() {
-            function_locals.insert(*local, RefCell::new(None));
-        }
+    ) -> Result<Option<Value<'a, Ext>>, Err> {
+        let mut function_locals = captures;
 
-        let mut locals = locals.to_vec();
-        locals.push(Arc::new(function_locals));
+        function_locals.extend(
+            inputs
+                .into_iter()
+                .map(|input| Rc::new(RefCell::new(Some(input)))),
+        );
 
-        match self.run_statements(program, &function.body, &locals)? {
+        function_locals.resize_with(
+            function_locals.len() + function.locals.len(),
+            Default::default,
+        );
+
+        match self.run_statements(program, &function.body, &function_locals)? {
             None => Ok(None),
-            Some(ControlFlow::Break) => Err(anyhow::format_err!("break outside loop")),
+            Some(ControlFlow::Break) => panic!("break outside loop"),
             Some(ControlFlow::Return(value)) => Ok(Some(value)),
         }
     }
@@ -139,8 +134,8 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
         &mut self,
         program: &'a mir::Program,
         statements: &'a [mir::Statement],
-        locals: &[Locals<'a, Ext>],
-    ) -> Result<Option<ControlFlow<'a, Ext>>, Error> {
+        locals: &Locals<'a, Ext>,
+    ) -> Result<Option<ControlFlow<'a, Ext>>, Err> {
         for statement in statements {
             match statement {
                 mir::Statement::If {
@@ -184,7 +179,7 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
                 mir::Statement::Break => return Ok(Some(ControlFlow::Break)),
                 mir::Statement::Assign { local, value } => {
                     let value = self.run_expression(program, value, locals)?;
-                    set_local(locals, *local, value)?;
+                    set_local(locals, *local, value);
                 }
                 mir::Statement::Trace { span } => {
                     if let Some(debugger) = &mut self.debugger {
@@ -201,8 +196,8 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
         &mut self,
         program: &'a mir::Program,
         condition: &'a mir::Condition,
-        locals: &[Locals<'a, Ext>],
-    ) -> Result<bool, Error> {
+        locals: &Locals<'a, Ext>,
+    ) -> Result<bool, Err> {
         Ok(match condition {
             mir::Condition::True => true,
             mir::Condition::False => false,
@@ -216,19 +211,19 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
             }
             mir::Condition::Variant { value, variant } => {
                 let Value::Variant(index, ..) = self.run_expression(program, value, locals)? else {
-                    return Err(anyhow::format_err!("not a variant"));
+                    panic!("not a variant");
                 };
 
                 *variant == index
             }
             mir::Condition::Initialize { local, value } => {
                 let value = self.run_expression(program, value, locals)?;
-                set_local(locals, *local, value)?;
+                set_local(locals, *local, value);
                 true
             }
             mir::Condition::Mutate { local, value } => {
-                let value = get_local(locals, *value)?.clone();
-                set_local(locals, *local, value)?;
+                let value = get_local(locals, *value).clone();
+                set_local(locals, *local, value);
                 true
             }
         })
@@ -238,71 +233,69 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
         &mut self,
         program: &'a mir::Program,
         expression: &'a mir::SourceMapped<E>,
-        locals: &[Locals<'a, Ext>],
-    ) -> Result<Value<'a, Ext>, Error> {
+        locals: &Locals<'a, Ext>,
+    ) -> Result<Value<'a, Ext>, Err> {
         Ok(match expression.inner.borrow() {
             mir::Expression::Function { index, bounds } => {
-                let function = program
-                    .functions
-                    .get(index)
-                    .ok_or_else(|| anyhow::format_err!("unknown function {index:?}"))?;
+                let function = &program.functions[*index];
+
+                let captures = function
+                    .captures
+                    .iter()
+                    .map(|&capture| locals[capture].clone())
+                    .collect::<Vec<_>>();
 
                 let inputs = bounds
                     .iter()
-                    .map(|bound| Value::Bound(bound, locals.to_vec()))
+                    .map(|bound| get_local(locals, *bound).clone())
                     .collect::<Vec<_>>();
 
-                self.run_function(program, function, inputs, locals)?
-                    .ok_or_else(|| anyhow::format_err!("missing return value"))?
-            }
-            mir::Expression::Bound { local } => {
-                let Value::Bound(bound, ref locals) = *get_local(locals, *local)? else {
-                    return Err(anyhow::format_err!("not a bound"));
-                };
-
-                self.run_expression(program, bound, locals)?
+                self.run_function(program, function, captures, inputs)?
+                    .expect("missing return value")
             }
             mir::Expression::Call { function, inputs } => {
+                let Value::Closure(function, ref captures) = *get_local(locals, *function) else {
+                    panic!("not a closure");
+                };
+
                 let inputs = inputs
                     .iter()
-                    .map(|input| Ok(get_local(locals, *input)?.clone()))
-                    .collect::<Result<Vec<_>, Error>>()?;
+                    .map(|input| get_local(locals, *input).clone())
+                    .collect::<Vec<_>>();
 
-                let Value::Closure(function, ref locals) = *get_local(locals, *function)? else {
-                    return Err(anyhow::format_err!("not a function"));
-                };
-
-                self.run_function(program, function, inputs, locals)?
-                    .ok_or_else(|| anyhow::format_err!("missing return value"))?
+                self.run_function(program, function, captures.clone(), inputs)?
+                    .expect("missing return value")
             }
-            mir::Expression::Closure(function) => Value::Closure(function, locals.to_vec()),
+            mir::Expression::Closure(function) => {
+                let captures = function
+                    .captures
+                    .iter()
+                    .map(|&capture| locals[capture].clone())
+                    .collect::<Vec<_>>();
+
+                Value::Closure(function, captures)
+            }
             mir::Expression::Element { value, index } => {
-                let Value::Tuple(ref elements) = *get_local(locals, *value)? else {
-                    return Err(anyhow::format_err!("not a list"));
+                let Value::Tuple(ref elements) = *get_local(locals, *value) else {
+                    panic!("not a list");
                 };
 
-                elements
-                    .get(*index)
-                    .ok_or_else(|| anyhow::format_err!("index out of bounds"))?
-                    .clone()
+                elements[*index].clone()
             }
             mir::Expression::Tuple { elements } => {
                 let elements = elements
                     .iter()
-                    .map(|element| Ok(get_local(locals, *element)?.clone()))
-                    .collect::<Result<Vec<_>, Error>>()?;
+                    .map(|element| get_local(locals, *element).clone())
+                    .collect::<Vec<_>>();
 
                 Value::Tuple(elements.into_boxed_slice())
             }
             mir::Expression::Marker => Value::Marker,
             mir::Expression::Local { local } | mir::Expression::MutableLocal { local } => {
-                get_local(locals, *local)?.clone()
+                get_local(locals, *local).clone()
             }
             mir::Expression::Number { value } => {
-                let number = value
-                    .parse()
-                    .map_err(|e| anyhow::format_err!("invalid number: {e}"))?;
-
+                let number = value.parse().expect("invalid number");
                 Value::Primitive(Primitive::Number(number))
             }
             mir::Expression::Intrinsic { intrinsic } => {
@@ -314,29 +307,22 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
             mir::Expression::Structure { fields } => {
                 let mut elements = vec![None; fields.len()];
                 for (index, field) in fields {
-                    let value = get_local(locals, *field)?.clone();
-
-                    elements
-                        .get_mut(*index)
-                        .ok_or_else(|| anyhow::format_err!("index out of bounds"))?
-                        .replace(value);
+                    let value = get_local(locals, *field).clone();
+                    elements[*index].replace(value);
                 }
 
                 let elements = elements
                     .into_iter()
-                    .enumerate()
-                    .map(|(index, value)| {
-                        value.ok_or_else(|| anyhow::format_err!("uninitialized field {index}"))
-                    })
-                    .collect::<Result<Vec<_>, Error>>()?;
+                    .map(|value| value.expect("uninitialized field"))
+                    .collect::<Vec<_>>();
 
                 Value::Tuple(elements.into_boxed_slice())
             }
             mir::Expression::Variant { variant, elements } => {
                 let elements = elements
                     .iter()
-                    .map(|element| Ok(get_local(locals, *element)?.clone()))
-                    .collect::<Result<Vec<_>, Error>>()?;
+                    .map(|element| get_local(locals, *element).clone())
+                    .collect::<Vec<_>>();
 
                 Value::Variant(*variant, elements.into_boxed_slice())
             }
@@ -345,20 +331,15 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
                 variant,
                 index,
             } => {
-                let Value::Variant(v, ref elements) = *get_local(locals, *value)? else {
-                    return Err(anyhow::format_err!("not a variant"));
+                let Value::Variant(v, ref elements) = *get_local(locals, *value) else {
+                    panic!("not a variant");
                 };
 
                 if v != *variant {
-                    return Err(anyhow::format_err!(
-                        "expected variant {variant:?}, found variant {v:?}"
-                    ));
+                    panic!("expected variant {variant:?}, found variant {v:?}");
                 }
 
-                elements
-                    .get(*index)
-                    .ok_or_else(|| anyhow::format_err!("index out of bounds"))?
-                    .clone()
+                elements[*index].clone()
             }
         })
     }
@@ -367,8 +348,8 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
         &mut self,
         program: &'a mir::Program,
         intrinsic: &'a mir::Intrinsic<mir::SourceMapped<Box<mir::Expression>>>,
-        locals: &[Locals<'a, Ext>],
-    ) -> Result<Value<'a, Ext>, Error> {
+        locals: &Locals<'a, Ext>,
+    ) -> Result<Value<'a, Ext>, Err> {
         macro_rules! eval {
             ($value:expr) => {
                 self.run_expression(program, $value, locals)?
@@ -376,7 +357,7 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
             ($value:expr, Primitive::$kind:ident) => {
                 match eval!($value) {
                     Value::Primitive(Primitive::$kind(x)) => (x),
-                    _ => return Err(anyhow::format_err!("unexpected value")),
+                    value => panic!("expected {}, but found {value:?}", stringify!($kind)),
                 }
             };
         }
@@ -549,44 +530,30 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
             mir::Intrinsic::ListFirst { value } => {
                 let list = eval!(value, Primitive::List);
 
-                list.first()
-                    .cloned()
-                    .ok_or_else(|| anyhow::format_err!("empty list"))?
+                list.first().expect("empty list").clone()
             }
             mir::Intrinsic::ListLast { value } => {
                 let list = eval!(value, Primitive::List);
 
-                list.last()
-                    .cloned()
-                    .ok_or_else(|| anyhow::format_err!("empty list"))?
+                list.last().expect("empty list").clone()
             }
             mir::Intrinsic::ListInitial { value } => {
                 let list = eval!(value, Primitive::List);
 
-                let (_, initial) = list
-                    .split_last()
-                    .ok_or_else(|| anyhow::format_err!("empty list"))?;
-
+                let (_, initial) = list.split_last().expect("empty list");
                 Value::Primitive(Primitive::List(initial.to_vec()))
             }
             mir::Intrinsic::ListTail { value } => {
                 let list = eval!(value, Primitive::List);
 
-                let (_, tail) = list
-                    .split_first()
-                    .ok_or_else(|| anyhow::format_err!("empty list"))?;
-
+                let (_, tail) = list.split_first().expect("empty list");
                 Value::Primitive(Primitive::List(tail.to_vec()))
             }
             mir::Intrinsic::ListNth { value, index } => {
                 let list = eval!(value, Primitive::List);
                 let index = eval!(index, Primitive::Number);
 
-                let index = index as usize;
-
-                list.get(index)
-                    .cloned()
-                    .ok_or_else(|| anyhow::format_err!("index out of bounds"))?
+                list[index as usize].clone()
             }
             mir::Intrinsic::ListAppend { value, element } => {
                 let mut list = eval!(value, Primitive::List);
@@ -613,11 +580,10 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
                 let index = eval!(index, Primitive::Number);
                 let element = eval!(element);
 
-                let index = usize::try_from(index as i64)
-                    .map_err(|_| anyhow::format_err!("invalid index"))?;
+                let index = index as usize;
 
                 if index > list.len() {
-                    return Err(anyhow::format_err!("index out of bounds"));
+                    panic!("index out of bounds");
                 }
 
                 list.insert(index, element);
@@ -628,11 +594,10 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
                 let mut list = eval!(value, Primitive::List);
                 let index = eval!(index, Primitive::Number);
 
-                let index = usize::try_from(index as i64)
-                    .map_err(|_| anyhow::format_err!("invalid index"))?;
+                let index = index as usize;
 
                 if index >= list.len() {
-                    return Err(anyhow::format_err!("index out of bounds"));
+                    panic!("index out of bounds");
                 }
 
                 list.remove(index);
@@ -654,7 +619,7 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
                 let max = eval!(max, Primitive::Number);
 
                 if min > max {
-                    return Err(anyhow::format_err!("min must be less than or equal to max"));
+                    panic!("min must be less than or equal to max");
                 }
 
                 let random = rand::random_range(min..max);
@@ -684,40 +649,24 @@ impl<'ctx, Ext: Debug + Clone> Interpreter<'ctx, Ext> {
 
                 Value::Primitive(Primitive::Number(hash as f64))
             }
-            mir::Intrinsic::Unreachable => {
-                return Err(anyhow::format_err!("unreachable"));
-            }
+            mir::Intrinsic::Unreachable => unreachable!(),
         })
     }
 }
 
 fn get_local<'a, 'l, Ext: Debug>(
-    locals: &'l [Locals<'a, Ext>],
-    index: mir::LocalIndex,
-) -> Result<RefMut<'l, Value<'a, Ext>>, anyhow::Error> {
-    for locals in locals.iter().rev() {
-        if let Some(local) = locals.get(&index) {
-            return RefMut::filter_map(local.borrow_mut(), Option::as_mut)
-                .map_err(|_| anyhow::format_err!("local {index:?} is uninitialized"));
-        }
-    }
-
-    Err(anyhow::format_err!("unknown local {index:?}"))
+    locals: &'l Locals<'a, Ext>,
+    index: usize,
+) -> RefMut<'l, Value<'a, Ext>> {
+    RefMut::map(locals[index].borrow_mut(), |local| {
+        local
+            .as_mut()
+            .unwrap_or_else(|| panic!("local {index:?} is uninitialized"))
+    })
 }
 
-fn set_local<'a, Ext>(
-    locals: &[Locals<'a, Ext>],
-    index: mir::LocalIndex,
-    value: Value<'a, Ext>,
-) -> Result<(), anyhow::Error> {
-    for locals in locals.iter().rev() {
-        if let Some(local) = locals.get(&index) {
-            local.replace(Some(value));
-            return Ok(());
-        }
-    }
-
-    Err(anyhow::format_err!("unknown local {index:?}"))
+fn set_local<'a, Ext>(locals: &Locals<'a, Ext>, index: usize, value: Value<'a, Ext>) {
+    locals[index].replace(Some(value));
 }
 
 impl<'a, Ext> From<Value<'a, Ext>> for Handle<'a, Ext> {

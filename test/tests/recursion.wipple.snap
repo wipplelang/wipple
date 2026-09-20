@@ -1,87 +1,103 @@
 Facts (layer 2):
 
 `fib` (VariablePattern):
+  at recursion.wipple:1:1-1:4
   grouped with `n -> when n {⋯}`, `fib`, `fib`, `n -> when n {⋯}`, `fib`
   has type `Number -> Number`
   is a definition
   is a pattern
 
 `fib : n -> when n {⋯}` (AssignmentStatement):
+  at recursion.wipple:1:1-4:2
   has type `()`
 
 `n` (VariablePattern):
+  at recursion.wipple:1:7-1:8
   grouped with `n`, `n`, `n`, `n`, `n - 1`
   has type `Number`
   is a definition
   is a pattern
 
 `n -> when n {⋯}` (FunctionExpression):
+  at recursion.wipple:1:7-4:2
   captures `fib`
   grouped with `fib`, `fib`
   has type `Number -> Number`
   is an expression
 
 `when n {⋯}` (WhenExpression):
+  at recursion.wipple:1:12-4:2
   grouped with `n`, `fib (n - 1) + fib (n - 2)`, `fib (n - 1)`
   has type `Number`
   is an expression
 
 `n` (VariableExpression):
+  at recursion.wipple:1:17-1:18
   grouped with `n`, `0 or 1`, `0`, `1`, `_`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
 
 `0` (NumberPattern):
+  at recursion.wipple:2:4-2:5
   grouped with `n`, `0`, `0`, `0 or 1`
   has type `Number`
   is a pattern
 
 `0 or 1` (OrPattern):
+  at recursion.wipple:2:4-2:10
   captures `n`
   grouped with `n`, `0`, `1`
   has type `Number`
   is a pattern
 
 `1` (NumberPattern):
+  at recursion.wipple:2:9-2:10
   grouped with `n`, `1`, `1`, `0 or 1`
   has type `Number`
   is a pattern
 
 `n` (VariableExpression):
+  at recursion.wipple:2:15-2:16
   grouped with `n`, `when n {⋯}`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
 
 `_` (WildcardPattern):
+  at recursion.wipple:3:3-3:4
   captures `fib`, `n`
   grouped with `n`
   has type `Number`
   is a pattern
 
 `fib` (VariableExpression):
+  at recursion.wipple:3:8-3:11
   grouped with `fib`
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `fib`
 
 `fib (n - 1)` (CallExpression):
+  at recursion.wipple:3:8-3:19
   grouped with `fib (n - 2)`, `left`, `when n {⋯}`, `fib 10`
   has type `Number`
   is an expression
 
 `fib (n - 1) + fib (n - 2)` (OperatorExpression):
+  at recursion.wipple:3:8-3:33
   grouped with `fib (n - 1) + fib (n - 2)`, `when n {⋯}`
   has type `Number`
   is an expression
 
 `fib (n - 1) + fib (n - 2)` (CallExpression):
+  at recursion.wipple:3:8-3:33
   grouped with `sum`, `fib (n - 1) + fib (n - 2)`
   has type `Number`
   is an expression
 
 `fib (n - 1) + fib (n - 2)` (ConstructorExpression):
+  at recursion.wipple:3:8-3:33
   grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
@@ -89,22 +105,26 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `n` (VariableExpression):
+  at recursion.wipple:3:13-3:14
   grouped with `n`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
 
 `n - 1` (OperatorExpression):
+  at recursion.wipple:3:13-3:18
   grouped with `n - 1`, `n - 2`, `n`, `10`
   has type `Number`
   is an expression
 
 `n - 1` (CallExpression):
+  at recursion.wipple:3:13-3:18
   grouped with `difference`, `n - 1`
   has type `Number`
   is an expression
 
 `n - 1` (ConstructorExpression):
+  at recursion.wipple:3:13-3:18
   grouped with `left right -> difference`
   has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
   has type `Number Number -> Number`
@@ -112,38 +132,45 @@ Facts (layer 2):
   resolved to 1 definition(s): `Subtract`
 
 `1` (NumberExpression):
+  at recursion.wipple:3:17-3:18
   grouped with `1`, `right`
   has type `Number`
   is an expression
 
 `fib` (VariableExpression):
+  at recursion.wipple:3:22-3:25
   grouped with `fib`
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `fib`
 
 `fib (n - 2)` (CallExpression):
+  at recursion.wipple:3:22-3:33
   grouped with `fib (n - 1)`, `right`
   has type `Number`
   is an expression
 
 `n` (VariableExpression):
+  at recursion.wipple:3:27-3:28
   grouped with `n`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
 
 `n - 2` (OperatorExpression):
+  at recursion.wipple:3:27-3:32
   grouped with `n - 2`, `n - 1`
   has type `Number`
   is an expression
 
 `n - 2` (CallExpression):
+  at recursion.wipple:3:27-3:32
   grouped with `difference`, `n - 2`
   has type `Number`
   is an expression
 
 `n - 2` (ConstructorExpression):
+  at recursion.wipple:3:27-3:32
   grouped with `left right -> difference`
   has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
   has type `Number Number -> Number`
@@ -151,11 +178,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Subtract`
 
 `2` (NumberExpression):
+  at recursion.wipple:3:31-3:32
   grouped with `2`, `right`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at recursion.wipple:6:1-6:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -163,26 +192,31 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (fib 10)` (ExpressionStatement):
+  at recursion.wipple:6:1-6:14
   grouped with `show (fib 10)`
   has type `()`
 
 `show (fib 10)` (CallExpression):
+  at recursion.wipple:6:1-6:14
   grouped with `()`, `show (fib 10)`
   has type `()`
   is an expression
 
 `fib` (VariableExpression):
+  at recursion.wipple:6:7-6:10
   grouped with `fib`
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `fib`
 
 `fib 10` (CallExpression):
+  at recursion.wipple:6:7-6:13
   grouped with `fib (n - 1)`, `value`
   has type `Number`
   is an expression
 
 `10` (NumberExpression):
+  at recursion.wipple:6:11-6:13
   grouped with `10`, `n - 1`
   has type `Number`
   is an expression

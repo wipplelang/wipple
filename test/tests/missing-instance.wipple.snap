@@ -1,18 +1,21 @@
 Facts (layer 2):
 
 `Foo` (TypeDefinition):
+  at missing-instance.wipple:1:1-1:4
   grouped with `Foo`
   has definition constraints
   has type `Foo`
   is a definition
 
 `Foo` (TypeDefinition):
+  at missing-instance.wipple:1:1-1:4
   grouped with `Foo`
   has definition constraints
   has type `Foo`
   is a definition
 
 `show` (VariableExpression):
+  at missing-instance.wipple:2:1-2:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Foo` (resolved as `default error instance (Describe value)`)
   has type `Foo -> ()`
@@ -20,15 +23,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show Foo` (ExpressionStatement):
+  at missing-instance.wipple:2:1-2:9
   grouped with `show Foo`
   has type `()`
 
 `show Foo` (CallExpression):
+  at missing-instance.wipple:2:1-2:9
   grouped with `()`, `show Foo`
   has type `()`
   is an expression
 
 `Foo` (ConstructorExpression):
+  at missing-instance.wipple:2:6-2:9
   grouped with `Foo`, `value`
   has type `Foo`
   is an expression

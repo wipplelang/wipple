@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  at when-mismatched-types.wipple:1:1-1:5
   grouped with `value -> ()`
   has bound(s) `Describe` `(String or Number)` (resolved as `instance (Describe Number)`)
   has type `(String or Number) -> ()`
@@ -8,43 +9,51 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (when True {⋯})` (ExpressionStatement):
+  at when-mismatched-types.wipple:1:1-4:3
   grouped with `show (when True {⋯})`
   has type `()`
 
 `show (when True {⋯})` (CallExpression):
+  at when-mismatched-types.wipple:1:1-4:3
   grouped with `()`, `show (when True {⋯})`
   has type `()`
   is an expression
 
 `when True {⋯}` (WhenExpression):
+  at when-mismatched-types.wipple:1:7-4:2
   grouped with `42`, `"hi"`, `value`
   has type `String` or `Number`
   is an expression
 
 `True` (ConstructorExpression):
+  at when-mismatched-types.wipple:1:12-1:16
   grouped with `Boolean`, `True`, `False`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `True` (ConstructorPattern):
+  at when-mismatched-types.wipple:2:3-2:7
   grouped with `True`, `Boolean`
   has type `Boolean`
   is a pattern
   resolved to 1 definition(s): `True`
 
 `42` (NumberExpression):
+  at when-mismatched-types.wipple:2:11-2:13
   grouped with `42`, `when True {⋯}`
   has type `String` or `Number`
   is an expression
 
 `False` (ConstructorPattern):
+  at when-mismatched-types.wipple:3:3-3:8
   grouped with `True`, `Boolean`
   has type `Boolean`
   is a pattern
   resolved to 1 definition(s): `False`
 
 `"hi"` (StringExpression):
+  at when-mismatched-types.wipple:3:12-3:16
   grouped with `"hi"`, `when True {⋯}`
   has type `String` or `Number`
   is an expression

@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `T` (TraitDefinition):
+  at bound.wipple:1:1-1:2
   grouped with `value -> String`
   has 1 instances
   has definition constraints
@@ -9,6 +10,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at bound.wipple:1:5-1:10
   grouped with `value`
   has type `value`
   is a definition
@@ -16,6 +18,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at bound.wipple:1:21-1:26
   grouped with `value`
   has type `value`
   is a type
@@ -23,16 +26,19 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `value -> String` (FunctionType):
+  at bound.wipple:1:21-1:36
   grouped with `T`
   has type `value -> String`
   is a type
 
 `String` (NamedType):
+  at bound.wipple:1:30-1:36
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `foo` (ConstantDefinition):
+  at bound.wipple:3:1-3:4
   grouped with `value -> String`, `x -> T x`
   has bounds
   has definition constraints
@@ -41,6 +47,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at bound.wipple:3:8-3:13
   grouped with `value`, `x`
   has type `value`
   is a definition
@@ -48,17 +55,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value -> String` (FunctionType):
+  at bound.wipple:3:8-3:23
   grouped with `foo`
   has type `value -> String`
   is a type
 
 `String` (NamedType):
+  at bound.wipple:3:17-3:23
   grouped with `T x`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `(T value)` (BoundConstraint):
+  at bound.wipple:3:30-3:39
   grouped with `value -> String`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value -> String`
@@ -66,6 +76,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
+  at bound.wipple:3:33-3:38
   grouped with `value`, `value`, `value`
   has type `value`
   is a type
@@ -73,20 +84,25 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `foo : x -> T x` (AssignmentStatement):
+  at bound.wipple:4:1-4:15
   has type `()`
 
 `x` (VariablePattern):
+  at bound.wipple:4:7-4:8
   grouped with `x`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `x -> T x` (FunctionExpression):
+  at bound.wipple:4:7-4:15
+  captures `(T value)`
   grouped with `foo`
   has type `value -> String`
   is an expression
 
 `T` (ConstructorExpression):
+  at bound.wipple:4:12-4:13
   grouped with `value -> String`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value -> String`
@@ -94,29 +110,34 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `T x` (CallExpression):
+  at bound.wipple:4:12-4:15
   grouped with `String`, `String`
   has type `String`
   is an expression
 
 `x` (VariableExpression):
+  at bound.wipple:4:14-4:15
   grouped with `x`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
 
 `A` (TypeDefinition):
+  at bound.wipple:6:1-6:2
   grouped with `A`
   has definition constraints
   has type `A`
   is a definition
 
 `A` (TypeDefinition):
+  at bound.wipple:6:1-6:2
   grouped with `A`
   has definition constraints
   has type `A`
   is a definition
 
 `instance (T A)` (InstanceDefinition):
+  at bound.wipple:7:1-7:15
   grouped with `value -> String`, `_ -> "Hello, world!"`
   has definition constraints
   has type `A -> String`
@@ -124,27 +145,32 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `A` (NamedType):
+  at bound.wipple:7:13-7:14
   grouped with `value`
   has type `A`
   is a type
   resolved to 1 definition(s): `A`
 
 `_` (WildcardPattern):
+  at bound.wipple:7:18-7:19
   grouped with `value`
   has type `A`
   is a pattern
 
 `_ -> "Hello, world!"` (FunctionExpression):
+  at bound.wipple:7:18-7:38
   grouped with `instance (T A)`
   has type `A -> String`
   is an expression
 
 `"Hello, world!"` (StringExpression):
+  at bound.wipple:7:23-7:38
   grouped with `"Hello, world!"`, `String`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
+  at bound.wipple:9:1-9:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -152,15 +178,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (foo A)` (ExpressionStatement):
+  at bound.wipple:9:1-9:13
   grouped with `show (foo A)`
   has type `()`
 
 `show (foo A)` (CallExpression):
+  at bound.wipple:9:1-9:13
   grouped with `()`, `show (foo A)`
   has type `()`
   is an expression
 
 `foo` (VariableExpression):
+  at bound.wipple:9:7-9:10
   grouped with `value -> String`
   has bound(s) `T` `A` (resolved as `instance (T A)`)
   has type `A -> String`
@@ -168,11 +197,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `foo`
 
 `foo A` (CallExpression):
+  at bound.wipple:9:7-9:12
   grouped with `String`, `value`
   has type `String`
   is an expression
 
 `A` (ConstructorExpression):
+  at bound.wipple:9:11-9:12
   grouped with `A`, `value`
   has type `A`
   is an expression

@@ -1,16 +1,19 @@
 Facts (layer 2):
 
 `Number` (TypeDefinition):
+  at infer-constraint.wipple:1:13-1:19
   has definition constraints
   has type `Number`
   is a definition
 
 `String` (TypeDefinition):
+  at infer-constraint.wipple:2:13-2:19
   has definition constraints
   has type `String`
   is a definition
 
 `Add` (TraitDefinition):
+  at infer-constraint.wipple:4:1-4:4
   grouped with `left right -> sum`
   has 2 instances
   has definition constraints
@@ -19,6 +22,7 @@ Facts (layer 2):
   is a definition
 
 `left` (TypeParameter):
+  at infer-constraint.wipple:4:7-4:11
   grouped with `left`
   has type `left`
   is a definition
@@ -26,6 +30,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `left`
 
 `right` (TypeParameter):
+  at infer-constraint.wipple:4:12-4:17
   grouped with `right`
   has type `right`
   is a definition
@@ -33,6 +38,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `right`
 
 `sum` (TypeParameter):
+  at infer-constraint.wipple:4:18-4:21
   grouped with `sum`
   has type `sum`
   is a definition
@@ -40,6 +46,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `sum`
 
 `left` (TypeParameter):
+  at infer-constraint.wipple:4:32-4:36
   grouped with `left`
   has type `left`
   is a type
@@ -47,11 +54,13 @@ Facts (layer 2):
   resolved to type parameter `left`
 
 `left right -> sum` (FunctionType):
+  at infer-constraint.wipple:4:32-4:49
   grouped with `Add`
   has type `left right -> sum`
   is a type
 
 `right` (TypeParameter):
+  at infer-constraint.wipple:4:37-4:42
   grouped with `right`
   has type `right`
   is a type
@@ -59,6 +68,7 @@ Facts (layer 2):
   resolved to type parameter `right`
 
 `sum` (TypeParameter):
+  at infer-constraint.wipple:4:46-4:49
   grouped with `sum`
   has type `sum`
   is a type
@@ -66,6 +76,7 @@ Facts (layer 2):
   resolved to type parameter `sum`
 
 `instance (Add Number Number Number)` (InstanceDefinition):
+  at infer-constraint.wipple:5:1-5:36
   grouped with `left right -> sum`, `_`
   has definition constraints
   has type `Number Number -> Number`
@@ -73,29 +84,34 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `Number` (NamedType):
+  at infer-constraint.wipple:5:15-5:21
   grouped with `left`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `Number` (NamedType):
+  at infer-constraint.wipple:5:22-5:28
   grouped with `right`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `Number` (NamedType):
+  at infer-constraint.wipple:5:29-5:35
   grouped with `sum`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `_` (PlaceholderExpression):
+  at infer-constraint.wipple:5:39-5:40
   grouped with `instance (Add Number Number Number)`
   has type `Number Number -> Number`
   is an expression
 
 `instance (Add String String String)` (InstanceDefinition):
+  at infer-constraint.wipple:6:1-6:36
   grouped with `left right -> sum`, `_`
   has definition constraints
   has type `String String -> String`
@@ -103,29 +119,34 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `String` (NamedType):
+  at infer-constraint.wipple:6:15-6:21
   grouped with `left`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `String` (NamedType):
+  at infer-constraint.wipple:6:22-6:28
   grouped with `right`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `String` (NamedType):
+  at infer-constraint.wipple:6:29-6:35
   grouped with `sum`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `_` (PlaceholderExpression):
+  at infer-constraint.wipple:6:39-6:40
   grouped with `instance (Add String String String)`
   has type `String String -> String`
   is an expression
 
 `add` (ConstantDefinition):
+  at infer-constraint.wipple:8:1-8:4
   grouped with `left right -> sum`, `_`
   has bounds
   has definition constraints
@@ -134,6 +155,7 @@ Facts (layer 2):
   is a definition
 
 `left` (TypeParameter):
+  at infer-constraint.wipple:8:8-8:12
   grouped with `left`
   has type `left`
   is a definition
@@ -141,11 +163,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `left`
 
 `left right -> sum` (FunctionType):
+  at infer-constraint.wipple:8:8-8:25
   grouped with `add`
   has type `left right -> sum`
   is a type
 
 `right` (TypeParameter):
+  at infer-constraint.wipple:8:13-8:18
   grouped with `right`
   has type `right`
   is a definition
@@ -153,6 +177,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `right`
 
 `sum` (TypeParameter):
+  at infer-constraint.wipple:8:22-8:25
   grouped with `sum`
   has type `sum`
   is a definition
@@ -160,6 +185,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `sum`
 
 `(Add left right sum)` (BoundConstraint):
+  at infer-constraint.wipple:8:32-8:52
   grouped with `left right -> sum`
   has bound(s) `Add` `left` `right` `sum` (resolved as `(Add left right sum)`)
   has type `left right -> sum`
@@ -167,6 +193,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `left` (TypeParameter):
+  at infer-constraint.wipple:8:37-8:41
   grouped with `left`, `left`
   has type `left`
   is a type
@@ -174,6 +201,7 @@ Facts (layer 2):
   resolved to type parameter `left`
 
 `right` (TypeParameter):
+  at infer-constraint.wipple:8:42-8:47
   grouped with `right`, `right`
   has type `right`
   is a type
@@ -181,6 +209,7 @@ Facts (layer 2):
   resolved to type parameter `right`
 
 `sum` (TypeParameter):
+  at infer-constraint.wipple:8:48-8:51
   grouped with `sum`, `sum`
   has type `sum`
   is a type
@@ -188,22 +217,27 @@ Facts (layer 2):
   resolved to type parameter `sum`
 
 `add : _` (AssignmentStatement):
+  at infer-constraint.wipple:9:1-9:8
   has type `()`
 
 `_` (PlaceholderExpression):
+  at infer-constraint.wipple:9:7-9:8
   grouped with `add`
   has type `left right -> sum`
   is an expression
 
 `_` (WildcardPattern):
+  at infer-constraint.wipple:11:1-11:2
   grouped with `add 1 2 :: String`, `add 1 2 :: String`
   has type `String`
   is a pattern
 
 `_ : (add 1 2 :: String)` (AssignmentStatement):
+  at infer-constraint.wipple:11:1-11:24
   has type `()`
 
 `add` (VariableExpression):
+  at infer-constraint.wipple:11:6-11:9
   grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `String` (unresolved)
   has type `Number Number -> String`
@@ -211,27 +245,32 @@ Facts (layer 2):
   resolved to 1 definition(s): `add`
 
 `add 1 2` (CallExpression):
+  at infer-constraint.wipple:11:6-11:13
   grouped with `sum`, `String`
   has type `String`
   is an expression
 
 `1` (NumberExpression):
+  at infer-constraint.wipple:11:10-11:11
   grouped with `1`, `left`
   has type `Number`
   is an expression
 
 `2` (NumberExpression):
+  at infer-constraint.wipple:11:12-11:13
   grouped with `2`, `right`
   has type `Number`
   is an expression
 
 `String` (NamedType):
+  at infer-constraint.wipple:11:17-11:23
   grouped with `add 1 2`, `add 1 2 :: String`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `Add-Infer` (TraitDefinition):
+  at infer-constraint.wipple:13:1-13:10
   grouped with `left right -> sum`
   has 2 instances
   has definition constraints
@@ -240,6 +279,7 @@ Facts (layer 2):
   is a definition
 
 `left` (TypeParameter):
+  at infer-constraint.wipple:13:13-13:17
   grouped with `left`
   has type `left`
   is a definition
@@ -247,6 +287,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `left`
 
 `right` (TypeParameter):
+  at infer-constraint.wipple:13:18-13:23
   grouped with `right`
   has type `right`
   is a definition
@@ -254,6 +295,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `right`
 
 `(infer sum)` (TypeParameter):
+  at infer-constraint.wipple:13:24-13:35
   grouped with `sum`
   has type `sum`
   is a definition
@@ -262,6 +304,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `(infer sum)`
 
 `left` (TypeParameter):
+  at infer-constraint.wipple:13:46-13:50
   grouped with `left`
   has type `left`
   is a type
@@ -269,11 +312,13 @@ Facts (layer 2):
   resolved to type parameter `left`
 
 `left right -> sum` (FunctionType):
+  at infer-constraint.wipple:13:46-13:63
   grouped with `Add-Infer`
   has type `left right -> sum`
   is a type
 
 `right` (TypeParameter):
+  at infer-constraint.wipple:13:51-13:56
   grouped with `right`
   has type `right`
   is a type
@@ -281,6 +326,7 @@ Facts (layer 2):
   resolved to type parameter `right`
 
 `sum` (TypeParameter):
+  at infer-constraint.wipple:13:60-13:63
   grouped with `(infer sum)`
   has type `sum`
   is a type
@@ -288,6 +334,7 @@ Facts (layer 2):
   resolved to type parameter `(infer sum)`
 
 `instance (Add-Infer Number Number Number)` (InstanceDefinition):
+  at infer-constraint.wipple:14:1-14:42
   grouped with `left right -> sum`, `_`
   has definition constraints
   has type `Number Number -> Number`
@@ -295,29 +342,34 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add-Infer`
 
 `Number` (NamedType):
+  at infer-constraint.wipple:14:21-14:27
   grouped with `left`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `Number` (NamedType):
+  at infer-constraint.wipple:14:28-14:34
   grouped with `right`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `Number` (NamedType):
+  at infer-constraint.wipple:14:35-14:41
   grouped with `(infer sum)`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `_` (PlaceholderExpression):
+  at infer-constraint.wipple:14:45-14:46
   grouped with `instance (Add-Infer Number Number Number)`
   has type `Number Number -> Number`
   is an expression
 
 `instance (Add-Infer String String String)` (InstanceDefinition):
+  at infer-constraint.wipple:15:1-15:42
   grouped with `left right -> sum`, `_`
   has definition constraints
   has type `String String -> String`
@@ -325,29 +377,34 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add-Infer`
 
 `String` (NamedType):
+  at infer-constraint.wipple:15:21-15:27
   grouped with `left`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `String` (NamedType):
+  at infer-constraint.wipple:15:28-15:34
   grouped with `right`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `String` (NamedType):
+  at infer-constraint.wipple:15:35-15:41
   grouped with `(infer sum)`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `_` (PlaceholderExpression):
+  at infer-constraint.wipple:15:45-15:46
   grouped with `instance (Add-Infer String String String)`
   has type `String String -> String`
   is an expression
 
 `add-infer` (ConstantDefinition):
+  at infer-constraint.wipple:17:1-17:10
   grouped with `left right -> sum`, `_`
   has bounds
   has definition constraints
@@ -356,6 +413,7 @@ Facts (layer 2):
   is a definition
 
 `left` (TypeParameter):
+  at infer-constraint.wipple:17:14-17:18
   grouped with `left`
   has type `left`
   is a definition
@@ -363,11 +421,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `left`
 
 `left right -> sum` (FunctionType):
+  at infer-constraint.wipple:17:14-17:31
   grouped with `add-infer`
   has type `left right -> sum`
   is a type
 
 `right` (TypeParameter):
+  at infer-constraint.wipple:17:19-17:24
   grouped with `right`
   has type `right`
   is a definition
@@ -375,6 +435,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `right`
 
 `sum` (TypeParameter):
+  at infer-constraint.wipple:17:28-17:31
   grouped with `sum`
   has type `sum`
   is a definition
@@ -382,6 +443,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `sum`
 
 `(Add-Infer left right sum)` (BoundConstraint):
+  at infer-constraint.wipple:17:38-17:64
   grouped with `left right -> sum`
   has bound(s) `Add-Infer` `left` `right` `sum` (resolved as `(Add-Infer left right sum)`)
   has type `left right -> sum`
@@ -389,6 +451,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add-Infer`
 
 `left` (TypeParameter):
+  at infer-constraint.wipple:17:49-17:53
   grouped with `left`, `left`
   has type `left`
   is a type
@@ -396,6 +459,7 @@ Facts (layer 2):
   resolved to type parameter `left`
 
 `right` (TypeParameter):
+  at infer-constraint.wipple:17:54-17:59
   grouped with `right`, `right`
   has type `right`
   is a type
@@ -403,6 +467,7 @@ Facts (layer 2):
   resolved to type parameter `right`
 
 `sum` (TypeParameter):
+  at infer-constraint.wipple:17:60-17:63
   grouped with `sum`, `(infer sum)`
   has type `sum`
   is a type
@@ -410,23 +475,28 @@ Facts (layer 2):
   resolved to type parameter `sum`
 
 `add-infer : _` (AssignmentStatement):
+  at infer-constraint.wipple:18:1-18:14
   has type `()`
 
 `_` (PlaceholderExpression):
+  at infer-constraint.wipple:18:13-18:14
   grouped with `add-infer`
   has type `left right -> sum`
   is an expression
 
 `output` (VariablePattern):
+  at infer-constraint.wipple:20:1-20:7
   grouped with `add-infer 1 2 :: String`, `add-infer 1 2 :: String`
   has type `String` or `Number`
   is a definition
   is a pattern
 
 `output : (add-infer 1 2 :: String)` (AssignmentStatement):
+  at infer-constraint.wipple:20:1-20:35
   has type `()`
 
 `add-infer` (VariableExpression):
+  at infer-constraint.wipple:20:11-20:20
   grouped with `left right -> sum`
   has bound(s) `Add-Infer` `Number` `Number` `(String or Number)` (resolved as `instance (Add-Infer Number Number Number)`)
   has type `Number Number -> String or Number`
@@ -434,21 +504,25 @@ Facts (layer 2):
   resolved to 1 definition(s): `add-infer`
 
 `add-infer 1 2` (CallExpression):
+  at infer-constraint.wipple:20:11-20:24
   grouped with `sum`, `String`
   has type `String` or `Number`
   is an expression
 
 `1` (NumberExpression):
+  at infer-constraint.wipple:20:21-20:22
   grouped with `1`, `left`
   has type `Number`
   is an expression
 
 `2` (NumberExpression):
+  at infer-constraint.wipple:20:23-20:24
   grouped with `2`, `right`
   has type `Number`
   is an expression
 
 `String` (NamedType):
+  at infer-constraint.wipple:20:28-20:34
   grouped with `add-infer 1 2`, `add-infer 1 2 :: String`
   has type `String` or `Number`
   is a type

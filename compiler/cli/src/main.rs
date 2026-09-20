@@ -95,7 +95,7 @@ struct CompileOptions {
     trace: bool,
 
     #[clap(long)]
-    source_map: bool,
+    mir: Option<PathBuf>,
 
     paths: Vec<PathBuf>,
 }
@@ -260,6 +260,10 @@ fn compile(options: &CompileOptions) -> anyhow::Result<Option<codegen::mir::Prog
             },
         },
     )?;
+
+    if let Some(mir_path) = &options.mir {
+        serde_json::to_writer_pretty(fs::File::create(mir_path)?, &mir)?;
+    }
 
     if let Some(path) = &options.lib_artifact {
         if path.extension().and_then(|ext| ext.to_str()) != Some("bin") {

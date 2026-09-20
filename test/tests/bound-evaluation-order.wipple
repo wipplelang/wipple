@@ -1,13 +1,13 @@
 T : value => trait (value -> ())
 
 instance (T Number) : do {
-  show "should appear second"
+  show "should appear first"
   _ -> ()
 }
 
 f :: value -> () where (T value)
 f : value -> do {
-  show "should appear first"
+  show "should appear second"
   T value
 }
 

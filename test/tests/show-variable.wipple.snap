@@ -1,33 +1,39 @@
 Facts (layer 2):
 
 `Cannot-Be-Shown` (TypeDefinition):
+  at show-variable.wipple:1:1-1:16
   grouped with `Cannot-Be-Shown`
   has definition constraints
   has type `Cannot-Be-Shown`
   is a definition
 
 `Cannot-Be-Shown` (TypeDefinition):
+  at show-variable.wipple:1:1-1:16
   grouped with `Cannot-Be-Shown`
   has definition constraints
   has type `Cannot-Be-Shown`
   is a definition
 
 `my-variable` (VariablePattern):
+  at show-variable.wipple:3:1-3:12
   grouped with `Cannot-Be-Shown`, `Cannot-Be-Shown`, `my-variable`
   has type `Cannot-Be-Shown`
   is a definition
   is a pattern
 
 `my-variable : Cannot-Be-Shown` (AssignmentStatement):
+  at show-variable.wipple:3:1-3:30
   has type `()`
 
 `Cannot-Be-Shown` (ConstructorExpression):
+  at show-variable.wipple:3:15-3:30
   grouped with `Cannot-Be-Shown`, `my-variable`, `my-variable`
   has type `Cannot-Be-Shown`
   is an expression
   resolved to 1 definition(s): `Cannot-Be-Shown`
 
 `show` (VariableExpression):
+  at show-variable.wipple:4:1-4:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Cannot-Be-Shown` (resolved as `default error instance (Describe value)`)
   has type `Cannot-Be-Shown -> ()`
@@ -35,15 +41,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show my-variable` (ExpressionStatement):
+  at show-variable.wipple:4:1-4:17
   grouped with `show my-variable`
   has type `()`
 
 `show my-variable` (CallExpression):
+  at show-variable.wipple:4:1-4:17
   grouped with `()`, `show my-variable`
   has type `()`
   is an expression
 
 `my-variable` (VariableExpression):
+  at show-variable.wipple:4:6-4:17
   grouped with `my-variable`, `value`
   has type `Cannot-Be-Shown`
   is an expression

@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  at too-many-inputs.wipple:1:1-1:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()` or `Number Number Number -> ()`
@@ -8,25 +9,30 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show 1 2 3` (ExpressionStatement):
+  at too-many-inputs.wipple:1:1-1:11
   grouped with `show 1 2 3`
   has type `()`
 
 `show 1 2 3` (CallExpression):
+  at too-many-inputs.wipple:1:1-1:11
   grouped with `()`, `show 1 2 3`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  at too-many-inputs.wipple:1:6-1:7
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `2` (NumberExpression):
+  at too-many-inputs.wipple:1:8-1:9
   grouped with `2`
   has type `Number`
   is an expression
 
 `3` (NumberExpression):
+  at too-many-inputs.wipple:1:10-1:11
   grouped with `3`
   has type `Number`
   is an expression

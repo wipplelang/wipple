@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `T` (TraitDefinition):
+  at bound-evaluation-order.wipple:1:1-1:2
   grouped with `value -> ()`
   has 1 instances
   has definition constraints
@@ -9,6 +10,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at bound-evaluation-order.wipple:1:5-1:10
   grouped with `value`
   has type `value`
   is a definition
@@ -16,6 +18,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at bound-evaluation-order.wipple:1:21-1:26
   grouped with `value`
   has type `value`
   is a type
@@ -23,15 +26,18 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `value -> ()` (FunctionType):
+  at bound-evaluation-order.wipple:1:21-1:32
   grouped with `T`
   has type `value -> ()`
   is a type
 
 `()` (UnitType):
+  at bound-evaluation-order.wipple:1:30-1:32
   has type `()`
   is a type
 
 `instance (T Number)` (InstanceDefinition):
+  at bound-evaluation-order.wipple:3:1-3:20
   grouped with `value -> ()`, `do {⋯}`
   has definition constraints
   has type `Number -> ()`
@@ -39,61 +45,73 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `Number` (NamedType):
+  at bound-evaluation-order.wipple:3:13-3:19
   grouped with `value`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `do {⋯}` (DoExpression):
+  at bound-evaluation-order.wipple:3:23-6:2
   grouped with `_ -> ()`, `instance (T Number)`
   has type `Number -> ()`
   is an expression
 
 `{⋯}` (BlockExpression):
+  at bound-evaluation-order.wipple:3:26-6:2
   has type `{Number -> ()}`
   is an expression
 
 `show` (VariableExpression):
+  at bound-evaluation-order.wipple:4:3-4:7
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
 
-`show "should appear second"` (ExpressionStatement):
-  grouped with `show "should appear second"`
+`show "should appear first"` (ExpressionStatement):
+  at bound-evaluation-order.wipple:4:3-4:29
+  grouped with `show "should appear first"`
   has type `()`
 
-`show "should appear second"` (CallExpression):
-  grouped with `()`, `show "should appear second"`
+`show "should appear first"` (CallExpression):
+  at bound-evaluation-order.wipple:4:3-4:29
+  grouped with `()`, `show "should appear first"`
   has type `()`
   is an expression
 
-`"should appear second"` (StringExpression):
-  grouped with `"should appear second"`, `value`
+`"should appear first"` (StringExpression):
+  at bound-evaluation-order.wipple:4:8-4:29
+  grouped with `"should appear first"`, `value`
   has type `String`
   is an expression
 
 `_` (WildcardPattern):
+  at bound-evaluation-order.wipple:5:3-5:4
   grouped with `value`
   has type `Number`
   is a pattern
 
 `_ -> ()` (ExpressionStatement):
+  at bound-evaluation-order.wipple:5:3-5:10
   grouped with `_ -> ()`, `do {⋯}`
   has type `Number -> ()`
 
 `_ -> ()` (FunctionExpression):
+  at bound-evaluation-order.wipple:5:3-5:10
   grouped with `_ -> ()`
   has type `Number -> ()`
   is an expression
 
 `()` (UnitExpression):
+  at bound-evaluation-order.wipple:5:8-5:10
   grouped with `()`
   has type `()`
   is an expression
 
 `f` (ConstantDefinition):
+  at bound-evaluation-order.wipple:8:1-8:2
   grouped with `value -> ()`, `value -> do {⋯}`
   has bounds
   has definition constraints
@@ -102,6 +120,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at bound-evaluation-order.wipple:8:6-8:11
   grouped with `value`, `value`
   has type `value`
   is a definition
@@ -109,16 +128,19 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value -> ()` (FunctionType):
+  at bound-evaluation-order.wipple:8:6-8:17
   grouped with `f`
   has type `value -> ()`
   is a type
 
 `()` (UnitType):
+  at bound-evaluation-order.wipple:8:15-8:17
   grouped with `do {⋯}`
   has type `()`
   is a type
 
 `(T value)` (BoundConstraint):
+  at bound-evaluation-order.wipple:8:24-8:33
   grouped with `value -> ()`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value -> ()`
@@ -126,6 +148,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
+  at bound-evaluation-order.wipple:8:27-8:32
   grouped with `value`, `value`, `value`
   has type `value`
   is a type
@@ -133,51 +156,62 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `f : value -> do {⋯}` (AssignmentStatement):
+  at bound-evaluation-order.wipple:9:1-12:2
   has type `()`
 
 `value` (VariablePattern):
+  at bound-evaluation-order.wipple:9:5-9:10
   grouped with `value`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `value -> do {⋯}` (FunctionExpression):
+  at bound-evaluation-order.wipple:9:5-12:2
+  captures `(T value)`
   grouped with `f`
   has type `value -> ()`
   is an expression
 
 `do {⋯}` (DoExpression):
+  at bound-evaluation-order.wipple:9:14-12:2
   grouped with `T value`, `()`
   has type `()`
   is an expression
 
 `{⋯}` (BlockExpression):
-  captures `value`
+  at bound-evaluation-order.wipple:9:17-12:2
+  captures `(T value)`, `value`
   has type `{()}`
   is an expression
 
 `show` (VariableExpression):
+  at bound-evaluation-order.wipple:10:3-10:7
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
 
-`show "should appear first"` (ExpressionStatement):
-  grouped with `show "should appear first"`
+`show "should appear second"` (ExpressionStatement):
+  at bound-evaluation-order.wipple:10:3-10:30
+  grouped with `show "should appear second"`
   has type `()`
 
-`show "should appear first"` (CallExpression):
-  grouped with `()`, `show "should appear first"`
+`show "should appear second"` (CallExpression):
+  at bound-evaluation-order.wipple:10:3-10:30
+  grouped with `()`, `show "should appear second"`
   has type `()`
   is an expression
 
-`"should appear first"` (StringExpression):
-  grouped with `"should appear first"`, `value`
+`"should appear second"` (StringExpression):
+  at bound-evaluation-order.wipple:10:8-10:30
+  grouped with `"should appear second"`, `value`
   has type `String`
   is an expression
 
 `T` (ConstructorExpression):
+  at bound-evaluation-order.wipple:11:3-11:4
   grouped with `value -> ()`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value -> ()`
@@ -185,21 +219,25 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `T value` (ExpressionStatement):
+  at bound-evaluation-order.wipple:11:3-11:10
   grouped with `T value`, `do {⋯}`
   has type `()`
 
 `T value` (CallExpression):
+  at bound-evaluation-order.wipple:11:3-11:10
   grouped with `()`, `T value`
   has type `()`
   is an expression
 
 `value` (VariableExpression):
+  at bound-evaluation-order.wipple:11:5-11:10
   grouped with `value`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `value`
 
 `f` (VariableExpression):
+  at bound-evaluation-order.wipple:14:1-14:2
   grouped with `value -> ()`
   has bound(s) `T` `Number` (resolved as `instance (T Number)`)
   has type `Number -> ()`
@@ -207,15 +245,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `f`
 
 `f 123` (ExpressionStatement):
+  at bound-evaluation-order.wipple:14:1-14:6
   grouped with `f 123`
   has type `()`
 
 `f 123` (CallExpression):
+  at bound-evaluation-order.wipple:14:1-14:6
   grouped with `()`, `f 123`
   has type `()`
   is an expression
 
 `123` (NumberExpression):
+  at bound-evaluation-order.wipple:14:3-14:6
   grouped with `123`, `value`
   has type `Number`
   is an expression

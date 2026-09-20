@@ -1,35 +1,42 @@
 Facts (layer 2):
 
 `my-list` (VariablePattern):
+  at lists.wipple:1:1-1:8
   grouped with `1, 2, 3`, `1, 2, 3`, `my-list`, `my-list`, `my-list`, `my-list`, `my-list`
   has type `List Number`
   is a definition
   is a pattern
 
 `my-list : 1, 2, 3` (AssignmentStatement):
+  at lists.wipple:1:1-1:18
   has type `()`
 
 `1` (VisitAs):
+  at lists.wipple:1:11-1:12
   grouped with `1`, `element`
   has type `Number`
   is an expression
 
 `1, 2, 3` (CollectionExpression):
+  at lists.wipple:1:11-1:18
   grouped with `3`, `my-list`, `my-list`
   has type `List Number`
   is an expression
 
 `2` (VisitAs):
+  at lists.wipple:1:14-1:15
   grouped with `2`, `element`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
+  at lists.wipple:1:17-1:18
   grouped with `3`, `element`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at lists.wipple:3:1-3:5
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe Number) -> ()`
@@ -37,37 +44,44 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (my-list . first)` (ExpressionStatement):
+  at lists.wipple:3:1-3:23
   grouped with `show (my-list . first)`
   has type `()`
 
 `show (my-list . first)` (CallExpression):
+  at lists.wipple:3:1-3:23
   grouped with `()`, `show (my-list . first)`
   has type `()`
   is an expression
 
 `my-list` (VisitAs):
+  at lists.wipple:3:7-3:14
   grouped with `list :: (List element)`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
 
 `my-list . first` (OperatorExpression):
+  at lists.wipple:3:7-3:22
   grouped with `first`, `value`
   has type `Maybe Number`
   is an expression
 
 `first` (CallExpression):
+  at lists.wipple:3:17-3:22
   grouped with `Maybe element`, `my-list . first`
   has type `Maybe Number`
   is an expression
 
 `first` (VisitAs):
+  at lists.wipple:3:17-3:22
   grouped with `(list :: (List element)) -> Maybe element`
   has type `(List Number) -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `first`
 
 `show` (VariableExpression):
+  at lists.wipple:4:1-4:5
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe Number) -> ()`
@@ -75,37 +89,44 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (my-list . last)` (ExpressionStatement):
+  at lists.wipple:4:1-4:22
   grouped with `show (my-list . last)`
   has type `()`
 
 `show (my-list . last)` (CallExpression):
+  at lists.wipple:4:1-4:22
   grouped with `()`, `show (my-list . last)`
   has type `()`
   is an expression
 
 `my-list` (VisitAs):
+  at lists.wipple:4:7-4:14
   grouped with `list :: (List element)`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
 
 `my-list . last` (OperatorExpression):
+  at lists.wipple:4:7-4:21
   grouped with `last`, `value`
   has type `Maybe Number`
   is an expression
 
 `last` (CallExpression):
+  at lists.wipple:4:17-4:21
   grouped with `Maybe element`, `my-list . last`
   has type `Maybe Number`
   is an expression
 
 `last` (VisitAs):
+  at lists.wipple:4:17-4:21
   grouped with `(list :: (List element)) -> Maybe element`
   has type `(List Number) -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `last`
 
 `show` (VariableExpression):
+  at lists.wipple:5:1-5:5
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe Number) -> ()`
@@ -113,36 +134,43 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show ((my-list . initial) or unreachable . last)` (ExpressionStatement):
+  at lists.wipple:5:1-5:49
   grouped with `show ((my-list . initial) or unreachable . last)`
   has type `()`
 
 `show ((my-list . initial) or unreachable . last)` (CallExpression):
+  at lists.wipple:5:1-5:49
   grouped with `()`, `show ((my-list . initial) or unreachable . last)`
   has type `()`
   is an expression
 
 `my-list` (VisitAs):
+  at lists.wipple:5:8-5:15
   grouped with `list :: (List element)`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
 
 `my-list . initial` (VisitAs):
+  at lists.wipple:5:8-5:25
   grouped with `initial`, `left`
   has type `Maybe (List Number)`
   is an expression
 
 `my-list . initial) or unreachable` (VisitAs):
+  at lists.wipple:5:8-5:41
   grouped with `list :: (List element)`, `my-list . initial) or unreachable`
   has type `List Number`
   is an expression
 
 `my-list . initial) or unreachable` (CallExpression):
+  at lists.wipple:5:8-5:41
   grouped with `output`, `my-list . initial) or unreachable`
   has type `List Number`
   is an expression
 
 `my-list . initial) or unreachable` (ConstructorExpression):
+  at lists.wipple:5:8-5:41
   grouped with `left {right} -> output`
   has bound(s) `Or` `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)`)
   has type `(Maybe (List Number)) {List Number} -> List Number`
@@ -150,48 +178,57 @@ Facts (layer 2):
   resolved to 1 definition(s): `Or`
 
 `my-list . initial) or unreachable . last` (OperatorExpression):
+  at lists.wipple:5:8-5:48
   grouped with `last`, `value`
   has type `Maybe Number`
   is an expression
 
 `initial` (CallExpression):
+  at lists.wipple:5:18-5:25
   grouped with `Maybe (List element)`, `my-list . initial`
   has type `Maybe (List Number)`
   is an expression
 
 `initial` (VisitAs):
+  at lists.wipple:5:18-5:25
   grouped with `(list :: (List element)) -> Maybe (List element)`
   has type `(List Number) -> Maybe (List Number)`
   is an expression
   resolved to 1 definition(s): `initial`
 
 `unreachable` (VisitAs):
+  at lists.wipple:5:30-5:41
   grouped with `value`, `value`, `unreachable`, `unreachable`, `right`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `unreachable`
 
 `unreachable` (VisitAs):
+  at lists.wipple:5:30-5:41
   grouped with `{right}`
   has type `{List Number}`
   is an expression
 
 `unreachable` (ExpressionStatement):
+  at lists.wipple:5:30-5:41
   grouped with `unreachable`, `unreachable`
   has type `List Number`
 
 `last` (CallExpression):
+  at lists.wipple:5:44-5:48
   grouped with `Maybe element`, `my-list . initial) or unreachable . last`
   has type `Maybe Number`
   is an expression
 
 `last` (VisitAs):
+  at lists.wipple:5:44-5:48
   grouped with `(list :: (List element)) -> Maybe element`
   has type `(List Number) -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `last`
 
 `show` (VariableExpression):
+  at lists.wipple:6:1-6:5
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe Number) -> ()`
@@ -199,36 +236,43 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show ((my-list . tail) or unreachable . first)` (ExpressionStatement):
+  at lists.wipple:6:1-6:47
   grouped with `show ((my-list . tail) or unreachable . first)`
   has type `()`
 
 `show ((my-list . tail) or unreachable . first)` (CallExpression):
+  at lists.wipple:6:1-6:47
   grouped with `()`, `show ((my-list . tail) or unreachable . first)`
   has type `()`
   is an expression
 
 `my-list` (VisitAs):
+  at lists.wipple:6:8-6:15
   grouped with `list :: (List element)`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
 
 `my-list . tail` (VisitAs):
+  at lists.wipple:6:8-6:22
   grouped with `tail`, `left`
   has type `Maybe (List Number)`
   is an expression
 
 `my-list . tail) or unreachable` (VisitAs):
+  at lists.wipple:6:8-6:38
   grouped with `list :: (List element)`, `my-list . tail) or unreachable`
   has type `List Number`
   is an expression
 
 `my-list . tail) or unreachable` (CallExpression):
+  at lists.wipple:6:8-6:38
   grouped with `output`, `my-list . tail) or unreachable`
   has type `List Number`
   is an expression
 
 `my-list . tail) or unreachable` (ConstructorExpression):
+  at lists.wipple:6:8-6:38
   grouped with `left {right} -> output`
   has bound(s) `Or` `(Maybe (List Number))` `(List Number)` `(List Number)` (resolved as `instance (Or (Maybe value) value value)`)
   has type `(Maybe (List Number)) {List Number} -> List Number`
@@ -236,48 +280,57 @@ Facts (layer 2):
   resolved to 1 definition(s): `Or`
 
 `my-list . tail) or unreachable . first` (OperatorExpression):
+  at lists.wipple:6:8-6:46
   grouped with `first`, `value`
   has type `Maybe Number`
   is an expression
 
 `tail` (CallExpression):
+  at lists.wipple:6:18-6:22
   grouped with `Maybe (List element)`, `my-list . tail`
   has type `Maybe (List Number)`
   is an expression
 
 `tail` (VisitAs):
+  at lists.wipple:6:18-6:22
   grouped with `(list :: (List element)) -> Maybe (List element)`
   has type `(List Number) -> Maybe (List Number)`
   is an expression
   resolved to 1 definition(s): `tail`
 
 `unreachable` (VisitAs):
+  at lists.wipple:6:27-6:38
   grouped with `value`, `value`, `unreachable`, `unreachable`, `right`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `unreachable`
 
 `unreachable` (VisitAs):
+  at lists.wipple:6:27-6:38
   grouped with `{right}`
   has type `{List Number}`
   is an expression
 
 `unreachable` (ExpressionStatement):
+  at lists.wipple:6:27-6:38
   grouped with `unreachable`, `unreachable`
   has type `List Number`
 
 `first` (CallExpression):
+  at lists.wipple:6:41-6:46
   grouped with `Maybe element`, `my-list . tail) or unreachable . first`
   has type `Maybe Number`
   is an expression
 
 `first` (VisitAs):
+  at lists.wipple:6:41-6:46
   grouped with `(list :: (List element)) -> Maybe element`
   has type `(List Number) -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `first`
 
 `show` (VariableExpression):
+  at lists.wipple:7:1-7:5
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe Number) -> ()`
@@ -285,42 +338,50 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (my-list . nth 1)` (ExpressionStatement):
+  at lists.wipple:7:1-7:23
   grouped with `show (my-list . nth 1)`
   has type `()`
 
 `show (my-list . nth 1)` (CallExpression):
+  at lists.wipple:7:1-7:23
   grouped with `()`, `show (my-list . nth 1)`
   has type `()`
   is an expression
 
 `my-list` (VisitAs):
+  at lists.wipple:7:7-7:14
   grouped with `list :: (List element)`, `my-list`, `list :: (List element)`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
 
 `my-list . nth 1` (OperatorExpression):
+  at lists.wipple:7:7-7:22
   grouped with `nth 1`, `value`
   has type `Maybe Number`
   is an expression
 
 `nth` (VariableExpression):
+  at lists.wipple:7:17-7:20
   grouped with `Number -> (list :: (List element)) -> Maybe element`
   has type `Number -> (List Number) -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `nth`
 
 `nth 1` (CallExpression):
+  at lists.wipple:7:17-7:22
   grouped with `Maybe element`, `Maybe element`, `my-list . nth 1`
   has type `Maybe Number`
   is an expression
 
 `nth 1` (VisitAs):
+  at lists.wipple:7:17-7:22
   grouped with `(list :: (List element)) -> Maybe element`
   has type `(List Number) -> Maybe Number`
   is an expression
 
 `1` (NumberExpression):
+  at lists.wipple:7:21-7:22
   grouped with `1`, `Number`
   has type `Number`
   is an expression

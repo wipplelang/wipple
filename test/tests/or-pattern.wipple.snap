@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  at or-pattern.wipple:1:1-1:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -8,60 +9,72 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (when 3 {⋯})` (ExpressionStatement):
+  at or-pattern.wipple:1:1-5:3
   grouped with `show (when 3 {⋯})`
   has type `()`
 
 `show (when 3 {⋯})` (CallExpression):
+  at or-pattern.wipple:1:1-5:3
   grouped with `()`, `show (when 3 {⋯})`
   has type `()`
   is an expression
 
 `when 3 {⋯}` (WhenExpression):
+  at or-pattern.wipple:1:7-5:2
   grouped with `"oh no"`, `"yay"`, `"uh oh"`, `value`
   has type `String`
   is an expression
 
 `3` (NumberExpression):
+  at or-pattern.wipple:1:12-1:13
   grouped with `3`, `1`, `2 or 3`, `2`, `3`, `_`
   has type `Number`
   is an expression
 
 `1` (NumberPattern):
+  at or-pattern.wipple:2:3-2:4
   grouped with `3`, `1`, `1`
   has type `Number`
   is a pattern
 
 `"oh no"` (StringExpression):
+  at or-pattern.wipple:2:8-2:15
   grouped with `"oh no"`, `when 3 {⋯}`
   has type `String`
   is an expression
 
 `2` (NumberPattern):
+  at or-pattern.wipple:3:4-3:5
   grouped with `3`, `2`, `2`, `2 or 3`
   has type `Number`
   is a pattern
 
 `2 or 3` (OrPattern):
+  at or-pattern.wipple:3:4-3:10
   grouped with `3`, `2`, `3`
   has type `Number`
   is a pattern
 
 `3` (NumberPattern):
+  at or-pattern.wipple:3:9-3:10
   grouped with `3`, `3`, `3`, `2 or 3`
   has type `Number`
   is a pattern
 
 `"yay"` (StringExpression):
+  at or-pattern.wipple:3:15-3:20
   grouped with `"yay"`, `when 3 {⋯}`
   has type `String`
   is an expression
 
 `_` (WildcardPattern):
+  at or-pattern.wipple:4:3-4:4
   grouped with `3`
   has type `Number`
   is a pattern
 
 `"uh oh"` (StringExpression):
+  at or-pattern.wipple:4:8-4:15
   grouped with `"uh oh"`, `when 3 {⋯}`
   has type `String`
   is an expression

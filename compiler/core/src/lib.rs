@@ -15,21 +15,22 @@ pub use anyhow;
 use crate::{
     ast::AstKey,
     db::{Db, Node},
-    facts::Syntax,
+    facts::{Parent, Syntax},
     span::Str,
     typecheck::{
-        bounds::{Instance, Instances},
+        bounds::{Instance, Instances, ResolvedBounds},
         constraints::bound_constraint::{BoundConstraint, IsBound},
         groups::Typed,
         solver::{Solver, Substitutions},
     },
     visit::{
-        DefinitionConstraints, VisitUtilities, Visitor, definitions::Definition,
+        Captures, DefinitionConstraints, VisitUtilities, Visitor,
+        definitions::{Defined, Definition},
         exhaustiveness::check_exhaustiveness,
     },
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, mem, ops::ControlFlow};
+use std::{collections::BTreeMap, iter, mem, ops::ControlFlow};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LibraryArtifact<T> {
@@ -142,7 +143,7 @@ pub fn compile<'a>(
         solver.constraints.extend_back(definition_constraints);
         solver.run(db);
 
-        set_groups(db, solver);
+        apply_solver(db, solver);
     }
 
     // Solve constraints from top-level expressions
@@ -157,7 +158,7 @@ pub fn compile<'a>(
     );
 
     solver.run(db);
-    set_groups(db, solver);
+    apply_solver(db, solver);
 
     // Run checks
 
@@ -167,9 +168,9 @@ pub fn compile<'a>(
     (root_node, source_files, visited.top_level_statements)
 }
 
-pub fn set_groups(db: &mut Db, solver: Solver) {
+pub fn apply_solver(db: &mut Db, solver: Solver) {
+    // Add the solved groups to typed nodes
     let groups = solver.into_groups(db);
-
     for group in groups {
         let mut nodes = Vec::new();
         for node in group.nodes() {
@@ -187,4 +188,27 @@ pub fn set_groups(db: &mut Db, solver: Solver) {
             db.graph.group(nodes, group.tys().cloned().collect());
         }
     }
+
+    // Capture bounds referenced in closures
+    db.for_each_fact_mut(&mut |db, source_node, ResolvedBounds(bounds)| {
+        let ancestors = iter::successors(Some(source_node), |node| {
+            db.get(*node).map(|Parent(parent)| *parent)
+        })
+        .skip(1) // only capture in parent expressions
+        .collect::<Vec<_>>();
+
+        for node in ancestors {
+            if db.get::<Defined>(node).is_some() {
+                break;
+            }
+
+            if let Some(Captures(captures)) = db.get_mut(node) {
+                for resolved in bounds.values_mut().flatten() {
+                    if resolved.instance.is_from_bound {
+                        captures.insert(resolved.instance.node);
+                    }
+                }
+            }
+        }
+    });
 }

@@ -1,50 +1,60 @@
 Facts (layer 2):
 
 `my-list` (VariablePattern):
+  at list-mismatched-elements.wipple:1:1-1:8
   grouped with `1, "hi", ()`, `1, "hi", ()`, `my-list`
   has type `List (String or () or Number)`
   is a definition
   is a pattern
 
 `my-list : 1, "hi", ()` (AssignmentStatement):
+  at list-mismatched-elements.wipple:1:1-1:22
   has type `()`
 
 `1` (VisitAs):
+  at list-mismatched-elements.wipple:1:11-1:12
   grouped with `1`, `element`
   has type `String` or `()` or `Number`
   is an expression
 
 `1, "hi", ()` (CollectionExpression):
+  at list-mismatched-elements.wipple:1:11-1:22
   grouped with `()`, `my-list`, `my-list`
   has type `List (String or () or Number)`
   is an expression
 
 `"hi"` (VisitAs):
+  at list-mismatched-elements.wipple:1:14-1:18
   grouped with `"hi"`, `element`
   has type `String` or `()` or `Number`
   is an expression
 
 `()` (VisitAs):
+  at list-mismatched-elements.wipple:1:20-1:22
   grouped with `element`
   has type `String` or `()` or `Number`
   is an expression
 
 `my-list` (VisitAs):
+  at list-mismatched-elements.wipple:2:1-2:8
   grouped with `container`, `my-list`, `container`
   has type `List (String or () or Number)`
   is an expression
   resolved to 1 definition(s): `my-list`
 
 `my-list . each show` (ExpressionStatement):
+  at list-mismatched-elements.wipple:2:1-2:20
   grouped with `my-list . each show`
   has type `()`
 
 `my-list . each show` (OperatorExpression):
+  at list-mismatched-elements.wipple:2:1-2:20
   grouped with `each show`, `my-list . each show`
   has type `()`
   is an expression
 
 `each` (VariableExpression):
+  at list-mismatched-elements.wipple:2:11-2:15
   grouped with `(action :: (element -> ())) -> container -> ()`
   has bound(s) `As-Sequence` `(List (String or () or Number))` `(String or () or Number)` (resolved as `instance (As-Sequence (List element) element)`)
   has type `((String or () or Number) -> ()) -> (List (String or () or Number)) -> ()`
@@ -52,16 +62,19 @@ Facts (layer 2):
   resolved to 1 definition(s): `each`
 
 `each show` (CallExpression):
+  at list-mismatched-elements.wipple:2:11-2:20
   grouped with `()`, `()`, `my-list . each show`
   has type `()`
   is an expression
 
 `each show` (VisitAs):
+  at list-mismatched-elements.wipple:2:11-2:20
   grouped with `container -> ()`
   has type `(List (String or () or Number)) -> ()`
   is an expression
 
 `show` (VariableExpression):
+  at list-mismatched-elements.wipple:2:16-2:20
   grouped with `value -> ()`, `action :: (element -> ())`
   has bound(s) `Describe` `(String or () or Number)` (resolved as `instance (Describe Number)`)
   has type `(String or () or Number) -> ()`

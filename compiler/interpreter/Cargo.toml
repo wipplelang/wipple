@@ -7,7 +7,6 @@ edition = "2024"
 workspace = true
 
 [dependencies]
-anyhow = "1"
 rand = "0.10"
 unicode-segmentation = "1"
 wipple-core = { path = "../core" }

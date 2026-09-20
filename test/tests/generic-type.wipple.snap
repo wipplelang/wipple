@@ -1,17 +1,20 @@
 Facts (layer 2):
 
 `Foo` (TypeDefinition):
+  at generic-type.wipple:1:1-1:4
   has definition constraints
   has type `Foo value`
   has type parameters
   is a definition
 
 `Foo` (TypeDefinition):
+  at generic-type.wipple:1:1-1:4
   has definition constraints
   has type `value -> Foo value`
   is a definition
 
 `value` (TypeParameter):
+  at generic-type.wipple:1:7-1:12
   grouped with `value`
   has type `value`
   is a definition
@@ -19,6 +22,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at generic-type.wipple:1:21-1:26
   grouped with `value`
   has type `value`
   is a type
@@ -26,51 +30,61 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `foo` (VariablePattern):
+  at generic-type.wipple:3:1-3:4
   grouped with `Foo "Hello, world!"`, `Foo "Hello, world!"`, `foo`
   has type `Foo String`
   is a definition
   is a pattern
 
 `foo : Foo "Hello, world!"` (AssignmentStatement):
+  at generic-type.wipple:3:1-3:26
   has type `()`
 
 `Foo` (ConstructorExpression):
+  at generic-type.wipple:3:7-3:10
   has type `String -> Foo String`
   is an expression
   resolved to 1 definition(s): `Foo`
 
 `Foo "Hello, world!"` (CallExpression):
+  at generic-type.wipple:3:7-3:26
   grouped with `Foo`, `foo`, `foo`
   has type `Foo String`
   is an expression
 
 `"Hello, world!"` (StringExpression):
+  at generic-type.wipple:3:11-3:26
   grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression
 
 `Foo inner` (ConstructorPattern):
+  at generic-type.wipple:5:1-5:10
   grouped with `foo`, `Foo`, `foo`
   has type `Foo String`
   is a pattern
   resolved to 1 definition(s): `Foo`
 
 `Foo inner : foo` (AssignmentStatement):
+  at generic-type.wipple:5:1-5:16
   has type `()`
 
 `inner` (VariablePattern):
+  at generic-type.wipple:5:5-5:10
   grouped with `_`, `inner`
   has type `String`
   is a definition
   is a pattern
 
 `foo` (VariableExpression):
+  at generic-type.wipple:5:13-5:16
   grouped with `foo`, `Foo inner`, `Foo inner`
   has type `Foo String`
   is an expression
   resolved to 1 definition(s): `foo`
 
 `show` (VariableExpression):
+  at generic-type.wipple:6:1-6:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -78,15 +92,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show inner` (ExpressionStatement):
+  at generic-type.wipple:6:1-6:11
   grouped with `show inner`
   has type `()`
 
 `show inner` (CallExpression):
+  at generic-type.wipple:6:1-6:11
   grouped with `()`, `show inner`
   has type `()`
   is an expression
 
 `inner` (VariableExpression):
+  at generic-type.wipple:6:6-6:11
   grouped with `inner`, `value`
   has type `String`
   is an expression

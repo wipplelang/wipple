@@ -66,6 +66,7 @@ impl Render for ResolvedBounds {
 pub struct ResolvedBound {
     pub instance: Instance,
     pub instance_parameters: BTreeMap<Node, Ty>,
+    pub temporary: Node,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

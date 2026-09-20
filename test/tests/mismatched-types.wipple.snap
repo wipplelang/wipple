@@ -1,15 +1,18 @@
 Facts (layer 2):
 
 `(42 :: String)` (ExpressionStatement):
+  at mismatched-types.wipple:1:1-1:15
   grouped with `42 :: String`
   has type `Number` or `String`
 
 `42` (NumberExpression):
+  at mismatched-types.wipple:1:2-1:4
   grouped with `42`, `String`
   has type `Number` or `String`
   is an expression
 
 `String` (NamedType):
+  at mismatched-types.wipple:1:8-1:14
   grouped with `42`, `42 :: String`
   has type `Number` or `String`
   is a type

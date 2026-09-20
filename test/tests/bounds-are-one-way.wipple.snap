@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `T` (TraitDefinition):
+  at bounds-are-one-way.wipple:1:1-1:2
   grouped with `value`
   has definition constraints
   has type `value`
@@ -8,6 +9,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at bounds-are-one-way.wipple:1:5-1:10
   grouped with `value`
   has type `value`
   is a definition
@@ -15,6 +17,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at bounds-are-one-way.wipple:1:20-1:25
   grouped with `value`, `T`
   has type `value`
   is a type
@@ -22,6 +25,7 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `f` (ConstantDefinition):
+  at bounds-are-one-way.wipple:3:1-3:2
   grouped with `Number`, `T`
   has bounds
   has definition constraints
@@ -30,12 +34,14 @@ Facts (layer 2):
   is a definition
 
 `Number` (NamedType):
+  at bounds-are-one-way.wipple:3:6-3:12
   grouped with `f`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `(T value)` (BoundConstraint):
+  at bounds-are-one-way.wipple:3:19-3:28
   grouped with `value`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value`
@@ -43,6 +49,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
+  at bounds-are-one-way.wipple:3:22-3:27
   grouped with `value`, `value`
   has type `value`
   is a definition
@@ -50,9 +57,11 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `f : T` (AssignmentStatement):
+  at bounds-are-one-way.wipple:4:1-4:6
   has type `()`
 
 `T` (ConstructorExpression):
+  at bounds-are-one-way.wipple:4:5-4:6
   grouped with `value`, `f`
   has bound(s) `T` `Number` (unresolved)
   has type `Number`

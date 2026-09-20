@@ -1,16 +1,19 @@
 Facts (layer 2):
 
 `Number` (TypeDefinition):
+  at nested-bounds.wipple:1:13-1:19
   has definition constraints
   has type `Number`
   is a definition
 
 `String` (TypeDefinition):
+  at nested-bounds.wipple:2:13-2:19
   has definition constraints
   has type `String`
   is a definition
 
 `A` (TraitDefinition):
+  at nested-bounds.wipple:4:1-4:2
   grouped with `value -> ()`
   has 2 instances
   has definition constraints
@@ -19,6 +22,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at nested-bounds.wipple:4:5-4:10
   grouped with `value`
   has type `value`
   is a definition
@@ -26,6 +30,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at nested-bounds.wipple:4:21-4:26
   grouped with `value`
   has type `value`
   is a type
@@ -33,15 +38,18 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `value -> ()` (FunctionType):
+  at nested-bounds.wipple:4:21-4:32
   grouped with `A`
   has type `value -> ()`
   is a type
 
 `()` (UnitType):
+  at nested-bounds.wipple:4:30-4:32
   has type `()`
   is a type
 
 `instance (A Number)` (InstanceDefinition):
+  at nested-bounds.wipple:5:1-5:20
   grouped with `value -> ()`, `_`
   has definition constraints
   has type `Number -> ()`
@@ -49,17 +57,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `A`
 
 `Number` (NamedType):
+  at nested-bounds.wipple:5:13-5:19
   grouped with `value`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `_` (PlaceholderExpression):
+  at nested-bounds.wipple:5:23-5:24
   grouped with `instance (A Number)`
   has type `Number -> ()`
   is an expression
 
 `instance (A String)` (InstanceDefinition):
+  at nested-bounds.wipple:6:1-6:20
   grouped with `value -> ()`, `_`
   has definition constraints
   has type `String -> ()`
@@ -67,17 +78,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `A`
 
 `String` (NamedType):
+  at nested-bounds.wipple:6:13-6:19
   grouped with `value`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `_` (PlaceholderExpression):
+  at nested-bounds.wipple:6:23-6:24
   grouped with `instance (A String)`
   has type `String -> ()`
   is an expression
 
 `B` (TraitDefinition):
+  at nested-bounds.wipple:8:1-8:2
   grouped with `value -> ()`
   has 1 instances
   has definition constraints
@@ -86,6 +100,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at nested-bounds.wipple:8:5-8:10
   grouped with `value`
   has type `value`
   is a definition
@@ -93,6 +108,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at nested-bounds.wipple:8:21-8:26
   grouped with `value`
   has type `value`
   is a type
@@ -100,15 +116,18 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `value -> ()` (FunctionType):
+  at nested-bounds.wipple:8:21-8:32
   grouped with `B`
   has type `value -> ()`
   is a type
 
 `()` (UnitType):
+  at nested-bounds.wipple:8:30-8:32
   has type `()`
   is a type
 
 `instance (B value) where (A value)` (InstanceDefinition):
+  at nested-bounds.wipple:9:1-9:35
   grouped with `value -> ()`, `_`
   has bounds
   has definition constraints
@@ -118,6 +137,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `B`
 
 `value` (TypeParameter):
+  at nested-bounds.wipple:9:13-9:18
   grouped with `value`, `value`
   has type `value`
   is a definition
@@ -125,6 +145,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `(A value)` (BoundConstraint):
+  at nested-bounds.wipple:9:26-9:35
   grouped with `value -> ()`
   has bound(s) `A` `value` (resolved as `(A value)`)
   has type `value -> ()`
@@ -132,6 +153,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `A`
 
 `value` (TypeParameter):
+  at nested-bounds.wipple:9:29-9:34
   grouped with `value`, `value`
   has type `value`
   is a type
@@ -139,11 +161,13 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `_` (PlaceholderExpression):
+  at nested-bounds.wipple:9:38-9:39
   grouped with `instance (B value) where (A value)`
   has type `value -> ()`
   is an expression
 
 `B` (ConstructorExpression):
+  at nested-bounds.wipple:11:1-11:2
   grouped with `value -> ()`
   has bound(s) `B` `Number` (resolved as `instance (B value) where (A value)`), `A` `Number` (resolved as `instance (A Number)`)
   has type `Number -> ()`
@@ -151,20 +175,24 @@ Facts (layer 2):
   resolved to 1 definition(s): `B`
 
 `B 123` (ExpressionStatement):
+  at nested-bounds.wipple:11:1-11:6
   grouped with `B 123`
   has type `()`
 
 `B 123` (CallExpression):
+  at nested-bounds.wipple:11:1-11:6
   grouped with `()`, `B 123`
   has type `()`
   is an expression
 
 `123` (NumberExpression):
+  at nested-bounds.wipple:11:3-11:6
   grouped with `123`, `value`
   has type `Number`
   is an expression
 
 `B` (ConstructorExpression):
+  at nested-bounds.wipple:12:1-12:2
   grouped with `value -> ()`
   has bound(s) `B` `String` (resolved as `instance (B value) where (A value)`), `A` `String` (resolved as `instance (A String)`)
   has type `String -> ()`
@@ -172,20 +200,24 @@ Facts (layer 2):
   resolved to 1 definition(s): `B`
 
 `B "abc"` (ExpressionStatement):
+  at nested-bounds.wipple:12:1-12:8
   grouped with `B "abc"`
   has type `()`
 
 `B "abc"` (CallExpression):
+  at nested-bounds.wipple:12:1-12:8
   grouped with `()`, `B "abc"`
   has type `()`
   is an expression
 
 `"abc"` (StringExpression):
+  at nested-bounds.wipple:12:3-12:8
   grouped with `"abc"`, `value`
   has type `String`
   is an expression
 
 `B` (ConstructorExpression):
+  at nested-bounds.wipple:13:1-13:2
   grouped with `value -> ()`
   has bound(s) `B` `()` (resolved as `instance (B value) where (A value)`), `A` `()` (unresolved)
   has type `() -> ()`
@@ -193,15 +225,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `B`
 
 `B ()` (ExpressionStatement):
+  at nested-bounds.wipple:13:1-13:5
   grouped with `B ()`
   has type `()`
 
 `B ()` (CallExpression):
+  at nested-bounds.wipple:13:1-13:5
   grouped with `()`, `B ()`
   has type `()`
   is an expression
 
 `()` (UnitExpression):
+  at nested-bounds.wipple:13:3-13:5
   grouped with `value`
   has type `()`
   is an expression

@@ -442,6 +442,31 @@ impl Db {
         None
     }
 
+    pub fn for_each_fact_mut<T: Fact>(&mut self, f: &mut dyn FnMut(&mut Self, Node, &mut T)) {
+        let nodes = self
+            .cache
+            .get(&TypeId::of::<T>())
+            .cloned()
+            .unwrap_or_default();
+
+        for node in nodes {
+            let Some(info) = self.info_mut(node) else {
+                continue;
+            };
+
+            let mut fact = info.facts.0.remove(&TypeId::of::<T>()).unwrap();
+
+            f(self, node, fact.downcast_mut::<T>().unwrap());
+
+            self.info_mut(node)
+                .as_mut()
+                .unwrap()
+                .facts
+                .0
+                .insert(TypeId::of::<T>(), fact);
+        }
+    }
+
     pub fn owned_nodes(&self) -> impl Iterator<Item = Node> {
         self.owned_nodes_with_info_since(0).map(|(node, _)| node)
     }

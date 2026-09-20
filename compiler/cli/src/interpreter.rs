@@ -1,7 +1,7 @@
 use std::io;
 use wipple_interpreter::Interpreter;
 
-pub fn create_interpreter<'a>(mut out: impl io::Write + 'a) -> Interpreter<'a, ()> {
+pub fn create_interpreter<'a>(mut out: impl io::Write + 'a) -> Interpreter<'a, (), anyhow::Error> {
     Interpreter::new(move |name, input| {
         use wipple_interpreter::{Handle, Primitive};
 

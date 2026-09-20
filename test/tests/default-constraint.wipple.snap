@@ -1,40 +1,47 @@
 Facts (layer 2):
 
 `Number` (TypeDefinition):
+  at default-constraint.wipple:1:13-1:19
   has definition constraints
   has type `Number`
   is a definition
 
 `String` (TypeDefinition):
+  at default-constraint.wipple:2:13-2:19
   has definition constraints
   has type `String`
   is a definition
 
 `List` (TypeDefinition):
+  at default-constraint.wipple:3:13-3:17
   has definition constraints
   has type `List element`
   has type parameters
   is a definition
 
 `element` (TypeParameter):
+  at default-constraint.wipple:3:20-3:27
   has type `element`
   is a definition
   is a type
   resolved to 1 definition(s): `element`
 
 `Set` (TypeDefinition):
+  at default-constraint.wipple:4:13-4:16
   has definition constraints
   has type `Set element`
   has type parameters
   is a definition
 
 `element` (TypeParameter):
+  at default-constraint.wipple:4:19-4:26
   has type `element`
   is a definition
   is a type
   resolved to 1 definition(s): `element`
 
 `Collect` (TraitDefinition):
+  at default-constraint.wipple:6:1-6:8
   grouped with `element -> collection`
   has 2 instances
   has definition constraints
@@ -43,6 +50,7 @@ Facts (layer 2):
   is a definition
 
 `element` (TypeParameter):
+  at default-constraint.wipple:6:11-6:18
   grouped with `element`
   has type `element`
   is a definition
@@ -50,6 +58,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `element`
 
 `collection` (TypeParameter):
+  at default-constraint.wipple:6:19-6:29
   grouped with `collection`
   has type `collection`
   is a definition
@@ -57,6 +66,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `collection`
 
 `element` (TypeParameter):
+  at default-constraint.wipple:6:40-6:47
   grouped with `element`
   has type `element`
   is a type
@@ -64,11 +74,13 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `element -> collection` (FunctionType):
+  at default-constraint.wipple:6:40-6:61
   grouped with `Collect`
   has type `element -> collection`
   is a type
 
 `collection` (TypeParameter):
+  at default-constraint.wipple:6:51-6:61
   grouped with `collection`
   has type `collection`
   is a type
@@ -76,6 +88,7 @@ Facts (layer 2):
   resolved to type parameter `collection`
 
 `instance (Collect element (List element))` (InstanceDefinition):
+  at default-constraint.wipple:7:1-7:42
   grouped with `element -> collection`, `_`
   has definition constraints
   has type `element -> List element`
@@ -84,6 +97,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Collect`
 
 `element` (TypeParameter):
+  at default-constraint.wipple:7:19-7:26
   grouped with `element`, `element`
   has type `element`
   is a definition
@@ -91,12 +105,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `element`
 
 `List element` (NamedType):
+  at default-constraint.wipple:7:28-7:40
   grouped with `collection`
   has type `List element`
   is a type
   resolved to 1 definition(s): `List`
 
 `element` (TypeParameter):
+  at default-constraint.wipple:7:33-7:40
   grouped with `element`, `element`
   has type `element`
   is a type
@@ -104,11 +120,13 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `_` (PlaceholderExpression):
+  at default-constraint.wipple:7:45-7:46
   grouped with `instance (Collect element (List element))`
   has type `element -> List element`
   is an expression
 
 `instance (Collect element (Set element))` (InstanceDefinition):
+  at default-constraint.wipple:8:1-8:41
   grouped with `element -> collection`, `_`
   has definition constraints
   has type `element -> Set element`
@@ -117,6 +135,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Collect`
 
 `element` (TypeParameter):
+  at default-constraint.wipple:8:19-8:26
   grouped with `element`, `element`
   has type `element`
   is a definition
@@ -124,12 +143,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `element`
 
 `Set element` (NamedType):
+  at default-constraint.wipple:8:28-8:39
   grouped with `collection`
   has type `Set element`
   is a type
   resolved to 1 definition(s): `Set`
 
 `element` (TypeParameter):
+  at default-constraint.wipple:8:32-8:39
   grouped with `element`, `element`
   has type `element`
   is a type
@@ -137,11 +158,13 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `_` (PlaceholderExpression):
+  at default-constraint.wipple:8:44-8:45
   grouped with `instance (Collect element (Set element))`
   has type `element -> Set element`
   is an expression
 
 `collect` (ConstantDefinition):
+  at default-constraint.wipple:11:1-11:8
   grouped with `element -> output`, `_`
   has bounds
   has definition constraints
@@ -150,6 +173,7 @@ Facts (layer 2):
   is a definition
 
 `element` (TypeParameter):
+  at default-constraint.wipple:11:12-11:19
   grouped with `element`, `element`
   has type `element`
   is a definition
@@ -157,11 +181,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `element`
 
 `element -> output` (FunctionType):
+  at default-constraint.wipple:11:12-11:29
   grouped with `collect`
   has type `element -> output`
   is a type
 
 `output` (TypeParameter):
+  at default-constraint.wipple:11:23-11:29
   grouped with `output`, `output`
   has type `output`
   is a definition
@@ -169,9 +195,11 @@ Facts (layer 2):
   resolved to 1 definition(s): `output`
 
 `(output :: List element)` (DefaultConstraint):
+  at default-constraint.wipple:11:36-11:60
   is a constraint
 
 `output` (TypeParameter):
+  at default-constraint.wipple:11:37-11:43
   grouped with `output`
   has type `output`
   is a type
@@ -179,11 +207,13 @@ Facts (layer 2):
   resolved to type parameter `output`
 
 `List element` (NamedType):
+  at default-constraint.wipple:11:47-11:59
   has type `List element`
   is a type
   resolved to 1 definition(s): `List`
 
 `element` (TypeParameter):
+  at default-constraint.wipple:11:52-11:59
   grouped with `element`, `element`
   has type `element`
   is a type
@@ -191,6 +221,7 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `(Collect element output)` (BoundConstraint):
+  at default-constraint.wipple:11:61-11:85
   grouped with `element -> collection`
   has bound(s) `Collect` `element` `output` (resolved as `(Collect element output)`)
   has type `element -> output`
@@ -198,6 +229,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Collect`
 
 `element` (TypeParameter):
+  at default-constraint.wipple:11:70-11:77
   grouped with `element`, `element`
   has type `element`
   is a type
@@ -205,6 +237,7 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `output` (TypeParameter):
+  at default-constraint.wipple:11:78-11:84
   grouped with `output`, `collection`
   has type `output`
   is a type
@@ -212,22 +245,27 @@ Facts (layer 2):
   resolved to type parameter `output`
 
 `collect : _` (AssignmentStatement):
+  at default-constraint.wipple:12:1-12:12
   has type `()`
 
 `_` (PlaceholderExpression):
+  at default-constraint.wipple:12:11-12:12
   grouped with `collect`
   has type `element -> output`
   is an expression
 
 `_` (WildcardPattern):
+  at default-constraint.wipple:14:1-14:2
   grouped with `collect "hi"`, `collect "hi"`
   has type `List String`
   is a pattern
 
 `_ : collect "hi"` (AssignmentStatement):
+  at default-constraint.wipple:14:1-14:17
   has type `()`
 
 `collect` (VariableExpression):
+  at default-constraint.wipple:14:5-14:12
   grouped with `element -> output`
   has bound(s) `Collect` `String` `(List String)` (resolved as `instance (Collect element (List element))`)
   has type `String -> List String`
@@ -235,24 +273,29 @@ Facts (layer 2):
   resolved to 1 definition(s): `collect`
 
 `collect "hi"` (CallExpression):
+  at default-constraint.wipple:14:5-14:17
   grouped with `output`, `_`, `_`
   has type `List String`
   is an expression
 
 `"hi"` (StringExpression):
+  at default-constraint.wipple:14:13-14:17
   grouped with `"hi"`, `element`
   has type `String`
   is an expression
 
 `_` (WildcardPattern):
+  at default-constraint.wipple:15:1-15:2
   grouped with `collect "hi" :: Set _`, `collect "hi" :: Set _`
   has type `Set String`
   is a pattern
 
 `_ : (collect "hi" :: Set _)` (AssignmentStatement):
+  at default-constraint.wipple:15:1-15:28
   has type `()`
 
 `collect` (VariableExpression):
+  at default-constraint.wipple:15:6-15:13
   grouped with `element -> output`
   has bound(s) `Collect` `String` `(Set String)` (resolved as `instance (Collect element (Set element))`)
   has type `String -> Set String`
@@ -260,22 +303,26 @@ Facts (layer 2):
   resolved to 1 definition(s): `collect`
 
 `collect "hi"` (CallExpression):
+  at default-constraint.wipple:15:6-15:18
   grouped with `output`, `Set _`
   has type `Set String`
   is an expression
 
 `"hi"` (StringExpression):
+  at default-constraint.wipple:15:14-15:18
   grouped with `"hi"`, `element`
   has type `String`
   is an expression
 
 `Set _` (NamedType):
+  at default-constraint.wipple:15:22-15:27
   grouped with `collect "hi"`, `collect "hi" :: Set _`
   has type `Set String`
   is a type
   resolved to 1 definition(s): `Set`
 
 `_` (PlaceholderType):
+  at default-constraint.wipple:15:26-15:27
   grouped with `element`
   has type `String`
   is a type

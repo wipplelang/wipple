@@ -1,30 +1,35 @@
 Facts (layer 2):
 
 `X` (TypeDefinition):
+  at default-type-parameter.wipple:1:1-1:2
   grouped with `X`
   has definition constraints
   has type `X`
   is a definition
 
 `X` (TypeDefinition):
+  at default-type-parameter.wipple:1:1-1:2
   grouped with `X`
   has definition constraints
   has type `X`
   is a definition
 
 `Y` (TypeDefinition):
+  at default-type-parameter.wipple:2:1-2:2
   grouped with `Y`
   has definition constraints
   has type `Y`
   is a definition
 
 `Y` (TypeDefinition):
+  at default-type-parameter.wipple:2:1-2:2
   grouped with `Y`
   has definition constraints
   has type `Y`
   is a definition
 
 `T` (TraitDefinition):
+  at default-type-parameter.wipple:4:1-4:2
   grouped with `value`
   has 2 instances
   has definition constraints
@@ -33,6 +38,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at default-type-parameter.wipple:4:5-4:10
   grouped with `value`
   has type `value`
   is a definition
@@ -40,6 +46,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at default-type-parameter.wipple:4:20-4:25
   grouped with `value`, `T`
   has type `value`
   is a type
@@ -47,6 +54,7 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `instance (T X)` (InstanceDefinition):
+  at default-type-parameter.wipple:5:1-5:15
   grouped with `value`, `X`
   has definition constraints
   has type `X`
@@ -54,18 +62,21 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `X` (NamedType):
+  at default-type-parameter.wipple:5:13-5:14
   grouped with `value`
   has type `X`
   is a type
   resolved to 1 definition(s): `X`
 
 `X` (ConstructorExpression):
+  at default-type-parameter.wipple:5:18-5:19
   grouped with `X`, `instance (T X)`
   has type `X`
   is an expression
   resolved to 1 definition(s): `X`
 
 `instance (T Y)` (InstanceDefinition):
+  at default-type-parameter.wipple:6:1-6:15
   grouped with `value`, `Y`
   has definition constraints
   has type `Y`
@@ -73,18 +84,21 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `Y` (NamedType):
+  at default-type-parameter.wipple:6:13-6:14
   grouped with `value`
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y`
 
 `Y` (ConstructorExpression):
+  at default-type-parameter.wipple:6:18-6:19
   grouped with `Y`, `instance (T Y)`
   has type `Y`
   is an expression
   resolved to 1 definition(s): `Y`
 
 `instance (Describe X)` (InstanceDefinition):
+  at default-type-parameter.wipple:8:1-8:22
   grouped with `value -> String`, `_ -> "X"`
   has definition constraints
   has type `X -> String`
@@ -92,27 +106,32 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `X` (NamedType):
+  at default-type-parameter.wipple:8:20-8:21
   grouped with `value`
   has type `X`
   is a type
   resolved to 1 definition(s): `X`
 
 `_` (WildcardPattern):
+  at default-type-parameter.wipple:8:25-8:26
   grouped with `value`
   has type `X`
   is a pattern
 
 `_ -> "X"` (FunctionExpression):
+  at default-type-parameter.wipple:8:25-8:33
   grouped with `instance (Describe X)`
   has type `X -> String`
   is an expression
 
 `"X"` (StringExpression):
+  at default-type-parameter.wipple:8:30-8:33
   grouped with `"X"`, `String`
   has type `String`
   is an expression
 
 `instance (Describe Y)` (InstanceDefinition):
+  at default-type-parameter.wipple:9:1-9:22
   grouped with `value -> String`, `_ -> "Y"`
   has definition constraints
   has type `Y -> String`
@@ -120,27 +139,32 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `Y` (NamedType):
+  at default-type-parameter.wipple:9:20-9:21
   grouped with `value`
   has type `Y`
   is a type
   resolved to 1 definition(s): `Y`
 
 `_` (WildcardPattern):
+  at default-type-parameter.wipple:9:25-9:26
   grouped with `value`
   has type `Y`
   is a pattern
 
 `_ -> "Y"` (FunctionExpression):
+  at default-type-parameter.wipple:9:25-9:33
   grouped with `instance (Describe Y)`
   has type `Y -> String`
   is an expression
 
 `"Y"` (StringExpression):
+  at default-type-parameter.wipple:9:30-9:33
   grouped with `"Y"`, `String`
   has type `String`
   is an expression
 
 `foo` (ConstantDefinition):
+  at default-type-parameter.wipple:11:1-11:4
   grouped with `value`, `T`
   has bounds
   has definition constraints
@@ -149,6 +173,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at default-type-parameter.wipple:11:8-11:13
   grouped with `foo`, `value`, `value`
   has type `value`
   is a definition
@@ -156,9 +181,11 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `(value :: X)` (DefaultConstraint):
+  at default-type-parameter.wipple:11:20-11:32
   is a constraint
 
 `value` (TypeParameter):
+  at default-type-parameter.wipple:11:21-11:26
   grouped with `value`
   has type `value`
   is a type
@@ -166,11 +193,13 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `X` (NamedType):
+  at default-type-parameter.wipple:11:30-11:31
   has type `X`
   is a type
   resolved to 1 definition(s): `X`
 
 `(T value)` (BoundConstraint):
+  at default-type-parameter.wipple:11:33-11:42
   grouped with `value`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value`
@@ -178,6 +207,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `value` (TypeParameter):
+  at default-type-parameter.wipple:11:36-11:41
   grouped with `value`, `value`, `value`
   has type `value`
   is a type
@@ -185,9 +215,11 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `foo : T` (AssignmentStatement):
+  at default-type-parameter.wipple:12:1-12:8
   has type `()`
 
 `T` (ConstructorExpression):
+  at default-type-parameter.wipple:12:7-12:8
   grouped with `value`, `foo`
   has bound(s) `T` `value` (resolved as `(T value)`)
   has type `value`
@@ -195,6 +227,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `show` (VariableExpression):
+  at default-type-parameter.wipple:14:1-14:5
   grouped with `value -> ()`
   has bound(s) `Describe` `X` (resolved as `instance (Describe X)`)
   has type `X -> ()`
@@ -202,15 +235,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show foo` (ExpressionStatement):
+  at default-type-parameter.wipple:14:1-14:9
   grouped with `show foo`
   has type `()`
 
 `show foo` (CallExpression):
+  at default-type-parameter.wipple:14:1-14:9
   grouped with `()`, `show foo`
   has type `()`
   is an expression
 
 `foo` (VariableExpression):
+  at default-type-parameter.wipple:14:6-14:9
   grouped with `value`, `value`, `value`
   has bound(s) `T` `X` (resolved as `instance (T X)`)
   has type `X`
@@ -218,6 +254,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `foo`
 
 `show` (VariableExpression):
+  at default-type-parameter.wipple:15:1-15:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Y` (resolved as `instance (Describe Y)`)
   has type `Y -> ()`
@@ -225,15 +262,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (foo :: Y)` (ExpressionStatement):
+  at default-type-parameter.wipple:15:1-15:16
   grouped with `show (foo :: Y)`
   has type `()`
 
 `show (foo :: Y)` (CallExpression):
+  at default-type-parameter.wipple:15:1-15:16
   grouped with `()`, `show (foo :: Y)`
   has type `()`
   is an expression
 
 `foo` (VariableExpression):
+  at default-type-parameter.wipple:15:7-15:10
   grouped with `value`, `value`, `Y`
   has bound(s) `T` `Y` (resolved as `instance (T Y)`)
   has type `Y`
@@ -241,6 +281,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `foo`
 
 `Y` (NamedType):
+  at default-type-parameter.wipple:15:14-15:15
   grouped with `foo`, `foo :: Y`
   has type `Y`
   is a type

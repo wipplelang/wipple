@@ -1,50 +1,59 @@
 Facts (layer 2):
 
 `Grade` (TypeDefinition):
+  at enumeration.wipple:1:1-1:6
   grouped with `A`, `B`, `C`, `D`, `F`
   has definition constraints
   has type `Grade`
   is a definition
 
 `A` (VariantDefinition):
+  at enumeration.wipple:2:3-2:4
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `B` (VariantDefinition):
+  at enumeration.wipple:3:3-3:4
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `C` (VariantDefinition):
+  at enumeration.wipple:4:3-4:4
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `D` (VariantDefinition):
+  at enumeration.wipple:5:3-5:4
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `F` (VariantDefinition):
+  at enumeration.wipple:6:3-6:4
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `_` (WildcardPattern):
+  at enumeration.wipple:9:1-9:2
   grouped with `A`, `A`
   has type `Grade`
   is a pattern
 
 `_ : A` (AssignmentStatement):
+  at enumeration.wipple:9:1-9:6
   has type `()`
 
 `A` (ConstructorExpression):
+  at enumeration.wipple:9:5-9:6
   grouped with `Grade`, `_`, `_`
   has type `Grade`
   is an expression

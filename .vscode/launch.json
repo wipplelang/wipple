@@ -1,21 +1,14 @@
 {
     "configurations": [
         {
-            "name": "Run test.wipple",
-            "preLaunchTask": "Compile test.wipple",
-            "type": "node",
-            "request": "launch",
-            "program": "${workspaceFolder}/out",
-            "skipFiles": ["<node_internals>/**"]
-        },
-        {
-            "name": "Debug Compiler",
+            "name": "Compile and run test.wipple",
             "type": "lldb",
+
             "request": "launch",
             "cargo": {
-                "args": ["run"]
+                "args": ["run", "--config", "profile.dev.opt-level=0"]
             },
-            "args": ["compile", "test.wipple", "--lib=foundation.bin", "--facts"],
+            "args": ["run", "test.wipple", "--lib=foundation.bin", "--facts"],
             "env": {
                 "WIPPLE_DEBUG": "1"
             }

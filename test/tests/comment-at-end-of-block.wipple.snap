@@ -1,40 +1,48 @@
 Facts (layer 2):
 
 `block` (ConstantDefinition):
+  at comment-at-end-of-block.wipple:1:1-1:6
   grouped with `{Number}`, `{⋯}`
   has definition constraints
   has type `{Number}`
   is a definition
 
 `{Number}` (BlockType):
+  at comment-at-end-of-block.wipple:1:10-1:18
   grouped with `block`
   has type `{Number}`
   is a type
 
 `Number` (NamedType):
+  at comment-at-end-of-block.wipple:1:11-1:17
   grouped with `42`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `block : {⋯}` (AssignmentStatement):
+  at comment-at-end-of-block.wipple:2:1-5:2
   has type `()`
 
 `{⋯}` (BlockExpression):
+  at comment-at-end-of-block.wipple:2:9-5:2
   grouped with `block`
   has type `{Number}`
   is an expression
 
 `42` (ExpressionStatement):
+  at comment-at-end-of-block.wipple:3:3-3:5
   grouped with `42`, `Number`
   has type `Number`
 
 `42` (NumberExpression):
+  at comment-at-end-of-block.wipple:3:3-3:5
   grouped with `42`, `42`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at comment-at-end-of-block.wipple:7:1-7:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -42,20 +50,24 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (do block)` (ExpressionStatement):
+  at comment-at-end-of-block.wipple:7:1-7:16
   grouped with `show (do block)`
   has type `()`
 
 `show (do block)` (CallExpression):
+  at comment-at-end-of-block.wipple:7:1-7:16
   grouped with `()`, `show (do block)`
   has type `()`
   is an expression
 
 `do block` (DoExpression):
+  at comment-at-end-of-block.wipple:7:7-7:15
   grouped with `Number`, `value`
   has type `Number`
   is an expression
 
 `block` (VariableExpression):
+  at comment-at-end-of-block.wipple:7:10-7:15
   grouped with `{Number}`
   has type `{Number}`
   is an expression

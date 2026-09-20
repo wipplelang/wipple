@@ -1,8 +1,8 @@
 use crate::{
     ast::AstKey,
     codegen::hir,
-    db::{Fact, Node},
-    render::Render,
+    db::{Db, Fact, Node},
+    render::{Render, RenderCtx},
 };
 use serde::{Deserialize, Serialize};
 
@@ -12,7 +12,12 @@ pub struct Syntax(pub AstKey);
 #[typetag::serde]
 impl Fact for Syntax {}
 
-impl Render for Syntax {}
+impl Render for Syntax {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+        ctx.string("at ");
+        ctx.string(self.0.get(db).span(db).to_string());
+    }
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Codegen(pub Box<dyn hir::Write>);

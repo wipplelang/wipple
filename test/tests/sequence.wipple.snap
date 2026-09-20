@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `Box` (TypeDefinition):
+  at sequence.wipple:1:1-1:4
   grouped with `Box`
   has definition constraints
   has type `Box value`
@@ -8,18 +9,21 @@ Facts (layer 2):
   is a definition
 
 `Box` (TypeDefinition):
+  at sequence.wipple:1:1-1:4
   grouped with `Box`
   has definition constraints
   has type `Box value`
   is a definition
 
 `value` (TypeParameter):
+  at sequence.wipple:1:7-1:12
   has type `value`
   is a definition
   is a type
   resolved to 1 definition(s): `value`
 
 `instance (As-Sequence (Box value) value)` (InstanceDefinition):
+  at sequence.wipple:3:1-3:41
   grouped with `container -> Sequence element`, `_`
   has definition constraints
   has type `(Box value) -> Sequence value`
@@ -28,12 +32,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `As-Sequence`
 
 `Box value` (NamedType):
+  at sequence.wipple:3:24-3:33
   grouped with `container`
   has type `Box value`
   is a type
   resolved to 1 definition(s): `Box`
 
 `value` (TypeParameter):
+  at sequence.wipple:3:28-3:33
   grouped with `value`, `value`
   has type `value`
   is a definition
@@ -41,6 +47,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at sequence.wipple:3:35-3:40
   grouped with `value`, `(infer element)`
   has type `value`
   is a type
@@ -48,76 +55,91 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `_` (PlaceholderExpression):
+  at sequence.wipple:3:44-3:45
   grouped with `instance (As-Sequence (Box value) value)`
   has type `(Box value) -> Sequence value`
   is an expression
 
 `box` (VariablePattern):
+  at sequence.wipple:5:1-5:4
   grouped with `_ :: Box String`, `_ :: Box String`, `box`
   has type `Box (String or Number)`
   is a definition
   is a pattern
 
 `box : (_ :: Box String)` (AssignmentStatement):
+  at sequence.wipple:5:1-5:24
   has type `()`
 
 `_` (PlaceholderExpression):
+  at sequence.wipple:5:8-5:9
   grouped with `Box String`
   has type `Box (String or Number)`
   is an expression
 
 `Box String` (NamedType):
+  at sequence.wipple:5:13-5:23
   grouped with `_`, `_ :: Box String`
   has type `Box (String or Number)`
   is a type
   resolved to 1 definition(s): `Box`
 
 `String` (NamedType):
+  at sequence.wipple:5:17-5:23
   grouped with `value`
   has type `String` or `Number`
   is a type
   resolved to 1 definition(s): `String`
 
 `positive?` (VariablePattern):
+  at sequence.wipple:6:1-6:10
   grouped with `(_ :: Number) -> _`, `(_ :: Number) -> _`, `positive?`
   has type `(String or Number) -> Boolean`
   is a definition
   is a pattern
 
 `positive? : (_ :: Number) -> _` (AssignmentStatement):
+  at sequence.wipple:6:1-6:31
   has type `()`
 
 `(_ :: Number) -> _` (FunctionExpression):
+  at sequence.wipple:6:13-6:31
   grouped with `positive?`, `positive?`
   has type `(String or Number) -> Boolean`
   is an expression
 
 `_` (WildcardPattern):
+  at sequence.wipple:6:14-6:15
   grouped with `_ :: Number`, `Number`
   has type `String` or `Number`
   is a pattern
 
 `Number` (NamedType):
+  at sequence.wipple:6:19-6:25
   grouped with `_`, `_ :: Number`
   has type `String` or `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `_` (PlaceholderExpression):
+  at sequence.wipple:6:30-6:31
   grouped with `Boolean`
   has type `Boolean`
   is an expression
 
 `(filter positive?) box` (ExpressionStatement):
+  at sequence.wipple:7:1-7:23
   grouped with `(filter positive?) box`
   has type `Sequence (String or Number)`
 
 `(filter positive?) box` (CallExpression):
+  at sequence.wipple:7:1-7:23
   grouped with `Sequence element`, `(filter positive?) box`
   has type `Sequence (String or Number)`
   is an expression
 
 `filter` (VariableExpression):
+  at sequence.wipple:7:2-7:8
   grouped with `(condition :: (element -> Boolean)) -> container -> Sequence element`
   has bound(s) `As-Sequence` `(Box (String or Number))` `(String or Number)` (resolved as `instance (As-Sequence (Box value) value)`)
   has type `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`
@@ -125,17 +147,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `filter`
 
 `filter positive?` (CallExpression):
+  at sequence.wipple:7:2-7:18
   grouped with `container -> Sequence element`
   has type `(Box (String or Number)) -> Sequence (String or Number)`
   is an expression
 
 `positive?` (VariableExpression):
+  at sequence.wipple:7:9-7:18
   grouped with `positive?`, `condition :: (element -> Boolean)`
   has type `(String or Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `positive?`
 
 `box` (VariableExpression):
+  at sequence.wipple:7:20-7:23
   grouped with `box`, `container`
   has type `Box (String or Number)`
   is an expression

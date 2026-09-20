@@ -7,9 +7,9 @@ use crate::checks::{
 };
 use std::ops::ControlFlow;
 use wipple_core::{
-    TopLevel,
+    TopLevel, apply_solver,
     db::Db,
-    default_filter, set_groups,
+    default_filter,
     typecheck::{bounds::Instances, solver::Solver},
     visit::definitions::{Defined, TraitDefinition},
 };
@@ -42,7 +42,7 @@ pub fn run_checks(db: &mut Db, top_level: &TopLevel) {
             default_filter,
             |solver| solver.substitutions.extend(top_level.substitutions.clone()),
         ) {
-            set_groups(db, solver);
+            apply_solver(db, solver);
         }
     }
 

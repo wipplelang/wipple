@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  at hello-world.wipple:1:1-1:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -8,15 +9,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show "Hello, world!"` (ExpressionStatement):
+  at hello-world.wipple:1:1-1:21
   grouped with `show "Hello, world!"`
   has type `()`
 
 `show "Hello, world!"` (CallExpression):
+  at hello-world.wipple:1:1-1:21
   grouped with `()`, `show "Hello, world!"`
   has type `()`
   is an expression
 
 `"Hello, world!"` (StringExpression):
+  at hello-world.wipple:1:6-1:21
   grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression

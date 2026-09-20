@@ -1,26 +1,31 @@
 Facts (layer 2):
 
 `average` (VariablePattern):
+  at average.wipple:1:1-1:8
   grouped with `numbers -> sum numbers / count numbers`, `numbers -> sum numbers / count numbers`, `average`
   has type `(List Number) -> Number`
   is a definition
   is a pattern
 
 `average : numbers -> sum numbers / count numbers` (AssignmentStatement):
+  at average.wipple:1:1-1:49
   has type `()`
 
 `numbers` (VariablePattern):
+  at average.wipple:1:11-1:18
   grouped with `numbers`, `numbers`, `1, 2, 3, 4, 5`
   has type `List Number`
   is a definition
   is a pattern
 
 `numbers -> sum numbers / count numbers` (FunctionExpression):
+  at average.wipple:1:11-1:49
   grouped with `average`, `average`
   has type `(List Number) -> Number`
   is an expression
 
 `sum` (VariableExpression):
+  at average.wipple:1:22-1:25
   grouped with `container -> n`
   has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`), `Initial` `Number` (resolved as `instance (Initial Number)`), `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `(List Number) -> Number`
@@ -28,21 +33,25 @@ Facts (layer 2):
   resolved to 1 definition(s): `sum`
 
 `sum numbers` (CallExpression):
+  at average.wipple:1:22-1:33
   grouped with `n`, `left`
   has type `Number`
   is an expression
 
 `sum numbers / count numbers` (OperatorExpression):
+  at average.wipple:1:22-1:49
   grouped with `sum numbers / count numbers`, `average (1, 2, 3, 4, 5)`
   has type `Number`
   is an expression
 
 `sum numbers / count numbers` (CallExpression):
+  at average.wipple:1:22-1:49
   grouped with `quotient`, `sum numbers / count numbers`
   has type `Number`
   is an expression
 
 `sum numbers / count numbers` (ConstructorExpression):
+  at average.wipple:1:22-1:49
   grouped with `left right -> quotient`
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
@@ -50,12 +59,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `Divide`
 
 `numbers` (VariableExpression):
+  at average.wipple:1:26-1:33
   grouped with `numbers`, `container`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `numbers`
 
 `count` (VariableExpression):
+  at average.wipple:1:36-1:41
   grouped with `collection -> Number`
   has bound(s) `Count` `(List Number)` (resolved as `instance (Count (List element))`)
   has type `(List Number) -> Number`
@@ -63,17 +74,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `count`
 
 `count numbers` (CallExpression):
+  at average.wipple:1:36-1:49
   grouped with `Number`, `right`
   has type `Number`
   is an expression
 
 `numbers` (VariableExpression):
+  at average.wipple:1:42-1:49
   grouped with `numbers`, `collection`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `numbers`
 
 `show` (VariableExpression):
+  at average.wipple:2:1-2:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -81,51 +95,61 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (average (1, 2, 3, 4, 5))` (ExpressionStatement):
+  at average.wipple:2:1-2:31
   grouped with `show (average (1, 2, 3, 4, 5))`
   has type `()`
 
 `show (average (1, 2, 3, 4, 5))` (CallExpression):
+  at average.wipple:2:1-2:31
   grouped with `()`, `show (average (1, 2, 3, 4, 5))`
   has type `()`
   is an expression
 
 `average` (VariableExpression):
+  at average.wipple:2:7-2:14
   grouped with `average`
   has type `(List Number) -> Number`
   is an expression
   resolved to 1 definition(s): `average`
 
 `average (1, 2, 3, 4, 5)` (CallExpression):
+  at average.wipple:2:7-2:30
   grouped with `sum numbers / count numbers`, `value`
   has type `Number`
   is an expression
 
 `1` (VisitAs):
+  at average.wipple:2:16-2:17
   grouped with `1`, `element`
   has type `Number`
   is an expression
 
 `1, 2, 3, 4, 5` (CollectionExpression):
+  at average.wipple:2:16-2:29
   grouped with `5`, `numbers`
   has type `List Number`
   is an expression
 
 `2` (VisitAs):
+  at average.wipple:2:19-2:20
   grouped with `2`, `element`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
+  at average.wipple:2:22-2:23
   grouped with `3`, `element`
   has type `Number`
   is an expression
 
 `4` (VisitAs):
+  at average.wipple:2:25-2:26
   grouped with `4`, `element`
   has type `Number`
   is an expression
 
 `5` (VisitAs):
+  at average.wipple:2:28-2:29
   grouped with `5`, `element`
   has type `Number`
   is an expression

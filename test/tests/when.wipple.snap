@@ -1,21 +1,25 @@
 Facts (layer 2):
 
 `x` (VariablePattern):
+  at when.wipple:1:1-1:2
   grouped with `True`, `True`, `x`
   has type `Boolean`
   is a definition
   is a pattern
 
 `x : True` (AssignmentStatement):
+  at when.wipple:1:1-1:9
   has type `()`
 
 `True` (ConstructorExpression):
+  at when.wipple:1:5-1:9
   grouped with `Boolean`, `x`, `x`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `show` (VariableExpression):
+  at when.wipple:3:1-3:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -23,43 +27,51 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (when x {⋯})` (ExpressionStatement):
+  at when.wipple:3:1-6:3
   grouped with `show (when x {⋯})`
   has type `()`
 
 `show (when x {⋯})` (CallExpression):
+  at when.wipple:3:1-6:3
   grouped with `()`, `show (when x {⋯})`
   has type `()`
   is an expression
 
 `when x {⋯}` (WhenExpression):
+  at when.wipple:3:7-6:2
   grouped with `"Yay!"`, `"Uh oh"`, `value`
   has type `String`
   is an expression
 
 `x` (VariableExpression):
+  at when.wipple:3:12-3:13
   grouped with `x`, `True`, `False`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `x`
 
 `True` (ConstructorPattern):
+  at when.wipple:4:3-4:7
   grouped with `x`, `Boolean`
   has type `Boolean`
   is a pattern
   resolved to 1 definition(s): `True`
 
 `"Yay!"` (StringExpression):
+  at when.wipple:4:11-4:17
   grouped with `"Yay!"`, `when x {⋯}`
   has type `String`
   is an expression
 
 `False` (ConstructorPattern):
+  at when.wipple:5:3-5:8
   grouped with `x`, `Boolean`
   has type `Boolean`
   is a pattern
   resolved to 1 definition(s): `False`
 
 `"Uh oh"` (StringExpression):
+  at when.wipple:5:12-5:19
   grouped with `"Uh oh"`, `when x {⋯}`
   has type `String`
   is an expression

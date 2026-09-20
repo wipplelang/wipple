@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `T` (TraitDefinition):
+  at bounds-dont-influence-other-bounds.wipple:1:1-1:2
   grouped with `value -> ()`
   has 2 instances
   has definition constraints
@@ -9,6 +10,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at bounds-dont-influence-other-bounds.wipple:1:5-1:10
   grouped with `value`
   has type `value`
   is a definition
@@ -16,6 +18,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at bounds-dont-influence-other-bounds.wipple:1:21-1:26
   grouped with `value`
   has type `value`
   is a type
@@ -23,15 +26,18 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `value -> ()` (FunctionType):
+  at bounds-dont-influence-other-bounds.wipple:1:21-1:32
   grouped with `T`
   has type `value -> ()`
   is a type
 
 `()` (UnitType):
+  at bounds-dont-influence-other-bounds.wipple:1:30-1:32
   has type `()`
   is a type
 
 `instance (T Number)` (InstanceDefinition):
+  at bounds-dont-influence-other-bounds.wipple:3:1-3:20
   grouped with `value -> ()`, `_ -> ()`
   has definition constraints
   has type `Number -> ()`
@@ -39,27 +45,32 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `Number` (NamedType):
+  at bounds-dont-influence-other-bounds.wipple:3:13-3:19
   grouped with `value`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `_` (WildcardPattern):
+  at bounds-dont-influence-other-bounds.wipple:3:23-3:24
   grouped with `value`
   has type `Number`
   is a pattern
 
 `_ -> ()` (FunctionExpression):
+  at bounds-dont-influence-other-bounds.wipple:3:23-3:30
   grouped with `instance (T Number)`
   has type `Number -> ()`
   is an expression
 
 `()` (UnitExpression):
+  at bounds-dont-influence-other-bounds.wipple:3:28-3:30
   grouped with `()`
   has type `()`
   is an expression
 
 `instance (T String)` (InstanceDefinition):
+  at bounds-dont-influence-other-bounds.wipple:4:1-4:20
   grouped with `value -> ()`, `_ -> ()`
   has definition constraints
   has type `String -> ()`
@@ -67,27 +78,32 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `String` (NamedType):
+  at bounds-dont-influence-other-bounds.wipple:4:13-4:19
   grouped with `value`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `_` (WildcardPattern):
+  at bounds-dont-influence-other-bounds.wipple:4:23-4:24
   grouped with `value`
   has type `String`
   is a pattern
 
 `_ -> ()` (FunctionExpression):
+  at bounds-dont-influence-other-bounds.wipple:4:23-4:30
   grouped with `instance (T String)`
   has type `String -> ()`
   is an expression
 
 `()` (UnitExpression):
+  at bounds-dont-influence-other-bounds.wipple:4:28-4:30
   grouped with `()`
   has type `()`
   is an expression
 
 `f` (ConstantDefinition):
+  at bounds-dont-influence-other-bounds.wipple:6:1-6:2
   grouped with `a; b`, `todo`
   has bounds
   has definition constraints
@@ -96,6 +112,7 @@ Facts (layer 2):
   is a definition
 
 `a` (TypeParameter):
+  at bounds-dont-influence-other-bounds.wipple:6:7-6:8
   grouped with `a`
   has type `a`
   is a definition
@@ -103,11 +120,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `a`
 
 `a; b` (TupleType):
+  at bounds-dont-influence-other-bounds.wipple:6:7-6:11
   grouped with `f`
   has type `(a; b)`
   is a type
 
 `b` (TypeParameter):
+  at bounds-dont-influence-other-bounds.wipple:6:10-6:11
   grouped with `b`
   has type `b`
   is a definition
@@ -115,6 +134,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `b`
 
 `(T a)` (BoundConstraint):
+  at bounds-dont-influence-other-bounds.wipple:6:19-6:24
   grouped with `value -> ()`
   has bound(s) `T` `a` (resolved as `(T a)`)
   has type `a -> ()`
@@ -122,6 +142,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `a` (TypeParameter):
+  at bounds-dont-influence-other-bounds.wipple:6:22-6:23
   grouped with `a`, `value`, `b`, `b`
   has type `a`
   is a type
@@ -129,6 +150,7 @@ Facts (layer 2):
   resolved to type parameter `a`
 
 `(T b)` (BoundConstraint):
+  at bounds-dont-influence-other-bounds.wipple:6:25-6:30
   grouped with `value -> ()`
   has bound(s) `T` `b` (resolved as `(T b)`)
   has type `b -> ()`
@@ -136,6 +158,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 `b` (TypeParameter):
+  at bounds-dont-influence-other-bounds.wipple:6:28-6:29
   grouped with `b`, `value`, `a`, `a`
   has type `b`
   is a type
@@ -143,9 +166,11 @@ Facts (layer 2):
   resolved to type parameter `b`
 
 `f : todo` (AssignmentStatement):
+  at bounds-dont-influence-other-bounds.wipple:7:1-7:9
   has type `()`
 
 `todo` (VariableExpression):
+  at bounds-dont-influence-other-bounds.wipple:7:5-7:9
   grouped with `value`, `value`, `f`
   has type `(a; b)`
   is an expression
@@ -153,10 +178,12 @@ Facts (layer 2):
 
 `-- `B` should not be inferred to be `Number`
 (f :: (Number; _))` (ExpressionStatement):
+  at bounds-dont-influence-other-bounds.wipple:9:1-10:19
   grouped with `f :: (Number; _)`
   has type `(Number; _)`
 
 `f` (VariableExpression):
+  at bounds-dont-influence-other-bounds.wipple:10:2-10:3
   grouped with `a; b`, `Number; _`
   has bound(s) `T` `Number` (resolved as `instance (T Number)`)
   has type `(Number; _)`
@@ -164,17 +191,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `f`
 
 `Number` (NamedType):
+  at bounds-dont-influence-other-bounds.wipple:10:8-10:14
   grouped with `a`
   has type `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `Number; _` (TupleType):
+  at bounds-dont-influence-other-bounds.wipple:10:8-10:17
   grouped with `f`, `f :: (Number; _)`
   has type `(Number; _)`
   is a type
 
 `_` (PlaceholderType):
+  at bounds-dont-influence-other-bounds.wipple:10:16-10:17
   grouped with `b`
   is a type
   missing type (group: `_`, `b`, `b`, `b`, `value`, `value`)

@@ -2,46 +2,21 @@ use crate::{db::Node, span::Span};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
-pub struct Index {
-    pub layer: usize,
-    pub index: usize,
-}
-
-macro_rules! index {
-    ($name:ident) => {
-        #[derive(
-            Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
-        )]
-        pub struct $name(pub Index);
-
-        impl $name {
-            pub fn new(layer: usize, index: usize) -> Self {
-                $name(Index { layer, index })
-            }
-        }
-    };
-}
-
-index!(FunctionIndex);
-index!(NamedTyIndex);
-index!(TyParameterIndex);
-index!(LocalIndex);
-
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Program {
     pub source_files: Vec<Span>,
-    pub functions: BTreeMap<FunctionIndex, Function>,
-    pub named_tys: BTreeMap<NamedTyIndex, NamedTy>,
-    pub main: Option<FunctionIndex>,
     pub source_map: BTreeMap<Node, Span>,
+    pub functions: Vec<Function>,
+    pub named_tys: Vec<NamedTy>,
+    pub main: Option<usize>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Function {
-    pub type_parameters: BTreeMap<TyParameterIndex, TyParameter>,
-    pub inputs: BTreeMap<LocalIndex, Local>,
-    pub locals: BTreeMap<LocalIndex, Local>,
+    pub type_parameters: Vec<TyParameter>,
+    pub captures: Vec<usize>,
+    pub inputs: Vec<Local>,
+    pub locals: Vec<Local>,
     pub body: Vec<Statement>,
 }
 
@@ -65,7 +40,7 @@ pub enum Statement {
     },
     Break,
     Assign {
-        local: LocalIndex,
+        local: usize,
         value: SourceMapped<Expression>,
     },
     Trace {
@@ -90,42 +65,39 @@ pub enum Condition {
         variant: usize,
     },
     Initialize {
-        local: LocalIndex,
+        local: usize,
         value: SourceMapped<Expression>,
     },
     Mutate {
-        local: LocalIndex,
-        value: LocalIndex,
+        local: usize,
+        value: usize,
     },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Expression {
     Function {
-        index: FunctionIndex,
-        bounds: Vec<SourceMapped<Expression>>,
-    },
-    Bound {
-        local: LocalIndex,
+        index: usize,
+        bounds: Vec<usize>,
     },
     Call {
-        function: LocalIndex,
-        inputs: Vec<LocalIndex>,
+        function: usize,
+        inputs: Vec<usize>,
     },
     Closure(Function),
     Element {
-        value: LocalIndex,
+        value: usize,
         index: usize,
     },
     Tuple {
-        elements: Vec<LocalIndex>,
+        elements: Vec<usize>,
     },
     Marker,
     Local {
-        local: LocalIndex,
+        local: usize,
     },
     MutableLocal {
-        local: LocalIndex,
+        local: usize,
     },
     Number {
         value: String,
@@ -137,14 +109,14 @@ pub enum Expression {
         value: String,
     },
     Structure {
-        fields: Vec<(usize, LocalIndex)>,
+        fields: Vec<(usize, usize)>,
     },
     Variant {
         variant: usize,
-        elements: Vec<LocalIndex>,
+        elements: Vec<usize>,
     },
     VariantElement {
-        value: LocalIndex,
+        value: usize,
         variant: usize,
         index: usize,
     },
@@ -303,20 +275,10 @@ pub struct TyParameter {}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Ty {
-    Named {
-        index: NamedTyIndex,
-        parameters: Vec<Ty>,
-    },
-    Tuple {
-        elements: Vec<Ty>,
-    },
-    Function {
-        inputs: Vec<Ty>,
-        output: Box<Ty>,
-    },
-    Parameter {
-        index: TyParameterIndex,
-    },
+    Named { index: usize, parameters: Vec<Ty> },
+    Tuple { elements: Vec<Ty> },
+    Function { inputs: Vec<Ty>, output: Box<Ty> },
+    Parameter { index: usize },
 }
 
 #[derive(Debug, Serialize, Deserialize)]

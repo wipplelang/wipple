@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `my-if` (ConstantDefinition):
+  at custom-connections.wipple:5:1-5:6
   grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`, `if`
   has definition constraints
   has type `Boolean {value} {value} -> value`
@@ -8,11 +9,13 @@ Facts (layer 2):
   is a definition
 
 `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)` (FunctionType):
+  at custom-connections.wipple:5:10-5:89
   grouped with `my-if`
   has type `Boolean {value} {value} -> value`
   is a type
 
 `condition :: Boolean` (TypeParameter):
+  at custom-connections.wipple:5:11-5:31
   grouped with `Boolean`, `condition :: Boolean`
   has type `Boolean`
   is a definition
@@ -20,17 +23,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `condition :: Boolean`
 
 `Boolean` (NamedType):
+  at custom-connections.wipple:5:24-5:31
   grouped with `condition :: Boolean`
   has type `Boolean`
   is a type
   resolved to 1 definition(s): `Boolean`
 
 `{(then :: value)}` (BlockType):
+  at custom-connections.wipple:5:33-5:50
   grouped with `{(then :: value)}`
   has type `{value}`
   is a type
 
 `then :: value` (TypeParameter):
+  at custom-connections.wipple:5:35-5:48
   grouped with `value`, `then :: value`
   has type `value`
   is a definition
@@ -38,6 +44,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `then :: value`
 
 `value` (TypeParameter):
+  at custom-connections.wipple:5:43-5:48
   grouped with `then :: value`, `value`, `value`
   has type `value`
   is a definition
@@ -45,11 +52,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `{(else :: value)}` (BlockType):
+  at custom-connections.wipple:5:51-5:68
   grouped with `{(else :: value)}`
   has type `{value}`
   is a type
 
 `else :: value` (TypeParameter):
+  at custom-connections.wipple:5:53-5:66
   grouped with `value`, `else :: value`
   has type `value`
   is a definition
@@ -57,6 +66,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `else :: value`
 
 `value` (TypeParameter):
+  at custom-connections.wipple:5:61-5:66
   grouped with `value`, `else :: value`
   has type `value`
   is a type
@@ -64,6 +74,7 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `output :: value` (TypeParameter):
+  at custom-connections.wipple:5:73-5:88
   grouped with `value`, `output :: value`
   has type `value`
   is a definition
@@ -71,6 +82,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `output :: value`
 
 `value` (TypeParameter):
+  at custom-connections.wipple:5:83-5:88
   grouped with `value`, `output :: value`
   has type `value`
   is a type
@@ -78,15 +90,18 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `my-if : if` (AssignmentStatement):
+  at custom-connections.wipple:6:1-6:11
   has type `()`
 
 `if` (VariableExpression):
+  at custom-connections.wipple:6:9-6:11
   grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`, `my-if`
   has type `Boolean {value} {value} -> value`
   is an expression
   resolved to 1 definition(s): `if`
 
 `show` (VariableExpression):
+  at custom-connections.wipple:8:1-8:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -94,55 +109,66 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (my-if True {123} {456})` (ExpressionStatement):
+  at custom-connections.wipple:8:1-8:30
   grouped with `show (my-if True {123} {456})`
   has type `()`
 
 `show (my-if True {123} {456})` (CallExpression):
+  at custom-connections.wipple:8:1-8:30
   grouped with `()`, `show (my-if True {123} {456})`
   has type `()`
   is an expression
 
 `my-if` (VariableExpression):
+  at custom-connections.wipple:8:7-8:12
   grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
   has type `Boolean {Number} {Number} -> Number`
   is an expression
   resolved to 1 definition(s): `my-if`
 
 `my-if True {123} {456}` (CallExpression):
+  at custom-connections.wipple:8:7-8:29
   grouped with `output :: value`, `value`
   has type `Number`
   is an expression
 
 `True` (ConstructorExpression):
+  at custom-connections.wipple:8:13-8:17
   grouped with `Boolean`, `condition :: Boolean`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `{123}` (BlockExpression):
+  at custom-connections.wipple:8:18-8:23
   grouped with `{(then :: value)}`
   has type `{Number}`
   is an expression
 
 `123` (ExpressionStatement):
+  at custom-connections.wipple:8:19-8:22
   grouped with `123`, `then :: value`
   has type `Number`
 
 `123` (NumberExpression):
+  at custom-connections.wipple:8:19-8:22
   grouped with `123`, `123`
   has type `Number`
   is an expression
 
 `{456}` (BlockExpression):
+  at custom-connections.wipple:8:24-8:29
   grouped with `{(else :: value)}`
   has type `{Number}`
   is an expression
 
 `456` (ExpressionStatement):
+  at custom-connections.wipple:8:25-8:28
   grouped with `456`, `else :: value`
   has type `Number`
 
 `456` (NumberExpression):
+  at custom-connections.wipple:8:25-8:28
   grouped with `456`, `456`
   has type `Number`
   is an expression

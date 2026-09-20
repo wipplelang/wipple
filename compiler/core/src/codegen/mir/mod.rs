@@ -48,8 +48,8 @@ impl Program {
         let mut writer = Writer {
             db,
             options,
-            program: self,
             map,
+            program: self,
         };
 
         for &file in &program.source_files {
@@ -59,8 +59,13 @@ impl Program {
             }
         }
 
+        writer.program.functions.resize_with(
+            writer.program.functions.len() + program.definitions.len(),
+            Function::default,
+        );
+
         for key in program.definitions.keys() {
-            let index = FunctionIndex::new(program.layer, writer.map.functions.len());
+            let index = writer.map.functions.len();
             writer.map.functions.insert(*key, index);
         }
 
@@ -70,8 +75,7 @@ impl Program {
             };
 
             let function = writer.function(*definition, function)?;
-
-            writer.program.functions.insert(index, function);
+            writer.program.functions[index] = function;
 
             if let hir::DefinitionKey::TopLevel = definition {
                 writer.program.main = Some(index);
@@ -86,8 +90,8 @@ impl Program {
 struct Writer<'a> {
     db: &'a Db,
     options: Options<'a>,
-    program: &'a mut Program,
     map: &'a mut IndexMap,
+    program: &'a mut Program,
 }
 
 impl Writer<'_> {
@@ -101,13 +105,32 @@ impl Writer<'_> {
             .iter()
             .enumerate()
             .map(|(index, &node)| {
-                let index = TyParameterIndex::new(node.layer, index);
                 self.map.ty_parameters.insert(node, index);
-                Ok((index, TyParameter {}))
+                Ok(TyParameter {})
             })
-            .collect::<Result<BTreeMap<_, _>, CodegenError>>()?;
+            .collect::<Result<Vec<_>, CodegenError>>()?;
 
-        let offset = self.map.locals.entry(definition).or_default().len();
+        let captures = function
+            .captures
+            .iter()
+            .map(|&node| self.map.local_index(definition, node))
+            .collect::<Result<Vec<_>, CodegenError>>()?;
+
+        self.map
+            .locals
+            .entry(definition)
+            .or_default()
+            .push(Default::default());
+
+        for (local, node) in function.captures.iter().enumerate() {
+            self.map
+                .locals
+                .entry(definition)
+                .or_default()
+                .last_mut()
+                .unwrap()
+                .insert(*node, local);
+        }
 
         let inputs = function
             .bounds
@@ -119,31 +142,36 @@ impl Writer<'_> {
                 let ty = self.ty(&hir::type_of(self.db, input)?)?;
                 let mutable = self.db.contains::<IsMutated>(input);
 
-                let index = LocalIndex::new(input.layer, offset + index);
+                let index = captures.len() + index;
 
                 self.map
                     .locals
                     .entry(definition)
                     .or_default()
+                    .last_mut()
+                    .unwrap()
                     .insert(input, index);
 
-                Ok((index, Local { ty, mutable }))
+                Ok(Local { ty, mutable })
             })
-            .collect::<Result<BTreeMap<_, _>, CodegenError>>()?;
+            .collect::<Result<Vec<_>, CodegenError>>()?;
 
-        let mut locals = BTreeMap::new();
+        let mut locals = Vec::new();
         for instruction in &function.instructions {
             instruction.clone().for_each_node(&mut |node| {
                 if self.map.local_index(definition, node).is_err() {
                     let ty = self.ty(&hir::type_of(self.db, node)?)?;
                     let mutable = self.db.contains::<IsMutated>(node);
 
-                    let index = LocalIndex::new(node.layer, offset + inputs.len() + locals.len());
-                    locals.insert(index, Local { ty, mutable });
+                    let index = captures.len() + inputs.len() + locals.len();
+                    locals.push(Local { ty, mutable });
+
                     self.map
                         .locals
                         .entry(definition)
                         .or_default()
+                        .last_mut()
+                        .unwrap()
                         .insert(node, index);
                 }
 
@@ -153,8 +181,16 @@ impl Writer<'_> {
 
         let body = self.instructions(definition, &function.instructions)?;
 
+        self.map
+            .locals
+            .entry(definition)
+            .or_default()
+            .pop()
+            .unwrap();
+
         Ok(Function {
             type_parameters,
+            captures,
             inputs,
             locals,
             body,
@@ -394,8 +430,8 @@ impl Writer<'_> {
         value: &hir::Value,
     ) -> Result<Expression, CodegenError> {
         Ok(match value {
-            hir::Value::Bound(bound_path) => Expression::Bound {
-                local: self.bound(definition, bound_path)?,
+            hir::Value::Bound(node) => Expression::Local {
+                local: self.bound(definition, *node)?,
             },
             hir::Value::Call { function, inputs } => Expression::Call {
                 function: self.map.local_index(definition, *function)?,
@@ -482,51 +518,27 @@ impl Writer<'_> {
         &mut self,
         definition: hir::DefinitionKey,
         constant_definition: hir::DefinitionKey,
-        bounds: &BTreeMap<hir::BoundPath, hir::Instance>,
+        bounds: &BTreeMap<hir::BoundPath, Node>,
     ) -> Result<Expression, CodegenError> {
         Ok(Expression::Function {
             index: self.map.function_index(constant_definition)?,
             bounds: bounds
                 .values()
-                .map(|instance| {
-                    Ok(match instance {
-                        hir::Instance::Bound(bound_path) => {
-                            let local = self.bound(definition, bound_path)?;
-                            SourceMapped::new(None, Expression::Bound { local })
-                        }
-                        hir::Instance::Instance {
-                            definition: instance_definition,
-                            bounds,
-                        } => SourceMapped::new(
-                            None,
-                            self.constant(definition, *instance_definition, bounds)?,
-                        ),
-                    })
-                })
+                .map(|node| self.map.local_index(definition, *node))
                 .collect::<Result<Vec<_>, CodegenError>>()?,
         })
     }
 
-    fn bound(
-        &mut self,
-        definition: hir::DefinitionKey,
-        bound_path: &hir::BoundPath,
-    ) -> Result<LocalIndex, CodegenError> {
-        let [node] = bound_path.as_slice() else {
-            return Err(anyhow::format_err!("bound {bound_path:?} not resolved"));
-        };
-
-        self.map.local_index(definition, *node)
+    fn bound(&mut self, definition: hir::DefinitionKey, node: Node) -> Result<usize, CodegenError> {
+        self.map.local_index(definition, node)
     }
 
     fn intrinsic(
         &mut self,
         name: &str,
-        inputs: &[LocalIndex],
+        inputs: &[usize],
     ) -> Result<Intrinsic<SourceMapped<Box<Expression>>>, CodegenError> {
-        let local = |index: LocalIndex| {
-            SourceMapped::new(None, Box::new(Expression::Local { local: index }))
-        };
+        let local = |local| SourceMapped::new(None, Box::new(Expression::Local { local }));
 
         macro_rules! intrinsics {
             ($($s:literal => $name:ident($($arg:ident),* $(,)?) $({ $($t:tt)* })?),* $(,)?) => {
@@ -636,12 +648,12 @@ impl Writer<'_> {
         &mut self,
         definition: Node,
         parameters: &[hir::Type],
-    ) -> Result<NamedTyIndex, CodegenError> {
+    ) -> Result<usize, CodegenError> {
         if let Some(index) = self.map.named_tys.get(&definition) {
             return Ok(*index);
         }
 
-        let index = NamedTyIndex::new(definition.layer, self.map.named_tys.len());
+        let index = self.map.named_tys.len();
         self.map.named_tys.insert(definition, index);
 
         let (parameters, representation) = hir::representation(self.db, definition, parameters)?;
@@ -650,10 +662,7 @@ impl Writer<'_> {
             .into_iter()
             .enumerate()
             .map(|(index, node)| {
-                self.map
-                    .ty_parameters
-                    .insert(node, TyParameterIndex::new(node.layer, index));
-
+                self.map.ty_parameters.insert(node, index);
                 Ok(TyParameter {})
             })
             .collect::<Result<Vec<_>, CodegenError>>()?;
@@ -679,13 +688,10 @@ impl Writer<'_> {
             },
         };
 
-        self.program.named_tys.insert(
-            index,
-            NamedTy {
-                parameters,
-                representation,
-            },
-        );
+        self.program.named_tys.push(NamedTy {
+            parameters,
+            representation,
+        });
 
         Ok(index)
     }
@@ -693,24 +699,21 @@ impl Writer<'_> {
 
 #[derive(Debug, Default)]
 pub struct IndexMap {
-    functions: BTreeMap<hir::DefinitionKey, FunctionIndex>,
-    named_tys: BTreeMap<Node, NamedTyIndex>,
-    ty_parameters: BTreeMap<Node, TyParameterIndex>,
-    locals: BTreeMap<hir::DefinitionKey, BTreeMap<Node, LocalIndex>>,
+    functions: BTreeMap<hir::DefinitionKey, usize>,
+    named_tys: BTreeMap<Node, usize>,
+    ty_parameters: BTreeMap<Node, usize>,
+    locals: BTreeMap<hir::DefinitionKey, Vec<BTreeMap<Node, usize>>>,
 }
 
 impl IndexMap {
-    fn function_index(
-        &self,
-        definition: hir::DefinitionKey,
-    ) -> Result<FunctionIndex, CodegenError> {
+    fn function_index(&self, definition: hir::DefinitionKey) -> Result<usize, CodegenError> {
         self.functions
             .get(&definition)
             .copied()
             .ok_or_else(|| anyhow::format_err!("missing function {definition:?}"))
     }
 
-    fn ty_parameter_index(&self, node: Node) -> Result<TyParameterIndex, CodegenError> {
+    fn ty_parameter_index(&self, node: Node) -> Result<usize, CodegenError> {
         self.ty_parameters
             .get(&node)
             .copied()
@@ -721,9 +724,10 @@ impl IndexMap {
         &self,
         definition: hir::DefinitionKey,
         node: Node,
-    ) -> Result<LocalIndex, CodegenError> {
+    ) -> Result<usize, CodegenError> {
         self.locals
             .get(&definition)
+            .and_then(|locals| locals.last())
             .and_then(|locals| locals.get(&node).copied())
             .ok_or_else(|| anyhow::format_err!("missing local {node:?}"))
     }

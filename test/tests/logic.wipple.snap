@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  at logic.wipple:1:1-1:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -8,42 +9,50 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (if (True and False) {"a"} {"b"})` (ExpressionStatement):
+  at logic.wipple:1:1-1:39
   grouped with `show (if (True and False) {"a"} {"b"})`
   has type `()`
 
 `show (if (True and False) {"a"} {"b"})` (CallExpression):
+  at logic.wipple:1:1-1:39
   grouped with `()`, `show (if (True and False) {"a"} {"b"})`
   has type `()`
   is an expression
 
 `if` (VariableExpression):
+  at logic.wipple:1:7-1:9
   grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
   has type `Boolean {String} {String} -> String`
   is an expression
   resolved to 1 definition(s): `if`
 
 `if (True and False) {"a"} {"b"}` (CallExpression):
+  at logic.wipple:1:7-1:38
   grouped with `output :: value`, `value`
   has type `String`
   is an expression
 
 `True` (VisitAs):
+  at logic.wipple:1:11-1:15
   grouped with `Boolean`, `left`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `True and False` (OperatorExpression):
+  at logic.wipple:1:11-1:25
   grouped with `True and False`, `condition :: Boolean`
   has type `Boolean`
   is an expression
 
 `True and False` (CallExpression):
+  at logic.wipple:1:11-1:25
   grouped with `output`, `True and False`
   has type `Boolean`
   is an expression
 
 `True and False` (ConstructorExpression):
+  at logic.wipple:1:11-1:25
   grouped with `left {right} -> output`
   has bound(s) `And` `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
@@ -51,49 +60,59 @@ Facts (layer 2):
   resolved to 1 definition(s): `And`
 
 `False` (VisitAs):
+  at logic.wipple:1:20-1:25
   grouped with `Boolean`, `False`, `False`, `right`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `False` (VisitAs):
+  at logic.wipple:1:20-1:25
   grouped with `{right}`
   has type `{Boolean}`
   is an expression
 
 `False` (ExpressionStatement):
+  at logic.wipple:1:20-1:25
   grouped with `False`, `False`
   has type `Boolean`
 
 `{"a"}` (BlockExpression):
+  at logic.wipple:1:27-1:32
   grouped with `{(then :: value)}`
   has type `{String}`
   is an expression
 
 `"a"` (ExpressionStatement):
+  at logic.wipple:1:28-1:31
   grouped with `"a"`, `then :: value`
   has type `String`
 
 `"a"` (StringExpression):
+  at logic.wipple:1:28-1:31
   grouped with `"a"`, `"a"`
   has type `String`
   is an expression
 
 `{"b"}` (BlockExpression):
+  at logic.wipple:1:33-1:38
   grouped with `{(else :: value)}`
   has type `{String}`
   is an expression
 
 `"b"` (ExpressionStatement):
+  at logic.wipple:1:34-1:37
   grouped with `"b"`, `else :: value`
   has type `String`
 
 `"b"` (StringExpression):
+  at logic.wipple:1:34-1:37
   grouped with `"b"`, `"b"`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
+  at logic.wipple:2:1-2:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -101,42 +120,50 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (if (True or False) {"a"} {"b"})` (ExpressionStatement):
+  at logic.wipple:2:1-2:38
   grouped with `show (if (True or False) {"a"} {"b"})`
   has type `()`
 
 `show (if (True or False) {"a"} {"b"})` (CallExpression):
+  at logic.wipple:2:1-2:38
   grouped with `()`, `show (if (True or False) {"a"} {"b"})`
   has type `()`
   is an expression
 
 `if` (VariableExpression):
+  at logic.wipple:2:7-2:9
   grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
   has type `Boolean {String} {String} -> String`
   is an expression
   resolved to 1 definition(s): `if`
 
 `if (True or False) {"a"} {"b"}` (CallExpression):
+  at logic.wipple:2:7-2:37
   grouped with `output :: value`, `value`
   has type `String`
   is an expression
 
 `True` (VisitAs):
+  at logic.wipple:2:11-2:15
   grouped with `Boolean`, `left`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `True or False` (OperatorExpression):
+  at logic.wipple:2:11-2:24
   grouped with `True or False`, `condition :: Boolean`
   has type `Boolean`
   is an expression
 
 `True or False` (CallExpression):
+  at logic.wipple:2:11-2:24
   grouped with `output`, `True or False`
   has type `Boolean`
   is an expression
 
 `True or False` (ConstructorExpression):
+  at logic.wipple:2:11-2:24
   grouped with `left {right} -> output`
   has bound(s) `Or` `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
@@ -144,44 +171,53 @@ Facts (layer 2):
   resolved to 1 definition(s): `Or`
 
 `False` (VisitAs):
+  at logic.wipple:2:19-2:24
   grouped with `Boolean`, `False`, `False`, `right`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `False` (VisitAs):
+  at logic.wipple:2:19-2:24
   grouped with `{right}`
   has type `{Boolean}`
   is an expression
 
 `False` (ExpressionStatement):
+  at logic.wipple:2:19-2:24
   grouped with `False`, `False`
   has type `Boolean`
 
 `{"a"}` (BlockExpression):
+  at logic.wipple:2:26-2:31
   grouped with `{(then :: value)}`
   has type `{String}`
   is an expression
 
 `"a"` (ExpressionStatement):
+  at logic.wipple:2:27-2:30
   grouped with `"a"`, `then :: value`
   has type `String`
 
 `"a"` (StringExpression):
+  at logic.wipple:2:27-2:30
   grouped with `"a"`, `"a"`
   has type `String`
   is an expression
 
 `{"b"}` (BlockExpression):
+  at logic.wipple:2:32-2:37
   grouped with `{(else :: value)}`
   has type `{String}`
   is an expression
 
 `"b"` (ExpressionStatement):
+  at logic.wipple:2:33-2:36
   grouped with `"b"`, `else :: value`
   has type `String`
 
 `"b"` (StringExpression):
+  at logic.wipple:2:33-2:36
   grouped with `"b"`, `"b"`
   has type `String`
   is an expression

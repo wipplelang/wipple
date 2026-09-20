@@ -1,46 +1,55 @@
 Facts (layer 2):
 
 `sports` (VariablePattern):
+  at set.wipple:1:1-1:7
   grouped with `("Basketball", "Soccer", "Golf") :: Set _`, `("Basketball", "Soccer", "Golf") :: Set _`, `sports`, `sports`, `sports`, `sports`
   has type `Set String`
   is a definition
   is a pattern
 
 `sports : ("Basketball", "Soccer", "Golf") :: Set _` (AssignmentStatement):
+  at set.wipple:1:1-1:51
   has type `()`
 
 `"Basketball"` (VisitAs):
+  at set.wipple:1:11-1:23
   grouped with `"Basketball"`, `element`
   has type `String`
   is an expression
 
 `"Basketball", "Soccer", "Golf"` (CollectionExpression):
+  at set.wipple:1:11-1:41
   grouped with `"Golf"`, `Set _`
   has type `Set String`
   is an expression
 
 `"Soccer"` (VisitAs):
+  at set.wipple:1:25-1:33
   grouped with `"Soccer"`, `element`
   has type `String`
   is an expression
 
 `"Golf"` (VisitAs):
+  at set.wipple:1:35-1:41
   grouped with `"Golf"`, `element`
   has type `String`
   is an expression
 
 `Set _` (NamedType):
+  at set.wipple:1:46-1:51
   grouped with `"Basketball", "Soccer", "Golf"`, `("Basketball", "Soccer", "Golf") :: Set _`
   has type `Set String`
   is a type
   resolved to 1 definition(s): `Set`
 
 `_` (PlaceholderType):
+  at set.wipple:1:50-1:51
   grouped with `element`
   has type `String`
   is a type
 
 `show` (VariableExpression):
+  at set.wipple:3:1-3:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -48,26 +57,31 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Basketball")` (ExpressionStatement):
+  at set.wipple:3:1-3:39
   grouped with `show (sports . contains? "Basketball")`
   has type `()`
 
 `show (sports . contains? "Basketball")` (CallExpression):
+  at set.wipple:3:1-3:39
   grouped with `()`, `show (sports . contains? "Basketball")`
   has type `()`
   is an expression
 
 `sports` (VisitAs):
+  at set.wipple:3:7-3:13
   grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
 
 `sports . contains? "Basketball"` (OperatorExpression):
+  at set.wipple:3:7-3:38
   grouped with `contains? "Basketball"`, `value`
   has type `Boolean`
   is an expression
 
 `contains?` (VariableExpression):
+  at set.wipple:3:16-3:25
   grouped with `element -> collection -> Boolean`
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
@@ -75,21 +89,25 @@ Facts (layer 2):
   resolved to 1 definition(s): `contains?`
 
 `contains? "Basketball"` (CallExpression):
+  at set.wipple:3:16-3:38
   grouped with `Boolean`, `Boolean`, `sports . contains? "Basketball"`
   has type `Boolean`
   is an expression
 
 `contains? "Basketball"` (VisitAs):
+  at set.wipple:3:16-3:38
   grouped with `collection -> Boolean`
   has type `(Set String) -> Boolean`
   is an expression
 
 `"Basketball"` (StringExpression):
+  at set.wipple:3:26-3:38
   grouped with `"Basketball"`, `element`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
+  at set.wipple:4:1-4:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -97,26 +115,31 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Soccer")` (ExpressionStatement):
+  at set.wipple:4:1-4:35
   grouped with `show (sports . contains? "Soccer")`
   has type `()`
 
 `show (sports . contains? "Soccer")` (CallExpression):
+  at set.wipple:4:1-4:35
   grouped with `()`, `show (sports . contains? "Soccer")`
   has type `()`
   is an expression
 
 `sports` (VisitAs):
+  at set.wipple:4:7-4:13
   grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
 
 `sports . contains? "Soccer"` (OperatorExpression):
+  at set.wipple:4:7-4:34
   grouped with `contains? "Soccer"`, `value`
   has type `Boolean`
   is an expression
 
 `contains?` (VariableExpression):
+  at set.wipple:4:16-4:25
   grouped with `element -> collection -> Boolean`
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
@@ -124,21 +147,25 @@ Facts (layer 2):
   resolved to 1 definition(s): `contains?`
 
 `contains? "Soccer"` (CallExpression):
+  at set.wipple:4:16-4:34
   grouped with `Boolean`, `Boolean`, `sports . contains? "Soccer"`
   has type `Boolean`
   is an expression
 
 `contains? "Soccer"` (VisitAs):
+  at set.wipple:4:16-4:34
   grouped with `collection -> Boolean`
   has type `(Set String) -> Boolean`
   is an expression
 
 `"Soccer"` (StringExpression):
+  at set.wipple:4:26-4:34
   grouped with `"Soccer"`, `element`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
+  at set.wipple:5:1-5:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -146,26 +173,31 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Golf")` (ExpressionStatement):
+  at set.wipple:5:1-5:33
   grouped with `show (sports . contains? "Golf")`
   has type `()`
 
 `show (sports . contains? "Golf")` (CallExpression):
+  at set.wipple:5:1-5:33
   grouped with `()`, `show (sports . contains? "Golf")`
   has type `()`
   is an expression
 
 `sports` (VisitAs):
+  at set.wipple:5:7-5:13
   grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
 
 `sports . contains? "Golf"` (OperatorExpression):
+  at set.wipple:5:7-5:32
   grouped with `contains? "Golf"`, `value`
   has type `Boolean`
   is an expression
 
 `contains?` (VariableExpression):
+  at set.wipple:5:16-5:25
   grouped with `element -> collection -> Boolean`
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
@@ -173,21 +205,25 @@ Facts (layer 2):
   resolved to 1 definition(s): `contains?`
 
 `contains? "Golf"` (CallExpression):
+  at set.wipple:5:16-5:32
   grouped with `Boolean`, `Boolean`, `sports . contains? "Golf"`
   has type `Boolean`
   is an expression
 
 `contains? "Golf"` (VisitAs):
+  at set.wipple:5:16-5:32
   grouped with `collection -> Boolean`
   has type `(Set String) -> Boolean`
   is an expression
 
 `"Golf"` (StringExpression):
+  at set.wipple:5:26-5:32
   grouped with `"Golf"`, `element`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
+  at set.wipple:6:1-6:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -195,26 +231,31 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (sports . contains? "Baseball")` (ExpressionStatement):
+  at set.wipple:6:1-6:37
   grouped with `show (sports . contains? "Baseball")`
   has type `()`
 
 `show (sports . contains? "Baseball")` (CallExpression):
+  at set.wipple:6:1-6:37
   grouped with `()`, `show (sports . contains? "Baseball")`
   has type `()`
   is an expression
 
 `sports` (VisitAs):
+  at set.wipple:6:7-6:13
   grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
 
 `sports . contains? "Baseball"` (OperatorExpression):
+  at set.wipple:6:7-6:36
   grouped with `contains? "Baseball"`, `value`
   has type `Boolean`
   is an expression
 
 `contains?` (VariableExpression):
+  at set.wipple:6:16-6:25
   grouped with `element -> collection -> Boolean`
   has bound(s) `Container` `(Set String)` `String` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `String` (resolved as `instance (Equal String)`), `Hash` `String` (resolved as `instance (Hash String)`)
   has type `String -> (Set String) -> Boolean`
@@ -222,16 +263,19 @@ Facts (layer 2):
   resolved to 1 definition(s): `contains?`
 
 `contains? "Baseball"` (CallExpression):
+  at set.wipple:6:16-6:36
   grouped with `Boolean`, `Boolean`, `sports . contains? "Baseball"`
   has type `Boolean`
   is an expression
 
 `contains? "Baseball"` (VisitAs):
+  at set.wipple:6:16-6:36
   grouped with `collection -> Boolean`
   has type `(Set String) -> Boolean`
   is an expression
 
 `"Baseball"` (StringExpression):
+  at set.wipple:6:26-6:36
   grouped with `"Baseball"`, `element`
   has type `String`
   is an expression

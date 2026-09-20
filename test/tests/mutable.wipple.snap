@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `x` (VariablePattern):
+  at mutable.wipple:1:1-1:2
   grouped with `1`, `1`, `x`, `set x`, `x`
   has type `Number`
   is a definition
@@ -8,39 +9,47 @@ Facts (layer 2):
   is mutated
 
 `x : 1` (AssignmentStatement):
+  at mutable.wipple:1:1-1:6
   has type `()`
 
 `1` (NumberExpression):
+  at mutable.wipple:1:5-1:6
   grouped with `1`, `x`, `x`
   has type `Number`
   is an expression
 
 `set x` (SetPattern):
+  at mutable.wipple:2:1-2:6
   grouped with `x + 1`, `x`, `x + 1`
   has type `Number`
   is a pattern
   resolved to 1 definition(s): `x`
 
 `set x : x + 1` (AssignmentStatement):
+  at mutable.wipple:2:1-2:14
   has type `()`
 
 `x` (VariableExpression):
+  at mutable.wipple:2:9-2:10
   grouped with `x`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `x`
 
 `x + 1` (OperatorExpression):
+  at mutable.wipple:2:9-2:14
   grouped with `x + 1`, `set x`, `set x`
   has type `Number`
   is an expression
 
 `x + 1` (CallExpression):
+  at mutable.wipple:2:9-2:14
   grouped with `sum`, `x + 1`
   has type `Number`
   is an expression
 
 `x + 1` (ConstructorExpression):
+  at mutable.wipple:2:9-2:14
   grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
@@ -48,11 +57,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `1` (NumberExpression):
+  at mutable.wipple:2:13-2:14
   grouped with `1`, `right`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at mutable.wipple:3:1-3:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -60,15 +71,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show x` (ExpressionStatement):
+  at mutable.wipple:3:1-3:7
   grouped with `show x`
   has type `()`
 
 `show x` (CallExpression):
+  at mutable.wipple:3:1-3:7
   grouped with `()`, `show x`
   has type `()`
   is an expression
 
 `x` (VariableExpression):
+  at mutable.wipple:3:6-3:7
   grouped with `x`, `value`
   has type `Number`
   is an expression

@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `Greet` (TraitDefinition):
+  at greet.wipple:2:1-2:6
   grouped with `value -> String`
   has 2 instances
   has definition constraints
@@ -9,6 +10,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at greet.wipple:2:9-2:14
   grouped with `value`
   has type `value`
   is a definition
@@ -16,6 +18,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at greet.wipple:2:25-2:30
   grouped with `value`
   has type `value`
   is a type
@@ -23,16 +26,19 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `value -> String` (FunctionType):
+  at greet.wipple:2:25-2:40
   grouped with `Greet`
   has type `value -> String`
   is a type
 
 `String` (NamedType):
+  at greet.wipple:2:34-2:40
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `greet` (ConstantDefinition):
+  at greet.wipple:5:1-5:6
   grouped with `value -> String`, `x -> "Hello, _!" (Greet x)`
   has bounds
   has definition constraints
@@ -41,6 +47,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at greet.wipple:5:10-5:15
   grouped with `value`, `x`
   has type `value`
   is a definition
@@ -48,17 +55,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value -> String` (FunctionType):
+  at greet.wipple:5:10-5:25
   grouped with `greet`
   has type `value -> String`
   is a type
 
 `String` (NamedType):
+  at greet.wipple:5:19-5:25
   grouped with `"Hello, _!" (Greet x)`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `(Greet value)` (BoundConstraint):
+  at greet.wipple:5:32-5:45
   grouped with `value -> String`
   has bound(s) `Greet` `value` (resolved as `(Greet value)`)
   has type `value -> String`
@@ -66,6 +76,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Greet`
 
 `value` (TypeParameter):
+  at greet.wipple:5:39-5:44
   grouped with `value`, `value`, `value`
   has type `value`
   is a type
@@ -73,31 +84,38 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `greet : x -> "Hello, _!" (Greet x)` (AssignmentStatement):
+  at greet.wipple:6:1-6:35
   has type `()`
 
 `x` (VariablePattern):
+  at greet.wipple:6:9-6:10
   grouped with `x`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `x -> "Hello, _!" (Greet x)` (FunctionExpression):
+  at greet.wipple:6:9-6:35
+  captures `(Greet value)`
   grouped with `greet`
   has type `value -> String`
   is an expression
 
 `"Hello, _!" (Greet x)` (FormatExpression):
+  at greet.wipple:6:14-6:35
   grouped with `"Hello, _!" (Greet x)`, `String`
   has type `String`
   is an expression
 
 `"Hello, _!" (Greet x)` (NamedType):
+  at greet.wipple:6:14-6:35
   grouped with `"Hello, _!" (Greet x)`, `String`, `_`, `_`, `_`, `_`, `_`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `"Hello, _!" (Greet x)` (ConstructorExpression):
+  at greet.wipple:6:14-6:35
   grouped with `value -> String`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> String`
@@ -105,6 +123,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `Greet` (ConstructorExpression):
+  at greet.wipple:6:27-6:32
   grouped with `value -> String`
   has bound(s) `Greet` `value` (resolved as `(Greet value)`)
   has type `value -> String`
@@ -112,34 +131,40 @@ Facts (layer 2):
   resolved to 1 definition(s): `Greet`
 
 `Greet x` (CallExpression):
+  at greet.wipple:6:27-6:34
   grouped with `String`, `value`
   has type `String`
   is an expression
 
 `x` (VariableExpression):
+  at greet.wipple:6:33-6:34
   grouped with `x`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
 
 `Person` (TypeDefinition):
+  at greet.wipple:8:1-8:7
   grouped with `Person`
   has definition constraints
   has type `Person`
   is a definition
 
 `Person` (TypeDefinition):
+  at greet.wipple:8:1-8:7
   grouped with `Person`
   has definition constraints
   has type `Person`
   is a definition
 
 `String` (NamedType):
+  at greet.wipple:8:24-8:30
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `instance (Greet Person)` (InstanceDefinition):
+  at greet.wipple:11:1-11:24
   grouped with `value -> String`, `(Person {name : name}) -> name`
   has definition constraints
   has type `Person -> String`
@@ -147,47 +172,55 @@ Facts (layer 2):
   resolved to 1 definition(s): `Greet`
 
 `Person` (NamedType):
+  at greet.wipple:11:17-11:23
   grouped with `value`
   has type `Person`
   is a type
   resolved to 1 definition(s): `Person`
 
 `(Person {name : name}) -> name` (FunctionExpression):
+  at greet.wipple:11:27-11:57
   grouped with `instance (Greet Person)`
   has type `Person -> String`
   is an expression
 
 `Person {name : name}` (StructurePattern):
+  at greet.wipple:11:28-11:48
   grouped with `Person`, `value`
   has type `Person`
   is a pattern
   resolved to 1 definition(s): `Person`
 
 `name` (VariablePattern):
+  at greet.wipple:11:43-11:47
   grouped with `_`, `name`
   has type `String`
   is a definition
   is a pattern
 
 `name` (VariableExpression):
+  at greet.wipple:11:53-11:57
   grouped with `name`, `String`
   has type `String`
   is an expression
   resolved to 1 definition(s): `name`
 
 `Earth` (TypeDefinition):
+  at greet.wipple:13:1-13:6
   grouped with `Earth`
   has definition constraints
   has type `Earth`
   is a definition
 
 `Earth` (TypeDefinition):
+  at greet.wipple:13:1-13:6
   grouped with `Earth`
   has definition constraints
   has type `Earth`
   is a definition
 
 `instance (Greet Earth)` (InstanceDefinition):
+  at greet.wipple:16:1-16:23
   grouped with `value -> String`, `_ -> "world"`
   has definition constraints
   has type `Earth -> String`
@@ -195,27 +228,32 @@ Facts (layer 2):
   resolved to 1 definition(s): `Greet`
 
 `Earth` (NamedType):
+  at greet.wipple:16:17-16:22
   grouped with `value`
   has type `Earth`
   is a type
   resolved to 1 definition(s): `Earth`
 
 `_` (WildcardPattern):
+  at greet.wipple:16:26-16:27
   grouped with `value`
   has type `Earth`
   is a pattern
 
 `_ -> "world"` (FunctionExpression):
+  at greet.wipple:16:26-16:38
   grouped with `instance (Greet Earth)`
   has type `Earth -> String`
   is an expression
 
 `"world"` (StringExpression):
+  at greet.wipple:16:31-16:38
   grouped with `"world"`, `String`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
+  at greet.wipple:18:1-18:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -223,15 +261,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (greet (Person {name : "Bob"}))` (ExpressionStatement):
+  at greet.wipple:18:1-18:37
   grouped with `show (greet (Person {name : "Bob"}))`
   has type `()`
 
 `show (greet (Person {name : "Bob"}))` (CallExpression):
+  at greet.wipple:18:1-18:37
   grouped with `()`, `show (greet (Person {name : "Bob"}))`
   has type `()`
   is an expression
 
 `greet` (VariableExpression):
+  at greet.wipple:18:7-18:12
   grouped with `value -> String`
   has bound(s) `Greet` `Person` (resolved as `instance (Greet Person)`)
   has type `Person -> String`
@@ -239,22 +280,26 @@ Facts (layer 2):
   resolved to 1 definition(s): `greet`
 
 `greet (Person {name : "Bob"})` (CallExpression):
+  at greet.wipple:18:7-18:36
   grouped with `String`, `value`
   has type `String`
   is an expression
 
 `Person {name : "Bob"}` (StructureExpression):
+  at greet.wipple:18:14-18:35
   grouped with `Person`, `value`
   has type `Person`
   is an expression
   resolved to 1 definition(s): `Person`
 
 `"Bob"` (StringExpression):
+  at greet.wipple:18:29-18:34
   grouped with `"Bob"`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
+  at greet.wipple:19:1-19:5
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -262,15 +307,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (greet Earth)` (ExpressionStatement):
+  at greet.wipple:19:1-19:19
   grouped with `show (greet Earth)`
   has type `()`
 
 `show (greet Earth)` (CallExpression):
+  at greet.wipple:19:1-19:19
   grouped with `()`, `show (greet Earth)`
   has type `()`
   is an expression
 
 `greet` (VariableExpression):
+  at greet.wipple:19:7-19:12
   grouped with `value -> String`
   has bound(s) `Greet` `Earth` (resolved as `instance (Greet Earth)`)
   has type `Earth -> String`
@@ -278,11 +326,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `greet`
 
 `greet Earth` (CallExpression):
+  at greet.wipple:19:7-19:18
   grouped with `String`, `value`
   has type `String`
   is an expression
 
 `Earth` (ConstructorExpression):
+  at greet.wipple:19:13-19:18
   grouped with `Earth`, `value`
   has type `Earth`
   is an expression

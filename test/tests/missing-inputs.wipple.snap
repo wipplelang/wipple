@@ -1,10 +1,12 @@
 Facts (layer 2):
 
 `show` (ExpressionStatement):
+  at missing-inputs.wipple:1:1-1:5
   grouped with `show`
   has type `_ -> ()`
 
 `show` (VariableExpression):
+  at missing-inputs.wipple:1:1-1:5
   grouped with `value -> ()`, `show`
   has type `_ -> ()`
   is an expression

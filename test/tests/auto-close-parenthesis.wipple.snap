@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  at auto-close-parenthesis.wipple:1:1-1:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -9,33 +10,39 @@ Facts (layer 2):
 
 `show (1 + 2
 ` (ExpressionStatement):
+  at auto-close-parenthesis.wipple:1:1-2:1
   grouped with `show (1 + 2
 `
   has type `()`
 
 `show (1 + 2
 ` (CallExpression):
+  at auto-close-parenthesis.wipple:1:1-2:1
   grouped with `()`, `show (1 + 2
 `
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  at auto-close-parenthesis.wipple:1:7-1:8
   grouped with `1`, `left`
   has type `Number`
   is an expression
 
 `1 + 2` (OperatorExpression):
+  at auto-close-parenthesis.wipple:1:7-1:12
   grouped with `1 + 2`, `value`
   has type `Number`
   is an expression
 
 `1 + 2` (CallExpression):
+  at auto-close-parenthesis.wipple:1:7-1:12
   grouped with `sum`, `1 + 2`
   has type `Number`
   is an expression
 
 `1 + 2` (ConstructorExpression):
+  at auto-close-parenthesis.wipple:1:7-1:12
   grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
@@ -43,6 +50,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `2` (NumberExpression):
+  at auto-close-parenthesis.wipple:1:11-1:12
   grouped with `2`, `right`
   has type `Number`
   is an expression

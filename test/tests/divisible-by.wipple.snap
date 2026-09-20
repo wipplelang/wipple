@@ -1,40 +1,48 @@
 Facts (layer 2):
 
 `even?` (VariablePattern):
+  at divisible-by.wipple:1:1-1:6
   grouped with `divisible-by? 2`, `divisible-by? 2`, `even?`, `even?`, `even?`
   has type `Number -> Boolean`
   is a definition
   is a pattern
 
 `even? : divisible-by? 2` (AssignmentStatement):
+  at divisible-by.wipple:1:1-1:24
   has type `()`
 
 `divisible-by?` (VariableExpression):
+  at divisible-by.wipple:1:9-1:22
   grouped with `(left :: Number) -> (right :: Number) -> Boolean`
   has type `Number -> Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `divisible-by?`
 
 `divisible-by? 2` (CallExpression):
+  at divisible-by.wipple:1:9-1:24
   grouped with `(right :: Number) -> Boolean`, `even?`, `even?`
   has type `Number -> Boolean`
   is an expression
 
 `2` (NumberExpression):
+  at divisible-by.wipple:1:23-1:24
   grouped with `2`, `left :: Number`
   has type `Number`
   is an expression
 
 `odd?` (VariablePattern):
+  at divisible-by.wipple:2:1-2:5
   grouped with `not even?`, `not even?`, `odd?`, `odd?`
   has type `Number -> Boolean`
   is a definition
   is a pattern
 
 `odd? : not even?` (AssignmentStatement):
+  at divisible-by.wipple:2:1-2:17
   has type `()`
 
 `not` (VariableExpression):
+  at divisible-by.wipple:2:8-2:11
   grouped with `value -> value`
   has bound(s) `Not` `(Number -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `Boolean` (resolved as `instance (Not Boolean)`)
   has type `(Number -> Boolean) -> Number -> Boolean`
@@ -42,17 +50,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `not`
 
 `not even?` (CallExpression):
+  at divisible-by.wipple:2:8-2:17
   grouped with `value`, `odd?`, `odd?`
   has type `Number -> Boolean`
   is an expression
 
 `even?` (VariableExpression):
+  at divisible-by.wipple:2:12-2:17
   grouped with `even?`, `value`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `even?`
 
 `show` (VariableExpression):
+  at divisible-by.wipple:4:1-4:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -60,31 +71,37 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (even? 2)` (ExpressionStatement):
+  at divisible-by.wipple:4:1-4:15
   grouped with `show (even? 2)`
   has type `()`
 
 `show (even? 2)` (CallExpression):
+  at divisible-by.wipple:4:1-4:15
   grouped with `()`, `show (even? 2)`
   has type `()`
   is an expression
 
 `even?` (VariableExpression):
+  at divisible-by.wipple:4:7-4:12
   grouped with `even?`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `even?`
 
 `even? 2` (CallExpression):
+  at divisible-by.wipple:4:7-4:14
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
 `2` (NumberExpression):
+  at divisible-by.wipple:4:13-4:14
   grouped with `2`, `right :: Number`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at divisible-by.wipple:5:1-5:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -92,31 +109,37 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (odd? 2)` (ExpressionStatement):
+  at divisible-by.wipple:5:1-5:14
   grouped with `show (odd? 2)`
   has type `()`
 
 `show (odd? 2)` (CallExpression):
+  at divisible-by.wipple:5:1-5:14
   grouped with `()`, `show (odd? 2)`
   has type `()`
   is an expression
 
 `odd?` (VariableExpression):
+  at divisible-by.wipple:5:7-5:11
   grouped with `odd?`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `odd?`
 
 `odd? 2` (CallExpression):
+  at divisible-by.wipple:5:7-5:13
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
 `2` (NumberExpression):
+  at divisible-by.wipple:5:12-5:13
   grouped with `2`, `right :: Number`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at divisible-by.wipple:6:1-6:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -124,31 +147,37 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (even? 3)` (ExpressionStatement):
+  at divisible-by.wipple:6:1-6:15
   grouped with `show (even? 3)`
   has type `()`
 
 `show (even? 3)` (CallExpression):
+  at divisible-by.wipple:6:1-6:15
   grouped with `()`, `show (even? 3)`
   has type `()`
   is an expression
 
 `even?` (VariableExpression):
+  at divisible-by.wipple:6:7-6:12
   grouped with `even?`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `even?`
 
 `even? 3` (CallExpression):
+  at divisible-by.wipple:6:7-6:14
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
 `3` (NumberExpression):
+  at divisible-by.wipple:6:13-6:14
   grouped with `3`, `right :: Number`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at divisible-by.wipple:7:1-7:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -156,26 +185,31 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (odd? 3)` (ExpressionStatement):
+  at divisible-by.wipple:7:1-7:14
   grouped with `show (odd? 3)`
   has type `()`
 
 `show (odd? 3)` (CallExpression):
+  at divisible-by.wipple:7:1-7:14
   grouped with `()`, `show (odd? 3)`
   has type `()`
   is an expression
 
 `odd?` (VariableExpression):
+  at divisible-by.wipple:7:7-7:11
   grouped with `odd?`
   has type `Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `odd?`
 
 `odd? 3` (CallExpression):
+  at divisible-by.wipple:7:7-7:13
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
 `3` (NumberExpression):
+  at divisible-by.wipple:7:12-7:13
   grouped with `3`, `right :: Number`
   has type `Number`
   is an expression

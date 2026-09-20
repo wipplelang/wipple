@@ -1,84 +1,99 @@
 Facts (layer 2):
 
 `Grade` (TypeDefinition):
+  at exhaustiveness-checking.wipple:1:1-1:6
   grouped with `A`, `B`, `C`, `D`, `F`
   has definition constraints
   has type `Grade`
   is a definition
 
 `A` (VariantDefinition):
+  at exhaustiveness-checking.wipple:2:3-2:4
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `B` (VariantDefinition):
+  at exhaustiveness-checking.wipple:3:3-3:4
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `C` (VariantDefinition):
+  at exhaustiveness-checking.wipple:4:3-4:4
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `D` (VariantDefinition):
+  at exhaustiveness-checking.wipple:5:3-5:4
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `F` (VariantDefinition):
+  at exhaustiveness-checking.wipple:6:3-6:4
   grouped with `Grade`
   has definition constraints
   has type `Grade`
   is a definition
 
 `report-card` (ConstantDefinition):
+  at exhaustiveness-checking.wipple:9:1-9:12
   grouped with `Grade -> String`, `grade -> when grade {⋯}`
   has definition constraints
   has type `Grade -> String`
   is a definition
 
 `Grade` (NamedType):
+  at exhaustiveness-checking.wipple:9:16-9:21
   grouped with `grade`
   has type `Grade`
   is a type
   resolved to 1 definition(s): `Grade`
 
 `Grade -> String` (FunctionType):
+  at exhaustiveness-checking.wipple:9:16-9:31
   grouped with `report-card`
   has type `Grade -> String`
   is a type
 
 `String` (NamedType):
+  at exhaustiveness-checking.wipple:9:25-9:31
   grouped with `when grade {⋯}`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `report-card : grade -> when grade {⋯}` (AssignmentStatement):
+  at exhaustiveness-checking.wipple:10:1-14:2
   has type `()`
 
 `grade` (VariablePattern):
+  at exhaustiveness-checking.wipple:10:15-10:20
   grouped with `grade`, `Grade`
   has type `Grade`
   is a definition
   is a pattern
 
 `grade -> when grade {⋯}` (FunctionExpression):
+  at exhaustiveness-checking.wipple:10:15-14:2
   grouped with `report-card`
   has type `Grade -> String`
   is an expression
 
 `when grade {⋯}` (WhenExpression):
+  at exhaustiveness-checking.wipple:10:24-14:2
   grouped with `"top of the class"`, `"good job"`, `"need to study"`, `String`
   has type `String`
   is an expression
 
 `grade` (VariableExpression):
+  at exhaustiveness-checking.wipple:10:29-10:34
   grouped with `grade`, `A`, `B`, `C`
   has type `Grade`
   is an expression
@@ -86,34 +101,40 @@ Facts (layer 2):
   resolved to 1 definition(s): `grade`
 
 `A` (ConstructorPattern):
+  at exhaustiveness-checking.wipple:11:3-11:4
   grouped with `grade`, `Grade`
   has type `Grade`
   is a pattern
   resolved to 1 definition(s): `A`
 
 `"top of the class"` (StringExpression):
+  at exhaustiveness-checking.wipple:11:8-11:26
   grouped with `"top of the class"`, `when grade {⋯}`
   has type `String`
   is an expression
 
 `B` (ConstructorPattern):
+  at exhaustiveness-checking.wipple:12:3-12:4
   grouped with `grade`, `Grade`
   has type `Grade`
   is a pattern
   resolved to 1 definition(s): `B`
 
 `"good job"` (StringExpression):
+  at exhaustiveness-checking.wipple:12:8-12:18
   grouped with `"good job"`, `when grade {⋯}`
   has type `String`
   is an expression
 
 `C` (ConstructorPattern):
+  at exhaustiveness-checking.wipple:13:3-13:4
   grouped with `grade`, `Grade`
   has type `Grade`
   is a pattern
   resolved to 1 definition(s): `C`
 
 `"need to study"` (StringExpression):
+  at exhaustiveness-checking.wipple:13:8-13:23
   grouped with `"need to study"`, `when grade {⋯}`
   has type `String`
   is an expression

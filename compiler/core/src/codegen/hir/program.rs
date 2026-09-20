@@ -45,10 +45,10 @@ pub type BoundPath = Vec<Node>;
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 pub enum Instance {
-    Bound(BoundPath),
+    Bound(Node),
     Instance {
         definition: DefinitionKey,
-        bounds: BTreeMap<BoundPath, Instance>,
+        bounds: BTreeMap<BoundPath, Node>,
     },
 }
 
@@ -78,14 +78,14 @@ pub enum Instruction {
 
 #[derive(Debug, Clone)]
 pub enum Value {
-    Bound(BoundPath),
+    Bound(Node),
     Call {
         function: Node,
         inputs: Vec<Node>,
     },
     Constant {
         definition: DefinitionKey,
-        bounds: BTreeMap<BoundPath, Instance>,
+        bounds: BTreeMap<BoundPath, Node>,
     },
     Function(Function),
     Field {

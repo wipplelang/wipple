@@ -84,17 +84,35 @@ impl Ctx {
         definition: Node,
         bound_path: &[Node],
         bounds: &ResolvedBounds,
-    ) -> Result<BTreeMap<Vec<Node>, Instance>, CodegenError> {
+    ) -> Result<BTreeMap<Vec<Node>, Node>, CodegenError> {
         self.reachable_definitions
             .insert(DefinitionKey::Constant(definition));
 
         bounds
             .0
-            .keys()
-            .filter(|other| other.starts_with(bound_path) && other.len() == bound_path.len() + 1)
-            .map(|other| {
-                self.bound_for_instance(other, bounds)
-                    .map(|instance| (other.strip_prefix(bound_path).unwrap().to_vec(), instance))
+            .iter()
+            .filter(|(other, _)| {
+                other.starts_with(bound_path) && other.len() == bound_path.len() + 1
+            })
+            .map(|(other, bound)| {
+                let temporary = bound
+                    .as_ref()
+                    .map_err(|_| anyhow::format_err!("unresolved bound at {other:?}"))?
+                    .temporary;
+
+                self.bound_for_instance(other, bounds).map(|instance| {
+                    self.instruction(Instruction::Value {
+                        node: temporary,
+                        value: match instance {
+                            Instance::Bound(bound_path) => Value::Bound(bound_path),
+                            Instance::Instance { definition, bounds } => {
+                                Value::Constant { definition, bounds }
+                            }
+                        },
+                    });
+
+                    (other.strip_prefix(bound_path).unwrap().to_vec(), temporary)
+                })
             })
             .collect()
     }
@@ -112,12 +130,11 @@ impl Ctx {
             .map_err(|_| anyhow::format_err!("unresolved bound at {bound_path:?}"))?;
 
         if bound.instance.is_from_bound {
-            // This is relative to the enclosing definition (see `codegen_constant`)
-            return Ok(Instance::Bound(vec![bound.instance.node]));
+            return Ok(Instance::Bound(
+                // This is relative to the enclosing definition (see `bounds_for_constant`)
+                bound.instance.node,
+            ));
         }
-
-        self.reachable_definitions
-            .insert(DefinitionKey::Constant(bound.instance.node));
 
         Ok(Instance::Instance {
             definition: DefinitionKey::Constant(bound.instance.node),

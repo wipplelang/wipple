@@ -1,60 +1,72 @@
 Facts (layer 2):
 
 `list` (VariablePattern):
+  at enumerate.wipple:1:1-1:5
   grouped with `"a", "b", "c"`, `"a", "b", "c"`, `list`
   has type `List String`
   is a definition
   is a pattern
 
 `list : "a", "b", "c"` (AssignmentStatement):
+  at enumerate.wipple:1:1-1:21
   has type `()`
 
 `"a"` (VisitAs):
+  at enumerate.wipple:1:8-1:11
   grouped with `"a"`, `element`
   has type `String`
   is an expression
 
 `"a", "b", "c"` (CollectionExpression):
+  at enumerate.wipple:1:8-1:21
   grouped with `"c"`, `list`, `list`
   has type `List String`
   is an expression
 
 `"b"` (VisitAs):
+  at enumerate.wipple:1:13-1:16
   grouped with `"b"`, `element`
   has type `String`
   is an expression
 
 `"c"` (VisitAs):
+  at enumerate.wipple:1:18-1:21
   grouped with `"c"`, `element`
   has type `String`
   is an expression
 
 `list` (VisitAs):
+  at enumerate.wipple:2:1-2:5
   grouped with `collection`, `list`
   has type `List String`
   is an expression
   resolved to 1 definition(s): `list`
 
 `list . enumerate` (VisitAs):
+  at enumerate.wipple:2:1-2:17
   grouped with `container`, `enumerate`, `container`
   has type `Sequence (Number; String)`
   is an expression
 
 `list . enumerate . each ((n; c) -> show ("_: _" n c))` (ExpressionStatement):
+  at enumerate.wipple:2:1-2:54
   grouped with `list . enumerate . each ((n; c) -> show ("_: _" n c))`
   has type `()`
 
 `list . enumerate . each ((n; c) -> show ("_: _" n c))` (OperatorExpression):
+  at enumerate.wipple:2:1-2:54
   grouped with `each ((n; c) -> show ("_: _" n c))`, `list . enumerate . each ((n; c) -> show ("_: _" n c))`
   has type `()`
   is an expression
 
 `enumerate` (CallExpression):
+  at enumerate.wipple:2:8-2:17
   grouped with `Sequence (Number; element)`, `list . enumerate`
   has type `Sequence (Number; String)`
   is an expression
 
 `enumerate` (VisitAs):
+  at enumerate.wipple:2:8-2:17
   grouped with `collection -> Sequence (Number; element)`
   has bound(s) `As-Sequence` `(List String)` `String` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(List String) -> Sequence (Number; String)`
@@ -62,6 +74,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `enumerate`
 
 `each` (VariableExpression):
+  at enumerate.wipple:2:20-2:24
   grouped with `(action :: (element -> ())) -> container -> ()`
   has bound(s) `As-Sequence` `(Sequence (Number; String))` `(Number; String)` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `((Number; String) -> ()) -> (Sequence (Number; String)) -> ()`
@@ -69,38 +82,45 @@ Facts (layer 2):
   resolved to 1 definition(s): `each`
 
 `each ((n; c) -> show ("_: _" n c))` (CallExpression):
+  at enumerate.wipple:2:20-2:54
   grouped with `()`, `()`, `list . enumerate . each ((n; c) -> show ("_: _" n c))`
   has type `()`
   is an expression
 
 `each ((n; c) -> show ("_: _" n c))` (VisitAs):
+  at enumerate.wipple:2:20-2:54
   grouped with `container -> ()`
   has type `(Sequence (Number; String)) -> ()`
   is an expression
 
 `(n; c) -> show ("_: _" n c)` (FunctionExpression):
+  at enumerate.wipple:2:26-2:53
   grouped with `action :: (element -> ())`
   has type `(Number; String) -> ()`
   is an expression
 
 `n` (VariablePattern):
+  at enumerate.wipple:2:27-2:28
   grouped with `_`, `n`
   has type `Number`
   is a definition
   is a pattern
 
 `n; c` (TuplePattern):
+  at enumerate.wipple:2:27-2:31
   grouped with `element`
   has type `(Number; String)`
   is a pattern
 
 `c` (VariablePattern):
+  at enumerate.wipple:2:30-2:31
   grouped with `_`, `c`
   has type `String`
   is a definition
   is a pattern
 
 `show` (VariableExpression):
+  at enumerate.wipple:2:36-2:40
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -108,22 +128,26 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show ("_: _" n c)` (CallExpression):
+  at enumerate.wipple:2:36-2:53
   grouped with `()`, `()`
   has type `()`
   is an expression
 
 `"_: _" n c` (FormatExpression):
+  at enumerate.wipple:2:42-2:52
   grouped with `"_: _" n c`, `value`
   has type `String`
   is an expression
 
 `"_: _" n c` (NamedType):
+  at enumerate.wipple:2:42-2:52
   grouped with `"_: _" n c`, `String`, `_`, `_`, `_`, `_`, `String`, `_`, `_`, `_`, `_`, `_`
   has type `String`
   is a type
   resolved to 1 definition(s): `String`
 
 `"_: _" n c` (ConstructorExpression):
+  at enumerate.wipple:2:42-2:52
   grouped with `value -> String`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> String`
@@ -131,6 +155,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `"_: _" n c` (ConstructorExpression):
+  at enumerate.wipple:2:42-2:52
   grouped with `value -> String`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> String`
@@ -138,12 +163,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `n` (VariableExpression):
+  at enumerate.wipple:2:49-2:50
   grouped with `n`, `value`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
 
 `c` (VariableExpression):
+  at enumerate.wipple:2:51-2:52
   grouped with `c`, `value`
   has type `String`
   is an expression

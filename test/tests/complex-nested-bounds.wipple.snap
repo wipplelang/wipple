@@ -1,11 +1,13 @@
 Facts (layer 2):
 
 `Boolean` (TypeDefinition):
+  at complex-nested-bounds.wipple:1:13-1:20
   has definition constraints
   has type `Boolean`
   is a definition
 
 `Not` (TraitDefinition):
+  at complex-nested-bounds.wipple:3:1-3:4
   grouped with `value -> value`
   has 2 instances
   has definition constraints
@@ -14,6 +16,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at complex-nested-bounds.wipple:3:7-3:12
   grouped with `value`, `value`
   has type `value`
   is a definition
@@ -21,6 +24,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
+  at complex-nested-bounds.wipple:3:23-3:28
   grouped with `value`
   has type `value`
   is a type
@@ -28,11 +32,13 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `value -> value` (FunctionType):
+  at complex-nested-bounds.wipple:3:23-3:37
   grouped with `Not`
   has type `value -> value`
   is a type
 
 `value` (TypeParameter):
+  at complex-nested-bounds.wipple:3:32-3:37
   grouped with `value`
   has type `value`
   is a type
@@ -40,6 +46,7 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `instance (Not Boolean)` (InstanceDefinition):
+  at complex-nested-bounds.wipple:4:1-4:23
   grouped with `value -> value`, `todo`
   has definition constraints
   has type `Boolean -> Boolean`
@@ -47,18 +54,21 @@ Facts (layer 2):
   resolved to 1 definition(s): `Not`
 
 `Boolean` (NamedType):
+  at complex-nested-bounds.wipple:4:15-4:22
   grouped with `value`
   has type `Boolean`
   is a type
   resolved to 1 definition(s): `Boolean`
 
 `todo` (VariableExpression):
+  at complex-nested-bounds.wipple:4:26-4:30
   grouped with `value`, `value`, `instance (Not Boolean)`
   has type `Boolean -> Boolean`
   is an expression
   resolved to 1 definition(s): `todo`
 
 `instance (Not (a -> b)) where (Not b)` (InstanceDefinition):
+  at complex-nested-bounds.wipple:5:1-5:38
   grouped with `value -> value`, `f -> x -> not (f x)`
   has bounds
   has definition constraints
@@ -68,6 +78,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Not`
 
 `a` (TypeParameter):
+  at complex-nested-bounds.wipple:5:16-5:17
   grouped with `x`
   has type `a`
   is a definition
@@ -75,11 +86,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `a`
 
 `a -> b` (FunctionType):
+  at complex-nested-bounds.wipple:5:16-5:22
   grouped with `value`, `value`, `b`
   has type `a -> b`
   is a type
 
 `b` (TypeParameter):
+  at complex-nested-bounds.wipple:5:21-5:22
   grouped with `b`, `not (f x)`
   has type `b`
   is a definition
@@ -87,6 +100,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `b`
 
 `(Not b)` (BoundConstraint):
+  at complex-nested-bounds.wipple:5:31-5:38
   grouped with `value -> value`
   has bound(s) `Not` `b` (resolved as `(Not b)`)
   has type `b -> b`
@@ -94,6 +108,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Not`
 
 `b` (TypeParameter):
+  at complex-nested-bounds.wipple:5:36-5:37
   grouped with `b`, `value`, `value`, `a -> b`
   has type `b`
   is a type
@@ -101,29 +116,35 @@ Facts (layer 2):
   resolved to type parameter `b`
 
 `f` (VariablePattern):
+  at complex-nested-bounds.wipple:5:41-5:42
   grouped with `f`, `value`
   has type `a -> b`
   is a definition
   is a pattern
 
 `f -> x -> not (f x)` (FunctionExpression):
+  at complex-nested-bounds.wipple:5:41-5:60
+  captures `(Not b)`
   grouped with `instance (Not (a -> b)) where (Not b)`
   has type `(a -> b) -> a -> b`
   is an expression
 
 `x` (VariablePattern):
+  at complex-nested-bounds.wipple:5:46-5:47
   grouped with `x`, `a`, `x`
   has type `a`
   is a definition
   is a pattern
 
 `x -> not (f x)` (FunctionExpression):
-  captures `f`
+  at complex-nested-bounds.wipple:5:46-5:60
+  captures `(Not b)`, `f`
   grouped with `value`
   has type `a -> b`
   is an expression
 
 `not` (VariableExpression):
+  at complex-nested-bounds.wipple:5:51-5:54
   grouped with `value -> value`
   has bound(s) `Not` `b` (resolved as `(Not b)`)
   has type `b -> b`
@@ -131,28 +152,33 @@ Facts (layer 2):
   resolved to 1 definition(s): `not`
 
 `not (f x)` (CallExpression):
+  at complex-nested-bounds.wipple:5:51-5:60
   grouped with `value`, `b`, `f x`
   has type `b`
   is an expression
 
 `f` (VariableExpression):
+  at complex-nested-bounds.wipple:5:56-5:57
   grouped with `f`
   has type `a -> b`
   is an expression
   resolved to 1 definition(s): `f`
 
 `f x` (CallExpression):
+  at complex-nested-bounds.wipple:5:56-5:59
   grouped with `value`, `not (f x)`
   has type `b`
   is an expression
 
 `x` (VariableExpression):
+  at complex-nested-bounds.wipple:5:58-5:59
   grouped with `x`, `x`
   has type `a`
   is an expression
   resolved to 1 definition(s): `x`
 
 `not` (ConstantDefinition):
+  at complex-nested-bounds.wipple:7:1-7:4
   grouped with `value -> value`, `Not`
   has bounds
   has definition constraints
@@ -161,6 +187,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at complex-nested-bounds.wipple:7:8-7:13
   grouped with `value`, `value`, `value`
   has type `value`
   is a definition
@@ -168,11 +195,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value -> value` (FunctionType):
+  at complex-nested-bounds.wipple:7:8-7:22
   grouped with `not`
   has type `value -> value`
   is a type
 
 `value` (TypeParameter):
+  at complex-nested-bounds.wipple:7:17-7:22
   grouped with `value`, `value`
   has type `value`
   is a type
@@ -180,6 +209,7 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `(Not value)` (BoundConstraint):
+  at complex-nested-bounds.wipple:7:29-7:40
   grouped with `value -> value`
   has bound(s) `Not` `value` (resolved as `(Not value)`)
   has type `value -> value`
@@ -187,6 +217,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Not`
 
 `value` (TypeParameter):
+  at complex-nested-bounds.wipple:7:34-7:39
   grouped with `value`, `value`, `value`
   has type `value`
   is a type
@@ -194,9 +225,11 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `not : Not` (AssignmentStatement):
+  at complex-nested-bounds.wipple:8:1-8:10
   has type `()`
 
 `Not` (ConstructorExpression):
+  at complex-nested-bounds.wipple:8:7-8:10
   grouped with `value -> value`, `not`
   has bound(s) `Not` `value` (resolved as `(Not value)`)
   has type `value -> value`

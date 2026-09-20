@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `repeat` (VariableExpression):
+  at repeat.wipple:1:1-1:7
   grouped with `condition {body} -> ()`
   has bound(s) `Repeat-Condition` `Times` (resolved as `instance (Repeat-Condition Times)`)
   has type `Times {()} -> ()`
@@ -8,36 +9,43 @@ Facts (layer 2):
   resolved to 1 definition(s): `repeat`
 
 `repeat (4 times) {⋯}` (ExpressionStatement):
+  at repeat.wipple:1:1-3:2
   grouped with `repeat (4 times) {⋯}`
   has type `()`
 
 `repeat (4 times) {⋯}` (CallExpression):
+  at repeat.wipple:1:1-3:2
   grouped with `()`, `repeat (4 times) {⋯}`
   has type `()`
   is an expression
 
 `4` (NumberExpression):
+  at repeat.wipple:1:9-1:10
   grouped with `4`, `n :: Number`
   has type `Number`
   is an expression
 
 `4 times` (CallExpression):
+  at repeat.wipple:1:9-1:16
   grouped with `Times`, `condition`
   has type `Times`
   is an expression
 
 `times` (VariableExpression):
+  at repeat.wipple:1:11-1:16
   grouped with `(n :: Number) -> Times`
   has type `Number -> Times`
   is an expression
   resolved to 1 definition(s): `times`
 
 `{⋯}` (BlockExpression):
+  at repeat.wipple:1:18-3:2
   grouped with `{body}`
   has type `{()}`
   is an expression
 
 `show` (VariableExpression):
+  at repeat.wipple:2:3-2:7
   grouped with `value -> ()`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
@@ -45,15 +53,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show "Hello, world!"` (ExpressionStatement):
+  at repeat.wipple:2:3-2:23
   grouped with `show "Hello, world!"`, `body`
   has type `()`
 
 `show "Hello, world!"` (CallExpression):
+  at repeat.wipple:2:3-2:23
   grouped with `()`, `show "Hello, world!"`
   has type `()`
   is an expression
 
 `"Hello, world!"` (StringExpression):
+  at repeat.wipple:2:8-2:23
   grouped with `"Hello, world!"`, `value`
   has type `String`
   is an expression

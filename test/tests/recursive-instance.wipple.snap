@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  at recursive-instance.wipple:1:1-1:5
   grouped with `value -> ()`
   has bound(s) `Describe` `(Maybe (Maybe Number))` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `(Maybe Number)` (resolved as `instance (Describe (Maybe value)) where (Describe value)`), `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `(Maybe (Maybe Number)) -> ()`
@@ -8,35 +9,42 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (Some (Some 42))` (ExpressionStatement):
+  at recursive-instance.wipple:1:1-1:22
   grouped with `show (Some (Some 42))`
   has type `()`
 
 `show (Some (Some 42))` (CallExpression):
+  at recursive-instance.wipple:1:1-1:22
   grouped with `()`, `show (Some (Some 42))`
   has type `()`
   is an expression
 
 `Some` (ConstructorExpression):
+  at recursive-instance.wipple:1:7-1:11
   has type `(Maybe Number) -> Maybe (Maybe Number)`
   is an expression
   resolved to 1 definition(s): `Some value`
 
 `Some (Some 42)` (CallExpression):
+  at recursive-instance.wipple:1:7-1:21
   grouped with `Maybe`, `value`
   has type `Maybe (Maybe Number)`
   is an expression
 
 `Some` (ConstructorExpression):
+  at recursive-instance.wipple:1:13-1:17
   has type `Number -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `Some value`
 
 `Some 42` (CallExpression):
+  at recursive-instance.wipple:1:13-1:20
   grouped with `Maybe`, `value`
   has type `Maybe Number`
   is an expression
 
 `42` (NumberExpression):
+  at recursive-instance.wipple:1:18-1:20
   grouped with `42`, `value`
   has type `Number`
   is an expression

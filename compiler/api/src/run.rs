@@ -1,25 +1,20 @@
 use serde::Serialize;
 use std::sync::Arc;
 use wasm_bindgen::{convert::TryFromJsValue, prelude::*};
-use wipple_core::{anyhow, codegen, span::Location};
+use wipple_core::{codegen, span::Location};
 use wipple_interpreter::Span;
 
 #[wasm_bindgen]
-pub fn run(bytes: &[u8], env: JsValue) -> Result<(), JsError> {
-    let mir = rmp_serde::from_slice::<codegen::mir::Program>(bytes)?;
+pub fn run(bytes: &[u8], env: JsValue) -> Result<(), JsValue> {
+    let mir = rmp_serde::from_slice::<codegen::mir::Program>(bytes).map_err(JsError::from)?;
 
     struct Env(JsValue);
 
     impl Env {
-        fn call(&self, name: &str, input: JsValue) -> Result<JsValue, anyhow::Error> {
-            let func = js_sys::Reflect::get(&self.0, &JsValue::from_str(name))
-                .map_err(|_| anyhow::format_err!("unsupported external {name:?}"))?;
-
-            let func = js_sys::Function::<fn(JsValue) -> JsValue>::try_from_js_value(func)
-                .map_err(|_| anyhow::format_err!("external {name:?} is not a function"))?;
-
+        fn call(&self, name: &str, input: JsValue) -> Result<JsValue, JsValue> {
+            let func = js_sys::Reflect::get(&self.0, &JsValue::from_str(name))?;
+            let func = js_sys::Function::<fn(JsValue) -> JsValue>::try_from_js_value(func)?;
             func.call1(&JsValue::NULL, &input)
-                .map_err(|_| anyhow::format_err!("external {name:?} failed"))
         }
     }
 
@@ -34,25 +29,18 @@ pub fn run(bytes: &[u8], env: JsValue) -> Result<(), JsError> {
     });
 
     let interpreter = wipple_interpreter::Interpreter::new(|name, input| {
-        let input =
-            js_value_from_handle(input).map_err(|_| anyhow::format_err!("unsupported input"))?;
-
+        let input = js_value_from_handle(input)?;
         let output = env.call(name, input)?;
-
-        handle_from_js_value(output)
+        Ok(handle_from_js_value(output))
     })
     .with_debugger(debugger);
 
-    interpreter
-        .run(&mir)
-        .map_err(|e| JsError::new(&e.to_string()))?;
-
-    Ok(())
+    interpreter.run(&mir)
 }
 
 fn js_value_from_handle(
     handle: wipple_interpreter::Handle<'_, JsValue>,
-) -> Result<JsValue, anyhow::Error> {
+) -> Result<JsValue, JsValue> {
     use wipple_interpreter::{Handle, Primitive};
 
     Ok(match handle {
@@ -67,32 +55,25 @@ fn js_value_from_handle(
         },
         Handle::External(value) => value,
         Handle::Unit => JsValue::NULL,
-        Handle::Value(_) => return Err(anyhow::format_err!("unsupported value")),
+        Handle::Value(_) => return Err(JsError::new("unsupported value").into()),
     })
 }
 
-fn handle_from_js_value<'a>(
-    value: JsValue,
-) -> Result<wipple_interpreter::Handle<'a, JsValue>, anyhow::Error> {
+fn handle_from_js_value<'a>(value: JsValue) -> wipple_interpreter::Handle<'a, JsValue> {
     use wipple_interpreter::{Handle, Primitive};
 
     if value.is_null_or_undefined() {
-        Ok(Handle::Unit)
+        Handle::Unit
     } else if let Some(string) = value.as_string() {
-        Ok(Handle::Primitive(Primitive::String(Arc::from(string))))
+        Handle::Primitive(Primitive::String(Arc::from(string)))
     } else if let Some(number) = value.as_f64() {
-        Ok(Handle::Primitive(Primitive::Number(number)))
+        Handle::Primitive(Primitive::Number(number))
     } else if js_sys::Array::is_array(&value) {
         let array = js_sys::Array::from(&value);
-
-        let elements = array
-            .iter()
-            .map(handle_from_js_value)
-            .collect::<Result<Vec<_>, _>>()?;
-
-        Ok(Handle::Primitive(Primitive::List(elements)))
+        let elements = array.iter().map(handle_from_js_value).collect::<Vec<_>>();
+        Handle::Primitive(Primitive::List(elements))
     } else {
-        Ok(Handle::External(value))
+        Handle::External(value)
     }
 }
 

@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `remove-duplicates` (ConstantDefinition):
+  at remove-duplicates.wipple:1:1-1:18
   grouped with `(List element) -> Sequence element`, `do {⋯}`
   has bounds
   has definition constraints
@@ -9,17 +10,20 @@ Facts (layer 2):
   is a definition
 
 `(List element) -> Sequence element` (FunctionType):
+  at remove-duplicates.wipple:1:22-1:56
   grouped with `remove-duplicates`
   has type `(List element) -> Sequence element`
   is a type
 
 `List element` (NamedType):
+  at remove-duplicates.wipple:1:23-1:35
   grouped with `container`
   has type `List element`
   is a type
   resolved to 1 definition(s): `List`
 
 `element` (TypeParameter):
+  at remove-duplicates.wipple:1:28-1:35
   grouped with `element`, `element`, `element`, `element`, `element`
   has type `element`
   is a definition
@@ -27,12 +31,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `element`
 
 `Sequence element` (NamedType):
+  at remove-duplicates.wipple:1:40-1:56
   grouped with `Sequence element`
   has type `Sequence element`
   is a type
   resolved to 1 definition(s): `Sequence`
 
 `element` (TypeParameter):
+  at remove-duplicates.wipple:1:49-1:56
   grouped with `element`, `element`
   has type `element`
   is a type
@@ -40,6 +46,7 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `(Describe element)` (BoundConstraint):
+  at remove-duplicates.wipple:1:63-1:81
   grouped with `value -> String`
   has bound(s) `Describe` `element` (resolved as `(Describe element)`)
   has type `element -> String`
@@ -47,6 +54,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Describe`
 
 `element` (TypeParameter):
+  at remove-duplicates.wipple:1:73-1:80
   grouped with `element`, `value`
   has type `element`
   is a type
@@ -54,6 +62,7 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `(Equal element)` (BoundConstraint):
+  at remove-duplicates.wipple:1:82-1:97
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `element` (resolved as `(Equal element)`)
   has type `element element -> Boolean`
@@ -61,6 +70,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `element` (TypeParameter):
+  at remove-duplicates.wipple:1:89-1:96
   grouped with `element`, `value`, `element`, `element`, `element`
   has type `element`
   is a type
@@ -68,6 +78,7 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `(Hash element)` (BoundConstraint):
+  at remove-duplicates.wipple:1:98-1:112
   grouped with `value -> Number`
   has bound(s) `Hash` `element` (resolved as `(Hash element)`)
   has type `element -> Number`
@@ -75,6 +86,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Hash`
 
 `element` (TypeParameter):
+  at remove-duplicates.wipple:1:104-1:111
   grouped with `element`, `value`, `element`, `element`, `element`
   has type `element`
   is a type
@@ -82,18 +94,23 @@ Facts (layer 2):
   resolved to type parameter `element`
 
 `remove-duplicates : do {⋯}` (AssignmentStatement):
+  at remove-duplicates.wipple:2:1-8:2
   has type `()`
 
 `do {⋯}` (DoExpression):
+  at remove-duplicates.wipple:2:21-8:2
   grouped with `filter (item -> (seen . (not contains?) item) and (do {⋯}))`, `remove-duplicates`
   has type `(List element) -> Sequence element`
   is an expression
 
 `{⋯}` (BlockExpression):
+  at remove-duplicates.wipple:2:24-8:2
+  captures `(Equal element)`, `(Hash element)`
   has type `{(List element) -> Sequence element}`
   is an expression
 
 `seen` (VariablePattern):
+  at remove-duplicates.wipple:3:3-3:7
   grouped with `,`, `,`, `seen`, `seen`, `set seen`
   has type `Set element`
   is a definition
@@ -101,14 +118,17 @@ Facts (layer 2):
   is mutated
 
 `seen : (,)` (AssignmentStatement):
+  at remove-duplicates.wipple:3:3-3:13
   has type `()`
 
 `,` (CollectionExpression):
+  at remove-duplicates.wipple:3:11-3:12
   grouped with `,`, `seen`, `seen`
   has type `Set element`
   is an expression
 
 `filter` (VariableExpression):
+  at remove-duplicates.wipple:4:3-4:9
   grouped with `(condition :: (element -> Boolean)) -> container -> Sequence element`
   has bound(s) `As-Sequence` `(List element)` `element` (resolved as `instance (As-Sequence (List element) element)`)
   has type `(element -> Boolean) -> (List element) -> Sequence element`
@@ -116,48 +136,57 @@ Facts (layer 2):
   resolved to 1 definition(s): `filter`
 
 `filter (item -> (seen . (not contains?) item) and (do {⋯}))` (ExpressionStatement):
+  at remove-duplicates.wipple:4:3-7:6
   grouped with `filter (item -> (seen . (not contains?) item) and (do {⋯}))`, `do {⋯}`
   has type `(List element) -> Sequence element`
 
 `filter (item -> (seen . (not contains?) item) and (do {⋯}))` (CallExpression):
+  at remove-duplicates.wipple:4:3-7:6
   grouped with `container -> Sequence element`, `filter (item -> (seen . (not contains?) item) and (do {⋯}))`
   has type `(List element) -> Sequence element`
   is an expression
 
 `item` (VariablePattern):
+  at remove-duplicates.wipple:4:11-4:15
   grouped with `item`, `item`, `element`
   has type `element`
   is a definition
   is a pattern
 
 `item -> (seen . (not contains?) item) and (do {⋯})` (FunctionExpression):
-  captures `seen`
+  at remove-duplicates.wipple:4:11-7:5
+  captures `(Equal element)`, `(Hash element)`, `seen`
   grouped with `condition :: (element -> Boolean)`
   has type `element -> Boolean`
   is an expression
 
 `seen` (VisitAs):
+  at remove-duplicates.wipple:4:20-4:24
   grouped with `collection`, `seen`, `collection`
   has type `Set element`
   is an expression
   resolved to 1 definition(s): `seen`
 
 `seen . (not contains?) item` (VisitAs):
+  at remove-duplicates.wipple:4:20-4:47
   grouped with `(not contains?) item`, `left`
   has type `Boolean`
   is an expression
 
 `seen . (not contains?) item) and (do {⋯}` (OperatorExpression):
+  at remove-duplicates.wipple:4:20-7:4
   grouped with `seen . (not contains?) item) and (do {⋯}`, `Boolean`
   has type `Boolean`
   is an expression
 
 `seen . (not contains?) item) and (do {⋯}` (CallExpression):
+  at remove-duplicates.wipple:4:20-7:4
   grouped with `output`, `seen . (not contains?) item) and (do {⋯}`
   has type `Boolean`
   is an expression
 
 `seen . (not contains?) item) and (do {⋯}` (ConstructorExpression):
+  at remove-duplicates.wipple:4:20-7:4
   grouped with `left {right} -> output`
   has bound(s) `And` `Boolean` `Boolean` `Boolean` (resolved as `instance (And Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
@@ -165,16 +194,19 @@ Facts (layer 2):
   resolved to 1 definition(s): `And`
 
 `(not contains?) item` (CallExpression):
+  at remove-duplicates.wipple:4:27-4:47
   grouped with `Boolean`, `Boolean`, `seen . (not contains?) item`
   has type `Boolean`
   is an expression
 
 `(not contains?) item` (VisitAs):
+  at remove-duplicates.wipple:4:27-4:47
   grouped with `collection -> Boolean`
   has type `(Set element) -> Boolean`
   is an expression
 
 `not` (VariableExpression):
+  at remove-duplicates.wipple:4:28-4:31
   grouped with `value -> value`
   has bound(s) `Not` `(element -> (Set element) -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `((Set element) -> Boolean)` (resolved as `instance (Not (a -> b)) where (Not b) (b :: Boolean)`), `Not` `Boolean` (resolved as `instance (Not Boolean)`)
   has type `(element -> (Set element) -> Boolean) -> element -> (Set element) -> Boolean`
@@ -182,11 +214,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `not`
 
 `not contains?` (CallExpression):
+  at remove-duplicates.wipple:4:28-4:41
   grouped with `value`
   has type `element -> (Set element) -> Boolean`
   is an expression
 
 `contains?` (VariableExpression):
+  at remove-duplicates.wipple:4:32-4:41
   grouped with `element -> collection -> Boolean`, `value`
   has bound(s) `Container` `(Set element)` `element` (resolved as `instance (Container (Set element) element) where (Equal element) (Hash element)`), `Equal` `element` (resolved as `(Equal element)`), `Hash` `element` (resolved as `(Hash element)`)
   has type `element -> (Set element) -> Boolean`
@@ -194,52 +228,62 @@ Facts (layer 2):
   resolved to 1 definition(s): `contains?`
 
 `item` (VariableExpression):
+  at remove-duplicates.wipple:4:43-4:47
   grouped with `item`, `element`
   has type `element`
   is an expression
   resolved to 1 definition(s): `item`
 
 `do {⋯}` (VisitAs):
+  at remove-duplicates.wipple:4:54-7:4
   grouped with `True`, `do {⋯}`, `do {⋯}`, `right`
   has type `Boolean`
   is an expression
 
 `do {⋯}` (VisitAs):
-  captures `seen`, `item`
+  at remove-duplicates.wipple:4:54-7:4
+  captures `(Equal element)`, `(Hash element)`, `seen`, `item`
   grouped with `{right}`
   has type `{Boolean}`
   is an expression
 
 `do {⋯}` (ExpressionStatement):
+  at remove-duplicates.wipple:4:54-7:4
   grouped with `do {⋯}`, `do {⋯}`
   has type `Boolean`
 
 `{⋯}` (BlockExpression):
-  captures `seen`, `item`
+  at remove-duplicates.wipple:4:57-7:4
+  captures `(Equal element)`, `(Hash element)`, `seen`, `item`
   has type `{Boolean}`
   is an expression
 
 `set seen` (SetPattern):
+  at remove-duplicates.wipple:5:5-5:13
   grouped with `seen . insert item`, `seen`, `seen . insert item`
   has type `Set element`
   is a pattern
   resolved to 1 definition(s): `seen`
 
 `set seen : seen . insert item` (AssignmentStatement):
+  at remove-duplicates.wipple:5:5-5:34
   has type `()`
 
 `seen` (VisitAs):
+  at remove-duplicates.wipple:5:16-5:20
   grouped with `set_ :: (Set element)`, `seen`, `set_ :: (Set element)`
   has type `Set element`
   is an expression
   resolved to 1 definition(s): `seen`
 
 `seen . insert item` (OperatorExpression):
+  at remove-duplicates.wipple:5:16-5:34
   grouped with `insert item`, `set seen`, `set seen`
   has type `Set element`
   is an expression
 
 `insert` (VariableExpression):
+  at remove-duplicates.wipple:5:23-5:29
   grouped with `element -> (set_ :: (Set element)) -> Set element`
   has bound(s) `Equal` `element` (resolved as `(Equal element)`), `Hash` `element` (resolved as `(Hash element)`)
   has type `element -> (Set element) -> Set element`
@@ -247,131 +291,157 @@ Facts (layer 2):
   resolved to 1 definition(s): `insert`
 
 `insert item` (CallExpression):
+  at remove-duplicates.wipple:5:23-5:34
   grouped with `Set element`, `Set element`, `seen . insert item`
   has type `Set element`
   is an expression
 
 `insert item` (VisitAs):
+  at remove-duplicates.wipple:5:23-5:34
   grouped with `(set_ :: (Set element)) -> Set element`
   has type `(Set element) -> Set element`
   is an expression
 
 `item` (VariableExpression):
+  at remove-duplicates.wipple:5:30-5:34
   grouped with `item`, `element`
   has type `element`
   is an expression
   resolved to 1 definition(s): `item`
 
 `True` (ExpressionStatement):
+  at remove-duplicates.wipple:6:5-6:9
   grouped with `True`, `do {⋯}`
   has type `Boolean`
 
 `True` (ConstructorExpression):
+  at remove-duplicates.wipple:6:5-6:9
   grouped with `Boolean`, `True`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `numbers` (VariablePattern):
+  at remove-duplicates.wipple:10:1-10:8
   grouped with `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5`, `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5`, `numbers`
   has type `List Number`
   is a definition
   is a pattern
 
 `numbers : 5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (AssignmentStatement):
+  at remove-duplicates.wipple:10:1-10:45
   has type `()`
 
 `5` (VisitAs):
+  at remove-duplicates.wipple:10:11-10:12
   grouped with `5`, `element`
   has type `Number`
   is an expression
 
 `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (CollectionExpression):
+  at remove-duplicates.wipple:10:11-10:45
   grouped with `5`, `numbers`, `numbers`
   has type `List Number`
   is an expression
 
 `5` (VisitAs):
+  at remove-duplicates.wipple:10:14-10:15
   grouped with `5`, `element`
   has type `Number`
   is an expression
 
 `4` (VisitAs):
+  at remove-duplicates.wipple:10:17-10:18
   grouped with `4`, `element`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
+  at remove-duplicates.wipple:10:20-10:21
   grouped with `3`, `element`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
+  at remove-duplicates.wipple:10:23-10:24
   grouped with `3`, `element`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
+  at remove-duplicates.wipple:10:26-10:27
   grouped with `3`, `element`
   has type `Number`
   is an expression
 
 `2` (VisitAs):
+  at remove-duplicates.wipple:10:29-10:30
   grouped with `2`, `element`
   has type `Number`
   is an expression
 
 `1` (VisitAs):
+  at remove-duplicates.wipple:10:32-10:33
   grouped with `1`, `element`
   has type `Number`
   is an expression
 
 `2` (VisitAs):
+  at remove-duplicates.wipple:10:35-10:36
   grouped with `2`, `element`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
+  at remove-duplicates.wipple:10:38-10:39
   grouped with `3`, `element`
   has type `Number`
   is an expression
 
 `4` (VisitAs):
+  at remove-duplicates.wipple:10:41-10:42
   grouped with `4`, `element`
   has type `Number`
   is an expression
 
 `5` (VisitAs):
+  at remove-duplicates.wipple:10:44-10:45
   grouped with `5`, `element`
   has type `Number`
   is an expression
 
 `numbers` (VisitAs):
+  at remove-duplicates.wipple:11:1-11:8
   grouped with `List element`, `numbers`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `numbers`
 
 `numbers . remove-duplicates` (VisitAs):
+  at remove-duplicates.wipple:11:1-11:28
   grouped with `container`, `remove-duplicates`, `container`
   has type `Sequence Number`
   is an expression
 
 `numbers . remove-duplicates . each show` (ExpressionStatement):
+  at remove-duplicates.wipple:11:1-11:40
   grouped with `numbers . remove-duplicates . each show`
   has type `()`
 
 `numbers . remove-duplicates . each show` (OperatorExpression):
+  at remove-duplicates.wipple:11:1-11:40
   grouped with `each show`, `numbers . remove-duplicates . each show`
   has type `()`
   is an expression
 
 `remove-duplicates` (CallExpression):
+  at remove-duplicates.wipple:11:11-11:28
   grouped with `Sequence element`, `numbers . remove-duplicates`
   has type `Sequence Number`
   is an expression
 
 `remove-duplicates` (VisitAs):
+  at remove-duplicates.wipple:11:11-11:28
   grouped with `(List element) -> Sequence element`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`), `Equal` `Number` (resolved as `instance (Equal Number)`), `Hash` `Number` (resolved as `instance (Hash Number)`)
   has type `(List Number) -> Sequence Number`
@@ -379,6 +449,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `remove-duplicates`
 
 `each` (VariableExpression):
+  at remove-duplicates.wipple:11:31-11:35
   grouped with `(action :: (element -> ())) -> container -> ()`
   has bound(s) `As-Sequence` `(Sequence Number)` `Number` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `(Number -> ()) -> (Sequence Number) -> ()`
@@ -386,16 +457,19 @@ Facts (layer 2):
   resolved to 1 definition(s): `each`
 
 `each show` (CallExpression):
+  at remove-duplicates.wipple:11:31-11:40
   grouped with `()`, `()`, `numbers . remove-duplicates . each show`
   has type `()`
   is an expression
 
 `each show` (VisitAs):
+  at remove-duplicates.wipple:11:31-11:40
   grouped with `container -> ()`
   has type `(Sequence Number) -> ()`
   is an expression
 
 `show` (VariableExpression):
+  at remove-duplicates.wipple:11:36-11:40
   grouped with `value -> ()`, `action :: (element -> ())`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`

@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  at comparison.wipple:1:1-1:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -8,30 +9,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (1 + 2 = 3)` (ExpressionStatement):
+  at comparison.wipple:1:1-1:17
   grouped with `show (1 + 2 = 3)`
   has type `()`
 
 `show (1 + 2 = 3)` (CallExpression):
+  at comparison.wipple:1:1-1:17
   grouped with `()`, `show (1 + 2 = 3)`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  at comparison.wipple:1:7-1:8
   grouped with `1`, `left`
   has type `Number`
   is an expression
 
 `1 + 2` (OperatorExpression):
+  at comparison.wipple:1:7-1:12
   grouped with `1 + 2`, `value`
   has type `Number`
   is an expression
 
 `1 + 2` (CallExpression):
+  at comparison.wipple:1:7-1:12
   grouped with `sum`, `1 + 2`
   has type `Number`
   is an expression
 
 `1 + 2` (ConstructorExpression):
+  at comparison.wipple:1:7-1:12
   grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
@@ -39,16 +46,19 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `1 + 2 = 3` (OperatorExpression):
+  at comparison.wipple:1:7-1:16
   grouped with `1 + 2 = 3`, `value`
   has type `Boolean`
   is an expression
 
 `1 + 2 = 3` (CallExpression):
+  at comparison.wipple:1:7-1:16
   grouped with `Boolean`, `1 + 2 = 3`
   has type `Boolean`
   is an expression
 
 `1 + 2 = 3` (ConstructorExpression):
+  at comparison.wipple:1:7-1:16
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
@@ -56,16 +66,19 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `2` (NumberExpression):
+  at comparison.wipple:1:11-1:12
   grouped with `2`, `right`
   has type `Number`
   is an expression
 
 `3` (NumberExpression):
+  at comparison.wipple:1:15-1:16
   grouped with `3`, `value`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at comparison.wipple:2:1-2:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -73,30 +86,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (1 = 2 or 1 = 1)` (ExpressionStatement):
+  at comparison.wipple:2:1-2:22
   grouped with `show (1 = 2 or 1 = 1)`
   has type `()`
 
 `show (1 = 2 or 1 = 1)` (CallExpression):
+  at comparison.wipple:2:1-2:22
   grouped with `()`, `show (1 = 2 or 1 = 1)`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  at comparison.wipple:2:7-2:8
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `1 = 2` (VisitAs):
+  at comparison.wipple:2:7-2:12
   grouped with `1 = 2`, `left`
   has type `Boolean`
   is an expression
 
 `1 = 2` (CallExpression):
+  at comparison.wipple:2:7-2:12
   grouped with `Boolean`, `1 = 2`
   has type `Boolean`
   is an expression
 
 `1 = 2` (ConstructorExpression):
+  at comparison.wipple:2:7-2:12
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
@@ -104,16 +123,19 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `1 = 2 or 1 = 1` (OperatorExpression):
+  at comparison.wipple:2:7-2:21
   grouped with `1 = 2 or 1 = 1`, `value`
   has type `Boolean`
   is an expression
 
 `1 = 2 or 1 = 1` (CallExpression):
+  at comparison.wipple:2:7-2:21
   grouped with `output`, `1 = 2 or 1 = 1`
   has type `Boolean`
   is an expression
 
 `1 = 2 or 1 = 1` (ConstructorExpression):
+  at comparison.wipple:2:7-2:21
   grouped with `left {right} -> output`
   has bound(s) `Or` `Boolean` `Boolean` `Boolean` (resolved as `instance (Or Boolean Boolean Boolean)`)
   has type `Boolean {Boolean} -> Boolean`
@@ -121,35 +143,42 @@ Facts (layer 2):
   resolved to 1 definition(s): `Or`
 
 `2` (NumberExpression):
+  at comparison.wipple:2:11-2:12
   grouped with `2`, `value`
   has type `Number`
   is an expression
 
 `1` (NumberExpression):
+  at comparison.wipple:2:16-2:17
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `1 = 1` (VisitAs):
+  at comparison.wipple:2:16-2:21
   grouped with `1 = 1`, `1 = 1`, `1 = 1`, `right`
   has type `Boolean`
   is an expression
 
 `1 = 1` (VisitAs):
+  at comparison.wipple:2:16-2:21
   grouped with `{right}`
   has type `{Boolean}`
   is an expression
 
 `1 = 1` (ExpressionStatement):
+  at comparison.wipple:2:16-2:21
   grouped with `1 = 1`, `1 = 1`
   has type `Boolean`
 
 `1 = 1` (CallExpression):
+  at comparison.wipple:2:16-2:21
   grouped with `Boolean`, `1 = 1`
   has type `Boolean`
   is an expression
 
 `1 = 1` (ConstructorExpression):
+  at comparison.wipple:2:16-2:21
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
@@ -157,11 +186,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `1` (NumberExpression):
+  at comparison.wipple:2:20-2:21
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at comparison.wipple:3:1-3:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -169,30 +200,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (2 /= 3)` (ExpressionStatement):
+  at comparison.wipple:3:1-3:14
   grouped with `show (2 /= 3)`
   has type `()`
 
 `show (2 /= 3)` (CallExpression):
+  at comparison.wipple:3:1-3:14
   grouped with `()`, `show (2 /= 3)`
   has type `()`
   is an expression
 
 `2` (NumberExpression):
+  at comparison.wipple:3:7-3:8
   grouped with `2`, `value`
   has type `Number`
   is an expression
 
 `2 /= 3` (OperatorExpression):
+  at comparison.wipple:3:7-3:13
   grouped with `2 /= 3`, `value`
   has type `Boolean`
   is an expression
 
 `2 /= 3` (CallExpression):
+  at comparison.wipple:3:7-3:13
   grouped with `Boolean`, `2 /= 3`
   has type `Boolean`
   is an expression
 
 `2 /= 3` (ConstructorExpression):
+  at comparison.wipple:3:7-3:13
   grouped with `value value -> Boolean`
   has bound(s) `Not-Equal` `Number` (resolved as `instance (Not-Equal value) where (Equal value)`), `Equal` `Number` (resolved as `instance (Equal Number)`)
   has type `Number Number -> Boolean`
@@ -200,11 +237,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Not-Equal`
 
 `3` (NumberExpression):
+  at comparison.wipple:3:12-3:13
   grouped with `3`, `value`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at comparison.wipple:4:1-4:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -212,30 +251,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show ("hello" = "hello")` (ExpressionStatement):
+  at comparison.wipple:4:1-4:25
   grouped with `show ("hello" = "hello")`
   has type `()`
 
 `show ("hello" = "hello")` (CallExpression):
+  at comparison.wipple:4:1-4:25
   grouped with `()`, `show ("hello" = "hello")`
   has type `()`
   is an expression
 
 `"hello"` (StringExpression):
+  at comparison.wipple:4:7-4:14
   grouped with `"hello"`, `value`
   has type `String`
   is an expression
 
 `"hello" = "hello"` (OperatorExpression):
+  at comparison.wipple:4:7-4:24
   grouped with `"hello" = "hello"`, `value`
   has type `Boolean`
   is an expression
 
 `"hello" = "hello"` (CallExpression):
+  at comparison.wipple:4:7-4:24
   grouped with `Boolean`, `"hello" = "hello"`
   has type `Boolean`
   is an expression
 
 `"hello" = "hello"` (ConstructorExpression):
+  at comparison.wipple:4:7-4:24
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `String` (resolved as `instance (Equal String)`)
   has type `String String -> Boolean`
@@ -243,11 +288,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `"hello"` (StringExpression):
+  at comparison.wipple:4:17-4:24
   grouped with `"hello"`, `value`
   has type `String`
   is an expression
 
 `show` (VariableExpression):
+  at comparison.wipple:5:1-5:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -255,30 +302,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (() = ())` (ExpressionStatement):
+  at comparison.wipple:5:1-5:15
   grouped with `show (() = ())`
   has type `()`
 
 `show (() = ())` (CallExpression):
+  at comparison.wipple:5:1-5:15
   grouped with `()`, `show (() = ())`
   has type `()`
   is an expression
 
 `()` (UnitExpression):
+  at comparison.wipple:5:7-5:9
   grouped with `value`
   has type `()`
   is an expression
 
 `() = ()` (OperatorExpression):
+  at comparison.wipple:5:7-5:14
   grouped with `() = ()`, `value`
   has type `Boolean`
   is an expression
 
 `() = ()` (CallExpression):
+  at comparison.wipple:5:7-5:14
   grouped with `Boolean`, `() = ()`
   has type `Boolean`
   is an expression
 
 `() = ()` (ConstructorExpression):
+  at comparison.wipple:5:7-5:14
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `()` (resolved as `instance (Equal ())`)
   has type `() () -> Boolean`
@@ -286,11 +339,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `()` (UnitExpression):
+  at comparison.wipple:5:12-5:14
   grouped with `value`
   has type `()`
   is an expression
 
 `show` (VariableExpression):
+  at comparison.wipple:6:1-6:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -298,31 +353,37 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (True = True)` (ExpressionStatement):
+  at comparison.wipple:6:1-6:19
   grouped with `show (True = True)`
   has type `()`
 
 `show (True = True)` (CallExpression):
+  at comparison.wipple:6:1-6:19
   grouped with `()`, `show (True = True)`
   has type `()`
   is an expression
 
 `True` (ConstructorExpression):
+  at comparison.wipple:6:7-6:11
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `True = True` (OperatorExpression):
+  at comparison.wipple:6:7-6:18
   grouped with `True = True`, `value`
   has type `Boolean`
   is an expression
 
 `True = True` (CallExpression):
+  at comparison.wipple:6:7-6:18
   grouped with `Boolean`, `True = True`
   has type `Boolean`
   is an expression
 
 `True = True` (ConstructorExpression):
+  at comparison.wipple:6:7-6:18
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
@@ -330,12 +391,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `True` (ConstructorExpression):
+  at comparison.wipple:6:14-6:18
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `show` (VariableExpression):
+  at comparison.wipple:7:1-7:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -343,31 +406,37 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (False = False)` (ExpressionStatement):
+  at comparison.wipple:7:1-7:21
   grouped with `show (False = False)`
   has type `()`
 
 `show (False = False)` (CallExpression):
+  at comparison.wipple:7:1-7:21
   grouped with `()`, `show (False = False)`
   has type `()`
   is an expression
 
 `False` (ConstructorExpression):
+  at comparison.wipple:7:7-7:12
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `False = False` (OperatorExpression):
+  at comparison.wipple:7:7-7:20
   grouped with `False = False`, `value`
   has type `Boolean`
   is an expression
 
 `False = False` (CallExpression):
+  at comparison.wipple:7:7-7:20
   grouped with `Boolean`, `False = False`
   has type `Boolean`
   is an expression
 
 `False = False` (ConstructorExpression):
+  at comparison.wipple:7:7-7:20
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
@@ -375,12 +444,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `False` (ConstructorExpression):
+  at comparison.wipple:7:15-7:20
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `show` (VariableExpression):
+  at comparison.wipple:8:1-8:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -388,31 +459,37 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (True = False)` (ExpressionStatement):
+  at comparison.wipple:8:1-8:20
   grouped with `show (True = False)`
   has type `()`
 
 `show (True = False)` (CallExpression):
+  at comparison.wipple:8:1-8:20
   grouped with `()`, `show (True = False)`
   has type `()`
   is an expression
 
 `True` (ConstructorExpression):
+  at comparison.wipple:8:7-8:11
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
 
 `True = False` (OperatorExpression):
+  at comparison.wipple:8:7-8:19
   grouped with `True = False`, `value`
   has type `Boolean`
   is an expression
 
 `True = False` (CallExpression):
+  at comparison.wipple:8:7-8:19
   grouped with `Boolean`, `True = False`
   has type `Boolean`
   is an expression
 
 `True = False` (ConstructorExpression):
+  at comparison.wipple:8:7-8:19
   grouped with `value value -> Boolean`
   has bound(s) `Equal` `Boolean` (resolved as `instance (Equal Boolean)`)
   has type `Boolean Boolean -> Boolean`
@@ -420,12 +497,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `Equal`
 
 `False` (ConstructorExpression):
+  at comparison.wipple:8:14-8:19
   grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `False`
 
 `show` (VariableExpression):
+  at comparison.wipple:9:1-9:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -433,30 +512,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (2 > 1)` (ExpressionStatement):
+  at comparison.wipple:9:1-9:13
   grouped with `show (2 > 1)`
   has type `()`
 
 `show (2 > 1)` (CallExpression):
+  at comparison.wipple:9:1-9:13
   grouped with `()`, `show (2 > 1)`
   has type `()`
   is an expression
 
 `2` (NumberExpression):
+  at comparison.wipple:9:7-9:8
   grouped with `2`, `value`
   has type `Number`
   is an expression
 
 `2 > 1` (OperatorExpression):
+  at comparison.wipple:9:7-9:12
   grouped with `2 > 1`, `value`
   has type `Boolean`
   is an expression
 
 `2 > 1` (CallExpression):
+  at comparison.wipple:9:7-9:12
   grouped with `Boolean`, `2 > 1`
   has type `Boolean`
   is an expression
 
 `2 > 1` (ConstructorExpression):
+  at comparison.wipple:9:7-9:12
   grouped with `value value -> Boolean`
   has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
@@ -464,11 +549,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Greater-Than`
 
 `1` (NumberExpression):
+  at comparison.wipple:9:11-9:12
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at comparison.wipple:10:1-10:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -476,30 +563,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (1 >= 1)` (ExpressionStatement):
+  at comparison.wipple:10:1-10:14
   grouped with `show (1 >= 1)`
   has type `()`
 
 `show (1 >= 1)` (CallExpression):
+  at comparison.wipple:10:1-10:14
   grouped with `()`, `show (1 >= 1)`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  at comparison.wipple:10:7-10:8
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `1 >= 1` (OperatorExpression):
+  at comparison.wipple:10:7-10:13
   grouped with `1 >= 1`, `value`
   has type `Boolean`
   is an expression
 
 `1 >= 1` (CallExpression):
+  at comparison.wipple:10:7-10:13
   grouped with `Boolean`, `1 >= 1`
   has type `Boolean`
   is an expression
 
 `1 >= 1` (ConstructorExpression):
+  at comparison.wipple:10:7-10:13
   grouped with `value value -> Boolean`
   has bound(s) `Greater-Than-Or-Equal` `Number` (resolved as `instance (Greater-Than-Or-Equal value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
@@ -507,11 +600,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Greater-Than-Or-Equal`
 
 `1` (NumberExpression):
+  at comparison.wipple:10:12-10:13
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at comparison.wipple:11:1-11:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -519,30 +614,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (4 < 3)` (ExpressionStatement):
+  at comparison.wipple:11:1-11:13
   grouped with `show (4 < 3)`
   has type `()`
 
 `show (4 < 3)` (CallExpression):
+  at comparison.wipple:11:1-11:13
   grouped with `()`, `show (4 < 3)`
   has type `()`
   is an expression
 
 `4` (NumberExpression):
+  at comparison.wipple:11:7-11:8
   grouped with `4`, `value`
   has type `Number`
   is an expression
 
 `4 < 3` (OperatorExpression):
+  at comparison.wipple:11:7-11:12
   grouped with `4 < 3`, `value`
   has type `Boolean`
   is an expression
 
 `4 < 3` (CallExpression):
+  at comparison.wipple:11:7-11:12
   grouped with `Boolean`, `4 < 3`
   has type `Boolean`
   is an expression
 
 `4 < 3` (ConstructorExpression):
+  at comparison.wipple:11:7-11:12
   grouped with `value value -> Boolean`
   has bound(s) `Less-Than` `Number` (resolved as `instance (Less-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
@@ -550,11 +651,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Less-Than`
 
 `3` (NumberExpression):
+  at comparison.wipple:11:11-11:12
   grouped with `3`, `value`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at comparison.wipple:12:1-12:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Boolean` (resolved as `instance (Describe Boolean)`)
   has type `Boolean -> ()`
@@ -562,30 +665,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (5 <= 6)` (ExpressionStatement):
+  at comparison.wipple:12:1-12:14
   grouped with `show (5 <= 6)`
   has type `()`
 
 `show (5 <= 6)` (CallExpression):
+  at comparison.wipple:12:1-12:14
   grouped with `()`, `show (5 <= 6)`
   has type `()`
   is an expression
 
 `5` (NumberExpression):
+  at comparison.wipple:12:7-12:8
   grouped with `5`, `value`
   has type `Number`
   is an expression
 
 `5 <= 6` (OperatorExpression):
+  at comparison.wipple:12:7-12:13
   grouped with `5 <= 6`, `value`
   has type `Boolean`
   is an expression
 
 `5 <= 6` (CallExpression):
+  at comparison.wipple:12:7-12:13
   grouped with `Boolean`, `5 <= 6`
   has type `Boolean`
   is an expression
 
 `5 <= 6` (ConstructorExpression):
+  at comparison.wipple:12:7-12:13
   grouped with `value value -> Boolean`
   has bound(s) `Less-Than-Or-Equal` `Number` (resolved as `instance (Less-Than-Or-Equal value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
@@ -593,6 +702,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Less-Than-Or-Equal`
 
 `6` (NumberExpression):
+  at comparison.wipple:12:12-12:13
   grouped with `6`, `value`
   has type `Number`
   is an expression

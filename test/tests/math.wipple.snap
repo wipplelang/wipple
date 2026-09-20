@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `show` (VariableExpression):
+  at math.wipple:1:1-1:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -8,30 +9,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (1 + 2)` (ExpressionStatement):
+  at math.wipple:1:1-1:13
   grouped with `show (1 + 2)`
   has type `()`
 
 `show (1 + 2)` (CallExpression):
+  at math.wipple:1:1-1:13
   grouped with `()`, `show (1 + 2)`
   has type `()`
   is an expression
 
 `1` (NumberExpression):
+  at math.wipple:1:7-1:8
   grouped with `1`, `left`
   has type `Number`
   is an expression
 
 `1 + 2` (OperatorExpression):
+  at math.wipple:1:7-1:12
   grouped with `1 + 2`, `value`
   has type `Number`
   is an expression
 
 `1 + 2` (CallExpression):
+  at math.wipple:1:7-1:12
   grouped with `sum`, `1 + 2`
   has type `Number`
   is an expression
 
 `1 + 2` (ConstructorExpression):
+  at math.wipple:1:7-1:12
   grouped with `left right -> sum`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
@@ -39,11 +46,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `2` (NumberExpression):
+  at math.wipple:1:11-1:12
   grouped with `2`, `right`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at math.wipple:2:1-2:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -51,30 +60,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (4 - 1)` (ExpressionStatement):
+  at math.wipple:2:1-2:13
   grouped with `show (4 - 1)`
   has type `()`
 
 `show (4 - 1)` (CallExpression):
+  at math.wipple:2:1-2:13
   grouped with `()`, `show (4 - 1)`
   has type `()`
   is an expression
 
 `4` (NumberExpression):
+  at math.wipple:2:7-2:8
   grouped with `4`, `left`
   has type `Number`
   is an expression
 
 `4 - 1` (OperatorExpression):
+  at math.wipple:2:7-2:12
   grouped with `4 - 1`, `value`
   has type `Number`
   is an expression
 
 `4 - 1` (CallExpression):
+  at math.wipple:2:7-2:12
   grouped with `difference`, `4 - 1`
   has type `Number`
   is an expression
 
 `4 - 1` (ConstructorExpression):
+  at math.wipple:2:7-2:12
   grouped with `left right -> difference`
   has bound(s) `Subtract` `Number` `Number` `Number` (resolved as `instance (Subtract Number Number Number)`)
   has type `Number Number -> Number`
@@ -82,11 +97,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Subtract`
 
 `1` (NumberExpression):
+  at math.wipple:2:11-2:12
   grouped with `1`, `right`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at math.wipple:3:1-3:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -94,30 +111,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (3 * 5)` (ExpressionStatement):
+  at math.wipple:3:1-3:13
   grouped with `show (3 * 5)`
   has type `()`
 
 `show (3 * 5)` (CallExpression):
+  at math.wipple:3:1-3:13
   grouped with `()`, `show (3 * 5)`
   has type `()`
   is an expression
 
 `3` (NumberExpression):
+  at math.wipple:3:7-3:8
   grouped with `3`, `left`
   has type `Number`
   is an expression
 
 `3 * 5` (OperatorExpression):
+  at math.wipple:3:7-3:12
   grouped with `3 * 5`, `value`
   has type `Number`
   is an expression
 
 `3 * 5` (CallExpression):
+  at math.wipple:3:7-3:12
   grouped with `product`, `3 * 5`
   has type `Number`
   is an expression
 
 `3 * 5` (ConstructorExpression):
+  at math.wipple:3:7-3:12
   grouped with `left right -> product`
   has bound(s) `Multiply` `Number` `Number` `Number` (resolved as `instance (Multiply Number Number Number)`)
   has type `Number Number -> Number`
@@ -125,11 +148,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `Multiply`
 
 `5` (NumberExpression):
+  at math.wipple:3:11-3:12
   grouped with `5`, `right`
   has type `Number`
   is an expression
 
 `show` (VariableExpression):
+  at math.wipple:4:1-4:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -137,30 +162,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (10 / 4)` (ExpressionStatement):
+  at math.wipple:4:1-4:14
   grouped with `show (10 / 4)`
   has type `()`
 
 `show (10 / 4)` (CallExpression):
+  at math.wipple:4:1-4:14
   grouped with `()`, `show (10 / 4)`
   has type `()`
   is an expression
 
 `10` (NumberExpression):
+  at math.wipple:4:7-4:9
   grouped with `10`, `left`
   has type `Number`
   is an expression
 
 `10 / 4` (OperatorExpression):
+  at math.wipple:4:7-4:13
   grouped with `10 / 4`, `value`
   has type `Number`
   is an expression
 
 `10 / 4` (CallExpression):
+  at math.wipple:4:7-4:13
   grouped with `quotient`, `10 / 4`
   has type `Number`
   is an expression
 
 `10 / 4` (ConstructorExpression):
+  at math.wipple:4:7-4:13
   grouped with `left right -> quotient`
   has bound(s) `Divide` `Number` `Number` `Number` (resolved as `instance (Divide Number Number Number)`)
   has type `Number Number -> Number`
@@ -168,6 +199,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `Divide`
 
 `4` (NumberExpression):
+  at math.wipple:4:12-4:13
   grouped with `4`, `right`
   has type `Number`
   is an expression

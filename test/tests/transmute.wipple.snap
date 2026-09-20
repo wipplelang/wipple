@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `transmute` (ConstantDefinition):
+  at transmute.wipple:1:1-1:10
   grouped with `a -> b`, `x -> x`
   has definition constraints
   has type `(a or b) -> a or b`
@@ -8,6 +9,7 @@ Facts (layer 2):
   is a definition
 
 `a` (TypeParameter):
+  at transmute.wipple:1:14-1:15
   grouped with `x`
   has type `a` or `b`
   is a definition
@@ -15,11 +17,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `a`
 
 `a -> b` (FunctionType):
+  at transmute.wipple:1:14-1:20
   grouped with `transmute`
   has type `(a or b) -> a or b`
   is a type
 
 `b` (TypeParameter):
+  at transmute.wipple:1:19-1:20
   grouped with `x`
   has type `a` or `b`
   is a definition
@@ -27,20 +31,24 @@ Facts (layer 2):
   resolved to 1 definition(s): `b`
 
 `transmute : x -> x` (AssignmentStatement):
+  at transmute.wipple:2:1-2:19
   has type `()`
 
 `x` (VariablePattern):
+  at transmute.wipple:2:13-2:14
   grouped with `x`, `a`
   has type `a` or `b`
   is a definition
   is a pattern
 
 `x -> x` (FunctionExpression):
+  at transmute.wipple:2:13-2:19
   grouped with `transmute`
   has type `(a or b) -> a or b`
   is an expression
 
 `x` (VariableExpression):
+  at transmute.wipple:2:18-2:19
   grouped with `x`, `b`
   has type `a` or `b`
   is an expression

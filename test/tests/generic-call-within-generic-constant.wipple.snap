@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `f` (ConstantDefinition):
+  at generic-call-within-generic-constant.wipple:1:1-1:2
   grouped with `value -> value`, `x -> x`
   has definition constraints
   has type `value -> value`
@@ -8,6 +9,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at generic-call-within-generic-constant.wipple:1:6-1:11
   grouped with `value`, `x`
   has type `value`
   is a definition
@@ -15,11 +17,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value -> value` (FunctionType):
+  at generic-call-within-generic-constant.wipple:1:6-1:20
   grouped with `f`
   has type `value -> value`
   is a type
 
 `value` (TypeParameter):
+  at generic-call-within-generic-constant.wipple:1:15-1:20
   grouped with `value`, `x`
   has type `value`
   is a type
@@ -27,26 +31,31 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `f : x -> x` (AssignmentStatement):
+  at generic-call-within-generic-constant.wipple:2:1-2:11
   has type `()`
 
 `x` (VariablePattern):
+  at generic-call-within-generic-constant.wipple:2:5-2:6
   grouped with `x`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `x -> x` (FunctionExpression):
+  at generic-call-within-generic-constant.wipple:2:5-2:11
   grouped with `f`
   has type `value -> value`
   is an expression
 
 `x` (VariableExpression):
+  at generic-call-within-generic-constant.wipple:2:10-2:11
   grouped with `x`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
 
 `g` (ConstantDefinition):
+  at generic-call-within-generic-constant.wipple:4:1-4:2
   grouped with `value -> value`, `x -> f x`
   has definition constraints
   has type `value -> value`
@@ -54,6 +63,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at generic-call-within-generic-constant.wipple:4:6-4:11
   grouped with `value`, `x`
   has type `value`
   is a definition
@@ -61,11 +71,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value -> value` (FunctionType):
+  at generic-call-within-generic-constant.wipple:4:6-4:20
   grouped with `g`
   has type `value -> value`
   is a type
 
 `value` (TypeParameter):
+  at generic-call-within-generic-constant.wipple:4:15-4:20
   grouped with `value`, `f x`
   has type `value`
   is a type
@@ -73,56 +85,67 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `g : x -> f x` (AssignmentStatement):
+  at generic-call-within-generic-constant.wipple:5:1-5:13
   has type `()`
 
 `x` (VariablePattern):
+  at generic-call-within-generic-constant.wipple:5:5-5:6
   grouped with `x`, `value`
   has type `value`
   is a definition
   is a pattern
 
 `x -> f x` (FunctionExpression):
+  at generic-call-within-generic-constant.wipple:5:5-5:13
   grouped with `g`
   has type `value -> value`
   is an expression
 
 `f` (VariableExpression):
+  at generic-call-within-generic-constant.wipple:5:10-5:11
   grouped with `value -> value`
   has type `value -> value`
   is an expression
   resolved to 1 definition(s): `f`
 
 `f x` (CallExpression):
+  at generic-call-within-generic-constant.wipple:5:10-5:13
   grouped with `value`, `value`
   has type `value`
   is an expression
 
 `x` (VariableExpression):
+  at generic-call-within-generic-constant.wipple:5:12-5:13
   grouped with `x`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
 
 `_` (WildcardPattern):
+  at generic-call-within-generic-constant.wipple:7:1-7:2
   grouped with `g 42`, `g 42`
   has type `Number`
   is a pattern
 
 `_ : g 42` (AssignmentStatement):
+  at generic-call-within-generic-constant.wipple:7:1-7:9
   has type `()`
 
 `g` (VariableExpression):
+  at generic-call-within-generic-constant.wipple:7:5-7:6
   grouped with `value -> value`
   has type `Number -> Number`
   is an expression
   resolved to 1 definition(s): `g`
 
 `g 42` (CallExpression):
+  at generic-call-within-generic-constant.wipple:7:5-7:9
   grouped with `value`, `_`, `_`
   has type `Number`
   is an expression
 
 `42` (NumberExpression):
+  at generic-call-within-generic-constant.wipple:7:7-7:9
   grouped with `42`, `value`
   has type `Number`
   is an expression

@@ -1,21 +1,25 @@
 Facts (layer 2):
 
 `x` (ConstantDefinition):
+  at constant-mismatched-types.wipple:1:1-1:2
   grouped with `Number`, `"42"`
   has definition constraints
   has type `Number` or `String`
   is a definition
 
 `Number` (NamedType):
+  at constant-mismatched-types.wipple:1:6-1:12
   grouped with `x`
   has type `Number` or `String`
   is a type
   resolved to 1 definition(s): `Number`
 
 `x : "42"` (AssignmentStatement):
+  at constant-mismatched-types.wipple:2:1-2:9
   has type `()`
 
 `"42"` (StringExpression):
+  at constant-mismatched-types.wipple:2:5-2:9
   grouped with `"42"`, `x`
   has type `Number` or `String`
   is an expression

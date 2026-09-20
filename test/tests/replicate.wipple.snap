@@ -1,46 +1,55 @@
 Facts (layer 2):
 
 `"abc"` (VisitAs):
+  at replicate.wipple:1:1-1:6
   grouped with `element`, `"abc"`, `element`
   has type `String`
   is an expression
 
 `"abc" . replicate 3` (VisitAs):
+  at replicate.wipple:1:1-1:20
   grouped with `container`, `replicate 3`, `container`
   has type `Sequence String`
   is an expression
 
 `"abc" . replicate 3 . each show` (ExpressionStatement):
+  at replicate.wipple:1:1-1:32
   grouped with `"abc" . replicate 3 . each show`
   has type `()`
 
 `"abc" . replicate 3 . each show` (OperatorExpression):
+  at replicate.wipple:1:1-1:32
   grouped with `each show`, `"abc" . replicate 3 . each show`
   has type `()`
   is an expression
 
 `replicate` (VariableExpression):
+  at replicate.wipple:1:9-1:18
   grouped with `(n :: Number) -> element -> Sequence element`
   has type `Number -> String -> Sequence String`
   is an expression
   resolved to 1 definition(s): `replicate`
 
 `replicate 3` (CallExpression):
+  at replicate.wipple:1:9-1:20
   grouped with `Sequence element`, `Sequence element`, `"abc" . replicate 3`
   has type `Sequence String`
   is an expression
 
 `replicate 3` (VisitAs):
+  at replicate.wipple:1:9-1:20
   grouped with `element -> Sequence element`
   has type `String -> Sequence String`
   is an expression
 
 `3` (NumberExpression):
+  at replicate.wipple:1:19-1:20
   grouped with `3`, `n :: Number`
   has type `Number`
   is an expression
 
 `each` (VariableExpression):
+  at replicate.wipple:1:23-1:27
   grouped with `(action :: (element -> ())) -> container -> ()`
   has bound(s) `As-Sequence` `(Sequence String)` `String` (resolved as `instance (As-Sequence (Sequence element) element)`)
   has type `(String -> ()) -> (Sequence String) -> ()`
@@ -48,16 +57,19 @@ Facts (layer 2):
   resolved to 1 definition(s): `each`
 
 `each show` (CallExpression):
+  at replicate.wipple:1:23-1:32
   grouped with `()`, `()`, `"abc" . replicate 3 . each show`
   has type `()`
   is an expression
 
 `each show` (VisitAs):
+  at replicate.wipple:1:23-1:32
   grouped with `container -> ()`
   has type `(Sequence String) -> ()`
   is an expression
 
 `show` (VariableExpression):
+  at replicate.wipple:1:28-1:32
   grouped with `value -> ()`, `action :: (element -> ())`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`

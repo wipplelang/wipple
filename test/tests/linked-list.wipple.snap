@@ -1,6 +1,7 @@
 Facts (layer 2):
 
 `Linked-List` (TypeDefinition):
+  at linked-list.wipple:1:1-1:12
   grouped with `Nil`
   has definition constraints
   has type `Linked-List value`
@@ -8,6 +9,7 @@ Facts (layer 2):
   is a definition
 
 `value` (TypeParameter):
+  at linked-list.wipple:1:15-1:20
   grouped with `value`, `value`
   has type `value`
   is a definition
@@ -15,17 +17,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `Nil` (VariantDefinition):
+  at linked-list.wipple:2:3-2:6
   grouped with `Linked-List`
   has definition constraints
   has type `Linked-List value`
   is a definition
 
 `Cons value (Linked-List value)` (VariantDefinition):
+  at linked-list.wipple:3:3-3:33
   has definition constraints
   has type `value (Linked-List value) -> Linked-List value`
   is a definition
 
 `value` (TypeParameter):
+  at linked-list.wipple:3:8-3:13
   grouped with `value`
   has type `value`
   is a type
@@ -33,11 +38,13 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `Linked-List value` (NamedType):
+  at linked-list.wipple:3:15-3:32
   has type `Linked-List value`
   is a type
   resolved to 1 definition(s): `Linked-List`
 
 `value` (TypeParameter):
+  at linked-list.wipple:3:27-3:32
   grouped with `value`, `value`
   has type `value`
   is a type
@@ -45,6 +52,7 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `reduce-linked-list` (ConstantDefinition):
+  at linked-list.wipple:6:1-6:19
   grouped with `(value result -> result) result (Linked-List value) -> result`, `f result l -> when l {⋯}`
   has definition constraints
   has type `(value result -> result) result (Linked-List value) -> result`
@@ -52,11 +60,13 @@ Facts (layer 2):
   is a definition
 
 `(value result -> result) result (Linked-List value) -> result` (FunctionType):
+  at linked-list.wipple:6:23-6:84
   grouped with `reduce-linked-list`
   has type `(value result -> result) result (Linked-List value) -> result`
   is a type
 
 `value` (TypeParameter):
+  at linked-list.wipple:6:24-6:29
   grouped with `value`, `value`
   has type `value`
   is a definition
@@ -64,11 +74,13 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
 
 `value result -> result` (FunctionType):
+  at linked-list.wipple:6:24-6:46
   grouped with `f`
   has type `value result -> result`
   is a type
 
 `result` (TypeParameter):
+  at linked-list.wipple:6:30-6:36
   grouped with `result`, `result`, `result`, `result`
   has type `result`
   is a definition
@@ -76,6 +88,7 @@ Facts (layer 2):
   resolved to 1 definition(s): `result`
 
 `result` (TypeParameter):
+  at linked-list.wipple:6:40-6:46
   grouped with `result`, `result`
   has type `result`
   is a type
@@ -83,6 +96,7 @@ Facts (layer 2):
   resolved to type parameter `result`
 
 `result` (TypeParameter):
+  at linked-list.wipple:6:48-6:54
   grouped with `result`, `result`
   has type `result`
   is a type
@@ -90,12 +104,14 @@ Facts (layer 2):
   resolved to type parameter `result`
 
 `Linked-List value` (NamedType):
+  at linked-list.wipple:6:56-6:73
   grouped with `l`
   has type `Linked-List value`
   is a type
   resolved to 1 definition(s): `Linked-List`
 
 `value` (TypeParameter):
+  at linked-list.wipple:6:68-6:73
   grouped with `value`, `value`
   has type `value`
   is a type
@@ -103,6 +119,7 @@ Facts (layer 2):
   resolved to type parameter `value`
 
 `result` (TypeParameter):
+  at linked-list.wipple:6:78-6:84
   grouped with `result`, `when l {⋯}`
   has type `result`
   is a type
@@ -110,43 +127,51 @@ Facts (layer 2):
   resolved to type parameter `result`
 
 `reduce-linked-list : f result l -> when l {⋯}` (AssignmentStatement):
+  at linked-list.wipple:7:1-10:2
   has type `()`
 
 `f` (VariablePattern):
+  at linked-list.wipple:7:22-7:23
   grouped with `f`, `f`, `value result -> result`
   has type `value result -> result`
   is a definition
   is a pattern
 
 `f result l -> when l {⋯}` (FunctionExpression):
+  at linked-list.wipple:7:22-10:2
   grouped with `reduce-linked-list`
   has type `(value result -> result) result (Linked-List value) -> result`
   is an expression
 
 `result` (VariablePattern):
+  at linked-list.wipple:7:24-7:30
   grouped with `result`, `result`, `result`
   has type `result`
   is a definition
   is a pattern
 
 `l` (VariablePattern):
+  at linked-list.wipple:7:31-7:32
   grouped with `l`, `Linked-List value`
   has type `Linked-List value`
   is a definition
   is a pattern
 
 `when l {⋯}` (WhenExpression):
+  at linked-list.wipple:7:36-10:2
   grouped with `result`, `reduce-linked-list f (f x result) rest`, `result`
   has type `result`
   is an expression
 
 `l` (VariableExpression):
+  at linked-list.wipple:7:41-7:42
   grouped with `l`, `Nil`, `Cons x rest`
   has type `Linked-List value`
   is an expression
   resolved to 1 definition(s): `l`
 
 `Nil` (ConstructorPattern):
+  at linked-list.wipple:8:3-8:6
   captures `result`
   grouped with `l`, `Linked-List`
   has type `Linked-List value`
@@ -154,12 +179,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `Nil`
 
 `result` (VariableExpression):
+  at linked-list.wipple:8:10-8:16
   grouped with `result`, `when l {⋯}`
   has type `result`
   is an expression
   resolved to 1 definition(s): `result`
 
 `Cons x rest` (ConstructorPattern):
+  at linked-list.wipple:9:4-9:15
   captures `f`, `result`
   grouped with `l`, `Linked-List`
   has type `Linked-List value`
@@ -167,143 +194,170 @@ Facts (layer 2):
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `x` (VariablePattern):
+  at linked-list.wipple:9:9-9:10
   grouped with `_`, `x`
   has type `value`
   is a definition
   is a pattern
 
 `rest` (VariablePattern):
+  at linked-list.wipple:9:11-9:15
   grouped with `_`, `rest`
   has type `Linked-List value`
   is a definition
   is a pattern
 
 `reduce-linked-list` (VariableExpression):
+  at linked-list.wipple:9:20-9:38
   has type `(value result -> result) result (Linked-List value) -> result`
   is an expression
   resolved to 1 definition(s): `reduce-linked-list`
 
 `reduce-linked-list f (f x result) rest` (CallExpression):
+  at linked-list.wipple:9:20-9:58
   grouped with `result`, `when l {⋯}`
   has type `result`
   is an expression
 
 `f` (VariableExpression):
+  at linked-list.wipple:9:39-9:40
   grouped with `f`, `value result -> result`
   has type `value result -> result`
   is an expression
   resolved to 1 definition(s): `f`
 
 `f` (VariableExpression):
+  at linked-list.wipple:9:42-9:43
   grouped with `f`
   has type `value result -> result`
   is an expression
   resolved to 1 definition(s): `f`
 
 `f x result` (CallExpression):
+  at linked-list.wipple:9:42-9:52
   grouped with `result`, `result`
   has type `result`
   is an expression
 
 `x` (VariableExpression):
+  at linked-list.wipple:9:44-9:45
   grouped with `x`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
 
 `result` (VariableExpression):
+  at linked-list.wipple:9:46-9:52
   grouped with `result`, `result`
   has type `result`
   is an expression
   resolved to 1 definition(s): `result`
 
 `rest` (VariableExpression):
+  at linked-list.wipple:9:54-9:58
   grouped with `rest`, `Linked-List value`
   has type `Linked-List value`
   is an expression
   resolved to 1 definition(s): `rest`
 
 `list` (VariablePattern):
+  at linked-list.wipple:12:1-12:5
   grouped with `Cons 1 (Cons 2 (Cons 3 Nil))`, `Cons 1 (Cons 2 (Cons 3 Nil))`, `list`
   has type `Linked-List Number`
   is a definition
   is a pattern
 
 `list : Cons 1 (Cons 2 (Cons 3 Nil))` (AssignmentStatement):
+  at linked-list.wipple:12:1-12:36
   has type `()`
 
 `Cons` (ConstructorExpression):
+  at linked-list.wipple:12:8-12:12
   has type `Number (Linked-List Number) -> Linked-List Number`
   is an expression
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `Cons 1 (Cons 2 (Cons 3 Nil))` (CallExpression):
+  at linked-list.wipple:12:8-12:36
   grouped with `Linked-List`, `list`, `list`
   has type `Linked-List Number`
   is an expression
 
 `1` (NumberExpression):
+  at linked-list.wipple:12:13-12:14
   grouped with `1`, `value`
   has type `Number`
   is an expression
 
 `Cons` (ConstructorExpression):
+  at linked-list.wipple:12:16-12:20
   has type `Number (Linked-List Number) -> Linked-List Number`
   is an expression
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `Cons 2 (Cons 3 Nil)` (CallExpression):
+  at linked-list.wipple:12:16-12:35
   grouped with `Linked-List`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
 
 `2` (NumberExpression):
+  at linked-list.wipple:12:21-12:22
   grouped with `2`, `value`
   has type `Number`
   is an expression
 
 `Cons` (ConstructorExpression):
+  at linked-list.wipple:12:24-12:28
   has type `Number (Linked-List Number) -> Linked-List Number`
   is an expression
   resolved to 1 definition(s): `Cons value (Linked-List value)`
 
 `Cons 3 Nil` (CallExpression):
+  at linked-list.wipple:12:24-12:34
   grouped with `Linked-List`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
 
 `3` (NumberExpression):
+  at linked-list.wipple:12:29-12:30
   grouped with `3`, `value`
   has type `Number`
   is an expression
 
 `Nil` (ConstructorExpression):
+  at linked-list.wipple:12:31-12:34
   grouped with `Linked-List`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
   resolved to 1 definition(s): `Nil`
 
 `sum` (VariablePattern):
+  at linked-list.wipple:14:1-14:4
   grouped with `reduce-linked-list (+) 0 list`, `reduce-linked-list (+) 0 list`, `sum`
   has type `Number`
   is a definition
   is a pattern
 
 `sum : reduce-linked-list (+) 0 list` (AssignmentStatement):
+  at linked-list.wipple:14:1-14:36
   has type `()`
 
 `reduce-linked-list` (VariableExpression):
+  at linked-list.wipple:14:7-14:25
   grouped with `(value result -> result) result (Linked-List value) -> result`
   has type `(Number Number -> Number) Number (Linked-List Number) -> Number`
   is an expression
   resolved to 1 definition(s): `reduce-linked-list`
 
 `reduce-linked-list (+) 0 list` (CallExpression):
+  at linked-list.wipple:14:7-14:36
   grouped with `result`, `sum`, `sum`
   has type `Number`
   is an expression
 
 `(+)` (ConstructorExpression):
+  at linked-list.wipple:14:26-14:29
   grouped with `left right -> sum`, `value result -> result`
   has bound(s) `Add` `Number` `Number` `Number` (resolved as `instance (Add Number Number Number)`)
   has type `Number Number -> Number`
@@ -311,17 +365,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `Add`
 
 `0` (NumberExpression):
+  at linked-list.wipple:14:30-14:31
   grouped with `0`, `result`
   has type `Number`
   is an expression
 
 `list` (VariableExpression):
+  at linked-list.wipple:14:32-14:36
   grouped with `list`, `Linked-List value`
   has type `Linked-List Number`
   is an expression
   resolved to 1 definition(s): `list`
 
 `show` (VariableExpression):
+  at linked-list.wipple:15:1-15:5
   grouped with `value -> ()`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
@@ -329,15 +386,18 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show sum` (ExpressionStatement):
+  at linked-list.wipple:15:1-15:9
   grouped with `show sum`
   has type `()`
 
 `show sum` (CallExpression):
+  at linked-list.wipple:15:1-15:9
   grouped with `()`, `show sum`
   has type `()`
   is an expression
 
 `sum` (VariableExpression):
+  at linked-list.wipple:15:6-15:9
   grouped with `sum`, `value`
   has type `Number`
   is an expression
