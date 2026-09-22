@@ -4,23 +4,18 @@ use std::collections::BTreeMap;
 use wipple_core::{
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::Syntax,
-    render::{Comments, Render, RenderCtx},
+    facts::Description,
+    render::Comments,
     span::{Span, Str},
     typecheck::{
         bounds::ResolvedBounds,
-        constraints::{
-            ConstraintTrace, instantiate_constraint::InstantiateConstraint,
-            ty_constraint::TyConstraint,
-        },
+        constraints::{instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint},
         groups::NodeRank,
-        instantiate::InstantiatedTypes,
         ty::Ty,
     },
-    util::get_links,
     visit::{
         IsCaptured, IsMutated, Visit, Visitor,
-        definitions::{ConstantDefinition, Defined, VariableDefinition},
+        definitions::{ConstantDefinition, VariableDefinition},
     },
 };
 use wipple_parse::{
@@ -84,16 +79,7 @@ impl Visit for VariableExpression {
 
                 db.graph.replace(node, definition_node);
 
-                visitor.constraint(
-                    db,
-                    TyConstraint::new(node, Ty::Node(definition_node)).with_trace(
-                        DefinitionConstraintTrace {
-                            variable: true,
-                            definition: definition_node,
-                            node,
-                        },
-                    ),
-                );
+                visitor.constraint(db, TyConstraint::new(node, Ty::Node(definition_node)));
 
                 // Prefer showing conflicts on the definition rather than its uses
                 visitor.rank(node, NodeRank::Annotated);
@@ -115,13 +101,7 @@ impl Visit for VariableExpression {
 
                 visitor.constraint(
                     db,
-                    InstantiateConstraint::new(node, definition_node, substitutions).with_trace(
-                        DefinitionConstraintTrace {
-                            variable: false,
-                            definition: definition_node,
-                            node,
-                        },
-                    ),
+                    InstantiateConstraint::new(node, definition_node, substitutions),
                 );
 
                 visitor.codegen(
@@ -132,92 +112,16 @@ impl Visit for VariableExpression {
                         definition: definition_node,
                     },
                 );
+
+                db.insert(
+                    node,
+                    Description(Comments::for_static(
+                        definition_node,
+                        "[`definition`] is defined as a [`definition@type`].",
+                        [("definition", Some(definition_node))],
+                    )),
+                );
             }
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct DefinitionConstraintTrace {
-    pub variable: bool,
-    pub definition: Node,
-    pub node: Node,
-}
-
-#[typetag::serde]
-impl ConstraintTrace for DefinitionConstraintTrace {
-    fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        vec![&mut self.node]
-    }
-
-    fn require_consequences(&self) -> bool {
-        self.variable
-    }
-
-    fn nodes(&self, db: &Db) -> Vec<Node> {
-        let instantiated_nodes = db
-            .get(self.node)
-            .map(|InstantiatedTypes(instantiated)| instantiated.values().copied())
-            .unwrap_or_default();
-
-        [self.node, self.definition]
-            .into_iter()
-            .chain(instantiated_nodes)
-            .chain(
-                get_links(db, self.definition, self.node)
-                    .into_values()
-                    .map(|link| link.node),
-            )
-            .collect()
-    }
-
-    fn primary_node(&self, db: &Db) -> Node {
-        if db.get(self.definition).is_some_and(|Defined(definition)| {
-            // Prefer showing the use node if the definition has documentation comments
-            definition.comments().is_empty()
-        }) && db
-            .get(self.definition)
-            .map(|Syntax(key)| key.get(db).span(db))
-            .zip(db.get(self.node).map(|Syntax(key)| key.get(db).span(db)))
-            .is_some_and(|(definition_span, node_span)| {
-                // Prefer showing the use node if the definition is in a different file
-                definition_span.path == node_span.path
-            })
-        {
-            self.definition
-        } else {
-            self.node
-        }
-    }
-}
-
-impl Render for DefinitionConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        let Some(Defined(definition)) = db.get(self.definition) else {
-            return;
-        };
-
-        let comments = definition.comments();
-
-        if !comments.is_empty() {
-            ctx.comments(
-                db,
-                &Comments {
-                    definition: self.definition,
-                    nodes: Default::default(),
-                    comments: comments.to_vec(),
-                    links: get_links(db, self.definition, self.node),
-                },
-            );
-        } else {
-            ctx.node(self.node);
-            if definition.downcast_ref::<ConstantDefinition>().is_some() {
-                ctx.string(" is defined as a ");
-            } else {
-                ctx.string(" is a ");
-            }
-            ctx.ty(db, &Ty::Node(self.node), true);
-            ctx.string(".");
         }
     }
 }

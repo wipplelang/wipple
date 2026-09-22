@@ -3,7 +3,6 @@ use crate::{
     facts::Syntax,
     render::{Render, RenderCtx},
     typecheck::{
-        constraints::AnyConstraintTrace,
         groups::{NodeRank, Typed},
         solver::{Solver, SubstitutionsKey},
         ty::{ConstructedTy, Ty, TyTag},
@@ -172,27 +171,5 @@ impl InstantiateCtx {
         for ty in parameters.values_mut() {
             *ty = self.instantiate_ty(db, solver, ty);
         }
-    }
-
-    pub fn instantiate_traces(
-        &mut self,
-        db: &mut Db,
-        solver: &mut Solver,
-        traces: &[AnyConstraintTrace],
-    ) -> Vec<AnyConstraintTrace> {
-        traces
-            .iter()
-            .map(|trace| {
-                let mut trace = trace.clone();
-
-                for node in trace.nodes_mut() {
-                    *node = self.instantiate_node(db, solver, *node);
-                }
-
-                trace.source_node.get_or_insert(self.source_node);
-
-                trace
-            })
-            .collect()
     }
 }

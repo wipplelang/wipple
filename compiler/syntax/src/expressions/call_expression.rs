@@ -10,7 +10,7 @@ use wipple_core::{
     render::Render,
     span::Span,
     typecheck::{
-        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
+        constraints::ty_constraint::TyConstraint,
         ty::{ConstructedTy, Ty},
     },
     visit::{Visit, Visitor, definitions::ConstantDefinition},
@@ -101,21 +101,13 @@ impl Visit for CallExpression {
             .map(|input| visitor.visit(db, &input))
             .collect::<Vec<_>>();
 
-        let mut constraint = TyConstraint::new(
-            function,
-            Ty::Constructed(ConstructedTy::function(inputs.clone(), node)),
-        )
-        .with_trace(CallOutputConstraintTrace { function, node });
-
-        for &input in &inputs {
-            constraint = constraint.with_trace(CallInputConstraintTrace {
-                node,
+        visitor.constraint(
+            db,
+            TyConstraint::new(
                 function,
-                input,
-            });
-        }
-
-        visitor.constraint(db, constraint);
+                Ty::Constructed(ConstructedTy::function(inputs.clone(), node)),
+            ),
+        );
 
         db.insert(
             node,
@@ -137,53 +129,6 @@ impl Visit for CallExpression {
         );
     }
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct CallInputConstraintTrace {
-    node: Node,
-    function: Node,
-    input: Node,
-}
-
-#[typetag::serde]
-impl ConstraintTrace for CallInputConstraintTrace {
-    fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        vec![&mut self.node, &mut self.function, &mut self.input]
-    }
-
-    fn nodes(&self, _db: &Db) -> Vec<Node> {
-        vec![self.node, self.function, self.input]
-    }
-
-    fn primary_node(&self, _db: &Db) -> Node {
-        self.node
-    }
-}
-
-impl Render for CallInputConstraintTrace {}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct CallOutputConstraintTrace {
-    function: Node,
-    node: Node,
-}
-
-#[typetag::serde]
-impl ConstraintTrace for CallOutputConstraintTrace {
-    fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        vec![&mut self.node, &mut self.function]
-    }
-
-    fn nodes(&self, _db: &Db) -> Vec<Node> {
-        vec![self.node, self.function]
-    }
-
-    fn primary_node(&self, _db: &Db) -> Node {
-        self.node
-    }
-}
-
-impl Render for CallOutputConstraintTrace {}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 enum CallExpressionCodegen {

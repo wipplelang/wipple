@@ -7,7 +7,6 @@ pub mod ty_constraint;
 use crate::{
     db::{Db, Node},
     render::{Render, RenderCtx},
-    traces::TracesEntry,
     typecheck::{bounds::Instance, instantiate::InstantiateCtx, solver::Solver, ty::ConstructedTy},
     visit::definitions::{Defined, InstanceDefinition},
 };
@@ -15,24 +14,19 @@ use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
 use std::{
     any::Any,
-    collections::{BTreeMap, BTreeSet, VecDeque},
+    collections::{BTreeMap, VecDeque},
     fmt::Debug,
-    ops::{Deref, DerefMut},
 };
 
 pub enum RunResult {
     None,
-    Insert(Vec<Box<dyn Constraint>>),
-    Enqueue(Vec<Box<dyn Constraint>>),
+    Insert(Vec<(Node, Box<dyn Constraint>)>),
+    Enqueue(Vec<(Node, Box<dyn Constraint>)>),
 }
 
 #[typetag::serde]
 pub trait Constraint: Debug + DynClone + Any + Send + Sync {
     fn kind(&self) -> ConstraintKind;
-
-    fn node(&self) -> Node;
-
-    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace>;
 
     fn instantiate(
         &self,
@@ -56,76 +50,28 @@ impl dyn Constraint {
     }
 }
 
-#[typetag::serde]
-pub trait ConstraintTrace: Debug + DynClone + Any + Send + Sync + Render {
-    fn nodes_mut(&mut self) -> Vec<&mut Node>;
-
-    fn nodes(&self, db: &Db) -> Vec<Node>;
-
-    fn primary_node(&self, db: &Db) -> Node;
-
-    fn allow_hidden_nodes(&self) -> bool {
-        true
-    }
-
-    fn require_consequences(&self) -> bool {
-        false
-    }
-
-    fn contains(&mut self, db: &Db, nodes: &BTreeSet<Node>) -> bool {
-        BTreeSet::from_iter(self.nodes(db))
-            .intersection(nodes)
-            .next()
-            .is_some()
-    }
-}
-
-dyn_clone::clone_trait_object!(ConstraintTrace);
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct AnyConstraintTrace {
-    pub trace: Box<dyn ConstraintTrace>,
-    pub from: Vec<usize>,
-    pub source_node: Option<Node>,
-}
-
-impl AnyConstraintTrace {
-    pub fn new(trace: impl ConstraintTrace) -> Self {
-        AnyConstraintTrace {
-            trace: Box::new(trace),
-            from: Vec::new(),
-            source_node: None,
-        }
-    }
-}
-
-impl Deref for AnyConstraintTrace {
-    type Target = dyn ConstraintTrace;
-
-    fn deref(&self) -> &Self::Target {
-        self.trace.as_ref()
-    }
-}
-
-impl DerefMut for AnyConstraintTrace {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        self.trace.as_mut()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstraintConsequence {
-    Group(Node),
-    Ty(Node, ConstructedTy),
-    Instance(Node, Instance, bool),
+    Group(Node, Node, bool),
+    Ty(Node, ConstructedTy, bool),
+    Instance(Instance, bool),
 }
 
 impl ConstraintConsequence {
-    pub fn node(&self) -> Node {
-        match *self {
-            ConstraintConsequence::Group(node) => node,
-            ConstraintConsequence::Ty(node, _) => node,
-            ConstraintConsequence::Instance(node, _, _) => node,
+    pub fn relevant_nodes(&self) -> Vec<Node> {
+        match self {
+            ConstraintConsequence::Group(left, right, _) => vec![*left, *right],
+            ConstraintConsequence::Ty(node, _, _) => vec![*node],
+            ConstraintConsequence::Instance(instance, _) => [instance.node]
+                .into_iter()
+                .chain(
+                    instance
+                        .parameters
+                        .iter()
+                        .flat_map(|(&node, ty)| [Some(node), ty.node()])
+                        .flatten(),
+                )
+                .collect(),
         }
     }
 }
@@ -133,7 +79,21 @@ impl ConstraintConsequence {
 impl Render for ConstraintConsequence {
     fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         match self {
-            ConstraintConsequence::Instance(_, instance, resolved)
+            ConstraintConsequence::Group(left, right, merged) if !*merged => {
+                ctx.string("This requires ");
+                ctx.node(*left);
+                ctx.string(" and ");
+                ctx.node(*right);
+                ctx.string(" to have the same type.");
+            }
+            // ConstraintConsequence::Ty(node, ty, merged) if !*merged => {
+            //     ctx.string("This means ");
+            //     ctx.node(*node);
+            //     ctx.string(" is a ");
+            //     ctx.ty(db, &Ty::Constructed(ty.clone()), true);
+            //     ctx.string(".");
+            // }
+            ConstraintConsequence::Instance(instance, resolved)
                 if !*resolved
                     || db
                         .get(instance.node)
@@ -158,57 +118,57 @@ pub enum ConstraintKind {
 }
 
 #[derive(Debug, Default)]
-pub struct Constraints(BTreeMap<ConstraintKind, VecDeque<Box<dyn Constraint>>>);
+pub struct Constraints(BTreeMap<ConstraintKind, VecDeque<(Node, Box<dyn Constraint>)>>);
 
 impl Constraints {
     pub fn is_empty(&self) -> bool {
         self.0.values().all(|constraints| constraints.is_empty())
     }
 
-    pub fn insert_front(&mut self, constraint: Box<dyn Constraint>) {
-        self.insert_inner(constraint, true);
+    pub fn insert_front(&mut self, node: Node, constraint: Box<dyn Constraint>) {
+        self.insert_inner(node, constraint, true);
     }
 
-    pub fn insert_back(&mut self, constraint: Box<dyn Constraint>) {
-        self.insert_inner(constraint, false);
+    pub fn insert_back(&mut self, node: Node, constraint: Box<dyn Constraint>) {
+        self.insert_inner(node, constraint, false);
     }
 
-    fn insert_inner(&mut self, constraint: Box<dyn Constraint>, front: bool) {
+    fn insert_inner(&mut self, node: Node, constraint: Box<dyn Constraint>, front: bool) {
         let constraints = self.0.entry(constraint.kind()).or_default();
 
         if front {
-            constraints.push_front(constraint);
+            constraints.push_front((node, constraint));
         } else {
-            constraints.push_back(constraint);
+            constraints.push_back((node, constraint));
         }
     }
 
     pub fn extend_front(
         &mut self,
-        constraints: impl IntoIterator<Item = Box<dyn Constraint>, IntoIter: DoubleEndedIterator>,
+        constraints: impl IntoIterator<
+            Item = (Node, Box<dyn Constraint>),
+            IntoIter: DoubleEndedIterator,
+        >,
     ) {
-        for constraint in constraints.into_iter().rev() {
-            self.insert_front(constraint);
+        for (node, constraint) in constraints.into_iter().rev() {
+            self.insert_front(node, constraint);
         }
     }
 
-    pub fn extend_back(&mut self, constraints: impl IntoIterator<Item = Box<dyn Constraint>>) {
-        for constraint in constraints {
-            self.insert_back(constraint);
+    pub fn extend_back(
+        &mut self,
+        constraints: impl IntoIterator<Item = (Node, Box<dyn Constraint>)>,
+    ) {
+        for (node, constraint) in constraints.into_iter() {
+            self.insert_back(node, constraint);
         }
     }
 
     pub fn run(&mut self, db: &mut Db, solver: &mut Solver, kind: ConstraintKind) {
         let mut requeued_constraints = Vec::new();
-        while let Some(mut constraint) = self.0.get_mut(&kind).and_then(|c| c.pop_front()) {
+        while let Some((node, constraint)) = self.0.get_mut(&kind).and_then(|c| c.pop_front()) {
             if solver.trace {
-                let traces = constraint.traces_mut();
-                let indices = db.traces.len()..(db.traces.len() + traces.len());
-
-                db.traces
-                    .extend(traces.iter().cloned().map(TracesEntry::new));
-
-                solver.active_traces = indices;
+                solver.tracing_node = Some(node);
             }
 
             match constraint.run(db, solver) {
@@ -220,21 +180,25 @@ impl Constraints {
                     requeued_constraints.extend(constraints);
                 }
             }
+
+            if solver.trace {
+                solver.tracing_node = None;
+            }
         }
 
         self.extend_back(requeued_constraints);
     }
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut dyn Constraint> {
+    pub fn constraints_mut(&mut self) -> impl Iterator<Item = &mut dyn Constraint> {
         self.0
             .values_mut()
             .flatten()
-            .map(|constraint| constraint.as_mut())
+            .map(|(_, constraint)| constraint.as_mut())
     }
 }
 
 impl IntoIterator for Constraints {
-    type Item = Box<dyn Constraint>;
+    type Item = (Node, Box<dyn Constraint>);
     type IntoIter = Box<dyn Iterator<Item = Self::Item>>;
 
     fn into_iter(self) -> Self::IntoIter {

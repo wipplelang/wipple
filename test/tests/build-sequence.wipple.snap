@@ -146,7 +146,7 @@ Facts (layer 2):
 
 `5` (NumberExpression):
   at build-sequence.wipple:2:16-2:17
-  grouped with `5`, `count :: Number`
+  grouped with `5`, `Number`
   has type `Number`
   is an expression
 
@@ -172,7 +172,7 @@ Facts (layer 2):
 
 `show` (VariableExpression):
   at build-sequence.wipple:2:25-2:29
-  grouped with `value -> ()`, `action :: (element -> ())`
+  grouped with `value -> ()`, `(element -> ())`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression

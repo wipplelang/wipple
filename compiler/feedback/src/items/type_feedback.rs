@@ -21,9 +21,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             secondary: data.group.clone(),
         })
         .show_graph()
-        .display(|db, writer, _, data| {
-            writer.relevant.extend(data.traces.nodes(db));
-
+        .display(|db, writer, node, data| {
             if let Some(source) = data.source {
                 writer.string("In ");
                 writer.node(source);
@@ -61,7 +59,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 writer.string("; double-check these.");
             }
 
-            writer.traces(db, &data.traces);
+            writer.trace(db, node);
         })
         .register();
 

@@ -54,7 +54,7 @@ Facts (layer 2):
 
 `3` (NumberExpression):
   at negate.wipple:1:15-1:16
-  grouped with `3`, `n :: Number`
+  grouped with `3`, `Number`
   has type `Number`
   is an expression
 

@@ -26,7 +26,7 @@ Facts (layer 2):
 
 `2` (NumberExpression):
   at divisible-by.wipple:1:23-1:24
-  grouped with `2`, `left :: Number`
+  grouped with `2`, `Number`
   has type `Number`
   is an expression
 
@@ -96,7 +96,7 @@ Facts (layer 2):
 
 `2` (NumberExpression):
   at divisible-by.wipple:4:13-4:14
-  grouped with `2`, `right :: Number`
+  grouped with `2`, `Number`
   has type `Number`
   is an expression
 
@@ -134,7 +134,7 @@ Facts (layer 2):
 
 `2` (NumberExpression):
   at divisible-by.wipple:5:12-5:13
-  grouped with `2`, `right :: Number`
+  grouped with `2`, `Number`
   has type `Number`
   is an expression
 
@@ -172,7 +172,7 @@ Facts (layer 2):
 
 `3` (NumberExpression):
   at divisible-by.wipple:6:13-6:14
-  grouped with `3`, `right :: Number`
+  grouped with `3`, `Number`
   has type `Number`
   is an expression
 
@@ -210,7 +210,7 @@ Facts (layer 2):
 
 `3` (NumberExpression):
   at divisible-by.wipple:7:12-7:13
-  grouped with `3`, `right :: Number`
+  grouped with `3`, `Number`
   has type `Number`
   is an expression
 

@@ -75,7 +75,7 @@ Facts (layer 2):
 
 `show` (VariableExpression):
   at list-mismatched-elements.wipple:2:16-2:20
-  grouped with `value -> ()`, `action :: (element -> ())`
+  grouped with `value -> ()`, `(element -> ())`
   has bound(s) `Describe` `(String or () or Number)` (resolved as `instance (Describe Number)`)
   has type `(String or () or Number) -> ()`
   is an expression
@@ -89,7 +89,7 @@ error:
   |           ---------^^
   |           |        |
   |           |        `()` is a `String`, `()`, or a `Number`, but it can only be one of these.
-  |           `1, "hi", ()` is a collection of `String` elements.
+  |           `1, "hi", ()` is a collection of `String or () or Number` elements.
 2 | my-list . each show
   |           ---- ---- `show` displays `String` on the screen.
   |           |     

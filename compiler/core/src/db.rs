@@ -3,7 +3,7 @@ use crate::{
     facts::Syntax,
     graph::GraphBuilder,
     render::{Render, RenderCtx, RenderMarkdownOptions},
-    traces::TracesEntry,
+    typecheck::constraints::ConstraintConsequence,
     visit::Visit,
 };
 use dyn_clone::DynClone;
@@ -77,7 +77,7 @@ pub struct Db {
     pub debug_enabled: bool,
     pub(crate) ast: Ast,
     pub graph: GraphBuilder,
-    pub traces: Vec<TracesEntry>,
+    pub traces: BTreeMap<Node, BTreeMap<Node, Vec<ConstraintConsequence>>>,
     nodes: Vec<Option<NodeInfo>>,                // for owned nodes
     overrides: BTreeMap<Node, Option<NodeInfo>>, // for parent nodes
     cache: BTreeMap<TypeId, BTreeSet<Node>>,
@@ -132,7 +132,7 @@ struct SerializedDb {
     parent: Option<Box<SerializedDb>>,
     debug_enabled: bool,
     graph: GraphBuilder,
-    traces: Vec<TracesEntry>,
+    traces: BTreeMap<Node, BTreeMap<Node, Vec<ConstraintConsequence>>>,
     ast: Ast,
     nodes: Vec<Option<NodeInfo>>,
     overrides: BTreeMap<Node, Option<NodeInfo>>,

@@ -9,15 +9,15 @@ use crate::{
     },
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, mem, ops::Range};
+use std::{collections::BTreeMap, mem};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct GroupedWith(pub Vec<Node>);
+pub struct DirectlyGroupedWith(pub Vec<Node>);
 
 #[typetag::serde]
-impl Fact for GroupedWith {}
+impl Fact for DirectlyGroupedWith {}
 
-impl Render for GroupedWith {
+impl Render for DirectlyGroupedWith {
     fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("grouped with ");
 
@@ -49,7 +49,7 @@ pub struct Solver {
     pub substitutions: Vec<Substitutions>,
     pub(crate) groups: Groups,
     pub(crate) implied_instances: Vec<Instance>,
-    pub(crate) active_traces: Range<usize>,
+    pub(crate) tracing_node: Option<Node>,
     iterations: usize,
 }
 
@@ -77,7 +77,7 @@ impl Solver {
 
     pub fn extend(
         &mut self,
-        constraints: impl IntoIterator<Item = Box<dyn Constraint>>,
+        constraints: impl IntoIterator<Item = (Node, Box<dyn Constraint>)>,
         ranks: impl IntoIterator<Item = (Node, NodeRank)>,
         substitutions: impl IntoIterator<Item = Substitutions>,
     ) {
@@ -127,8 +127,19 @@ impl Solver {
     }
 
     pub fn add_consequence(&mut self, db: &mut Db, consequence: ConstraintConsequence) {
-        for index in self.active_traces.clone() {
-            db.traces[index].consequences.push(consequence.clone());
+        if let Some(node) = self.tracing_node {
+            for relevant in [node].into_iter().chain(consequence.relevant_nodes()) {
+                let traces = db
+                    .traces
+                    .entry(relevant)
+                    .or_default()
+                    .entry(node)
+                    .or_default();
+
+                if !traces.contains(&consequence) {
+                    traces.push(consequence.clone());
+                }
+            }
         }
     }
 
@@ -167,11 +178,11 @@ impl Solver {
         result
     }
 
-    pub fn unify(&mut self, db: &mut Db, node: Node, ty: &Ty, error: Option<&mut bool>) {
-        self.unify_inner(db, &Ty::Node(node), ty, error);
+    pub fn unify(&mut self, db: &mut Db, node: Node, ty: &Ty, mut on_error: impl FnMut()) {
+        self.unify_inner(db, &Ty::Node(node), ty, &mut on_error);
     }
 
-    fn unify_inner(&mut self, db: &mut Db, left: &Ty, right: &Ty, error: Option<&mut bool>) {
+    fn unify_inner(&mut self, db: &mut Db, left: &Ty, right: &Ty, on_error: &mut dyn FnMut()) {
         if left == right {
             return;
         }
@@ -182,30 +193,29 @@ impl Solver {
         if let Some(original_left_node) = original_left_node
             && let Some(original_right_node) = original_right_node
         {
-            self.merge(db, original_left_node, original_right_node, error);
-            return;
-        }
+            self.merge(db, original_left_node, original_right_node, on_error);
+        } else {
+            let left = self.apply_ty(db, left);
+            let right = self.apply_ty(db, right);
 
-        let left = self.apply_ty(db, left);
-        let right = self.apply_ty(db, right);
+            match (left, right) {
+                (Ty::Node(left), Ty::Node(right)) => {
+                    self.merge(db, left, right, on_error);
+                }
+                (Ty::Node(node), Ty::Constructed(ty)) | (Ty::Constructed(ty), Ty::Node(node)) => {
+                    self.insert(db, node, ty, true);
+                }
+                (Ty::Constructed(left), Ty::Constructed(right)) => {
+                    if !self.unify_inner_constructed(db, &left, &right, &mut |_| on_error()) {
+                        // Report conflicts on the original nodes
 
-        match (left, right) {
-            (Ty::Node(left), Ty::Node(right)) => {
-                self.merge(db, left, right, error);
-            }
-            (Ty::Node(node), Ty::Constructed(ty)) | (Ty::Constructed(ty), Ty::Node(node)) => {
-                self.insert(db, node, ty);
-            }
-            (Ty::Constructed(left), Ty::Constructed(right)) => {
-                if !self.unify_inner_constructed(db, &left, &right, error) {
-                    // Report conflicts on the original nodes
+                        if let Some(original_left_node) = original_left_node {
+                            self.insert(db, original_left_node, right, false);
+                        }
 
-                    if let Some(original_left_node) = original_left_node {
-                        self.insert(db, original_left_node, right);
-                    }
-
-                    if let Some(original_right_node) = original_right_node {
-                        self.insert(db, original_right_node, left);
+                        if let Some(original_right_node) = original_right_node {
+                            self.insert(db, original_right_node, left, false);
+                        }
                     }
                 }
             }
@@ -217,7 +227,7 @@ impl Solver {
         db: &mut Db,
         left: &ConstructedTy,
         right: &ConstructedTy,
-        mut error: Option<&mut bool>,
+        on_error: &mut dyn FnMut(bool),
     ) -> bool {
         let left_child_count = left.children.len();
         let right_child_count = right.children.len();
@@ -228,16 +238,13 @@ impl Solver {
                     db,
                     &Ty::Node(left_child),
                     &Ty::Node(right_child),
-                    error.as_deref_mut(),
+                    &mut || on_error(true),
                 );
             }
         }
 
         if left.tag != right.tag || left_child_count != right_child_count {
-            if let Some(error) = error {
-                *error = true;
-            }
-
+            on_error(false);
             return false;
         }
 
@@ -249,21 +256,27 @@ impl Solver {
         db: &mut Db,
         left: &BTreeMap<Node, Ty>,
         right: &BTreeMap<Node, Ty>,
-        mut error: Option<&mut bool>,
+        mut on_error: impl FnMut(),
     ) {
         for (parameter, left) in left.iter() {
             if let Some(right) = right.get(parameter) {
-                self.unify_inner(db, left, right, error.as_deref_mut());
+                self.unify_inner(db, left, right, &mut on_error);
             }
         }
     }
 
-    fn merge(&mut self, db: &mut Db, left_node: Node, right_node: Node, error: Option<&mut bool>) {
-        db.get_mut_or_default::<GroupedWith>(left_node)
+    fn merge(
+        &mut self,
+        db: &mut Db,
+        left_node: Node,
+        right_node: Node,
+        on_error: &mut dyn FnMut(),
+    ) {
+        db.get_mut_or_default::<DirectlyGroupedWith>(left_node)
             .0
             .push(right_node);
 
-        db.get_mut_or_default::<GroupedWith>(right_node)
+        db.get_mut_or_default::<DirectlyGroupedWith>(right_node)
             .0
             .push(left_node);
 
@@ -274,8 +287,6 @@ impl Solver {
             return; // already the same group
         }
 
-        self.add_consequence(db, ConstraintConsequence::Group(right_node));
-
         let (index, group) = match (left_index, right_index) {
             (Some(left_index), Some(right_index)) => {
                 (Some(left_index), self.groups.remove_existing(right_index))
@@ -285,25 +296,33 @@ impl Solver {
             (None, None) => (None, Group::with_nodes([left_node, right_node])),
         };
 
+        let mut merged = true;
         if let Some(index) = index {
             let mut new_group = self.groups.remove_existing(index);
 
-            Groups::merge(
-                db,
-                group,
-                &mut new_group,
-                error,
-                |db, left, right, error| self.unify_inner_constructed(db, left, right, error),
-            );
+            Groups::merge(db, group, &mut new_group, |db, left, right| {
+                self.unify_inner_constructed(db, left, right, &mut |nested| {
+                    on_error();
+
+                    if !nested {
+                        merged = false;
+                    }
+                })
+            });
 
             self.groups.insert(new_group);
         } else {
             self.groups.insert(group);
         }
+
+        self.add_consequence(
+            db,
+            ConstraintConsequence::Group(left_node, right_node, merged),
+        );
     }
 
-    fn insert(&mut self, db: &mut Db, node: Node, ty: ConstructedTy) {
-        self.add_consequence(db, ConstraintConsequence::Ty(node, ty.clone()));
+    fn insert(&mut self, db: &mut Db, node: Node, ty: ConstructedTy, merged: bool) {
+        self.add_consequence(db, ConstraintConsequence::Ty(node, ty.clone(), merged));
 
         self.with_group_mut(node, |group| {
             group.insert_ty(node, ty);

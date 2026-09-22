@@ -60,7 +60,7 @@ Facts (layer 2):
 
 `0 degrees` (CallExpression):
   at trig.wipple:1:12-1:21
-  grouped with `Angle`, `angle :: Angle`
+  grouped with `Angle`, `Angle`
   has type `Angle`
   is an expression
 
@@ -137,7 +137,7 @@ Facts (layer 2):
 
 `0 degrees` (CallExpression):
   at trig.wipple:2:12-2:21
-  grouped with `Angle`, `angle :: Angle`
+  grouped with `Angle`, `Angle`
   has type `Angle`
   is an expression
 
@@ -234,7 +234,7 @@ Facts (layer 2):
 
 `45 degrees` (CallExpression):
   at trig.wipple:3:12-3:22
-  grouped with `Angle`, `angle :: Angle`
+  grouped with `Angle`, `Angle`
   has type `Angle`
   is an expression
 
@@ -266,7 +266,7 @@ Facts (layer 2):
 
 `45 degrees` (CallExpression):
   at trig.wipple:3:31-3:41
-  grouped with `Angle`, `angle :: Angle`
+  grouped with `Angle`, `Angle`
   has type `Angle`
   is an expression
 
@@ -298,7 +298,7 @@ Facts (layer 2):
 
 `45 degrees` (CallExpression):
   at trig.wipple:3:50-3:60
-  grouped with `Angle`, `angle :: Angle`
+  grouped with `Angle`, `Angle`
   has type `Angle`
   is an expression
 

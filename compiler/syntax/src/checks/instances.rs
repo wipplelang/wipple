@@ -47,13 +47,14 @@ pub fn check_for_overlapping_instances(
 
         let substitutions = solver.insert_substitutions(Default::default(), Default::default());
 
-        solver
-            .constraints
-            .insert_front(Box::new(InstantiateConstraint::new(
+        solver.constraints.insert_front(
+            instance.node,
+            Box::new(InstantiateConstraint::new(
                 instance.node,
                 instance.node,
                 substitutions,
-            )));
+            )),
+        );
 
         solver.run_pass(db, ConstraintKind::Ty);
 
@@ -79,7 +80,7 @@ pub fn check_for_overlapping_instances(
                 db,
                 &left_instance.parameters,
                 &right_instance.parameters,
-                Some(&mut error),
+                || error = true,
             );
 
             if error {
@@ -141,13 +142,14 @@ pub fn run_mismatched_trait(
 
             let substitutions = solver.insert_substitutions(Default::default(), parameters);
 
-            solver
-                .constraints
-                .insert_back(Box::new(TyConstraint::new(node, Ty::Constructed(left))));
+            solver.constraints.insert_back(
+                node,
+                Box::new(TyConstraint::new(node, Ty::Constructed(left))),
+            );
 
-            solver
-                .constraints
-                .insert_back(Box::new(BoundConstraint::new(
+            solver.constraints.insert_back(
+                node,
+                Box::new(BoundConstraint::new(
                     node,
                     Bound {
                         source_node: node,
@@ -157,7 +159,8 @@ pub fn run_mismatched_trait(
                         substitutions,
                         is_optional: true,
                     },
-                )));
+                )),
+            );
 
             solver.run(db);
 

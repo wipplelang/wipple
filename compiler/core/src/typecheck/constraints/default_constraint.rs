@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, Node},
     typecheck::{
-        constraints::{AnyConstraintTrace, Constraint, ConstraintKind, RunResult, Solver},
+        constraints::{Constraint, ConstraintKind, RunResult, Solver},
         instantiate::InstantiateCtx,
         ty::Ty,
     },
@@ -12,16 +12,11 @@ use serde::{Deserialize, Serialize};
 pub struct DefaultConstraint {
     pub node: Node,
     pub default: Node,
-    pub traces: Vec<AnyConstraintTrace>,
 }
 
 impl DefaultConstraint {
     pub fn new(node: Node, default: Node) -> Self {
-        DefaultConstraint {
-            node,
-            default,
-            traces: Vec::new(),
-        }
+        DefaultConstraint { node, default }
     }
 }
 
@@ -29,14 +24,6 @@ impl DefaultConstraint {
 impl Constraint for DefaultConstraint {
     fn kind(&self) -> ConstraintKind {
         ConstraintKind::Bound
-    }
-
-    fn node(&self) -> Node {
-        self.node
-    }
-
-    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace> {
-        &mut self.traces
     }
 
     fn instantiate(
@@ -52,7 +39,7 @@ impl Constraint for DefaultConstraint {
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
         if let Ty::Node(node) = solver.apply_ty(db, &Ty::Node(self.node)) {
-            solver.unify(db, node, &Ty::Node(self.default), None);
+            solver.unify(db, node, &Ty::Node(self.default), || {});
         }
 
         RunResult::None

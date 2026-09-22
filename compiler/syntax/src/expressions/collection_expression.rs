@@ -8,12 +8,10 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    render::{Render, RenderCtx},
+    facts::Description,
+    render::Comments,
     span::{Span, Str},
-    typecheck::{
-        constraints::{ConstraintTrace, ty_constraint::TyConstraint},
-        ty::Ty,
-    },
+    typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
     visit::{Hidden, Visit, VisitAs, Visitor},
 };
 use wipple_parse::{
@@ -117,24 +115,9 @@ impl Visit for CollectionExpression {
             })
             .collect::<Vec<_>>();
 
-        let element_type = elements.first().copied().unwrap_or_else(|| {
-            let node = db.node();
-            db.hide(node);
-            node
-        });
-
         let collection_node = visitor.visit(db, &collection);
         db.graph.edge(collection_node, node, "collection");
-        visitor.constraint(
-            db,
-            TyConstraint::new(collection_node, Ty::Node(node)).with_trace(
-                CollectionConstraintTrace {
-                    node,
-                    element_type,
-                    elements,
-                },
-            ),
-        );
+        visitor.constraint(db, TyConstraint::new(collection_node, Ty::Node(node)));
 
         visitor.codegen(
             db,
@@ -144,41 +127,15 @@ impl Visit for CollectionExpression {
                 collection_node,
             },
         );
-    }
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct CollectionConstraintTrace {
-    node: Node,
-    element_type: Node,
-    elements: Vec<Node>,
-}
-
-#[typetag::serde]
-impl ConstraintTrace for CollectionConstraintTrace {
-    fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        let mut nodes = vec![&mut self.node];
-        nodes.extend(&mut self.elements);
-        nodes
-    }
-
-    fn nodes(&self, _db: &Db) -> Vec<Node> {
-        let mut nodes = vec![self.node];
-        nodes.extend(&self.elements);
-        nodes
-    }
-
-    fn primary_node(&self, _db: &Db) -> Node {
-        self.node
-    }
-}
-
-impl Render for CollectionConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        ctx.node(self.node);
-        ctx.string(" is a collection of ");
-        ctx.ty(db, &Ty::Node(self.element_type), true);
-        ctx.string(" elements.");
+        db.insert(
+            node,
+            Description(Comments::for_static(
+                node,
+                "[`list`] is a collection of [`element@type`] elements.",
+                [("list", Some(node)), ("element", elements.first().copied())],
+            )),
+        );
     }
 }
 

@@ -1,9 +1,7 @@
 use crate::{
     db::{Db, Node},
     typecheck::{
-        constraints::{
-            AnyConstraintTrace, Constraint, ConstraintKind, ConstraintTrace, RunResult, Solver,
-        },
+        constraints::{Constraint, ConstraintKind, RunResult, Solver},
         instantiate::InstantiateCtx,
         ty::Ty,
     },
@@ -14,21 +12,11 @@ use serde::{Deserialize, Serialize};
 pub struct TyConstraint {
     pub node: Node,
     pub ty: Ty,
-    pub traces: Vec<AnyConstraintTrace>,
 }
 
 impl TyConstraint {
     pub fn new(node: Node, ty: Ty) -> Self {
-        TyConstraint {
-            node,
-            ty,
-            traces: Vec::new(),
-        }
-    }
-
-    pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
-        self.traces.push(AnyConstraintTrace::new(trace));
-        self
+        TyConstraint { node, ty }
     }
 }
 
@@ -36,14 +24,6 @@ impl TyConstraint {
 impl Constraint for TyConstraint {
     fn kind(&self) -> ConstraintKind {
         ConstraintKind::Ty
-    }
-
-    fn node(&self) -> Node {
-        self.node
-    }
-
-    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace> {
-        &mut self.traces
     }
 
     fn instantiate(
@@ -55,12 +35,11 @@ impl Constraint for TyConstraint {
         Some(Box::new(TyConstraint {
             node: ctx.instantiate_node(db, solver, self.node),
             ty: ctx.instantiate_ty(db, solver, &self.ty),
-            traces: ctx.instantiate_traces(db, solver, &self.traces),
         }))
     }
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
-        solver.unify(db, self.node, &self.ty, None);
+        solver.unify(db, self.node, &self.ty, || {});
         RunResult::None
     }
 }

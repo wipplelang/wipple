@@ -78,7 +78,7 @@ Facts (layer 2):
 
 `n -> n > 0` (FunctionExpression):
   at all-any.wipple:1:25-1:35
-  grouped with `condition :: (element -> Boolean)`
+  grouped with `(element -> Boolean)`
   has type `Number -> Boolean`
   is an expression
 
@@ -193,7 +193,7 @@ Facts (layer 2):
 
 `n -> n > 0` (FunctionExpression):
   at all-any.wipple:2:26-2:36
-  grouped with `condition :: (element -> Boolean)`
+  grouped with `(element -> Boolean)`
   has type `Number -> Boolean`
   is an expression
 
@@ -308,7 +308,7 @@ Facts (layer 2):
 
 `n -> n > 0` (FunctionExpression):
   at all-any.wipple:3:26-3:36
-  grouped with `condition :: (element -> Boolean)`
+  grouped with `(element -> Boolean)`
   has type `Number -> Boolean`
   is an expression
 
@@ -423,7 +423,7 @@ Facts (layer 2):
 
 `n -> n > 0` (FunctionExpression):
   at all-any.wipple:4:28-4:38
-  grouped with `condition :: (element -> Boolean)`
+  grouped with `(element -> Boolean)`
   has type `Number -> Boolean`
   is an expression
 

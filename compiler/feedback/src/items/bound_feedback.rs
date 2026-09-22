@@ -6,7 +6,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
     ctx.feedback("unresolved-bound")
         .query(unresolved_bounds)
         .rank(|_| FeedbackRank::Bounds)
-        .display(|db, writer, node, (bound, traces)| {
+        .display(|db, writer, node, bound| {
             writer.node(node);
             writer.string(" requires the instance ");
             writer.render(db, *bound);
@@ -14,7 +14,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             writer.line_break();
             writer.string("Double-check that these types are correct.");
 
-            writer.traces(db, traces);
+            writer.trace(db, node);
         })
         .register();
 
@@ -35,17 +35,15 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 secondary.extend(&link.related);
             }
 
-            secondary.extend(&error.comments.nodes);
-
             FeedbackLocation {
                 primary: node,
                 secondary,
             }
         })
         .show_graph()
-        .display(|db, writer, _, error| {
+        .display(|db, writer, node, error| {
             writer.comments(db, &error.comments);
-            writer.traces(db, &error.traces);
+            writer.trace(db, node);
         })
         .register();
 }

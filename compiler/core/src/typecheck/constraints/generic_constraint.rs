@@ -1,7 +1,7 @@
 use crate::{
-    db::{Db, Node},
+    db::Db,
     typecheck::{
-        constraints::{AnyConstraintTrace, Constraint, ConstraintKind, RunResult, Solver},
+        constraints::{Constraint, ConstraintKind, RunResult, Solver},
         instantiate::InstantiateCtx,
     },
 };
@@ -29,14 +29,6 @@ impl GenericConstraint {
 impl Constraint for GenericConstraint {
     fn kind(&self) -> ConstraintKind {
         self.inner.kind()
-    }
-
-    fn node(&self) -> Node {
-        self.inner.node()
-    }
-
-    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace> {
-        self.inner.traces_mut()
     }
 
     fn instantiate(

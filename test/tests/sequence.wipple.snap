@@ -154,7 +154,7 @@ Facts (layer 2):
 
 `positive?` (VariableExpression):
   at sequence.wipple:7:9-7:18
-  grouped with `positive?`, `condition :: (element -> Boolean)`
+  grouped with `positive?`, `(element -> Boolean)`
   has type `(String or Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `positive?`
@@ -171,11 +171,9 @@ error:
   --> sequence.wipple:6:14
   |
 5 | box : (_ :: Box String)
-  |             ---------- `_` is annotated as a `Box String`.
+  |        --------------- `_` is annotated as a `Box String`.
 6 | positive? : (_ :: Number) -> _
-  |              ^    ------ `_` is annotated as a `Number`.
-  |              |     
-  |              `_` is a `String` or a `Number`, but it can only be one of these.
+  |              ^ `_` is a `String` or a `Number`, but it can only be one of these.
 7 | (filter positive?) box
   |  ------ `filter` keeps the elements in `box` that satisfy `positive?`.
 

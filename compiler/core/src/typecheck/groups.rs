@@ -64,8 +64,7 @@ impl Group {
         &mut self,
         db: &mut Db,
         other: &Self,
-        error: Option<&mut bool>,
-        mut unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy, Option<&mut bool>) -> bool,
+        mut unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy) -> bool,
     ) {
         // Merge in all the nodes even if unification fails
         for (&node, &(rank, _)) in &other.0 {
@@ -80,7 +79,7 @@ impl Group {
         // Add the first type to the group...
         let mut queue = Some((other_node, other_ty));
         if let Some((_, _, existing_ty)) = self.entries().next()
-            && unify(db, existing_ty, other_ty, error)
+            && unify(db, existing_ty, other_ty)
         {
             // ...unless it unifies
             queue = None;
@@ -171,10 +170,9 @@ impl Groups {
         db: &mut Db,
         old_group: Group,
         new_group: &mut Group,
-        error: Option<&mut bool>,
-        unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy, Option<&mut bool>) -> bool,
+        unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy) -> bool,
     ) {
-        new_group.unify(db, &old_group, error, unify);
+        new_group.unify(db, &old_group, unify);
     }
 
     pub fn indices(&self) -> impl Iterator<Item = usize> {

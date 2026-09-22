@@ -1,4 +1,4 @@
-use crate::expressions::{variable_expression::DefinitionConstraintTrace, visit_expression};
+use crate::expressions::visit_expression;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use wipple_core::{
@@ -112,12 +112,7 @@ impl Visit for ConstructorExpression {
                             substitutions,
                             is_optional: false,
                         },
-                    )
-                    .with_trace(DefinitionConstraintTrace {
-                        variable: false,
-                        definition: definition_node,
-                        node,
-                    }),
+                    ),
                 );
 
                 visitor.codegen(db, node, ConstructorExpressionCodegen::Trait { node });

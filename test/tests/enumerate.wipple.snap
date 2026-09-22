@@ -95,7 +95,7 @@ Facts (layer 2):
 
 `(n; c) -> show ("_: _" n c)` (FunctionExpression):
   at enumerate.wipple:2:26-2:53
-  grouped with `action :: (element -> ())`
+  grouped with `(element -> ())`
   has type `(Number; String) -> ()`
   is an expression
 

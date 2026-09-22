@@ -8,12 +8,10 @@ use std::collections::BTreeMap;
 use wipple_core::{
     ast::AstKey,
     db::{Db, Node},
-    render::{Render, RenderCtx},
     span::{Span, Str},
     typecheck::{
-        bounds::{Bound, UnresolvedBound},
+        bounds::Bound,
         constraints::{
-            ConstraintTrace,
             bound_constraint::{BoundConstraint as TypecheckBoundConstraint, IsBound},
             instantiate_constraint::InstantiateConstraint,
         },
@@ -120,66 +118,11 @@ impl Visit for BoundConstraint {
                     substitutions,
                     is_optional: false,
                 },
-            )
-            .with_trace(BoundConstraintTrace {
-                node,
-                trait_node,
-                parameters: bound_parameters,
-            }),
+            ),
         );
 
         db.get_mut_or_default::<Bounds>(visitor.current_definition.as_ref().unwrap().node)
             .0
             .insert(node);
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct BoundConstraintTrace {
-    node: Node,
-    trait_node: Node,
-    parameters: BTreeMap<Node, Node>,
-}
-
-#[typetag::serde]
-impl ConstraintTrace for BoundConstraintTrace {
-    fn nodes_mut(&mut self) -> Vec<&mut Node> {
-        [&mut self.node]
-            .into_iter()
-            .chain(self.parameters.values_mut())
-            .collect()
-    }
-
-    fn nodes(&self, _db: &Db) -> Vec<Node> {
-        [self.node]
-            .into_iter()
-            .chain(self.parameters.values().copied())
-            .collect()
-    }
-
-    fn primary_node(&self, _db: &Db) -> Node {
-        self.node
-    }
-
-    fn allow_hidden_nodes(&self) -> bool {
-        false
-    }
-}
-
-impl Render for BoundConstraintTrace {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        let bound = UnresolvedBound {
-            trait_node: self.trait_node,
-            parameters: self
-                .parameters
-                .iter()
-                .map(|(&parameter, &substitution)| (parameter, Ty::Node(substitution)))
-                .collect(),
-        };
-
-        ctx.node(self.node);
-        ctx.string(" requires the instance ");
-        bound.render_into(db, ctx);
-        ctx.string(".");
     }
 }

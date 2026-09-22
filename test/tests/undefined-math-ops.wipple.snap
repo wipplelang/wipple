@@ -162,7 +162,7 @@ Facts (layer 2):
 
 `-1` (NumberExpression):
   at undefined-math-ops.wipple:4:12-4:14
-  grouped with `-1`, `n :: Number`
+  grouped with `-1`, `Number`
   has type `Number`
   is an expression
 

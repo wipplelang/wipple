@@ -4,7 +4,7 @@ use crate::{
     typecheck::{
         groups::Typed,
         instantiate::{Instantiated, InstantiatedTypes},
-        solver::GroupedWith,
+        solver::DirectlyGroupedWith,
     },
     visit::{TypeParameters, definitions::Defined},
 };
@@ -16,6 +16,16 @@ pub struct Link {
     pub node: Node,
     pub force_type: bool,
     pub related: Vec<Node>,
+}
+
+impl Link {
+    pub fn for_node(node: Node) -> Self {
+        Link {
+            node,
+            force_type: false,
+            related: Vec::new(),
+        }
+    }
 }
 
 pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<Str, Link> {
@@ -88,7 +98,7 @@ fn linked_node_for(db: &Db, parameter: Node, source_node: Node) -> Option<Node> 
                 continue;
             }
 
-            let GroupedWith(others) = db.get(node).cloned().unwrap_or_default();
+            let DirectlyGroupedWith(others) = db.get(node).cloned().unwrap_or_default();
 
             for other in others {
                 let mut path = prefix.clone();

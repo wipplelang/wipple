@@ -2,7 +2,6 @@ use crate::QueryCtx;
 use wipple_core::{
     db::Node,
     render::Comments,
-    traces::Traces,
     typecheck::bounds::{ResolvedBound, ResolvedBounds},
     util::get_links,
     visit::{
@@ -21,7 +20,6 @@ pub fn comments(db: &QueryCtx<'_>, node: Node) -> Option<Comments> {
 
     Some(Comments {
         definition: definition_node,
-        nodes: vec![definition_node],
         comments: definition.comments().to_vec(),
         links: get_links(db, definition_node, node),
     })
@@ -32,7 +30,6 @@ pub struct ErrorInstance<'a> {
     pub bound: &'a ResolvedBound,
     pub is_default: bool,
     pub comments: Comments,
-    pub traces: Traces,
 }
 
 pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'a>> {
@@ -56,30 +53,16 @@ pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'
             let Defined(definition) = db.get(bound.instance.node)?;
             let instance_definition = definition.downcast_ref::<InstanceDefinition>()?;
 
-            let mut comments = Comments {
+            let comments = Comments {
                 definition: bound.instance.node,
-                nodes: vec![bound.instance.node],
                 comments: instance_definition.comments.clone(),
                 links: get_links(db, bound.instance.node, node),
             };
-
-            let traces = db.traces_for(
-                node,
-                comments.nodes.iter().copied().chain(
-                    comments.links.values().flat_map(|link| {
-                        [link.node].into_iter().chain(link.related.iter().copied())
-                    }),
-                ),
-                false,
-            );
-
-            comments.nodes.extend(traces.nodes(db));
 
             Some(ErrorInstance {
                 bound,
                 is_default: instance.default,
                 comments,
-                traces,
             })
         })
         .collect()

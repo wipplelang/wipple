@@ -5,7 +5,6 @@ pub mod facts;
 pub mod graph;
 pub mod render;
 pub mod span;
-pub mod traces;
 pub mod typecheck;
 pub mod util;
 pub mod visit;
@@ -140,7 +139,12 @@ pub fn compile<'a>(
             }
         }
 
-        solver.constraints.extend_back(definition_constraints);
+        solver.constraints.extend_back(
+            definition_constraints
+                .into_iter()
+                .map(|constraint| (definition_node, constraint)),
+        );
+
         solver.run(db);
 
         apply_solver(db, solver);

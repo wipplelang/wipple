@@ -21,7 +21,7 @@ Facts (layer 2):
 
 `4` (NumberExpression):
   at repeat.wipple:1:9-1:10
-  grouped with `4`, `n :: Number`
+  grouped with `4`, `Number`
   has type `Number`
   is an expression
 

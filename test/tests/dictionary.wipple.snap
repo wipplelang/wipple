@@ -94,7 +94,7 @@ Facts (layer 2):
 
 `sports sport -> sports . insert-entry sport (count sport)` (FunctionExpression):
   at dictionary.wipple:2:32-2:89
-  grouped with `f :: (result element -> result)`
+  grouped with `(result element -> result)`
   has type `(Dictionary String Number) String -> Dictionary String Number`
   is an expression
 
@@ -107,7 +107,7 @@ Facts (layer 2):
 
 `sports` (VisitAs):
   at dictionary.wipple:2:48-2:54
-  grouped with `dictionary :: (Dictionary key value)`, `sports`, `dictionary :: (Dictionary key value)`
+  grouped with `(Dictionary key value)`, `sports`, `(Dictionary key value)`
   has type `Dictionary String Number`
   is an expression
   resolved to 1 definition(s): `sports`
@@ -214,7 +214,7 @@ Facts (layer 2):
 `sport -> show ("_ has _ letters" sport ((lengths . entry sport) or unreachable))` (FunctionExpression):
   at dictionary.wipple:4:16-4:96
   captures `lengths`
-  grouped with `action :: (element -> ())`
+  grouped with `(element -> ())`
   has type `String -> ()`
   is an expression
 
@@ -270,7 +270,7 @@ Facts (layer 2):
 
 `lengths` (VisitAs):
   at dictionary.wipple:4:57-4:64
-  grouped with `dictionary :: (Dictionary key value)`, `lengths`, `dictionary :: (Dictionary key value)`
+  grouped with `(Dictionary key value)`, `lengths`, `(Dictionary key value)`
   has type `Dictionary String Number`
   is an expression
   resolved to 1 definition(s): `lengths`

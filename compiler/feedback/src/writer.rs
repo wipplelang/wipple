@@ -4,14 +4,19 @@ use std::{
 };
 use wipple_core::{
     db::{Db, Node},
-    render::{Render, RenderCtx, RenderSegment},
-    traces::Traces,
-    typecheck::instantiate::Instantiated,
+    facts::Description,
+    render::{Comments, Render, RenderCtx, RenderSegment},
+    typecheck::{
+        constraints::ConstraintConsequence, instantiate::InstantiatedTypes,
+        solver::DirectlyGroupedWith,
+    },
+    util::get_links,
+    visit::{Resolved, definitions::Defined},
 };
 
 pub struct FeedbackWriter<'a> {
     ctx: RenderCtx<'a>,
-    traces: Option<Vec<(Node, RenderCtx<'a>, Vec<RenderCtx<'a>>)>>,
+    traces: Vec<(Node, RenderCtx<'a>, Vec<RenderCtx<'a>>)>,
 }
 
 impl<'a> FeedbackWriter<'a> {
@@ -57,64 +62,142 @@ impl FeedbackWriter<'_> {
         self.ctx.string(format!("{n}{suffix}"));
     }
 
-    pub fn traces(&mut self, db: &Db, traces: &Traces) {
-        let mut result = Vec::new();
-        let mut seen = BTreeSet::new();
-        let mut linked = BTreeSet::new();
-        let mut indices = BTreeMap::new();
-        for (trace_index, entry) in traces.traces.iter().enumerate() {
-            let node = entry.trace.primary_node(db);
+    pub fn trace(&mut self, db: &Db, node: Node) {
+        #[derive(Debug)]
+        struct TraceTree<'a> {
+            trace: Option<&'a BTreeMap<Node, Vec<ConstraintConsequence>>>,
+            comments: Option<Comments>,
+            relevant: Vec<Node>,
+            children: BTreeMap<Node, TraceTree<'a>>,
+        }
 
-            if !self.ctx.filter(db, node) || !seen.insert(node) {
-                continue;
+        fn collect_traces<'a>(
+            db: &'a Db,
+            node: Node,
+            seen: &mut BTreeSet<Node>,
+        ) -> Option<TraceTree<'a>> {
+            if !seen.insert(node) {
+                return None;
             }
 
-            let nodes = entry.trace.clone().nodes(db);
+            // Hide instances/anonymous definitions in traces
+            if db
+                .get(node)
+                .is_some_and(|Defined(definition)| definition.name().is_none())
+            {
+                return None;
+            }
 
-            let mut ctx = RenderCtx::new(self.ctx.filter, self.ctx.relevant.clone());
-            ctx.with_relevant(&nodes, |ctx| entry.trace.render_into(db, ctx));
+            let trace = db.traces.get(&node);
 
-            if !ctx.is_empty() {
-                let index = indices.len();
-                indices.insert(trace_index, index);
+            let mut relevant = Vec::new();
 
-                linked.extend(
-                    ctx.nodes()
-                        .filter(|&node| !db.contains::<Instantiated>(node)),
-                );
+            let instantiated_nodes = db
+                .get(node)
+                .map(|InstantiatedTypes(instantiated)| instantiated.values().copied())
+                .unwrap_or_default();
 
-                result.push((node, ctx, entry));
+            relevant.extend(instantiated_nodes);
+
+            let comments = db
+                .get(node)
+                .and_then(|Resolved { definitions, .. }| definitions.first().copied())
+                .and_then(|definition_node| {
+                    relevant.insert(0, definition_node);
+
+                    let Defined(definition) = db.get(definition_node)?;
+
+                    if definition.comments().is_empty() {
+                        return None;
+                    }
+
+                    let links = get_links(db, definition_node, node);
+
+                    for link in links.values() {
+                        relevant.push(link.node);
+                        relevant.extend(link.related.iter().copied());
+                    }
+
+                    Some(Comments {
+                        definition: node,
+                        comments: definition.comments().to_vec(),
+                        links: links.clone(),
+                    })
+                })
+                .or_else(|| db.get(node).map(|Description(comments)| comments.clone()));
+
+            if let Some(trace) = trace {
+                relevant.extend(trace.keys().copied());
+            }
+
+            // Don't traverse into other definitions
+            if db.get::<Defined>(node).is_none()
+                && let Some(DirectlyGroupedWith(nodes)) = db.get(node)
+            {
+                relevant.extend(nodes);
+            }
+
+            let children = relevant
+                .iter()
+                .filter_map(|&child| Some((child, collect_traces(db, child, seen)?)))
+                .collect::<BTreeMap<_, _>>();
+
+            Some(TraceTree {
+                trace,
+                comments,
+                relevant,
+                children,
+            })
+        }
+
+        fn traverse_traces(
+            writer: &mut FeedbackWriter<'_>,
+            db: &Db,
+            node: Node,
+            tree: &TraceTree<'_>,
+        ) {
+            let mut node_ctx = RenderCtx::new(writer.ctx.filter, writer.ctx.relevant.clone());
+            node_ctx.with_relevant(&tree.relevant, |ctx| {
+                if let Some(comments) = &tree.comments {
+                    ctx.comments(db, comments);
+                }
+            });
+
+            let node_ctx = (!node_ctx.is_empty()).then_some(node_ctx);
+
+            let consequence_ctxs = tree.trace.map_or_default(|trace| {
+                trace
+                    .values()
+                    .flatten()
+                    .filter_map(|consequence| {
+                        let mut ctx =
+                            RenderCtx::new(writer.ctx.filter, writer.ctx.relevant.clone());
+                        ctx.with_relevant(&tree.relevant, |ctx| consequence.render_into(db, ctx));
+                        (!ctx.is_empty()).then_some(ctx)
+                    })
+                    .collect::<Vec<_>>()
+            });
+
+            if let Some(node_ctx) = node_ctx {
+                let source_node = tree
+                    .comments
+                    .as_ref()
+                    .map_or(node, |comments| comments.definition);
+
+                writer
+                    .traces
+                    .push((source_node, node_ctx, consequence_ctxs));
+            }
+
+            for (&node, tree) in &tree.children {
+                traverse_traces(writer, db, node, tree);
             }
         }
 
-        let result = result
-            .into_iter()
-            .filter_map(|(node, ctx, entry)| {
-                let nodes = entry.trace.clone().nodes(db);
-
-                let mut consequence_ctxs = Vec::new();
-                for consequence in &entry.consequences {
-                    if !linked.contains(&consequence.node()) {
-                        continue;
-                    }
-
-                    let mut consequence_ctx =
-                        RenderCtx::new(self.ctx.filter, self.ctx.relevant.clone());
-                    consequence_ctx.with_relevant(&nodes, |ctx| consequence.render_into(db, ctx));
-                    if !consequence_ctx.is_empty() {
-                        consequence_ctxs.push(consequence_ctx);
-                    }
-                }
-
-                if entry.trace.require_consequences() && consequence_ctxs.is_empty() {
-                    return None;
-                }
-
-                Some((node, ctx, consequence_ctxs))
-            })
-            .collect::<Vec<_>>();
-
-        self.traces = Some(result);
+        if let Some(tree) = collect_traces(db, node, &mut BTreeSet::new()) {
+            // TODO: Preserve tree structure instead of flattening here?
+            traverse_traces(self, db, node, &tree);
+        }
     }
 }
 
@@ -133,12 +216,11 @@ impl FeedbackWriter<'_> {
     ) -> Feedback {
         let (message, mut nodes) = self.ctx.finish(db, &mut render_segment);
 
-        let traces = self.traces.unwrap_or_default();
-
-        let traces = traces
+        let traces = self
+            .traces
             .into_iter()
-            .map(|(node, ctx, consequence_ctxs)| {
-                let (message, trace_nodes) = ctx.finish(db, &mut render_segment);
+            .map(|(node, node_ctx, consequence_ctxs)| {
+                let (message, trace_nodes) = node_ctx.finish(db, &mut render_segment);
                 nodes.extend(trace_nodes);
 
                 let consequences = consequence_ctxs

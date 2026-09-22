@@ -2,7 +2,6 @@ use crate::QueryCtx;
 use std::collections::BTreeSet;
 use wipple_core::{
     db::Node,
-    traces::Traces,
     typecheck::{
         groups::{NodeRank, Typed},
         instantiate::Instantiated,
@@ -33,7 +32,6 @@ pub struct ConflictingTypes {
     pub related: BTreeSet<Node>,
     pub group: BTreeSet<Node>,
     pub tys: Vec<ConstructedTy>,
-    pub traces: Traces,
 }
 
 pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTypes> {
@@ -49,8 +47,6 @@ pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTyp
         return None;
     }
 
-    let traces = db.traces_for(node, group.nodes(), true);
-
     let source = db
         .get::<Instantiated>(node)
         .map(|instantiated| instantiated.source_node);
@@ -65,7 +61,6 @@ pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTyp
         related,
         group: group.nodes().collect(),
         tys: group.tys().cloned().collect(),
-        traces,
     })
 }
 

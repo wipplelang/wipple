@@ -7,6 +7,7 @@ use crate::{
     visit::definitions::Defined,
 };
 use regex::Regex;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     fmt::Write,
@@ -42,12 +43,28 @@ impl<'a> RenderCtx<'a> {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Comments {
     pub definition: Node,
-    pub nodes: Vec<Node>,
     pub comments: Vec<Str>,
     pub links: BTreeMap<Str, Link>,
+}
+
+impl Comments {
+    pub fn for_static<const N: usize>(
+        node: Node,
+        comment: &'static str,
+        links: [(&'static str, Option<Node>); N],
+    ) -> Self {
+        Comments {
+            definition: node,
+            comments: vec![Str::from(comment)],
+            links: links
+                .into_iter()
+                .filter_map(|(name, node)| Some((Str::from(name), Link::for_node(node?))))
+                .collect(),
+        }
+    }
 }
 
 pub struct ListBuilder<'a, 'f> {

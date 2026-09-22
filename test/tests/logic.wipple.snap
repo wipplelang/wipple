@@ -28,7 +28,7 @@ Facts (layer 2):
 
 `if (True and False) {"a"} {"b"}` (CallExpression):
   at logic.wipple:1:7-1:38
-  grouped with `output :: value`, `value`
+  grouped with `value`, `value`
   has type `String`
   is an expression
 
@@ -41,7 +41,7 @@ Facts (layer 2):
 
 `True and False` (OperatorExpression):
   at logic.wipple:1:11-1:25
-  grouped with `True and False`, `condition :: Boolean`
+  grouped with `True and False`, `Boolean`
   has type `Boolean`
   is an expression
 
@@ -85,7 +85,7 @@ Facts (layer 2):
 
 `"a"` (ExpressionStatement):
   at logic.wipple:1:28-1:31
-  grouped with `"a"`, `then :: value`
+  grouped with `"a"`, `value`
   has type `String`
 
 `"a"` (StringExpression):
@@ -102,7 +102,7 @@ Facts (layer 2):
 
 `"b"` (ExpressionStatement):
   at logic.wipple:1:34-1:37
-  grouped with `"b"`, `else :: value`
+  grouped with `"b"`, `value`
   has type `String`
 
 `"b"` (StringExpression):
@@ -139,7 +139,7 @@ Facts (layer 2):
 
 `if (True or False) {"a"} {"b"}` (CallExpression):
   at logic.wipple:2:7-2:37
-  grouped with `output :: value`, `value`
+  grouped with `value`, `value`
   has type `String`
   is an expression
 
@@ -152,7 +152,7 @@ Facts (layer 2):
 
 `True or False` (OperatorExpression):
   at logic.wipple:2:11-2:24
-  grouped with `True or False`, `condition :: Boolean`
+  grouped with `True or False`, `Boolean`
   has type `Boolean`
   is an expression
 
@@ -196,7 +196,7 @@ Facts (layer 2):
 
 `"a"` (ExpressionStatement):
   at logic.wipple:2:27-2:30
-  grouped with `"a"`, `then :: value`
+  grouped with `"a"`, `value`
   has type `String`
 
 `"a"` (StringExpression):
@@ -213,7 +213,7 @@ Facts (layer 2):
 
 `"b"` (ExpressionStatement):
   at logic.wipple:2:33-2:36
-  grouped with `"b"`, `else :: value`
+  grouped with `"b"`, `value`
   has type `String`
 
 `"b"` (StringExpression):

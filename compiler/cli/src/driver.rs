@@ -4,6 +4,7 @@ use std::{
     collections::{BTreeMap, HashMap, HashSet, hash_map::Entry},
     fmt::Write,
     io,
+    ops::ControlFlow,
 };
 use wipple_core::{
     TopLevel,
@@ -16,7 +17,7 @@ use wipple_core::{
     span::Span,
 };
 use wipple_feedback::collect_feedback;
-use wipple_syntax::checks::run_checks;
+use wipple_syntax::{checks::run_checks, file::File};
 
 pub struct Driver<'a, Out> {
     pub compile_options: &'a CompileOptions,
@@ -127,8 +128,19 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
         }
 
         let mut feedback_count = 0;
-        let mut feedback_files = codespan_reporting::files::SimpleFiles::new();
+        let mut feedback_files = codespan_reporting::files::SimpleFiles::<String, String>::new();
         let mut feedback_file_ids = HashMap::new();
+
+        let mut sources = HashMap::new();
+        db.for_each_fact::<_, ()>(&mut |db, _, Syntax(syntax)| {
+            if syntax.get(db).downcast_ref::<File>().is_some() {
+                let span = syntax.get(db).span(db);
+                sources.insert(span.path.clone(), span.source.clone());
+            }
+
+            ControlFlow::Continue(())
+        });
+
         let mut feedback_diagnostics = Vec::new();
         for (span, feedback) in feedback_items {
             let mut labels = Vec::new();
@@ -136,16 +148,11 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
                 let file_id = match feedback_file_ids.entry(span.path.clone()) {
                     Entry::Occupied(entry) => *entry.get(),
                     Entry::Vacant(entry) => {
-                        let Some(file_span) = self
-                            .files
-                            .iter()
-                            .map(|key| key.get(db).span(db))
-                            .find(|other| other.path == span.path)
-                        else {
+                        let Some(source) = sources.get(&span.path) else {
                             return;
                         };
 
-                        *entry.insert(feedback_files.add(&file_span.path, &file_span.source))
+                        *entry.insert(feedback_files.add(span.path.to_string(), source.to_string()))
                     }
                 };
 

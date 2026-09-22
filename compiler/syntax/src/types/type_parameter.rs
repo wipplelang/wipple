@@ -43,14 +43,15 @@ pub fn parse_type_parameter(parser: &mut Parser<'_>) -> Result<AstKey, ParseErro
 pub fn parse_annotated_type_parameter(
     parser: &mut Parser<'_>,
 ) -> Result<TypeParameter, ParseError> {
-    let span = parser.spanned();
     let name = parse_type_parameter_name(parser)?;
     parser.token(TokenKind::AnnotateOperator)?;
     parser.commit("in this type annotation");
     parser.consume_line_breaks();
+    let span = parser.spanned();
     let value = parse_type(parser)?;
+    let span = span(parser);
     Ok(TypeParameter {
-        span: span(parser),
+        span,
         name,
         infer: false,
         value: Some(value),

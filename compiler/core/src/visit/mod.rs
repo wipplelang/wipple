@@ -337,7 +337,7 @@ pub struct CurrentMatch {
 #[derive(Debug, Default)]
 pub struct VisitResult {
     pub top_level_statements: Vec<Node>,
-    pub constraints: Vec<Box<dyn Constraint>>,
+    pub constraints: Vec<(Node, Box<dyn Constraint>)>,
     pub ranks: BTreeMap<Node, NodeRank>,
     pub substitutions: Vec<Substitutions>,
     pub definitions: BTreeMap<Str, Vec<(Node, Box<dyn Definition>)>>,
@@ -356,7 +356,7 @@ pub struct Visitor {
     pub current_annotating: Option<Node>,
     scopes: Vec<(Option<Node>, ScopeValues)>,
     top_level_statements: Vec<(Node, AstKey)>,
-    constraints: Vec<Box<dyn Constraint>>,
+    constraints: Vec<(Node, Box<dyn Constraint>)>,
     ranks: BTreeMap<Node, NodeRank>,
     substitutions: Vec<Substitutions>,
 }
@@ -475,7 +475,8 @@ impl Visitor {
                 .0
                 .push(constraint);
         } else {
-            self.constraints.push(Box::new(constraint));
+            self.constraints
+                .push((self.current_node, Box::new(constraint)));
         }
     }
 

@@ -44,7 +44,7 @@ Facts (layer 2):
 
 `3` (NumberExpression):
   at replicate.wipple:1:19-1:20
-  grouped with `3`, `n :: Number`
+  grouped with `3`, `Number`
   has type `Number`
   is an expression
 
@@ -70,7 +70,7 @@ Facts (layer 2):
 
 `show` (VariableExpression):
   at replicate.wipple:1:28-1:32
-  grouped with `value -> ()`, `action :: (element -> ())`
+  grouped with `value -> ()`, `(element -> ())`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression

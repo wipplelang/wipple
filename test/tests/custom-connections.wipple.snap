@@ -14,17 +14,17 @@ Facts (layer 2):
   has type `Boolean {value} {value} -> value`
   is a type
 
-`condition :: Boolean` (TypeParameter):
-  at custom-connections.wipple:5:11-5:31
-  grouped with `Boolean`, `condition :: Boolean`
+`Boolean` (TypeParameter):
+  at custom-connections.wipple:5:24-5:31
+  grouped with `Boolean`, `Boolean`
   has type `Boolean`
   is a definition
   is a type
-  resolved to 1 definition(s): `condition :: Boolean`
+  resolved to 1 definition(s): `Boolean`
 
 `Boolean` (NamedType):
   at custom-connections.wipple:5:24-5:31
-  grouped with `condition :: Boolean`
+  grouped with `Boolean`
   has type `Boolean`
   is a type
   resolved to 1 definition(s): `Boolean`
@@ -35,17 +35,17 @@ Facts (layer 2):
   has type `{value}`
   is a type
 
-`then :: value` (TypeParameter):
-  at custom-connections.wipple:5:35-5:48
-  grouped with `value`, `then :: value`
+`value` (TypeParameter):
+  at custom-connections.wipple:5:43-5:48
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `then :: value`
+  resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
   at custom-connections.wipple:5:43-5:48
-  grouped with `then :: value`, `value`, `value`
+  grouped with `value`, `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -57,33 +57,33 @@ Facts (layer 2):
   has type `{value}`
   is a type
 
-`else :: value` (TypeParameter):
-  at custom-connections.wipple:5:53-5:66
-  grouped with `value`, `else :: value`
+`value` (TypeParameter):
+  at custom-connections.wipple:5:61-5:66
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `else :: value`
+  resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
   at custom-connections.wipple:5:61-5:66
-  grouped with `value`, `else :: value`
+  grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
 
-`output :: value` (TypeParameter):
-  at custom-connections.wipple:5:73-5:88
-  grouped with `value`, `output :: value`
+`value` (TypeParameter):
+  at custom-connections.wipple:5:83-5:88
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
-  resolved to 1 definition(s): `output :: value`
+  resolved to 1 definition(s): `value`
 
 `value` (TypeParameter):
   at custom-connections.wipple:5:83-5:88
-  grouped with `value`, `output :: value`
+  grouped with `value`, `value`
   has type `value`
   is a type
   resolved to 1 definition(s): `value`
@@ -128,13 +128,13 @@ Facts (layer 2):
 
 `my-if True {123} {456}` (CallExpression):
   at custom-connections.wipple:8:7-8:29
-  grouped with `output :: value`, `value`
+  grouped with `value`, `value`
   has type `Number`
   is an expression
 
 `True` (ConstructorExpression):
   at custom-connections.wipple:8:13-8:17
-  grouped with `Boolean`, `condition :: Boolean`
+  grouped with `Boolean`, `Boolean`
   has type `Boolean`
   is an expression
   resolved to 1 definition(s): `True`
@@ -147,7 +147,7 @@ Facts (layer 2):
 
 `123` (ExpressionStatement):
   at custom-connections.wipple:8:19-8:22
-  grouped with `123`, `then :: value`
+  grouped with `123`, `value`
   has type `Number`
 
 `123` (NumberExpression):
@@ -164,7 +164,7 @@ Facts (layer 2):
 
 `456` (ExpressionStatement):
   at custom-connections.wipple:8:25-8:28
-  grouped with `456`, `else :: value`
+  grouped with `456`, `value`
   has type `Number`
 
 `456` (NumberExpression):

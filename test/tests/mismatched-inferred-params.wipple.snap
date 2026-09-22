@@ -57,7 +57,7 @@ Facts (layer 2):
 
 `(x :: String) -> x` (FunctionExpression):
   at mismatched-inferred-params.wipple:1:24-1:42
-  grouped with `f :: (input -> output)`
+  grouped with `(input -> output)`
   has type `(String or Number) -> String or Number`
   is an expression
 
@@ -87,9 +87,8 @@ error:
   --> mismatched-inferred-params.wipple:1:25
   |
 1 | (1, 2, 3) . transform ((x :: String) -> x)
-  |  -------    ---------   ^    ------ `x` is annotated as a `String`.
-  |  |          |           |     
-  |  |          |           `x` is a `String` or a `Number`, but it can only be one of these.
+  |  -------    ---------   ^ `x` is a `String` or a `Number`, but it can only be one of these.
+  |  |          |            
   |  |          `transform` transforms the `String` elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`.
   |  `1, 2, 3` is a collection of `Number` elements.
 

@@ -100,7 +100,7 @@ Facts (layer 2):
 
 `name -> count name < 5` (FunctionExpression):
   at infer.wipple:3:35-3:57
-  grouped with `condition :: (element -> Boolean)`
+  grouped with `(element -> Boolean)`
   has type `String -> Boolean`
   is an expression
 
@@ -191,7 +191,7 @@ Facts (layer 2):
 
 `show` (VariableExpression):
   at infer.wipple:4:20-4:24
-  grouped with `value -> ()`, `action :: (element -> ())`
+  grouped with `value -> ()`, `(element -> ())`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression

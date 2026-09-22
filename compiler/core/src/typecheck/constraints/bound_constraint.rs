@@ -4,8 +4,8 @@ use crate::{
     typecheck::{
         bounds::{Bound, Instance, Instances, ResolvedBound, ResolvedBounds, UnresolvedBound},
         constraints::{
-            AnyConstraintTrace, Constraint, ConstraintConsequence, ConstraintKind, ConstraintTrace,
-            RunResult, Solver, instantiate_constraint::InstantiateConstraint,
+            Constraint, ConstraintConsequence, ConstraintKind, RunResult, Solver,
+            instantiate_constraint::InstantiateConstraint,
         },
         instantiate::InstantiateCtx,
         ty::Ty,
@@ -39,21 +39,11 @@ impl Render for IsBound {}
 pub struct BoundConstraint {
     pub node: Node,
     pub bound: Bound,
-    pub traces: Vec<AnyConstraintTrace>,
 }
 
 impl BoundConstraint {
     pub fn new(node: Node, bound: Bound) -> Self {
-        BoundConstraint {
-            node,
-            bound,
-            traces: Vec::new(),
-        }
-    }
-
-    pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
-        self.traces.push(AnyConstraintTrace::new(trace));
-        self
+        BoundConstraint { node, bound }
     }
 }
 
@@ -61,14 +51,6 @@ impl BoundConstraint {
 impl Constraint for BoundConstraint {
     fn kind(&self) -> ConstraintKind {
         ConstraintKind::Bound
-    }
-
-    fn node(&self) -> Node {
-        self.node
-    }
-
-    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace> {
-        &mut self.traces
     }
 
     fn instantiate(
@@ -97,11 +79,7 @@ impl Constraint for BoundConstraint {
             is_optional: self.bound.is_optional,
         };
 
-        Some(Box::new(BoundConstraint {
-            node,
-            bound,
-            traces: ctx.instantiate_traces(db, solver, &self.traces),
-        }))
+        Some(Box::new(BoundConstraint { node, bound }))
     }
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {
@@ -155,14 +133,15 @@ impl Constraint for BoundConstraint {
                 let substitutions =
                     copy.insert_substitutions(Default::default(), Default::default());
 
-                copy.constraints
-                    .insert_front(Box::new(InstantiateConstraint {
+                copy.constraints.insert_front(
+                    self.bound.source_node,
+                    Box::new(InstantiateConstraint {
                         source_node: self.bound.source_node,
                         bound_path: self.bound.bound_path.clone(),
                         definition: instance.node,
                         substitutions,
-                        traces: Vec::new(),
-                    }));
+                    }),
+                );
 
                 // Evaluate type constraints to populate `replacements`
                 copy.run_pass(db, ConstraintKind::Ty);
@@ -192,19 +171,16 @@ impl Constraint for BoundConstraint {
                 }
 
                 let mut error = false;
-                copy.unify_parameters(
-                    db,
-                    &instance_parameters,
-                    &bound_parameters,
-                    Some(&mut error),
-                );
+                copy.unify_parameters(db, &instance_parameters, &bound_parameters, || {
+                    error = true;
+                });
 
                 let range = start..=db.last_node();
 
                 if error {
                     temporaries.push(range);
                 } else {
-                    copy.unify_parameters(db, &instance_inferred, &bound_inferred, None);
+                    copy.unify_parameters(db, &instance_inferred, &bound_inferred, || {});
 
                     let (_, parameters) = copy.get_substitutions(substitutions);
 
@@ -254,10 +230,7 @@ impl Constraint for BoundConstraint {
                         }),
                     );
 
-                solver.add_consequence(
-                    db,
-                    ConstraintConsequence::Instance(self.bound.source_node, instance, true),
-                );
+                solver.add_consequence(db, ConstraintConsequence::Instance(instance, true));
 
                 return RunResult::Enqueue(Vec::from_iter(constraints));
             } else if candidates.len() > 1 {
@@ -265,7 +238,7 @@ impl Constraint for BoundConstraint {
                     db.delete_range(candidate.temporaries);
                 }
 
-                return RunResult::Enqueue(vec![self]); // ambiguous; try again
+                return RunResult::Enqueue(vec![(self.bound.source_node, self)]); // ambiguous; try again
             }
 
             if is_last_instance_group && !self.bound.is_optional {
@@ -282,7 +255,6 @@ impl Constraint for BoundConstraint {
                 solver.add_consequence(
                     db,
                     ConstraintConsequence::Instance(
-                        self.bound.source_node,
                         Instance {
                             node: self.bound.bound_node,
                             trait_node: self.bound.trait_node,

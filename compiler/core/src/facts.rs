@@ -2,7 +2,7 @@ use crate::{
     ast::AstKey,
     codegen::hir,
     db::{Db, Fact, Node},
-    render::{Render, RenderCtx},
+    render::{Comments, Render, RenderCtx},
 };
 use serde::{Deserialize, Serialize};
 
@@ -61,3 +61,11 @@ pub struct DebugInfo {
 impl Fact for DebugInfo {}
 
 impl Render for DebugInfo {}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Description(pub Comments);
+
+#[typetag::serde]
+impl Fact for Description {}
+
+impl Render for Description {}

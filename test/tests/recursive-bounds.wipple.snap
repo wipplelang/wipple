@@ -213,9 +213,8 @@ Facts (layer 2):
 error: 
    --> recursive-bounds.wipple:10:1
    |
- 5 | Describe : value => trait (value -> String)
-   | -------- `Describe` is a `(Maybe Number) -> String`.
-   .
 10 | Describe (_ :: Maybe Number)
-   | ^^^^^^^^ `Describe` requires the instance `Describe` `Number`, but this instance isn't defined. (Double-check that these types are correct.)
+   | ^^^^^^^^  ----------------- `_` is annotated as a `Maybe Number`.
+   | |          
+   | `Describe` requires the instance `Describe` `Number`, but this instance isn't defined. (Double-check that these types are correct.)
 

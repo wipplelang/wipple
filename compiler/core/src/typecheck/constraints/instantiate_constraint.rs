@@ -1,9 +1,7 @@
 use crate::{
     db::{Db, Node},
     typecheck::{
-        constraints::{
-            AnyConstraintTrace, Constraint, ConstraintKind, ConstraintTrace, RunResult, Solver,
-        },
+        constraints::{Constraint, ConstraintKind, RunResult, Solver},
         instantiate::InstantiateCtx,
         solver::SubstitutionsKey,
     },
@@ -17,7 +15,6 @@ pub struct InstantiateConstraint {
     pub bound_path: Vec<Node>,
     pub definition: Node,
     pub substitutions: SubstitutionsKey,
-    pub traces: Vec<AnyConstraintTrace>,
 }
 
 impl InstantiateConstraint {
@@ -27,13 +24,7 @@ impl InstantiateConstraint {
             bound_path: Vec::new(),
             definition,
             substitutions,
-            traces: Vec::new(),
         }
-    }
-
-    pub fn with_trace(mut self, trace: impl ConstraintTrace) -> Self {
-        self.traces.push(AnyConstraintTrace::new(trace));
-        self
     }
 }
 
@@ -41,14 +32,6 @@ impl InstantiateConstraint {
 impl Constraint for InstantiateConstraint {
     fn kind(&self) -> ConstraintKind {
         ConstraintKind::Ty
-    }
-
-    fn node(&self) -> Node {
-        self.source_node
-    }
-
-    fn traces_mut(&mut self) -> &mut Vec<AnyConstraintTrace> {
-        &mut self.traces
     }
 
     fn instantiate(
@@ -69,7 +52,6 @@ impl Constraint for InstantiateConstraint {
             bound_path: ctx.bound_path.clone(),
             definition: self.definition,
             substitutions,
-            traces: ctx.instantiate_traces(db, solver, &self.traces),
         }))
     }
 
@@ -88,19 +70,11 @@ impl Constraint for InstantiateConstraint {
             substitutions: self.substitutions,
         };
 
-        let mut instantiated_constraints = constraints
+        let instantiated_constraints = constraints
             .into_iter()
             .flat_map(|constraint| constraint.instantiate(db, solver, &mut ctx))
+            .map(|constraint| (self.source_node, constraint))
             .collect::<Vec<_>>();
-
-        let mut traces = self.traces.clone();
-        for trace in &mut traces {
-            trace.from.extend(solver.active_traces.clone());
-        }
-
-        for constraint in &mut instantiated_constraints {
-            constraint.traces_mut().extend(traces.iter().cloned());
-        }
 
         RunResult::Insert(instantiated_constraints)
     }
