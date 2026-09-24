@@ -54,6 +54,7 @@
         "autoprefixer": "^10.5.4",
         "axios": "^1.19.0",
         "codemirror": "^6.0.2",
+        "codemirror-highlight-groups": "github:typecircuits/codemirror-highlight-groups",
         "core-js": "^3.50.0",
         "fluentui-emoji": "^1.3.0",
         "html2canvas-pro": "^2.3.7",

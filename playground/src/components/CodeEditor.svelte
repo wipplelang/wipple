@@ -51,15 +51,19 @@
     import NumberWidget from "@/widgets/NumberWidget.svelte";
     import { defaultKeymap, indentWithTab } from "@codemirror/commands";
     import { Compartment, EditorState, RangeSet } from "@codemirror/state";
-    import { EditorView, keymap, placeholder, ViewPlugin, type Command } from "@codemirror/view";
+    import { EditorView, keymap, placeholder, type Command } from "@codemirror/view";
     import { minimalSetup } from "codemirror";
     import type { Action } from "svelte/action";
     import { type Command as CommandType } from "@/models/Command";
     import { compilerWorker, context } from "@/context.svelte";
-    import { nanoid } from "nanoid";
     import Tooltip from "./Tooltip.svelte";
     import CodeEditor from "./CodeEditor.svelte";
     import DiagnosticWidget from "@/widgets/DiagnosticWidget.svelte";
+    import {
+        highlightGroups,
+        setHighlightedGroup,
+        setHighlightGroups,
+    } from "codemirror-highlight-groups";
 
     interface Props {
         readOnly?: boolean;
@@ -84,8 +88,6 @@
         fontSize = defaultFontSize,
     }: Props = $props();
 
-    const id = `code-editor-${nanoid()}`;
-
     const playground = $derived(context.playground);
     const ideInfo = $derived(context.ideInfo);
 
@@ -98,6 +100,8 @@
 
     const lineHeight = $derived(fontSize * lineHeightRatio);
     const lineSpacing = $derived(fontSize * lineSpacingRatio);
+
+    let hoverState = $state<{ element: HTMLElement; groupId: string }>();
 
     let editorView: EditorView;
     const codemirror: Action = (node) => {
@@ -114,13 +118,29 @@
                 markNames.of([]),
                 markRunningLine.of([]),
                 markDiagnostic.of([]),
-                markGroups.of([]),
                 placeholder("Type or drag your code here..."),
                 EditorView.editable.of(!readOnly),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
                         code = update.state.sliceDoc();
                     }
+
+                    for (const transaction of update.transactions) {
+                        for (const effect of transaction.effects) {
+                            if (effect.is(setHighlightedGroup)) {
+                                context.highlightedGroup = effect.value;
+                            }
+                        }
+                    }
+                }),
+                highlightGroups({
+                    groupClassName: "group",
+                    onmouseover: (element, groupId) => {
+                        hoverState = { element, groupId };
+                    },
+                    onmouseout: () => {
+                        hoverState = undefined;
+                    },
                 }),
             ],
         });
@@ -489,121 +509,11 @@
         );
     };
 
-    let hoverState = $state<{ element: HTMLElement; labels: string[] }>();
-
-    const getMarkGroupDecoration = (options: {
-        start: number;
-        end: number;
-        group: string;
-        labels: string[] | undefined;
-        primary: boolean;
-    }) => {
-        if (
-            options.start >= options.end ||
-            options.start > editorView.state.doc.length ||
-            options.end > editorView.state.doc.length
-        ) {
-            return undefined;
-        }
-
-        const decorationId = nanoid();
-
-        const attributes = {
-            "data-group-decoration-id": decorationId,
-            "data-group-label": options.group,
-        };
-
-        const decoration = markDecoration(
-            `group ${options.primary ? "group-primary group-highlighted" : "group-dimmed"} ${diagnostic ? "group-underlined" : ""}`,
-            "",
-            attributes,
-        );
-
-        requestAnimationFrame(() => {
-            const element = document.querySelector(
-                `[data-group-decoration-id="${decorationId}"]`,
-            ) as HTMLElement;
-
-            if (element == null) return;
-
-            element.addEventListener("mouseover", (e) => {
-                e.stopPropagation();
-
-                context.highlightedGroup = options.group;
-
-                if (options.labels != null) {
-                    hoverState = { element, labels: options.labels };
-                }
-            });
-
-            element.addEventListener("mouseout", (e) => {
-                e.stopPropagation();
-
-                context.highlightedGroup = undefined;
-                hoverState = undefined;
-            });
-        });
-
-        return decoration.range(options.start, options.end);
-    };
-
-    $effect(() => {
-        const allMarkGroupDecorations = () =>
-            [...document.querySelectorAll<HTMLElement>(`#${id} [data-group-decoration-id]`)]
-                .map((element) => ({ element, label: element.dataset.groupLabel! }))
-                .filter(({ label }) => label != null);
-
-        if (context.highlightedGroup != null) {
-            for (const { element, label } of allMarkGroupDecorations()) {
-                element.classList.remove("group-highlighted", "group-dimmed");
-
-                if (label === context.highlightedGroup) {
-                    element.classList.add("group-highlighted");
-                } else {
-                    element.classList.add("group-dimmed");
-                }
-            }
-        } else {
-            for (const { element } of allMarkGroupDecorations()) {
-                if (element.classList.contains("group-primary")) {
-                    element.classList.add("group-highlighted");
-                    element.classList.remove("group-dimmed");
-                } else {
-                    element.classList.add("group-dimmed");
-                    element.classList.remove("group-highlighted");
-                }
-            }
-        }
-    });
-
-    const createMarkGroups = () => {
-        const decorations = Object.entries(groups).flatMap(([group, { labels, locations }]) =>
-            locations.flatMap(({ start, end, primary = false }) => {
-                const decoration = getMarkGroupDecoration({
-                    start,
-                    end,
-                    group,
-                    labels,
-                    primary,
-                });
-
-                return decoration != null ? [decoration] : [];
-            }),
-        );
-
-        return ViewPlugin.fromClass(class {}, {
-            decorations: () => RangeSet.of(decorations, true),
-        });
-    };
-
-    const markGroups = new Compartment();
-
     $effect(() => {
         code; // required to update the position of markings
         diagnostic;
         highlights;
         runningLine;
-        groups;
 
         editorView.dispatch({
             effects: [
@@ -613,16 +523,38 @@
                 markDiagnostic.reconfigure(
                     diagnostic != null ? createDiagnosticWidget(diagnostic) : [],
                 ),
-                markGroups.reconfigure([createMarkGroups()]),
             ],
         });
 
         hoverState = undefined;
     });
+
+    $effect(() => {
+        const highlightGroups = Object.fromEntries(
+            Object.entries($state.snapshot(groups)).map(([id, group]) => [
+                id,
+                {
+                    ranges: group.locations.map((location) => ({
+                        ...location,
+                        underlined: location.primary && diagnostic != null,
+                    })),
+                },
+            ]),
+        );
+
+        editorView.dispatch({
+            effects: [setHighlightGroups.of(highlightGroups)],
+        });
+    });
+
+    $effect(() => {
+        editorView.dispatch({
+            effects: [setHighlightedGroup.of(context.highlightedGroup)],
+        });
+    });
 </script>
 
 <div
-    {id}
     use:codemirror
     class={["code-editor h-full", diagnostic ? "has-diagnostic" : ""]}
     style:--code-editor-padding={padding}
@@ -632,13 +564,16 @@
 ></div>
 
 {#if hoverState != null}
-    {@const { element, labels } = hoverState}
+    {@const { element, groupId } = hoverState}
+    {@const { labels } = groups[groupId]}
 
-    <Tooltip reference={element} delay={500}>
-        {#snippet content()}
-            <div class="flex flex-row items-baseline gap-[4pt]">
-                <CodeEditor readOnly code={labels.join(" or ")} />
-            </div>
-        {/snippet}
-    </Tooltip>
+    {#if labels != null}
+        <Tooltip reference={element} delay={500}>
+            {#snippet content()}
+                <div class="flex flex-row items-baseline gap-[4pt]">
+                    <CodeEditor readOnly code={labels.join(" or ")} />
+                </div>
+            {/snippet}
+        </Tooltip>
+    {/if}
 {/if}

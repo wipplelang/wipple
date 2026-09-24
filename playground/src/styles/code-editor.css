@@ -96,11 +96,11 @@
         @apply rounded-[6px] ring-[1.5px] ring-transparent transition-all;
     }
 
-    .group.group-primary:not(.group-dimmed).group-underlined {
+    .group[data-group-primary]:not([data-group-dimmed])[data-group-underlined] {
         @apply underline decoration-blue-500 decoration-wavy [text-decoration-skip-ink:none];
     }
 
-    .group.group-highlighted {
+    .group[data-group-highlighted] {
         --tw-ring-color: color-mix(in oklab, var(--color-blue-500) 80%, var(--color-background));
 
         background-color: color-mix(in oklab, var(--color-blue-500) 15%, var(--color-background));
@@ -120,7 +120,7 @@
         }
     }
 
-    &.has-diagnostic .group.group-dimmed:not(.group-highlighted *) {
+    &.has-diagnostic .group[data-group-dimmed]:not([data-group-highlighted]) {
         --tw-ring-color: color-mix(in oklab, var(--color-slate-500) 15%, var(--color-background));
 
         @variant dark {
