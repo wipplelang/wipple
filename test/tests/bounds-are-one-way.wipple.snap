@@ -69,9 +69,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 
+
 error: 
   --> bounds-are-one-way.wipple:4:5
   |
 4 | f : T
-  |     ^ `T` requires the instance `T` `Number`, but this instance isn't defined. (Double-check that these types are correct.)
+  |     ^
+
+`T` requires the instance `T` `Number`, but this instance isn't defined.
+
+Double-check that these types are correct.
 

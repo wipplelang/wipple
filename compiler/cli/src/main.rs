@@ -86,6 +86,9 @@ struct CompileOptions {
     graph: bool,
 
     #[clap(long)]
+    explain: bool,
+
+    #[clap(long)]
     filter_feedback: Vec<String>,
 
     #[clap(long)]

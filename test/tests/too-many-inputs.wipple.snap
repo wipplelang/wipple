@@ -38,12 +38,20 @@ Facts (layer 2):
   is an expression
 
 
+
+note: 
+  --> too-many-inputs.wipple:1:1
+  |
+1 | show 1 2 3
+  | ----
+
+`show` displays `1` on the screen.
+
 error: 
   --> too-many-inputs.wipple:1:1
   |
 1 | show 1 2 3
   | ^^^^
-  | |
-  | `show` is a `Number -> ()` or a `Number Number Number -> ()`, but it can only be one of these.
-  | `show` displays `1` on the screen.
+
+`show` is a `Number -> ()` or a `Number Number Number -> ()`, but it can only be one of these.
 

@@ -82,16 +82,36 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 
+
+note: 
+  --> list-mismatched-elements.wipple:2:16
+  |
+2 | my-list . each show
+  |                ----
+
+`show` displays `String` on the screen.
+
+note: 
+  --> list-mismatched-elements.wipple:2:11
+  |
+2 | my-list . each show
+  |           ----
+
+`each` calls `show` for each `String` in `my-list`.
+
+note: 
+  --> list-mismatched-elements.wipple:1:11
+  |
+1 | my-list : 1, "hi", ()
+  |           -----------
+
+`1, "hi", ()` is a collection of `String or () or Number` elements.
+
 error: 
   --> list-mismatched-elements.wipple:1:20
   |
 1 | my-list : 1, "hi", ()
-  |           ---------^^
-  |           |        |
-  |           |        `()` is a `String`, `()`, or a `Number`, but it can only be one of these.
-  |           `1, "hi", ()` is a collection of `String or () or Number` elements.
-2 | my-list . each show
-  |           ---- ---- `show` displays `String` on the screen.
-  |           |     
-  |           `each` calls `show` for each `String` in `my-list`.
+  |                    ^^
+
+`()` is a `String`, `()`, or a `Number`, but it can only be one of these.
 

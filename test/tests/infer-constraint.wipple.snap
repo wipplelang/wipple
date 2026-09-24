@@ -529,9 +529,12 @@ Facts (layer 2):
   resolved to 1 definition(s): `String`
 
 
+
 error: 
    --> infer-constraint.wipple:20:1
    |
 20 | output : (add-infer 1 2 :: String)
-   | ^^^^^^ `output` is a `String` or a `Number`, but it can only be one of these.
+   | ^^^^^^
+
+`output` is a `String` or a `Number`, but it can only be one of these.
 

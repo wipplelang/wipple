@@ -167,13 +167,28 @@ Facts (layer 2):
   resolved to 1 definition(s): `box`
 
 
+
+note: 
+  --> sequence.wipple:5:8
+  |
+5 | box : (_ :: Box String)
+  |        ---------------
+
+`_` is annotated as a `Box String`.
+
+note: 
+  --> sequence.wipple:7:2
+  |
+7 | (filter positive?) box
+  |  ------
+
+`filter` keeps the elements in `box` that satisfy `positive?`.
+
 error: 
   --> sequence.wipple:6:14
   |
-5 | box : (_ :: Box String)
-  |        --------------- `_` is annotated as a `Box String`.
 6 | positive? : (_ :: Number) -> _
-  |              ^ `_` is a `String` or a `Number`, but it can only be one of these.
-7 | (filter positive?) box
-  |  ------ `filter` keeps the elements in `box` that satisfy `positive?`.
+  |              ^
+
+`_` is a `String` or a `Number`, but it can only be one of these.
 

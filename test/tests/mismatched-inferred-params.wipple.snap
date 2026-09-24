@@ -83,12 +83,28 @@ Facts (layer 2):
   resolved to 1 definition(s): `x`
 
 
+
+note: 
+  --> mismatched-inferred-params.wipple:1:2
+  |
+1 | (1, 2, 3) . transform ((x :: String) -> x)
+  |  -------
+
+`1, 2, 3` is a collection of `Number` elements.
+
+note: 
+  --> mismatched-inferred-params.wipple:1:13
+  |
+1 | (1, 2, 3) . transform ((x :: String) -> x)
+  |             ---------
+
+`transform` transforms the `String` elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`.
+
 error: 
   --> mismatched-inferred-params.wipple:1:25
   |
 1 | (1, 2, 3) . transform ((x :: String) -> x)
-  |  -------    ---------   ^ `x` is a `String` or a `Number`, but it can only be one of these.
-  |  |          |            
-  |  |          `transform` transforms the `String` elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`.
-  |  `1, 2, 3` is a collection of `Number` elements.
+  |                         ^
+
+`x` is a `String` or a `Number`, but it can only be one of these.
 

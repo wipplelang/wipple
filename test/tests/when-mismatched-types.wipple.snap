@@ -59,14 +59,24 @@ Facts (layer 2):
   is an expression
 
 
+
+note: 
+  --> when-mismatched-types.wipple:1:1
+  |
+1 | show (when True {
+  | ----
+
+`show` displays `when True {⋯}` on the screen.
+
 error: 
   --> when-mismatched-types.wipple:1:7
   |  
 1 |   show (when True {
-  |   ---- `show` displays `when True {⋯}` on the screen.
   | /-------^
 2 | |   True -> 42
 3 | |   False -> "hi"
 4 | | })
-  | \-^ `when True {⋯}` is a `String` or a `Number`, but it can only be one of these.
+  | \-^
+
+`when True {⋯}` is a `String` or a `Number`, but it can only be one of these.
 

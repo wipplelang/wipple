@@ -19,12 +19,20 @@ Facts (layer 2):
   resolved to 1 definition(s): `String`
 
 
+
+note: 
+  --> mismatched-types.wipple:1:2
+  |
+1 | (42 :: String)
+  |  ------------
+
+`42` is annotated as a `String`.
+
 error: 
   --> mismatched-types.wipple:1:1
   |
 1 | (42 :: String)
   | ^^^^^^^^^^^^^^
-  | ||
-  | |`42` is annotated as a `String`.
-  | `(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
+
+`(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
 

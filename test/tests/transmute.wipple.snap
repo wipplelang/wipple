@@ -55,9 +55,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `x`
 
 
+
 error: 
   --> transmute.wipple:1:14
   |
 1 | transmute :: a -> b
-  |              ^ `a` is a `a` or a `b`, but it can only be one of these. (`a` must be the same type as `b`, `x`, and `x`; double-check these.)
+  |              ^
+
+`a` is a `a` or a `b`, but it can only be one of these.
+
+`a` must be the same type as `b`, `x`, and `x`; double-check these.
 

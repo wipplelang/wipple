@@ -221,9 +221,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `T`
 
 
+
 error: 
    --> nested-bounds-2.wipple:10:1
    |
 10 | T
-   | ^ `T` requires the instance `W` `_`, but this instance isn't defined. (Double-check that these types are correct.)
+   | ^
+
+`T` requires the instance `W` `_`, but this instance isn't defined.
+
+Double-check that these types are correct.
 

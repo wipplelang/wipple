@@ -141,15 +141,41 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             ControlFlow::Continue(())
         });
 
-        let mut feedback_diagnostics = Vec::new();
+        let config = codespan_reporting::term::Config {
+            chars: codespan_reporting::term::Chars::ascii(),
+            ..Default::default()
+        };
+
+        let mut f: Box<dyn codespan_reporting::term::WriteStyle> = if self.render_options.color {
+            Box::new(codespan_reporting::term::termcolor::Ansi::new(
+                &mut self.out,
+            ))
+        } else {
+            Box::new(codespan_reporting::term::termcolor::NoColor::new(
+                &mut self.out,
+            ))
+        };
+
         for (span, feedback) in feedback_items {
-            let mut labels = Vec::new();
-            let mut add_label = |span: &Span, message: &str, primary: bool| {
+            if feedback_count == 0 && !self.silent {
+                writeln!(f)?;
+            }
+
+            let mut emit_label = |span: &Span,
+                                  message: &str,
+                                  primary: bool|
+             -> anyhow::Result<()> {
+                let severity = if primary {
+                    codespan_reporting::diagnostic::Severity::Error
+                } else {
+                    codespan_reporting::diagnostic::Severity::Note
+                };
+
                 let file_id = match feedback_file_ids.entry(span.path.clone()) {
                     Entry::Occupied(entry) => *entry.get(),
                     Entry::Vacant(entry) => {
                         let Some(source) = sources.get(&span.path) else {
-                            return;
+                            return Ok(());
                         };
 
                         *entry.insert(feedback_files.add(span.path.to_string(), source.to_string()))
@@ -158,14 +184,6 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
 
                 let range = span.start.index..span.end.index;
 
-                let message = if let Some((primary_message, secondary_message)) =
-                    message.split_once("\n\n")
-                {
-                    format!("{} ({})", primary_message.trim(), secondary_message.trim())
-                } else {
-                    message.trim().to_string()
-                };
-
                 let label = if primary {
                     codespan_reporting::diagnostic::Label::primary(file_id, range.clone())
                 } else {
@@ -173,58 +191,58 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
                 };
 
                 let message = message
-                    .lines()
-                    .map(|line| line.trim())
+                    .split("\n\n")
+                    .map(|lines| {
+                        lines
+                            .lines()
+                            .map(|line| line.trim())
+                            .collect::<Vec<_>>()
+                            .join(" ")
+                    })
                     .filter(|line| !line.is_empty())
                     .collect::<Vec<_>>()
-                    .join(" ");
+                    .join("\n\n");
 
-                labels.push(label.with_message(message));
+                let diagnostic = codespan_reporting::diagnostic::Diagnostic::new(severity)
+                    .with_labels(vec![label]);
+
+                codespan_reporting::term::emit_to_write_style(
+                    f.as_mut(),
+                    &config,
+                    &feedback_files,
+                    &diagnostic,
+                )?;
+
+                writeln!(f, "{message}\n")?;
+
+                Ok(())
             };
 
-            add_label(span, &feedback.message, true);
+            if self.compile_options.explain {
+                for (node, trace, consequences) in feedback.traces.into_iter().rev() {
+                    let Some(span) = db.get(node).map(|Syntax(key)| key.get(db).span(db)) else {
+                        continue;
+                    };
 
-            for (node, trace, consequences) in feedback.traces.into_iter() {
-                let Some(span) = db.get(node).map(|Syntax(key)| key.get(db).span(db)) else {
-                    continue;
-                };
+                    let mut message = trace;
+                    for consequence in consequences {
+                        write!(message, " {consequence}")?;
+                    }
 
-                let mut message = trace;
-                for consequence in consequences {
-                    write!(message, " {consequence}")?;
+                    emit_label(span, &message, false)?;
                 }
-
-                add_label(span, &message, false);
             }
 
-            feedback_diagnostics
-                .push(codespan_reporting::diagnostic::Diagnostic::error().with_labels(labels));
+            emit_label(span, &feedback.message, true)?;
 
             feedback_count += 1;
         }
 
-        let config = codespan_reporting::term::Config {
-            chars: codespan_reporting::term::Chars::ascii(),
-            ..Default::default()
-        };
-
-        for diagnostic in feedback_diagnostics {
-            let mut f: Box<dyn codespan_reporting::term::WriteStyle> = if self.render_options.color
-            {
-                Box::new(codespan_reporting::term::termcolor::Ansi::new(
-                    &mut self.out,
-                ))
-            } else {
-                Box::new(codespan_reporting::term::termcolor::NoColor::new(
-                    &mut self.out,
-                ))
-            };
-
-            codespan_reporting::term::emit_to_write_style(
-                f.as_mut(),
-                &config,
-                &feedback_files,
-                &diagnostic,
+        if feedback_count > 0 && !self.compile_options.explain {
+            writeln!(
+                f,
+                "{} use `--explain` to show more information",
+                "Help:".bold()
             )?;
         }
 

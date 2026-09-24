@@ -379,9 +379,12 @@ Facts (layer 2):
   is an expression
 
 
+
 error: 
    --> custom-errors.wipple:17:5
    |
 17 | _ : () + 2
-   |     ^^^^^^ Missing parentheses around the inputs to `+`.
+   |     ^^^^^^
+
+Missing parentheses around the inputs to `+`.
 
