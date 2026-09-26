@@ -65,7 +65,7 @@ pub struct IsExpression;
 impl Fact for IsExpression {}
 
 impl Render for IsExpression {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string("is an expression");
     }
 }

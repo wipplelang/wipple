@@ -151,3 +151,4 @@ error:
 
 Try adding patterns to cover these cases using `or`, `when`, or a variable.
 
+Help: use `--explain=full` to show more information

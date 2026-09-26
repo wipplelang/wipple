@@ -1,14 +1,15 @@
 use crate::CompileResult;
 use std::{
     collections::{BTreeMap, HashMap},
+    fmt::Write,
     sync::Arc,
 };
 use wasm_bindgen::prelude::*;
 use wipple_core::{
-    db::Node,
+    db::{Db, Node},
     default_filter,
     facts::Syntax,
-    render::{RenderCtx, RenderMarkdownOptions},
+    render::{ExplainOptions, RenderCtx, RenderMarkdownOptions, RenderOptions},
     span::Span,
     typecheck::ty::Ty,
     visit::{
@@ -34,6 +35,13 @@ use wipple_syntax::{
 #[wasm_bindgen(getter_with_clone, inspectable)]
 #[derive(Debug, Clone)]
 pub struct IdeDiagnostic {
+    pub primary: IdeDiagnosticMessage,
+    pub secondary: Vec<IdeDiagnosticMessage>,
+}
+
+#[wasm_bindgen(getter_with_clone, inspectable)]
+#[derive(Debug, Clone)]
+pub struct IdeDiagnosticMessage {
     pub range: IdeRange,
     pub message: String,
 }
@@ -102,8 +110,17 @@ impl Ide {
         Ide { result }
     }
 
+    fn default_options(&self) -> (&'static dyn Fn(&Db, Node) -> bool, RenderOptions) {
+        let render_options = RenderOptions {
+            explain: ExplainOptions::Enabled,
+            ..Default::default()
+        };
+
+        (&default_filter, render_options)
+    }
+
     pub fn diagnostics(&self, path: &str) -> Vec<IdeDiagnostic> {
-        let filter = default_filter;
+        let (filter, render_options) = self.default_options();
 
         collect_feedback(&self.result.db, filter, |item| {
             filter(&self.result.db, item.location.primary)
@@ -122,16 +139,48 @@ impl Ide {
                 return None;
             }
 
-            let feedback = item.display(&self.result.db, |db, segment| {
-                segment.markdown(db, RenderMarkdownOptions::default().rich(true))
+            let markdown_options = RenderMarkdownOptions::default().rich(true);
+
+            let feedback = item.display(&self.result.db, render_options.clone(), |db, segment| {
+                segment.markdown(db, markdown_options)
             });
 
-            Some(IdeDiagnostic {
-                range: span.into(),
-                message: feedback.message,
-            })
+            Some(self.to_diagnostic(span, feedback))
         })
         .collect()
+    }
+
+    pub fn trace(
+        &self,
+        path: &str,
+        line: usize,
+        column: usize,
+    ) -> Option<Vec<IdeDiagnosticMessage>> {
+        let (_, mut render_options) = self.default_options();
+        render_options.explain = ExplainOptions::Full;
+
+        let node = self.node_at(path, line, column)?;
+
+        let span = self
+            .result
+            .db
+            .get::<Syntax>(node)?
+            .0
+            .get(&self.result.db)
+            .span(&self.result.db);
+
+        let trace = wipple_queries::trace(&self.query_ctx(), node);
+
+        let mut writer = FeedbackWriter::with_options(render_options.clone());
+        writer.extend_trace(&self.result.db, &trace);
+
+        let feedback = writer.finish(&self.result.db, |db, segment| {
+            segment.markdown(db, RenderMarkdownOptions::default().rich(true))
+        });
+
+        let diagnostic = self.to_diagnostic(span, feedback);
+
+        (!diagnostic.secondary.is_empty()).then_some(diagnostic.secondary)
     }
 
     pub fn semantic_tokens(&self, path: &str) -> Vec<IdeSemanticToken> {
@@ -176,6 +225,8 @@ impl Ide {
     }
 
     pub fn hover(&self, path: &str, line: usize, column: usize) -> Option<IdeHover> {
+        let (_, render_options) = self.default_options();
+
         let node = self.node_at(path, line, column)?;
         let span = self
             .result
@@ -197,7 +248,7 @@ impl Ide {
             && let Some(Defined(definition)) = self.result.db.get(definition_node)
             && definition.downcast_ref::<VariableDefinition>().is_none()
         {
-            let mut ctx = RenderCtx::new(&default_filter, Vec::new());
+            let mut ctx = RenderCtx::with_options(render_options.clone());
 
             if let Some(span) = definition.full_span() {
                 ctx.code(span.source.as_str());
@@ -212,7 +263,7 @@ impl Ide {
                 is_code: true,
             });
         } else if let Some(ty) = wipple_queries::has_type(&self.query_ctx(), node) {
-            let mut ctx = RenderCtx::new(&default_filter, Vec::new());
+            let mut ctx = RenderCtx::with_options(render_options.clone());
 
             if definition_node.is_some() {
                 ctx.node(node);
@@ -230,7 +281,7 @@ impl Ide {
         }
 
         for bound in wipple_queries::resolved_bounds(&self.query_ctx(), node) {
-            let mut ctx = RenderCtx::new(&default_filter, Vec::new());
+            let mut ctx = RenderCtx::with_options(render_options.clone());
             ctx.node(bound.instance.node);
 
             let (rendered, _) = ctx.finish(&self.result.db, |db, segment| segment.plain_text(db));
@@ -304,6 +355,8 @@ impl Ide {
     }
 
     pub fn autocomplete(&self, path: &str, line: usize, column: usize) -> Vec<IdeDefinition> {
+        let (_, render_options) = self.default_options();
+
         let mut nodes = vec![self.result.root_node];
 
         let node_at_position = self.node_at(path, line, column);
@@ -393,7 +446,7 @@ impl Ide {
                     return None;
                 };
 
-                let mut ctx = RenderCtx::new(&default_filter, Vec::new());
+                let mut ctx = RenderCtx::with_options(render_options.clone());
                 ctx.node(node);
 
                 let (rendered, _) =
@@ -439,9 +492,11 @@ impl Ide {
     }
 
     fn comments(&self, node: Node) -> Option<String> {
+        let (_, render_options) = self.default_options();
+
         let comments = wipple_queries::comments(&self.query_ctx(), node)?;
 
-        let mut writer = FeedbackWriter::new(&default_filter, Vec::new());
+        let mut writer = FeedbackWriter::with_options(render_options.clone());
         writer.comments(&self.result.db, &comments);
 
         let feedback = writer.finish(&self.result.db, |db, segment| {
@@ -449,6 +504,41 @@ impl Ide {
         });
 
         (!feedback.message.is_empty()).then_some(feedback.message)
+    }
+
+    fn to_diagnostic(&self, span: &Span, feedback: wipple_feedback::Feedback) -> IdeDiagnostic {
+        let primary = IdeDiagnosticMessage {
+            range: span.into(),
+            message: feedback.message,
+        };
+
+        let mut secondary = Vec::new();
+        for trace in feedback.traces {
+            if !trace.is_primary {
+                continue;
+            }
+
+            let Some(span) = self
+                .result
+                .db
+                .get(trace.node)
+                .map(|Syntax(key)| key.get(&self.result.db).span(&self.result.db))
+            else {
+                continue;
+            };
+
+            let mut message = format!("**{}**", trace.message);
+            for consequence in trace.consequences {
+                write!(message, " {consequence}").unwrap();
+            }
+
+            secondary.push(IdeDiagnosticMessage {
+                range: span.into(),
+                message,
+            });
+        }
+
+        IdeDiagnostic { primary, secondary }
     }
 }
 

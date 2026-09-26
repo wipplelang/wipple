@@ -339,3 +339,4 @@ Found a placeholder of type `element -> List element`.
 
 Add a `element -> List element` value here before running your program.
 
+Help: use `--explain=full` to show more information

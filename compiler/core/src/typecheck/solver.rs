@@ -18,7 +18,7 @@ pub struct DirectlyGroupedWith(pub Vec<Node>);
 impl Fact for DirectlyGroupedWith {}
 
 impl Render for DirectlyGroupedWith {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string("grouped with ");
 
         for (index, node) in self.0.iter().enumerate() {
@@ -49,7 +49,7 @@ pub struct Solver {
     pub substitutions: Vec<Substitutions>,
     pub(crate) groups: Groups,
     pub(crate) implied_instances: Vec<Instance>,
-    pub(crate) tracing_node: Option<Node>,
+    pub(crate) tracing: Vec<Node>,
     iterations: usize,
 }
 
@@ -58,19 +58,28 @@ impl Solver {
         Default::default()
     }
 
-    pub fn copy(&self) -> Self {
+    pub fn clone_without_constraints(&self, source_node: impl Into<Option<Node>>) -> Self {
+        let mut tracing = self.tracing.clone();
+        if let Some(source_node) = source_node.into() {
+            tracing.push(source_node);
+        }
+
         Solver {
+            trace: self.trace,
+            substitutions: self.substitutions.clone(),
             groups: self.groups.clone(),
             implied_instances: self.implied_instances.clone(),
-            substitutions: self.substitutions.clone(),
             iterations: self.iterations,
-            ..Default::default()
+            tracing,
+            constraints: Default::default(),
         }
     }
 
     pub fn inherit(&mut self, other: Self) -> Constraints {
-        self.groups = other.groups;
+        self.trace = other.trace;
         self.substitutions = other.substitutions;
+        self.groups = other.groups;
+        self.implied_instances = other.implied_instances;
         self.iterations = other.iterations;
         other.constraints
     }
@@ -127,17 +136,21 @@ impl Solver {
     }
 
     pub fn add_consequence(&mut self, db: &mut Db, consequence: ConstraintConsequence) {
-        if let Some(node) = self.tracing_node {
+        if !self.trace {
+            return;
+        }
+
+        for &node in &self.tracing {
             for relevant in [node].into_iter().chain(consequence.relevant_nodes()) {
-                let traces = db
-                    .traces
+                let consequences = db
+                    .consequences
                     .entry(relevant)
                     .or_default()
                     .entry(node)
                     .or_default();
 
-                if !traces.contains(&consequence) {
-                    traces.push(consequence.clone());
+                if !consequences.contains(&consequence) {
+                    consequences.push(consequence.clone());
                 }
             }
         }
@@ -203,18 +216,18 @@ impl Solver {
                     self.merge(db, left, right, on_error);
                 }
                 (Ty::Node(node), Ty::Constructed(ty)) | (Ty::Constructed(ty), Ty::Node(node)) => {
-                    self.insert(db, node, ty, true);
+                    self.insert(db, node, ty);
                 }
                 (Ty::Constructed(left), Ty::Constructed(right)) => {
                     if !self.unify_inner_constructed(db, &left, &right, &mut |_| on_error()) {
                         // Report conflicts on the original nodes
 
                         if let Some(original_left_node) = original_left_node {
-                            self.insert(db, original_left_node, right, false);
+                            self.insert(db, original_left_node, right);
                         }
 
                         if let Some(original_right_node) = original_right_node {
-                            self.insert(db, original_right_node, left, false);
+                            self.insert(db, original_right_node, left);
                         }
                     }
                 }
@@ -321,12 +334,14 @@ impl Solver {
         );
     }
 
-    fn insert(&mut self, db: &mut Db, node: Node, ty: ConstructedTy, merged: bool) {
-        self.add_consequence(db, ConstraintConsequence::Ty(node, ty.clone(), merged));
-
-        self.with_group_mut(node, |group| {
-            group.insert_ty(node, ty);
+    fn insert(&mut self, db: &mut Db, node: Node, ty: ConstructedTy) {
+        let was_empty = self.with_group_mut(node, |group| {
+            let empty = group.tys().next().is_none();
+            group.insert_ty(node, ty.clone());
+            empty
         });
+
+        self.add_consequence(db, ConstraintConsequence::Ty(node, ty, was_empty));
     }
 
     pub fn rank_of(&self, node: Node) -> NodeRank {

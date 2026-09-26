@@ -1,16 +1,16 @@
-Build-Collection : (infer element) collection => trait (element collection -> collection)
+Build-Collection : collection (infer element) => trait (collection element -> collection)
 
 -- Can't create [`collection`] from items that are [`element@type`].
 --
 -- Creating [`collection`] from these items isn't supported. Double-check that
 -- you're providing the right kinds of items here.
-default error instance (Build-Collection element collection)
+default error instance (Build-Collection collection element)
 
-Initial-Collection : (infer element) collection => trait collection
-instance (Initial-Collection element collection) where (Initial collection) (Build-Collection element collection) (collection :: List element) : Initial
+Initial-Collection : collection (infer element) => trait collection
+instance (Initial-Collection collection element) where (Build-Collection collection element) (Initial collection) (collection :: List element) : Initial
 
-instance (Build-Collection element (List element)) : element l -> l . append element
+instance (Build-Collection (List element) element) : l element -> l . append element
 
-instance (Build-Collection (key; value) (Dictionary key value)) where (Equal key) (Hash key) : (key; value) d -> d . insert-entry key value
+instance (Build-Collection (Dictionary key value) (key; value)) where (Equal key) (Hash key) : d (key; value) -> d . insert-entry key value
 
-instance (Build-Collection element (Set element)) where (Equal element) (Hash element) : element s -> s . insert element
+instance (Build-Collection (Set element) element) where (Equal element) (Hash element) : s element -> s . insert element

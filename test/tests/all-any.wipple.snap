@@ -21,13 +21,19 @@ Facts (layer 2):
 
 `1` (VisitAs):
   at all-any.wipple:1:8-1:9
-  grouped with `1`, `element`
+  grouped with `1`, `element`, `2`, `3`
   has type `Number`
   is an expression
 
 `1, 2, 3` (VisitAs):
   at all-any.wipple:1:8-1:15
-  grouped with `collection`, `3`, `collection`
+  grouped with `collection`, `1, 2, 3`, `collection`
+  has type `List Number`
+  is an expression
+
+`1, 2, 3` (Hidden):
+  at all-any.wipple:1:8-1:15
+  grouped with `collection`, `1, 2, 3`
   has type `List Number`
   is an expression
 
@@ -39,13 +45,13 @@ Facts (layer 2):
 
 `2` (VisitAs):
   at all-any.wipple:1:11-1:12
-  grouped with `2`, `element`
+  grouped with `2`, `element`, `1`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
   at all-any.wipple:1:14-1:15
-  grouped with `3`, `element`
+  grouped with `3`, `element`, `1`
   has type `Number`
   is an expression
 
@@ -136,13 +142,19 @@ Facts (layer 2):
 
 `1` (VisitAs):
   at all-any.wipple:2:8-2:9
-  grouped with `1`, `element`
+  grouped with `1`, `element`, `-2`, `3`
   has type `Number`
   is an expression
 
 `1, -2, 3` (VisitAs):
   at all-any.wipple:2:8-2:16
-  grouped with `collection`, `3`, `collection`
+  grouped with `collection`, `1, -2, 3`, `collection`
+  has type `List Number`
+  is an expression
+
+`1, -2, 3` (Hidden):
+  at all-any.wipple:2:8-2:16
+  grouped with `collection`, `1, -2, 3`
   has type `List Number`
   is an expression
 
@@ -154,13 +166,13 @@ Facts (layer 2):
 
 `-2` (VisitAs):
   at all-any.wipple:2:11-2:13
-  grouped with `-2`, `element`
+  grouped with `-2`, `element`, `1`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
   at all-any.wipple:2:15-2:16
-  grouped with `3`, `element`
+  grouped with `3`, `element`, `1`
   has type `Number`
   is an expression
 
@@ -251,13 +263,19 @@ Facts (layer 2):
 
 `1` (VisitAs):
   at all-any.wipple:3:8-3:9
-  grouped with `1`, `element`
+  grouped with `1`, `element`, `-2`, `3`
   has type `Number`
   is an expression
 
 `1, -2, 3` (VisitAs):
   at all-any.wipple:3:8-3:16
-  grouped with `collection`, `3`, `collection`
+  grouped with `collection`, `1, -2, 3`, `collection`
+  has type `List Number`
+  is an expression
+
+`1, -2, 3` (Hidden):
+  at all-any.wipple:3:8-3:16
+  grouped with `collection`, `1, -2, 3`
   has type `List Number`
   is an expression
 
@@ -269,13 +287,13 @@ Facts (layer 2):
 
 `-2` (VisitAs):
   at all-any.wipple:3:11-3:13
-  grouped with `-2`, `element`
+  grouped with `-2`, `element`, `1`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
   at all-any.wipple:3:15-3:16
-  grouped with `3`, `element`
+  grouped with `3`, `element`, `1`
   has type `Number`
   is an expression
 
@@ -366,13 +384,19 @@ Facts (layer 2):
 
 `-1` (VisitAs):
   at all-any.wipple:4:8-4:10
-  grouped with `-1`, `element`
+  grouped with `-1`, `element`, `-2`, `-3`
   has type `Number`
   is an expression
 
 `-1, -2, -3` (VisitAs):
   at all-any.wipple:4:8-4:18
-  grouped with `collection`, `-3`, `collection`
+  grouped with `collection`, `-1, -2, -3`, `collection`
+  has type `List Number`
+  is an expression
+
+`-1, -2, -3` (Hidden):
+  at all-any.wipple:4:8-4:18
+  grouped with `collection`, `-1, -2, -3`
   has type `List Number`
   is an expression
 
@@ -384,13 +408,13 @@ Facts (layer 2):
 
 `-2` (VisitAs):
   at all-any.wipple:4:12-4:14
-  grouped with `-2`, `element`
+  grouped with `-2`, `element`, `-1`
   has type `Number`
   is an expression
 
 `-3` (VisitAs):
   at all-any.wipple:4:16-4:18
-  grouped with `-3`, `element`
+  grouped with `-3`, `element`, `-1`
   has type `Number`
   is an expression
 

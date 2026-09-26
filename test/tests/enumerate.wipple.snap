@@ -13,25 +13,31 @@ Facts (layer 2):
 
 `"a"` (VisitAs):
   at enumerate.wipple:1:8-1:11
-  grouped with `"a"`, `element`
+  grouped with `"a"`, `element`, `"b"`, `"c"`
   has type `String`
   is an expression
 
 `"a", "b", "c"` (CollectionExpression):
   at enumerate.wipple:1:8-1:21
-  grouped with `"c"`, `list`, `list`
+  grouped with `"a", "b", "c"`, `list`, `list`
+  has type `List String`
+  is an expression
+
+`"a", "b", "c"` (Hidden):
+  at enumerate.wipple:1:8-1:21
+  grouped with `collection`, `"a", "b", "c"`
   has type `List String`
   is an expression
 
 `"b"` (VisitAs):
   at enumerate.wipple:1:13-1:16
-  grouped with `"b"`, `element`
+  grouped with `"b"`, `element`, `"a"`
   has type `String`
   is an expression
 
 `"c"` (VisitAs):
   at enumerate.wipple:1:18-1:21
-  grouped with `"c"`, `element`
+  grouped with `"c"`, `element`, `"a"`
   has type `String`
   is an expression
 

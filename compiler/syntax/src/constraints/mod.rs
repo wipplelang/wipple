@@ -25,7 +25,7 @@ pub struct IsConstraint;
 impl Fact for IsConstraint {}
 
 impl Render for IsConstraint {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string("is a constraint");
     }
 }

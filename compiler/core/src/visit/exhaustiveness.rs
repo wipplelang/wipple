@@ -140,7 +140,7 @@ impl MatchTree {
 }
 
 impl Render for MatchTree {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
         let node = match self {
             MatchTree::Field(node, _)
             | MatchTree::Variant(node, _)
@@ -217,7 +217,7 @@ pub struct MissingPatterns(pub Vec<MatchTree>);
 impl Fact for MissingPatterns {}
 
 impl Render for MissingPatterns {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string("is missing patterns");
     }
 }

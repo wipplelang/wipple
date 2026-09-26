@@ -8,10 +8,11 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::Description,
+    facts::{Description, DescriptionEntry},
     render::Comments,
     span::Span,
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
+    util::Link,
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -61,14 +62,18 @@ impl Visit for AnnotateExpression {
 
         visitor.codegen(db, node, AnnotateExpressionCodegen { node, expression });
 
-        db.insert(
-            node,
-            Description(Comments::for_static(
-                node,
-                "[`value`] is annotated as a [`type`].",
-                [("value", Some(expression)), ("type", Some(ty))],
-            )),
-        );
+        db.get_mut_or_default::<Description>(node)
+            .push(DescriptionEntry {
+                comments: Comments::builtin(
+                    expression,
+                    "[`value`] is annotated as a [`type`].",
+                    [
+                        ("value", Some(Link::node(expression))),
+                        ("type", Some(Link::node(ty))),
+                    ],
+                ),
+                is_primary: true,
+            });
     }
 }
 

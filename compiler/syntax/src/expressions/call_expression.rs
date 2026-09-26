@@ -7,12 +7,14 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Fact, Node},
-    render::Render,
+    facts::{Description, DescriptionEntry},
+    render::{Comments, Render},
     span::Span,
     typecheck::{
         constraints::ty_constraint::TyConstraint,
         ty::{ConstructedTy, Ty},
     },
+    util::Link,
     visit::{Visit, Visitor, definitions::ConstantDefinition},
 };
 use wipple_parse::parser::{ParseError, Parser};
@@ -124,9 +126,22 @@ impl Visit for CallExpression {
             CallExpressionCodegen::Function {
                 node,
                 function,
-                inputs,
+                inputs: inputs.clone(),
             },
         );
+
+        db.get_mut_or_default::<Description>(node)
+            .push(DescriptionEntry {
+                comments: Comments::builtin(
+                    node,
+                    "[`function`] is called with [`inputs`].",
+                    [
+                        ("function", Some(Link::node(function))),
+                        ("inputs", Some(Link::list("and", inputs))),
+                    ],
+                ),
+                is_primary: false,
+            });
     }
 }
 

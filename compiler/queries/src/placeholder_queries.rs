@@ -1,4 +1,4 @@
-use crate::QueryCtx;
+use crate::{QueryCtx, Trace, trace};
 use wipple_core::{
     db::Node,
     typecheck::{groups::Typed, ty::ConstructedTy},
@@ -8,7 +8,7 @@ use wipple_syntax::expressions::placeholder_expression::IsPlaceholder;
 pub fn placeholder<'a>(
     db: &QueryCtx<'a>,
     node: Node,
-) -> Option<(Node, Vec<Node>, Option<&'a ConstructedTy>)> {
+) -> Option<(Vec<Node>, Option<&'a ConstructedTy>, Trace)> {
     if !db.contains::<IsPlaceholder>(node) {
         return None;
     }
@@ -18,8 +18,8 @@ pub fn placeholder<'a>(
     };
 
     Some((
-        node,
         group.nodes().filter(|other| *other != node).collect(),
         group.tys().next(),
+        trace(db, node),
     ))
 }

@@ -120,37 +120,43 @@ Facts (layer 2):
 
 `1` (VisitAs):
   at average.wipple:2:16-2:17
-  grouped with `1`, `element`
+  grouped with `1`, `element`, `2`, `3`, `4`, `5`
   has type `Number`
   is an expression
 
 `1, 2, 3, 4, 5` (CollectionExpression):
   at average.wipple:2:16-2:29
-  grouped with `5`, `numbers`
+  grouped with `1, 2, 3, 4, 5`, `numbers`
+  has type `List Number`
+  is an expression
+
+`1, 2, 3, 4, 5` (Hidden):
+  at average.wipple:2:16-2:29
+  grouped with `collection`, `1, 2, 3, 4, 5`
   has type `List Number`
   is an expression
 
 `2` (VisitAs):
   at average.wipple:2:19-2:20
-  grouped with `2`, `element`
+  grouped with `2`, `element`, `1`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
   at average.wipple:2:22-2:23
-  grouped with `3`, `element`
+  grouped with `3`, `element`, `1`
   has type `Number`
   is an expression
 
 `4` (VisitAs):
   at average.wipple:2:25-2:26
-  grouped with `4`, `element`
+  grouped with `4`, `element`, `1`
   has type `Number`
   is an expression
 
 `5` (VisitAs):
   at average.wipple:2:28-2:29
-  grouped with `5`, `element`
+  grouped with `5`, `element`, `1`
   has type `Number`
   is an expression
 

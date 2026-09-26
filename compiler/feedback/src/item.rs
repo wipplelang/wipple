@@ -3,14 +3,16 @@ use std::collections::BTreeSet;
 use wipple_core::{
     db::{Db, Node},
     facts::Syntax,
-    render::RenderSegment,
+    render::{RenderOptions, RenderSegment},
 };
 
 pub struct FeedbackItem<'a> {
     pub id: String,
     pub rank: FeedbackRank,
     pub location: FeedbackLocation,
-    pub display: Box<dyn Fn(&Db, &mut dyn FnMut(&Db, &RenderSegment) -> String) -> Feedback + 'a>,
+    pub display: Box<
+        dyn Fn(&Db, RenderOptions, &mut dyn FnMut(&Db, &RenderSegment) -> String) -> Feedback + 'a,
+    >,
     pub show_graph: bool,
 }
 
@@ -18,9 +20,10 @@ impl FeedbackItem<'_> {
     pub fn display(
         &self,
         db: &Db,
+        render_options: RenderOptions,
         mut render_segment: impl FnMut(&Db, &RenderSegment) -> String,
     ) -> Feedback {
-        (self.display)(db, &mut render_segment)
+        (self.display)(db, render_options, &mut render_segment)
     }
 }
 

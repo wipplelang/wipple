@@ -222,3 +222,4 @@ Missing information for the type of `-- `B` should not be inferred to be `Number
 
 Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
+Help: use `--explain=full` to show more information

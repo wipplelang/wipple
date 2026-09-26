@@ -24,3 +24,4 @@ Missing information for the type of `show`.
 
 Wipple determined this code is a `_ -> ()`, but it needs some more information for the `_` placeholders.
 
+Help: use `--explain=full` to show more information

@@ -81,7 +81,7 @@ pub struct IsPattern;
 impl Fact for IsPattern {}
 
 impl Render for IsPattern {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string("is a pattern");
     }
 }
@@ -150,7 +150,7 @@ pub fn visit_pattern(
     db.insert(node, Matching(matching));
 
     if visitor.current_match.as_ref().and_then(|m| m.arm) == Some(node) {
-        db.graph.edge(matching, node, "value")
+        db.graph.edge(matching, node, "value");
     }
 
     visitor.constraint(db, TyConstraint::new(node, Ty::Node(matching)));

@@ -8,10 +8,11 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::Description,
+    facts::{Description, DescriptionEntry},
     render::Comments,
     span::{Span, Str},
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
+    util::Link,
     visit::{Hidden, Visit, VisitAs, Visitor},
 };
 use wipple_parse::{
@@ -89,7 +90,7 @@ impl Visit for CollectionExpression {
                 let function = visitor.in_ast(
                     db,
                     Hidden::new(ConstructorExpression {
-                        span: db.ast(element).span(db).clone(),
+                        span: self.span.clone(),
                         constructor: Str::from("Build-Collection"),
                     }),
                 );
@@ -105,9 +106,9 @@ impl Visit for CollectionExpression {
                 collection = visitor.in_ast(
                     db,
                     Hidden::new(CallExpression {
-                        span: db.ast(element).span(db).clone(),
+                        span: self.span.clone(),
                         function,
-                        inputs: vec![input, collection.clone()],
+                        inputs: vec![collection.clone(), input],
                     }),
                 );
 
@@ -115,8 +116,16 @@ impl Visit for CollectionExpression {
             })
             .collect::<Vec<_>>();
 
-        let collection_node = visitor.visit(db, &collection);
-        db.graph.edge(collection_node, node, "collection");
+        let collection_node = db.node();
+
+        visitor.visit_as(db, &collection, collection_node);
+
+        if let Some((&first, rest)) = elements.split_first() {
+            for &element in rest {
+                visitor.constraint(db, TyConstraint::new(first, Ty::Node(element)));
+            }
+        }
+
         visitor.constraint(db, TyConstraint::new(collection_node, Ty::Node(node)));
 
         visitor.codegen(
@@ -128,14 +137,18 @@ impl Visit for CollectionExpression {
             },
         );
 
-        db.insert(
-            node,
-            Description(Comments::for_static(
-                node,
-                "[`list`] is a collection of [`element@type`] elements.",
-                [("list", Some(node)), ("element", elements.first().copied())],
-            )),
-        );
+        db.get_mut_or_default::<Description>(node)
+            .push(DescriptionEntry {
+                comments: Comments::builtin(
+                    node,
+                    "[`collection`] is a collection of [`element@type`] elements.",
+                    [
+                        ("collection", Some(Link::node(node))),
+                        ("element", elements.first().copied().map(Link::node)),
+                    ],
+                ),
+                is_primary: true,
+            });
     }
 }
 

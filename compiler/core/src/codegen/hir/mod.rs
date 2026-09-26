@@ -193,7 +193,7 @@ impl Program {
 
         if include_definitions.defined {
             db.for_each_fact::<_, ()>(&mut |db, node, Defined(definition)| {
-                if include_definitions.referenced && !db.owns(node) {
+                if include_definitions.referenced && !db.in_layer(node) {
                     return ControlFlow::Continue(());
                 }
 
@@ -284,7 +284,7 @@ impl Program {
 
         if include_definitions.defined && include_definitions.referenced {
             program.definitions.retain(|&key, _| match key {
-                DefinitionKey::Constant(node) => db.owns(node),
+                DefinitionKey::Constant(node) => db.in_layer(node),
                 DefinitionKey::TopLevel => true,
             });
         }

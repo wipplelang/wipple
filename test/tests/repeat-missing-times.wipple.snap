@@ -59,6 +59,28 @@ Facts (layer 2):
 
 
 note: 
+  --> repeat-missing-times.wipple:1:1
+  |
+1 | repeat 5 {
+  | ------
+
+`repeat` runs `show "Hello, world!"` repeatedly.
+
+This means `repeat` is a `Number {()} -> ()`.
+
+This requires `Repeat-Condition` `Number`.
+
+note: 
+  --> repeat-missing-times.wipple:1:8
+  |
+1 | repeat 5 {
+  |        -
+
+`5` is a number literal.
+
+This means `5` is a `Number`.
+
+note: 
   --> repeat-missing-times.wipple:2:3
   |
 2 |   show "Hello, world!"
@@ -66,13 +88,17 @@ note:
 
 `show` displays `"Hello, world!"` on the screen.
 
-note: 
-  --> repeat-missing-times.wipple:1:1
-  |
-1 | repeat 5 {
-  | ------
+This means `show` is a `String -> ()`.
 
-`repeat` runs `show "Hello, world!"` repeatedly. This requires `Repeat-Condition` `Number`.
+note: 
+  --> repeat-missing-times.wipple:2:8
+  |
+2 |   show "Hello, world!"
+  |        ---------------
+
+`"Hello, world!"` is a string literal.
+
+This means `"Hello, world!"` is a `String`.
 
 error: 
   --> repeat-missing-times.wipple:1:1
@@ -84,3 +110,4 @@ Missing `times` after `5`.
 
 Try rewriting this code as `(``5`` times)`, or double-check your parentheses.
 
+Help: use `--explain=full` to show more information

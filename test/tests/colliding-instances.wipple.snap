@@ -175,3 +175,4 @@ error:
 
 Only one of these instances can be defined at a time. Try making your instance more specific.
 
+Help: use `--explain=full` to show more information

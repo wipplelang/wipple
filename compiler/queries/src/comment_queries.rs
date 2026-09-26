@@ -1,4 +1,4 @@
-use crate::QueryCtx;
+use crate::{QueryCtx, Trace, trace};
 use wipple_core::{
     db::Node,
     render::Comments,
@@ -19,9 +19,9 @@ pub fn comments(db: &QueryCtx<'_>, node: Node) -> Option<Comments> {
     let Defined(definition) = db.get(definition_node)?;
 
     Some(Comments {
-        definition: definition_node,
+        node: definition_node,
         comments: definition.comments().to_vec(),
-        links: get_links(db, definition_node, node),
+        links: get_links(db, definition_node, node, |_, node| db.filter(node)),
     })
 }
 
@@ -30,6 +30,7 @@ pub struct ErrorInstance<'a> {
     pub bound: &'a ResolvedBound,
     pub is_default: bool,
     pub comments: Comments,
+    pub trace: Trace,
 }
 
 pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'a>> {
@@ -54,15 +55,16 @@ pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'
             let instance_definition = definition.downcast_ref::<InstanceDefinition>()?;
 
             let comments = Comments {
-                definition: bound.instance.node,
+                node: bound.instance.node,
                 comments: instance_definition.comments.clone(),
-                links: get_links(db, bound.instance.node, node),
+                links: get_links(db, bound.instance.node, node, |_, node| db.filter(node)),
             };
 
             Some(ErrorInstance {
                 bound,
                 is_default: instance.default,
                 comments,
+                trace: trace(db, node),
             })
         })
         .collect()

@@ -43,7 +43,7 @@ pub struct IsType;
 impl Fact for IsType {}
 
 impl Render for IsType {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string("is a type");
     }
 }
@@ -55,7 +55,7 @@ pub struct MissingTypes(pub Vec<Node>);
 impl Fact for MissingTypes {}
 
 impl Render for MissingTypes {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string("missing types");
     }
 }
@@ -67,7 +67,7 @@ pub struct ExtraType;
 impl Fact for ExtraType {}
 
 impl Render for ExtraType {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string("is extra type");
     }
 }

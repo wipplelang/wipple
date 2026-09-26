@@ -22,7 +22,7 @@ pub struct InferredParameter;
 impl Fact for InferredParameter {}
 
 impl Render for InferredParameter {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string("is inferred type parameter");
     }
 }
@@ -126,7 +126,7 @@ impl Constraint for BoundConstraint {
 
                 let start = db.last_node();
 
-                let mut copy = solver.copy();
+                let mut copy = solver.clone_without_constraints(self.bound.source_node);
 
                 // These are for the *instance's own* parameters, not the trait
                 // parameters like with the bound

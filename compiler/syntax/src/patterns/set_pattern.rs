@@ -4,8 +4,11 @@ use wipple_core::{
     anyhow,
     codegen::{CodegenError, hir},
     db::{Db, Node},
+    facts::{Description, DescriptionEntry},
+    render::Comments,
     span::{Span, Str},
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
+    util::Link,
     visit::{
         IsCaptured, IsMutated, Visit, Visitor, definitions::VariableDefinition,
         exhaustiveness::MatchPathSegment,
@@ -24,9 +27,9 @@ pub struct SetPattern {
 }
 
 pub fn parse_set_pattern(parser: &mut Parser<'_>) -> Result<SetPattern, ParseError> {
-    let span = parser.spanned();
     parser.token(TokenKind::SetKeyword)?;
     parser.commit("in this `set` pattern");
+    let span = parser.spanned();
     let variable = parse_variable_name(parser)?;
     Ok(SetPattern {
         span: span(parser),
@@ -43,7 +46,10 @@ impl Visit for SetPattern {
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
         visit_pattern(db, node, visitor, Some(MatchPathSegment::Match));
 
-        if !visitor.current_match.as_ref().unwrap().allow_set {
+        let current_match = visitor.current_match.as_ref().unwrap();
+        let value = current_match.value;
+
+        if !current_match.allow_set {
             db.insert(node, InvalidSetPattern::Nested);
         }
 
@@ -78,6 +84,19 @@ impl Visit for SetPattern {
                 variable: variable_definition_node,
             },
         );
+
+        db.get_mut_or_default::<Description>(node)
+            .push(DescriptionEntry {
+                comments: Comments::builtin(
+                    node,
+                    "[`variable`] is changed to [`value`] here.",
+                    [
+                        ("variable", Some(Link::node(node))),
+                        ("value", Some(Link::node(value))),
+                    ],
+                ),
+                is_primary: false,
+            });
     }
 }
 

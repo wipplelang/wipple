@@ -21,7 +21,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             secondary: data.group.clone(),
         })
         .show_graph()
-        .display(|db, writer, node, data| {
+        .display(|db, writer, _, data| {
             if let Some(source) = data.source {
                 writer.string("In ");
                 writer.node(source);
@@ -40,26 +40,19 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             });
             writer.string(", but it can only be one of these.");
 
-            let related = data
-                .related
-                .iter()
-                .copied()
-                .filter(|&node| writer.filter(db, node))
-                .collect::<Vec<_>>();
-
-            if related.len() > 1 {
+            if data.related.len() > 1 {
                 writer.line_break();
                 writer.node(data.from);
                 writer.string(" must be the same type as ");
                 writer.list("and", |list| {
-                    for node in related {
+                    for &node in &data.related {
                         list.add(move |writer| writer.node(node));
                     }
                 });
                 writer.string("; double-check these.");
             }
 
-            writer.trace(db, node);
+            writer.extend_trace(db, &data.trace);
         })
         .register();
 

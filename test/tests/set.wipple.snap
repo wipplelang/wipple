@@ -13,25 +13,31 @@ Facts (layer 2):
 
 `"Basketball"` (VisitAs):
   at set.wipple:1:11-1:23
-  grouped with `"Basketball"`, `element`
+  grouped with `"Basketball"`, `element`, `"Soccer"`, `"Golf"`
   has type `String`
   is an expression
 
 `"Basketball", "Soccer", "Golf"` (CollectionExpression):
   at set.wipple:1:11-1:41
-  grouped with `"Golf"`, `Set _`
+  grouped with `"Basketball", "Soccer", "Golf"`, `Set _`
+  has type `Set String`
+  is an expression
+
+`"Basketball", "Soccer", "Golf"` (Hidden):
+  at set.wipple:1:11-1:41
+  grouped with `collection`, `"Basketball", "Soccer", "Golf"`
   has type `Set String`
   is an expression
 
 `"Soccer"` (VisitAs):
   at set.wipple:1:25-1:33
-  grouped with `"Soccer"`, `element`
+  grouped with `"Soccer"`, `element`, `"Basketball"`
   has type `String`
   is an expression
 
 `"Golf"` (VisitAs):
   at set.wipple:1:35-1:41
-  grouped with `"Golf"`, `element`
+  grouped with `"Golf"`, `element`, `"Basketball"`
   has type `String`
   is an expression
 

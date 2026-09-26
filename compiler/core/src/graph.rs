@@ -265,7 +265,7 @@ impl GraphBuilder {
             })
     }
 
-    fn replacement_for(&self, mut node: Node) -> Node {
+    pub fn replacement_for(&self, mut node: Node) -> Node {
         while let Some(replacement) = self.replacements.get(&node) {
             node = *replacement;
         }

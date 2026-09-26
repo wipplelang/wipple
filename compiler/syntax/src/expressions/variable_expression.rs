@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use wipple_core::{
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::Description,
+    facts::{Description, DescriptionEntry},
     render::Comments,
     span::{Span, Str},
     typecheck::{
@@ -13,6 +13,7 @@ use wipple_core::{
         groups::NodeRank,
         ty::Ty,
     },
+    util::Link,
     visit::{
         IsCaptured, IsMutated, Visit, Visitor,
         definitions::{ConstantDefinition, VariableDefinition},
@@ -92,6 +93,16 @@ impl Visit for VariableExpression {
                         resolved: definition_node,
                     },
                 );
+
+                db.get_mut_or_default::<Description>(node)
+                    .push(DescriptionEntry {
+                        comments: Comments::builtin(
+                            node,
+                            "[`definition`] is used here.",
+                            [("definition", Some(Link::node(definition_node)))],
+                        ),
+                        is_primary: false,
+                    });
             }
             Definition::Constant => {
                 let substitutions = visitor.substitutions(
@@ -113,14 +124,15 @@ impl Visit for VariableExpression {
                     },
                 );
 
-                db.insert(
-                    node,
-                    Description(Comments::for_static(
-                        definition_node,
-                        "[`definition`] is defined as a [`definition@type`].",
-                        [("definition", Some(definition_node))],
-                    )),
-                );
+                db.get_mut_or_default::<Description>(node)
+                    .push(DescriptionEntry {
+                        comments: Comments::builtin(
+                            definition_node,
+                            "[`definition`] is defined as a [`definition@type`].",
+                            [("definition", Some(Link::node(definition_node)))],
+                        ),
+                        is_primary: false,
+                    });
             }
         }
     }

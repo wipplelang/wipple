@@ -2,7 +2,7 @@ use crate::expressions::call_expression::ResolvedCall;
 use std::ops::ControlFlow;
 use wipple_core::{
     db::{Db, Node},
-    util::get_links,
+    util::{LinkKind, get_links},
     visit::{
         Resolved,
         definitions::{ConstantDefinition, Defined},
@@ -26,7 +26,7 @@ pub fn create_connections(db: &mut Db, mut filter: impl FnMut(&Db, Node) -> bool
         {
             let definition = *definitions.first().unwrap();
 
-            let links = get_links(db, definition, call.function);
+            let links = get_links(db, definition, call.function, &mut filter);
 
             if let Some(attributes) = db
                 .get(definition)
@@ -42,8 +42,11 @@ pub fn create_connections(db: &mut Db, mut filter: impl FnMut(&Db, Node) -> bool
                         continue;
                     };
 
-                    db.graph
-                        .edge(left.node, right.node, value.label.to_string());
+                    if let LinkKind::Node(left) = left.kind
+                        && let LinkKind::Node(right) = right.kind
+                    {
+                        db.graph.edge(left, right, value.label.to_string());
+                    }
 
                     has_custom_edges = true;
                 }

@@ -530,6 +530,36 @@ Facts (layer 2):
 
 
 
+note: 
+   --> infer-constraint.wipple:20:11
+   |
+20 | output : (add-infer 1 2 :: String)
+   |           -------------
+
+`add-infer 1 2` is annotated as a `String`.
+
+This means `add-infer 1 2` is a `String`.
+
+note: 
+   --> infer-constraint.wipple:20:21
+   |
+20 | output : (add-infer 1 2 :: String)
+   |                     -
+
+`1` is a number literal.
+
+This means `1` is a `Number`.
+
+note: 
+   --> infer-constraint.wipple:20:23
+   |
+20 | output : (add-infer 1 2 :: String)
+   |                       -
+
+`2` is a number literal.
+
+This means `2` is a `Number`.
+
 error: 
    --> infer-constraint.wipple:20:1
    |
@@ -538,3 +568,4 @@ error:
 
 `output` is a `String` or a `Number`, but it can only be one of these.
 
+Help: use `--explain=full` to show more information

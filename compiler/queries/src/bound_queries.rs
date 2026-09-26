@@ -1,4 +1,4 @@
-use crate::QueryCtx;
+use crate::{QueryCtx, Trace, trace};
 use wipple_core::{
     db::Node,
     typecheck::bounds::{ResolvedBound, ResolvedBounds, UnresolvedBound},
@@ -15,7 +15,7 @@ pub fn resolved_bounds<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<&'a ResolvedBou
         .collect()
 }
 
-pub fn unresolved_bounds<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<&'a UnresolvedBound> {
+pub fn unresolved_bounds<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<(&'a UnresolvedBound, Trace)> {
     let Some(ResolvedBounds(bounds)) = db.get(node) else {
         return Vec::new();
     };
@@ -23,5 +23,6 @@ pub fn unresolved_bounds<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<&'a Unresolve
     bounds
         .values()
         .filter_map(|result| result.as_ref().err())
+        .map(|unresolved| (unresolved, trace(db, node)))
         .collect()
 }

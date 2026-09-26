@@ -380,6 +380,16 @@ Facts (layer 2):
 
 
 
+note: 
+   --> custom-errors.wipple:17:10
+   |
+17 | _ : () + 2
+   |          -
+
+`2` is a number literal.
+
+This means `2` is a `Number`.
+
 error: 
    --> custom-errors.wipple:17:5
    |
@@ -388,3 +398,4 @@ error:
 
 Missing parentheses around the inputs to `+`.
 
+Help: use `--explain=full` to show more information

@@ -23,7 +23,7 @@ pub struct Instantiated {
 impl Fact for Instantiated {}
 
 impl Render for Instantiated {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string("instantiated from ");
         ctx.node(self.from);
         ctx.string(" in ");

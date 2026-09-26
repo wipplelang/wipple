@@ -26,7 +26,13 @@ Facts (layer 2):
 
 `(1; "a"), (2; "b"), (3; "c")` (VisitAs):
   at unzip.wipple:1:17-1:45
-  grouped with `collection`, `3; "c"`
+  grouped with `collection`, `(1; "a"), (2; "b"), (3; "c")`
+  has type `List (Number; String)`
+  is an expression
+
+`(1; "a"), (2; "b"), (3; "c")` (Hidden):
+  at unzip.wipple:1:17-1:45
+  grouped with `collection`, `(1; "a"), (2; "b"), (3; "c")`
   has type `List (Number; String)`
   is an expression
 
@@ -38,55 +44,55 @@ Facts (layer 2):
 
 `1` (NumberExpression):
   at unzip.wipple:1:18-1:19
-  grouped with `1`, `_`, `_`, `left-element`
+  grouped with `1`, `2`, `3`, `_`, `_`, `_`, `_`, `_`, `_`, `left-element`
   has type `Number`
   is an expression
 
 `1; "a"` (VisitAs):
   at unzip.wipple:1:18-1:24
-  grouped with `element`
+  grouped with `element`, `2; "b"`, `3; "c"`
   has type `(Number; String)`
   is an expression
 
 `"a"` (StringExpression):
   at unzip.wipple:1:21-1:24
-  grouped with `"a"`, `_`, `_`, `right-element`
+  grouped with `"a"`, `"b"`, `"c"`, `_`, `_`, `_`, `_`, `_`, `_`, `right-element`
   has type `String`
   is an expression
 
 `2` (NumberExpression):
   at unzip.wipple:1:28-1:29
-  grouped with `2`, `_`, `_`, `left-element`
+  grouped with `2`, `1`
   has type `Number`
   is an expression
 
 `2; "b"` (VisitAs):
   at unzip.wipple:1:28-1:34
-  grouped with `element`
+  grouped with `element`, `1; "a"`
   has type `(Number; String)`
   is an expression
 
 `"b"` (StringExpression):
   at unzip.wipple:1:31-1:34
-  grouped with `"b"`, `_`, `_`, `right-element`
+  grouped with `"b"`, `"a"`
   has type `String`
   is an expression
 
 `3` (NumberExpression):
   at unzip.wipple:1:38-1:39
-  grouped with `3`, `_`, `_`, `left-element`
+  grouped with `3`, `1`
   has type `Number`
   is an expression
 
 `3; "c"` (VisitAs):
   at unzip.wipple:1:38-1:44
-  grouped with `element`
+  grouped with `element`, `1; "a"`
   has type `(Number; String)`
   is an expression
 
 `"c"` (StringExpression):
   at unzip.wipple:1:41-1:44
-  grouped with `"c"`, `_`, `_`, `right-element`
+  grouped with `"c"`, `"a"`
   has type `String`
   is an expression
 

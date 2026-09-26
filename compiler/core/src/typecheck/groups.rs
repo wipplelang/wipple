@@ -13,7 +13,6 @@ pub struct Group(BTreeMap<Node, (NodeRank, Vec<ConstructedTy>)>);
 pub enum NodeRank {
     #[default]
     Inherited,
-    Literal,
     Annotated,
 }
 
@@ -198,7 +197,7 @@ pub struct Typed(pub Option<Group>);
 impl Fact for Typed {}
 
 impl Render for Typed {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
         let Some(group) = &self.0 else {
             ctx.string("types not solved");
             return;

@@ -68,6 +68,28 @@ note:
 
 `show` displays `when True {⋯}` on the screen.
 
+This means `show` is a `Number -> ()`.
+
+note: 
+  --> when-mismatched-types.wipple:2:11
+  |
+2 |   True -> 42
+  |           --
+
+`42` is a number literal.
+
+This means `42` is a `Number`.
+
+note: 
+  --> when-mismatched-types.wipple:3:12
+  |
+3 |   False -> "hi"
+  |            ----
+
+`"hi"` is a string literal.
+
+This means `"hi"` is a `String`.
+
 error: 
   --> when-mismatched-types.wipple:1:7
   |  
@@ -80,3 +102,6 @@ error:
 
 `when True {⋯}` is a `String` or a `Number`, but it can only be one of these.
 
+`when True {⋯}` must be the same type as `42` and `"hi"`; double-check these.
+
+Help: use `--explain=full` to show more information

@@ -5,6 +5,7 @@ use crate::{
     render::{Comments, Render, RenderCtx},
 };
 use serde::{Deserialize, Serialize};
+use std::ops::{Deref, DerefMut};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Syntax(pub AstKey);
@@ -13,7 +14,7 @@ pub struct Syntax(pub AstKey);
 impl Fact for Syntax {}
 
 impl Render for Syntax {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
         ctx.string("at ");
         ctx.string(self.0.get(db).span(db).to_string());
     }
@@ -62,10 +63,30 @@ impl Fact for DebugInfo {}
 
 impl Render for DebugInfo {}
 
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Description(pub Vec<DescriptionEntry>);
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Description(pub Comments);
+pub struct DescriptionEntry {
+    pub comments: Comments,
+    pub is_primary: bool,
+}
 
 #[typetag::serde]
 impl Fact for Description {}
 
 impl Render for Description {}
+
+impl Deref for Description {
+    type Target = Vec<DescriptionEntry>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Description {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}

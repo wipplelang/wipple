@@ -4,6 +4,7 @@ digraph G {
   node_2_5 [label="1"]
   node_2_6 [label="\"hi\""]
   node_2_7 [label="()"]
+  node_2_8 [label="1, \"hi\", ()"]
   node_2_17 [label="my-list"]
   node_2_19 [label="each show"]
   node_2_21 [label="each show"]
@@ -11,6 +12,7 @@ digraph G {
   node_2_5 -> node_2_4 [label="element"]
   node_2_6 -> node_2_4 [label="element"]
   node_2_7 -> node_2_4 [label="element"]
+  node_2_7 -> node_2_8 [label="input"]
   node_2_17 -> node_2_19 [label="input"]
   node_2_21 -> node_2_19 [label="function"]
 }

@@ -29,7 +29,7 @@
         container?.scrollIntoView({ behavior: "smooth" });
     });
 
-    let explore = $state(false);
+    let explain = $state(false);
 
     const portal: Action = (node) => {
         $effect(() => {
@@ -62,14 +62,14 @@
         {/each}
 
         {#if diagnostic.traces.length > 0}
-            <ToolbarButton onclick={() => (explore = true)} class="mt-[10px] self-start">
-                Explore
+            <ToolbarButton onclick={() => (explain = true)} class="mt-[10px] self-start">
+                Explain
             </ToolbarButton>
         {/if}
     </Box>
 </div>
 
-{#if explore}
+{#if explain}
     <div
         use:portal
         class="fixed inset-0 flex h-screen w-screen items-center justify-center bg-black/10 p-[20px]"
@@ -78,9 +78,9 @@
         <div transition:fly={{ y: 50 }}>
             <Box class="flex max-h-screen w-[800px] flex-col gap-[14px] overflow-scroll p-[14px]">
                 <div class="flex h-(--toolbar-height) flex-1 flex-row justify-between gap-[10px]">
-                    <p class="text-xl font-semibold">Explore</p>
+                    <p class="text-xl font-semibold">Explain</p>
 
-                    <ToolbarButton prominent onclick={() => (explore = false)}>Done</ToolbarButton>
+                    <ToolbarButton prominent onclick={() => (explain = false)}>Done</ToolbarButton>
                 </div>
 
                 <DiagnosticView {diagnostic} />

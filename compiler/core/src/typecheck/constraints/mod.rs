@@ -6,9 +6,17 @@ pub mod ty_constraint;
 
 use crate::{
     db::{Db, Node},
-    render::{Render, RenderCtx},
-    typecheck::{bounds::Instance, instantiate::InstantiateCtx, solver::Solver, ty::ConstructedTy},
-    visit::definitions::{Defined, InstanceDefinition},
+    render::{ExplainOptions, Render, RenderCtx},
+    typecheck::{
+        bounds::Instance,
+        instantiate::InstantiateCtx,
+        solver::Solver,
+        ty::{ConstructedTy, Ty},
+    },
+    visit::{
+        Resolved,
+        definitions::{Defined, InstanceDefinition, VariableDefinition},
+    },
 };
 use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
@@ -52,61 +60,100 @@ impl dyn Constraint {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstraintConsequence {
-    Group(Node, Node, bool),
     Ty(Node, ConstructedTy, bool),
+    Group(Node, Node, bool),
     Instance(Instance, bool),
 }
 
 impl ConstraintConsequence {
+    pub fn sort_key(&self) -> impl Ord + use<> {
+        match self {
+            ConstraintConsequence::Ty(..) => 0,
+            ConstraintConsequence::Group(..) => 1,
+            ConstraintConsequence::Instance(..) => 2,
+        }
+    }
+
     pub fn relevant_nodes(&self) -> Vec<Node> {
         match self {
             ConstraintConsequence::Group(left, right, _) => vec![*left, *right],
             ConstraintConsequence::Ty(node, _, _) => vec![*node],
-            ConstraintConsequence::Instance(instance, _) => [instance.node]
-                .into_iter()
-                .chain(
-                    instance
-                        .parameters
-                        .iter()
-                        .flat_map(|(&node, ty)| [Some(node), ty.node()])
-                        .flatten(),
-                )
-                .collect(),
+            ConstraintConsequence::Instance(instance, _) => vec![instance.node],
+        }
+    }
+
+    fn requires_explain_full(&self, db: &Db) -> bool {
+        match *self {
+            ConstraintConsequence::Group(_, _, merged) => merged,
+            ConstraintConsequence::Ty(_, _, _) => false,
+            ConstraintConsequence::Instance(ref instance, resolved) => {
+                resolved
+                    && db
+                        .get(instance.node)
+                        .and_then(|Defined(definition)| {
+                            definition.downcast_ref::<InstanceDefinition>()
+                        })
+                        .is_none_or(|definition| !definition.error)
+            }
         }
     }
 }
 
 impl Render for ConstraintConsequence {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        match self {
-            ConstraintConsequence::Group(left, right, merged) if !*merged => {
-                ctx.string("This requires ");
-                ctx.node(*left);
-                ctx.string(" and ");
-                ctx.node(*right);
-                ctx.string(" to have the same type.");
-            }
-            // ConstraintConsequence::Ty(node, ty, merged) if !*merged => {
-            //     ctx.string("This means ");
-            //     ctx.node(*node);
-            //     ctx.string(" is a ");
-            //     ctx.ty(db, &Ty::Constructed(ty.clone()), true);
-            //     ctx.string(".");
-            // }
-            ConstraintConsequence::Instance(instance, resolved)
-                if !*resolved
-                    || db
-                        .get(instance.node)
-                        .and_then(|Defined(definition)| {
-                            definition.downcast_ref::<InstanceDefinition>()
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+        let should_render = match ctx.options.explain {
+            ExplainOptions::None => false,
+            ExplainOptions::Enabled => !self.requires_explain_full(db),
+            ExplainOptions::Full => true,
+        };
+
+        if !should_render {
+            return;
+        }
+
+        match *self {
+            ConstraintConsequence::Group(left, right, _) => {
+                if db.is_hidden(left) || db.is_hidden(right) {
+                    return;
+                }
+
+                let variable_definition = |node| {
+                    db.get(node)
+                        .map_or_default(|Resolved { definitions, .. }| definitions.iter().copied())
+                        .chain([node])
+                        .filter_map(|node| db.get::<Defined>(node))
+                        .find_map(|Defined(definition)| {
+                            definition.downcast_ref::<VariableDefinition>()
                         })
-                        .is_some_and(|definition| definition.error) =>
-            {
+                };
+
+                // Hide obvious consequences involving uses of the same variable
+                if variable_definition(left).is_some() && variable_definition(right).is_some() {
+                    return;
+                }
+
+                ctx.string("This means ");
+                ctx.node(left);
+                ctx.string(" has the same type as ");
+                ctx.node(right);
+                ctx.string(".");
+            }
+            ConstraintConsequence::Ty(node, ref ty, _) => {
+                if db.is_hidden(node) {
+                    return;
+                }
+
+                ctx.string("This means ");
+                ctx.node(node);
+                ctx.string(" is a ");
+                ctx.ty(db, &Ty::Constructed(ty.clone()), true);
+                ctx.string(".");
+            }
+            ConstraintConsequence::Instance(ref instance, _) => {
                 ctx.string("This requires ");
                 ctx.render(db, instance);
                 ctx.string(".");
             }
-            _ => {}
         }
     }
 }
@@ -167,23 +214,15 @@ impl Constraints {
     pub fn run(&mut self, db: &mut Db, solver: &mut Solver, kind: ConstraintKind) {
         let mut requeued_constraints = Vec::new();
         while let Some((node, constraint)) = self.0.get_mut(&kind).and_then(|c| c.pop_front()) {
-            if solver.trace {
-                solver.tracing_node = Some(node);
-            }
+            solver.tracing.push(node);
 
             match constraint.run(db, solver) {
                 RunResult::None => {}
-                RunResult::Insert(constraints) => {
-                    self.extend_front(constraints);
-                }
-                RunResult::Enqueue(constraints) => {
-                    requeued_constraints.extend(constraints);
-                }
+                RunResult::Insert(constraints) => self.extend_front(constraints),
+                RunResult::Enqueue(constraints) => requeued_constraints.extend(constraints),
             }
 
-            if solver.trace {
-                solver.tracing_node = None;
-            }
+            solver.tracing.pop().unwrap();
         }
 
         self.extend_back(requeued_constraints);

@@ -35,6 +35,7 @@ connection.onInitialize(async (params) => {
             completionProvider: {
                 resolveProvider: false,
             },
+            codeActionProvider: true,
         },
     };
 });
@@ -64,12 +65,14 @@ documents.onDidChangeContent(({ document }) => {
         uri: document.uri,
         diagnostics: ide.diagnostics(document.uri).map(
             (diagnostic): lsp.Diagnostic => ({
-                range: convertRange(diagnostic.range),
+                range: convertRange(diagnostic.primary.range),
                 message: capabilities.textDocument?.diagnostic?.markupMessageSupport
-                    ? { kind: "markdown", value: diagnostic.message }
-                    : diagnostic.message,
+                    ? { kind: "markdown", value: diagnostic.primary.message }
+                    : diagnostic.primary.message,
                 severity: lsp.DiagnosticSeverity.Information,
                 source: "wipple",
+                data: { diagnostic },
+                code: "Explain",
             }),
         ),
     });
@@ -123,22 +126,44 @@ connection.onHover((params) => {
     const state = documentStates.get(document);
     if (state == null) return;
 
+    let string = "";
+    let range: lsp.Range | undefined;
+
+    const diagnostics = state.ide.diagnostics(params.textDocument.uri);
+
+    const diagnosticIndex = diagnostics.findIndex(
+        (diagnostic) => diagnostic.primary.range.start.line === params.position.line + 1,
+    );
+
+    if (diagnosticIndex !== -1) {
+        const args = JSON.stringify([{ uri: params.textDocument.uri, index: diagnosticIndex }]);
+        const diagnosticUrl = `command:wipple.explainDiagnostic?${encodeURIComponent(args)}`;
+        string += `**[Explain Error](${diagnosticUrl})**\n\n---\n\n`;
+        range ??= convertRange(diagnostics[diagnosticIndex].primary.range);
+    }
+
     const hover = state.ide.hover(
         params.textDocument.uri,
         params.position.line + 1,
         params.position.character + 1,
     );
 
-    if (hover == null) return;
+    if (hover != null) {
+        string += hover.contents
+            .map((item) => (item.is_code ? "```wipple\n" + item.value + "\n```" : item.value))
+            .join("\n\n");
+
+        range ??= convertRange(hover.range);
+    }
+
+    if (range == null) return;
 
     return {
         contents: {
             kind: "markdown",
-            value: hover.contents
-                .map((item) => (item.is_code ? "```wipple\n" + item.value + "\n```" : item.value))
-                .join("\n\n"),
+            value: string,
         },
-        range: convertRange(hover.range),
+        range,
     };
 });
 
@@ -241,6 +266,48 @@ connection.onCompletion((params) => {
                 documentation: comments != null ? { kind: "markdown", value: comments } : undefined,
             };
         });
+});
+
+connection.onCodeAction((params) => {
+    const document = documents.get(params.textDocument.uri);
+    if (document == null || document.languageId !== "wipple") return;
+
+    const state = documentStates.get(document);
+    if (state == null) return;
+
+    return [
+        {
+            title: "Explain",
+            command: "wipple.explain",
+            arguments: [
+                {
+                    uri: params.textDocument.uri,
+                    line: params.range.start.line + 1,
+                    column: params.range.start.character + 1,
+                },
+            ],
+        },
+    ];
+});
+
+connection.onRequest("wipple/getDiagnostic", (params) => {
+    const document = documents.get(params.uri);
+    if (document == null || document.languageId !== "wipple") return null;
+
+    const state = documentStates.get(document);
+    if (state == null) return null;
+
+    return state.ide.diagnostics(params.uri)[params.index] ?? null;
+});
+
+connection.onRequest("wipple/getTrace", (params) => {
+    const document = documents.get(params.uri);
+    if (document == null || document.languageId !== "wipple") return null;
+
+    const state = documentStates.get(document);
+    if (state == null) return null;
+
+    return state.ide.trace(params.uri, params.line, params.column);
 });
 
 const convertRange = (range: wipple.IdeRange): lsp.Range => ({

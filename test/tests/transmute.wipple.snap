@@ -66,3 +66,4 @@ error:
 
 `a` must be the same type as `b`, `x`, and `x`; double-check these.
 
+Help: use `--explain=full` to show more information

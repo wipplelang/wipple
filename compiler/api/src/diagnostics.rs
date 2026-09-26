@@ -8,7 +8,7 @@ use wipple_core::{
     db::Node,
     default_filter,
     facts::Syntax,
-    render::{RenderMarkdownOptions, RenderSegment},
+    render::{ExplainOptions, RenderMarkdownOptions, RenderOptions, RenderSegment},
     typecheck::{
         groups::{Group, Typed, update_type},
         instantiate::Instantiated,
@@ -135,6 +135,11 @@ impl CompileResult {
     pub fn diagnostics(&self) -> Option<Vec<Diagnostic>> {
         let filter = default_filter;
 
+        let render_options = RenderOptions {
+            explain: ExplainOptions::Enabled,
+            ..Default::default()
+        };
+
         let items = collect_feedback(&self.db, filter, |item| {
             filter(&self.db, item.location.primary)
         });
@@ -151,7 +156,7 @@ impl CompileResult {
                 let mut mask = BTreeSet::from([item.location.primary]);
                 mask.extend(item.location.secondary.iter().copied());
 
-                let feedback = item.display(&self.db, |db, segment| {
+                let feedback = item.display(&self.db, render_options.clone(), |db, segment| {
                     let (label, node) = match segment {
                         RenderSegment::Node(node) => (segment.plain_text(db), *node),
                         RenderSegment::Link(label, node) => (label.clone(), *node),
@@ -191,10 +196,14 @@ impl CompileResult {
                     traces: feedback
                         .traces
                         .into_iter()
-                        .filter_map(|(node, message, consequences)| {
+                        .filter_map(|trace| {
+                            if !trace.is_primary {
+                                return None; // TODO: Support `ExplainOptions::Full` here
+                            }
+
                             let span = self
                                 .db
-                                .get(node)
+                                .get(trace.node)
                                 .map(|Syntax(syntax)| syntax.get(&self.db).span(&self.db))?;
 
                             let location = DiagnosticLocation {
@@ -205,8 +214,8 @@ impl CompileResult {
 
                             Some(DiagnosticTrace {
                                 location,
-                                message,
-                                consequences,
+                                message: trace.message,
+                                consequences: trace.consequences,
                             })
                         })
                         .collect(),

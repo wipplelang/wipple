@@ -14,8 +14,8 @@ const cmd = spawnSync(
         "--",
         "test",
         "--lib=library/src/foundation",
-        "--facts",
         "--explain",
+        "--facts",
         ...tests.map((file) => path.join(testsPath, file)),
     ],
     {

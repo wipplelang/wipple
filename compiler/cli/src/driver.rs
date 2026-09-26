@@ -13,7 +13,7 @@ use wipple_core::{
     db::{Db, Node},
     default_filter,
     facts::Syntax,
-    render::RenderMarkdownOptions,
+    render::{ExplainOptions, RenderMarkdownOptions, RenderOptions},
     span::Span,
 };
 use wipple_feedback::collect_feedback;
@@ -27,7 +27,7 @@ pub struct Driver<'a, Out> {
     pub prefix: &'static str,
     pub progress: Option<(usize, usize)>,
     pub hide_facts: bool,
-    pub render_options: RenderMarkdownOptions,
+    pub markdown_options: RenderMarkdownOptions,
 }
 
 impl<'a, Out: io::Write> Driver<'a, Out> {
@@ -40,7 +40,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             prefix: "",
             progress: None,
             hide_facts: false,
-            render_options: Default::default(),
+            markdown_options: Default::default(),
         }
     }
 
@@ -65,6 +65,15 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             eprintln!();
         }
 
+        let render_options = RenderOptions {
+            explain: match self.compile_options.explain {
+                Some(crate::ExplainOptions::Enabled) => ExplainOptions::Enabled,
+                Some(crate::ExplainOptions::Full) => ExplainOptions::Full,
+                None => ExplainOptions::None,
+            },
+            ..Default::default()
+        };
+
         let mut seen_feedback = BTreeMap::<Node, HashSet<String>>::new();
         let feedback_items = collect_feedback(db, default_filter, |item| {
             default_filter(db, item.location.primary)
@@ -81,8 +90,9 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
                 .get(item.location.primary)
                 .map(|Syntax(key)| key.get(db).span(db))?;
 
-            let feedback =
-                item.display(db, |db, segment| segment.markdown(db, self.render_options));
+            let feedback = item.display(db, render_options.clone(), |db, segment| {
+                segment.markdown(db, self.markdown_options)
+            });
 
             Some((span, feedback))
         })
@@ -116,7 +126,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             };
 
             writeln!(self.out, "Facts (layer {}):\n", db.layer())?;
-            writeln!(self.out, "{}", db.debug(filter, self.render_options))?;
+            writeln!(self.out, "{}", db.debug(filter, self.markdown_options))?;
         }
 
         if self.compile_options.graph && !self.hide_facts {
@@ -146,7 +156,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             ..Default::default()
         };
 
-        let mut f: Box<dyn codespan_reporting::term::WriteStyle> = if self.render_options.color {
+        let mut f: Box<dyn codespan_reporting::term::WriteStyle> = if self.markdown_options.color {
             Box::new(codespan_reporting::term::termcolor::Ansi::new(
                 &mut self.out,
             ))
@@ -218,19 +228,27 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
                 Ok(())
             };
 
-            if self.compile_options.explain {
-                for (node, trace, consequences) in feedback.traces.into_iter().rev() {
-                    let Some(span) = db.get(node).map(|Syntax(key)| key.get(db).span(db)) else {
-                        continue;
-                    };
+            for trace in feedback.traces {
+                let should_display = match self.compile_options.explain {
+                    Some(crate::ExplainOptions::Enabled) => trace.is_primary,
+                    Some(crate::ExplainOptions::Full) => true,
+                    None => false,
+                };
 
-                    let mut message = trace;
-                    for consequence in consequences {
-                        write!(message, " {consequence}")?;
-                    }
-
-                    emit_label(span, &message, false)?;
+                if !should_display {
+                    continue;
                 }
+
+                let Some(span) = db.get(trace.node).map(|Syntax(key)| key.get(db).span(db)) else {
+                    continue;
+                };
+
+                let mut message = trace.message;
+                for consequence in trace.consequences {
+                    write!(message, "\n\n{consequence}")?;
+                }
+
+                emit_label(span, &message, false)?;
             }
 
             emit_label(span, &feedback.message, true)?;
@@ -238,12 +256,21 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             feedback_count += 1;
         }
 
-        if feedback_count > 0 && !self.compile_options.explain {
-            writeln!(
-                f,
-                "{} use `--explain` to show more information",
-                "Help:".bold()
-            )?;
+        if feedback_count > 0 {
+            let flag = match self.compile_options.explain {
+                None => Some("--explain"),
+                Some(crate::ExplainOptions::Enabled) => Some("--explain=full"),
+                Some(crate::ExplainOptions::Full) => None,
+            };
+
+            if let Some(flag) = flag {
+                writeln!(
+                    f,
+                    "{} use `{}` to show more information",
+                    "Help:".bold(),
+                    flag
+                )?;
+            }
         }
 
         Ok((feedback_count == 0).then_some((root_node, source_files, statements)))

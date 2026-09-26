@@ -41,6 +41,7 @@ impl Visit for UnitExpression {
             db,
             TyConstraint::new(node, Ty::Constructed(ConstructedTy::unit())),
         );
+
         visitor.codegen(db, node, UnitExpressionCodegen { node });
     }
 }

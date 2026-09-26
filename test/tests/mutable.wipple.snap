@@ -2,7 +2,7 @@ Facts (layer 2):
 
 `x` (VariablePattern):
   at mutable.wipple:1:1-1:2
-  grouped with `1`, `1`, `x`, `set x`, `x`
+  grouped with `1`, `1`, `x`, `x`, `x`
   has type `Number`
   is a definition
   is a pattern
@@ -18,16 +18,16 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`set x` (SetPattern):
-  at mutable.wipple:2:1-2:6
+`set x : x + 1` (AssignmentStatement):
+  at mutable.wipple:2:1-2:14
+  has type `()`
+
+`x` (SetPattern):
+  at mutable.wipple:2:5-2:6
   grouped with `x + 1`, `x`, `x + 1`
   has type `Number`
   is a pattern
   resolved to 1 definition(s): `x`
-
-`set x : x + 1` (AssignmentStatement):
-  at mutable.wipple:2:1-2:14
-  has type `()`
 
 `x` (VariableExpression):
   at mutable.wipple:2:9-2:10
@@ -38,7 +38,7 @@ Facts (layer 2):
 
 `x + 1` (OperatorExpression):
   at mutable.wipple:2:9-2:14
-  grouped with `x + 1`, `set x`, `set x`
+  grouped with `x + 1`, `x`, `x`
   has type `Number`
   is an expression
 

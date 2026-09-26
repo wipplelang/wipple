@@ -5,8 +5,10 @@ use wipple_core::{
     anyhow,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::DebugInfo,
+    facts::{DebugInfo, Description, DescriptionEntry},
+    render::Comments,
     span::{Span, Str},
+    util::Link,
     visit::{
         IsMutated, Visit, Visitor, definitions::VariableDefinition,
         exhaustiveness::MatchPathSegment,
@@ -58,6 +60,21 @@ impl Visit for VariablePattern {
         );
 
         visitor.codegen(db, node, VariablePatternCodegen { node });
+
+        if value != node {
+            db.get_mut_or_default::<Description>(node)
+                .push(DescriptionEntry {
+                    comments: Comments::builtin(
+                        node,
+                        "[`variable`] has a value of [`value`].",
+                        [
+                            ("variable", Some(Link::node(node))),
+                            ("value", Some(Link::node(value))),
+                        ],
+                    ),
+                    is_primary: false,
+                });
+        }
     }
 }
 

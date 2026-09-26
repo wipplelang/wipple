@@ -13,37 +13,43 @@ Facts (layer 2):
 
 `"C"` (VisitAs):
   at infer.wipple:1:13-1:16
-  grouped with `"C"`, `element`
+  grouped with `"C"`, `element`, `"Python"`, `"Java"`, `"JavaScript"`, `"Wipple"`
   has type `String`
   is an expression
 
 `"C", "Python", "Java", "JavaScript", "Wipple"` (CollectionExpression):
   at infer.wipple:1:13-1:58
-  grouped with `"Wipple"`, `languages`, `languages`
+  grouped with `"C", "Python", "Java", "JavaScript", "Wipple"`, `languages`, `languages`
+  has type `List String`
+  is an expression
+
+`"C", "Python", "Java", "JavaScript", "Wipple"` (Hidden):
+  at infer.wipple:1:13-1:58
+  grouped with `collection`, `"C", "Python", "Java", "JavaScript", "Wipple"`
   has type `List String`
   is an expression
 
 `"Python"` (VisitAs):
   at infer.wipple:1:18-1:26
-  grouped with `"Python"`, `element`
+  grouped with `"Python"`, `element`, `"C"`
   has type `String`
   is an expression
 
 `"Java"` (VisitAs):
   at infer.wipple:1:28-1:34
-  grouped with `"Java"`, `element`
+  grouped with `"Java"`, `element`, `"C"`
   has type `String`
   is an expression
 
 `"JavaScript"` (VisitAs):
   at infer.wipple:1:36-1:48
-  grouped with `"JavaScript"`, `element`
+  grouped with `"JavaScript"`, `element`, `"C"`
   has type `String`
   is an expression
 
 `"Wipple"` (VisitAs):
   at infer.wipple:1:50-1:58
-  grouped with `"Wipple"`, `element`
+  grouped with `"Wipple"`, `element`, `"C"`
   has type `String`
   is an expression
 

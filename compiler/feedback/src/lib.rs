@@ -83,7 +83,7 @@ struct FeedbackBuilder<'ctx, 'a, T: 'a> {
     query: Option<Box<dyn Fn(&QueryCtx<'a>, Node) -> Box<dyn Iterator<Item = T> + 'a>>>,
     rank: Option<fn(&T) -> FeedbackRank>,
     location: Option<fn(Node, &T) -> FeedbackLocation>,
-    display: Option<fn(&Db, &mut FeedbackWriter<'_>, Node, &T)>,
+    display: Option<fn(&Db, &mut FeedbackWriter, Node, &T)>,
     show_graph: bool,
 }
 
@@ -106,7 +106,7 @@ impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
         self
     }
 
-    fn display(mut self, display: fn(&Db, &mut FeedbackWriter<'_>, Node, &T)) -> Self {
+    fn display(mut self, display: fn(&Db, &mut FeedbackWriter, Node, &T)) -> Self {
         self.display = Some(display);
         self
     }
@@ -131,7 +131,6 @@ impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
 
             Box::new({
                 let id = id.clone();
-                let filter = filter.clone();
                 items.map(move |item| FeedbackItem {
                     id: id.clone(),
                     rank: rank(&item),
@@ -139,13 +138,10 @@ impl<'a, T: 'a> FeedbackBuilder<'_, 'a, T> {
                         Some(f) => f(node, &item),
                         None => FeedbackLocation::from(node),
                     },
-                    display: Box::new({
-                        let filter = filter.clone();
-                        move |db, render_segment| {
-                            let mut writer = FeedbackWriter::new(filter.as_ref(), Vec::new());
-                            display(db, &mut writer, node, &item);
-                            writer.finish(db, render_segment)
-                        }
+                    display: Box::new(move |db, render_options, render_segment| {
+                        let mut writer = FeedbackWriter::with_options(render_options);
+                        display(db, &mut writer, node, &item);
+                        writer.finish(db, render_segment)
                     }),
                     show_graph,
                 })

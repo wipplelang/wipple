@@ -111,7 +111,7 @@ Facts (layer 2):
 
 `seen` (VariablePattern):
   at remove-duplicates.wipple:3:3-3:7
-  grouped with `,`, `,`, `seen`, `seen`, `set seen`
+  grouped with `,`, `,`, `seen`, `seen`, `seen`
   has type `Set element`
   is a definition
   is a pattern
@@ -126,6 +126,14 @@ Facts (layer 2):
   grouped with `,`, `seen`, `seen`
   has type `Set element`
   is an expression
+
+`,` (Hidden):
+  at remove-duplicates.wipple:3:11-3:12
+  grouped with `collection`, `,`
+  has bound(s) `Initial-Collection` `(Set element)` `element` (resolved as `instance (Initial-Collection collection element) where (Build-Collection collection element) (Initial collection) (collection :: List element)`), `Build-Collection` `(Set element)` `element` (resolved as `instance (Build-Collection (Set element) element) where (Equal element) (Hash element)`), `Equal` `element` (resolved as `(Equal element)`), `Hash` `element` (resolved as `(Hash element)`), `Initial` `(Set element)` (resolved as `instance (Initial (Set element))`)
+  has type `Set element`
+  is an expression
+  resolved to 1 definition(s): `Initial-Collection`
 
 `filter` (VariableExpression):
   at remove-duplicates.wipple:4:3-4:9
@@ -258,16 +266,16 @@ Facts (layer 2):
   has type `{Boolean}`
   is an expression
 
-`set seen` (SetPattern):
-  at remove-duplicates.wipple:5:5-5:13
+`set seen : seen . insert item` (AssignmentStatement):
+  at remove-duplicates.wipple:5:5-5:34
+  has type `()`
+
+`seen` (SetPattern):
+  at remove-duplicates.wipple:5:9-5:13
   grouped with `seen . insert item`, `seen`, `seen . insert item`
   has type `Set element`
   is a pattern
   resolved to 1 definition(s): `seen`
-
-`set seen : seen . insert item` (AssignmentStatement):
-  at remove-duplicates.wipple:5:5-5:34
-  has type `()`
 
 `seen` (VisitAs):
   at remove-duplicates.wipple:5:16-5:20
@@ -278,7 +286,7 @@ Facts (layer 2):
 
 `seen . insert item` (OperatorExpression):
   at remove-duplicates.wipple:5:16-5:34
-  grouped with `insert item`, `set seen`, `set seen`
+  grouped with `insert item`, `seen`, `seen`
   has type `Set element`
   is an expression
 
@@ -334,79 +342,85 @@ Facts (layer 2):
 
 `5` (VisitAs):
   at remove-duplicates.wipple:10:11-10:12
-  grouped with `5`, `element`
+  grouped with `5`, `element`, `5`, `4`, `3`, `3`, `3`, `2`, `1`, `2`, `3`, `4`, `5`
   has type `Number`
   is an expression
 
 `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (CollectionExpression):
   at remove-duplicates.wipple:10:11-10:45
-  grouped with `5`, `numbers`, `numbers`
+  grouped with `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5`, `numbers`, `numbers`
+  has type `List Number`
+  is an expression
+
+`5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5` (Hidden):
+  at remove-duplicates.wipple:10:11-10:45
+  grouped with `collection`, `5, 5, 4, 3, 3, 3, 2, 1, 2, 3, 4, 5`
   has type `List Number`
   is an expression
 
 `5` (VisitAs):
   at remove-duplicates.wipple:10:14-10:15
-  grouped with `5`, `element`
+  grouped with `5`, `element`, `5`
   has type `Number`
   is an expression
 
 `4` (VisitAs):
   at remove-duplicates.wipple:10:17-10:18
-  grouped with `4`, `element`
+  grouped with `4`, `element`, `5`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
   at remove-duplicates.wipple:10:20-10:21
-  grouped with `3`, `element`
+  grouped with `3`, `element`, `5`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
   at remove-duplicates.wipple:10:23-10:24
-  grouped with `3`, `element`
+  grouped with `3`, `element`, `5`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
   at remove-duplicates.wipple:10:26-10:27
-  grouped with `3`, `element`
+  grouped with `3`, `element`, `5`
   has type `Number`
   is an expression
 
 `2` (VisitAs):
   at remove-duplicates.wipple:10:29-10:30
-  grouped with `2`, `element`
+  grouped with `2`, `element`, `5`
   has type `Number`
   is an expression
 
 `1` (VisitAs):
   at remove-duplicates.wipple:10:32-10:33
-  grouped with `1`, `element`
+  grouped with `1`, `element`, `5`
   has type `Number`
   is an expression
 
 `2` (VisitAs):
   at remove-duplicates.wipple:10:35-10:36
-  grouped with `2`, `element`
+  grouped with `2`, `element`, `5`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
   at remove-duplicates.wipple:10:38-10:39
-  grouped with `3`, `element`
+  grouped with `3`, `element`, `5`
   has type `Number`
   is an expression
 
 `4` (VisitAs):
   at remove-duplicates.wipple:10:41-10:42
-  grouped with `4`, `element`
+  grouped with `4`, `element`, `5`
   has type `Number`
   is an expression
 
 `5` (VisitAs):
   at remove-duplicates.wipple:10:44-10:45
-  grouped with `5`, `element`
+  grouped with `5`, `element`, `5`
   has type `Number`
   is an expression
 

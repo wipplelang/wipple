@@ -1,48 +1,43 @@
 use std::{
-    collections::{BTreeMap, BTreeSet},
+    collections::BTreeSet,
     ops::{Deref, DerefMut},
 };
 use wipple_core::{
     db::{Db, Node},
-    facts::Description,
-    render::{Comments, Render, RenderCtx, RenderSegment},
-    typecheck::{
-        constraints::ConstraintConsequence, instantiate::InstantiatedTypes,
-        solver::DirectlyGroupedWith,
-    },
-    util::get_links,
-    visit::{Resolved, definitions::Defined},
+    render::{Render, RenderCtx, RenderOptions, RenderSegment},
 };
+use wipple_queries::Trace;
 
-pub struct FeedbackWriter<'a> {
-    ctx: RenderCtx<'a>,
-    traces: Vec<(Node, RenderCtx<'a>, Vec<RenderCtx<'a>>)>,
+#[derive(Debug, Default)]
+pub struct FeedbackWriter {
+    ctx: RenderCtx,
+    traces: Vec<FeedbackWriterTrace>,
 }
 
-impl<'a> FeedbackWriter<'a> {
-    pub fn new(filter: &'a dyn Fn(&Db, Node) -> bool, relevant: Vec<Node>) -> Self {
+impl FeedbackWriter {
+    pub fn with_options(options: RenderOptions) -> Self {
         FeedbackWriter {
-            ctx: RenderCtx::new(filter, relevant),
+            ctx: RenderCtx::with_options(options),
             traces: Default::default(),
         }
     }
 }
 
-impl<'a> Deref for FeedbackWriter<'a> {
-    type Target = RenderCtx<'a>;
+impl Deref for FeedbackWriter {
+    type Target = RenderCtx;
 
     fn deref(&self) -> &Self::Target {
         &self.ctx
     }
 }
 
-impl<'a> DerefMut for FeedbackWriter<'a> {
+impl DerefMut for FeedbackWriter {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.ctx
     }
 }
 
-impl FeedbackWriter<'_> {
+impl FeedbackWriter {
     pub fn singular_plural(&mut self, n: usize, singular: &str, plural: &str) {
         if n == 1 {
             self.ctx.string(format!("{n} {singular}"));
@@ -61,142 +56,46 @@ impl FeedbackWriter<'_> {
 
         self.ctx.string(format!("{n}{suffix}"));
     }
+}
 
-    pub fn trace(&mut self, db: &Db, node: Node) {
-        #[derive(Debug)]
-        struct TraceTree<'a> {
-            trace: Option<&'a BTreeMap<Node, Vec<ConstraintConsequence>>>,
-            comments: Option<Comments>,
-            relevant: Vec<Node>,
-            children: BTreeMap<Node, TraceTree<'a>>,
-        }
+#[derive(Debug)]
+struct FeedbackWriterTrace {
+    node: Node,
+    is_primary: bool,
+    level: usize,
+    node_ctx: RenderCtx,
+    consequence_ctxs: Vec<RenderCtx>,
+}
 
-        fn collect_traces<'a>(
-            db: &'a Db,
-            node: Node,
-            seen: &mut BTreeSet<Node>,
-        ) -> Option<TraceTree<'a>> {
-            if !seen.insert(node) {
-                return None;
+impl FeedbackWriter {
+    pub fn extend_trace(&mut self, db: &Db, trace: &Trace) {
+        for entry in &trace.0 {
+            let mut node_ctx = RenderCtx::with_options(self.options.clone());
+            node_ctx.with_relevant(&entry.relevant, |ctx| {
+                ctx.comments(db, &entry.comments);
+            });
+
+            if node_ctx.is_empty() {
+                continue;
             }
 
-            // Hide instances/anonymous definitions in traces
-            if db
-                .get(node)
-                .is_some_and(|Defined(definition)| definition.name().is_none())
-            {
-                return None;
-            }
-
-            let trace = db.traces.get(&node);
-
-            let mut relevant = Vec::new();
-
-            let instantiated_nodes = db
-                .get(node)
-                .map(|InstantiatedTypes(instantiated)| instantiated.values().copied())
-                .unwrap_or_default();
-
-            relevant.extend(instantiated_nodes);
-
-            let comments = db
-                .get(node)
-                .and_then(|Resolved { definitions, .. }| definitions.first().copied())
-                .and_then(|definition_node| {
-                    relevant.insert(0, definition_node);
-
-                    let Defined(definition) = db.get(definition_node)?;
-
-                    if definition.comments().is_empty() {
-                        return None;
-                    }
-
-                    let links = get_links(db, definition_node, node);
-
-                    for link in links.values() {
-                        relevant.push(link.node);
-                        relevant.extend(link.related.iter().copied());
-                    }
-
-                    Some(Comments {
-                        definition: node,
-                        comments: definition.comments().to_vec(),
-                        links: links.clone(),
-                    })
-                })
-                .or_else(|| db.get(node).map(|Description(comments)| comments.clone()));
-
-            if let Some(trace) = trace {
-                relevant.extend(trace.keys().copied());
-            }
-
-            // Don't traverse into other definitions
-            if db.get::<Defined>(node).is_none()
-                && let Some(DirectlyGroupedWith(nodes)) = db.get(node)
-            {
-                relevant.extend(nodes);
-            }
-
-            let children = relevant
+            let consequence_ctxs = entry
+                .consequences
                 .iter()
-                .filter_map(|&child| Some((child, collect_traces(db, child, seen)?)))
-                .collect::<BTreeMap<_, _>>();
+                .filter_map(|consequence| {
+                    let mut ctx = RenderCtx::with_options(self.options.clone());
+                    ctx.with_relevant(&entry.relevant, |ctx| consequence.render_into(db, ctx));
+                    (!ctx.is_empty()).then_some(ctx)
+                })
+                .collect::<Vec<_>>();
 
-            Some(TraceTree {
-                trace,
-                comments,
-                relevant,
-                children,
-            })
-        }
-
-        fn traverse_traces(
-            writer: &mut FeedbackWriter<'_>,
-            db: &Db,
-            node: Node,
-            tree: &TraceTree<'_>,
-        ) {
-            let mut node_ctx = RenderCtx::new(writer.ctx.filter, writer.ctx.relevant.clone());
-            node_ctx.with_relevant(&tree.relevant, |ctx| {
-                if let Some(comments) = &tree.comments {
-                    ctx.comments(db, comments);
-                }
+            self.traces.push(FeedbackWriterTrace {
+                node: entry.comments.node,
+                is_primary: entry.is_primary,
+                level: entry.level,
+                node_ctx,
+                consequence_ctxs,
             });
-
-            let node_ctx = (!node_ctx.is_empty()).then_some(node_ctx);
-
-            let consequence_ctxs = tree.trace.map_or_default(|trace| {
-                trace
-                    .values()
-                    .flatten()
-                    .filter_map(|consequence| {
-                        let mut ctx =
-                            RenderCtx::new(writer.ctx.filter, writer.ctx.relevant.clone());
-                        ctx.with_relevant(&tree.relevant, |ctx| consequence.render_into(db, ctx));
-                        (!ctx.is_empty()).then_some(ctx)
-                    })
-                    .collect::<Vec<_>>()
-            });
-
-            if let Some(node_ctx) = node_ctx {
-                let source_node = tree
-                    .comments
-                    .as_ref()
-                    .map_or(node, |comments| comments.definition);
-
-                writer
-                    .traces
-                    .push((source_node, node_ctx, consequence_ctxs));
-            }
-
-            for (&node, tree) in &tree.children {
-                traverse_traces(writer, db, node, tree);
-            }
-        }
-
-        if let Some(tree) = collect_traces(db, node, &mut BTreeSet::new()) {
-            // TODO: Preserve tree structure instead of flattening here?
-            traverse_traces(self, db, node, &tree);
         }
     }
 }
@@ -204,11 +103,20 @@ impl FeedbackWriter<'_> {
 #[derive(Debug, Clone)]
 pub struct Feedback {
     pub message: String,
-    pub traces: Vec<(Node, String, Vec<String>)>,
+    pub traces: Vec<FeedbackTrace>,
     pub nodes: BTreeSet<Node>,
 }
 
-impl FeedbackWriter<'_> {
+#[derive(Debug, Clone)]
+pub struct FeedbackTrace {
+    pub node: Node,
+    pub is_primary: bool,
+    pub message: String,
+    pub consequences: Vec<String>,
+    pub level: usize,
+}
+
+impl FeedbackWriter {
     pub fn finish(
         self,
         db: &Db,
@@ -219,11 +127,12 @@ impl FeedbackWriter<'_> {
         let traces = self
             .traces
             .into_iter()
-            .map(|(node, node_ctx, consequence_ctxs)| {
-                let (message, trace_nodes) = node_ctx.finish(db, &mut render_segment);
+            .map(|trace| {
+                let (message, trace_nodes) = trace.node_ctx.finish(db, &mut render_segment);
                 nodes.extend(trace_nodes);
 
-                let consequences = consequence_ctxs
+                let consequences = trace
+                    .consequence_ctxs
                     .into_iter()
                     .map(|ctx| {
                         let (message, trace_nodes) = ctx.finish(db, &mut render_segment);
@@ -232,7 +141,13 @@ impl FeedbackWriter<'_> {
                     })
                     .collect::<Vec<_>>();
 
-                (node, message, consequences)
+                FeedbackTrace {
+                    node: trace.node,
+                    is_primary: trace.is_primary,
+                    message,
+                    consequences,
+                    level: trace.level,
+                }
             })
             .collect::<Vec<_>>();
 

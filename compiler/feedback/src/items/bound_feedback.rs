@@ -6,7 +6,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
     ctx.feedback("unresolved-bound")
         .query(unresolved_bounds)
         .rank(|_| FeedbackRank::Bounds)
-        .display(|db, writer, node, bound| {
+        .display(|db, writer, node, (bound, trace)| {
             writer.node(node);
             writer.string(" requires the instance ");
             writer.render(db, *bound);
@@ -14,7 +14,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             writer.line_break();
             writer.string("Double-check that these types are correct.");
 
-            writer.trace(db, node);
+            writer.extend_trace(db, trace);
         })
         .register();
 
@@ -31,7 +31,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             let mut secondary = BTreeSet::new();
 
             for link in error.comments.links.values() {
-                secondary.insert(link.node);
+                secondary.extend(link.nodes());
                 secondary.extend(&link.related);
             }
 
@@ -41,9 +41,9 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             }
         })
         .show_graph()
-        .display(|db, writer, node, error| {
+        .display(|db, writer, _, error| {
             writer.comments(db, &error.comments);
-            writer.trace(db, node);
+            writer.extend_trace(db, &error.trace);
         })
         .register();
 }

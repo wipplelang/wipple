@@ -4,8 +4,10 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     codegen::{CodegenError, hir},
     db::{Db, Node},
+    facts::{Description, DescriptionEntry},
+    render::Comments,
     span::{Span, Str},
-    typecheck::groups::NodeRank,
+    util::Link,
     visit::{Visit, Visitor},
 };
 use wipple_parse::{
@@ -52,8 +54,6 @@ impl Visit for NumberExpression {
             visitor.visit_as(db, &syntax, number_type);
         });
 
-        visitor.rank(node, NodeRank::Literal);
-
         visitor.codegen(
             db,
             node,
@@ -62,6 +62,16 @@ impl Visit for NumberExpression {
                 value: self.value.clone(),
             },
         );
+
+        db.get_mut_or_default::<Description>(node)
+            .push(DescriptionEntry {
+                comments: Comments::builtin(
+                    node,
+                    "[`number`] is a number literal.",
+                    [("number", Some(Link::node(node)))],
+                ),
+                is_primary: true,
+            });
     }
 }
 

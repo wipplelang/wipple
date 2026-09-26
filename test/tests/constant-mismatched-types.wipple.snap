@@ -36,3 +36,4 @@ error:
 
 `x` must be the same type as `Number` and `"42"`; double-check these.
 
+Help: use `--explain=full` to show more information

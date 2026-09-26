@@ -76,8 +76,8 @@ impl Ty {
         }
     }
 
-    pub fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>, root: bool) {
-        let description = self.display(db, root, &ctx.relevant);
+    pub fn render_into(&self, db: &Db, ctx: &mut RenderCtx, root: bool) {
+        let description = self.display(db, root, &ctx.options.relevant);
 
         let node = match self {
             Ty::Node(node) => Some(*node),
@@ -93,7 +93,7 @@ impl Ty {
 }
 
 impl Render for Ty {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
         self.render_into(db, ctx, true);
     }
 }

@@ -100,12 +100,24 @@ note:
 `1 + 2` adds `1` and `2` together, returning a `Number`.
 
 note: 
-  --> mismatched-call.wipple:1:1
+  --> mismatched-call.wipple:6:15
   |
-1 | accepts-text :: String -> ()
-  | ------------
+6 | accepts-text (1 + 2)
+  |               -
 
-`accepts-text` is defined as a `String -> ()`.
+`1` is a number literal.
+
+This means `1` is a `Number`.
+
+note: 
+  --> mismatched-call.wipple:6:19
+  |
+6 | accepts-text (1 + 2)
+  |                   -
+
+`2` is a number literal.
+
+This means `2` is a `Number`.
 
 error: 
   --> mismatched-call.wipple:6:15
@@ -115,3 +127,4 @@ error:
 
 `1 + 2` is a `String` or a `Number`, but it can only be one of these.
 
+Help: use `--explain=full` to show more information

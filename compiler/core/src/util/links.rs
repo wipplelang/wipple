@@ -9,26 +9,64 @@ use crate::{
     visit::{TypeParameters, definitions::Defined},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    slice,
+};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Link {
-    pub node: Node,
-    pub force_type: bool,
+    pub kind: LinkKind,
     pub related: Vec<Node>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum LinkKind {
+    Node(Node),
+    Type(Node),
+    List { nodes: Vec<Node>, separator: String },
+}
+
 impl Link {
-    pub fn for_node(node: Node) -> Self {
+    pub fn node(node: Node) -> Self {
         Link {
-            node,
-            force_type: false,
+            kind: LinkKind::Node(node),
             related: Vec::new(),
+        }
+    }
+
+    pub fn ty(node: Node) -> Self {
+        Link {
+            kind: LinkKind::Type(node),
+            related: Vec::new(),
+        }
+    }
+
+    pub fn list(separator: impl ToString, nodes: impl IntoIterator<Item = Node>) -> Self {
+        Link {
+            kind: LinkKind::List {
+                nodes: Vec::from_iter(nodes),
+                separator: separator.to_string(),
+            },
+            related: Vec::new(),
+        }
+    }
+
+    pub fn nodes(&self) -> &[Node] {
+        match &self.kind {
+            LinkKind::Node(node) => slice::from_ref(node),
+            LinkKind::Type(node) => slice::from_ref(node),
+            LinkKind::List { nodes, .. } => nodes.as_slice(),
         }
     }
 }
 
-pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<Str, Link> {
+pub fn get_links(
+    db: &Db,
+    definition_node: Node,
+    source_node: Node,
+    mut filter: impl FnMut(&Db, Node) -> bool,
+) -> BTreeMap<Str, Link> {
     let mut links = BTreeMap::new();
 
     let Some(Defined(definition)) = db.get(definition_node) else {
@@ -38,15 +76,7 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
     let mut nodes = Vec::new();
 
     if let Some(name) = definition.name() {
-        links.insert(
-            name.clone(),
-            Link {
-                node: source_node,
-                force_type: false,
-                related: Vec::new(),
-            },
-        );
-
+        links.insert(name.clone(), Link::node(source_node));
         nodes.push((name.clone(), source_node));
     }
 
@@ -68,14 +98,19 @@ pub fn get_links(db: &Db, definition_node: Node, source_node: Node) -> BTreeMap<
         if let Some(instantiated_node) = linked_node_for(db, parameter_node, source_node)
             && let Some(Typed(Some(group))) = db.get(instantiated_node)
         {
-            links.insert(
-                name,
-                Link {
-                    node: instantiated_node,
-                    force_type: db.contains::<Instantiated>(instantiated_node),
-                    related: group.nodes().collect(),
-                },
-            );
+            let mut link = if db.contains::<Instantiated>(instantiated_node) {
+                Link::ty(instantiated_node)
+            } else {
+                Link::node(instantiated_node)
+            };
+
+            for node in group.nodes() {
+                if filter(db, node) {
+                    link.related.push(node);
+                }
+            }
+
+            links.insert(name, link);
         }
     }
 

@@ -7,12 +7,12 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
     ctx.feedback("placeholder")
         .query(placeholder)
         .rank(|_| FeedbackRank::Placeholders)
-        .location(|_, (node, others, _)| FeedbackLocation {
-            primary: *node,
+        .location(|node, (others, _, _)| FeedbackLocation {
+            primary: node,
             secondary: others.iter().copied().collect::<BTreeSet<_>>(),
         })
         .show_graph()
-        .display(|db, writer, _, (_, _, ty)| {
+        .display(|db, writer, _, (_, ty, trace)| {
             if let Some(ty) = *ty {
                 writer.string("Found a placeholder of type ");
                 writer.ty(db, &Ty::Constructed(ty.clone()), true);
@@ -30,6 +30,8 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             } else {
                 writer.string("Add a value here before running your program.");
             }
+
+            writer.extend_trace(db, trace);
         })
         .register();
 }

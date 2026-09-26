@@ -8,11 +8,14 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Node},
+    facts::{Description, DescriptionEntry},
+    render::Comments,
     span::Span,
     typecheck::{
         constraints::ty_constraint::TyConstraint,
         ty::{ConstructedTy, Ty},
     },
+    util::Link,
     visit::{Captures, Visit, Visitor},
 };
 use wipple_parse::{
@@ -99,10 +102,33 @@ impl Visit for FunctionExpression {
             node,
             FunctionExpressionCodegen {
                 node,
-                inputs,
+                inputs: inputs.clone(),
                 output,
             },
         );
+
+        db.get_mut_or_default::<Description>(node)
+            .push(DescriptionEntry {
+                comments: Comments::builtin(
+                    node,
+                    "This function accepts [`inputs`] as input.",
+                    [
+                        ("function", Some(Link::node(node))),
+                        ("inputs", Some(Link::list("and", inputs.clone()))),
+                    ],
+                ),
+                is_primary: false,
+            });
+
+        db.get_mut_or_default::<Description>(output)
+            .push(DescriptionEntry {
+                comments: Comments::builtin(
+                    output,
+                    "[`output`] is the output of this function.",
+                    [("output", Some(Link::node(output)))],
+                ),
+                is_primary: false,
+            });
     }
 }
 

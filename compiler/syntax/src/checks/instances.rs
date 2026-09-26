@@ -27,7 +27,7 @@ pub struct OverlappingInstances(pub Vec<Node>);
 impl Fact for OverlappingInstances {}
 
 impl Render for OverlappingInstances {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
         ctx.string(format!("has {} overlapping instances", self.0.len()))
     }
 }
@@ -73,7 +73,7 @@ pub fn check_for_overlapping_instances(
     for instances in instance_groups {
         let mut overlapping = Vec::new();
         for (left_instance, right_instance) in instances.into_iter().tuple_combinations() {
-            let mut copy = solver.copy();
+            let mut copy = solver.clone_without_constraints(None);
 
             let mut error = false;
             copy.unify_parameters(

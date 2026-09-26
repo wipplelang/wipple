@@ -171,17 +171,41 @@ note:
   --> operator-without-parentheses.wipple:1:1
   |
 1 | show 1 + 2
-  | ----
+  | ----------
 
-`show` displays `1` on the screen.
+`show 1 + 2` adds `show 1` and `2` together, returning a `_`.
+
+This requires `Add` `()` `Number` `_`.
 
 note: 
   --> operator-without-parentheses.wipple:1:1
   |
 1 | show 1 + 2
-  | ----------
+  | ----
 
-`show 1 + 2` adds `show 1` and `2` together, returning a `_`. This requires `Add` `()` `Number` `_`.
+`show` displays `1` on the screen.
+
+This means `show` is a `Number -> ()`.
+
+note: 
+  --> operator-without-parentheses.wipple:1:6
+  |
+1 | show 1 + 2
+  |      -
+
+`1` is a number literal.
+
+This means `1` is a `Number`.
+
+note: 
+  --> operator-without-parentheses.wipple:1:10
+  |
+1 | show 1 + 2
+  |          -
+
+`2` is a number literal.
+
+This means `2` is a `Number`.
 
 error: 
   --> operator-without-parentheses.wipple:1:1
@@ -193,3 +217,4 @@ Missing parentheses around the inputs to `+`.
 
 Spaces group before operators do, so you need to put parentheses around just the inputs to `+`.
 
+Help: use `--explain=full` to show more information

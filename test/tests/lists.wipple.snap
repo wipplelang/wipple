@@ -13,25 +13,31 @@ Facts (layer 2):
 
 `1` (VisitAs):
   at lists.wipple:1:11-1:12
-  grouped with `1`, `element`
+  grouped with `1`, `element`, `2`, `3`
   has type `Number`
   is an expression
 
 `1, 2, 3` (CollectionExpression):
   at lists.wipple:1:11-1:18
-  grouped with `3`, `my-list`, `my-list`
+  grouped with `1, 2, 3`, `my-list`, `my-list`
+  has type `List Number`
+  is an expression
+
+`1, 2, 3` (Hidden):
+  at lists.wipple:1:11-1:18
+  grouped with `collection`, `1, 2, 3`
   has type `List Number`
   is an expression
 
 `2` (VisitAs):
   at lists.wipple:1:14-1:15
-  grouped with `2`, `element`
+  grouped with `2`, `element`, `1`
   has type `Number`
   is an expression
 
 `3` (VisitAs):
   at lists.wipple:1:17-1:18
-  grouped with `3`, `element`
+  grouped with `3`, `element`, `1`
   has type `Number`
   is an expression
 

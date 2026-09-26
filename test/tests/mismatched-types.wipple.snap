@@ -24,9 +24,21 @@ note:
   --> mismatched-types.wipple:1:2
   |
 1 | (42 :: String)
-  |  ------------
+  |  --
 
 `42` is annotated as a `String`.
+
+This means `42` is a `Number`.
+
+This means `42` is a `String`.
+
+note: 
+  --> mismatched-types.wipple:1:2
+  |
+1 | (42 :: String)
+  |  --
+
+`42` is a number literal.
 
 error: 
   --> mismatched-types.wipple:1:1
@@ -36,3 +48,4 @@ error:
 
 `(42 :: String)` is a `Number` or a `String`, but it can only be one of these.
 
+Help: use `--explain=full` to show more information

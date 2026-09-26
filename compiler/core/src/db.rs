@@ -77,7 +77,7 @@ pub struct Db {
     pub debug_enabled: bool,
     pub(crate) ast: Ast,
     pub graph: GraphBuilder,
-    pub traces: BTreeMap<Node, BTreeMap<Node, Vec<ConstraintConsequence>>>,
+    pub consequences: BTreeMap<Node, BTreeMap<Node, Vec<ConstraintConsequence>>>,
     nodes: Vec<Option<NodeInfo>>,                // for owned nodes
     overrides: BTreeMap<Node, Option<NodeInfo>>, // for parent nodes
     cache: BTreeMap<TypeId, BTreeSet<Node>>,
@@ -132,7 +132,7 @@ struct SerializedDb {
     parent: Option<Box<SerializedDb>>,
     debug_enabled: bool,
     graph: GraphBuilder,
-    traces: BTreeMap<Node, BTreeMap<Node, Vec<ConstraintConsequence>>>,
+    consequences: BTreeMap<Node, BTreeMap<Node, Vec<ConstraintConsequence>>>,
     ast: Ast,
     nodes: Vec<Option<NodeInfo>>,
     overrides: BTreeMap<Node, Option<NodeInfo>>,
@@ -147,7 +147,7 @@ impl From<&Db> for SerializedDb {
                 .map(|parent| Box::new(SerializedDb::from(parent.deref()))),
             debug_enabled: db.debug_enabled,
             graph: db.graph.clone(),
-            traces: db.traces.clone(),
+            consequences: db.consequences.clone(),
             ast: db.ast.clone(),
             nodes: db.nodes.clone(),
             overrides: db.overrides.clone(),
@@ -163,7 +163,7 @@ impl From<SerializedDb> for Db {
                 .map(|parent| DbRef::new(Db::from(*parent))),
             debug_enabled: serialized.debug_enabled,
             graph: serialized.graph,
-            traces: serialized.traces,
+            consequences: serialized.consequences,
             ast: serialized.ast,
             nodes: serialized.nodes,
             overrides: serialized.overrides,
@@ -246,7 +246,7 @@ impl Db {
             debug_enabled,
             ast: Ast::new(layer),
             graph: Default::default(),
-            traces: Default::default(),
+            consequences: Default::default(),
             nodes: Default::default(),
             overrides: Default::default(),
             cache: Default::default(),
@@ -471,7 +471,7 @@ impl Db {
         self.owned_nodes_with_info_since(0).map(|(node, _)| node)
     }
 
-    pub fn owns(&self, node: Node) -> bool {
+    pub fn in_layer(&self, node: Node) -> bool {
         node.layer == self.layer()
     }
 
@@ -531,14 +531,14 @@ impl Db {
             Reverse(syntax.map(|Syntax(syntax)| Reverse(syntax.get(self).span(self))))
         });
 
-        let mut ctx = RenderCtx::new(&filter, Vec::new());
+        let mut ctx = RenderCtx::default();
         for (node, info, syntax) in nodes {
             let mut facts = info
                 .facts
                 .0
                 .values()
                 .filter_map(|fact| {
-                    let mut ctx = RenderCtx::new(&filter, Vec::new());
+                    let mut ctx = RenderCtx::default();
                     fact.render_into(self, &mut ctx);
 
                     if ctx.is_empty() {

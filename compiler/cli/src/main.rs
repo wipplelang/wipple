@@ -85,8 +85,8 @@ struct CompileOptions {
     #[clap(long)]
     graph: bool,
 
-    #[clap(long)]
-    explain: bool,
+    #[clap(long, num_args = 0..=1, default_missing_value = "1")]
+    explain: Option<ExplainOptions>,
 
     #[clap(long)]
     filter_feedback: Vec<String>,
@@ -107,6 +107,14 @@ struct CompileOptions {
 enum FilterFacts {
     Feedback,
     Node(NodeId),
+}
+
+#[derive(Debug, Clone, clap::ValueEnum)]
+enum ExplainOptions {
+    #[value(name = "1")]
+    Enabled,
+    #[value(name = "full")]
+    Full,
 }
 
 impl FromStr for FilterFacts {
@@ -189,7 +197,7 @@ fn setup(
         let mut driver = Driver::new(options, files, &mut out);
         driver.prefix = "Compiling ";
         driver.hide_facts = !options.lib_facts;
-        driver.render_options = RenderMarkdownOptions::default()
+        driver.markdown_options = RenderMarkdownOptions::default()
             .rich(true)
             .color(supports_color());
 
@@ -234,7 +242,7 @@ fn compile(options: &CompileOptions) -> anyhow::Result<Option<codegen::mir::Prog
 
     let mut driver = Driver::new(options, files, io::stdout());
     driver.prefix = "Compiling ";
-    driver.render_options = RenderMarkdownOptions::default()
+    driver.markdown_options = RenderMarkdownOptions::default()
         .rich(true)
         .color(supports_color());
 
@@ -377,7 +385,7 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
 
                 let mut driver = Driver::new(options, files, io::stdout());
                 driver.silent = true;
-                driver.render_options = RenderMarkdownOptions::default()
+                driver.markdown_options = RenderMarkdownOptions::default()
                     .rich(true)
                     .color(supports_color());
 
@@ -449,7 +457,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
         let mut out = Vec::new();
 
         let mut driver = Driver::new(options, vec![file], &mut out);
-        driver.render_options = RenderMarkdownOptions::default().rich(true);
+        driver.markdown_options = RenderMarkdownOptions::default().rich(true);
         driver.progress = Some((counter.fetch_add(1, atomic::Ordering::Relaxed), files_count));
 
         if let Some((_, source_files, statements)) =
@@ -545,7 +553,7 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
                 return ControlFlow::Continue(());
             };
 
-            let mut writer = FeedbackWriter::new(&default_filter, Vec::new());
+            let mut writer = FeedbackWriter::default();
             writer.comments(db, &documentation.comments);
             let docs = writer
                 .finish(db, |db, segment| {

@@ -215,9 +215,11 @@ note:
    --> recursive-bounds.wipple:10:11
    |
 10 | Describe (_ :: Maybe Number)
-   |           -----------------
+   |           -
 
 `_` is annotated as a `Maybe Number`.
+
+This means `_` is a `Maybe Number`.
 
 error: 
    --> recursive-bounds.wipple:10:1
@@ -229,3 +231,4 @@ error:
 
 Double-check that these types are correct.
 
+Help: use `--explain=full` to show more information
