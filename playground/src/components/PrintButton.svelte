@@ -12,7 +12,7 @@
         const height = 8.5 - margin * 2;
         const filename = `wipple-${new Date().toISOString().replace(/[^0-9]/g, "")}.pdf`;
 
-        const canvas = await html2canvas(document.getElementById("root")!, {
+        const canvas = await html2canvas(document.getElementById("app")!, {
             scale,
             width: width * 100,
             height: height * 100,
