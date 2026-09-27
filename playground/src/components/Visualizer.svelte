@@ -17,6 +17,7 @@
         const url = new URL(base);
 
         url.searchParams.set("embed", "1");
+        url.searchParams.set("project", "visualization");
 
         return url.toString();
     })();
