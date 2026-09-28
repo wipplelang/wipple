@@ -43,11 +43,17 @@ note:
   --> too-many-inputs.wipple:1:1
   |
 1 | show 1 2 3
+  | ----------
+
+`show` is called with `1`, `2`, and `3`.
+
+note: 
+  --> too-many-inputs.wipple:1:1
+  |
+1 | show 1 2 3
   | ----
 
 `show` displays `1` on the screen.
-
-This means `show` is a `Number -> ()`.
 
 note: 
   --> too-many-inputs.wipple:1:6
@@ -56,8 +62,6 @@ note:
   |      -
 
 `1` is a number literal.
-
-This means `1` is a `Number`.
 
 error: 
   --> too-many-inputs.wipple:1:1

@@ -1,7 +1,10 @@
 use crate::{
     db::{Db, Node},
-    render::{Render, RenderCtx},
-    typecheck::groups::representative_types_of,
+    render::{ExplainOptions, Render, RenderCtx},
+    typecheck::{
+        groups::{Prefer, representative_types_of},
+        instantiate::Instantiated,
+    },
     visit::definitions::Defined,
 };
 use dyn_clone::DynClone;
@@ -36,9 +39,9 @@ impl Ty {
         }
     }
 
-    pub fn display(&self, db: &Db, root: bool, relevant: &[Node]) -> String {
+    pub fn display(&self, db: &Db, root: bool, relevant: &[Node], prefer: Prefer) -> String {
         let tys = match self {
-            Ty::Node(node) => representative_types_of(db, *node, relevant),
+            Ty::Node(node) => representative_types_of(db, *node, relevant, prefer),
             Ty::Constructed(ty) => vec![ty],
         };
 
@@ -61,7 +64,9 @@ impl Ty {
                     .iter()
                     .map(|&node| -> Box<dyn FnOnce(&Db, bool) -> String> {
                         let relevant = relevant.to_vec();
-                        Box::new(move |db, root| Ty::Node(node).display(db, root, &relevant))
+                        Box::new(move |db, root| {
+                            Ty::Node(node).display(db, root, &relevant, prefer)
+                        })
                     })
                     .collect::<Vec<_>>();
 
@@ -77,7 +82,7 @@ impl Ty {
     }
 
     pub fn render_into(&self, db: &Db, ctx: &mut RenderCtx, root: bool) {
-        let description = self.display(db, root, &ctx.options.relevant);
+        let description = self.display(db, root, &ctx.options.relevant, ctx.options.prefer);
 
         let node = match self {
             Ty::Node(node) => Some(*node),
@@ -115,6 +120,28 @@ trait TyDisplay: Debug + DynClone + Send + Sync + 'static {
         children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
         root: bool,
     ) -> String;
+
+    fn render_consequences(
+        &self,
+        db: &Db,
+        ctx: &mut RenderCtx,
+        node: Node,
+        ty: &ConstructedTy,
+        include: Option<&[Node]>,
+    ) {
+        let _ = include;
+
+        if db.is_hidden(node) {
+            return;
+        }
+
+        ctx.line_break();
+        ctx.string("This means ");
+        ctx.node(node);
+        ctx.string(" is a ");
+        ctx.ty(db, &Ty::Constructed(ty.clone()), true);
+        ctx.string(".");
+    }
 }
 
 dyn_clone::clone_trait_object!(TyDisplay);
@@ -157,6 +184,17 @@ impl ConstructedTy {
             TyTag::Named(node) | TyTag::Parameter(node) => Some(node),
             _ => None,
         }
+    }
+
+    pub fn render_consequences(
+        &self,
+        db: &Db,
+        ctx: &mut RenderCtx,
+        node: Node,
+        include: Option<&[Node]>,
+    ) {
+        self.display
+            .render_consequences(db, ctx, node, self, include);
     }
 }
 
@@ -229,6 +267,37 @@ impl TyDisplay for FunctionTyDisplay {
 
         if root { result } else { format!("({result})") }
     }
+
+    fn render_consequences(
+        &self,
+        db: &Db,
+        ctx: &mut RenderCtx,
+        node: Node,
+        ty: &ConstructedTy,
+        include: Option<&[Node]>,
+    ) {
+        let (output, inputs) = ty.children.split_first().unwrap();
+
+        if let [input] = inputs
+            && should_render_child_in_consequences(db, ctx, *input, include)
+        {
+            ctx.line_break();
+            ctx.string("This means ");
+            ctx.node(node);
+            ctx.string(" accepts a ");
+            ctx.ty(db, &Ty::Node(*input), true);
+            ctx.string(".");
+        }
+
+        if should_render_child_in_consequences(db, ctx, *output, include) {
+            ctx.line_break();
+            ctx.string("This means ");
+            ctx.node(node);
+            ctx.string(" returns a ");
+            ctx.ty(db, &Ty::Node(*output), true);
+            ctx.string(".");
+        }
+    }
 }
 
 impl ConstructedTy {
@@ -297,6 +366,26 @@ impl TyDisplay for BlockTyDisplay {
         let output = children.into_iter().next().unwrap();
         format!("{{{}}}", output(db, true))
     }
+
+    fn render_consequences(
+        &self,
+        db: &Db,
+        ctx: &mut RenderCtx,
+        node: Node,
+        ty: &ConstructedTy,
+        include: Option<&[Node]>,
+    ) {
+        let output = ty.children.first().unwrap();
+
+        if should_render_child_in_consequences(db, ctx, *output, include) {
+            ctx.line_break();
+            ctx.string("This means ");
+            ctx.node(node);
+            ctx.string(" returns a ");
+            ctx.ty(db, &Ty::Node(*output), true);
+            ctx.string(".");
+        }
+    }
 }
 
 impl ConstructedTy {
@@ -335,4 +424,26 @@ impl ConstructedTy {
             ParameterTyDisplay { definition },
         )
     }
+}
+
+fn should_render_child_in_consequences(
+    db: &Db,
+    ctx: &RenderCtx,
+    node: Node,
+    include: Option<&[Node]>,
+) -> bool {
+    if db.is_hidden(node) || db.get::<Instantiated>(node).is_some() {
+        return false;
+    }
+
+    if include.is_some_and(|include| !include.contains(&node)) {
+        return false;
+    }
+
+    if matches!(ctx.options.explain, ExplainOptions::Full) {
+        return true;
+    }
+
+    let tys = representative_types_of(db, node, &[], Prefer::DirectType);
+    tys.len() > 1
 }

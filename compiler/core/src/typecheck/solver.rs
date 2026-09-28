@@ -9,7 +9,10 @@ use crate::{
     },
 };
 use serde::{Deserialize, Serialize};
-use std::{collections::BTreeMap, mem};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    mem,
+};
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct DirectlyGroupedWith(pub Vec<Node>);
@@ -30,6 +33,14 @@ impl Render for DirectlyGroupedWith {
         }
     }
 }
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct TypeDependsOn(pub BTreeSet<Node>);
+
+#[typetag::serde]
+impl Fact for TypeDependsOn {}
+
+impl Render for TypeDependsOn {}
 
 static ITERATION_LIMIT: usize = 32;
 
@@ -335,13 +346,15 @@ impl Solver {
     }
 
     fn insert(&mut self, db: &mut Db, node: Node, ty: ConstructedTy) {
-        let was_empty = self.with_group_mut(node, |group| {
-            let empty = group.tys().next().is_none();
+        self.with_group_mut(node, |group| {
             group.insert_ty(node, ty.clone());
-            empty
         });
 
-        self.add_consequence(db, ConstraintConsequence::Ty(node, ty, was_empty));
+        db.get_mut_or_default::<TypeDependsOn>(node)
+            .0
+            .extend(&ty.children);
+
+        self.add_consequence(db, ConstraintConsequence::Ty(node, ty));
     }
 
     pub fn rank_of(&self, node: Node) -> NodeRank {

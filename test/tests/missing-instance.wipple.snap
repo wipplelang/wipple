@@ -46,11 +46,17 @@ note:
   --> missing-instance.wipple:2:1
   |
 2 | show Foo
+  | --------
+
+`show` is called with `Foo`.
+
+note: 
+  --> missing-instance.wipple:2:1
+  |
+2 | show Foo
   | ----
 
 `show` displays `Foo` on the screen.
-
-This means `show` is a `Foo -> ()`.
 
 This requires `Describe` `Foo`.
 

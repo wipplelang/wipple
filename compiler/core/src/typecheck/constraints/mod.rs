@@ -9,9 +9,10 @@ use crate::{
     render::{ExplainOptions, Render, RenderCtx},
     typecheck::{
         bounds::Instance,
+        groups::{NodeRank, Typed},
         instantiate::InstantiateCtx,
         solver::Solver,
-        ty::{ConstructedTy, Ty},
+        ty::ConstructedTy,
     },
     visit::{
         Resolved,
@@ -60,7 +61,7 @@ impl dyn Constraint {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstraintConsequence {
-    Ty(Node, ConstructedTy, bool),
+    Ty(Node, ConstructedTy),
     Group(Node, Node, bool),
     Instance(Instance, bool),
 }
@@ -77,15 +78,17 @@ impl ConstraintConsequence {
     pub fn relevant_nodes(&self) -> Vec<Node> {
         match self {
             ConstraintConsequence::Group(left, right, _) => vec![*left, *right],
-            ConstraintConsequence::Ty(node, _, _) => vec![*node],
+            ConstraintConsequence::Ty(node, _) => vec![*node],
             ConstraintConsequence::Instance(instance, _) => vec![instance.node],
         }
     }
 
     fn requires_explain_full(&self, db: &Db) -> bool {
         match *self {
-            ConstraintConsequence::Group(_, _, merged) => merged,
-            ConstraintConsequence::Ty(_, _, _) => false,
+            ConstraintConsequence::Group(node, _, _) | ConstraintConsequence::Ty(node, _) => db
+                .get(node)
+                .and_then(|Typed(group)| group.as_ref())
+                .is_none_or(|group| group.tys().count() == 1),
             ConstraintConsequence::Instance(ref instance, resolved) => {
                 resolved
                     && db
@@ -138,16 +141,21 @@ impl Render for ConstraintConsequence {
                 ctx.node(right);
                 ctx.string(".");
             }
-            ConstraintConsequence::Ty(node, ref ty, _) => {
+            ConstraintConsequence::Ty(node, ref ty) => {
                 if db.is_hidden(node) {
                     return;
                 }
 
-                ctx.string("This means ");
-                ctx.node(node);
-                ctx.string(" is a ");
-                ctx.ty(db, &Ty::Constructed(ty.clone()), true);
-                ctx.string(".");
+                // Hide obvious consequences involving type annotations
+                if db
+                    .get(node)
+                    .and_then(|Typed(group)| group.as_ref())
+                    .is_some_and(|group| group.get_rank(node) == NodeRank::Annotated)
+                {
+                    return;
+                }
+
+                ty.render_consequences(db, ctx, node, None);
             }
             ConstraintConsequence::Instance(ref instance, _) => {
                 ctx.string("This requires ");

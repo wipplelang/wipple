@@ -527,9 +527,9 @@ impl Ide {
                 continue;
             };
 
-            let mut message = format!("**{}**", trace.message);
+            let mut message = trace.message;
             for consequence in trace.consequences {
-                write!(message, " {consequence}").unwrap();
+                write!(message, "\n\n{consequence}").unwrap();
             }
 
             secondary.push(IdeDiagnosticMessage {

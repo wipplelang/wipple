@@ -2,7 +2,10 @@ use crate::{
     db::{Db, Node},
     facts::{GraphType, Syntax},
     span::Span,
-    typecheck::ty::{ConstructedTy, Ty, TyTag},
+    typecheck::{
+        groups::Prefer,
+        ty::{ConstructedTy, Ty, TyTag},
+    },
     visit::definitions::{Defined, VariableDefinition},
 };
 use serde::{Deserialize, Serialize};
@@ -221,7 +224,7 @@ impl GraphBuilder {
                         TyTag::Function | TyTag::Block => Some(String::from("function")),
                         _ => None,
                     },
-                    display: Ty::Constructed(ty).display(db, true, &[]),
+                    display: Ty::Constructed(ty).display(db, true, &[], Prefer::DirectType),
                 })
                 .collect::<Vec<_>>();
 

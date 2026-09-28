@@ -1,5 +1,5 @@
 use crate::QueryCtx;
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, ops::ControlFlow};
 use wipple_core::{
     db::{Db, Node},
     facts::{Description, Syntax},
@@ -7,10 +7,10 @@ use wipple_core::{
     typecheck::{
         bounds::ResolvedBounds,
         constraints::ConstraintConsequence,
-        groups::{NodeRank, Typed},
+        groups::{NodeRank, Prefer, Typed, update_type},
         instantiate::{Instantiated, InstantiatedTypes},
-        solver::DirectlyGroupedWith,
-        ty::ConstructedTy,
+        solver::{DirectlyGroupedWith, TypeDependsOn},
+        ty::{ConstructedTy, Ty},
     },
     util::get_links,
     visit::{DefinitionConstraints, Resolved, definitions::Defined},
@@ -215,6 +215,8 @@ pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
 
             relevant.extend_from_slice(&entry_relevant);
 
+            consequences = elaborate_consequences(db, consequences);
+
             consequences.retain(|consequence| {
                 consequence
                     .relevant_nodes()
@@ -224,13 +226,15 @@ pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
 
             consequences.sort_by_key(|consequence| consequence.sort_key());
 
-            entries.push(TraceEntry {
-                consequences,
-                comments,
-                is_primary,
-                relevant: entry_relevant,
-                level,
-            });
+            if !comments.comments.is_empty() {
+                entries.push(TraceEntry {
+                    consequences,
+                    comments,
+                    is_primary,
+                    relevant: entry_relevant,
+                    level,
+                });
+            }
         }
 
         for child in relevant {
@@ -248,10 +252,6 @@ pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
         0,
     );
 
-    // Sorting by node index effectively sorts in compilation order, which we
-    // want for traces
-    entries.sort_by_key(|entry| entry.comments.node);
-
     let mut seen_consequences = Vec::new();
     for entry in &mut entries {
         entry.consequences.retain(|consequence| {
@@ -264,5 +264,49 @@ pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
         });
     }
 
+    entries.sort_by_key(|entry| entry.comments.node);
+
     Trace(entries)
+}
+
+fn elaborate_consequences(
+    db: &Db,
+    consequences: Vec<ConstraintConsequence>,
+) -> Vec<ConstraintConsequence> {
+    consequences
+        .into_iter()
+        .flat_map(|consequence| {
+            let mut new_consequences = Vec::new();
+
+            if let ConstraintConsequence::Ty(node, ref ty) = consequence {
+                let group = db.get(node).and_then(|Typed(group)| group.as_ref());
+
+                let group_nodes = group.map_or_default(|group| group.nodes().collect::<Vec<_>>());
+
+                for &other in &group_nodes {
+                    if group.unwrap().get_tys(other).is_empty() {
+                        new_consequences.push(ConstraintConsequence::Ty(other, ty.clone()));
+                    }
+                }
+
+                let intersect = {
+                    let group_nodes = BTreeSet::from_iter(group_nodes.iter().copied());
+                    move |nodes: &BTreeSet<_>| !nodes.is_disjoint(&group_nodes)
+                };
+
+                db.for_each_fact::<_, ()>(&mut |db, other, TypeDependsOn(dependencies)| {
+                    if intersect(dependencies)
+                        && let Ty::Constructed(ty) =
+                            update_type(db, &Ty::Node(other), &[node], Prefer::RepresentativeType)
+                    {
+                        new_consequences.push(ConstraintConsequence::Ty(other, ty.clone()));
+                    }
+
+                    ControlFlow::Continue(())
+                });
+            }
+
+            [consequence].into_iter().chain(new_consequences)
+        })
+        .collect()
 }

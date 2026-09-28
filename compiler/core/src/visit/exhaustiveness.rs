@@ -2,7 +2,7 @@ use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
-        groups::update_type,
+        groups::{Prefer, update_type},
         ty::{Ty, TyTag},
     },
     visit::definitions::{Defined, TypeDefinition},
@@ -295,7 +295,7 @@ fn collect_paths(
         return vec![vec![MatchPath(prefix.to_vec())]];
     }
 
-    let mut ty = update_type(db, &ty);
+    let mut ty = update_type(db, &ty, &[], Prefer::DirectType);
 
     if let Ty::Constructed(inner) = &ty
         && let TyTag::Parameter(parameter) = inner.tag
@@ -304,7 +304,7 @@ fn collect_paths(
         ty = Ty::Node(*substitution);
     }
 
-    let Ty::Constructed(ty) = update_type(db, &ty) else {
+    let Ty::Constructed(ty) = update_type(db, &ty, &[], Prefer::DirectType) else {
         return Vec::new();
     };
 

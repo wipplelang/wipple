@@ -97,10 +97,6 @@ note:
 
 `1, "hi", ()` is a collection of `String or () or Number` elements.
 
-This means `1` has the same type as `"hi"`.
-
-This means `1` has the same type as `()`.
-
 note: 
   --> list-mismatched-elements.wipple:1:11
   |
@@ -110,6 +106,10 @@ note:
 `1` is a number literal.
 
 This means `1` is a `Number`.
+
+This means `1` has the same type as `"hi"`.
+
+This means `1` has the same type as `()`.
 
 note: 
   --> list-mismatched-elements.wipple:1:14
@@ -121,6 +121,16 @@ note:
 
 This means `"hi"` is a `String`.
 
+This means `1` is a `String`.
+
+note: 
+  --> list-mismatched-elements.wipple:2:11
+  |
+2 | my-list . each show
+  |           ---------
+
+`each` is called with `show`.
+
 note: 
   --> list-mismatched-elements.wipple:2:11
   |
@@ -129,8 +139,6 @@ note:
 
 `each` calls `show` for each `String` in `my-list`.
 
-This means `each` is a `(String -> ()) -> (List String) -> ()`.
-
 note: 
   --> list-mismatched-elements.wipple:2:16
   |
@@ -138,8 +146,6 @@ note:
   |                ----
 
 `show` displays `String` on the screen.
-
-This means `show` is a `String -> ()`.
 
 error: 
   --> list-mismatched-elements.wipple:1:11

@@ -53,7 +53,7 @@ impl Visit for VariableExpression {
         #[derive(Debug)]
         enum Definition {
             Variable,
-            Constant,
+            Constant { has_comments: bool },
         }
 
         let definition = visitor.resolve_matching(db, &self.variable, node, |_, definition| {
@@ -61,8 +61,10 @@ impl Visit for VariableExpression {
                 return Some(Definition::Variable);
             }
 
-            if definition.downcast_ref::<ConstantDefinition>().is_some() {
-                return Some(Definition::Constant);
+            if let Some(definition) = definition.downcast_ref::<ConstantDefinition>() {
+                return Some(Definition::Constant {
+                    has_comments: !definition.comments.is_empty(),
+                });
             }
 
             None
@@ -104,7 +106,7 @@ impl Visit for VariableExpression {
                         is_primary: false,
                     });
             }
-            Definition::Constant => {
+            Definition::Constant { has_comments } => {
                 let substitutions = visitor.substitutions(
                     BTreeMap::from([(definition_node, node)]),
                     Default::default(),
@@ -131,7 +133,7 @@ impl Visit for VariableExpression {
                             "[`definition`] is defined as a [`definition@type`].",
                             [("definition", Some(Link::node(definition_node)))],
                         ),
-                        is_primary: false,
+                        is_primary: !has_comments,
                     });
             }
         }

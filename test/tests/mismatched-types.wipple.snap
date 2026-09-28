@@ -30,7 +30,13 @@ note:
 
 This means `42` is a `Number`.
 
+This means `(42 :: String)` is a `Number`.
+
 This means `42` is a `String`.
+
+This means `(42 :: String)` is a `String`.
+
+This means `42` has the same type as `String`.
 
 note: 
   --> mismatched-types.wipple:1:2

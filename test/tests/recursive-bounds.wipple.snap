@@ -219,8 +219,6 @@ note:
 
 `_` is annotated as a `Maybe Number`.
 
-This means `_` is a `Maybe Number`.
-
 error: 
    --> recursive-bounds.wipple:10:1
    |

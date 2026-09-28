@@ -5,6 +5,7 @@ use std::{
 use wipple_core::{
     db::{Db, Node},
     render::{Render, RenderCtx, RenderOptions, RenderSegment},
+    typecheck::groups::Prefer,
 };
 use wipple_queries::Trace;
 
@@ -71,20 +72,18 @@ impl FeedbackWriter {
     pub fn extend_trace(&mut self, db: &Db, trace: &Trace) {
         for entry in &trace.0 {
             let mut node_ctx = RenderCtx::with_options(self.options.clone());
-            node_ctx.with_relevant(&entry.relevant, |ctx| {
+            node_ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
                 ctx.comments(db, &entry.comments);
             });
-
-            if node_ctx.is_empty() {
-                continue;
-            }
 
             let consequence_ctxs = entry
                 .consequences
                 .iter()
                 .filter_map(|consequence| {
                     let mut ctx = RenderCtx::with_options(self.options.clone());
-                    ctx.with_relevant(&entry.relevant, |ctx| consequence.render_into(db, ctx));
+                    ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
+                        consequence.render_into(db, ctx)
+                    });
                     (!ctx.is_empty()).then_some(ctx)
                 })
                 .collect::<Vec<_>>();

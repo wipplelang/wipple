@@ -62,13 +62,26 @@ Facts (layer 2):
 
 note: 
   --> when-mismatched-types.wipple:1:1
+  |  
+1 | / show (when True {
+2 | |   True -> 42
+3 | |   False -> "hi"
+4 | | })
+  | \--'
+
+`show` is called with `when True {⋯}`.
+
+note: 
+  --> when-mismatched-types.wipple:1:1
   |
 1 | show (when True {
   | ----
 
 `show` displays `when True {⋯}` on the screen.
 
-This means `show` is a `Number -> ()`.
+This means `when True {⋯}` is a `Number`.
+
+This means `42` is a `Number`.
 
 note: 
   --> when-mismatched-types.wipple:2:11
@@ -78,7 +91,7 @@ note:
 
 `42` is a number literal.
 
-This means `42` is a `Number`.
+This means `42` has the same type as `when True {⋯}`.
 
 note: 
   --> when-mismatched-types.wipple:3:12
@@ -89,6 +102,12 @@ note:
 `"hi"` is a string literal.
 
 This means `"hi"` is a `String`.
+
+This means `when True {⋯}` is a `String`.
+
+This means `42` is a `String`.
+
+This means `"hi"` has the same type as `when True {⋯}`.
 
 error: 
   --> when-mismatched-types.wipple:1:7

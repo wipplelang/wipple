@@ -64,11 +64,17 @@ note:
   --> show-variable.wipple:4:1
   |
 4 | show my-variable
+  | ----------------
+
+`show` is called with `my-variable`.
+
+note: 
+  --> show-variable.wipple:4:1
+  |
+4 | show my-variable
   | ----
 
 `show` displays `my-variable` on the screen.
-
-This means `show` is a `Cannot-Be-Shown -> ()`.
 
 This requires `Describe` `Cannot-Be-Shown`.
 

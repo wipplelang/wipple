@@ -2,7 +2,7 @@ use crate::{
     db::{Db, Node},
     facts::Syntax,
     span::Str,
-    typecheck::ty::Ty,
+    typecheck::{groups::Prefer, ty::Ty},
     util::{Link, LinkKind},
     visit::definitions::Defined,
 };
@@ -24,6 +24,7 @@ pub trait Render {
 #[derive(Debug, Clone, Default)]
 pub struct RenderOptions {
     pub relevant: Vec<Node>,
+    pub prefer: Prefer,
     pub explain: ExplainOptions,
 }
 
@@ -100,11 +101,27 @@ impl RenderCtx {
         self.segments.push(RenderSegment::LineBreak);
     }
 
-    pub fn with_relevant<T>(&mut self, relevant: &[Node], f: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn resetting_relevant<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
         let prev = self.options.relevant.clone();
-        self.options.relevant = relevant.iter().chain(&prev).copied().collect();
+        self.options.relevant.clear();
         let result = f(self);
         self.options.relevant = prev;
+        result
+    }
+
+    pub fn with_relevant<T>(
+        &mut self,
+        relevant: &[Node],
+        prefer: Prefer,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
+        let prev_relevant = self.options.relevant.clone();
+        let prev_prefer = self.options.prefer;
+        self.options.relevant = relevant.iter().chain(&prev_relevant).copied().collect();
+        self.options.prefer = prefer;
+        let result = f(self);
+        self.options.relevant = prev_relevant;
+        self.options.prefer = prev_prefer;
         result
     }
 

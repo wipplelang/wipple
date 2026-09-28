@@ -10,7 +10,7 @@ use wipple_core::{
     facts::Syntax,
     render::{ExplainOptions, RenderMarkdownOptions, RenderOptions, RenderSegment},
     typecheck::{
-        groups::{Group, Typed, update_type},
+        groups::{Group, Prefer, Typed, update_type},
         instantiate::Instantiated,
         ty::Ty,
     },
@@ -106,8 +106,14 @@ impl CompileResult {
                 let mut labels = group
                     .tys()
                     .map(|ty| {
-                        let ty = update_type(&self.db, &Ty::Constructed(ty.clone()));
-                        ty.display(&self.db, true, &[])
+                        let ty = update_type(
+                            &self.db,
+                            &Ty::Constructed(ty.clone()),
+                            &[],
+                            Prefer::DirectType,
+                        );
+
+                        ty.display(&self.db, true, &[], Prefer::DirectType)
                     })
                     .collect::<Vec<_>>();
 

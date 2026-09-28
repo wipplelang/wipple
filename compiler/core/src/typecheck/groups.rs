@@ -233,25 +233,34 @@ impl Render for Typed {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Prefer {
+    #[default]
+    DirectType,
+    RepresentativeType,
+}
+
 pub fn representative_types_of<'a>(
     db: &'a Db,
     node: Node,
     relevant: &[Node],
+    prefer: Prefer,
 ) -> Vec<&'a ConstructedTy> {
     let Some(Typed(Some(group))) = db.get(node) else {
         return Vec::new();
     };
 
     // Prefer relevant nodes that belong to the same group
-    let candidates = [node]
-        .into_iter()
-        .chain(
-            relevant
-                .iter()
-                .copied()
-                .filter(|node| group.0.contains_key(node)),
-        )
+    let mut candidates = relevant
+        .iter()
+        .copied()
+        .filter(|node| group.0.contains_key(node))
         .collect::<Vec<_>>();
+
+    match prefer {
+        Prefer::DirectType => candidates.insert(0, node),
+        Prefer::RepresentativeType => candidates.push(node),
+    }
 
     for node in candidates {
         let tys = group.get_tys(node);
@@ -263,10 +272,10 @@ pub fn representative_types_of<'a>(
     group.tys().collect()
 }
 
-pub fn update_type(db: &Db, ty: &Ty) -> Ty {
+pub fn update_type(db: &Db, ty: &Ty, relevant: &[Node], prefer: Prefer) -> Ty {
     match ty {
         Ty::Node(node) => {
-            let tys = representative_types_of(db, *node, &[]);
+            let tys = representative_types_of(db, *node, relevant, prefer);
 
             if let Some(&ty) = tys.first() {
                 Ty::Constructed(ty.clone())

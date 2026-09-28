@@ -102,11 +102,17 @@ note:
   --> mismatched-inferred-params.wipple:1:13
   |
 1 | (1, 2, 3) . transform ((x :: String) -> x)
+  |             ------------------------------
+
+`transform` is called with `(x :: String) -> x`.
+
+note: 
+  --> mismatched-inferred-params.wipple:1:13
+  |
+1 | (1, 2, 3) . transform ((x :: String) -> x)
   |             ---------
 
 `transform` transforms the `Number` elements in `1, 2, 3` into `Number` elements using `(x :: String) -> x`.
-
-This means `transform` is a `(Number -> Number) -> (List Number) -> Sequence Number`.
 
 note: 
   --> mismatched-inferred-params.wipple:1:25
@@ -118,6 +124,12 @@ note:
 
 This means `x` is a `String`.
 
+This means `2` is a `String`.
+
+This means `3` is a `String`.
+
+This means `x` has the same type as `String`.
+
 note: 
   --> mismatched-inferred-params.wipple:1:2
   |
@@ -128,6 +140,14 @@ note:
 
 This means `1` is a `Number`.
 
+This means `2` is a `Number`.
+
+This means `3` is a `Number`.
+
+This means `1` has the same type as `2`.
+
+This means `1` has the same type as `3`.
+
 note: 
   --> mismatched-inferred-params.wipple:1:5
   |
@@ -136,8 +156,6 @@ note:
 
 `2` is a number literal.
 
-This means `2` is a `Number`.
-
 note: 
   --> mismatched-inferred-params.wipple:1:8
   |
@@ -145,8 +163,6 @@ note:
   |        -
 
 `3` is a number literal.
-
-This means `3` is a `Number`.
 
 error: 
   --> mismatched-inferred-params.wipple:1:2
