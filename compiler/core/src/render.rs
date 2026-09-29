@@ -26,6 +26,7 @@ pub struct RenderOptions {
     pub relevant: Vec<Node>,
     pub prefer: Prefer,
     pub explain: ExplainOptions,
+    pub written_list_prefix: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -85,12 +86,11 @@ impl Comments {
 }
 
 #[derive(Default)]
-pub struct ListBuilder<'a, 'f> {
-    _marker: std::marker::PhantomData<&'f ()>, // FIXME: Temporary
+pub struct ListBuilder<'a> {
     items: Vec<Box<dyn FnOnce(&mut RenderCtx) + 'a>>,
 }
 
-impl<'a> ListBuilder<'a, '_> {
+impl<'a> ListBuilder<'a> {
     pub fn add(&mut self, item: impl FnOnce(&mut RenderCtx) + 'a) {
         self.items.push(Box::new(item));
     }
@@ -160,11 +160,18 @@ impl RenderCtx {
 
     pub const LIST_LIMIT: usize = 3;
 
-    pub fn list<'a>(&mut self, separator: &str, build: impl FnOnce(&mut ListBuilder<'a, '_>)) {
+    pub fn list<'a>(
+        &mut self,
+        separator: &str,
+        build: impl FnOnce(&mut Self, &mut ListBuilder<'a>),
+    ) {
         let mut builder = ListBuilder::default();
 
-        build(&mut builder);
+        build(self, &mut builder);
         let items = builder.items;
+
+        let prev_written_list_prefix = self.options.written_list_prefix;
+        self.options.written_list_prefix = false;
 
         let len = items.len();
         match len {
@@ -201,6 +208,8 @@ impl RenderCtx {
             }
             0 => {}
         }
+
+        self.options.written_list_prefix = prev_written_list_prefix;
     }
 
     pub fn comments(&mut self, db: &Db, comments: &Comments) {
@@ -215,7 +224,7 @@ impl RenderCtx {
                     LinkKind::Node(node) => ctx.node(*node),
                     LinkKind::Type(node) => ctx.ty(db, &Ty::Node(*node), true),
                     LinkKind::List { nodes, separator } => {
-                        ctx.list(separator, |list| {
+                        ctx.list(separator, |_, list| {
                             for &node in nodes {
                                 list.add(move |ctx| ctx.node(node));
                             }
@@ -227,7 +236,7 @@ impl RenderCtx {
             links.insert(
                 format!("{name}@related"),
                 Box::new(|ctx| {
-                    ctx.list("and", |list| {
+                    ctx.list("and", |_, list| {
                         for &node in &link.related {
                             list.add(move |ctx| ctx.node(node));
                         }
@@ -242,7 +251,7 @@ impl RenderCtx {
                         writer.ty(db, &Ty::Node(*node), true);
                     }
                     LinkKind::List { nodes, separator } => {
-                        writer.list(separator, |list| {
+                        writer.list(separator, |_, list| {
                             for &node in nodes {
                                 list.add(move |ctx| ctx.ty(db, &Ty::Node(node), true));
                             }

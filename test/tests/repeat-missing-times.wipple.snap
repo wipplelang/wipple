@@ -60,39 +60,29 @@ Facts (layer 2):
 
 note: 
   --> repeat-missing-times.wipple:1:1
-  |  
-1 | / repeat 5 {
-2 | |   show "Hello, world!"
-3 | | }
-  | \-'
-
-`repeat` is called with `5` and `{⋯}`.
-
-note: 
-  --> repeat-missing-times.wipple:1:1
   |
 1 | repeat 5 {
   | ------
 
 `repeat` runs `show "Hello, world!"` repeatedly.
 
-This requires `Repeat-Condition` `Number`.
+This means `repeat 5 {⋯}` is a `()`.
+
+This means `repeat 5 {⋯}` is a `()`.
+
+This means `5` is a `Number`.
+
+This uses `instance (Repeat-Condition Number)`.
 
 note: 
-  --> repeat-missing-times.wipple:1:8
-  |
-1 | repeat 5 {
-  |        -
-
-`5` is a number literal.
-
-note: 
-  --> repeat-missing-times.wipple:2:3
+  --> repeat-missing-times.wipple:2:8
   |
 2 |   show "Hello, world!"
-  |   --------------------
+  |        ---------------
 
-`show` is called with `"Hello, world!"`.
+`"Hello, world!"` is a string literal.
+
+This means `"Hello, world!"` is a `String` and `"Hello, world!"` is a `String`.
 
 note: 
   --> repeat-missing-times.wipple:2:3
@@ -102,13 +92,19 @@ note:
 
 `show` displays `"Hello, world!"` on the screen.
 
-note: 
-  --> repeat-missing-times.wipple:2:8
-  |
-2 |   show "Hello, world!"
-  |        ---------------
+This means `show "Hello, world!"` is a `()`.
 
-`"Hello, world!"` is a string literal.
+This means `show "Hello, world!"` is a `()`.
+
+This uses `instance (Describe String)`.
+
+note: 
+  --> repeat-missing-times.wipple:1:8
+  |
+1 | repeat 5 {
+  |        -
+
+`5` is a number literal.
 
 error: 
   --> repeat-missing-times.wipple:1:1

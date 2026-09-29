@@ -77,9 +77,12 @@ pub struct Db {
     pub debug_enabled: bool,
     pub(crate) ast: Ast,
     pub graph: GraphBuilder,
+    // The outer node is responsible for the consequences on the inner nodes
     pub consequences: BTreeMap<Node, BTreeMap<Node, Vec<ConstraintConsequence>>>,
-    nodes: Vec<Option<NodeInfo>>,                // for owned nodes
-    overrides: BTreeMap<Node, Option<NodeInfo>>, // for parent nodes
+    // For owned nodes
+    nodes: Vec<Option<NodeInfo>>,
+    // For parent nodes
+    overrides: BTreeMap<Node, Option<NodeInfo>>,
     cache: BTreeMap<TypeId, BTreeSet<Node>>,
 }
 

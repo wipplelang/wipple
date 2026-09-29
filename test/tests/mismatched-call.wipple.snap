@@ -92,20 +92,14 @@ accepts-text (1 + 2)`
 
 
 note: 
-  --> mismatched-call.wipple:1:1
-  |
-1 | accepts-text :: String -> ()
-  | ------------
-
-`accepts-text` is defined as a `String -> ()`.
-
-note: 
-  --> mismatched-call.wipple:6:1
+  --> mismatched-call.wipple:6:15
   |
 6 | accepts-text (1 + 2)
-  | --------------------
+  |               -
 
-`accepts-text` is called with `1 + 2`.
+`1` is a number literal.
+
+This means `1` is a `Number` and `1` is a `Number`.
 
 note: 
   --> mismatched-call.wipple:6:15
@@ -115,17 +109,15 @@ note:
 
 `1 + 2` adds `1` and `2` together, returning a `Number`.
 
-This means `1 + 2` is a `Number`.
+This means `1 + 2` must have the same type as `1 + 2`.
+
+This means `2` is a `Number`.
 
 This means `1 + 2` is a `Number`.
 
-note: 
-  --> mismatched-call.wipple:6:15
-  |
-6 | accepts-text (1 + 2)
-  |               -
+This means `1 + 2` is a `Number`.
 
-`1` is a number literal.
+This uses `instance (Add Number Number Number)`.
 
 note: 
   --> mismatched-call.wipple:6:19
@@ -134,6 +126,14 @@ note:
   |                   -
 
 `2` is a number literal.
+
+note: 
+  --> mismatched-call.wipple:1:1
+  |
+1 | accepts-text :: String -> ()
+  | ------------
+
+`accepts-text` is defined as a `String -> ()`.
 
 error: 
   --> mismatched-call.wipple:6:15

@@ -30,7 +30,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
 
             writer.node(data.from);
             writer.string(" is a ");
-            writer.list("or a", |list| {
+            writer.list("or a", |_, list| {
                 for ty in &data.tys {
                     let ty = ty.clone();
                     list.add(move |writer| {
@@ -44,7 +44,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 writer.line_break();
                 writer.node(data.from);
                 writer.string(" must be the same type as ");
-                writer.list("and", |list| {
+                writer.list("and", |_, list| {
                     for &node in &data.related {
                         list.add(move |writer| writer.node(node));
                     }
@@ -100,7 +100,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 writer.node(parameter);
             } else {
                 writer.string(" is missing types for ");
-                writer.list("and", |list| {
+                writer.list("and", |_, list| {
                     for &parameter in parameters {
                         list.add(move |writer| writer.node(parameter));
                     }
@@ -130,7 +130,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
         .display(|_db, writer, node, OverlappingInstances(instances)| {
             writer.node(node);
             writer.string(" has multiple overlapping instances: ");
-            writer.list("and", |list| {
+            writer.list("and", |_, list| {
                 for &instance in instances {
                     list.add(move |writer| writer.node(instance));
                 }

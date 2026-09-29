@@ -1,11 +1,11 @@
 use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
-    typecheck::{solver::SubstitutionsKey, ty::Ty},
+    typecheck::{groups::Prefer, solver::SubstitutionsKey, ty::Ty},
     visit::definitions::{Defined, TraitDefinition},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, fmt::Write};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Instance {
@@ -85,13 +85,18 @@ pub struct Bound {
     pub is_optional: bool,
 }
 
-impl Render for Instance {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+impl Instance {
+    fn as_unresolved_bound(&self) -> UnresolvedBound {
         UnresolvedBound {
             trait_node: self.trait_node,
             parameters: self.parameters.clone(),
         }
-        .render_into(db, ctx);
+    }
+}
+
+impl Render for Instance {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+        self.as_unresolved_bound().render_into(db, ctx);
     }
 }
 
@@ -115,5 +120,36 @@ impl Render for UnresolvedBound {
                 ctx.code("_");
             }
         }
+    }
+}
+
+impl Instance {
+    pub fn display(&self, db: &Db, relevant: &[Node], prefer: Prefer) -> String {
+        self.as_unresolved_bound().display(db, relevant, prefer)
+    }
+}
+
+impl UnresolvedBound {
+    pub fn display(&self, db: &Db, relevant: &[Node], prefer: Prefer) -> String {
+        let trait_definition = db
+            .get::<Defined>(self.trait_node)
+            .unwrap()
+            .0
+            .downcast_ref::<TraitDefinition>()
+            .unwrap();
+
+        let mut result = trait_definition.name.to_string();
+
+        for parameter in &trait_definition.parameters {
+            write!(result, " ").unwrap();
+
+            if let Some(ty) = self.parameters.get(parameter) {
+                write!(result, "{}", ty.display(db, false, relevant, prefer)).unwrap();
+            } else {
+                write!(result, "_").unwrap();
+            }
+        }
+
+        result
     }
 }

@@ -2,14 +2,13 @@ use crate::QueryCtx;
 use std::{collections::BTreeSet, ops::ControlFlow};
 use wipple_core::{
     db::{Db, Node},
-    facts::{Description, Syntax},
+    facts::Description,
     render::Comments,
     typecheck::{
-        bounds::ResolvedBounds,
         constraints::ConstraintConsequence,
         groups::{NodeRank, Prefer, Typed, update_type},
-        instantiate::{Instantiated, InstantiatedTypes},
-        solver::{DirectlyGroupedWith, TypeDependsOn},
+        instantiate::Instantiated,
+        solver::TypeDependsOn,
         ty::{ConstructedTy, Ty},
     },
     util::get_links,
@@ -115,7 +114,6 @@ pub struct TraceEntry {
     pub comments: Comments,
     pub consequences: Vec<ConstraintConsequence>,
     pub relevant: Vec<Node>,
-    pub level: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -126,11 +124,11 @@ pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
         db: &QueryCtx<'_>,
         node: Node,
         filter: &mut dyn FnMut(&Db, Node) -> bool,
-        seen: &mut BTreeSet<Node>,
+        seen_nodes: &mut BTreeSet<Node>,
+        seen_consequences: &mut Vec<ConstraintConsequence>,
         entries: &mut Vec<TraceEntry>,
-        level: usize,
     ) {
-        if !seen.insert(node) {
+        if !seen_nodes.insert(node) {
             return;
         }
 
@@ -138,19 +136,9 @@ pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
             .get(node)
             .map_or_default(|Resolved { definitions, .. }| definitions.iter().copied());
 
-        let resolved_bounds = db.get(node).map_or_default(|ResolvedBounds(bounds)| {
-            bounds
-                .values()
-                .flat_map(|bound| bound.as_ref().ok())
-                .filter(|bound| !bound.instance.is_from_bound)
-                .map(|bound| bound.temporary)
-                .collect::<Vec<_>>()
-        });
-
         let mut relevant = Vec::new();
 
         let comments = definitions
-            .chain(resolved_bounds)
             .filter_map(|definition_node| {
                 relevant.push(definition_node);
 
@@ -183,48 +171,44 @@ pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
             .collect::<Vec<_>>();
 
         for (is_primary, comments) in comments {
-            let mut entry_relevant = relevant.clone();
+            let mut entry_relevant = Vec::new();
 
-            let mut consequences = Vec::new();
-            if db.get::<DefinitionConstraints>(comments.node).is_some() {
-                // Don't traverse into other generic definitions
+            let mut consequences = if db.get::<DefinitionConstraints>(comments.node).is_none() {
+                db.consequences
+                    .get(&comments.node)
+                    .map_or_default(|consequences| {
+                        consequences
+                            .iter()
+                            .flat_map(|(&relevant, consequences)| {
+                                entry_relevant.push(relevant);
+                                consequences.iter().cloned()
+                            })
+                            .collect()
+                    })
             } else {
-                consequences.extend(db.consequences.get(&comments.node).map_or_default(
-                    |consequences| {
-                        entry_relevant.extend(consequences.keys().copied());
-                        consequences.values().flatten().cloned()
-                    },
-                ));
+                // Don't traverse into other generic definitions
+                Vec::new()
+            };
 
-                let instantiated_nodes = db
-                    .get(comments.node)
-                    .map(|InstantiatedTypes(instantiated)| instantiated.values().copied())
-                    .unwrap_or_default();
-
-                entry_relevant.extend(instantiated_nodes);
-
-                if let Some(DirectlyGroupedWith(nodes)) = db.get(comments.node) {
-                    entry_relevant.extend(nodes);
-                }
-            }
-
-            entry_relevant.sort_by_key(|&node| {
-                db.get::<Syntax>(node)
-                    .map(|Syntax(syntax)| syntax.get(db).span(db))
-            });
-
-            relevant.extend_from_slice(&entry_relevant);
-
-            consequences = elaborate_consequences(db, consequences);
-
-            consequences.retain(|consequence| {
+            let mut consequence_filter = |consequence: &ConstraintConsequence| {
                 consequence
                     .relevant_nodes()
                     .into_iter()
                     .all(|node| filter(db, node))
-            });
+            };
 
-            consequences.sort_by_key(|consequence| consequence.sort_key());
+            consequences = elaborate_consequences(
+                db,
+                consequences,
+                &mut consequence_filter,
+                seen_consequences,
+                &mut entry_relevant,
+            )
+            .collect();
+
+            relevant.extend_from_slice(&entry_relevant);
+
+            entry_relevant.sort();
 
             if !comments.comments.is_empty() {
                 entries.push(TraceEntry {
@@ -232,13 +216,12 @@ pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
                     comments,
                     is_primary,
                     relevant: entry_relevant,
-                    level,
                 });
             }
         }
 
         for child in relevant {
-            collect_traces(db, child, filter, seen, entries, level + 1);
+            collect_traces(db, child, filter, seen_nodes, seen_consequences, entries);
         }
     }
 
@@ -248,10 +231,12 @@ pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
         node,
         &mut |_, node| db.filter(node),
         &mut BTreeSet::new(),
+        &mut Vec::new(),
         &mut entries,
-        0,
     );
 
+    // Remove top-level duplicate consequences (nested consequences are
+    // deduplicated by `elaborate_consequences`)
     let mut seen_consequences = Vec::new();
     for entry in &mut entries {
         entry.consequences.retain(|consequence| {
@@ -264,28 +249,41 @@ pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
         });
     }
 
-    entries.sort_by_key(|entry| entry.comments.node);
-
     Trace(entries)
 }
 
 fn elaborate_consequences(
     db: &Db,
-    consequences: Vec<ConstraintConsequence>,
-) -> Vec<ConstraintConsequence> {
-    consequences
-        .into_iter()
-        .flat_map(|consequence| {
-            let mut new_consequences = Vec::new();
+    consequences: impl IntoIterator<Item = ConstraintConsequence>,
+    filter: &mut dyn FnMut(&ConstraintConsequence) -> bool,
+    seen: &mut Vec<ConstraintConsequence>,
+    relevant: &mut Vec<Node>,
+) -> impl Iterator<Item = ConstraintConsequence> {
+    consequences.into_iter().flat_map(|consequence| {
+        relevant.extend(consequence.relevant_nodes());
 
-            if let ConstraintConsequence::Ty(node, ref ty) = consequence {
+        let include_directly = filter(&consequence);
+
+        match consequence {
+            ConstraintConsequence::Ty(node, ty, mut dependents) => {
+                let mut insert =
+                    |dependent: ConstraintConsequence, seen: &mut Vec<ConstraintConsequence>| {
+                        if !seen.contains(&dependent) {
+                            seen.push(dependent.clone());
+                            dependents.push(dependent);
+                        }
+                    };
+
                 let group = db.get(node).and_then(|Typed(group)| group.as_ref());
 
                 let group_nodes = group.map_or_default(|group| group.nodes().collect::<Vec<_>>());
 
                 for &other in &group_nodes {
                     if group.unwrap().get_tys(other).is_empty() {
-                        new_consequences.push(ConstraintConsequence::Ty(other, ty.clone()));
+                        insert(
+                            ConstraintConsequence::Ty(other, ty.clone(), Vec::new()),
+                            seen,
+                        );
                     }
                 }
 
@@ -299,14 +297,29 @@ fn elaborate_consequences(
                         && let Ty::Constructed(ty) =
                             update_type(db, &Ty::Node(other), &[node], Prefer::RepresentativeType)
                     {
-                        new_consequences.push(ConstraintConsequence::Ty(other, ty.clone()));
+                        insert(
+                            ConstraintConsequence::Ty(other, ty.clone(), Vec::new()),
+                            seen,
+                        );
                     }
 
                     ControlFlow::Continue(())
                 });
-            }
 
-            [consequence].into_iter().chain(new_consequences)
-        })
-        .collect()
+                dependents =
+                    elaborate_consequences(db, dependents, &mut *filter, seen, relevant).collect();
+
+                if !include_directly {
+                    dependents
+                } else {
+                    vec![ConstraintConsequence::Ty(node, ty, dependents)]
+                }
+            }
+            consequence if include_directly => {
+                seen.push(consequence.clone());
+                vec![consequence]
+            }
+            _ => Vec::new(),
+        }
+    })
 }

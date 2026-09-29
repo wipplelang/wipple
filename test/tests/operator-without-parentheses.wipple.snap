@@ -175,23 +175,15 @@ note:
 
 `show 1 + 2` adds `show 1` and `2` together, returning a `_`.
 
-This requires `Add` `()` `Number` `_`.
+This means `show 1 + 2` must have the same type as `show 1 + 2`.
 
-note: 
-  --> operator-without-parentheses.wipple:1:1
-  |
-1 | show 1 + 2
-  | ------
+This means `show 1 + 2` must have the same type as `show 1 + 2`.
 
-`show` is called with `1`.
+This means `show 1 + 2` must have the same type as `show 1 + 2`.
 
-note: 
-  --> operator-without-parentheses.wipple:1:1
-  |
-1 | show 1 + 2
-  | ----
+This means `show 1` is a `()`.
 
-`show` displays `1` on the screen.
+This uses `instance (Add () Number _)`.
 
 note: 
   --> operator-without-parentheses.wipple:1:6
@@ -201,6 +193,8 @@ note:
 
 `1` is a number literal.
 
+This means `1` is a `Number` and `1` is a `Number`.
+
 note: 
   --> operator-without-parentheses.wipple:1:10
   |
@@ -208,6 +202,18 @@ note:
   |          -
 
 `2` is a number literal.
+
+This means `2` is a `Number`.
+
+note: 
+  --> operator-without-parentheses.wipple:1:1
+  |
+1 | show 1 + 2
+  | ----
+
+`show` displays `1` on the screen.
+
+This uses `instance (Describe Number)`.
 
 error: 
   --> operator-without-parentheses.wipple:1:1

@@ -93,23 +93,11 @@ note:
   --> list-mismatched-elements.wipple:1:11
   |
 1 | my-list : 1, "hi", ()
-  |           -----------
-
-`1, "hi", ()` is a collection of `String or () or Number` elements.
-
-note: 
-  --> list-mismatched-elements.wipple:1:11
-  |
-1 | my-list : 1, "hi", ()
   |           -
 
 `1` is a number literal.
 
-This means `1` is a `Number`.
-
-This means `1` has the same type as `"hi"`.
-
-This means `1` has the same type as `()`.
+This means `1` is a `Number`, `1` is a `Number`, `1, "hi", ()` is a `List (String or () or Number)`, and 2 others.
 
 note: 
   --> list-mismatched-elements.wipple:1:14
@@ -119,25 +107,7 @@ note:
 
 `"hi"` is a string literal.
 
-This means `"hi"` is a `String`.
-
-This means `1` is a `String`.
-
-note: 
-  --> list-mismatched-elements.wipple:2:11
-  |
-2 | my-list . each show
-  |           ---------
-
-`each` is called with `show`.
-
-note: 
-  --> list-mismatched-elements.wipple:2:11
-  |
-2 | my-list . each show
-  |           ----
-
-`each` calls `show` for each `String` in `my-list`.
+This means `"hi"` is a `String` and `1` is a `String`.
 
 note: 
   --> list-mismatched-elements.wipple:2:16
@@ -146,6 +116,48 @@ note:
   |                ----
 
 `show` displays `String` on the screen.
+
+This means `1` must have the same type as `"hi"`.
+
+This means `1` must have the same type as `()`.
+
+This means `"hi"` must have the same type as `()`.
+
+This uses `instance (Describe String)`.
+
+note: 
+  --> list-mismatched-elements.wipple:2:11
+  |
+2 | my-list . each show
+  |           ----
+
+`each` calls `show` for each `String or () or Number` in `my-list`.
+
+This means `my-list . each show` is a `()`.
+
+This means `my-list . each show` is a `()`.
+
+This means `each show` is a `()`.
+
+This means `1, "hi", ()` is a `List (String or () or Number)`.
+
+This means `1, "hi", ()` is a `List (String or () or Number)`.
+
+This means `my-list` is a `List (String or () or Number)`.
+
+This uses `instance (As-Sequence (List (String or () or Number)) (String or () or Number))`.
+
+note: 
+  --> list-mismatched-elements.wipple:1:11
+  |
+1 | my-list : 1, "hi", ()
+  |           -----------
+
+`1, "hi", ()` is a collection of `String` elements.
+
+This means `"hi"` must have the same type as `1`.
+
+This means `()` must have the same type as `1`.
 
 error: 
   --> list-mismatched-elements.wipple:1:11

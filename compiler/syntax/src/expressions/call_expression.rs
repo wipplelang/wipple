@@ -130,12 +130,6 @@ impl Visit for CallExpression {
             },
         );
 
-        let function_is_variable = self
-            .function
-            .get(db)
-            .downcast_ref::<VariableExpression>()
-            .is_some();
-
         db.get_mut_or_default::<Description>(node)
             .push(DescriptionEntry {
                 comments: Comments::builtin(
@@ -146,7 +140,7 @@ impl Visit for CallExpression {
                         ("inputs", Some(Link::list("and", inputs))),
                     ],
                 ),
-                is_primary: function_is_variable,
+                is_primary: false,
             });
     }
 }

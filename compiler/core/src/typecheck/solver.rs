@@ -8,6 +8,7 @@ use crate::{
         ty::{ConstructedTy, Ty},
     },
 };
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -155,9 +156,9 @@ impl Solver {
             for relevant in [node].into_iter().chain(consequence.relevant_nodes()) {
                 let consequences = db
                     .consequences
-                    .entry(relevant)
-                    .or_default()
                     .entry(node)
+                    .or_default()
+                    .entry(relevant)
                     .or_default();
 
                 if !consequences.contains(&consequence) {
@@ -311,13 +312,76 @@ impl Solver {
             return; // already the same group
         }
 
-        let (index, group) = match (left_index, right_index) {
+        let (index, group, consequences) = match (left_index, right_index) {
             (Some(left_index), Some(right_index)) => {
-                (Some(left_index), self.groups.remove_existing(right_index))
+                let mut existing_nodes = if self.trace {
+                    self.groups.get(left_index).nodes().collect()
+                } else {
+                    Vec::new()
+                };
+
+                let right_group = self.groups.remove_existing(right_index);
+
+                if self.trace {
+                    existing_nodes.extend(right_group.nodes());
+                }
+
+                (
+                    Some(left_index),
+                    right_group,
+                    existing_nodes
+                        .into_iter()
+                        .filter(|&node| {
+                            // Don't add consequences for hidden nodes because
+                            // they will be filtered out later anyway
+                            !db.is_hidden(node)
+                        })
+                        .tuple_combinations()
+                        .flat_map(|(left, right)| {
+                            [
+                                ConstraintConsequence::Group(left, right),
+                                ConstraintConsequence::Group(left, left_node),
+                                ConstraintConsequence::Group(left, right_node),
+                                ConstraintConsequence::Group(right, right_node),
+                                ConstraintConsequence::Group(right, left_node),
+                            ]
+                        })
+                        .collect(),
+                )
             }
-            (Some(left_index), None) => (Some(left_index), Group::with_nodes([right_node])),
-            (None, Some(right_index)) => (Some(right_index), Group::with_nodes([left_node])),
-            (None, None) => (None, Group::with_nodes([left_node, right_node])),
+            (Some(left_index), None) => {
+                let existing_nodes = if self.trace {
+                    self.groups.get(left_index).nodes().collect()
+                } else {
+                    Vec::new()
+                };
+
+                (
+                    Some(left_index),
+                    Group::with_nodes([right_node]),
+                    existing_nodes
+                        .into_iter()
+                        .map(|node| ConstraintConsequence::Group(node, right_node))
+                        .collect(),
+                )
+            }
+            (None, Some(right_index)) => {
+                let existing_nodes = if self.trace {
+                    self.groups.get(right_index).nodes().collect()
+                } else {
+                    Vec::new()
+                };
+
+                (
+                    Some(right_index),
+                    Group::with_nodes([left_node]),
+                    existing_nodes
+                        .into_iter()
+                        .map(|node| ConstraintConsequence::Group(node, left_node))
+                        .collect(),
+                )
+            }
+            (None, None) => (None, Group::with_nodes([left_node, right_node]), Vec::new()),
         };
 
         let mut merged = true;
@@ -339,10 +403,11 @@ impl Solver {
             self.groups.insert(group);
         }
 
-        self.add_consequence(
-            db,
-            ConstraintConsequence::Group(left_node, right_node, merged),
-        );
+        self.add_consequence(db, ConstraintConsequence::Group(left_node, right_node));
+
+        for consequence in consequences {
+            self.add_consequence(db, consequence);
+        }
     }
 
     fn insert(&mut self, db: &mut Db, node: Node, ty: ConstructedTy) {
@@ -354,7 +419,7 @@ impl Solver {
             .0
             .extend(&ty.children);
 
-        self.add_consequence(db, ConstraintConsequence::Ty(node, ty));
+        self.add_consequence(db, ConstraintConsequence::Ty(node, ty, Vec::new()));
     }
 
     pub fn rank_of(&self, node: Node) -> NodeRank {

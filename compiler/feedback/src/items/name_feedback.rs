@@ -35,7 +35,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
         .display(|_db, writer, _, (_, name, definitions)| {
             writer.code(name.to_string());
             writer.string(" could refer to ");
-            writer.list("or", |list| {
+            writer.list("or", |_, list| {
                 for &definition in *definitions {
                     list.add(move |ctx| ctx.node(definition));
                 }

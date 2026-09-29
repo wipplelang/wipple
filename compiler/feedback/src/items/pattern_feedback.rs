@@ -71,7 +71,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             } else {
                 writer.node(node);
                 writer.string(" could be ");
-                writer.list("or", |list| {
+                writer.list("or", |_, list| {
                     for tree in &missing.0 {
                         list.add(move |writer| writer.render(db, tree));
                     }

@@ -4,7 +4,7 @@ use std::{
 };
 use wipple_core::{
     db::{Db, Node},
-    render::{Render, RenderCtx, RenderOptions, RenderSegment},
+    render::{RenderCtx, RenderOptions, RenderSegment},
     typecheck::groups::Prefer,
 };
 use wipple_queries::Trace;
@@ -63,7 +63,6 @@ impl FeedbackWriter {
 struct FeedbackWriterTrace {
     node: Node,
     is_primary: bool,
-    level: usize,
     node_ctx: RenderCtx,
     consequence_ctxs: Vec<RenderCtx>,
 }
@@ -82,7 +81,12 @@ impl FeedbackWriter {
                 .filter_map(|consequence| {
                     let mut ctx = RenderCtx::with_options(self.options.clone());
                     ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
-                        consequence.render_into(db, ctx)
+                        if consequence.should_render(db, ctx) {
+                            ctx.list("and", |ctx, list| {
+                                consequence.render_into_list(db, ctx, list);
+                            });
+                            ctx.string(".");
+                        }
                     });
                     (!ctx.is_empty()).then_some(ctx)
                 })
@@ -91,7 +95,6 @@ impl FeedbackWriter {
             self.traces.push(FeedbackWriterTrace {
                 node: entry.comments.node,
                 is_primary: entry.is_primary,
-                level: entry.level,
                 node_ctx,
                 consequence_ctxs,
             });
@@ -112,7 +115,6 @@ pub struct FeedbackTrace {
     pub is_primary: bool,
     pub message: String,
     pub consequences: Vec<String>,
-    pub level: usize,
 }
 
 impl FeedbackWriter {
@@ -145,7 +147,6 @@ impl FeedbackWriter {
                     is_primary: trace.is_primary,
                     message,
                     consequences,
-                    level: trace.level,
                 }
             })
             .collect::<Vec<_>>();
