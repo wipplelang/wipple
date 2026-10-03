@@ -26,7 +26,6 @@ pub struct RenderOptions {
     pub relevant: Vec<Node>,
     pub prefer: Prefer,
     pub explain: ExplainOptions,
-    pub written_list_prefix: bool,
 }
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -53,7 +52,7 @@ impl RenderCtx {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Comments {
     pub node: Node,
     pub comments: Vec<Str>,
@@ -158,7 +157,7 @@ impl RenderCtx {
         self.nodes.insert(node);
     }
 
-    pub const LIST_LIMIT: usize = 3;
+    pub const LIST_LIMIT: usize = 10;
 
     pub fn list<'a>(
         &mut self,
@@ -169,9 +168,6 @@ impl RenderCtx {
 
         build(self, &mut builder);
         let items = builder.items;
-
-        let prev_written_list_prefix = self.options.written_list_prefix;
-        self.options.written_list_prefix = false;
 
         let len = items.len();
         match len {
@@ -208,8 +204,6 @@ impl RenderCtx {
             }
             0 => {}
         }
-
-        self.options.written_list_prefix = prev_written_list_prefix;
     }
 
     pub fn comments(&mut self, db: &Db, comments: &Comments) {
@@ -436,7 +430,13 @@ impl RenderSegment {
                 }
 
                 if db.debug_enabled {
-                    write!(s, " ({node:?})").unwrap();
+                    let node = format!(" ({node:?})");
+
+                    if options.color {
+                        write!(s, "{}", dim(&node)).unwrap();
+                    } else {
+                        write!(s, "{node}").unwrap();
+                    }
                 }
 
                 s

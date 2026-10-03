@@ -62,7 +62,7 @@ Facts (layer 2):
 
 `my-list` (VisitAs):
   at lists.wipple:3:7-3:14
-  grouped with `(List element)`, `my-list`
+  grouped with `list`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
@@ -107,7 +107,7 @@ Facts (layer 2):
 
 `my-list` (VisitAs):
   at lists.wipple:4:7-4:14
-  grouped with `(List element)`, `my-list`
+  grouped with `list`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
@@ -152,7 +152,7 @@ Facts (layer 2):
 
 `my-list` (VisitAs):
   at lists.wipple:5:8-5:15
-  grouped with `(List element)`, `my-list`
+  grouped with `list`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
@@ -165,7 +165,7 @@ Facts (layer 2):
 
 `my-list . initial) or unreachable` (VisitAs):
   at lists.wipple:5:8-5:41
-  grouped with `(List element)`, `my-list . initial) or unreachable`
+  grouped with `list`, `my-list . initial) or unreachable`
   has type `List Number`
   is an expression
 
@@ -254,7 +254,7 @@ Facts (layer 2):
 
 `my-list` (VisitAs):
   at lists.wipple:6:8-6:15
-  grouped with `(List element)`, `my-list`
+  grouped with `list`, `my-list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
@@ -267,7 +267,7 @@ Facts (layer 2):
 
 `my-list . tail) or unreachable` (VisitAs):
   at lists.wipple:6:8-6:38
-  grouped with `(List element)`, `my-list . tail) or unreachable`
+  grouped with `list`, `my-list . tail) or unreachable`
   has type `List Number`
   is an expression
 
@@ -356,7 +356,7 @@ Facts (layer 2):
 
 `my-list` (VisitAs):
   at lists.wipple:7:7-7:14
-  grouped with `(List element)`, `my-list`, `(List element)`
+  grouped with `list`, `my-list`, `list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`

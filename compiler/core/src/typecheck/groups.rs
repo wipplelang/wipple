@@ -14,6 +14,8 @@ pub enum NodeRank {
     #[default]
     Inherited,
     Annotated,
+    Type,
+    Statement,
 }
 
 impl Group {

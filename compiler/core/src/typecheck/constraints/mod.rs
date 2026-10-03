@@ -6,6 +6,7 @@ pub mod ty_constraint;
 
 use crate::{
     db::{Db, Node},
+    facts::Children,
     render::{ExplainOptions, ListBuilder, RenderCtx},
     typecheck::{
         bounds::Instance,
@@ -16,7 +17,7 @@ use crate::{
     },
     visit::{
         Resolved,
-        definitions::{Defined, VariableDefinition},
+        definitions::{Defined, InstanceDefinition, VariableDefinition},
     },
 };
 use dyn_clone::DynClone;
@@ -25,6 +26,7 @@ use std::{
     any::Any,
     collections::{BTreeMap, VecDeque},
     fmt::Debug,
+    fmt::Write,
 };
 
 pub enum RunResult {
@@ -56,156 +58,6 @@ impl dyn Constraint {
 
     pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
         (self as &mut dyn Any).downcast_mut()
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub enum ConstraintConsequence {
-    Group(Node, Node),
-    Ty(Node, ConstructedTy, Vec<ConstraintConsequence>),
-    Instance(Instance, bool),
-}
-
-impl ConstraintConsequence {
-    pub fn sort_key(&self) -> impl Ord + use<> {
-        match self {
-            ConstraintConsequence::Ty(..) => 0,
-            ConstraintConsequence::Group(..) => 1,
-            ConstraintConsequence::Instance(..) => 2,
-        }
-    }
-
-    pub fn relevant_nodes(&self) -> Vec<Node> {
-        match self {
-            ConstraintConsequence::Group(left, right) => vec![*left, *right],
-            ConstraintConsequence::Ty(node, _, _) => vec![*node],
-            ConstraintConsequence::Instance(_, _) => Vec::new(),
-        }
-    }
-
-    fn requires_explain_full(&self, db: &Db) -> bool {
-        match *self {
-            ConstraintConsequence::Group(node, _) => db
-                .get(node)
-                .and_then(|Typed(group)| group.as_ref())
-                .is_none_or(|group| group.tys().count() == 1),
-            ConstraintConsequence::Ty(..) | ConstraintConsequence::Instance(..) => false,
-        }
-    }
-
-    pub fn should_render(&self, db: &Db, ctx: &mut RenderCtx) -> bool {
-        match ctx.options.explain {
-            ExplainOptions::None => return false,
-            ExplainOptions::Enabled => {
-                if self.requires_explain_full(db) {
-                    return false;
-                }
-            }
-            ExplainOptions::Full => {}
-        };
-
-        match *self {
-            ConstraintConsequence::Group(left, right) => {
-                if left == right || db.is_hidden(left) || db.is_hidden(right) {
-                    return false;
-                }
-
-                let Some(Typed(Some(group))) = db.get(left) else {
-                    return false;
-                };
-
-                // Hide obvious consequences involving type annotations
-                if group.get_rank(left) == NodeRank::Annotated
-                    || group.get_rank(right) == NodeRank::Annotated
-                {
-                    return false;
-                }
-
-                let variable_definition = |node| {
-                    db.get::<Resolved>(node)
-                        .map_or_default(|Resolved { definitions, .. }| definitions.iter().copied())
-                        .chain([node])
-                        .filter_map(|node| db.get::<Defined>(node))
-                        .find_map(|Defined(definition)| {
-                            definition.downcast_ref::<VariableDefinition>()
-                        })
-                };
-
-                // Hide obvious consequences involving uses of the same variable
-                if variable_definition(left).is_some() && variable_definition(right).is_some() {
-                    return false;
-                }
-
-                true
-            }
-            ConstraintConsequence::Ty(node, ref ty, ref dependents) => {
-                if db.is_hidden(node) {
-                    return dependents
-                        .iter()
-                        .all(|consequence| !consequence.should_render(db, ctx));
-                }
-
-                // Hide obvious consequences involving type annotations
-                if db
-                    .get(node)
-                    .and_then(|Typed(group)| group.as_ref())
-                    .is_some_and(|group| group.get_rank(node) == NodeRank::Annotated)
-                {
-                    return false;
-                }
-
-                ty.should_render_consequences(db, ctx, node)
-            }
-            ConstraintConsequence::Instance(_, _) => true,
-        }
-    }
-}
-
-impl ConstraintConsequence {
-    pub fn render_into_list<'a>(
-        &'a self,
-        db: &'a Db,
-        ctx: &mut RenderCtx,
-        list: &mut ListBuilder<'a>,
-    ) {
-        match *self {
-            ConstraintConsequence::Group(left, right) => {
-                ctx.string("This means ");
-                ctx.node(left);
-                ctx.string(" must have the same type as ");
-                ctx.node(right);
-            }
-            ConstraintConsequence::Ty(node, ref ty, ref dependents) => {
-                if !ctx.options.written_list_prefix {
-                    ctx.string("This means ");
-                    ctx.options.written_list_prefix = true;
-                }
-
-                if !db.is_hidden(node) {
-                    ty.render_consequences(db, ctx, list, node);
-                }
-
-                for consequence in dependents {
-                    if consequence.should_render(db, ctx) {
-                        consequence.render_into_list(db, ctx, list);
-                    }
-                }
-            }
-            ConstraintConsequence::Instance(ref instance, resolved) => {
-                if resolved {
-                    let instance_string = format!(
-                        "instance ({})",
-                        instance.display(db, &ctx.options.relevant, ctx.options.prefer)
-                    );
-
-                    ctx.string("This uses ");
-                    ctx.link(instance_string, instance.node);
-                } else {
-                    ctx.string("This requires ");
-                    ctx.render(db, instance);
-                }
-            }
-        }
     }
 }
 
@@ -293,5 +145,186 @@ impl IntoIterator for Constraints {
 
     fn into_iter(self) -> Self::IntoIter {
         Box::new(self.0.into_values().flatten())
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum ConstraintConsequence {
+    Group(Node, Node),
+    Ty(Node, ConstructedTy),
+    Instance(Instance, bool),
+}
+
+impl ConstraintConsequence {
+    pub fn sort_key(&self) -> impl Ord + use<> {
+        match self {
+            ConstraintConsequence::Ty(..) => 0,
+            ConstraintConsequence::Group(..) => 1,
+            ConstraintConsequence::Instance(..) => 2,
+        }
+    }
+
+    pub fn relevant_nodes(&self) -> Vec<Node> {
+        match self {
+            ConstraintConsequence::Group(left, right) => vec![*left, *right],
+            ConstraintConsequence::Ty(node, _) => vec![*node],
+            ConstraintConsequence::Instance(_, _) => Vec::new(),
+        }
+    }
+
+    fn requires_explain_full(&self, db: &Db) -> bool {
+        match *self {
+            ConstraintConsequence::Group(node, _) => {
+                // Hide expressions without conflicts by default
+                if db
+                    .get(node)
+                    .and_then(|Typed(group)| group.as_ref())
+                    .is_none_or(|group| group.tys().count() == 1)
+                {
+                    return true;
+                }
+            }
+            ConstraintConsequence::Ty(node, _) => {
+                // Hide complex expressions by default
+                if db
+                    .get(node)
+                    .is_some_and(|Children(children)| !children.is_empty())
+                {
+                    return true;
+                }
+            }
+            ConstraintConsequence::Instance(ref instance, resolved) => {
+                // Hide resolved non-error instances by default
+                if resolved
+                    && db
+                        .get(instance.node)
+                        .and_then(|Defined(definition)| {
+                            definition.downcast_ref::<InstanceDefinition>()
+                        })
+                        .is_none_or(|definition| !definition.error)
+                {
+                    return true;
+                }
+            }
+        }
+
+        false
+    }
+
+    pub fn should_render(&self, db: &Db, ctx: &mut RenderCtx) -> bool {
+        match ctx.options.explain {
+            ExplainOptions::None => return false,
+            ExplainOptions::Enabled => {
+                if self.requires_explain_full(db) {
+                    return false;
+                }
+            }
+            ExplainOptions::Full => {}
+        };
+
+        match *self {
+            ConstraintConsequence::Group(left, right) => {
+                if left == right || db.is_hidden(left) || db.is_hidden(right) {
+                    return false;
+                }
+
+                let Some(Typed(Some(group))) = db.get(left) else {
+                    return false;
+                };
+
+                // Hide obvious consequences involving type annotations
+                if group.get_rank(left) == NodeRank::Type || group.get_rank(right) == NodeRank::Type
+                {
+                    return false;
+                }
+
+                let variable_definition = |node| {
+                    db.get::<Resolved>(node)
+                        .map_or_default(|Resolved { definitions, .. }| definitions.iter().copied())
+                        .chain([node])
+                        .filter_map(|node| db.get::<Defined>(node))
+                        .find_map(|Defined(definition)| {
+                            definition.downcast_ref::<VariableDefinition>()
+                        })
+                };
+
+                // Hide obvious consequences involving uses of the same variable
+                if variable_definition(left).is_some() && variable_definition(right).is_some() {
+                    return false;
+                }
+
+                true
+            }
+            ConstraintConsequence::Ty(node, ref ty) => {
+                if db.is_hidden(node) {
+                    return false;
+                }
+
+                // Hide obvious consequences involving type annotations
+                if db
+                    .get(node)
+                    .and_then(|Typed(group)| group.as_ref())
+                    .is_some_and(|group| group.get_rank(node) >= NodeRank::Annotated)
+                {
+                    return false;
+                }
+
+                ty.should_render_consequences(db, ctx, node)
+            }
+            ConstraintConsequence::Instance(_, _) => true,
+        }
+    }
+}
+
+impl ConstraintConsequence {
+    pub fn render_into_list<'a>(
+        &'a self,
+        db: &'a Db,
+        ctx: &mut RenderCtx,
+        list: &mut ListBuilder<'a>,
+    ) {
+        match *self {
+            ConstraintConsequence::Group(left, right) => {
+                ctx.string("This means ");
+                ctx.node(left);
+                ctx.string(" must have the same type as ");
+                ctx.node(right);
+            }
+            ConstraintConsequence::Ty(node, ref ty) => {
+                ctx.string("This means ");
+                ty.render_consequences(db, ctx, list, node);
+            }
+            ConstraintConsequence::Instance(ref instance, resolved) => {
+                if resolved {
+                    let mut instance_string = String::new();
+                    if let Some(definition) =
+                        db.get(instance.node).and_then(|Defined(definition)| {
+                            definition.downcast_ref::<InstanceDefinition>()
+                        })
+                    {
+                        if definition.default {
+                            write!(instance_string, "default ").unwrap();
+                        }
+
+                        if definition.error {
+                            write!(instance_string, "error ").unwrap();
+                        }
+                    }
+
+                    write!(
+                        instance_string,
+                        "instance ({})",
+                        instance.display(db, &ctx.options.relevant, ctx.options.prefer)
+                    )
+                    .unwrap();
+
+                    ctx.string("This uses ");
+                    ctx.link(instance_string, instance.node);
+                } else {
+                    ctx.string("This requires ");
+                    ctx.render(db, instance);
+                }
+            }
+        }
     }
 }

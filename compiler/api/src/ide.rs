@@ -110,7 +110,12 @@ impl Ide {
         Ide { result }
     }
 
-    fn default_options(&self) -> (&'static dyn Fn(&Db, Node) -> bool, RenderOptions) {
+    fn default_options(
+        &self,
+    ) -> (
+        &'static (dyn Fn(&Db, Node) -> bool + Send + Sync),
+        RenderOptions,
+    ) {
         let render_options = RenderOptions {
             explain: ExplainOptions::Enabled,
             ..Default::default()
@@ -169,7 +174,7 @@ impl Ide {
             .get(&self.result.db)
             .span(&self.result.db);
 
-        let trace = wipple_queries::trace(&self.query_ctx(), node);
+        let trace = wipple_queries::Trace::collect(&self.query_ctx(), node);
 
         let mut writer = FeedbackWriter::with_options(render_options.clone());
         writer.extend_trace(&self.result.db, &trace);

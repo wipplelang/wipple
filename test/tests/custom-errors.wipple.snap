@@ -388,8 +388,6 @@ note:
 
 `2` is a number literal.
 
-This means `2` is a `Number`.
-
 error: 
    --> custom-errors.wipple:17:5
    |

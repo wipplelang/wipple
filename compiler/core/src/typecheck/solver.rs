@@ -153,18 +153,7 @@ impl Solver {
         }
 
         for &node in &self.tracing {
-            for relevant in [node].into_iter().chain(consequence.relevant_nodes()) {
-                let consequences = db
-                    .consequences
-                    .entry(node)
-                    .or_default()
-                    .entry(relevant)
-                    .or_default();
-
-                if !consequences.contains(&consequence) {
-                    consequences.push(consequence.clone());
-                }
-            }
+            db.consequences.insert(node, &consequence);
         }
     }
 
@@ -419,7 +408,7 @@ impl Solver {
             .0
             .extend(&ty.children);
 
-        self.add_consequence(db, ConstraintConsequence::Ty(node, ty, Vec::new()));
+        self.add_consequence(db, ConstraintConsequence::Ty(node, ty));
     }
 
     pub fn rank_of(&self, node: Node) -> NodeRank {

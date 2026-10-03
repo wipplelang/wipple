@@ -171,7 +171,7 @@ error:
 1 | T : value => trait ()
   | ^
 
-`T` has multiple overlapping instances: `instance (T X)`, `instance (T X)`, `instance (T value)`, and 1 other.
+`T` has multiple overlapping instances: `instance (T X)`, `instance (T X)`, `instance (T value)`, and `instance (T a) where (U a)`.
 
 Only one of these instances can be defined at a time. Try making your instance more specific.
 

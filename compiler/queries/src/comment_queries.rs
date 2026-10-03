@@ -1,4 +1,4 @@
-use crate::{QueryCtx, Trace, trace};
+use crate::{QueryCtx, Trace};
 use wipple_core::{
     db::Node,
     render::Comments,
@@ -30,7 +30,7 @@ pub struct ErrorInstance<'a> {
     pub bound: &'a ResolvedBound,
     pub is_default: bool,
     pub comments: Comments,
-    pub trace: Trace,
+    pub trace: Trace<'a>,
 }
 
 pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'a>> {
@@ -64,7 +64,7 @@ pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'
                 bound,
                 is_default: instance.default,
                 comments,
-                trace: trace(db, node),
+                trace: Trace::collect(db, node),
             })
         })
         .collect()

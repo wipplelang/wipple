@@ -51,7 +51,7 @@ impl Visit for StringPattern {
             }),
         );
 
-        visitor.annotating(Some(node), |visitor| {
+        visitor.annotating(Some((node, false)), |visitor| {
             visitor.visit_as(db, &syntax, string_type);
         });
 

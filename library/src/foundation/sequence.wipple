@@ -78,7 +78,7 @@ transform : f -> container -> do {
   }
 }
 
--- [`filter`] keeps the elements in [`container`] that satisfy [`condition`].
+-- [`filter`] keeps the [`element@type`] elements in [`container`] that satisfy [`condition`].
 filter :: (condition :: (element -> Boolean)) -> container -> Sequence element where (As-Sequence container element)
 filter : include? -> container -> do {
   base : As-Sequence container

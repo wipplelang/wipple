@@ -1,18 +1,15 @@
-use crate::QueryCtx;
-use std::{collections::BTreeSet, ops::ControlFlow};
+use crate::{QueryCtx, Trace, TraceEntry};
+use std::collections::BTreeMap;
+use std::collections::BTreeSet;
 use wipple_core::{
-    db::{Db, Node},
-    facts::Description,
-    render::Comments,
+    db::Node,
     typecheck::{
         constraints::ConstraintConsequence,
-        groups::{NodeRank, Prefer, Typed, update_type},
+        groups::{NodeRank, Prefer, Typed, representative_types_of},
         instantiate::Instantiated,
-        solver::TypeDependsOn,
-        ty::{ConstructedTy, Ty},
+        ty::{ConstructedTy, TyTag},
     },
-    util::get_links,
-    visit::{DefinitionConstraints, Resolved, definitions::Defined},
+    visit::exhaustiveness::MatchedBy,
 };
 
 pub fn has_type<'a>(db: &QueryCtx<'a>, node: Node) -> Option<&'a ConstructedTy> {
@@ -32,16 +29,18 @@ pub fn in_group(db: &QueryCtx<'_>, node: Node) -> impl Iterator<Item = Node> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ConflictingTypes {
+pub struct ConflictingTypes<'a> {
     pub source: Option<Node>,
     pub from: Node,
+    pub is_primary: bool,
     pub related: BTreeSet<Node>,
     pub group: BTreeSet<Node>,
     pub tys: Vec<ConstructedTy>,
-    pub trace: Trace,
+    pub trace: Trace<'a>,
+    pub summary: Option<TypeConflictSummary>,
 }
 
-pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTypes> {
+pub fn conflicting_types<'a>(db: &QueryCtx<'a>, node: Node) -> Option<ConflictingTypes<'a>> {
     let Typed(Some(group)) = db.get(node)? else {
         return None;
     };
@@ -50,9 +49,7 @@ pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTyp
         return None;
     }
 
-    if group.get_rank(node) > group.min_rank() {
-        return None;
-    }
+    let is_primary = group.get_rank(node) == group.min_rank();
 
     let source = db
         .get::<Instantiated>(node)
@@ -63,13 +60,21 @@ pub fn conflicting_types(db: &QueryCtx<'_>, node: Node) -> Option<ConflictingTyp
     related.retain(|&node| group.get_rank(node) <= NodeRank::Inherited);
     related.retain(|&node| db.filter(node));
 
+    let trace = Trace::collect(db, node);
+
+    let mut summaries = Vec::new();
+    collect_summaries(db, node, &trace, &mut summaries);
+    // TODO: Sort summaries
+
     Some(ConflictingTypes {
         source,
         from: node,
+        is_primary,
         related,
         group: group.nodes().collect(),
         tys: group.tys().cloned().collect(),
-        trace: trace(db, node),
+        trace,
+        summary: summaries.into_iter().next(),
     })
 }
 
@@ -109,217 +114,135 @@ pub fn unknown_type(db: &QueryCtx<'_>, node: Node) -> bool {
 }
 
 #[derive(Debug, Clone)]
-pub struct TraceEntry {
-    pub is_primary: bool,
-    pub comments: Comments,
-    pub consequences: Vec<ConstraintConsequence>,
-    pub relevant: Vec<Node>,
+pub struct TypeConflictSummary {
+    pub entry: TraceEntry,
+    pub suffix: TypeConflictSummarySuffix,
 }
 
 #[derive(Debug, Clone)]
-pub struct Trace(pub Vec<TraceEntry>);
-
-pub fn trace(db: &QueryCtx<'_>, node: Node) -> Trace {
-    fn collect_traces(
-        db: &QueryCtx<'_>,
-        node: Node,
-        filter: &mut dyn FnMut(&Db, Node) -> bool,
-        seen_nodes: &mut BTreeSet<Node>,
-        seen_consequences: &mut Vec<ConstraintConsequence>,
-        entries: &mut Vec<TraceEntry>,
-    ) {
-        if !seen_nodes.insert(node) {
-            return;
-        }
-
-        let definitions = db
-            .get(node)
-            .map_or_default(|Resolved { definitions, .. }| definitions.iter().copied());
-
-        let mut relevant = Vec::new();
-
-        let comments = definitions
-            .filter_map(|definition_node| {
-                relevant.push(definition_node);
-
-                let Defined(definition) = db.get(definition_node)?;
-
-                let is_primary = definition.name().is_some();
-
-                let links = get_links(db, definition_node, node, &mut *filter);
-
-                for link in links.values() {
-                    relevant.extend(link.nodes());
-                    relevant.extend(link.related.iter().copied());
-                }
-
-                Some((
-                    is_primary,
-                    Comments {
-                        node,
-                        comments: definition.comments().to_vec(),
-                        links: links.clone(),
-                    },
-                ))
-            })
-            .chain(db.get(node).into_iter().flat_map(|Description(entries)| {
-                entries
-                    .iter()
-                    .map(|entry| (entry.is_primary, entry.comments.clone()))
-            }))
-            .chain([(true, Comments::empty_for(node))])
-            .collect::<Vec<_>>();
-
-        for (is_primary, comments) in comments {
-            let mut entry_relevant = Vec::new();
-
-            let mut consequences = if db.get::<DefinitionConstraints>(comments.node).is_none() {
-                db.consequences
-                    .get(&comments.node)
-                    .map_or_default(|consequences| {
-                        consequences
-                            .iter()
-                            .flat_map(|(&relevant, consequences)| {
-                                entry_relevant.push(relevant);
-                                consequences.iter().cloned()
-                            })
-                            .collect()
-                    })
-            } else {
-                // Don't traverse into other generic definitions
-                Vec::new()
-            };
-
-            let mut consequence_filter = |consequence: &ConstraintConsequence| {
-                consequence
-                    .relevant_nodes()
-                    .into_iter()
-                    .all(|node| filter(db, node))
-            };
-
-            consequences = elaborate_consequences(
-                db,
-                consequences,
-                &mut consequence_filter,
-                seen_consequences,
-                &mut entry_relevant,
-            )
-            .collect();
-
-            relevant.extend_from_slice(&entry_relevant);
-
-            entry_relevant.sort();
-
-            if !comments.comments.is_empty() {
-                entries.push(TraceEntry {
-                    consequences,
-                    comments,
-                    is_primary,
-                    relevant: entry_relevant,
-                });
-            }
-        }
-
-        for child in relevant {
-            collect_traces(db, child, filter, seen_nodes, seen_consequences, entries);
-        }
-    }
-
-    let mut entries = Vec::new();
-    collect_traces(
-        db,
-        node,
-        &mut |_, node| db.filter(node),
-        &mut BTreeSet::new(),
-        &mut Vec::new(),
-        &mut entries,
-    );
-
-    // Remove top-level duplicate consequences (nested consequences are
-    // deduplicated by `elaborate_consequences`)
-    let mut seen_consequences = Vec::new();
-    for entry in &mut entries {
-        entry.consequences.retain(|consequence| {
-            if seen_consequences.contains(consequence) {
-                return false;
-            }
-
-            seen_consequences.push(consequence.clone());
-            true
-        });
-    }
-
-    Trace(entries)
+pub enum TypeConflictSummarySuffix {
+    FunctionInput {
+        function: Node,
+        parameter: Node,
+        argument: Node,
+    },
 }
 
-fn elaborate_consequences(
-    db: &Db,
-    consequences: impl IntoIterator<Item = ConstraintConsequence>,
-    filter: &mut dyn FnMut(&ConstraintConsequence) -> bool,
-    seen: &mut Vec<ConstraintConsequence>,
-    relevant: &mut Vec<Node>,
-) -> impl Iterator<Item = ConstraintConsequence> {
-    consequences.into_iter().flat_map(|consequence| {
-        relevant.extend(consequence.relevant_nodes());
+fn collect_summaries(
+    db: &QueryCtx<'_>,
+    node: Node,
+    trace: &Trace<'_>,
+    summaries: &mut Vec<TypeConflictSummary>,
+) {
+    collect_function_input_summaries(db, node, trace, summaries);
+}
 
-        let include_directly = filter(&consequence);
-
-        match consequence {
-            ConstraintConsequence::Ty(node, ty, mut dependents) => {
-                let mut insert =
-                    |dependent: ConstraintConsequence, seen: &mut Vec<ConstraintConsequence>| {
-                        if !seen.contains(&dependent) {
-                            seen.push(dependent.clone());
-                            dependents.push(dependent);
-                        }
+fn collect_function_input_summaries(
+    db: &QueryCtx<'_>,
+    node: Node,
+    trace: &Trace<'_>,
+    summaries: &mut Vec<TypeConflictSummary>,
+) {
+    for entry in trace.0.iter() {
+        for consequence in &entry.consequences {
+            if let ConstraintConsequence::Group(left, right) = *consequence
+                && (left == node || right == node)
+            {
+                for &(mut function_node) in &entry.relevant {
+                    let Some(Typed(Some(group))) = db.get(function_node) else {
+                        continue;
                     };
 
-                let group = db.get(node).and_then(|Typed(group)| group.as_ref());
-
-                let group_nodes = group.map_or_default(|group| group.nodes().collect::<Vec<_>>());
-
-                for &other in &group_nodes {
-                    if group.unwrap().get_tys(other).is_empty() {
-                        insert(
-                            ConstraintConsequence::Ty(other, ty.clone(), Vec::new()),
-                            seen,
-                        );
-                    }
-                }
-
-                let intersect = {
-                    let group_nodes = BTreeSet::from_iter(group_nodes.iter().copied());
-                    move |nodes: &BTreeSet<_>| !nodes.is_disjoint(&group_nodes)
-                };
-
-                db.for_each_fact::<_, ()>(&mut |db, other, TypeDependsOn(dependencies)| {
-                    if intersect(dependencies)
-                        && let Ty::Constructed(ty) =
-                            update_type(db, &Ty::Node(other), &[node], Prefer::RepresentativeType)
+                    if let Some(representative) = group
+                        .nodes()
+                        .find(|&node| group.get_rank(node) == group.min_rank())
                     {
-                        insert(
-                            ConstraintConsequence::Ty(other, ty.clone(), Vec::new()),
-                            seen,
-                        );
+                        function_node = representative;
                     }
 
-                    ControlFlow::Continue(())
-                });
+                    // Prefer using the function's name
+                    if let Some(MatchedBy(name)) = db.get(function_node) {
+                        function_node = *name;
+                    }
 
-                dependents =
-                    elaborate_consequences(db, dependents, &mut *filter, seen, relevant).collect();
+                    if group.get_rank(function_node) >= NodeRank::Type {
+                        continue;
+                    }
 
-                if !include_directly {
-                    dependents
-                } else {
-                    vec![ConstraintConsequence::Ty(node, ty, dependents)]
+                    let Some(function_ty) =
+                        representative_types_of(db, function_node, &[], Prefer::DirectType)
+                            .into_iter()
+                            .next()
+                    else {
+                        continue;
+                    };
+
+                    if function_ty.tag != TyTag::Function {
+                        continue;
+                    }
+
+                    let Some((_, inputs)) = function_ty.children.split_first() else {
+                        continue;
+                    };
+
+                    let function_inputs = inputs
+                        .iter()
+                        .copied()
+                        .map(|node| {
+                            db.get(node)
+                                .and_then(|Typed(group)| group.as_ref())
+                                .into_iter()
+                                .flat_map(|group| {
+                                    group.entries().map(|(node, rank, _)| (node, rank))
+                                })
+                                .collect::<BTreeMap<_, _>>()
+                        })
+                        .collect::<Vec<_>>();
+
+                    let as_parameter = |node: Node| {
+                        function_inputs
+                            .iter()
+                            .enumerate()
+                            .find_map(|(index, inputs)| Some((index, *inputs.get(&node)?)))
+                    };
+
+                    let is_annotated = |rank: NodeRank| rank >= NodeRank::Annotated;
+
+                    let Some((left_index, left_rank)) = as_parameter(left) else {
+                        continue;
+                    };
+
+                    let Some((right_index, right_rank)) = as_parameter(right) else {
+                        continue;
+                    };
+
+                    if left_index != right_index {
+                        continue;
+                    }
+
+                    let left_is_annotated = is_annotated(left_rank);
+                    let right_is_annotated = is_annotated(right_rank);
+
+                    let (parameter, argument) = if left_is_annotated && right_is_annotated {
+                        continue;
+                    } else if left_is_annotated {
+                        (left, right)
+                    } else if right_is_annotated {
+                        (right, left)
+                    } else {
+                        continue;
+                    };
+
+                    summaries.push(TypeConflictSummary {
+                        entry: entry.clone(),
+                        suffix: TypeConflictSummarySuffix::FunctionInput {
+                            function: function_node,
+                            parameter,
+                            argument,
+                        },
+                    });
                 }
             }
-            consequence if include_directly => {
-                seen.push(consequence.clone());
-                vec![consequence]
-            }
-            _ => Vec::new(),
         }
-    })
+    }
 }

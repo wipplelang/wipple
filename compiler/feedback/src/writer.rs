@@ -68,8 +68,8 @@ struct FeedbackWriterTrace {
 }
 
 impl FeedbackWriter {
-    pub fn extend_trace(&mut self, db: &Db, trace: &Trace) {
-        for entry in &trace.0 {
+    pub fn extend_trace(&mut self, db: &Db, trace: &Trace<'_>) {
+        for entry in trace.0.iter() {
             let mut node_ctx = RenderCtx::with_options(self.options.clone());
             node_ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
                 ctx.comments(db, &entry.comments);

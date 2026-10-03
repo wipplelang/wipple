@@ -5,6 +5,7 @@ mod highlight_queries;
 mod missing_queries;
 mod placeholder_queries;
 mod syntax_queries;
+pub mod trace;
 mod type_queries;
 mod unused_queries;
 
@@ -15,6 +16,7 @@ pub use highlight_queries::*;
 pub use missing_queries::*;
 pub use placeholder_queries::*;
 pub use syntax_queries::*;
+pub use trace::*;
 pub use type_queries::*;
 pub use unused_queries::*;
 
@@ -24,11 +26,11 @@ use wipple_core::db::{Db, Fact, Node};
 #[derive(Clone)]
 pub struct QueryCtx<'a> {
     db: &'a Db,
-    filter: Arc<dyn Fn(&'a Db, Node) -> bool + 'a>,
+    filter: Arc<dyn Fn(&'a Db, Node) -> bool + Send + Sync + 'a>,
 }
 
 impl<'a> QueryCtx<'a> {
-    pub fn new(db: &'a Db, filter: Arc<dyn Fn(&'a Db, Node) -> bool + 'a>) -> Self {
+    pub fn new(db: &'a Db, filter: Arc<dyn Fn(&'a Db, Node) -> bool + Send + Sync + 'a>) -> Self {
         QueryCtx { db, filter }
     }
 

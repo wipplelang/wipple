@@ -1,5 +1,6 @@
 pub mod ast;
 pub mod codegen;
+pub mod consequences;
 pub mod db;
 pub mod facts;
 pub mod graph;
@@ -46,9 +47,7 @@ pub struct TopLevel {
 }
 
 pub fn default_filter(db: &Db, node: Node) -> bool {
-    db.owned_nodes().any(|owned| owned == node)
-        && db.contains::<Syntax>(node)
-        && !db.is_hidden(node)
+    !db.is_hidden(node) && db.contains::<Syntax>(node)
 }
 
 pub fn compile<'a>(

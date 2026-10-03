@@ -53,17 +53,17 @@ impl Visit for AnnotatePattern {
         db.hide(node);
 
         let pattern = visitor.visit(db, &self.pattern);
-        let ty = visitor.annotating(Some(pattern), |visitor| visitor.visit(db, &self.ty));
+        let ty = visitor.annotating(Some((pattern, true)), |visitor| visitor.visit(db, &self.ty));
         db.graph.edge(ty, pattern, "type");
 
         visitor.constraint(db, TyConstraint::new(node, Ty::Node(ty)));
 
         visitor.codegen(db, node, AnnotatePatternCodegen { pattern });
 
-        db.get_mut_or_default::<Description>(node)
+        db.get_mut_or_default::<Description>(pattern)
             .push(DescriptionEntry {
                 comments: Comments::builtin(
-                    pattern,
+                    ty,
                     "[`pattern`] is annotated as a [`type`].",
                     [
                         ("pattern", Some(Link::node(pattern))),

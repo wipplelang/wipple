@@ -68,11 +68,7 @@ note:
 
 `show` displays `my-variable` on the screen.
 
-This means `show my-variable` is a `()`.
-
-This means `show my-variable` is a `()`.
-
-This uses `instance (Describe Cannot-Be-Shown)`.
+This uses `default error instance (Describe Cannot-Be-Shown)`.
 
 error: 
   --> show-variable.wipple:4:1

@@ -47,14 +47,6 @@ note:
 
 `show` displays `1` on the screen.
 
-This means `show 1 2 3` is a `()`.
-
-This means `show 1 2 3` is a `()`.
-
-This means `1` is a `Number`.
-
-This uses `instance (Describe Number)`.
-
 note: 
   --> too-many-inputs.wipple:1:6
   |
@@ -62,6 +54,22 @@ note:
   |      -
 
 `1` is a number literal.
+
+note: 
+  --> too-many-inputs.wipple:1:8
+  |
+1 | show 1 2 3
+  |        -
+
+`2` is a number literal.
+
+note: 
+  --> too-many-inputs.wipple:1:10
+  |
+1 | show 1 2 3
+  |          -
+
+`3` is a number literal.
 
 error: 
   --> too-many-inputs.wipple:1:1

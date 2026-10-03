@@ -9,7 +9,11 @@ use wipple_core::{
     codegen::{CodegenError, hir},
     db::{Db, Node},
     span::Span,
-    typecheck::{constraints::ty_constraint::TyConstraint, groups::Typed, ty::Ty},
+    typecheck::{
+        constraints::ty_constraint::TyConstraint,
+        groups::{NodeRank, Typed},
+        ty::Ty,
+    },
     visit::{Visit, Visitor},
 };
 use wipple_parse::parser::{ParseError, Parser};
@@ -46,6 +50,7 @@ impl Visit for ExpressionStatement {
         visit_statement(db, node, visitor);
 
         db.insert(node, Typed::default());
+        visitor.rank(node, NodeRank::Statement);
 
         let expression = visitor.visit(db, &self.expression);
 

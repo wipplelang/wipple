@@ -207,7 +207,7 @@ Facts (layer 2):
 
 `show` (VariableExpression):
   at unzip.wipple:4:13-4:17
-  grouped with `value -> ()`, `(element -> ())`
+  grouped with `value -> ()`, `action`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression
@@ -278,7 +278,7 @@ Facts (layer 2):
 
 `show` (VariableExpression):
   at unzip.wipple:7:14-7:18
-  grouped with `value -> ()`, `(element -> ())`
+  grouped with `value -> ()`, `action`
   has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
   has type `String -> ()`
   is an expression

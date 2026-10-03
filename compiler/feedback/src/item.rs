@@ -2,7 +2,6 @@ use crate::writer::Feedback;
 use std::collections::BTreeSet;
 use wipple_core::{
     db::{Db, Node},
-    facts::Syntax,
     render::{RenderOptions, RenderSegment},
 };
 
@@ -10,7 +9,7 @@ pub struct FeedbackItem<'a> {
     pub id: String,
     pub rank: FeedbackRank,
     pub location: FeedbackLocation,
-    pub display: Box<
+    pub(crate) display: Box<
         dyn Fn(&Db, RenderOptions, &mut dyn FnMut(&Db, &RenderSegment) -> String) -> Feedback + 'a,
     >,
     pub show_graph: bool,
@@ -56,16 +55,11 @@ impl From<Node> for FeedbackLocation {
     }
 }
 
-pub fn sort_feedback(db: &Db, items: &mut Vec<FeedbackItem<'_>>) {
+pub fn sort_feedback(_db: &Db, items: &mut Vec<FeedbackItem<'_>>) {
     // Reduce noise by preferring lower-rank items
     let min_rank = items.iter().map(|item| item.rank).min();
 
     if let Some(min_rank) = min_rank {
         items.retain(|item| item.rank == min_rank);
     }
-
-    items.sort_by_key(|item| {
-        db.get(item.location.primary)
-            .map(|Syntax(syntax)| db.ast(syntax).span(db))
-    });
 }

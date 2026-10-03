@@ -63,7 +63,7 @@ Facts (layer 2):
 
 `(x :: String) -> x` (FunctionExpression):
   at mismatched-inferred-params.wipple:1:24-1:42
-  grouped with `(input -> output)`
+  grouped with `f`
   has type `(String or Number) -> String or Number`
   is an expression
 
@@ -98,52 +98,6 @@ note:
 
 `1` is a number literal.
 
-This means `1` is a `Number`, `2` is a `Number`, `3` is a `Number`, and 5 others.
-
-note: 
-  --> mismatched-inferred-params.wipple:1:25
-  |
-1 | (1, 2, 3) . transform ((x :: String) -> x)
-  |                         -
-
-`x` is annotated as a `String`.
-
-This means `x` is a `String`, `2` is a `String`, and `3` is a `String`.
-
-note: 
-  --> mismatched-inferred-params.wipple:1:5
-  |
-1 | (1, 2, 3) . transform ((x :: String) -> x)
-  |     -
-
-`2` is a number literal.
-
-This means `2` is a `Number`.
-
-note: 
-  --> mismatched-inferred-params.wipple:1:8
-  |
-1 | (1, 2, 3) . transform ((x :: String) -> x)
-  |        -
-
-`3` is a number literal.
-
-This means `3` is a `Number`.
-
-note: 
-  --> mismatched-inferred-params.wipple:1:13
-  |
-1 | (1, 2, 3) . transform ((x :: String) -> x)
-  |             ---------
-
-`transform` transforms the `String` elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`.
-
-This means `1, 2, 3` is a `List String`.
-
-This means `1, 2, 3` is a `List String`.
-
-This uses `instance (As-Sequence (List String) String)`.
-
 note: 
   --> mismatched-inferred-params.wipple:1:2
   |
@@ -162,6 +116,38 @@ This means `2` must have the same type as `3`.
 
 This means `3` must have the same type as `1`.
 
+note: 
+  --> mismatched-inferred-params.wipple:1:13
+  |
+1 | (1, 2, 3) . transform ((x :: String) -> x)
+  |             ---------
+
+`transform` transforms the `String` elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`.
+
+note: 
+  --> mismatched-inferred-params.wipple:1:30
+  |
+1 | (1, 2, 3) . transform ((x :: String) -> x)
+  |                              ------
+
+`x` is annotated as a `String`.
+
+note: 
+  --> mismatched-inferred-params.wipple:1:5
+  |
+1 | (1, 2, 3) . transform ((x :: String) -> x)
+  |     -
+
+`2` is a number literal.
+
+note: 
+  --> mismatched-inferred-params.wipple:1:8
+  |
+1 | (1, 2, 3) . transform ((x :: String) -> x)
+  |        -
+
+`3` is a number literal.
+
 error: 
   --> mismatched-inferred-params.wipple:1:2
   |
@@ -170,6 +156,6 @@ error:
 
 `1` is a `String` or a `Number`, but it can only be one of these.
 
-`1` must be the same type as `x`, `2`, and `3`; double-check these.
+`1` must be the same type as `2` and `3`; double-check these.
 
 Help: use `--explain=full` to show more information

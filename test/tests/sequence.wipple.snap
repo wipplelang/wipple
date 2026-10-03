@@ -160,7 +160,7 @@ Facts (layer 2):
 
 `positive?` (VariableExpression):
   at sequence.wipple:7:9-7:18
-  grouped with `positive?`, `(element -> Boolean)`
+  grouped with `positive?`, `condition`
   has type `(String or Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `positive?`
@@ -182,17 +182,7 @@ note:
 
 `"abc"` is a string literal.
 
-This means `"abc"` is a `String`, `Box "abc"` is a `Box String`, `box` is a `Box String`, and 2 others.
-
-note: 
-  --> sequence.wipple:6:14
-  |
-6 | positive? : (n :: Number) -> _
-  |              -
-
-`n` is annotated as a `Number`.
-
-This means `n` is a `Number`.
+This means `box` is a `Box String`.
 
 note: 
   --> sequence.wipple:7:2
@@ -200,20 +190,26 @@ note:
 7 | (filter positive?) box
   |  ------
 
-`filter` keeps the elements in `box` that satisfy `positive?`.
-
-This means `"abc"` must have the same type as `n`.
+`filter` keeps the `String` elements in `box` that satisfy `positive?`.
 
 This means `_` is a `Boolean`.
 
-This uses `instance (As-Sequence (Box String) String)`.
+This means `"abc"` must have the same type as `n`.
+
+note: 
+  --> sequence.wipple:6:19
+  |
+6 | positive? : (n :: Number) -> _
+  |                   ------
+
+`n` is annotated as a `Number`.
 
 error: 
-  --> sequence.wipple:5:11
+  --> sequence.wipple:7:2
   |
-5 | box : Box "abc"
-  |           ^^^^^
+7 | (filter positive?) box
+  |  ^^^^^^
 
-`"abc"` is a `String` or a `Number`, but it can only be one of these.
+`filter` keeps the `String` elements in `box` that satisfy `positive?`. But `positive?` accepts a `Number` for the input `n`, not a `String`.
 
 Help: use `--explain=full` to show more information

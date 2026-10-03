@@ -43,13 +43,13 @@ pub fn parse_type_parameter(parser: &mut Parser<'_>) -> Result<AstKey, ParseErro
 pub fn parse_annotated_type_parameter(
     parser: &mut Parser<'_>,
 ) -> Result<TypeParameter, ParseError> {
+    let span = parser.spanned();
     let name = parse_type_parameter_name(parser)?;
+    let span = span(parser);
     parser.token(TokenKind::AnnotateOperator)?;
     parser.commit("in this type annotation");
     parser.consume_line_breaks();
-    let span = parser.spanned();
     let value = parse_type(parser)?;
-    let span = span(parser);
     Ok(TypeParameter {
         span,
         name,
@@ -112,7 +112,7 @@ impl Visit for TypeParameter {
             visitor.constraint(
                 db,
                 TyConstraint::new(
-                    visitor.current_annotating.unwrap_or(node),
+                    visitor.current_annotating.map_or(node, |(node, _)| node),
                     Ty::Node(existing_node),
                 ),
             );
@@ -137,14 +137,17 @@ impl Visit for TypeParameter {
 
                 visitor.constraint(
                     db,
-                    TyConstraint::new(visitor.current_annotating.unwrap_or(node), Ty::Node(value)),
+                    TyConstraint::new(
+                        visitor.current_annotating.map_or(node, |(node, _)| node),
+                        Ty::Node(value),
+                    ),
                 );
 
                 visitor.constraint(
                     db,
                     GenericConstraint::new(
                         Box::new(TyConstraint::new(
-                            visitor.current_annotating.unwrap_or(node),
+                            visitor.current_annotating.map_or(node, |(node, _)| node),
                             Ty::Constructed(ConstructedTy::parameter(node)),
                         )),
                         GenericConstraintMode::SourceOnly,
@@ -154,7 +157,7 @@ impl Visit for TypeParameter {
                 visitor.constraint(
                     db,
                     TyConstraint::new(
-                        visitor.current_annotating.unwrap_or(node),
+                        visitor.current_annotating.map_or(node, |(node, _)| node),
                         Ty::Constructed(ConstructedTy::parameter(node)),
                     ),
                 );

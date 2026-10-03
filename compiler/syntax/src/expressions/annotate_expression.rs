@@ -55,17 +55,19 @@ impl Visit for AnnotateExpression {
         db.hide(node);
 
         let expression = visitor.visit(db, &self.expression);
-        let ty = visitor.annotating(Some(expression), |visitor| visitor.visit(db, &self.ty));
+        let ty = visitor.annotating(Some((expression, true)), |visitor| {
+            visitor.visit(db, &self.ty)
+        });
         db.graph.edge(ty, expression, "type");
 
         visitor.constraint(db, TyConstraint::new(node, Ty::Node(ty)));
 
         visitor.codegen(db, node, AnnotateExpressionCodegen { node, expression });
 
-        db.get_mut_or_default::<Description>(node)
+        db.get_mut_or_default::<Description>(expression)
             .push(DescriptionEntry {
                 comments: Comments::builtin(
-                    expression,
+                    ty,
                     "[`value`] is annotated as a [`type`].",
                     [
                         ("value", Some(Link::node(expression))),

@@ -164,7 +164,7 @@ Facts (layer 2):
 `item -> (seen . (not contains?) item) and (do {⋯})` (FunctionExpression):
   at remove-duplicates.wipple:4:11-7:5
   captures `(Equal element)`, `(Hash element)`, `seen`
-  grouped with `(element -> Boolean)`
+  grouped with `condition`
   has type `element -> Boolean`
   is an expression
 
@@ -279,7 +279,7 @@ Facts (layer 2):
 
 `seen` (VisitAs):
   at remove-duplicates.wipple:5:16-5:20
-  grouped with `(Set element)`, `seen`, `(Set element)`
+  grouped with `set_`, `seen`, `set_`
   has type `Set element`
   is an expression
   resolved to 1 definition(s): `seen`
@@ -484,7 +484,7 @@ Facts (layer 2):
 
 `show` (VariableExpression):
   at remove-duplicates.wipple:11:36-11:40
-  grouped with `value -> ()`, `(element -> ())`
+  grouped with `value -> ()`, `action`
   has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
   has type `Number -> ()`
   is an expression

@@ -50,11 +50,7 @@ note:
 
 `show` displays `Foo` on the screen.
 
-This means `show Foo` is a `()`.
-
-This means `show Foo` is a `()`.
-
-This uses `instance (Describe Foo)`.
+This uses `default error instance (Describe Foo)`.
 
 error: 
   --> missing-instance.wipple:2:1

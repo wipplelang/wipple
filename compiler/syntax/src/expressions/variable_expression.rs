@@ -130,8 +130,11 @@ impl Visit for VariableExpression {
                     .push(DescriptionEntry {
                         comments: Comments::builtin(
                             definition_node,
-                            "[`definition`] is defined as a [`definition@type`].",
-                            [("definition", Some(Link::node(definition_node)))],
+                            "[`use`] is defined as a [`definition@type`].",
+                            [
+                                ("definition", Some(Link::node(definition_node))),
+                                ("use", Some(Link::node(node))),
+                            ],
                         ),
                         is_primary: !has_comments,
                     });

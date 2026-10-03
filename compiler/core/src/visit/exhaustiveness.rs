@@ -210,6 +210,14 @@ impl Fact for Matches {}
 
 impl Render for Matches {}
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MatchedBy(pub Node);
+
+#[typetag::serde]
+impl Fact for MatchedBy {}
+
+impl Render for MatchedBy {}
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct MissingPatterns(pub Vec<MatchTree>);
 

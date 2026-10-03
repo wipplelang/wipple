@@ -26,23 +26,15 @@ note:
 1 | (42 :: String)
   |  --
 
-`42` is annotated as a `String`.
-
-This means `42` is a `Number` and `(42 :: String)` is a `Number`.
-
-This means `42` is a `String` and `(42 :: String)` is a `String`.
-
-note: 
-  --> mismatched-types.wipple:1:2
-  |
-1 | (42 :: String)
-  |  --
-
 `42` is a number literal.
 
-This means `42` is a `Number`.
+note: 
+  --> mismatched-types.wipple:1:8
+  |
+1 | (42 :: String)
+  |        ------
 
-This means `42` is a `String`.
+`42` is annotated as a `String`.
 
 error: 
   --> mismatched-types.wipple:1:1

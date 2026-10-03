@@ -82,7 +82,9 @@ impl Visit for FormatExpression {
             }),
         );
 
-        let string_type = visitor.annotating(Some(node), |visitor| visitor.visit(db, &string_type));
+        let string_type = visitor.annotating(Some((node, true)), |visitor| {
+            visitor.visit(db, &string_type)
+        });
 
         let inputs = self
             .inputs

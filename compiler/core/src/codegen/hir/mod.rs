@@ -16,17 +16,28 @@ use crate::{
 };
 use dyn_clone::DynClone;
 use std::{
+    any::Any,
     collections::{BTreeMap, BTreeSet},
     fmt::Debug,
     ops::ControlFlow,
 };
 
 #[typetag::serde]
-pub trait Write: Debug + DynClone + Send + Sync + 'static {
+pub trait Write: Debug + Any + DynClone + Send + Sync {
     fn write(&self, db: &Db, ctx: &mut Ctx) -> Result<(), CodegenError>;
 }
 
 dyn_clone::clone_trait_object!(Write);
+
+impl dyn Write {
+    pub fn downcast_ref<T: Any>(&self) -> Option<&T> {
+        (self as &dyn Any).downcast_ref()
+    }
+
+    pub fn downcast_mut<T: Any>(&mut self) -> Option<&mut T> {
+        (self as &mut dyn Any).downcast_mut()
+    }
+}
 
 pub struct Ctx {
     reachable_definitions: BTreeSet<DefinitionKey>,

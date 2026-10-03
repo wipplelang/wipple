@@ -20,7 +20,7 @@ use crate::{
     },
     visit::{
         definitions::{Defined, Definition},
-        exhaustiveness::{MatchPath, MatchPathSegment, Matches},
+        exhaustiveness::{MatchPath, MatchPathSegment, MatchedBy, Matches},
     },
 };
 use dyn_clone::DynClone;
@@ -353,7 +353,7 @@ pub struct Visitor {
     pub current_node: Node,
     pub current_definition: Option<CurrentDefinition>,
     pub current_match: Option<CurrentMatch>,
-    pub current_annotating: Option<Node>,
+    pub current_annotating: Option<(Node, bool)>,
     scopes: Vec<(Option<Node>, ScopeValues)>,
     top_level_statements: Vec<(Node, AstKey)>,
     constraints: Vec<(Node, Box<dyn Constraint>)>,
@@ -426,7 +426,7 @@ impl Visitor {
         let parent = mem::replace(&mut self.current_node, node);
 
         db.insert(node, Parent(parent));
-        db.get_mut_or_default::<Children>(node).0.push(node);
+        db.get_mut_or_default::<Children>(parent).0.push(node);
 
         db.insert(node, Syntax(value.clone()));
 
@@ -688,7 +688,11 @@ impl Visitor {
         result
     }
 
-    pub fn annotating<T>(&mut self, value: Option<Node>, f: impl FnOnce(&mut Self) -> T) -> T {
+    pub fn annotating<T>(
+        &mut self,
+        value: Option<(Node, bool)>,
+        f: impl FnOnce(&mut Self) -> T,
+    ) -> T {
         let prev = mem::replace(&mut self.current_annotating, value);
         let result = f(self);
         self.current_annotating = prev;
@@ -755,11 +759,16 @@ impl Visitor {
 
     pub fn set_matches(&mut self, db: &mut Db, terminal: Option<MatchPathSegment>) -> Node {
         let current_match = self.current_match.as_ref().unwrap();
+        let value = current_match.root.unwrap();
+
+        if terminal.is_some() {
+            db.insert(value, MatchedBy(self.current_node));
+        }
 
         db.insert(
             self.current_node,
             Matches {
-                value: current_match.root.unwrap(),
+                value,
                 arm: current_match.arm,
                 path: terminal.map(|segment| {
                     let mut path = current_match.path.clone();

@@ -68,7 +68,7 @@ impl Visit for TupleType {
         visitor.constraint(
             db,
             TyConstraint::new(
-                visitor.current_annotating.unwrap_or(node),
+                visitor.current_annotating.map_or(node, |(node, _)| node),
                 Ty::Constructed(ConstructedTy::tuple(elements.clone())),
             ),
         );

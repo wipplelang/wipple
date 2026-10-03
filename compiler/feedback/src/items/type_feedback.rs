@@ -1,6 +1,8 @@
 use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank};
-use wipple_core::typecheck::ty::Ty;
-use wipple_queries::{conflicting_types, fact, incomplete_type, unknown_type};
+use wipple_core::typecheck::{groups::Prefer, ty::Ty};
+use wipple_queries::{
+    TypeConflictSummarySuffix, conflicting_types, fact, incomplete_type, unknown_type,
+};
 use wipple_syntax::{
     checks::instances::OverlappingInstances,
     types::{ExtraType, MissingTypes},
@@ -10,46 +12,78 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
     ctx.feedback("conflicting-types")
         .query(conflicting_types)
         .rank(|data| {
-            if data.source.is_some() {
-                FeedbackRank::IndirectConflicts
-            } else {
+            if data.source.is_none() && data.is_primary {
                 FeedbackRank::DirectConflicts
+            } else {
+                FeedbackRank::IndirectConflicts
             }
         })
-        .location(|_, data| FeedbackLocation {
-            primary: data.source.unwrap_or(data.from),
-            secondary: data.group.clone(),
+        .location(|_, data| {
+            let mut primary = data.source.unwrap_or(data.from);
+
+            if let Some(summary) = &data.summary {
+                primary = summary.entry.comments.node;
+            }
+
+            FeedbackLocation {
+                primary,
+                secondary: data.group.clone(),
+            }
         })
         .show_graph()
         .display(|db, writer, _, data| {
-            if let Some(source) = data.source {
-                writer.string("In ");
-                writer.node(source);
-                writer.string(", ");
-            }
+            if let Some(summary) = &data.summary {
+                writer.with_relevant(&summary.entry.relevant, Prefer::DirectType, |writer| {
+                    writer.comments(db, &summary.entry.comments);
 
-            writer.node(data.from);
-            writer.string(" is a ");
-            writer.list("or a", |_, list| {
-                for ty in &data.tys {
-                    let ty = ty.clone();
-                    list.add(move |writer| {
-                        writer.ty(db, &Ty::Constructed(ty), true);
-                    });
-                }
-            });
-            writer.string(", but it can only be one of these.");
-
-            if data.related.len() > 1 {
-                writer.line_break();
-                writer.node(data.from);
-                writer.string(" must be the same type as ");
-                writer.list("and", |_, list| {
-                    for &node in &data.related {
-                        list.add(move |writer| writer.node(node));
+                    match &summary.suffix {
+                        TypeConflictSummarySuffix::FunctionInput {
+                            function,
+                            parameter,
+                            argument,
+                        } => {
+                            writer.string(" But ");
+                            writer.node(*function);
+                            writer.string(" accepts a ");
+                            writer.ty(db, &Ty::Node(*parameter), true);
+                            writer.string(" for the input ");
+                            writer.node(*parameter);
+                            writer.string(", not a ");
+                            writer.ty(db, &Ty::Node(*argument), true);
+                            writer.string(".");
+                        }
                     }
                 });
-                writer.string("; double-check these.");
+            } else {
+                if let Some(source) = data.source {
+                    writer.string("In ");
+                    writer.node(source);
+                    writer.string(", ");
+                }
+
+                writer.node(data.from);
+                writer.string(" is a ");
+                writer.list("or a", |_, list| {
+                    for ty in &data.tys {
+                        let ty = ty.clone();
+                        list.add(move |writer| {
+                            writer.ty(db, &Ty::Constructed(ty), true);
+                        });
+                    }
+                });
+                writer.string(", but it can only be one of these.");
+
+                if data.related.len() > 1 {
+                    writer.line_break();
+                    writer.node(data.from);
+                    writer.string(" must be the same type as ");
+                    writer.list("and", |_, list| {
+                        for &node in &data.related {
+                            list.add(move |writer| writer.node(node));
+                        }
+                    });
+                    writer.string("; double-check these.");
+                }
             }
 
             writer.extend_trace(db, &data.trace);

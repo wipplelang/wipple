@@ -117,11 +117,15 @@ pub fn visit_type(db: &mut Db, node: Node, visitor: &mut Visitor) {
     db.insert(node, GraphType);
     db.insert(node, Typed::default());
 
-    visitor.rank(node, NodeRank::Annotated);
+    visitor.rank(node, NodeRank::Type);
 
     // Prefer to apply constraints on the annotated value directly to improve
     // feedback
-    if let Some(value) = visitor.current_annotating {
+    if let Some((value, explicit)) = visitor.current_annotating {
+        if explicit {
+            visitor.rank(value, NodeRank::Annotated);
+        }
+
         visitor.constraint(db, TyConstraint::new(value, Ty::Node(node)));
     }
 }

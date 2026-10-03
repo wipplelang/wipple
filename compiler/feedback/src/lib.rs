@@ -11,7 +11,7 @@ use wipple_queries::QueryCtx;
 
 pub fn collect_feedback<'a>(
     db: &'a Db,
-    node_filter: impl Fn(&Db, Node) -> bool + 'static,
+    node_filter: impl Fn(&Db, Node) -> bool + Send + Sync + 'static,
     feedback_filter: impl FnMut(&FeedbackItem<'a>) -> bool,
 ) -> Vec<FeedbackItem<'a>> {
     let mut ctx = FeedbackCtx::new(Arc::new(node_filter));
@@ -30,11 +30,11 @@ pub fn collect_feedback<'a>(
 
 struct FeedbackCtx<'a> {
     queries: Vec<Box<dyn Fn(&'a Db, Node) -> Box<dyn Iterator<Item = FeedbackItem<'a>> + 'a> + 'a>>,
-    filter: Arc<dyn Fn(&Db, Node) -> bool>,
+    filter: Arc<dyn Fn(&Db, Node) -> bool + Send + Sync + 'a>,
 }
 
 impl<'a> FeedbackCtx<'a> {
-    fn new(filter: Arc<dyn Fn(&Db, Node) -> bool>) -> Self {
+    fn new(filter: Arc<dyn Fn(&Db, Node) -> bool + Send + Sync + 'a>) -> Self {
         FeedbackCtx {
             queries: Vec::new(),
             filter,

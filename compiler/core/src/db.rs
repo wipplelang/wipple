@@ -1,9 +1,9 @@
 use crate::{
     ast::{Ast, AstKey},
+    consequences::Consequences,
     facts::Syntax,
     graph::GraphBuilder,
     render::{Render, RenderCtx, RenderMarkdownOptions},
-    typecheck::constraints::ConstraintConsequence,
     visit::Visit,
 };
 use dyn_clone::DynClone;
@@ -77,8 +77,7 @@ pub struct Db {
     pub debug_enabled: bool,
     pub(crate) ast: Ast,
     pub graph: GraphBuilder,
-    // The outer node is responsible for the consequences on the inner nodes
-    pub consequences: BTreeMap<Node, BTreeMap<Node, Vec<ConstraintConsequence>>>,
+    pub consequences: Consequences,
     // For owned nodes
     nodes: Vec<Option<NodeInfo>>,
     // For parent nodes
@@ -135,7 +134,7 @@ struct SerializedDb {
     parent: Option<Box<SerializedDb>>,
     debug_enabled: bool,
     graph: GraphBuilder,
-    consequences: BTreeMap<Node, BTreeMap<Node, Vec<ConstraintConsequence>>>,
+    consequences: Consequences,
     ast: Ast,
     nodes: Vec<Option<NodeInfo>>,
     overrides: BTreeMap<Node, Option<NodeInfo>>,

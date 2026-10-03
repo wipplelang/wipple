@@ -11,7 +11,7 @@ use dyn_clone::DynClone;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Write};
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum Ty {
     Node(Node),
     Constructed(ConstructedTy),
@@ -103,7 +103,7 @@ impl Render for Ty {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum TyTag {
     Named(Node),
     Function,
@@ -179,6 +179,20 @@ impl PartialEq for ConstructedTy {
 }
 
 impl Eq for ConstructedTy {}
+
+impl PartialOrd for ConstructedTy {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ConstructedTy {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.tag
+            .cmp(&other.tag)
+            .then_with(|| self.children.cmp(&other.children))
+    }
+}
 
 impl ConstructedTy {
     fn new(tag: TyTag, children: Vec<Node>, display: impl TyDisplay) -> Self {

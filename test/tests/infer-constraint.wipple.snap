@@ -531,14 +531,20 @@ Facts (layer 2):
 
 
 note: 
-   --> infer-constraint.wipple:20:11
+   --> infer-constraint.wipple:20:28
    |
 20 | output : (add-infer 1 2 :: String)
-   |           -------------
+   |                            ------
 
 `add-infer 1 2` is annotated as a `String`.
 
-This means `add-infer 1 2` is a `String` and `output` is a `String`.
+note: 
+   --> infer-constraint.wipple:17:1
+   |
+17 | add-infer :: left right -> sum where (Add-Infer left right sum)
+   | ---------
+
+`add-infer` is defined as a `left right -> sum`.
 
 note: 
    --> infer-constraint.wipple:20:21
@@ -548,8 +554,6 @@ note:
 
 `1` is a number literal.
 
-This means `1` is a `Number` and `1` is a `Number`.
-
 note: 
    --> infer-constraint.wipple:20:23
    |
@@ -557,16 +561,6 @@ note:
    |                       -
 
 `2` is a number literal.
-
-This means `2` is a `Number` and `2` is a `Number`.
-
-note: 
-   --> infer-constraint.wipple:17:1
-   |
-17 | add-infer :: left right -> sum where (Add-Infer left right sum)
-   | ---------
-
-`add-infer` is defined as a `left right -> sum`.
 
 error: 
    --> infer-constraint.wipple:20:1

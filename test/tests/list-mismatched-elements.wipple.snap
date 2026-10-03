@@ -81,7 +81,7 @@ Facts (layer 2):
 
 `show` (VariableExpression):
   at list-mismatched-elements.wipple:2:16-2:20
-  grouped with `value -> ()`, `(element -> ())`
+  grouped with `value -> ()`, `action`
   has bound(s) `Describe` `(String or () or Number)` (resolved as `instance (Describe Number)`)
   has type `(String or () or Number) -> ()`
   is an expression
@@ -97,55 +97,7 @@ note:
 
 `1` is a number literal.
 
-This means `1` is a `Number`, `1` is a `Number`, `1, "hi", ()` is a `List (String or () or Number)`, and 2 others.
-
-note: 
-  --> list-mismatched-elements.wipple:1:14
-  |
-1 | my-list : 1, "hi", ()
-  |              ----
-
-`"hi"` is a string literal.
-
-This means `"hi"` is a `String` and `1` is a `String`.
-
-note: 
-  --> list-mismatched-elements.wipple:2:16
-  |
-2 | my-list . each show
-  |                ----
-
-`show` displays `String` on the screen.
-
-This means `1` must have the same type as `"hi"`.
-
-This means `1` must have the same type as `()`.
-
-This means `"hi"` must have the same type as `()`.
-
-This uses `instance (Describe String)`.
-
-note: 
-  --> list-mismatched-elements.wipple:2:11
-  |
-2 | my-list . each show
-  |           ----
-
-`each` calls `show` for each `String or () or Number` in `my-list`.
-
-This means `my-list . each show` is a `()`.
-
-This means `my-list . each show` is a `()`.
-
-This means `each show` is a `()`.
-
-This means `1, "hi", ()` is a `List (String or () or Number)`.
-
-This means `1, "hi", ()` is a `List (String or () or Number)`.
-
 This means `my-list` is a `List (String or () or Number)`.
-
-This uses `instance (As-Sequence (List (String or () or Number)) (String or () or Number))`.
 
 note: 
   --> list-mismatched-elements.wipple:1:11
@@ -155,9 +107,41 @@ note:
 
 `1, "hi", ()` is a collection of `String` elements.
 
+This means `1` must have the same type as `"hi"`.
+
 This means `"hi"` must have the same type as `1`.
 
+This means `1` must have the same type as `()`.
+
+This means `"hi"` must have the same type as `()`.
+
 This means `()` must have the same type as `1`.
+
+note: 
+  --> list-mismatched-elements.wipple:1:14
+  |
+1 | my-list : 1, "hi", ()
+  |              ----
+
+`"hi"` is a string literal.
+
+note: 
+  --> list-mismatched-elements.wipple:2:16
+  |
+2 | my-list . each show
+  |                ----
+
+`show` displays `String` on the screen.
+
+note: 
+  --> list-mismatched-elements.wipple:2:11
+  |
+2 | my-list . each show
+  |           ----
+
+`each` calls `show` for each `String` in `my-list`.
+
+This means `my-list` is a `List String`.
 
 error: 
   --> list-mismatched-elements.wipple:1:11

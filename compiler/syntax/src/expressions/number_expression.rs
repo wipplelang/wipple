@@ -50,7 +50,7 @@ impl Visit for NumberExpression {
             }),
         );
 
-        visitor.annotating(Some(node), |visitor| {
+        visitor.annotating(Some((node, false)), |visitor| {
             visitor.visit_as(db, &syntax, number_type);
         });
 
