@@ -11,3 +11,5 @@ export const debounce = <Args extends unknown[]>(delay: number, func: (...args: 
         }, delay);
     };
 };
+
+export const touchSupported = () => navigator.maxTouchPoints > 0;

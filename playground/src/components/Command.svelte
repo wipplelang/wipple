@@ -39,15 +39,15 @@
         });
     };
 
-    const onmousedown = (e: MouseEvent) => {
+    const onpointerdown = (e: PointerEvent) => {
         const startTimestamp = e.timeStamp;
         const startX = e.clientX;
 
-        const update = (e: MouseEvent) => {
+        const update = (e: PointerEvent) => {
             dragInfo = { commandId, x: e.clientX, y: e.clientY, command };
         };
 
-        const onmousemove = (e: MouseEvent) => {
+        const onpointermove = (e: PointerEvent) => {
             update(e);
         };
 
@@ -56,13 +56,13 @@
                 ondrop();
             }
 
-            window.removeEventListener("mousemove", onmousemove);
-            window.removeEventListener("mouseup", onmouseup);
+            window.removeEventListener("pointermove", onpointermove);
+            window.removeEventListener("pointerup", onpointerup);
             window.removeEventListener("keydown", onkeydown);
             dragInfo = undefined;
         };
 
-        const onmouseup = (e: MouseEvent) => {
+        const onpointerup = (e: PointerEvent) => {
             if (
                 e.timeStamp - startTimestamp > stickyThresholdTime ||
                 Math.abs(e.clientX - startX) > stickyThresholdDistance
@@ -82,8 +82,8 @@
             }
         };
 
-        window.addEventListener("mousemove", onmousemove);
-        window.addEventListener("mouseup", onmouseup, { once: true });
+        window.addEventListener("pointermove", onpointermove);
+        window.addEventListener("pointerup", onpointerup, { once: true });
         window.addEventListener("keydown", onkeydown);
 
         requestAnimationFrame(() => {
@@ -96,9 +96,9 @@
     <div
         role="menuitem"
         {tabindex}
-        class="hover-highlight -mx-[4px] cursor-pointer rounded-[8px] p-[2px]"
+        class="hover-highlight -mx-[4px] cursor-pointer touch-none rounded-[8px] p-[2px]"
         style:visibility={isDragging ? "hidden" : "visible"}
-        {onmousedown}
+        {onpointerdown}
     >
         {#if isDragging}
             <div

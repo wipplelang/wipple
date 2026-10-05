@@ -1,18 +1,20 @@
 <script lang="ts">
-    import type { Snippet } from "svelte";
+    import { onMount, type Snippet } from "svelte";
     import type { HTMLAttributes, MouseEventHandler } from "svelte/elements";
     import { scale } from "svelte/transition";
     import type { Action } from "svelte/action";
 
     interface Props extends HTMLAttributes<HTMLElement> {
-        children: Snippet;
+        visibleAt?: { x: number; y: number };
+        ondismiss?: () => void;
+        children?: Snippet;
         items: Snippet;
     }
 
     const duration = 150;
     const topOffset = 4;
 
-    const { children, items, ...props }: Props = $props();
+    const { visibleAt, ondismiss, children, items, ...props }: Props = $props();
 
     const portal: Action = (node) => {
         $effect(() => {
@@ -29,8 +31,12 @@
     let wrapperVisible = $state(false);
     let contentVisible = $state(false);
 
-    const onclick: MouseEventHandler<HTMLElement> = (e) => {
-        const reference = e.currentTarget;
+    let mounting = true;
+
+    const onclick = (e?: MouseEvent) => {
+        if (e != null) {
+            e.stopPropagation();
+        }
 
         if (wrapperVisible) {
             dismiss();
@@ -40,17 +46,37 @@
         wrapperVisible = true;
 
         requestAnimationFrame(() => {
-            const referenceRect = reference.getBoundingClientRect();
-
-            const x = referenceRect.left;
-            const y = referenceRect.top + referenceRect.height + topOffset;
+            let rect: { x: number; y: number };
+            if (visibleAt != null) {
+                rect = visibleAt;
+            } else {
+                const referenceRect = element.getBoundingClientRect();
+                rect = {
+                    x: referenceRect.left,
+                    y: referenceRect.top + referenceRect.height + topOffset,
+                };
+            }
 
             wrapper!.style.position = "fixed";
-            wrapper!.style.left = `${x}px`;
-            wrapper!.style.top = `${y}px`;
+            wrapper!.style.left = `${rect.x}px`;
+            wrapper!.style.top = `${rect.y}px`;
             contentVisible = true;
         });
     };
+
+    onMount(() => {
+        if (visibleAt != null) {
+            requestAnimationFrame(() => {
+                onclick();
+
+                requestAnimationFrame(() => {
+                    mounting = false;
+                });
+            });
+        } else {
+            mounting = false;
+        }
+    });
 
     const dismiss = () => {
         contentVisible = false;
@@ -58,10 +84,12 @@
         setTimeout(() => {
             wrapperVisible = false;
         }, duration);
+
+        ondismiss?.();
     };
 
     const onClickOutside: MouseEventHandler<Window> = (e) => {
-        if (!element.contains(e.target as Node)) {
+        if (!mounting && !element.contains(e.target as Node)) {
             dismiss();
         }
     };
@@ -71,7 +99,7 @@
 
 <!-- Don't add whitespace between the snippet and the menu div -->
 <span bind:this={element} {onclick} {...props}>
-    {@render children()}{#if wrapperVisible}
+    {@render children?.()}{#if wrapperVisible}
         <div bind:this={wrapper} use:portal class="fixed" role="menu">
             {#if contentVisible}
                 <!-- svelte-ignore a11y_click_events_have_key_events -->

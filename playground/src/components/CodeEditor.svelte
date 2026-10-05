@@ -28,6 +28,28 @@
 
         return groups;
     };
+
+    export const editorMenuActions = ({
+        runCommand,
+    }: {
+        runCommand: (command: Command, format: boolean) => void;
+    }) => [
+        {
+            title: "Move Up",
+            icon: "arrow_upward",
+            onclick: () => runCommand(commands.moveLineUp, true),
+        },
+        {
+            title: "Move Down",
+            icon: "arrow_downward",
+            onclick: () => runCommand(commands.moveLineDown, true),
+        },
+        {
+            title: "Remove",
+            icon: "remove",
+            onclick: () => runCommand(commands.deleteLine, true),
+        },
+    ];
 </script>
 
 <script lang="ts">
@@ -52,6 +74,7 @@
     import { defaultKeymap, indentWithTab } from "@codemirror/commands";
     import { Compartment, EditorState, RangeSet } from "@codemirror/state";
     import { EditorView, keymap, placeholder, type Command } from "@codemirror/view";
+    import * as commands from "@codemirror/commands";
     import { minimalSetup } from "codemirror";
     import type { Action } from "svelte/action";
     import { type Command as CommandType } from "@/models/Command";
@@ -64,6 +87,9 @@
         setHighlightedGroup,
         setHighlightGroups,
     } from "codemirror-highlight-groups";
+    import Menu from "./Menu.svelte";
+    import MenuButton from "./MenuButton.svelte";
+    import Icon from "./Icon.svelte";
 
     interface Props {
         readOnly?: boolean;
@@ -111,6 +137,7 @@
             extensions: [
                 minimalSetup,
                 keymap.of([...defaultKeymap, indentWithTab]),
+                configureReadOnly.of([]),
                 EditorState.allowMultipleSelections.of(false),
                 markTokens,
                 markNumbers.of([]),
@@ -119,7 +146,6 @@
                 markRunningLine.of([]),
                 markDiagnostic.of([]),
                 placeholder("Type or drag your code here..."),
-                EditorView.editable.of(!readOnly),
                 EditorView.updateListener.of((update) => {
                     if (update.docChanged) {
                         code = update.state.sliceDoc();
@@ -148,8 +174,32 @@
 
     // MARK: - Commands
 
-    export const runCommand = (command: Command) => {
+    const format = () => {
+        const code = editorView.state.sliceDoc();
+        (async () => {
+            const { code: formatted } = await compilerWorker.format({ code });
+
+            if (formatted == null) {
+                return;
+            }
+
+            // Ensure the formatted code doesn't overwrite new changes
+            if (code !== editorView.state.sliceDoc()) {
+                return;
+            }
+
+            editorView.dispatch({
+                changes: { from: 0, to: code.length, insert: formatted },
+            });
+        })();
+    };
+
+    export const runCommand = (command: Command, shouldFormat = false) => {
         command(editorView);
+
+        if (shouldFormat) {
+            format();
+        }
     };
 
     export const getDropParams = (command: CommandType, { x, y }: { x: number; y: number }) => {
@@ -271,25 +321,7 @@
             });
         }
 
-        const code = editorView.state.sliceDoc();
-
-        // Format when done
-        (async () => {
-            const { code: formatted } = await compilerWorker.format({ code });
-
-            if (formatted == null) {
-                return;
-            }
-
-            // Ensure the formatted code doesn't overwrite new changes
-            if (code !== editorView.state.sliceDoc()) {
-                return;
-            }
-
-            editorView.dispatch({
-                changes: { from: 0, to: code.length, insert: formatted },
-            });
-        })();
+        format();
     };
 
     // MARK: - Highlight tokens
@@ -509,6 +541,8 @@
         );
     };
 
+    const configureReadOnly = new Compartment();
+
     $effect(() => {
         code; // required to update the position of markings
         diagnostic;
@@ -523,6 +557,7 @@
                 markDiagnostic.reconfigure(
                     diagnostic != null ? createDiagnosticWidget(diagnostic) : [],
                 ),
+                configureReadOnly.reconfigure(EditorView.editable.of(!readOnly)),
             ],
         });
 
@@ -552,10 +587,27 @@
             effects: [setHighlightedGroup.of(context.highlightedGroup)],
         });
     });
+
+    let touchModeSelection = $state<{ x: number; y: number }>();
+
+    const onclick = (e: MouseEvent) => {
+        if (!context.touchModeEnabled) return;
+
+        const pos = editorView.posAtCoords({ x: e.clientX, y: e.clientY });
+
+        if (pos == null || pos === editorView.state.doc.length) {
+            return;
+        }
+
+        touchModeSelection = { x: e.clientX, y: e.clientY };
+    };
 </script>
 
+<!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
     use:codemirror
+    {onclick}
     class={["code-editor h-full", diagnostic ? "has-diagnostic" : ""]}
     style:--code-editor-padding={padding}
     style:--code-editor-font-size="{fontSize}px"
@@ -576,4 +628,21 @@
             {/snippet}
         </Tooltip>
     {/if}
+{/if}
+
+{#if touchModeSelection != null}
+    <Menu
+        visibleAt={touchModeSelection}
+        class="fixed size-0"
+        ondismiss={() => (touchModeSelection = undefined)}
+    >
+        {#snippet items()}
+            {#each editorMenuActions({ runCommand }) as action, index (index)}
+                <MenuButton onclick={action.onclick}>
+                    <Icon>{action.icon}</Icon>
+                    {action.title}
+                </MenuButton>
+            {/each}
+        {/snippet}
+    </Menu>
 {/if}

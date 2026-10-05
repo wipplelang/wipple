@@ -7,7 +7,7 @@
     import PrintingHeader from "@/components/PrintingHeader.svelte";
     import ToolbarButton from "@/components/ToolbarButton.svelte";
     import Icon from "@/components/Icon.svelte";
-    import CodeEditor, { createGroups } from "@/components/CodeEditor.svelte";
+    import CodeEditor, { createGroups, editorMenuActions } from "@/components/CodeEditor.svelte";
     import * as commands from "@codemirror/commands";
     import Tooltip from "@/components/Tooltip.svelte";
     import Commands from "@/components/Commands.svelte";
@@ -19,7 +19,7 @@
     import Footer from "@/components/Footer.svelte";
     import type { DocumentationItem } from "@/models/Documentation";
     import Visualizer from "@/components/Visualizer.svelte";
-    import { debounce } from "@/util";
+    import { debounce, touchSupported } from "@/util";
     import type { Diagnostic, DiagnosticGroup } from "wipple";
 
     const loadPlayground = (): Playground | undefined => {
@@ -219,32 +219,15 @@
                     </ToolbarButton>
 
                     <div class="flex flex-row gap-[10px]">
-                        <Tooltip content="Move Up">
-                            <ToolbarButton
-                                square
-                                onclick={() => editor?.runCommand(commands.moveLineUp)}
-                            >
-                                <Icon>arrow_upward</Icon>
-                            </ToolbarButton>
-                        </Tooltip>
-
-                        <Tooltip content="Move Down">
-                            <ToolbarButton
-                                square
-                                onclick={() => editor?.runCommand(commands.moveLineDown)}
-                            >
-                                <Icon>arrow_downward</Icon>
-                            </ToolbarButton>
-                        </Tooltip>
-
-                        <Tooltip content="Remove">
-                            <ToolbarButton
-                                square
-                                onclick={() => editor?.runCommand(commands.deleteLine)}
-                            >
-                                <Icon>remove</Icon>
-                            </ToolbarButton>
-                        </Tooltip>
+                        {#if editor != null && !context.touchModeEnabled}
+                            {#each editorMenuActions(editor) as action, index (index)}
+                                <Tooltip content={action.title}>
+                                    <ToolbarButton square onclick={action.onclick}>
+                                        <Icon>{action.icon}</Icon>
+                                    </ToolbarButton>
+                                </Tooltip>
+                            {/each}
+                        {/if}
 
                         <Tooltip content="Undo">
                             <ToolbarButton square onclick={() => editor?.runCommand(commands.undo)}>
@@ -255,6 +238,17 @@
                         <Tooltip content="Redo">
                             <ToolbarButton square onclick={() => editor?.runCommand(commands.redo)}>
                                 <Icon>redo</Icon>
+                            </ToolbarButton>
+                        </Tooltip>
+
+                        <Tooltip content="Touch Mode">
+                            <ToolbarButton
+                                square
+                                prominent={context.touchModeEnabled}
+                                onclick={() =>
+                                    (context.touchModeEnabled = !context.touchModeEnabled)}
+                            >
+                                <Icon>touch_app</Icon>
                             </ToolbarButton>
                         </Tooltip>
                     </div>
@@ -271,6 +265,7 @@
                             <CodeEditor
                                 bind:this={editor}
                                 bind:code={playground.code}
+                                readOnly={context.touchModeEnabled}
                                 groups={context.groups}
                                 diagnostic={dragInfo == null && context.diagnostic != null
                                     ? {

@@ -27,7 +27,7 @@
     {/snippet}
 
     <div
-        class="mx-[0.5ch] bg-background-secondary rounded-full h-[1em] text-slate-500 flex items-center justify-center hover:bg-highlight-secondary"
+        class="bg-background-secondary hover:bg-highlight-secondary mx-[0.5ch] flex h-[1em] items-center justify-center rounded-full text-slate-500"
     >
         <Icon>more_horiz</Icon>
     </div>

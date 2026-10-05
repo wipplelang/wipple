@@ -52,7 +52,7 @@ tasks:
       - build:library
     dir: playground
     cmds:
-      - npm run dev -- --open
+      - npm run dev -- --open {{.CLI_ARGS}}
   serve:docs:
     dir: docs
     cmds:
