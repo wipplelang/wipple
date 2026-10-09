@@ -5,11 +5,15 @@
 @import "./code-editor.css";
 @import "./markdown.css";
 
-@custom-variant printing (&:where([data-printing] *));
+@custom-variant printing {
+    @media print {
+        @slot;
+    }
+}
 
 @custom-variant dark {
     @media (prefers-color-scheme: dark) {
-        &:not([data-printing]):not([data-printing] *) {
+        @media not print {
             @slot;
         }
     }
@@ -75,6 +79,14 @@ html {
 
 body {
     @apply bg-background text-primary font-medium;
+}
+
+@media print {
+    body {
+        width: 100%;
+        height: 100%;
+        overflow: clip;
+    }
 }
 
 @utility border-standard {
