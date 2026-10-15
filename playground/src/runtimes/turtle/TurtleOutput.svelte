@@ -160,7 +160,7 @@
             bind:this={canvas}
             width={canvasSize}
             height={canvasSize}
-            class="absolute inset-0 size-full"
+            class="absolute inset-0 size-full bg-white"
         ></canvas>
     </Box>
 
