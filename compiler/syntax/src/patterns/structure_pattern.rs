@@ -163,15 +163,11 @@ impl hir::Write for StructurePatternCodegen {
         for (index, name, pattern, temporary) in &self.fields {
             let index = index.ok_or_else(|| anyhow::format_err!("unresolved"))?;
 
-            ctx.condition(hir::Condition::Initialize {
+            ctx.condition(hir::Condition::Field {
+                input: matching,
+                field_name: name.to_string(),
+                field_index: index,
                 variable: *temporary,
-                node: None,
-                value: hir::Value::Field {
-                    input: matching,
-                    field_name: name.to_string(),
-                    field_index: index,
-                },
-                mutable: false,
             });
 
             ctx.write(db, *pattern)?;

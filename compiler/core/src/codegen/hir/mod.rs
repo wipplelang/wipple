@@ -7,7 +7,7 @@ pub use types::*;
 use crate::{
     codegen::CodegenError,
     db::{Db, Node},
-    facts::Codegen,
+    facts::{Codegen, Parent},
     typecheck::bounds::ResolvedBounds,
     visit::{
         Bounds, TypeParameters,
@@ -188,14 +188,12 @@ impl IncludeDefinitions {
 impl Program {
     pub fn from_statements(
         db: &Db,
-        source_files: &[Node],
         statements: &[Node],
         lib_statements: &[Node],
         include_definitions: IncludeDefinitions,
     ) -> Result<Program, CodegenError> {
         let mut program = Program {
             layer: db.layer(),
-            source_files: source_files.to_vec(),
             definitions: Default::default(),
         };
 
@@ -257,6 +255,7 @@ impl Program {
                         definition_ctx.instruction(Instruction::Return { value: body });
 
                         let function = Function {
+                            node: Some(node),
                             type_parameters,
                             bounds: Some(Vec::from_iter(bounds)),
                             instructions: definition_ctx.pop_instructions(),
@@ -271,6 +270,10 @@ impl Program {
                             .extend(definition_ctx.reachable_definitions);
                     }
                     DefinitionKey::TopLevel => {
+                        let top_level_node = statements
+                            .first()
+                            .and_then(|&statement| db.get(statement).map(|&Parent(parent)| parent));
+
                         for &statement in statements.iter().chain(lib_statements) {
                             ctx.write(db, statement)?;
                         }
@@ -278,6 +281,7 @@ impl Program {
                         program.definitions.insert(
                             DefinitionKey::TopLevel,
                             Function {
+                                node: top_level_node,
                                 instructions: ctx.pop_instructions(),
                                 ..Default::default()
                             },

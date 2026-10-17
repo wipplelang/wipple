@@ -249,6 +249,7 @@ impl hir::Write for ConstructorExpressionCodegen {
                 ctx.instruction(hir::Instruction::Value {
                     node: *node,
                     value: hir::Value::Function(hir::Function {
+                        node: Some(*node),
                         type_parameters: Vec::new(),
                         bounds: None,
                         inputs: vec![*value],
@@ -284,6 +285,7 @@ impl hir::Write for ConstructorExpressionCodegen {
                     ctx.instruction(hir::Instruction::Value {
                         node: *node,
                         value: hir::Value::Function(hir::Function {
+                            node: Some(*node),
                             type_parameters: Vec::new(),
                             bounds: None,
                             inputs: elements.clone(),

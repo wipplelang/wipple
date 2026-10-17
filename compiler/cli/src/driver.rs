@@ -49,7 +49,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
         db: &mut Db,
         top_level: &mut TopLevel,
         name: &str,
-    ) -> anyhow::Result<Option<(Node, Vec<Node>, Vec<Node>)>> {
+    ) -> anyhow::Result<Option<(Node, Vec<Node>)>> {
         if !self.silent {
             if let Some((index, total)) = self.progress {
                 eprint!("\u{001B}[2K\r"); // reset line
@@ -59,7 +59,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             eprint!("{}{}", self.prefix.bold(), name);
         }
 
-        let (root_node, source_files, statements) = compile(db, top_level, &self.files, run_checks);
+        let (root_node, statements) = compile(db, top_level, &self.files, run_checks);
 
         if !self.silent && self.progress.is_none() {
             eprintln!();
@@ -273,6 +273,6 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             }
         }
 
-        Ok((feedback_count == 0).then_some((root_node, source_files, statements)))
+        Ok((feedback_count == 0).then_some((root_node, statements)))
     }
 }

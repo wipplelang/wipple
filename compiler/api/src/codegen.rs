@@ -8,7 +8,6 @@ impl CompileResult {
     pub fn codegen(&self) -> Option<Vec<u8>> {
         let hir = codegen::hir::Program::from_statements(
             &self.db,
-            &self.source_files,
             &self.statements,
             &self.lib_statements,
             Default::default(),

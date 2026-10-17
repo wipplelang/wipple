@@ -4,7 +4,7 @@ mod driver;
 mod interpreter;
 mod read;
 
-use crate::{driver::Driver, interpreter::create_interpreter, read::read_dir};
+use crate::{driver::Driver, interpreter::interpreter, read::read_dir};
 use clap::Parser;
 use colored::Colorize;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
@@ -138,8 +138,9 @@ fn main() -> anyhow::Result<()> {
         }
         Args::Run { options } => {
             if let Some(mir) = compile(&options)? {
-                let interpreter = create_interpreter(io::stdout());
-                interpreter.run(&mir)?;
+                run(&mir, io::stdout())?;
+            }
+        }
             }
         }
         Args::Repl { options } => {
@@ -185,7 +186,6 @@ fn setup(
 
     let mut top_level = TopLevel::default();
 
-    let mut source_files = Vec::new();
     let mut statements = Vec::new();
     for path in &options.lib {
         db = Db::new(Some(DbRef::new(db)));
@@ -201,11 +201,10 @@ fn setup(
             .rich(true)
             .color(supports_color());
 
-        let (_, lib_source_files, lib_statements) = driver
+        let (_, lib_statements) = driver
             .run(&mut db, &mut top_level, &name)?
             .ok_or_else(|| anyhow::format_err!("compilation failed"))?;
 
-        source_files.extend(lib_source_files);
         statements.extend(lib_statements);
     }
 
@@ -246,13 +245,12 @@ fn compile(options: &CompileOptions) -> anyhow::Result<Option<codegen::mir::Prog
         .rich(true)
         .color(supports_color());
 
-    let (_, source_files, statements) = driver
+    let (_, statements) = driver
         .run(&mut db, &mut top_level, &name)?
         .ok_or_else(|| anyhow::format_err!("compilation failed"))?;
 
     let hir = codegen::hir::Program::from_statements(
         &db,
-        &source_files,
         &statements,
         &lib_statements,
         Default::default(),
@@ -296,6 +294,14 @@ fn compile(options: &CompileOptions) -> anyhow::Result<Option<codegen::mir::Prog
     Ok(Some(mir))
 }
 
+fn run(mir: &codegen::mir::Program, mut w: impl io::Write + Send + Sync) -> anyhow::Result<()> {
+    interpreter(mir, |s| {
+        writeln!(w, "{s}")?;
+        Ok(())
+    })
+    .run()
+}
+
 fn repl(options: &CompileOptions) -> anyhow::Result<()> {
     let (lib_db, mut top_level, lib_statements) = setup(options, io::stdout())?;
 
@@ -305,12 +311,10 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
     let mut codegen = move |program: &mut codegen::mir::Program,
                             db: &Db,
                             include_definitions: codegen::hir::IncludeDefinitions,
-                            source_files: &[Node],
                             statements: &[Node]|
           -> Result<(), codegen::CodegenError> {
         let hir = codegen::hir::Program::from_statements(
             db,
-            source_files,
             statements,
             &lib_statements,
             include_definitions,
@@ -336,7 +340,6 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
         &mut program,
         &lib_db,
         codegen::hir::IncludeDefinitions::for_library(),
-        &[],
         &[],
     )?;
 
@@ -389,9 +392,7 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
                     .rich(true)
                     .color(supports_color());
 
-                let Some((_, source_files, statements)) =
-                    driver.run(&mut next_db, &mut top_level, &name)?
-                else {
+                let Some((_, statements)) = driver.run(&mut next_db, &mut top_level, &name)? else {
                     continue;
                 };
 
@@ -399,12 +400,10 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
                     &mut program,
                     &next_db,
                     codegen::hir::IncludeDefinitions::for_repl(),
-                    &source_files,
                     &statements,
                 )?;
 
-                let interpreter = create_interpreter(io::stdout());
-                interpreter.run(&program)?;
+                run(&program, io::stdout())?;
 
                 db = DbRef::new(next_db);
             }
@@ -460,12 +459,9 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
         driver.markdown_options = RenderMarkdownOptions::default().rich(true);
         driver.progress = Some((counter.fetch_add(1, atomic::Ordering::Relaxed), files_count));
 
-        if let Some((_, source_files, statements)) =
-            driver.run(&mut db, &mut top_level.clone(), &name)?
-        {
+        if let Some((_, statements)) = driver.run(&mut db, &mut top_level.clone(), &name)? {
             let hir = codegen::hir::Program::from_statements(
                 &db,
-                &source_files,
                 &statements,
                 &lib_statements,
                 Default::default(),
@@ -476,8 +472,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
 
             writeln!(out, "Output:")?;
 
-            let interpreter = create_interpreter(&mut out);
-            interpreter.run(&mir)?;
+            run(&mir, &mut out)?;
         }
 
         let mask = db

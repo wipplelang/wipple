@@ -114,14 +114,10 @@ impl hir::Write for TuplePatternCodegen {
             .0;
 
         for (index, &(pattern, temporary)) in self.elements.iter().enumerate() {
-            ctx.condition(hir::Condition::Initialize {
+            ctx.condition(hir::Condition::TupleElement {
                 variable: temporary,
-                node: None,
-                value: hir::Value::TupleElement {
-                    input: matching,
-                    index,
-                },
-                mutable: false,
+                input: matching,
+                index,
             });
 
             ctx.write(db, pattern)?;

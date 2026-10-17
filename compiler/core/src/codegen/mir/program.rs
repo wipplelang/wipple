@@ -1,11 +1,9 @@
 use crate::{db::Node, span::Span};
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::borrow::Cow;
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct Program {
-    pub source_files: Vec<Span>,
-    pub source_map: BTreeMap<Node, Span>,
     pub functions: Vec<Function>,
     pub named_tys: Vec<NamedTy>,
     pub main: Option<usize>,
@@ -18,22 +16,30 @@ pub struct Function {
     pub inputs: Vec<Local>,
     pub locals: Vec<Local>,
     pub body: Vec<Statement>,
+    pub debug_info: FunctionDebugInfo,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Local {
     pub ty: Ty,
     pub mutable: bool,
+    pub debug_info: LocalDebugInfo,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub enum Statement {
+pub struct Statement {
+    pub inner: StatementInner,
+    pub debug_info: StatementDebugInfo,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum StatementInner {
     If {
         branches: Vec<(Condition, Vec<Statement>)>,
         else_branch: Option<Vec<Statement>>,
     },
     Return {
-        value: SourceMapped<Expression>,
+        value: usize,
     },
     Loop {
         body: Vec<Statement>,
@@ -60,13 +66,37 @@ pub enum Condition {
         left: Box<Condition>,
         right: Box<Condition>,
     },
+    EqualToNumber {
+        input: usize,
+        value: String,
+    },
+    EqualToString {
+        input: usize,
+        value: String,
+    },
     Variant {
-        value: SourceMapped<Expression>,
+        value: usize,
         variant: usize,
+    },
+    Field {
+        local: usize,
+        value: usize,
+        index: usize,
+    },
+    TupleElement {
+        local: usize,
+        value: usize,
+        index: usize,
+    },
+    VariantElement {
+        local: usize,
+        value: usize,
+        variant: usize,
+        index: usize,
     },
     Initialize {
         local: usize,
-        value: SourceMapped<Expression>,
+        value: usize,
     },
     Mutate {
         local: usize,
@@ -76,8 +106,8 @@ pub enum Condition {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Expression {
-    Function {
-        index: usize,
+    Constant {
+        function: usize,
         bounds: Vec<usize>,
     },
     Call {
@@ -85,10 +115,6 @@ pub enum Expression {
         inputs: Vec<usize>,
     },
     Closure(Function),
-    Element {
-        value: usize,
-        index: usize,
-    },
     Tuple {
         elements: Vec<usize>,
     },
@@ -103,22 +129,18 @@ pub enum Expression {
         value: String,
     },
     Intrinsic {
-        intrinsic: Intrinsic<SourceMapped<Box<Expression>>>,
+        intrinsic: Intrinsic<usize>,
     },
     String {
         value: String,
     },
     Structure {
-        fields: Vec<(usize, usize)>,
+        fields: Vec<(usize, FieldDebugInfo, usize)>,
     },
     Variant {
         variant: usize,
+        debug_info: VariantDebugInfo,
         elements: Vec<usize>,
-    },
-    VariantElement {
-        value: usize,
-        variant: usize,
-        index: usize,
     },
 }
 
@@ -192,21 +214,21 @@ pub enum Intrinsic<T> {
     NumberEqual {
         left: T,
         right: T,
-        true_variant: usize,
-        false_variant: usize,
+        true_variant: (usize, VariantDebugInfo),
+        false_variant: (usize, VariantDebugInfo),
     },
     StringEqual {
         left: T,
         right: T,
-        true_variant: usize,
-        false_variant: usize,
+        true_variant: (usize, VariantDebugInfo),
+        false_variant: (usize, VariantDebugInfo),
     },
     Order {
         left: T,
         right: T,
-        is_less_than_variant: usize,
-        is_equal_variant: usize,
-        is_greater_than_variant: usize,
+        is_less_than_variant: (usize, VariantDebugInfo),
+        is_equal_variant: (usize, VariantDebugInfo),
+        is_greater_than_variant: (usize, VariantDebugInfo),
     },
     EmptyList,
     ListCount {
@@ -255,8 +277,8 @@ pub enum Intrinsic<T> {
     Nan,
     IsNan {
         value: T,
-        true_variant: usize,
-        false_variant: usize,
+        true_variant: (usize, VariantDebugInfo),
+        false_variant: (usize, VariantDebugInfo),
     },
     HashString {
         value: T,
@@ -289,6 +311,33 @@ pub enum TyRepresentation {
     Marker,
     Structure { fields: Vec<Ty> },
     Enumeration { variants: Vec<Vec<Ty>> },
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct FunctionDebugInfo {
+    pub span: Option<Span>,
+    pub name: Option<Cow<'static, str>>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct LocalDebugInfo {
+    pub span: Option<Span>,
+    pub name: Option<Cow<'static, str>>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct StatementDebugInfo {
+    pub span: Option<Span>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct FieldDebugInfo {
+    pub name: Option<Cow<'static, str>>,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct VariantDebugInfo {
+    pub name: Option<Cow<'static, str>>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]

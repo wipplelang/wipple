@@ -1,3 +1,5 @@
+#![expect(clippy::clone_on_copy)]
+
 use crate::CompileResult;
 use std::{
     collections::{BTreeMap, HashMap},
@@ -106,8 +108,10 @@ impl Ide {
 #[wasm_bindgen]
 impl Ide {
     #[wasm_bindgen(constructor)]
-    pub fn new(result: CompileResult) -> Self {
-        Ide { result }
+    pub fn new(result: &CompileResult) -> Self {
+        Ide {
+            result: result.clone(),
+        }
     }
 
     fn default_options(

@@ -8,10 +8,10 @@ use crate::{
         hir::{self},
     },
     db::{Db, Node},
-    facts::Syntax,
-    visit::IsMutated,
+    facts::{DebugInfo, Syntax},
+    visit::{IsMutated, definitions::Defined},
 };
-use std::collections::BTreeMap;
+use std::{borrow::Cow, collections::BTreeMap};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Options<'a> {
@@ -27,14 +27,63 @@ pub enum TraceOptions<'a> {
 }
 
 pub mod builtin_variants {
-    pub const FALSE: usize = 0;
-    pub const TRUE: usize = 1;
-    pub const NONE: usize = 0;
-    pub const SOME: usize = 1;
-    pub const IS_LESS_THAN: usize = 0;
-    pub const IS_EQUAL: usize = 1;
-    pub const IS_GREATER_THAN: usize = 2;
-    pub const BREAK: usize = 1;
+    use super::*;
+
+    pub const FALSE: (usize, VariantDebugInfo) = (
+        0,
+        VariantDebugInfo {
+            name: Some(Cow::Borrowed("False")),
+        },
+    );
+
+    pub const TRUE: (usize, VariantDebugInfo) = (
+        1,
+        VariantDebugInfo {
+            name: Some(Cow::Borrowed("True")),
+        },
+    );
+
+    pub const NONE: (usize, VariantDebugInfo) = (
+        0,
+        VariantDebugInfo {
+            name: Some(Cow::Borrowed("None")),
+        },
+    );
+
+    pub const SOME: (usize, VariantDebugInfo) = (
+        1,
+        VariantDebugInfo {
+            name: Some(Cow::Borrowed("Some")),
+        },
+    );
+
+    pub const IS_LESS_THAN: (usize, VariantDebugInfo) = (
+        0,
+        VariantDebugInfo {
+            name: Some(Cow::Borrowed("Is-Less-Than")),
+        },
+    );
+
+    pub const IS_EQUAL: (usize, VariantDebugInfo) = (
+        1,
+        VariantDebugInfo {
+            name: Some(Cow::Borrowed("Is-Equal")),
+        },
+    );
+
+    pub const IS_GREATER_THAN: (usize, VariantDebugInfo) = (
+        2,
+        VariantDebugInfo {
+            name: Some(Cow::Borrowed("Is-Greater-Than")),
+        },
+    );
+
+    pub const BREAK: (usize, VariantDebugInfo) = (
+        1,
+        VariantDebugInfo {
+            name: Some(Cow::Borrowed("Break")),
+        },
+    );
 }
 
 impl Program {
@@ -51,13 +100,6 @@ impl Program {
             map,
             program: self,
         };
-
-        for &file in &program.source_files {
-            if let Some(Syntax(syntax)) = db.get(file) {
-                let span = syntax.get(db).span(db);
-                writer.program.source_files.push(span.clone());
-            }
-        }
 
         writer.program.functions.resize_with(
             writer.program.functions.len() + program.definitions.len(),
@@ -97,7 +139,7 @@ struct Writer<'a> {
 impl Writer<'_> {
     fn function(
         &mut self,
-        definition: hir::DefinitionKey,
+        definition_key: hir::DefinitionKey,
         function: &hir::Function,
     ) -> Result<Function, CodegenError> {
         let type_parameters = function
@@ -113,19 +155,19 @@ impl Writer<'_> {
         let captures = function
             .captures
             .iter()
-            .map(|&node| self.map.local_index(definition, node))
+            .map(|&node| self.map.local_index(definition_key, node))
             .collect::<Result<Vec<_>, CodegenError>>()?;
 
         self.map
             .locals
-            .entry(definition)
+            .entry(definition_key)
             .or_default()
             .push(Default::default());
 
         for (local, node) in function.captures.iter().enumerate() {
             self.map
                 .locals
-                .entry(definition)
+                .entry(definition_key)
                 .or_default()
                 .last_mut()
                 .unwrap()
@@ -146,29 +188,37 @@ impl Writer<'_> {
 
                 self.map
                     .locals
-                    .entry(definition)
+                    .entry(definition_key)
                     .or_default()
                     .last_mut()
                     .unwrap()
                     .insert(input, index);
 
-                Ok(Local { ty, mutable })
+                Ok(Local {
+                    ty,
+                    mutable,
+                    debug_info: self.local_debug_info(input),
+                })
             })
             .collect::<Result<Vec<_>, CodegenError>>()?;
 
         let mut locals = Vec::new();
         for instruction in &function.instructions {
             instruction.clone().for_each_node(&mut |node| {
-                if self.map.local_index(definition, node).is_err() {
+                if self.map.local_index(definition_key, node).is_err() {
                     let ty = self.ty(&hir::type_of(self.db, node)?)?;
                     let mutable = self.db.contains::<IsMutated>(node);
 
                     let index = captures.len() + inputs.len() + locals.len();
-                    locals.push(Local { ty, mutable });
+                    locals.push(Local {
+                        ty,
+                        mutable,
+                        debug_info: self.local_debug_info(node),
+                    });
 
                     self.map
                         .locals
-                        .entry(definition)
+                        .entry(definition_key)
                         .or_default()
                         .last_mut()
                         .unwrap()
@@ -179,11 +229,11 @@ impl Writer<'_> {
             })?;
         }
 
-        let body = self.instructions(definition, &function.instructions)?;
+        let body = self.instructions(definition_key, &function.instructions)?;
 
         self.map
             .locals
-            .entry(definition)
+            .entry(definition_key)
             .or_default()
             .pop()
             .unwrap();
@@ -194,12 +244,13 @@ impl Writer<'_> {
             inputs,
             locals,
             body,
+            debug_info: self.function_debug_info(definition_key, function),
         })
     }
 
     fn instructions(
         &mut self,
-        definition: hir::DefinitionKey,
+        definition_key: hir::DefinitionKey,
         instructions: &[hir::Instruction],
     ) -> Result<Vec<Statement>, CodegenError> {
         let mut statements = Vec::new();
@@ -212,20 +263,25 @@ impl Writer<'_> {
                 } => {
                     let mut branches = Vec::new();
                     for (conditions, instructions, then_node) in hir_branches {
-                        let conditions = self.condition(definition, conditions)?;
+                        let conditions = self.condition(definition_key, conditions)?;
 
-                        let mut instructions = self.instructions(definition, instructions)?;
+                        let mut instructions = self.instructions(definition_key, instructions)?;
                         if let Some(node) = *node
                             && let Some(then_node) = *then_node
                         {
-                            instructions.push(Statement::Assign {
-                                local: self.map.local_index(definition, node)?,
-                                value: SourceMapped::new(
-                                    Some(then_node),
-                                    Expression::Local {
-                                        local: self.map.local_index(definition, then_node)?,
-                                    },
-                                ),
+                            instructions.push(Statement {
+                                inner: StatementInner::Assign {
+                                    local: self.map.local_index(definition_key, node)?,
+                                    value: SourceMapped::new(
+                                        Some(then_node),
+                                        Expression::Local {
+                                            local: self
+                                                .map
+                                                .local_index(definition_key, then_node)?,
+                                        },
+                                    ),
+                                },
+                                debug_info: self.statement_debug_info(instruction),
                             });
                         }
 
@@ -234,18 +290,24 @@ impl Writer<'_> {
 
                     let else_branch = match hir_else_branch {
                         Some((instructions, else_node)) => {
-                            let mut instructions = self.instructions(definition, instructions)?;
+                            let mut instructions =
+                                self.instructions(definition_key, instructions)?;
                             if let Some(node) = *node
                                 && let Some(else_node) = *else_node
                             {
-                                instructions.push(Statement::Assign {
-                                    local: self.map.local_index(definition, node)?,
-                                    value: SourceMapped::new(
-                                        Some(else_node),
-                                        Expression::Local {
-                                            local: self.map.local_index(definition, else_node)?,
-                                        },
-                                    ),
+                                instructions.push(Statement {
+                                    inner: StatementInner::Assign {
+                                        local: self.map.local_index(definition_key, node)?,
+                                        value: SourceMapped::new(
+                                            Some(else_node),
+                                            Expression::Local {
+                                                local: self
+                                                    .map
+                                                    .local_index(definition_key, else_node)?,
+                                            },
+                                        ),
+                                    },
+                                    debug_info: self.statement_debug_info(instruction),
                                 });
                             }
 
@@ -254,54 +316,54 @@ impl Writer<'_> {
                         None => None,
                     };
 
-                    statements.push(Statement::If {
-                        branches,
-                        else_branch,
+                    statements.push(Statement {
+                        inner: StatementInner::If {
+                            branches,
+                            else_branch,
+                        },
+                        debug_info: self.statement_debug_info(instruction),
                     });
                 }
                 hir::Instruction::Return { value } => {
-                    statements.push(Statement::Return {
-                        value: SourceMapped::new(
-                            Some(*value),
-                            Expression::Local {
-                                local: self.map.local_index(definition, *value)?,
-                            },
-                        ),
+                    statements.push(Statement {
+                        inner: StatementInner::Return {
+                            value: self.map.local_index(definition_key, *value)?,
+                        },
+                        debug_info: self.statement_debug_info(instruction),
                     });
                 }
                 hir::Instruction::Loop { node, body, result } => {
-                    let mut body = self.instructions(definition, body)?;
+                    let mut body = self.instructions(definition_key, body)?;
 
-                    body.push(Statement::If {
-                        branches: vec![(
-                            Condition::Variant {
-                                value: SourceMapped::new(
-                                    Some(*result),
-                                    Expression::Local {
-                                        local: self.map.local_index(definition, *result)?,
-                                    },
-                                ),
-                                variant: builtin_variants::BREAK,
-                            },
-                            vec![
-                                Statement::Assign {
-                                    local: self.map.local_index(definition, *node)?,
-                                    value: SourceMapped {
-                                        node: Some(*node),
-                                        inner: Expression::VariantElement {
-                                            value: self.map.local_index(definition, *result)?,
-                                            variant: builtin_variants::BREAK,
-                                            index: 0,
-                                        },
-                                    },
+                    body.push(Statement {
+                        inner: StatementInner::If {
+                            branches: vec![(
+                                Condition::And {
+                                    left: Box::new(Condition::Variant {
+                                        value: self.map.local_index(definition_key, *result)?,
+                                        variant: builtin_variants::BREAK.0,
+                                    }),
+                                    right: Box::new(Condition::VariantElement {
+                                        local: self.map.local_index(definition_key, *node)?,
+                                        value: self.map.local_index(definition_key, *result)?,
+                                        variant: builtin_variants::BREAK.0,
+                                        index: 0,
+                                    }),
                                 },
-                                Statement::Break,
-                            ],
-                        )],
-                        else_branch: None,
+                                vec![Statement {
+                                    inner: StatementInner::Break,
+                                    debug_info: self.statement_debug_info(instruction),
+                                }],
+                            )],
+                            else_branch: None,
+                        },
+                        debug_info: self.statement_debug_info(instruction),
                     });
 
-                    statements.push(Statement::Loop { body });
+                    statements.push(Statement {
+                        inner: StatementInner::Loop { body },
+                        debug_info: self.statement_debug_info(instruction),
+                    });
                 }
                 hir::Instruction::Trace { span } => {
                     let can_trace = match self.options.trace {
@@ -311,13 +373,24 @@ impl Writer<'_> {
                     };
 
                     if can_trace {
-                        statements.push(Statement::Trace { span: span.clone() });
+                        statements.push(Statement {
+                            inner: StatementInner::Trace { span: span.clone() },
+                            debug_info: self.statement_debug_info(instruction),
+                        });
                     }
                 }
-                hir::Instruction::Value { node, value } => statements.push(Statement::Assign {
-                    local: self.map.local_index(definition, *node)?,
-                    value: SourceMapped::new(Some(*node), self.expression(definition, value)?),
-                }),
+                hir::Instruction::Value { node, value } => {
+                    statements.push(Statement {
+                        inner: StatementInner::Assign {
+                            local: self.map.local_index(definition_key, *node)?,
+                            value: SourceMapped::new(
+                                Some(*node),
+                                self.expression(definition_key, value)?,
+                            ),
+                        },
+                        debug_info: self.statement_debug_info(instruction),
+                    });
+                }
             }
         }
 
@@ -326,7 +399,7 @@ impl Writer<'_> {
 
     fn condition(
         &mut self,
-        definition: hir::DefinitionKey,
+        definition_key: hir::DefinitionKey,
         conditions: &[hir::Condition],
     ) -> Result<Condition, CodegenError> {
         conditions
@@ -341,83 +414,72 @@ impl Writer<'_> {
                                 .try_fold(Condition::False, |result, conditions| {
                                     Ok::<_, CodegenError>(Condition::Or {
                                         left: Box::new(result),
-                                        right: Box::new(self.condition(definition, conditions)?),
+                                        right: Box::new(
+                                            self.condition(definition_key, conditions)?,
+                                        ),
                                     })
                                 })?
                         }
-                        hir::Condition::EqualToNumber { input, value } => Condition::Variant {
-                            value: SourceMapped::new(
-                                None,
-                                Expression::Intrinsic {
-                                    intrinsic: Intrinsic::NumberEqual {
-                                        left: SourceMapped::new(
-                                            None,
-                                            Box::new(Expression::Local {
-                                                local: self.map.local_index(definition, *input)?,
-                                            }),
-                                        ),
-                                        right: SourceMapped::new(
-                                            None,
-                                            Box::new(Expression::Number {
-                                                value: value.clone(),
-                                            }),
-                                        ),
-                                        true_variant: builtin_variants::TRUE,
-                                        false_variant: builtin_variants::FALSE,
-                                    },
-                                },
-                            ),
-                            variant: builtin_variants::TRUE,
-                        },
-                        hir::Condition::EqualToString { input, value } => Condition::Variant {
-                            value: SourceMapped::new(
-                                None,
-                                Expression::Intrinsic {
-                                    intrinsic: Intrinsic::StringEqual {
-                                        left: SourceMapped::new(
-                                            None,
-                                            Box::new(Expression::Local {
-                                                local: self.map.local_index(definition, *input)?,
-                                            }),
-                                        ),
-                                        right: SourceMapped::new(
-                                            None,
-                                            Box::new(Expression::String {
-                                                value: value.clone(),
-                                            }),
-                                        ),
-                                        true_variant: builtin_variants::TRUE,
-                                        false_variant: builtin_variants::FALSE,
-                                    },
-                                },
-                            ),
-                            variant: builtin_variants::TRUE,
-                        },
+                        hir::Condition::EqualToNumber { input, value } => {
+                            Condition::EqualToNumber {
+                                input: self.map.local_index(definition_key, *input)?,
+                                value: value.clone(),
+                            }
+                        }
+                        hir::Condition::EqualToString { input, value } => {
+                            Condition::EqualToString {
+                                input: self.map.local_index(definition_key, *input)?,
+                                value: value.clone(),
+                            }
+                        }
                         hir::Condition::EqualToVariant {
                             input,
                             variant_index,
                             ..
                         } => Condition::Variant {
-                            value: SourceMapped::new(
-                                None,
-                                Expression::Local {
-                                    local: self.map.local_index(definition, *input)?,
-                                },
-                            ),
+                            value: self.map.local_index(definition_key, *input)?,
                             variant: *variant_index,
                         },
                         hir::Condition::Initialize {
-                            variable,
-                            node,
-                            value,
-                            ..
+                            variable, value, ..
                         } => Condition::Initialize {
-                            local: self.map.local_index(definition, *variable)?,
-                            value: SourceMapped::new(*node, self.expression(definition, value)?),
+                            local: self.map.local_index(definition_key, *variable)?,
+                            value: self.map.local_index(definition_key, *value)?,
+                        },
+                        hir::Condition::Field {
+                            input,
+                            field_index,
+                            variable,
+                            ..
+                        } => Condition::Field {
+                            local: self.map.local_index(definition_key, *variable)?,
+                            value: self.map.local_index(definition_key, *input)?,
+                            index: *field_index,
+                        },
+                        hir::Condition::TupleElement {
+                            input,
+                            index,
+                            variable,
+                        } => Condition::TupleElement {
+                            local: self.map.local_index(definition_key, *variable)?,
+                            value: self.map.local_index(definition_key, *input)?,
+                            index: *index,
+                        },
+                        hir::Condition::VariantElement {
+                            input,
+                            variant_index,
+                            element,
+                            variable,
+                            ..
+                        } => Condition::VariantElement {
+                            local: self.map.local_index(definition_key, *variable)?,
+                            value: self.map.local_index(definition_key, *input)?,
+                            variant: *variant_index,
+                            index: *element,
                         },
                         hir::Condition::Mutate { input, variable } => Condition::Mutate {
-                            local: self.map.local_index(definition, *variable)?,
-                            value: self.map.local_index(definition, *input)?,
+                            local: self.map.local_index(definition_key, *variable)?,
+                            value: self.map.local_index(definition_key, *input)?,
                         },
                     }),
                 })
@@ -426,42 +488,36 @@ impl Writer<'_> {
 
     fn expression(
         &mut self,
-        definition: hir::DefinitionKey,
+        definition_key: hir::DefinitionKey,
         value: &hir::Value,
     ) -> Result<Expression, CodegenError> {
         Ok(match value {
             hir::Value::Bound(node) => Expression::Local {
-                local: self.bound(definition, *node)?,
+                local: self.bound(definition_key, *node)?,
             },
             hir::Value::Call { function, inputs } => Expression::Call {
-                function: self.map.local_index(definition, *function)?,
+                function: self.map.local_index(definition_key, *function)?,
                 inputs: inputs
                     .iter()
-                    .map(|&input| self.map.local_index(definition, input))
+                    .map(|&input| self.map.local_index(definition_key, input))
                     .collect::<Result<Vec<_>, CodegenError>>()?,
             },
             hir::Value::Constant {
                 definition: constant_definition,
                 bounds,
-            } => self.constant(definition, *constant_definition, bounds)?,
+            } => self.constant(definition_key, *constant_definition, bounds)?,
             hir::Value::Function(function) => {
-                Expression::Closure(self.function(definition, function)?)
+                Expression::Closure(self.function(definition_key, function)?)
             }
-            hir::Value::Field {
-                input, field_index, ..
-            } => Expression::Element {
-                value: self.map.local_index(definition, *input)?,
-                index: *field_index,
-            },
             hir::Value::Tuple(elements) => Expression::Tuple {
                 elements: elements
                     .iter()
-                    .map(|&node| self.map.local_index(definition, node))
+                    .map(|&node| self.map.local_index(definition_key, node))
                     .collect::<Result<_, CodegenError>>()?,
             },
             hir::Value::Marker => Expression::Marker,
             hir::Value::MutableVariable(node) => Expression::MutableLocal {
-                local: self.map.local_index(definition, *node)?,
+                local: self.map.local_index(definition_key, *node)?,
             },
             hir::Value::Number(value) => Expression::Number {
                 value: value.clone(),
@@ -469,7 +525,7 @@ impl Writer<'_> {
             hir::Value::Runtime { name, inputs } => {
                 let inputs = inputs
                     .iter()
-                    .map(|&input| self.map.local_index(definition, input))
+                    .map(|&input| self.map.local_index(definition_key, input))
                     .collect::<Result<Vec<_>, CodegenError>>()?;
 
                 Expression::Intrinsic {
@@ -482,70 +538,74 @@ impl Writer<'_> {
             hir::Value::Structure(fields) => Expression::Structure {
                 fields: fields
                     .iter()
-                    .map(|&(index, _, node)| Ok((index, self.map.local_index(definition, node)?)))
+                    .map(|&(index, ref name, node)| {
+                        let debug_info = FieldDebugInfo {
+                            name: Some(Cow::Owned(name.clone())),
+                        };
+
+                        Ok((
+                            index,
+                            debug_info,
+                            self.map.local_index(definition_key, node)?,
+                        ))
+                    })
                     .collect::<Result<_, CodegenError>>()?,
-            },
-            hir::Value::TupleElement { input, index } => Expression::Element {
-                value: self.map.local_index(definition, *input)?,
-                index: *index,
             },
             hir::Value::Variable(node) => Expression::Local {
-                local: self.map.local_index(definition, *node)?,
+                local: self.map.local_index(definition_key, *node)?,
             },
             hir::Value::Variant {
-                index, elements, ..
+                name,
+                index,
+                elements,
+                ..
             } => Expression::Variant {
                 variant: *index,
+                debug_info: VariantDebugInfo {
+                    name: Some(Cow::Owned(name.clone())),
+                },
                 elements: elements
                     .iter()
-                    .map(|&node| self.map.local_index(definition, node))
+                    .map(|&node| self.map.local_index(definition_key, node))
                     .collect::<Result<_, CodegenError>>()?,
-            },
-            hir::Value::VariantElement {
-                input,
-                variant_index,
-                element,
-                ..
-            } => Expression::VariantElement {
-                value: self.map.local_index(definition, *input)?,
-                variant: *variant_index,
-                index: *element,
             },
         })
     }
 
     fn constant(
         &mut self,
-        definition: hir::DefinitionKey,
-        constant_definition: hir::DefinitionKey,
+        definition_key: hir::DefinitionKey,
+        constant_definition_key: hir::DefinitionKey,
         bounds: &BTreeMap<hir::BoundPath, Node>,
     ) -> Result<Expression, CodegenError> {
-        Ok(Expression::Function {
-            index: self.map.function_index(constant_definition)?,
+        Ok(Expression::Constant {
+            function: self.map.function_index(constant_definition_key)?,
             bounds: bounds
                 .values()
-                .map(|node| self.map.local_index(definition, *node))
+                .map(|node| self.map.local_index(definition_key, *node))
                 .collect::<Result<Vec<_>, CodegenError>>()?,
         })
     }
 
-    fn bound(&mut self, definition: hir::DefinitionKey, node: Node) -> Result<usize, CodegenError> {
-        self.map.local_index(definition, node)
+    fn bound(
+        &mut self,
+        definition_key: hir::DefinitionKey,
+        node: Node,
+    ) -> Result<usize, CodegenError> {
+        self.map.local_index(definition_key, node)
     }
 
     fn intrinsic(
         &mut self,
         name: &str,
         inputs: &[usize],
-    ) -> Result<Intrinsic<SourceMapped<Box<Expression>>>, CodegenError> {
-        let local = |local| SourceMapped::new(None, Box::new(Expression::Local { local }));
-
+    ) -> Result<Intrinsic<usize>, CodegenError> {
         macro_rules! intrinsics {
             ($($s:literal => $name:ident($($arg:ident),* $(,)?) $({ $($t:tt)* })?),* $(,)?) => {
                 match (name, inputs) {
                     $(
                         ($s, &[$($arg),*]) => Ok(Intrinsic::$name {
-                            $($arg: local($arg),)*
+                            $($arg,)*
                             $($($t)*)?
                         }),
                     )*
@@ -695,6 +755,80 @@ impl Writer<'_> {
 
         Ok(index)
     }
+
+    fn function_debug_info(
+        &self,
+        definition_key: hir::DefinitionKey,
+        function: &hir::Function,
+    ) -> FunctionDebugInfo {
+        let mut debug_info = FunctionDebugInfo::default();
+
+        if let Some(node) = function.node
+            && let Some(span) = self
+                .db
+                .get(node)
+                .map(|Syntax(syntax)| syntax.get(self.db).span(self.db))
+        {
+            debug_info.span = Some(span.clone());
+        }
+
+        let name = match definition_key {
+            hir::DefinitionKey::Constant(node) => {
+                self.db.get(node).and_then(|Defined(definition)| {
+                    definition.name().map(|name| Cow::Owned(name.to_string()))
+                })
+            }
+            hir::DefinitionKey::TopLevel => Some(Cow::Borrowed("(top level)")),
+        };
+
+        if let Some(mut name) = name {
+            let is_closure = self
+                .map
+                .locals
+                .get(&definition_key)
+                .is_some_and(|locals| locals.len() > 1);
+
+            if is_closure {
+                name.to_mut().push_str(" (closure)");
+            }
+
+            debug_info.name = Some(name);
+        }
+
+        debug_info
+    }
+
+    fn local_debug_info(&self, node: Node) -> LocalDebugInfo {
+        let mut debug_info = LocalDebugInfo::default();
+
+        if let Some(info) = self.db.get::<DebugInfo>(node)
+            && info.variable
+            && let Some(span) = self
+                .db
+                .get(node)
+                .map(|Syntax(syntax)| syntax.get(self.db).span(self.db))
+        {
+            debug_info.span = Some(span.clone());
+            debug_info.name = Some(Cow::Owned(span.source.to_string()));
+        }
+
+        debug_info
+    }
+
+    fn statement_debug_info(&self, instruction: &hir::Instruction) -> StatementDebugInfo {
+        let mut debug_info = StatementDebugInfo::default();
+
+        if let Some(node) = instruction.primary_node()
+            && let Some(span) = self
+                .db
+                .get(node)
+                .map(|Syntax(syntax)| syntax.get(self.db).span(self.db))
+        {
+            debug_info.span = Some(span.clone());
+        }
+
+        debug_info
+    }
 }
 
 #[derive(Debug, Default)]
@@ -722,11 +856,11 @@ impl IndexMap {
 
     fn local_index(
         &self,
-        definition: hir::DefinitionKey,
+        definition_key: hir::DefinitionKey,
         node: Node,
     ) -> Result<usize, CodegenError> {
         self.locals
-            .get(&definition)
+            .get(&definition_key)
             .and_then(|locals| locals.last())
             .and_then(|locals| locals.get(&node).copied())
             .ok_or_else(|| anyhow::format_err!("missing local {node:?}"))

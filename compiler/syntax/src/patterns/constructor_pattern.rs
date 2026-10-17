@@ -331,16 +331,12 @@ impl hir::Write for ConstructorPatternCodegen {
                 });
 
                 for (element_index, &(pattern, temporary)) in elements.iter().enumerate() {
-                    ctx.condition(hir::Condition::Initialize {
+                    ctx.condition(hir::Condition::VariantElement {
+                        input: *matching,
+                        variant_name: name.to_string(),
+                        variant_index: *index,
+                        element: element_index,
                         variable: temporary,
-                        node: None,
-                        value: hir::Value::VariantElement {
-                            input: *matching,
-                            variant_name: name.to_string(),
-                            variant_index: *index,
-                            element: element_index,
-                        },
-                        mutable: false,
                     });
 
                     ctx.write(db, pattern)?;
@@ -358,9 +354,8 @@ impl hir::Write for ConstructorPatternCodegen {
 
                 ctx.condition(hir::Condition::Initialize {
                     variable: *temporary,
-                    node: None,
                     // Wrappers are transparent at runtime
-                    value: hir::Value::Variable(*matching),
+                    value: *matching,
                     mutable: false,
                 });
 

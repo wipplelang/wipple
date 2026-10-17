@@ -93,8 +93,7 @@ impl hir::Write for VariablePatternCodegen {
 
         ctx.condition(hir::Condition::Initialize {
             variable: self.node,
-            node: Some(matching),
-            value: hir::Value::Variable(matching),
+            value: matching,
             mutable: db.contains::<IsMutated>(self.node),
         });
 

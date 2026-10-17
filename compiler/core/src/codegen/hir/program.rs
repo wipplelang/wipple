@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 #[derive(Debug, Clone)]
 pub struct Program {
     pub layer: usize,
-    pub source_files: Vec<Node>,
     pub definitions: BTreeMap<DefinitionKey, Function>,
 }
 
@@ -88,11 +87,6 @@ pub enum Value {
         bounds: BTreeMap<BoundPath, Node>,
     },
     Function(Function),
-    Field {
-        input: Node,
-        field_name: String,
-        field_index: usize,
-    },
     Tuple(Vec<Node>),
     Marker,
     MutableVariable(Node),
@@ -103,26 +97,17 @@ pub enum Value {
     },
     String(String),
     Structure(Vec<(usize, String, Node)>),
-    TupleElement {
-        input: Node,
-        index: usize,
-    },
     Variable(Node),
     Variant {
         name: String,
         index: usize,
         elements: Vec<Node>,
     },
-    VariantElement {
-        input: Node,
-        variant_name: String,
-        variant_index: usize,
-        element: usize,
-    },
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct Function {
+    pub node: Option<Node>,
     pub type_parameters: Vec<Node>,
     pub bounds: Option<Vec<Node>>,
     pub inputs: Vec<Node>,
@@ -148,13 +133,30 @@ pub enum Condition {
     },
     Initialize {
         variable: Node,
-        node: Option<Node>,
-        value: Value,
+        value: Node,
         mutable: bool,
     },
-    Mutate {
-        input: Node,
+    Field {
         variable: Node,
+        input: Node,
+        field_name: String,
+        field_index: usize,
+    },
+    TupleElement {
+        variable: Node,
+        input: Node,
+        index: usize,
+    },
+    VariantElement {
+        variable: Node,
+        input: Node,
+        variant_name: String,
+        variant_index: usize,
+        element: usize,
+    },
+    Mutate {
+        variable: Node,
+        input: Node,
     },
 }
 
@@ -310,7 +312,10 @@ impl Condition {
             Condition::EqualToString { input, .. } => Some(input),
             Condition::EqualToVariant { input, .. } => Some(input),
             Condition::Initialize { variable, .. } => Some(variable),
-            Condition::Mutate { input, .. } => Some(input),
+            Condition::Field { variable, .. } => Some(variable),
+            Condition::TupleElement { variable, .. } => Some(variable),
+            Condition::VariantElement { variable, .. } => Some(variable),
+            Condition::Mutate { variable, .. } => Some(variable),
         }
     }
 
@@ -321,11 +326,7 @@ impl Condition {
                 .flatten()
                 .flat_map(|condition| condition.nodes())
                 .collect(),
-            Condition::EqualToNumber { input, .. } => vec![*input],
-            Condition::EqualToString { input, .. } => vec![*input],
-            Condition::EqualToVariant { input, .. } => vec![*input],
-            Condition::Initialize { variable, .. } => vec![*variable],
-            Condition::Mutate { input, variable } => vec![*input, *variable],
+            _ => Vec::from_iter(self.primary_node()),
         }
     }
 }

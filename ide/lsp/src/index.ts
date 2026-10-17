@@ -41,6 +41,7 @@ connection.onInitialize(async (params) => {
 });
 
 interface DocumentState {
+    result: wipple.CompileResult;
     ide: wipple.Ide;
 }
 
@@ -49,10 +50,15 @@ const documentStates = new Map<TextDocument, DocumentState>();
 documents.onDidChangeContent(({ document }) => {
     if (document.languageId !== "wipple") return;
 
-    documentStates.get(document)?.ide[Symbol.dispose]();
+    const state = documentStates.get(document);
+    if (state != null) {
+        state.result.free();
+        state.ide.free();
+    }
+
     documentStates.delete(document);
 
-    using result = wipple.compile(
+    const result = wipple.compile(
         [new wipple.File(document.uri, document.getText())],
         "foundation",
     );
@@ -77,7 +83,7 @@ documents.onDidChangeContent(({ document }) => {
         ),
     });
 
-    documentStates.set(document, { ide });
+    documentStates.set(document, { result, ide });
 });
 
 documents.onDidClose(({ document }) => {
@@ -85,7 +91,8 @@ documents.onDidClose(({ document }) => {
 
     connection.sendDiagnostics({ uri: document.uri, diagnostics: [] });
 
-    documentStates.get(document)?.ide[Symbol.dispose]();
+    documentStates.get(document)?.result.free();
+    documentStates.get(document)?.ide.free();
     documentStates.delete(document);
 });
 

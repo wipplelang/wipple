@@ -1,3 +1,5 @@
+#![expect(clippy::clone_on_copy)]
+
 use crate::CompileResult;
 use std::collections::BTreeSet;
 use wasm_bindgen::prelude::*;

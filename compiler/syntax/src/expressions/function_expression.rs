@@ -171,6 +171,7 @@ impl hir::Write for FunctionExpressionCodegen {
         ctx.instruction(hir::Instruction::Value {
             node: self.node,
             value: hir::Value::Function(hir::Function {
+                node: Some(self.node),
                 type_parameters: Vec::new(),
                 bounds: None,
                 inputs: self.inputs.clone(),

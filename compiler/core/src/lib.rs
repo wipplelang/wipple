@@ -55,7 +55,7 @@ pub fn compile<'a>(
     top_level: &mut TopLevel,
     files: impl IntoIterator<Item = &'a AstKey>,
     mut checks: impl FnMut(&mut Db, &TopLevel),
-) -> (Node, Vec<Node>, Vec<Node>) {
+) -> (Node, Vec<Node>) {
     // Define/resolve names and collect constraints
 
     let root_node = db.node();
@@ -75,10 +75,9 @@ pub fn compile<'a>(
 
     visitor.push_scope(db, root_node);
 
-    let source_files = files
-        .into_iter()
-        .map(|file| visitor.visit(db, file))
-        .collect::<Vec<_>>();
+    for file in files {
+        visitor.visit(db, file);
+    }
 
     let mut visited = visitor.finish(db);
 
@@ -168,7 +167,7 @@ pub fn compile<'a>(
     check_exhaustiveness(db);
     checks(db, top_level);
 
-    (root_node, source_files, visited.top_level_statements)
+    (root_node, visited.top_level_statements)
 }
 
 pub fn apply_solver(db: &mut Db, solver: Solver) {

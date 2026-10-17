@@ -49,11 +49,16 @@ const run = async (channel: Channel, program: ArrayBufferLike) => {
         },
     );
 
+    const interpreter = new wipple.Interpreter(new Uint8Array(program), env);
+    interpreter.debug = true;
+
     try {
-        wipple.run(new Uint8Array(program), env);
+        interpreter.run();
     } catch (e) {
         console.error(e);
         Sentry.captureException(e);
+    } finally {
+        interpreter.free();
     }
 
     postMessage({ type: "done" });

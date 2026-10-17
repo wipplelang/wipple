@@ -2,7 +2,7 @@ mod codegen;
 mod diagnostics;
 mod graph;
 mod ide;
-mod run;
+mod interpreter;
 
 use std::{cell::RefCell, collections::HashMap, sync::Arc};
 use wasm_bindgen::prelude::*;
@@ -26,11 +26,11 @@ pub fn start() {
 }
 
 #[wasm_bindgen]
+#[derive(Clone)]
 pub struct CompileResult {
-    db: Db,
+    db: DbRef,
     path: String,
     root_node: Node,
-    source_files: Vec<Node>,
     statements: Vec<Node>,
     lib_statements: Vec<Node>,
 }
@@ -74,14 +74,13 @@ pub fn compile(files: Vec<File>, library_name: Option<String>) -> Option<Compile
         .map(|file| parse(&mut db, file.path, file.code))
         .collect::<Vec<_>>();
 
-    let (root_node, source_files, statements) =
+    let (root_node, statements) =
         wipple_core::compile(&mut db, &mut library.top_level.clone(), &files, run_checks);
 
     Some(CompileResult {
-        db,
+        db: DbRef::new(db),
         path,
         root_node,
-        source_files,
         statements,
         lib_statements: library.statements.clone(),
     })
