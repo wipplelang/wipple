@@ -10,7 +10,9 @@
         "build": "node build.mjs",
         "extension": "npm run build && vsce package --no-dependencies --allow-missing-repository --skip-license && code --install-extension wipple-vscode-0.0.0.vsix"
     },
-    "activationEvents": [],
+    "activationEvents": [
+        "onDebugResolve:wipple"
+    ],
     "main": "./dist/extension.js",
     "categories": [
         "Programming Languages"
@@ -36,14 +38,62 @@
                 "path": "./syntaxes/wipple.tmLanguage.json"
             }
         ],
-        "configuration": {}
+        "configuration": {},
+        "debuggers": [
+            {
+                "type": "wipple",
+                "label": "Debug Wipple",
+                "configurationAttributes": {
+                    "launch": {
+                        "required": [
+                            "program"
+                        ],
+                        "properties": {
+                            "program": {
+                                "type": "string"
+                            },
+                            "wipple": {
+                                "type": "object",
+                                "properties": {
+                                    "path": {
+                                        "type": "string"
+                                    },
+                                    "args": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "initialConfigurations": [
+                    {
+                        "type": "wipple",
+                        "request": "launch",
+                        "program": "${file}",
+                        "wipple": {
+                            "args": []
+                        }
+                    }
+                ]
+            }
+        ],
+        "breakpoints": [
+            {
+                "language": "wipple"
+            }
+        ]
     },
     "dependencies": {
+        "@vscode/debugadapter": "^1.68.0",
         "vscode-languageclient": "^10.0.0",
         "wipple-lsp": "file:../lsp"
     },
     "devDependencies": {
-        "@types/node": "^25.9.1",
+        "@types/node": "^25.9.9",
         "@types/vscode": "^1.118.0",
         "@vscode/vsce": "^3.6.2",
         "esbuild": "^0.28.1"

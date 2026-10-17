@@ -15,6 +15,7 @@ anyhow = "1"
 clap = { version = "4", features = ["derive"] }
 codespan-reporting = "0.13"
 colored = "3"
+dap = "0.4.1-alpha1"
 rayon = "1"
 rmp-serde = "1"
 rustyline = { version = "18", features = ["derive"] }

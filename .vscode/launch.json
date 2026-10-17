@@ -1,6 +1,16 @@
 {
     "configurations": [
         {
+            "name": "Debug test.wipple",
+            "request": "launch",
+            "type": "wipple",
+            "program": "${workspaceFolder}/test.wipple",
+            "wipple": {
+                "args": ["--lib=foundation.bin"],
+                "path": "${workspaceFolder}/target/debug/wipple"
+            }
+        },
+        {
             "name": "Compile and run test.wipple",
             "type": "lldb",
 

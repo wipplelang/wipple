@@ -1,10 +1,11 @@
 #![allow(clippy::print_stderr)]
 
+mod debug;
 mod driver;
 mod interpreter;
 mod read;
 
-use crate::{driver::Driver, interpreter::interpreter, read::read_dir};
+use crate::{debug::debug, driver::Driver, interpreter::interpreter, read::read_dir};
 use clap::Parser;
 use colored::Colorize;
 use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
@@ -43,6 +44,11 @@ enum Args {
     },
 
     Run {
+        #[clap(flatten)]
+        options: CompileOptions,
+    },
+
+    Debug {
         #[clap(flatten)]
         options: CompileOptions,
     },
@@ -141,6 +147,9 @@ fn main() -> anyhow::Result<()> {
                 run(&mir, io::stdout())?;
             }
         }
+        Args::Debug { options } => {
+            if let Some(mir) = compile(&options)? {
+                debug(&mir)?;
             }
         }
         Args::Repl { options } => {

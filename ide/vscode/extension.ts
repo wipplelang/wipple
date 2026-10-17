@@ -158,6 +158,56 @@ export const activate = async (context: vscode.ExtensionContext) => {
             },
         ),
     );
+
+    context.subscriptions.push(
+        vscode.debug.registerDebugConfigurationProvider("wipple", {
+            provideDebugConfigurations: () => [
+                {
+                    name: "Debug Wipple",
+                    request: "launch",
+                    type: "wipple",
+                    program: "${file}",
+                    wipple: { args: [] },
+                },
+            ],
+        }),
+        vscode.debug.registerDebugAdapterDescriptorFactory("wipple", {
+            createDebugAdapterDescriptor: async (session) => {
+                return new vscode.DebugAdapterExecutable(
+                    session.configuration.wipple?.path ?? "wipple",
+                    [
+                        "debug",
+                        ...(session.configuration.wipple?.args ?? []),
+                        session.configuration.program,
+                    ],
+                    { cwd: session.workspaceFolder?.uri.fsPath },
+                );
+            },
+        }),
+        vscode.debug.registerDebugAdapterTrackerFactory("wipple", {
+            createDebugAdapterTracker: () => ({
+                onWillReceiveMessage(message) {
+                    log.appendLine(`message to debug adapter: ${JSON.stringify(message, null, 2)}`);
+                },
+
+                onDidSendMessage(message) {
+                    log.appendLine(
+                        `message from debug adapter: ${JSON.stringify(message, null, 2)}`,
+                    );
+                },
+
+                onError(error) {
+                    log.appendLine(`debug adapter error: ${error.message}`);
+                },
+
+                onExit(code, signal) {
+                    log.appendLine(
+                        `debug adapter exited: ${JSON.stringify({ code, signal }, null, 2)}`,
+                    );
+                },
+            }),
+        }),
+    );
 };
 
 export const deactivate = async () => {
