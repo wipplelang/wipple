@@ -4,6 +4,8 @@
 
 -   Added the `--explain` flag to adjust the level of context provided with error messages, as well as an IDE code action to explain errors.
 
+-   Added support for debugging in VSCode.
+
 ## Wipple 2026.2 (2026-08-06)
 
 -   `when` and related pattern-matching expressions are now checked for exhaustiveness.
