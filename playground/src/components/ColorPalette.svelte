@@ -10,10 +10,10 @@
     let { color = $bindable() }: Props = $props();
 </script>
 
-<div class="grid grid-cols-6 gap-[4px] p-[4px]">
+<div class="grid grid-cols-6 gap-[2px] p-[4px]">
     {#each Object.entries(colors) as [name, { varName }]}
         <ObjectWrapper>
-            <button class="flex flex-1" onclick={() => (color = name)}>
+            <button class="flex size-[20px] flex-1" onclick={() => (color = name)}>
                 <ColorPreview {name} {varName} />
             </button>
         </ObjectWrapper>

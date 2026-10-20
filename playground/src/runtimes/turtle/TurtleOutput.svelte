@@ -90,11 +90,11 @@
         await turtle?.beginPath();
     };
 
-    export const endPath = async (fillColorJson: string) => {
-        const { fillColor } = JSON.parse(fillColorJson);
+    export const endPath = async (colorJson: string) => {
+        const { color } = JSON.parse(colorJson);
 
         await turtle?.closePath();
-        await turtle?.setFillStyle(getColor(fillColor));
+        await turtle?.setFillStyle(getColor(color));
         await turtle?.fill();
     };
 

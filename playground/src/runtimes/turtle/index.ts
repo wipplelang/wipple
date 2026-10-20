@@ -13,6 +13,10 @@ export default runtime({
         },
         Appearance: {
             color: { code: `color (color-widget '{"color": "blue"}')` },
+            fill: {
+                code: `fill (color-widget '{"color": "blue"}')`,
+                surround: { before: `fill (color-widget '{"color": "blue"}') {`, after: "}" },
+            },
             speed: { code: "speed 50" },
             animal: { code: `animal (animal-widget '{"animal": "frog"}')` },
         },

@@ -42,6 +42,7 @@ left : (Angle {degrees : degrees}) -> external "left" degrees
 -- Rotate the turtle clockwise by an angle.
 right :: Angle -> ()
 right : (Angle {degrees : degrees}) -> external "right" degrees
+
 -- Go to a position on the screen without drawing.
 go :: Distance Distance -> ()
 go : (Distance {pixels : x}) (Distance {pixels : y}) -> external "go" (x, y)
