@@ -18,6 +18,10 @@
                 "color": "purple",
                 "icon": "edit"
             },
+            "background": {
+                "color": "purple",
+                "icon": "texture"
+            },
             "degrees": {
                 "color": "sky",
                 "icon": null

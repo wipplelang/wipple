@@ -17,6 +17,7 @@
     const canvasSize = 400;
     const canvasPixelRatio = 2.5;
 
+    let backgroundColor = $state<string>();
     let canvas: HTMLCanvasElement;
     let turtle: RealTurtle;
 
@@ -43,6 +44,7 @@
     };
 
     const reset = async () => {
+        backgroundColor = undefined;
         canvas.style.opacity = "0";
         rescaleCanvas(canvas);
         turtle = await initializeTurtle(canvas);
@@ -63,10 +65,6 @@
 
     export const backward = async (distance: number) => {
         await turtle?.back(distance);
-    };
-
-    export const arc = async ([radius, angle]: [number, number]) => {
-        await turtle?.arc(radius, angle);
     };
 
     export const left = async (angle: number) => {
@@ -98,6 +96,11 @@
         await turtle?.fill();
     };
 
+    export const background = async (colorJson: string) => {
+        const { color } = JSON.parse(colorJson);
+        backgroundColor = getColor(color);
+    };
+
     export const speed = async (speed: number) => {
         await turtle?.setSpeed(speed / 100);
     };
@@ -119,15 +122,11 @@
 
     const hoverDelay = 500;
 
-    let startTime = $state<number>();
     let hoverActive = $state(false);
     let hoverPosition = $state<{ x: number; y: number; clientX: number; clientY: number }>();
 
-    const onmouseenter = (e: MouseEvent) => {
-        startTime = e.timeStamp;
-
+    const onmouseenter = () => {
         setTimeout(() => {
-            startTime = undefined;
             hoverActive = true;
         }, hoverDelay);
     };
@@ -148,7 +147,6 @@
     };
 
     const onmouseleave = () => {
-        startTime = undefined;
         hoverActive = false;
         hoverPosition = undefined;
     };
@@ -156,11 +154,13 @@
 
 <div class="relative data-[printing]:size-[5in]">
     <Box class="relative aspect-square" {onmouseenter} {onmousemove} {onmouseleave}>
+        <div class="absolute inset-0 size-full" style:background={backgroundColor ?? "white"}></div>
+
         <canvas
             bind:this={canvas}
             width={canvasSize}
             height={canvasSize}
-            class="absolute inset-0 size-full bg-white"
+            class="absolute inset-0 size-full"
         ></canvas>
     </Box>
 

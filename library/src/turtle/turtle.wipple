@@ -22,18 +22,6 @@ forward : (Distance {pixels : pixels}) -> external "forward" pixels
 -- Move the turtle backward by a distance.
 backward :: Distance -> ()
 backward : (Distance {pixels : pixels}) -> external "backward" pixels
--- An arc.
-Arc : type {
-  radius :: Distance
-  angle :: Angle
-}
-
--- Move the turtle along an arc.
-arc :: Arc -> ()
-arc : (Arc {
-  radius : (Distance {pixels : radius})
-  angle : (Angle {degrees : angle})
-}) -> external "arc" (radius, angle)
 
 -- Rotate the turtle counterclockwise by an angle.
 left :: Angle -> ()
@@ -50,6 +38,10 @@ go : (Distance {pixels : x}) (Distance {pixels : y}) -> external "go" (x, y)
 -- Set the pen color.
 color :: Color -> ()
 color : (Color color) -> external "color" color
+
+-- Set the background color.
+background :: Color -> ()
+background : (Color color) -> external "background" color
 
 -- Draw a path and fill it with a color.
 fill :: Color {result} -> result
