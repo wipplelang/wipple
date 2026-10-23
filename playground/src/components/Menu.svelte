@@ -32,6 +32,7 @@
     let contentVisible = $state(false);
 
     let mounting = true;
+    let firstClick = true;
 
     const onclick = (e?: MouseEvent) => {
         if (e != null) {
@@ -90,6 +91,11 @@
 
     const onClickOutside: MouseEventHandler<Window> = (e) => {
         if (!mounting && !element.contains(e.target as Node)) {
+            if (visibleAt != null && firstClick) {
+                firstClick = false;
+                return;
+            }
+
             dismiss();
         }
     };
