@@ -590,7 +590,7 @@
 
     let touchModeSelection = $state<{ x: number; y: number }>();
 
-    const onpointerdown = (e: MouseEvent) => {
+    const onclick = (e: MouseEvent) => {
         if (!context.touchModeEnabled) return;
 
         const pos = editorView.posAtCoords({ x: e.clientX, y: e.clientY });
@@ -604,9 +604,10 @@
 </script>
 
 <!-- svelte-ignore a11y_no_static_element_interactions -->
+<!-- svelte-ignore a11y_click_events_have_key_events -->
 <div
     use:codemirror
-    {onpointerdown}
+    {onclick}
     class={["code-editor h-full", diagnostic ? "has-diagnostic" : ""]}
     style:--code-editor-padding={padding}
     style:--code-editor-font-size="{fontSize}px"
