@@ -35,13 +35,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `todo`
 
-`-- should display 'expected `String`, found `Number`' rather than
--- 'cannot find instance `Add Number Number String`'
-accepts-text (1 + 2)` (ExpressionStatement):
-  at mismatched-call.wipple:4:1-6:21
-  grouped with `accepts-text (1 + 2)`
-  has type `()`
-
 `accepts-text` (VariableExpression):
   at mismatched-call.wipple:6:1-6:13
   grouped with `String -> ()`
@@ -49,11 +42,14 @@ accepts-text (1 + 2)` (ExpressionStatement):
   is an expression
   resolved to 1 definition(s): `accepts-text`
 
+`accepts-text (1 + 2)` (ExpressionStatement):
+  at mismatched-call.wipple:6:1-6:21
+  grouped with `accepts-text (1 + 2)`
+  has type `()`
+
 `accepts-text (1 + 2)` (CallExpression):
   at mismatched-call.wipple:6:1-6:21
-  grouped with `()`, `-- should display 'expected `String`, found `Number`' rather than
--- 'cannot find instance `Add Number Number String`'
-accepts-text (1 + 2)`
+  grouped with `()`, `accepts-text (1 + 2)`
   has type `()`
   is an expression
 

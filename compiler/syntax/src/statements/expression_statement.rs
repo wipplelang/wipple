@@ -27,8 +27,8 @@ pub struct ExpressionStatement {
 pub fn parse_expression_statement(
     parser: &mut Parser<'_>,
 ) -> Result<ExpressionStatement, ParseError> {
-    let span = parser.spanned();
     let _ = parse_comments(parser)?;
+    let span = parser.spanned();
     let expression = parse_expression(parser)?;
     Ok(ExpressionStatement {
         span: span(parser),

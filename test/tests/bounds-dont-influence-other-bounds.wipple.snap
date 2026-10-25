@@ -176,9 +176,8 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `todo`
 
-`-- `B` should not be inferred to be `Number`
-(f :: (Number; _))` (ExpressionStatement):
-  at bounds-dont-influence-other-bounds.wipple:9:1-10:19
+`(f :: (Number; _))` (ExpressionStatement):
+  at bounds-dont-influence-other-bounds.wipple:10:1-10:19
   grouped with `f :: (Number; _)`
   has type `(Number; _)`
 
@@ -212,13 +211,12 @@ Facts (layer 2):
 
 
 error: 
-   --> bounds-dont-influence-other-bounds.wipple:9:1
-   |  
- 9 | / -- `B` should not be inferred to be `Number`
-10 | | (f :: (Number; _))
-   | \------------------^
+   --> bounds-dont-influence-other-bounds.wipple:10:1
+   |
+10 | (f :: (Number; _))
+   | ^^^^^^^^^^^^^^^^^^
 
-Missing information for the type of `-- `B` should not be inferred to be `Number` (f :: (Number; _))`.
+Missing information for the type of `(f :: (Number; _))`.
 
 Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 
