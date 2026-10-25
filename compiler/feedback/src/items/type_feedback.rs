@@ -12,7 +12,9 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
     ctx.feedback("conflicting-types")
         .query(conflicting_types)
         .rank(|data| {
-            if data.source.is_none() && data.is_primary {
+            if data.summary.is_some() {
+                FeedbackRank::Custom
+            } else if data.source.is_none() && data.is_primary {
                 FeedbackRank::DirectConflicts
             } else {
                 FeedbackRank::IndirectConflicts
@@ -51,6 +53,24 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                             writer.string(", not a ");
                             writer.ty(db, &Ty::Node(*argument), true);
                             writer.string(".");
+                        }
+                        TypeConflictSummarySuffix::FunctionArity {
+                            function,
+                            expected,
+                            actual,
+                        } => {
+                            writer.string(" But ");
+                            writer.node(*function);
+                            writer.string(" accepts ");
+                            writer.string(expected.to_string());
+                            if *expected > 1 {
+                                writer.string(" inputs");
+                            } else {
+                                writer.string(" input");
+                            }
+                            writer.string(", not ");
+                            writer.string(actual.to_string());
+                            writer.string(".")
                         }
                     }
                 });

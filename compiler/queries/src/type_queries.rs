@@ -126,6 +126,11 @@ pub enum TypeConflictSummarySuffix {
         parameter: Node,
         argument: Node,
     },
+    FunctionArity {
+        function: Node,
+        expected: usize,
+        actual: usize,
+    },
 }
 
 fn collect_summaries(
@@ -135,6 +140,7 @@ fn collect_summaries(
     summaries: &mut Vec<TypeConflictSummary>,
 ) {
     collect_function_input_summaries(db, node, trace, summaries);
+    collect_function_arity_summaries(db, node, trace, summaries);
 }
 
 fn collect_function_input_summaries(
@@ -148,41 +154,9 @@ fn collect_function_input_summaries(
             if let ConstraintConsequence::Group(left, right) = *consequence
                 && (left == node || right == node)
             {
-                for &(mut function_node) in &entry.relevant {
-                    let Some(Typed(Some(group))) = db.get(function_node) else {
-                        continue;
-                    };
-
-                    if let Some(representative) = group
-                        .nodes()
-                        .find(|&node| group.get_rank(node) == group.min_rank())
-                    {
-                        function_node = representative;
-                    }
-
-                    // Prefer using the function's name
-                    if let Some(MatchedBy(name)) = db.get(function_node) {
-                        function_node = *name;
-                    }
-
-                    if group.get_rank(function_node) >= NodeRank::Type {
-                        continue;
-                    }
-
-                    let Some(function_ty) =
-                        representative_types_of(db, function_node, &[], Prefer::DirectType)
-                            .into_iter()
-                            .next()
-                    else {
-                        continue;
-                    };
-
-                    if function_ty.tag != TyTag::Function {
-                        continue;
-                    }
-
+                each_function_node(db, entry, |function_node, function_ty| {
                     let Some((_, inputs)) = function_ty.children.split_first() else {
-                        continue;
+                        return;
                     };
 
                     let function_inputs = inputs
@@ -209,28 +183,28 @@ fn collect_function_input_summaries(
                     let is_annotated = |rank: NodeRank| rank >= NodeRank::Annotated;
 
                     let Some((left_index, left_rank)) = as_parameter(left) else {
-                        continue;
+                        return;
                     };
 
                     let Some((right_index, right_rank)) = as_parameter(right) else {
-                        continue;
+                        return;
                     };
 
                     if left_index != right_index {
-                        continue;
+                        return;
                     }
 
                     let left_is_annotated = is_annotated(left_rank);
                     let right_is_annotated = is_annotated(right_rank);
 
                     let (parameter, argument) = if left_is_annotated && right_is_annotated {
-                        continue;
+                        return;
                     } else if left_is_annotated {
                         (left, right)
                     } else if right_is_annotated {
                         (right, left)
                     } else {
-                        continue;
+                        return;
                     };
 
                     summaries.push(TypeConflictSummary {
@@ -241,8 +215,88 @@ fn collect_function_input_summaries(
                             argument,
                         },
                     });
-                }
+                });
             }
         }
+    }
+}
+
+fn collect_function_arity_summaries(
+    db: &QueryCtx<'_>,
+    node: Node,
+    trace: &Trace<'_>,
+    summaries: &mut Vec<TypeConflictSummary>,
+) {
+    for entry in trace.0.iter() {
+        for consequence in &entry.consequences {
+            if let ConstraintConsequence::Ty(other, ref function_ty) = *consequence
+                && other == node
+                && let TyTag::Function = function_ty.tag
+            {
+                let Some((_, call_inputs)) = function_ty.children.split_first() else {
+                    continue;
+                };
+
+                each_function_node(db, entry, |function_node, function_ty| {
+                    let Some((_, function_inputs)) = function_ty.children.split_first() else {
+                        return;
+                    };
+
+                    if function_inputs.len() == call_inputs.len() {
+                        return;
+                    }
+
+                    summaries.push(TypeConflictSummary {
+                        entry: entry.clone(),
+                        suffix: TypeConflictSummarySuffix::FunctionArity {
+                            function: function_node,
+                            expected: function_inputs.len(),
+                            actual: call_inputs.len(),
+                        },
+                    });
+                });
+            }
+        }
+    }
+}
+
+fn each_function_node(
+    db: &QueryCtx<'_>,
+    entry: &TraceEntry,
+    mut f: impl FnMut(Node, &ConstructedTy),
+) {
+    for &(mut function_node) in &entry.relevant {
+        let Some(Typed(Some(group))) = db.get(function_node) else {
+            continue;
+        };
+
+        if let Some(representative) = group
+            .nodes()
+            .find(|&node| group.get_rank(node) == group.min_rank())
+        {
+            function_node = representative;
+        }
+
+        // Prefer using the function's name
+        if let Some(MatchedBy(name)) = db.get(function_node) {
+            function_node = *name;
+        }
+
+        if group.get_rank(function_node) >= NodeRank::Type {
+            continue;
+        }
+
+        let Some(function_ty) = representative_types_of(db, function_node, &[], Prefer::DirectType)
+            .into_iter()
+            .next()
+        else {
+            continue;
+        };
+
+        if function_ty.tag != TyTag::Function {
+            continue;
+        }
+
+        f(function_node, function_ty);
     }
 }
