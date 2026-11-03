@@ -7,10 +7,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`even? : divisible-by? 2` (AssignmentStatement):
-  at divisible-by.wipple:1:1-1:24
-  has type `()`
-
 `divisible-by?` (VariableExpression):
   at divisible-by.wipple:1:9-1:22
   grouped with `(left :: Number) -> (right :: Number) -> Boolean`
@@ -36,10 +32,6 @@ Facts (layer 2):
   has type `Number -> Boolean`
   is a definition
   is a pattern
-
-`odd? : not even?` (AssignmentStatement):
-  at divisible-by.wipple:2:1-2:17
-  has type `()`
 
 `not` (VariableExpression):
   at divisible-by.wipple:2:8-2:11
@@ -69,11 +61,6 @@ Facts (layer 2):
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (even? 2)` (ExpressionStatement):
-  at divisible-by.wipple:4:1-4:15
-  grouped with `show (even? 2)`
-  has type `()`
 
 `show (even? 2)` (CallExpression):
   at divisible-by.wipple:4:1-4:15
@@ -108,11 +95,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (odd? 2)` (ExpressionStatement):
-  at divisible-by.wipple:5:1-5:14
-  grouped with `show (odd? 2)`
-  has type `()`
-
 `show (odd? 2)` (CallExpression):
   at divisible-by.wipple:5:1-5:14
   grouped with `()`, `show (odd? 2)`
@@ -146,11 +128,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (even? 3)` (ExpressionStatement):
-  at divisible-by.wipple:6:1-6:15
-  grouped with `show (even? 3)`
-  has type `()`
-
 `show (even? 3)` (CallExpression):
   at divisible-by.wipple:6:1-6:15
   grouped with `()`, `show (even? 3)`
@@ -183,11 +160,6 @@ Facts (layer 2):
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (odd? 3)` (ExpressionStatement):
-  at divisible-by.wipple:7:1-7:14
-  grouped with `show (odd? 3)`
-  has type `()`
 
 `show (odd? 3)` (CallExpression):
   at divisible-by.wipple:7:1-7:14

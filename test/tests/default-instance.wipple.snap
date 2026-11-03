@@ -163,11 +163,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `Do-Something`
 
-`Do-Something 42` (ExpressionStatement):
-  at default-instance.wipple:6:1-6:16
-  grouped with `Do-Something 42`
-  has type `()`
-
 `Do-Something 42` (CallExpression):
   at default-instance.wipple:6:1-6:16
   grouped with `()`, `Do-Something 42`
@@ -187,11 +182,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `Do-Something`
-
-`Do-Something "Hello, world!"` (ExpressionStatement):
-  at default-instance.wipple:7:1-7:29
-  grouped with `Do-Something "Hello, world!"`
-  has type `()`
 
 `Do-Something "Hello, world!"` (CallExpression):
   at default-instance.wipple:7:1-7:29

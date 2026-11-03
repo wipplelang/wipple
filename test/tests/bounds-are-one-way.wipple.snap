@@ -56,10 +56,6 @@ Facts (layer 2):
   is a type
   resolved to 1 definition(s): `value`
 
-`f : T` (AssignmentStatement):
-  at bounds-are-one-way.wipple:4:1-4:6
-  has type `()`
-
 `T` (ConstructorExpression):
   at bounds-are-one-way.wipple:4:5-4:6
   grouped with `value`, `f`

@@ -8,11 +8,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show ((negate 3) = -3)` (ExpressionStatement):
-  at negate.wipple:1:1-1:23
-  grouped with `show ((negate 3) = -3)`
-  has type `()`
-
 `show ((negate 3) = -3)` (CallExpression):
   at negate.wipple:1:1-1:23
   grouped with `()`, `show ((negate 3) = -3)`
@@ -30,12 +25,6 @@ Facts (layer 2):
   at negate.wipple:1:8-1:16
   grouped with `Number`, `value`
   has type `Number`
-  is an expression
-
-`negate 3) = -3` (OperatorExpression):
-  at negate.wipple:1:8-1:22
-  grouped with `negate 3) = -3`, `value`
-  has type `Boolean`
   is an expression
 
 `negate 3) = -3` (CallExpression):

@@ -8,19 +8,11 @@ Facts (layer 2):
   is a pattern
   is mutated
 
-`x : 1` (AssignmentStatement):
-  at mutable.wipple:1:1-1:6
-  has type `()`
-
 `1` (NumberExpression):
   at mutable.wipple:1:5-1:6
   grouped with `1`, `x`, `x`
   has type `Number`
   is an expression
-
-`set x : x + 1` (AssignmentStatement):
-  at mutable.wipple:2:1-2:14
-  has type `()`
 
 `x` (SetPattern):
   at mutable.wipple:2:5-2:6
@@ -35,12 +27,6 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `x`
-
-`x + 1` (OperatorExpression):
-  at mutable.wipple:2:9-2:14
-  grouped with `x + 1`, `x`, `x`
-  has type `Number`
-  is an expression
 
 `x + 1` (CallExpression):
   at mutable.wipple:2:9-2:14
@@ -69,11 +55,6 @@ Facts (layer 2):
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show x` (ExpressionStatement):
-  at mutable.wipple:3:1-3:7
-  grouped with `show x`
-  has type `()`
 
 `show x` (CallExpression):
   at mutable.wipple:3:1-3:7

@@ -3,55 +3,40 @@ Facts (layer 2):
 `my-list` (VariablePattern):
   at list-mismatched-elements.wipple:1:1-1:8
   grouped with `1, "hi", ()`, `1, "hi", ()`, `my-list`
-  has type `List (String or () or Number)`
+  has type `List (Number or String or ())`
   is a definition
   is a pattern
-
-`my-list : 1, "hi", ()` (AssignmentStatement):
-  at list-mismatched-elements.wipple:1:1-1:22
-  has type `()`
 
 `1` (VisitAs):
   at list-mismatched-elements.wipple:1:11-1:12
   grouped with `1`, `element`, `"hi"`, `()`
-  has type `String` or `()` or `Number`
+  has type `Number` or `String` or `()`
   is an expression
 
 `1, "hi", ()` (CollectionExpression):
   at list-mismatched-elements.wipple:1:11-1:22
   grouped with `1, "hi", ()`, `my-list`, `my-list`
-  has type `List (String or () or Number)`
-  is an expression
-
-`1, "hi", ()` (Hidden):
-  at list-mismatched-elements.wipple:1:11-1:22
-  grouped with `collection`, `1, "hi", ()`
-  has type `List (String or () or Number)`
+  has type `List (Number or String or ())`
   is an expression
 
 `"hi"` (VisitAs):
   at list-mismatched-elements.wipple:1:14-1:18
   grouped with `"hi"`, `element`, `1`
-  has type `String` or `()` or `Number`
+  has type `Number` or `String` or `()`
   is an expression
 
 `()` (VisitAs):
   at list-mismatched-elements.wipple:1:20-1:22
   grouped with `element`, `1`
-  has type `String` or `()` or `Number`
+  has type `Number` or `String` or `()`
   is an expression
 
 `my-list` (VisitAs):
   at list-mismatched-elements.wipple:2:1-2:8
-  grouped with `container`, `my-list`, `container`
-  has type `List (String or () or Number)`
+  grouped with `container`, `my-list`
+  has type `List (Number or String or ())`
   is an expression
   resolved to 1 definition(s): `my-list`
-
-`my-list . each show` (ExpressionStatement):
-  at list-mismatched-elements.wipple:2:1-2:20
-  grouped with `my-list . each show`
-  has type `()`
 
 `my-list . each show` (OperatorExpression):
   at list-mismatched-elements.wipple:2:1-2:20
@@ -62,28 +47,28 @@ Facts (layer 2):
 `each` (VariableExpression):
   at list-mismatched-elements.wipple:2:11-2:15
   grouped with `(action :: (element -> ())) -> container -> ()`
-  has bound(s) `As-Sequence` `(List (String or () or Number))` `(String or () or Number)` (resolved as `instance (As-Sequence (List element) element)`)
-  has type `((String or () or Number) -> ()) -> (List (String or () or Number)) -> ()`
+  has bound(s) `As-Sequence` `(List (Number or String or ()))` `(Number or String or ())` (resolved as `instance (As-Sequence (List element) element)`)
+  has type `((Number or String or ()) -> ()) -> (List (Number or String or ())) -> ()`
   is an expression
   resolved to 1 definition(s): `each`
 
 `each show` (CallExpression):
   at list-mismatched-elements.wipple:2:11-2:20
-  grouped with `()`, `()`, `my-list . each show`
+  grouped with `()`, `my-list . each show`
   has type `()`
   is an expression
 
 `each show` (VisitAs):
   at list-mismatched-elements.wipple:2:11-2:20
   grouped with `container -> ()`
-  has type `(List (String or () or Number)) -> ()`
+  has type `(List (Number or String or ())) -> ()`
   is an expression
 
 `show` (VariableExpression):
   at list-mismatched-elements.wipple:2:16-2:20
   grouped with `value -> ()`, `action`
-  has bound(s) `Describe` `(String or () or Number)` (resolved as `instance (Describe Number)`)
-  has type `(String or () or Number) -> ()`
+  has bound(s) `Describe` `(Number or String or ())` (resolved as `instance (Describe Number)`)
+  has type `(Number or String or ()) -> ()`
   is an expression
   resolved to 1 definition(s): `show`
 
@@ -93,45 +78,13 @@ note:
   --> list-mismatched-elements.wipple:1:11
   |
 1 | my-list : 1, "hi", ()
-  |           -
-
-`1` is a number literal.
-
-This means `my-list` is a `List (String or () or Number)`.
-
-note: 
-  --> list-mismatched-elements.wipple:1:11
-  |
-1 | my-list : 1, "hi", ()
   |           -----------
 
-`1, "hi", ()` is a collection of `String` elements.
-
-This means `1` must have the same type as `"hi"`.
+`1, "hi", ()` is a `List Number`.
 
 This means `"hi"` must have the same type as `1`.
 
-This means `1` must have the same type as `()`.
-
-This means `"hi"` must have the same type as `()`.
-
 This means `()` must have the same type as `1`.
-
-note: 
-  --> list-mismatched-elements.wipple:1:14
-  |
-1 | my-list : 1, "hi", ()
-  |              ----
-
-`"hi"` is a string literal.
-
-note: 
-  --> list-mismatched-elements.wipple:2:16
-  |
-2 | my-list . each show
-  |                ----
-
-`show` displays `String` on the screen.
 
 note: 
   --> list-mismatched-elements.wipple:2:11
@@ -139,9 +92,19 @@ note:
 2 | my-list . each show
   |           ----
 
-`each` calls `show` for each `String` in `my-list`.
+`each` calls `show` for each element in `my-list`.
 
-This means `my-list` is a `List String`.
+note: 
+  --> list-mismatched-elements.wipple:2:16
+  |
+2 | my-list . each show
+  |                ----
+
+`show` displays `()` on the screen.
+
+This means `1` must have the same type as `"hi"`.
+
+This means `1` must have the same type as `()`.
 
 error: 
   --> list-mismatched-elements.wipple:1:11
@@ -149,8 +112,6 @@ error:
 1 | my-list : 1, "hi", ()
   |           ^
 
-`1` is a `String`, `()`, or a `Number`, but it can only be one of these.
-
-`1` must be the same type as `"hi"` and `()`; double-check these.
+`1`, `"hi"`, and `()` must have the same type, but `1` is a `Number`, `"hi"` is a `String`, and `()` is a `()`.
 
 Help: use `--explain=full` to show more information

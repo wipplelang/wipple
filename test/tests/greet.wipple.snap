@@ -83,10 +83,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
 
-`greet : x -> "Hello, _!" (Greet x)` (AssignmentStatement):
-  at greet.wipple:6:1-6:35
-  has type `()`
-
 `x` (VariablePattern):
   at greet.wipple:6:9-6:10
   grouped with `x`, `value`
@@ -260,11 +256,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (greet (Person {name : "Bob"}))` (ExpressionStatement):
-  at greet.wipple:18:1-18:37
-  grouped with `show (greet (Person {name : "Bob"}))`
-  has type `()`
-
 `show (greet (Person {name : "Bob"}))` (CallExpression):
   at greet.wipple:18:1-18:37
   grouped with `()`, `show (greet (Person {name : "Bob"}))`
@@ -305,11 +296,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (greet Earth)` (ExpressionStatement):
-  at greet.wipple:19:1-19:19
-  grouped with `show (greet Earth)`
-  has type `()`
 
 `show (greet Earth)` (CallExpression):
   at greet.wipple:19:1-19:19

@@ -7,10 +7,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`input : 3.14` (AssignmentStatement):
-  at not.wipple:1:1-1:13
-  has type `()`
-
 `3.14` (NumberExpression):
   at not.wipple:1:9-1:13
   grouped with `3.14`, `input`, `input`
@@ -23,10 +19,6 @@ Facts (layer 2):
   has type `Number -> Boolean`
   is a definition
   is a pattern
-
-`is-42? : n -> n = 42` (AssignmentStatement):
-  at not.wipple:2:1-2:21
-  has type `()`
 
 `n` (VariablePattern):
   at not.wipple:2:10-2:11
@@ -47,12 +39,6 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
-
-`n = 42` (OperatorExpression):
-  at not.wipple:2:15-2:21
-  grouped with `n = 42`, `(not is-42?) input`, `is-42? input`, `b`
-  has type `Boolean`
-  is an expression
 
 `n = 42` (CallExpression):
   at not.wipple:2:15-2:21
@@ -82,11 +68,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show ((not is-42?) input = not (is-42? input))` (ExpressionStatement):
-  at not.wipple:3:1-3:47
-  grouped with `show ((not is-42?) input = not (is-42? input))`
-  has type `()`
-
 `show ((not is-42?) input = not (is-42? input))` (CallExpression):
   at not.wipple:3:1-3:47
   grouped with `()`, `show ((not is-42?) input = not (is-42? input))`
@@ -96,12 +77,6 @@ Facts (layer 2):
 `(not is-42?) input` (CallExpression):
   at not.wipple:3:7-3:25
   grouped with `n = 42`, `value`
-  has type `Boolean`
-  is an expression
-
-`(not is-42?) input = not (is-42? input)` (OperatorExpression):
-  at not.wipple:3:7-3:46
-  grouped with `(not is-42?) input = not (is-42? input)`, `value`
   has type `Boolean`
   is an expression
 

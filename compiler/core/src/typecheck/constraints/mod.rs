@@ -6,7 +6,6 @@ pub mod ty_constraint;
 
 use crate::{
     db::{Db, Node},
-    facts::Children,
     render::{ExplainOptions, ListBuilder, RenderCtx},
     typecheck::{
         bounds::Instance,
@@ -174,21 +173,12 @@ impl ConstraintConsequence {
 
     fn requires_explain_full(&self, db: &Db) -> bool {
         match *self {
-            ConstraintConsequence::Group(node, _) => {
+            ConstraintConsequence::Group(node, _) | ConstraintConsequence::Ty(node, _) => {
                 // Hide expressions without conflicts by default
                 if db
                     .get(node)
                     .and_then(|Typed(group)| group.as_ref())
                     .is_none_or(|group| group.tys().count() == 1)
-                {
-                    return true;
-                }
-            }
-            ConstraintConsequence::Ty(node, _) => {
-                // Hide complex expressions by default
-                if db
-                    .get(node)
-                    .is_some_and(|Children(children)| !children.is_empty())
                 {
                     return true;
                 }
@@ -260,11 +250,16 @@ impl ConstraintConsequence {
                     return false;
                 }
 
-                // Hide obvious consequences involving type annotations
+                // Hide obvious consequences involving type annotations and literals
                 if db
                     .get(node)
                     .and_then(|Typed(group)| group.as_ref())
-                    .is_some_and(|group| group.get_rank(node) >= NodeRank::Annotated)
+                    .is_some_and(|group| {
+                        group.get_rank(node) >= NodeRank::Annotated
+                            // If the node directly has a type but a rank of
+                            // `Inherited`, that means it's a literal
+                            || !group.get_tys(node).is_empty()
+                    })
                 {
                     return false;
                 }

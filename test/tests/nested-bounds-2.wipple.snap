@@ -207,11 +207,6 @@ Facts (layer 2):
   has type `()`
   is an expression
 
-`T` (ExpressionStatement):
-  at nested-bounds-2.wipple:10:1-10:2
-  grouped with `T`
-  has type `()`
-
 `T` (ConstructorExpression):
   at nested-bounds-2.wipple:10:1-10:2
   grouped with `()`, `T`

@@ -7,10 +7,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`average : numbers -> sum numbers / count numbers` (AssignmentStatement):
-  at average.wipple:1:1-1:49
-  has type `()`
-
 `numbers` (VariablePattern):
   at average.wipple:1:11-1:18
   grouped with `numbers`, `numbers`, `1, 2, 3, 4, 5`
@@ -35,12 +31,6 @@ Facts (layer 2):
 `sum numbers` (CallExpression):
   at average.wipple:1:22-1:33
   grouped with `n`, `left`
-  has type `Number`
-  is an expression
-
-`sum numbers / count numbers` (OperatorExpression):
-  at average.wipple:1:22-1:49
-  grouped with `sum numbers / count numbers`, `average (1, 2, 3, 4, 5)`
   has type `Number`
   is an expression
 
@@ -94,11 +84,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (average (1, 2, 3, 4, 5))` (ExpressionStatement):
-  at average.wipple:2:1-2:31
-  grouped with `show (average (1, 2, 3, 4, 5))`
-  has type `()`
-
 `show (average (1, 2, 3, 4, 5))` (CallExpression):
   at average.wipple:2:1-2:31
   grouped with `()`, `show (average (1, 2, 3, 4, 5))`
@@ -127,12 +112,6 @@ Facts (layer 2):
 `1, 2, 3, 4, 5` (CollectionExpression):
   at average.wipple:2:16-2:29
   grouped with `1, 2, 3, 4, 5`, `numbers`
-  has type `List Number`
-  is an expression
-
-`1, 2, 3, 4, 5` (Hidden):
-  at average.wipple:2:16-2:29
-  grouped with `collection`, `1, 2, 3, 4, 5`
   has type `List Number`
   is an expression
 

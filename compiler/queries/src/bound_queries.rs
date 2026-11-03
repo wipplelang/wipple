@@ -15,10 +15,7 @@ pub fn resolved_bounds<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<&'a ResolvedBou
         .collect()
 }
 
-pub fn unresolved_bounds<'a>(
-    db: &QueryCtx<'a>,
-    node: Node,
-) -> Vec<(&'a UnresolvedBound, Trace<'a>)> {
+pub fn unresolved_bounds<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<(&'a UnresolvedBound, Trace)> {
     let Some(ResolvedBounds(bounds)) = db.get(node) else {
         return Vec::new();
     };

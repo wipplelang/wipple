@@ -8,11 +8,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show nan` (ExpressionStatement):
-  at undefined-math-ops.wipple:1:1-1:9
-  grouped with `show nan`
-  has type `()`
-
 `show nan` (CallExpression):
   at undefined-math-ops.wipple:1:1-1:9
   grouped with `()`, `show nan`
@@ -34,11 +29,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (1 / 0)` (ExpressionStatement):
-  at undefined-math-ops.wipple:2:1-2:13
-  grouped with `show (1 / 0)`
-  has type `()`
-
 `show (1 / 0)` (CallExpression):
   at undefined-math-ops.wipple:2:1-2:13
   grouped with `()`, `show (1 / 0)`
@@ -48,12 +38,6 @@ Facts (layer 2):
 `1` (NumberExpression):
   at undefined-math-ops.wipple:2:7-2:8
   grouped with `1`, `left`
-  has type `Number`
-  is an expression
-
-`1 / 0` (OperatorExpression):
-  at undefined-math-ops.wipple:2:7-2:12
-  grouped with `1 / 0`, `value`
   has type `Number`
   is an expression
 
@@ -85,11 +69,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (0 / 0)` (ExpressionStatement):
-  at undefined-math-ops.wipple:3:1-3:13
-  grouped with `show (0 / 0)`
-  has type `()`
-
 `show (0 / 0)` (CallExpression):
   at undefined-math-ops.wipple:3:1-3:13
   grouped with `()`, `show (0 / 0)`
@@ -99,12 +78,6 @@ Facts (layer 2):
 `0` (NumberExpression):
   at undefined-math-ops.wipple:3:7-3:8
   grouped with `0`, `left`
-  has type `Number`
-  is an expression
-
-`0 / 0` (OperatorExpression):
-  at undefined-math-ops.wipple:3:7-3:12
-  grouped with `0 / 0`, `value`
   has type `Number`
   is an expression
 
@@ -135,11 +108,6 @@ Facts (layer 2):
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (sqrt -1)` (ExpressionStatement):
-  at undefined-math-ops.wipple:4:1-4:15
-  grouped with `show (sqrt -1)`
-  has type `()`
 
 `show (sqrt -1)` (CallExpression):
   at undefined-math-ops.wipple:4:1-4:15
@@ -174,11 +142,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (2 ^ 2 ^ 2 ^ 2048)` (ExpressionStatement):
-  at undefined-math-ops.wipple:5:1-5:24
-  grouped with `show (2 ^ 2 ^ 2 ^ 2048)`
-  has type `()`
-
 `show (2 ^ 2 ^ 2 ^ 2048)` (CallExpression):
   at undefined-math-ops.wipple:5:1-5:24
   grouped with `()`, `show (2 ^ 2 ^ 2 ^ 2048)`
@@ -188,12 +151,6 @@ Facts (layer 2):
 `2` (NumberExpression):
   at undefined-math-ops.wipple:5:7-5:8
   grouped with `2`, `left`
-  has type `Number`
-  is an expression
-
-`2 ^ 2` (OperatorExpression):
-  at undefined-math-ops.wipple:5:7-5:12
-  grouped with `2 ^ 2`, `value`
   has type `Number`
   is an expression
 
@@ -211,12 +168,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `Power`
 
-`2 ^ 2 ^ 2` (OperatorExpression):
-  at undefined-math-ops.wipple:5:7-5:16
-  grouped with `2 ^ 2 ^ 2`, `left`
-  has type `Number`
-  is an expression
-
 `2 ^ 2 ^ 2` (CallExpression):
   at undefined-math-ops.wipple:5:7-5:16
   grouped with `power`, `2 ^ 2 ^ 2`
@@ -230,12 +181,6 @@ Facts (layer 2):
   has type `Number Number -> Number`
   is an expression
   resolved to 1 definition(s): `Power`
-
-`2 ^ 2 ^ 2 ^ 2048` (OperatorExpression):
-  at undefined-math-ops.wipple:5:7-5:23
-  grouped with `2 ^ 2 ^ 2 ^ 2048`, `left`
-  has type `Number`
-  is an expression
 
 `2 ^ 2 ^ 2 ^ 2048` (CallExpression):
   at undefined-math-ops.wipple:5:7-5:23

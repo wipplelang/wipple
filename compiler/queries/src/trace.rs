@@ -1,5 +1,5 @@
 use crate::QueryCtx;
-use std::{collections::BTreeSet, marker::PhantomData, ops::ControlFlow};
+use std::{collections::BTreeSet, ops::ControlFlow};
 use wipple_core::{
     db::{Db, Node},
     facts::Description,
@@ -7,10 +7,11 @@ use wipple_core::{
     typecheck::{
         constraints::ConstraintConsequence,
         groups::{Prefer, Typed, update_type},
+        instantiate::InstantiatedTypes,
         solver::TypeDependsOn,
         ty::Ty,
     },
-    util::get_links,
+    util::{get_links, linked_nodes_for},
     visit::{DefinitionConstraints, Resolved, definitions::Defined},
 };
 
@@ -23,16 +24,15 @@ pub struct TraceEntry {
 }
 
 #[derive(Debug, Clone)]
-pub struct Trace<'a>(pub Vec<TraceEntry>, PhantomData<&'a ()>);
+pub struct Trace(pub Vec<TraceEntry>);
 
-impl<'a> Trace<'a> {
-    pub fn collect(ctx: &QueryCtx<'a>, node: Node) -> Trace<'a> {
+impl Trace {
+    pub fn collect(ctx: &QueryCtx<'_>, node: Node) -> Trace {
         let mut entries = Vec::new();
         collect_traces(
             ctx,
             node,
             &mut |_, node| ctx.filter(node),
-            &mut BTreeSet::new(),
             &mut BTreeSet::new(),
             &mut entries,
         );
@@ -46,7 +46,7 @@ impl<'a> Trace<'a> {
                 .retain(|consequence| seen_consequences.insert(consequence.clone()));
         }
 
-        Trace(entries, PhantomData)
+        Trace(entries)
     }
 }
 
@@ -55,7 +55,6 @@ fn collect_traces(
     node: Node,
     filter: &mut dyn FnMut(&Db, Node) -> bool,
     seen_nodes: &mut BTreeSet<Node>,
-    seen_consequences: &mut BTreeSet<ConstraintConsequence>,
     entries: &mut Vec<TraceEntry>,
 ) {
     if !filter(db, node) || !seen_nodes.insert(node) {
@@ -101,7 +100,16 @@ fn collect_traces(
             entry_relevant.extend(link.related.iter().copied());
         }
 
-        let mut consequences = if db.get::<DefinitionConstraints>(comments.node).is_none() {
+        // Add all the values from the use site, in case there is no comment
+        if let Some(InstantiatedTypes(substitutions)) = db.get(node) {
+            for &parameter in substitutions.keys() {
+                if let Some(linked_nodes) = linked_nodes_for(db, parameter, node, &mut *filter) {
+                    entry_relevant.extend(linked_nodes);
+                }
+            }
+        }
+
+        let mut consequences = if db.get::<DefinitionConstraints>(node).is_none() {
             entry_relevant.extend(db.consequences.relevant(node));
             db.consequences.responsible_for(node).cloned().collect()
         } else {
@@ -110,7 +118,7 @@ fn collect_traces(
         };
 
         consequences =
-            elaborate_consequences(db, consequences, seen_consequences, &mut entry_relevant)
+            elaborate_consequences(db, consequences, &mut BTreeSet::new(), &mut entry_relevant)
                 .collect();
 
         relevant.extend(entry_relevant.iter().copied());
@@ -133,7 +141,7 @@ fn collect_traces(
     }
 
     for child in relevant {
-        collect_traces(db, child, filter, seen_nodes, seen_consequences, entries);
+        collect_traces(db, child, filter, seen_nodes, entries);
     }
 }
 
@@ -143,28 +151,15 @@ fn elaborate_consequences(
     seen: &mut BTreeSet<ConstraintConsequence>,
     relevant: &mut BTreeSet<Node>,
 ) -> impl Iterator<Item = ConstraintConsequence> {
-    consequences.into_iter().flat_map(|consequence| {
+    let consequences = consequences.into_iter().flat_map(|consequence| {
         relevant.extend(consequence.relevant_nodes());
 
         let mut dependents = Vec::new();
-        if let ConstraintConsequence::Ty(node, ref ty) = consequence {
+        if let ConstraintConsequence::Ty(node, _) = consequence {
             let group = db.get(node).and_then(|Typed(group)| group.as_ref());
 
-            let group_nodes = group.map_or_default(|group| group.nodes().collect::<Vec<_>>());
-
-            for &other in &group_nodes {
-                if group.unwrap().get_tys(other).is_empty() {
-                    let consequence = ConstraintConsequence::Ty(other, ty.clone());
-                    if seen.insert(consequence.clone()) {
-                        dependents.push(consequence);
-                    }
-                }
-            }
-
-            let intersect = {
-                let group_nodes = BTreeSet::from_iter(group_nodes.iter().copied());
-                move |nodes: &BTreeSet<_>| !nodes.is_disjoint(&group_nodes)
-            };
+            let group_nodes = group.map_or_default(|group| group.nodes().collect());
+            let intersect = move |nodes: &BTreeSet<_>| !nodes.is_disjoint(&group_nodes);
 
             db.for_each_fact::<_, ()>(&mut |db, other, TypeDependsOn(dependencies)| {
                 if intersect(dependencies)
@@ -190,5 +185,14 @@ fn elaborate_consequences(
             .into_iter()
             .chain(dependents)
             .collect::<Vec<_>>()
+    });
+
+    let mut seen_grouped_nodes = BTreeSet::new();
+
+    consequences.filter(move |consequence| {
+        consequence
+            .relevant_nodes()
+            .into_iter()
+            .any(|node| seen_grouped_nodes.insert(node))
     })
 }

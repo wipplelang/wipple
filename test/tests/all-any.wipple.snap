@@ -8,11 +8,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show ((1, 2, 3) . all? (n -> n > 0))` (ExpressionStatement):
-  at all-any.wipple:1:1-1:37
-  grouped with `show ((1, 2, 3) . all? (n -> n > 0))`
-  has type `()`
-
 `show ((1, 2, 3) . all? (n -> n > 0))` (CallExpression):
   at all-any.wipple:1:1-1:37
   grouped with `()`, `show ((1, 2, 3) . all? (n -> n > 0))`
@@ -26,12 +21,6 @@ Facts (layer 2):
   is an expression
 
 `1, 2, 3` (VisitAs):
-  at all-any.wipple:1:8-1:15
-  grouped with `collection`, `1, 2, 3`, `collection`
-  has type `List Number`
-  is an expression
-
-`1, 2, 3` (Hidden):
   at all-any.wipple:1:8-1:15
   grouped with `collection`, `1, 2, 3`
   has type `List Number`
@@ -65,7 +54,7 @@ Facts (layer 2):
 
 `all? (n -> n > 0)` (CallExpression):
   at all-any.wipple:1:19-1:36
-  grouped with `Boolean`, `Boolean`, `1, 2, 3) . all? (n -> n > 0)`
+  grouped with `Boolean`, `1, 2, 3) . all? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
@@ -90,16 +79,10 @@ Facts (layer 2):
 
 `n` (VariableExpression):
   at all-any.wipple:1:30-1:31
-  grouped with `n`, `value`
+  grouped with `n`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
-
-`n > 0` (OperatorExpression):
-  at all-any.wipple:1:30-1:35
-  grouped with `n > 0`, `Boolean`
-  has type `Boolean`
-  is an expression
 
 `n > 0` (CallExpression):
   at all-any.wipple:1:30-1:35
@@ -109,15 +92,15 @@ Facts (layer 2):
 
 `n > 0` (ConstructorExpression):
   at all-any.wipple:1:30-1:35
-  grouped with `value value -> Boolean`
-  has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
+  grouped with `left right -> Boolean`
+  has bound(s) `Greater-Than` `Number` `Number` (resolved as `instance (Greater-Than (left :: value) (right :: value)) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Greater-Than`
 
 `0` (NumberExpression):
   at all-any.wipple:1:34-1:35
-  grouped with `0`, `value`
+  grouped with `0`, `right`
   has type `Number`
   is an expression
 
@@ -128,11 +111,6 @@ Facts (layer 2):
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show ((1, -2, 3) . all? (n -> n > 0))` (ExpressionStatement):
-  at all-any.wipple:2:1-2:38
-  grouped with `show ((1, -2, 3) . all? (n -> n > 0))`
-  has type `()`
 
 `show ((1, -2, 3) . all? (n -> n > 0))` (CallExpression):
   at all-any.wipple:2:1-2:38
@@ -147,12 +125,6 @@ Facts (layer 2):
   is an expression
 
 `1, -2, 3` (VisitAs):
-  at all-any.wipple:2:8-2:16
-  grouped with `collection`, `1, -2, 3`, `collection`
-  has type `List Number`
-  is an expression
-
-`1, -2, 3` (Hidden):
   at all-any.wipple:2:8-2:16
   grouped with `collection`, `1, -2, 3`
   has type `List Number`
@@ -186,7 +158,7 @@ Facts (layer 2):
 
 `all? (n -> n > 0)` (CallExpression):
   at all-any.wipple:2:20-2:37
-  grouped with `Boolean`, `Boolean`, `1, -2, 3) . all? (n -> n > 0)`
+  grouped with `Boolean`, `1, -2, 3) . all? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
@@ -211,16 +183,10 @@ Facts (layer 2):
 
 `n` (VariableExpression):
   at all-any.wipple:2:31-2:32
-  grouped with `n`, `value`
+  grouped with `n`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
-
-`n > 0` (OperatorExpression):
-  at all-any.wipple:2:31-2:36
-  grouped with `n > 0`, `Boolean`
-  has type `Boolean`
-  is an expression
 
 `n > 0` (CallExpression):
   at all-any.wipple:2:31-2:36
@@ -230,15 +196,15 @@ Facts (layer 2):
 
 `n > 0` (ConstructorExpression):
   at all-any.wipple:2:31-2:36
-  grouped with `value value -> Boolean`
-  has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
+  grouped with `left right -> Boolean`
+  has bound(s) `Greater-Than` `Number` `Number` (resolved as `instance (Greater-Than (left :: value) (right :: value)) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Greater-Than`
 
 `0` (NumberExpression):
   at all-any.wipple:2:35-2:36
-  grouped with `0`, `value`
+  grouped with `0`, `right`
   has type `Number`
   is an expression
 
@@ -249,11 +215,6 @@ Facts (layer 2):
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show ((1, -2, 3) . any? (n -> n > 0))` (ExpressionStatement):
-  at all-any.wipple:3:1-3:38
-  grouped with `show ((1, -2, 3) . any? (n -> n > 0))`
-  has type `()`
 
 `show ((1, -2, 3) . any? (n -> n > 0))` (CallExpression):
   at all-any.wipple:3:1-3:38
@@ -268,12 +229,6 @@ Facts (layer 2):
   is an expression
 
 `1, -2, 3` (VisitAs):
-  at all-any.wipple:3:8-3:16
-  grouped with `collection`, `1, -2, 3`, `collection`
-  has type `List Number`
-  is an expression
-
-`1, -2, 3` (Hidden):
   at all-any.wipple:3:8-3:16
   grouped with `collection`, `1, -2, 3`
   has type `List Number`
@@ -307,7 +262,7 @@ Facts (layer 2):
 
 `any? (n -> n > 0)` (CallExpression):
   at all-any.wipple:3:20-3:37
-  grouped with `Boolean`, `Boolean`, `1, -2, 3) . any? (n -> n > 0)`
+  grouped with `Boolean`, `1, -2, 3) . any? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
@@ -332,16 +287,10 @@ Facts (layer 2):
 
 `n` (VariableExpression):
   at all-any.wipple:3:31-3:32
-  grouped with `n`, `value`
+  grouped with `n`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
-
-`n > 0` (OperatorExpression):
-  at all-any.wipple:3:31-3:36
-  grouped with `n > 0`, `Boolean`
-  has type `Boolean`
-  is an expression
 
 `n > 0` (CallExpression):
   at all-any.wipple:3:31-3:36
@@ -351,15 +300,15 @@ Facts (layer 2):
 
 `n > 0` (ConstructorExpression):
   at all-any.wipple:3:31-3:36
-  grouped with `value value -> Boolean`
-  has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
+  grouped with `left right -> Boolean`
+  has bound(s) `Greater-Than` `Number` `Number` (resolved as `instance (Greater-Than (left :: value) (right :: value)) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Greater-Than`
 
 `0` (NumberExpression):
   at all-any.wipple:3:35-3:36
-  grouped with `0`, `value`
+  grouped with `0`, `right`
   has type `Number`
   is an expression
 
@@ -370,11 +319,6 @@ Facts (layer 2):
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show ((-1, -2, -3) . any? (n -> n > 0))` (ExpressionStatement):
-  at all-any.wipple:4:1-4:40
-  grouped with `show ((-1, -2, -3) . any? (n -> n > 0))`
-  has type `()`
 
 `show ((-1, -2, -3) . any? (n -> n > 0))` (CallExpression):
   at all-any.wipple:4:1-4:40
@@ -389,12 +333,6 @@ Facts (layer 2):
   is an expression
 
 `-1, -2, -3` (VisitAs):
-  at all-any.wipple:4:8-4:18
-  grouped with `collection`, `-1, -2, -3`, `collection`
-  has type `List Number`
-  is an expression
-
-`-1, -2, -3` (Hidden):
   at all-any.wipple:4:8-4:18
   grouped with `collection`, `-1, -2, -3`
   has type `List Number`
@@ -428,7 +366,7 @@ Facts (layer 2):
 
 `any? (n -> n > 0)` (CallExpression):
   at all-any.wipple:4:22-4:39
-  grouped with `Boolean`, `Boolean`, `-1, -2, -3) . any? (n -> n > 0)`
+  grouped with `Boolean`, `-1, -2, -3) . any? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
@@ -453,16 +391,10 @@ Facts (layer 2):
 
 `n` (VariableExpression):
   at all-any.wipple:4:33-4:34
-  grouped with `n`, `value`
+  grouped with `n`, `left`
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
-
-`n > 0` (OperatorExpression):
-  at all-any.wipple:4:33-4:38
-  grouped with `n > 0`, `Boolean`
-  has type `Boolean`
-  is an expression
 
 `n > 0` (CallExpression):
   at all-any.wipple:4:33-4:38
@@ -472,15 +404,15 @@ Facts (layer 2):
 
 `n > 0` (ConstructorExpression):
   at all-any.wipple:4:33-4:38
-  grouped with `value value -> Boolean`
-  has bound(s) `Greater-Than` `Number` (resolved as `instance (Greater-Than value) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
+  grouped with `left right -> Boolean`
+  has bound(s) `Greater-Than` `Number` `Number` (resolved as `instance (Greater-Than (left :: value) (right :: value)) where (Order value)`), `Order` `Number` (resolved as `instance (Order Number)`)
   has type `Number Number -> Boolean`
   is an expression
   resolved to 1 definition(s): `Greater-Than`
 
 `0` (NumberExpression):
   at all-any.wipple:4:37-4:38
-  grouped with `0`, `value`
+  grouped with `0`, `right`
   has type `Number`
   is an expression
 

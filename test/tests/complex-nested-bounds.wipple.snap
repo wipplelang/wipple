@@ -224,10 +224,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
 
-`not : Not` (AssignmentStatement):
-  at complex-nested-bounds.wipple:8:1-8:10
-  has type `()`
-
 `Not` (ConstructorExpression):
   at complex-nested-bounds.wipple:8:7-8:10
   grouped with `value -> value`, `not`

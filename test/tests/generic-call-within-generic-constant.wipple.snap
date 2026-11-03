@@ -30,10 +30,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
 
-`f : x -> x` (AssignmentStatement):
-  at generic-call-within-generic-constant.wipple:2:1-2:11
-  has type `()`
-
 `x` (VariablePattern):
   at generic-call-within-generic-constant.wipple:2:5-2:6
   grouped with `x`, `value`
@@ -84,10 +80,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
 
-`g : x -> f x` (AssignmentStatement):
-  at generic-call-within-generic-constant.wipple:5:1-5:13
-  has type `()`
-
 `x` (VariablePattern):
   at generic-call-within-generic-constant.wipple:5:5-5:6
   grouped with `x`, `value`
@@ -126,10 +118,6 @@ Facts (layer 2):
   grouped with `g 42`, `g 42`
   has type `Number`
   is a pattern
-
-`_ : g 42` (AssignmentStatement):
-  at generic-call-within-generic-constant.wipple:7:1-7:9
-  has type `()`
 
 `g` (VariableExpression):
   at generic-call-within-generic-constant.wipple:7:5-7:6

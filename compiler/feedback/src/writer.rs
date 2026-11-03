@@ -7,12 +7,12 @@ use wipple_core::{
     render::{RenderCtx, RenderOptions, RenderSegment},
     typecheck::groups::Prefer,
 };
-use wipple_queries::Trace;
+use wipple_queries::{Trace, TraceEntry};
 
 #[derive(Debug, Default)]
 pub struct FeedbackWriter {
     ctx: RenderCtx,
-    traces: Vec<FeedbackWriterTrace>,
+    traces: Vec<FeedbackWriterTraceEntry>,
 }
 
 impl FeedbackWriter {
@@ -60,44 +60,49 @@ impl FeedbackWriter {
 }
 
 #[derive(Debug)]
-struct FeedbackWriterTrace {
-    node: Node,
-    is_primary: bool,
-    node_ctx: RenderCtx,
-    consequence_ctxs: Vec<RenderCtx>,
+pub struct FeedbackWriterTraceEntry {
+    pub node: Node,
+    pub is_primary: bool,
+    pub node_ctx: RenderCtx,
+    pub consequence_ctxs: Vec<RenderCtx>,
 }
 
 impl FeedbackWriter {
-    pub fn extend_trace(&mut self, db: &Db, trace: &Trace<'_>) {
+    pub fn extend_trace(&mut self, db: &Db, trace: &Trace) {
         for entry in trace.0.iter() {
-            let mut node_ctx = RenderCtx::with_options(self.options.clone());
-            node_ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
-                ctx.comments(db, &entry.comments);
-            });
+            let entry = self.trace_entry(db, entry);
+            self.traces.push(entry);
+        }
+    }
 
-            let consequence_ctxs = entry
-                .consequences
-                .iter()
-                .filter_map(|consequence| {
-                    let mut ctx = RenderCtx::with_options(self.options.clone());
-                    ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
-                        if consequence.should_render(db, ctx) {
-                            ctx.list("and", |ctx, list| {
-                                consequence.render_into_list(db, ctx, list);
-                            });
-                            ctx.string(".");
-                        }
-                    });
-                    (!ctx.is_empty()).then_some(ctx)
-                })
-                .collect::<Vec<_>>();
+    pub fn trace_entry(&mut self, db: &Db, entry: &TraceEntry) -> FeedbackWriterTraceEntry {
+        let mut node_ctx = RenderCtx::with_options(self.options.clone());
+        node_ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
+            ctx.comments(db, &entry.comments);
+        });
 
-            self.traces.push(FeedbackWriterTrace {
-                node: entry.comments.node,
-                is_primary: entry.is_primary,
-                node_ctx,
-                consequence_ctxs,
-            });
+        let consequence_ctxs = entry
+            .consequences
+            .iter()
+            .filter_map(|consequence| {
+                let mut ctx = RenderCtx::with_options(self.options.clone());
+                ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
+                    if consequence.should_render(db, ctx) {
+                        ctx.list("and", |ctx, list| {
+                            consequence.render_into_list(db, ctx, list);
+                        });
+                        ctx.string(".");
+                    }
+                });
+                (!ctx.is_empty()).then_some(ctx)
+            })
+            .collect::<Vec<_>>();
+
+        FeedbackWriterTraceEntry {
+            node: entry.comments.node,
+            is_primary: entry.is_primary,
+            node_ctx,
+            consequence_ctxs,
         }
     }
 }

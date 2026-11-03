@@ -69,10 +69,6 @@ Facts (layer 2):
   is a type
   resolved to 1 definition(s): `String`
 
-`report-card : grade -> when grade {⋯}` (AssignmentStatement):
-  at exhaustiveness-checking.wipple:10:1-14:2
-  has type `()`
-
 `grade` (VariablePattern):
   at exhaustiveness-checking.wipple:10:15-10:20
   grouped with `grade`, `Grade`

@@ -74,12 +74,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `a`
 
-`a = b` (OperatorExpression):
-  at number-units.wipple:3:61-3:66
-  grouped with `a = b`, `Boolean`
-  has type `Boolean`
-  is an expression
-
 `a = b` (CallExpression):
   at number-units.wipple:3:61-3:66
   grouped with `Boolean`, `a = b`
@@ -128,10 +122,6 @@ Facts (layer 2):
   is a type
   resolved to 1 definition(s): `Elephants`
 
-`elephants : Elephants` (AssignmentStatement):
-  at number-units.wipple:6:1-6:22
-  has type `()`
-
 `Elephants` (ConstructorExpression):
   at number-units.wipple:6:13-6:22
   grouped with `elephants`
@@ -146,11 +136,6 @@ Facts (layer 2):
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (42 elephants = elephants 42)` (ExpressionStatement):
-  at number-units.wipple:8:1-8:35
-  grouped with `show (42 elephants = elephants 42)`
-  has type `()`
 
 `show (42 elephants = elephants 42)` (CallExpression):
   at number-units.wipple:8:1-8:35
@@ -168,12 +153,6 @@ Facts (layer 2):
   at number-units.wipple:8:7-8:19
   grouped with `Elephants`, `value`
   has type `Elephants`
-  is an expression
-
-`42 elephants = elephants 42` (OperatorExpression):
-  at number-units.wipple:8:7-8:34
-  grouped with `42 elephants = elephants 42`, `value`
-  has type `Boolean`
   is an expression
 
 `42 elephants = elephants 42` (CallExpression):

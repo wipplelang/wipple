@@ -8,11 +8,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show 1 2 3` (ExpressionStatement):
-  at too-many-inputs.wipple:1:1-1:11
-  grouped with `show 1 2 3`
-  has type `()`
-
 `show 1 2 3` (CallExpression):
   at too-many-inputs.wipple:1:1-1:11
   grouped with `()`, `show 1 2 3`
@@ -46,30 +41,6 @@ note:
   | ----
 
 `show` displays `1` on the screen.
-
-note: 
-  --> too-many-inputs.wipple:1:6
-  |
-1 | show 1 2 3
-  |      -
-
-`1` is a number literal.
-
-note: 
-  --> too-many-inputs.wipple:1:8
-  |
-1 | show 1 2 3
-  |        -
-
-`2` is a number literal.
-
-note: 
-  --> too-many-inputs.wipple:1:10
-  |
-1 | show 1 2 3
-  |          -
-
-`3` is a number literal.
 
 error: 
   --> too-many-inputs.wipple:1:1

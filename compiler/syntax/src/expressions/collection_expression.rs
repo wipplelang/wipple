@@ -122,7 +122,7 @@ impl Visit for CollectionExpression {
 
         if let Some((&first, rest)) = elements.split_first() {
             for &element in rest {
-                visitor.constraint(db, TyConstraint::new(first, Ty::Node(element)));
+                visitor.constraint(db, TyConstraint::new(element, Ty::Node(first)));
             }
         }
 
@@ -141,11 +141,8 @@ impl Visit for CollectionExpression {
             .push(DescriptionEntry {
                 comments: Comments::builtin(
                     node,
-                    "[`collection`] is a collection of [`element@type`] elements.",
-                    [
-                        ("collection", Some(Link::node(node))),
-                        ("element", elements.first().copied().map(Link::node)),
-                    ],
+                    "[`collection`] is a [`collection@type`].",
+                    [("collection", Some(Link::node(node)))],
                 ),
                 is_primary: true,
             });

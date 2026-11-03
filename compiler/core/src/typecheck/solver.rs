@@ -301,7 +301,7 @@ impl Solver {
             return; // already the same group
         }
 
-        let (index, group, consequences) = match (left_index, right_index) {
+        let (index, mut group, consequences) = match (left_index, right_index) {
             (Some(left_index), Some(right_index)) => {
                 let mut existing_nodes = if self.trace {
                     self.groups.get(left_index).nodes().collect()
@@ -375,9 +375,8 @@ impl Solver {
 
         let mut merged = true;
         if let Some(index) = index {
-            let mut new_group = self.groups.remove_existing(index);
-
-            Groups::merge(db, group, &mut new_group, |db, left, right| {
+            let existing_group = self.groups.remove_existing(index);
+            Groups::merge(db, existing_group, &mut group, |db, left, right| {
                 self.unify_inner_constructed(db, left, right, &mut |nested| {
                     on_error();
 
@@ -386,11 +385,9 @@ impl Solver {
                     }
                 })
             });
-
-            self.groups.insert(new_group);
-        } else {
-            self.groups.insert(group);
         }
+
+        self.groups.insert(group);
 
         self.add_consequence(db, ConstraintConsequence::Group(left_node, right_node));
 

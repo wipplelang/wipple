@@ -8,11 +8,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (when 3 {⋯})` (ExpressionStatement):
-  at or-pattern.wipple:1:1-5:3
-  grouped with `show (when 3 {⋯})`
-  has type `()`
-
 `show (when 3 {⋯})` (CallExpression):
   at or-pattern.wipple:1:1-5:3
   grouped with `()`, `show (when 3 {⋯})`

@@ -216,10 +216,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `sum`
   resolved to type parameter `sum`
 
-`add : _` (AssignmentStatement):
-  at infer-constraint.wipple:9:1-9:8
-  has type `()`
-
 `_` (PlaceholderExpression):
   at infer-constraint.wipple:9:7-9:8
   grouped with `add`
@@ -231,10 +227,6 @@ Facts (layer 2):
   grouped with `add 1 2 :: String`, `add 1 2 :: String`
   has type `String`
   is a pattern
-
-`_ : (add 1 2 :: String)` (AssignmentStatement):
-  at infer-constraint.wipple:11:1-11:24
-  has type `()`
 
 `add` (VariableExpression):
   at infer-constraint.wipple:11:6-11:9
@@ -474,10 +466,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `sum`
   resolved to type parameter `sum`
 
-`add-infer : _` (AssignmentStatement):
-  at infer-constraint.wipple:18:1-18:14
-  has type `()`
-
 `_` (PlaceholderExpression):
   at infer-constraint.wipple:18:13-18:14
   grouped with `add-infer`
@@ -491,15 +479,11 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`output : (add-infer 1 2 :: String)` (AssignmentStatement):
-  at infer-constraint.wipple:20:1-20:35
-  has type `()`
-
 `add-infer` (VariableExpression):
   at infer-constraint.wipple:20:11-20:20
   grouped with `left right -> sum`
-  has bound(s) `Add-Infer` `Number` `Number` `(String or Number)` (resolved as `instance (Add-Infer Number Number Number)`)
-  has type `Number Number -> String or Number`
+  has bound(s) `Add-Infer` `Number` `Number` `String` (resolved as `instance (Add-Infer Number Number Number)`)
+  has type `Number Number -> String`
   is an expression
   resolved to 1 definition(s): `add-infer`
 
@@ -531,6 +515,14 @@ Facts (layer 2):
 
 
 note: 
+   --> infer-constraint.wipple:20:11
+   |
+20 | output : (add-infer 1 2 :: String)
+   |           -------------
+
+`add-infer` is called with `1` and `2`.
+
+note: 
    --> infer-constraint.wipple:20:28
    |
 20 | output : (add-infer 1 2 :: String)
@@ -545,22 +537,6 @@ note:
    | ---------
 
 `add-infer` is defined as a `left right -> sum`.
-
-note: 
-   --> infer-constraint.wipple:20:21
-   |
-20 | output : (add-infer 1 2 :: String)
-   |                     -
-
-`1` is a number literal.
-
-note: 
-   --> infer-constraint.wipple:20:23
-   |
-20 | output : (add-infer 1 2 :: String)
-   |                       -
-
-`2` is a number literal.
 
 error: 
    --> infer-constraint.wipple:20:1

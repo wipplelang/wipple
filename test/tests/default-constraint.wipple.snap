@@ -244,10 +244,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `output`
   resolved to type parameter `output`
 
-`collect : _` (AssignmentStatement):
-  at default-constraint.wipple:12:1-12:12
-  has type `()`
-
 `_` (PlaceholderExpression):
   at default-constraint.wipple:12:11-12:12
   grouped with `collect`
@@ -259,10 +255,6 @@ Facts (layer 2):
   grouped with `collect "hi"`, `collect "hi"`
   has type `List String`
   is a pattern
-
-`_ : collect "hi"` (AssignmentStatement):
-  at default-constraint.wipple:14:1-14:17
-  has type `()`
 
 `collect` (VariableExpression):
   at default-constraint.wipple:14:5-14:12
@@ -289,10 +281,6 @@ Facts (layer 2):
   grouped with `collect "hi" :: Set _`, `collect "hi" :: Set _`
   has type `Set String`
   is a pattern
-
-`_ : (collect "hi" :: Set _)` (AssignmentStatement):
-  at default-constraint.wipple:15:1-15:28
-  has type `()`
 
 `collect` (VariableExpression):
   at default-constraint.wipple:15:6-15:13

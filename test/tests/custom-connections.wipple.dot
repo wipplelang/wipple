@@ -10,10 +10,9 @@ digraph G {
   node_2_32 [label="456"]
   node_2_22 -> node_2_21 [label="function"]
   node_2_23 -> node_2_21 [label="input"]
-  node_2_25 -> node_2_28 [label="then"]
-  node_2_25 -> node_2_32 [label="else"]
-  node_2_28 -> node_2_23 [label="output"]
+  node_2_23 -> node_2_23 [label="output"]
+  node_2_25 -> node_2_23 [label="else"]
+  node_2_25 -> node_2_23 [label="then"]
   node_2_28 -> node_2_26 [label="statement"]
-  node_2_32 -> node_2_23 [label="output"]
   node_2_32 -> node_2_30 [label="statement"]
 }

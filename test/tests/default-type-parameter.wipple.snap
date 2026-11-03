@@ -214,10 +214,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
 
-`foo : T` (AssignmentStatement):
-  at default-type-parameter.wipple:12:1-12:8
-  has type `()`
-
 `T` (ConstructorExpression):
   at default-type-parameter.wipple:12:7-12:8
   grouped with `value`, `foo`
@@ -233,11 +229,6 @@ Facts (layer 2):
   has type `X -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show foo` (ExpressionStatement):
-  at default-type-parameter.wipple:14:1-14:9
-  grouped with `show foo`
-  has type `()`
 
 `show foo` (CallExpression):
   at default-type-parameter.wipple:14:1-14:9
@@ -260,11 +251,6 @@ Facts (layer 2):
   has type `Y -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (foo :: Y)` (ExpressionStatement):
-  at default-type-parameter.wipple:15:1-15:16
-  grouped with `show (foo :: Y)`
-  has type `()`
 
 `show (foo :: Y)` (CallExpression):
   at default-type-parameter.wipple:15:1-15:16

@@ -184,10 +184,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
 
-`t : T` (AssignmentStatement):
-  at implied-instance.wipple:10:1-10:6
-  has type `()`
-
 `T` (ConstructorExpression):
   at implied-instance.wipple:10:5-10:6
   grouped with `value -> ()`, `t`

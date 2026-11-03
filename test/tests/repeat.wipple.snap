@@ -8,11 +8,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `repeat`
 
-`repeat (4 times) {⋯}` (ExpressionStatement):
-  at repeat.wipple:1:1-3:2
-  grouped with `repeat (4 times) {⋯}`
-  has type `()`
-
 `repeat (4 times) {⋯}` (CallExpression):
   at repeat.wipple:1:1-3:2
   grouped with `()`, `repeat (4 times) {⋯}`
@@ -51,11 +46,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show "Hello, world!"` (ExpressionStatement):
-  at repeat.wipple:2:3-2:23
-  grouped with `show "Hello, world!"`, `body`
-  has type `()`
 
 `show "Hello, world!"` (CallExpression):
   at repeat.wipple:2:3-2:23

@@ -413,10 +413,6 @@ impl Visitor {
             .downcast_ref::<VisitAs>()
             .map_or_else(|| db.node(), |value| value.node);
 
-        if db.ast(value).is_hidden(db) {
-            db.hide(node);
-        }
-
         self.visit_as(db, value, node);
 
         node
@@ -427,6 +423,10 @@ impl Visitor {
 
         db.insert(node, Parent(parent));
         db.get_mut_or_default::<Children>(parent).0.push(node);
+
+        if db.ast(value).is_hidden(db) {
+            db.hide(node);
+        }
 
         db.insert(node, Syntax(value.clone()));
 

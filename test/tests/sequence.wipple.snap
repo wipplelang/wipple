@@ -70,24 +70,20 @@ Facts (layer 2):
 `box` (VariablePattern):
   at sequence.wipple:5:1-5:4
   grouped with `Box "abc"`, `Box "abc"`, `box`
-  has type `Box (String or Number)`
+  has type `Box String`
   is a definition
   is a pattern
 
-`box : Box "abc"` (AssignmentStatement):
-  at sequence.wipple:5:1-5:16
-  has type `()`
-
 `Box` (ConstructorExpression):
   at sequence.wipple:5:7-5:10
-  has type `(String or Number) -> Box (String or Number)`
+  has type `String -> Box String`
   is an expression
   resolved to 1 definition(s): `Box`
 
 `Box "abc"` (CallExpression):
   at sequence.wipple:5:7-5:16
   grouped with `Box`, `box`, `box`
-  has type `Box (String or Number)`
+  has type `Box String`
   is an expression
 
 `"abc"` (StringExpression):
@@ -99,18 +95,14 @@ Facts (layer 2):
 `positive?` (VariablePattern):
   at sequence.wipple:6:1-6:10
   grouped with `(n :: Number) -> _`, `(n :: Number) -> _`, `positive?`
-  has type `(String or Number) -> Boolean`
+  has type `String -> Boolean`
   is a definition
   is a pattern
-
-`positive? : (n :: Number) -> _` (AssignmentStatement):
-  at sequence.wipple:6:1-6:31
-  has type `()`
 
 `(n :: Number) -> _` (FunctionExpression):
   at sequence.wipple:6:13-6:31
   grouped with `positive?`, `positive?`
-  has type `(String or Number) -> Boolean`
+  has type `String -> Boolean`
   is an expression
 
 `n` (VariablePattern):
@@ -133,56 +125,49 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`(filter positive?) box` (ExpressionStatement):
-  at sequence.wipple:7:1-7:23
-  grouped with `(filter positive?) box`
-  has type `Sequence (String or Number)`
-
 `(filter positive?) box` (CallExpression):
   at sequence.wipple:7:1-7:23
   grouped with `Sequence element`, `(filter positive?) box`
-  has type `Sequence (String or Number)`
+  has type `Sequence String`
   is an expression
 
 `filter` (VariableExpression):
   at sequence.wipple:7:2-7:8
   grouped with `(condition :: (element -> Boolean)) -> container -> Sequence element`
-  has bound(s) `As-Sequence` `(Box (String or Number))` `(String or Number)` (resolved as `instance (As-Sequence (Box value) value)`)
-  has type `((String or Number) -> Boolean) -> (Box (String or Number)) -> Sequence (String or Number)`
+  has bound(s) `As-Sequence` `(Box String)` `String` (resolved as `instance (As-Sequence (Box value) value)`)
+  has type `(String -> Boolean) -> (Box String) -> Sequence String`
   is an expression
   resolved to 1 definition(s): `filter`
 
 `filter positive?` (CallExpression):
   at sequence.wipple:7:2-7:18
   grouped with `container -> Sequence element`
-  has type `(Box (String or Number)) -> Sequence (String or Number)`
+  has type `(Box String) -> Sequence String`
   is an expression
 
 `positive?` (VariableExpression):
   at sequence.wipple:7:9-7:18
   grouped with `positive?`, `condition`
-  has type `(String or Number) -> Boolean`
+  has type `String -> Boolean`
   is an expression
   resolved to 1 definition(s): `positive?`
 
 `box` (VariableExpression):
   at sequence.wipple:7:20-7:23
   grouped with `box`, `container`
-  has type `Box (String or Number)`
+  has type `Box String`
   is an expression
   resolved to 1 definition(s): `box`
 
 
 
 note: 
-  --> sequence.wipple:5:11
+  --> sequence.wipple:5:7
   |
 5 | box : Box "abc"
-  |           -----
+  |       ---------
 
-`"abc"` is a string literal.
-
-This means `box` is a `Box String`.
+`Box` is called with `"abc"`.
 
 note: 
   --> sequence.wipple:7:2
@@ -190,11 +175,7 @@ note:
 7 | (filter positive?) box
   |  ------
 
-`filter` keeps the `String` elements in `box` that satisfy `positive?`.
-
-This means `_` is a `Boolean`.
-
-This means `"abc"` must have the same type as `n`.
+`filter` keeps the elements in `box` that satisfy `positive?`.
 
 note: 
   --> sequence.wipple:6:19
@@ -205,11 +186,11 @@ note:
 `n` is annotated as a `Number`.
 
 error: 
-  --> sequence.wipple:7:2
+  --> sequence.wipple:5:11
   |
-7 | (filter positive?) box
-  |  ^^^^^^
+5 | box : Box "abc"
+  |           ^^^^^
 
-`filter` keeps the `String` elements in `box` that satisfy `positive?`. But `positive?` accepts a `Number` for the input `n`, not a `String`.
+`"abc"` is a `String`, but it is used as a `Number`.
 
 Help: use `--explain=full` to show more information

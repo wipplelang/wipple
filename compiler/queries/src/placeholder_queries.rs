@@ -8,7 +8,7 @@ use wipple_syntax::expressions::placeholder_expression::IsPlaceholder;
 pub fn placeholder<'a>(
     db: &QueryCtx<'a>,
     node: Node,
-) -> Option<(Vec<Node>, Option<&'a ConstructedTy>, Trace<'a>)> {
+) -> Option<(Vec<Node>, Option<&'a ConstructedTy>, Trace)> {
     if !db.contains::<IsPlaceholder>(node) {
         return None;
     }

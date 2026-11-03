@@ -216,19 +216,9 @@ Facts (layer 2):
   has type `Number`
   is a pattern
 
-`_ : 1 + 2` (AssignmentStatement):
-  at custom-errors.wipple:14:1-14:10
-  has type `()`
-
 `1` (NumberExpression):
   at custom-errors.wipple:14:5-14:6
   grouped with `1`, `left`
-  has type `Number`
-  is an expression
-
-`1 + 2` (OperatorExpression):
-  at custom-errors.wipple:14:5-14:10
-  grouped with `1 + 2`, `_`, `_`
   has type `Number`
   is an expression
 
@@ -258,19 +248,9 @@ Facts (layer 2):
   has type `String`
   is a pattern
 
-`_ : "a" + "b"` (AssignmentStatement):
-  at custom-errors.wipple:15:1-15:14
-  has type `()`
-
 `"a"` (StringExpression):
   at custom-errors.wipple:15:5-15:8
   grouped with `"a"`, `left`
-  has type `String`
-  is an expression
-
-`"a" + "b"` (OperatorExpression):
-  at custom-errors.wipple:15:5-15:14
-  grouped with `"a" + "b"`, `_`, `_`
   has type `String`
   is an expression
 
@@ -300,21 +280,11 @@ Facts (layer 2):
   is a pattern
   missing type (group: `1 + "a"`, `1 + "a"`, `_`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
-`_ : 1 + "a"` (AssignmentStatement):
-  at custom-errors.wipple:16:1-16:12
-  has type `()`
-
 `1` (NumberExpression):
   at custom-errors.wipple:16:5-16:6
   grouped with `1`, `left`
   has type `Number`
   is an expression
-
-`1 + "a"` (OperatorExpression):
-  at custom-errors.wipple:16:5-16:12
-  grouped with `1 + "a"`, `_`, `_`
-  is an expression
-  missing type (group: `1 + "a"`, `1 + "a"`, `_`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `1 + "a"` (CallExpression):
   at custom-errors.wipple:16:5-16:12
@@ -342,21 +312,11 @@ Facts (layer 2):
   is a pattern
   missing type (group: `() + 2`, `() + 2`, `_`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
-`_ : () + 2` (AssignmentStatement):
-  at custom-errors.wipple:17:1-17:11
-  has type `()`
-
 `()` (UnitExpression):
   at custom-errors.wipple:17:5-17:7
   grouped with `left`
   has type `()`
   is an expression
-
-`() + 2` (OperatorExpression):
-  at custom-errors.wipple:17:5-17:11
-  grouped with `() + 2`, `_`, `_`
-  is an expression
-  missing type (group: `() + 2`, `() + 2`, `_`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `() + 2` (CallExpression):
   at custom-errors.wipple:17:5-17:11
@@ -381,12 +341,12 @@ Facts (layer 2):
 
 
 note: 
-   --> custom-errors.wipple:17:10
+   --> custom-errors.wipple:17:5
    |
 17 | _ : () + 2
-   |          -
+   |     ------
 
-`2` is a number literal.
+`() + 2` is called with `()` and `2`.
 
 error: 
    --> custom-errors.wipple:17:5

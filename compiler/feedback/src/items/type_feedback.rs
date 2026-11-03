@@ -1,5 +1,11 @@
-use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank};
-use wipple_core::typecheck::{groups::Prefer, ty::Ty};
+use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank, FeedbackWriter};
+use wipple_core::{
+    render::ExplainOptions,
+    typecheck::{
+        groups::Prefer,
+        ty::{ConstructedTy, Ty},
+    },
+};
 use wipple_queries::{
     TypeConflictSummarySuffix, conflicting_types, fact, incomplete_type, unknown_type,
 };
@@ -39,21 +45,6 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                     writer.comments(db, &summary.entry.comments);
 
                     match &summary.suffix {
-                        TypeConflictSummarySuffix::FunctionInput {
-                            function,
-                            parameter,
-                            argument,
-                        } => {
-                            writer.string(" But ");
-                            writer.node(*function);
-                            writer.string(" accepts a ");
-                            writer.ty(db, &Ty::Node(*parameter), true);
-                            writer.string(" for the input ");
-                            writer.node(*parameter);
-                            writer.string(", not a ");
-                            writer.ty(db, &Ty::Node(*argument), true);
-                            writer.string(".");
-                        }
                         TypeConflictSummarySuffix::FunctionArity {
                             function,
                             expected,
@@ -81,28 +72,74 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                     writer.string(", ");
                 }
 
-                writer.node(data.from);
-                writer.string(" is a ");
-                writer.list("or a", |_, list| {
-                    for ty in &data.tys {
-                        let ty = ty.clone();
-                        list.add(move |writer| {
-                            writer.ty(db, &Ty::Constructed(ty), true);
-                        });
-                    }
-                });
-                writer.string(", but it can only be one of these.");
+                let tys = (!data.tys.is_empty()).then_some(&data.tys);
+                let inferred_tys = (!data.inferred_tys.is_empty()).then_some(&data.inferred_tys);
 
-                if data.related.len() > 1 {
-                    writer.line_break();
-                    writer.node(data.from);
-                    writer.string(" must be the same type as ");
+                if data.conflicting.len() > 1 && tys.xor(inferred_tys).is_some() {
+                    if let Some(entry) = &data.primary_trace_entry {
+                        let entry = {
+                            let mut writer = FeedbackWriter::with_options(writer.options.clone());
+                            writer.options.explain = ExplainOptions::Enabled;
+                            writer.trace_entry(db, entry)
+                        };
+
+                        for ctx in [entry.node_ctx].into_iter().chain(
+                            entry
+                                .consequence_ctxs
+                                .into_iter()
+                                // Only show the first consequence
+                                .take(1),
+                        ) {
+                            writer.extend([ctx]);
+                            writer.string(" ");
+                        }
+
+                        writer.string("But ");
+                    } else {
+                        writer.list("and", |_, list| {
+                            for &node in &data.conflicting {
+                                list.add(move |writer| writer.node(node));
+                            }
+                        });
+                        writer.string(" must have the same type, but ");
+                    }
+
                     writer.list("and", |_, list| {
-                        for &node in &data.related {
-                            list.add(move |writer| writer.node(node));
+                        for &node in &data.conflicting {
+                            list.add(move |writer| {
+                                writer.node(node);
+                                writer.string(" is a ");
+                                writer.ty(db, &Ty::Node(node), true);
+                            });
                         }
                     });
-                    writer.string("; double-check these.");
+
+                    writer.string(".");
+                } else {
+                    let write_tys = |writer: &mut FeedbackWriter, tys: &[ConstructedTy]| {
+                        writer.list("or a", |_, list| {
+                            for ty in tys {
+                                let ty = ty.clone();
+                                list.add(move |writer| {
+                                    writer.ty(db, &Ty::Constructed(ty), true);
+                                });
+                            }
+                        });
+                    };
+
+                    if let Some(tys) = tys.xor(inferred_tys) {
+                        writer.node(data.from);
+                        writer.string(" is a ");
+                        write_tys(writer, tys);
+                        writer.string(", but it can only be one of these.");
+                    } else {
+                        writer.node(data.from);
+                        writer.string(" is a ");
+                        write_tys(writer, &data.tys);
+                        writer.string(", but it is used as a ");
+                        write_tys(writer, &data.inferred_tys);
+                        writer.string(".");
+                    }
                 }
             }
 

@@ -174,11 +174,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `B`
 
-`B 123` (ExpressionStatement):
-  at nested-bounds.wipple:11:1-11:6
-  grouped with `B 123`
-  has type `()`
-
 `B 123` (CallExpression):
   at nested-bounds.wipple:11:1-11:6
   grouped with `()`, `B 123`
@@ -198,11 +193,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `B`
-
-`B "abc"` (ExpressionStatement):
-  at nested-bounds.wipple:12:1-12:8
-  grouped with `B "abc"`
-  has type `()`
 
 `B "abc"` (CallExpression):
   at nested-bounds.wipple:12:1-12:8
@@ -224,11 +214,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `B`
 
-`B ()` (ExpressionStatement):
-  at nested-bounds.wipple:13:1-13:5
-  grouped with `B ()`
-  has type `()`
-
 `B ()` (CallExpression):
   at nested-bounds.wipple:13:1-13:5
   grouped with `()`, `B ()`
@@ -242,6 +227,14 @@ Facts (layer 2):
   is an expression
 
 
+
+note: 
+   --> nested-bounds.wipple:13:1
+   |
+13 | B ()
+   | ----
+
+`B` is called with `()`.
 
 error: 
    --> nested-bounds.wipple:13:1

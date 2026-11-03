@@ -22,11 +22,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show Foo` (ExpressionStatement):
-  at missing-instance.wipple:2:1-2:9
-  grouped with `show Foo`
-  has type `()`
-
 `show Foo` (CallExpression):
   at missing-instance.wipple:2:1-2:9
   grouped with `()`, `show Foo`
@@ -49,8 +44,6 @@ note:
   | ----
 
 `show` displays `Foo` on the screen.
-
-This uses `default error instance (Describe Foo)`.
 
 error: 
   --> missing-instance.wipple:2:1

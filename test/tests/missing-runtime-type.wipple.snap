@@ -195,11 +195,6 @@ Facts (layer 2):
   has type `b`
   is a pattern
 
-`_ : T1 x` (AssignmentStatement):
-  at missing-runtime-type.wipple:5:43-5:51
-  grouped with `do {_ : T1 x}`
-  has type `()`
-
 `T1` (ConstructorExpression):
   at missing-runtime-type.wipple:5:47-5:49
   grouped with `a -> b`
@@ -229,11 +224,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `T2`
 
-`T2 ()` (ExpressionStatement):
-  at missing-runtime-type.wipple:6:1-6:6
-  grouped with `T2 ()`
-  has type `()`
-
 `T2 ()` (CallExpression):
   at missing-runtime-type.wipple:6:1-6:6
   grouped with `()`, `T2 ()`
@@ -253,11 +243,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show "done"` (ExpressionStatement):
-  at missing-runtime-type.wipple:8:1-8:12
-  grouped with `show "done"`
-  has type `()`
 
 `show "done"` (CallExpression):
   at missing-runtime-type.wipple:8:1-8:12

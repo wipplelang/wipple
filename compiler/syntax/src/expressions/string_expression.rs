@@ -67,10 +67,10 @@ impl Visit for StringExpression {
             .push(DescriptionEntry {
                 comments: Comments::builtin(
                     node,
-                    "[`string`] is a string literal.",
+                    "[`string`] is a [`String`].",
                     [("string", Some(Link::node(node)))],
                 ),
-                is_primary: true,
+                is_primary: false,
             });
     }
 }

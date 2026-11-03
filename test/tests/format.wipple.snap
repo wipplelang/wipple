@@ -69,10 +69,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`bob : Person {name : "Bob"}` (AssignmentStatement):
-  at format.wipple:5:1-5:28
-  has type `()`
-
 `Person {name : "Bob"}` (StructureExpression):
   at format.wipple:5:7-5:28
   grouped with `Person`, `bob`, `bob`
@@ -93,11 +89,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show ("Hello, _!" bob)` (ExpressionStatement):
-  at format.wipple:6:1-6:23
-  grouped with `show ("Hello, _!" bob)`
-  has type `()`
 
 `show ("Hello, _!" bob)` (CallExpression):
   at format.wipple:6:1-6:23

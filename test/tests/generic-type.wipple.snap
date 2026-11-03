@@ -36,10 +36,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`foo : Foo "Hello, world!"` (AssignmentStatement):
-  at generic-type.wipple:3:1-3:26
-  has type `()`
-
 `Foo` (ConstructorExpression):
   at generic-type.wipple:3:7-3:10
   has type `String -> Foo String`
@@ -65,10 +61,6 @@ Facts (layer 2):
   is a pattern
   resolved to 1 definition(s): `Foo`
 
-`Foo inner : foo` (AssignmentStatement):
-  at generic-type.wipple:5:1-5:16
-  has type `()`
-
 `inner` (VariablePattern):
   at generic-type.wipple:5:5-5:10
   grouped with `_`, `inner`
@@ -90,11 +82,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show inner` (ExpressionStatement):
-  at generic-type.wipple:6:1-6:11
-  grouped with `show inner`
-  has type `()`
 
 `show inner` (CallExpression):
   at generic-type.wipple:6:1-6:11

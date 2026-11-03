@@ -8,11 +8,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (Some 42 is Some _)` (ExpressionStatement):
-  at is.wipple:1:1-1:25
-  grouped with `show (Some 42 is Some _)`
-  has type `()`
-
 `show (Some 42 is Some _)` (CallExpression):
   at is.wipple:1:1-1:25
   grouped with `()`, `show (Some 42 is Some _)`
@@ -77,11 +72,6 @@ Facts (layer 2):
   has type `Boolean -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (Some 42 is None)` (ExpressionStatement):
-  at is.wipple:2:1-2:23
-  grouped with `show (Some 42 is None)`
-  has type `()`
 
 `show (Some 42 is None)` (CallExpression):
   at is.wipple:2:1-2:23

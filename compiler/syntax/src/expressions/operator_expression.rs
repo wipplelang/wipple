@@ -238,6 +238,8 @@ impl Visit for OperatorExpression {
         visit_expression(db, node, visitor);
 
         let resolved = if let Some(trait_name) = name_for_trait_operator(&self.operator) {
+            db.hide(node);
+
             visit_trait_operator(
                 db,
                 visitor,
@@ -248,22 +250,30 @@ impl Visit for OperatorExpression {
             )
         } else {
             match self.operator.as_str() {
-                "and" => visit_logic_operator(
-                    db,
-                    visitor,
-                    self.span.clone(),
-                    self.left.clone(),
-                    self.right.clone(),
-                    "And",
-                ),
-                "or" => visit_logic_operator(
-                    db,
-                    visitor,
-                    self.span.clone(),
-                    self.left.clone(),
-                    self.right.clone(),
-                    "Or",
-                ),
+                "and" => {
+                    db.hide(node);
+
+                    visit_logic_operator(
+                        db,
+                        visitor,
+                        self.span.clone(),
+                        self.left.clone(),
+                        self.right.clone(),
+                        "And",
+                    )
+                }
+                "or" => {
+                    db.hide(node);
+
+                    visit_logic_operator(
+                        db,
+                        visitor,
+                        self.span.clone(),
+                        self.left.clone(),
+                        self.right.clone(),
+                        "Or",
+                    )
+                }
                 "." => visit_apply_operator(db, visitor, self.left.clone(), self.right.clone()),
                 _ => unreachable!("unknown operator: {}", self.operator),
             }

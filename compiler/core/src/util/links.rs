@@ -95,7 +95,9 @@ pub fn get_links(
     }
 
     for (name, parameter_node) in nodes {
-        if let Some(instantiated_node) = linked_node_for(db, parameter_node, source_node)
+        if let Some(instantiated_node) =
+            linked_nodes_for(db, parameter_node, source_node, &mut filter)
+                .and_then(|mut iter| iter.next())
             && let Some(Typed(Some(group))) = db.get(instantiated_node)
         {
             let mut link = if db.contains::<Instantiated>(instantiated_node) {
@@ -117,10 +119,16 @@ pub fn get_links(
     links
 }
 
-fn linked_node_for(db: &Db, parameter: Node, source_node: Node) -> Option<Node> {
-    let InstantiatedTypes(instantiated_tys) = db.get(source_node).cloned().unwrap_or_default();
-
-    let instantiated_node = instantiated_tys.get(&parameter).copied()?;
+pub fn linked_nodes_for<'a>(
+    db: &'a Db,
+    parameter: Node,
+    source_node: Node,
+    mut filter: impl FnMut(&Db, Node) -> bool + 'a,
+) -> Option<impl Iterator<Item = Node> + 'a> {
+    let instantiated_node = db
+        .get(source_node)
+        .and_then(|InstantiatedTypes(instantiated_tys)| instantiated_tys.get(&parameter))
+        .copied()?;
 
     // Collect all nodes related to the instantiated node
     let mut paths = BTreeSet::from([vec![instantiated_node]]);
@@ -148,19 +156,22 @@ fn linked_node_for(db: &Db, parameter: Node, source_node: Node) -> Option<Node> 
         }
     }
 
-    // Find a path terminating in a non-instantiated node
-
-    let path = paths.into_iter().find(|path| {
+    // Find all paths terminating in a non-instantiated node
+    let paths = paths.into_iter().filter(|path| {
         let (&last, prefix) = path.split_last().unwrap();
 
         !db.contains::<Instantiated>(last)
             && prefix.iter().all(|&node| db.contains::<Instantiated>(node))
-    })?;
+    });
 
-    // Return the most recent node that has a type
-    path.into_iter().rev().find(|&node| {
-        db.get(node)
-            .and_then(|Typed(group)| group.as_ref())
-            .is_some()
-    })
+    Some(paths.filter_map(move |path| {
+        // Return the most recent node that has a type
+        path.into_iter().rev().find(|&node| {
+            filter(db, node)
+                && db
+                    .get(node)
+                    .and_then(|Typed(group)| group.as_ref())
+                    .is_some()
+        })
+    }))
 }

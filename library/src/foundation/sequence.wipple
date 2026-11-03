@@ -65,7 +65,7 @@ instance (As-Sequence (Maybe element) element) : maybe -> do {
   }
 }
 
--- [`transform`] transforms the [`input@type`] elements in [`container`] into [`output@type`] elements using [`f`].
+-- [`transform`] transforms the elements in [`container`] into [`output@type`] elements using [`f`].
 transform :: (f :: (input -> output)) -> container -> Sequence output where (As-Sequence container input)
 transform : f -> container -> do {
   base : As-Sequence container
@@ -78,7 +78,7 @@ transform : f -> container -> do {
   }
 }
 
--- [`filter`] keeps the [`element@type`] elements in [`container`] that satisfy [`condition`].
+-- [`filter`] keeps the elements in [`container`] that satisfy [`condition`].
 filter :: (condition :: (element -> Boolean)) -> container -> Sequence element where (As-Sequence container element)
 filter : include? -> container -> do {
   base : As-Sequence container
@@ -91,7 +91,7 @@ filter : include? -> container -> do {
   }
 }
 
--- [`filter-by`] transforms the [`element@type`] elements in [`container`] into [`output@type`] elements using [`f`], keeping only the items that are `Some`.
+-- [`filter-by`] transforms the elements in [`container`] into [`output@type`] elements using [`f`], keeping only the items that are `Some`.
 filter-by :: (f :: (input -> Maybe output)) -> container -> Sequence output where (As-Sequence container input)
 filter-by : f -> container -> do {
   base : As-Sequence container
@@ -133,7 +133,7 @@ flatten : outer -> do {
   }
 }
 
--- [`find-by`] finds the first [`element@type`] in [`collection`] for which [`f`] returns `Some`.
+-- [`find-by`] finds the first element in [`collection`] for which [`f`] returns `Some`.
 find-by :: (f :: (element -> Maybe result)) -> collection -> Maybe result where (As-Sequence collection element)
 find-by : f -> collection -> do {
   base : As-Sequence collection
@@ -147,7 +147,7 @@ find-by : f -> collection -> do {
   })
 }
 
--- [`reduce`] calls [`f`] on each [`element@type`] in [`container`], accumulating the result into a single [`result@type`].
+-- [`reduce`] calls [`f`] on each element in [`container`], accumulating the result into a single [`result@type`].
 reduce :: result (f :: (result element -> result)) -> container -> result where (As-Sequence container element)
 reduce : result f -> container -> As-Sequence container . reduce-helper result f
 
@@ -157,7 +157,7 @@ reduce-helper : result f -> sequence -> when (next sequence) {
   None -> result
 }
 
--- [`sum`] calculates the sum of all the [`n@type`] elements in [`container`].
+-- [`sum`] calculates the sum of all the elements in [`container`].
 sum :: container -> n where (As-Sequence container n) (Initial n) (Add n n n)
 sum : reduce Initial (+)
 
@@ -204,7 +204,7 @@ instance (From-Sequence () ()) : sequence -> loop (when (next sequence) {
   None -> Break ()
 })
 
--- [`each`] calls [`action`] for each [`element@type`] in [`container`].
+-- [`each`] calls [`action`] for each element in [`container`].
 [connect : container -> element ("element")]
 each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)
 each : action -> container -> container . transform action . collect
@@ -287,7 +287,7 @@ take : count -> collection -> do {
   }
 }
 
--- [`find`] finds the first [`element@type`] in [`collection`] that satisfies [`condition`].
+-- [`find`] finds the first element in [`collection`] that satisfies [`condition`].
 find :: (condition :: (element -> Boolean)) -> collection -> Maybe element where (As-Sequence collection element)
 find : condition -> collection -> do {
   base : As-Sequence collection
@@ -298,7 +298,7 @@ find : condition -> collection -> do {
   })
 }
 
--- [`find-position`] finds the position of the first [`element@type`] in [`collection`] that satisfies [`condition`].
+-- [`find-position`] finds the position of the first element in [`collection`] that satisfies [`condition`].
 find-position :: (condition :: (element -> Boolean)) -> collection -> Maybe Number where (As-Sequence collection element)
 find-position : condition -> collection -> do {
   base : As-Sequence collection
@@ -315,7 +315,7 @@ find-position : condition -> collection -> do {
   })
 }
 
--- [`all?`] return `True` if [`condition`] is `True` for every [`element@type`] in [`collection`], or if [`collection`] is empty.
+-- [`all?`] return `True` if [`condition`] is `True` for every element in [`collection`], or if [`collection`] is empty.
 all? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)
 all? : condition -> collection -> As-Sequence collection . all-helper condition
 
@@ -325,7 +325,7 @@ all-helper : condition -> sequence -> when (next sequence) {
   None -> True
 }
 
--- [`any?`] return `True` if [`condition`] is `True` for any [`element@type`] in [`collection`], or `False` if [`collection`] is empty.
+-- [`any?`] return `True` if [`condition`] is `True` for any element in [`collection`], or `False` if [`collection`] is empty.
 any? :: (condition :: (element -> Boolean)) -> collection -> Boolean where (As-Sequence collection element)
 any? : condition -> collection -> As-Sequence collection . any-helper condition
 

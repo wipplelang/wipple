@@ -143,11 +143,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (Foo (Box "Hello, world!"))` (ExpressionStatement):
-  at generic-instance.wipple:7:1-7:33
-  grouped with `show (Foo (Box "Hello, world!"))`
-  has type `()`
-
 `show (Foo (Box "Hello, world!"))` (CallExpression):
   at generic-instance.wipple:7:1-7:33
   grouped with `()`, `show (Foo (Box "Hello, world!"))`

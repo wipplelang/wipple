@@ -7,10 +7,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`x : True` (AssignmentStatement):
-  at when.wipple:1:1-1:9
-  has type `()`
-
 `True` (ConstructorExpression):
   at when.wipple:1:5-1:9
   grouped with `Boolean`, `x`, `x`
@@ -25,11 +21,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (when x {⋯})` (ExpressionStatement):
-  at when.wipple:3:1-6:3
-  grouped with `show (when x {⋯})`
-  has type `()`
 
 `show (when x {⋯})` (CallExpression):
   at when.wipple:3:1-6:3

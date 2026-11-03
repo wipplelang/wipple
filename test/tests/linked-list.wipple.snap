@@ -67,7 +67,7 @@ Facts (layer 2):
 
 `value` (TypeParameter):
   at linked-list.wipple:6:24-6:29
-  grouped with `value`, `value`
+  grouped with `value`, `x`
   has type `value`
   is a definition
   is a type
@@ -89,7 +89,7 @@ Facts (layer 2):
 
 `result` (TypeParameter):
   at linked-list.wipple:6:40-6:46
-  grouped with `result`, `result`
+  grouped with `result`, `f x result`
   has type `result`
   is a type
   resolved to 1 definition(s): `result`
@@ -125,10 +125,6 @@ Facts (layer 2):
   is a type
   resolved to 1 definition(s): `result`
   resolved to type parameter `result`
-
-`reduce-linked-list : f result l -> when l {⋯}` (AssignmentStatement):
-  at linked-list.wipple:7:1-10:2
-  has type `()`
 
 `f` (VariablePattern):
   at linked-list.wipple:7:22-7:23
@@ -235,20 +231,20 @@ Facts (layer 2):
 
 `f x result` (CallExpression):
   at linked-list.wipple:9:42-9:52
-  grouped with `result`, `result`
+  grouped with `result`, `result`, `result`
   has type `result`
   is an expression
 
 `x` (VariableExpression):
   at linked-list.wipple:9:44-9:45
-  grouped with `x`, `value`
+  grouped with `x`, `value`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
 
 `result` (VariableExpression):
   at linked-list.wipple:9:46-9:52
-  grouped with `result`, `result`
+  grouped with `result`, `result`, `result`
   has type `result`
   is an expression
   resolved to 1 definition(s): `result`
@@ -266,10 +262,6 @@ Facts (layer 2):
   has type `Linked-List Number`
   is a definition
   is a pattern
-
-`list : Cons 1 (Cons 2 (Cons 3 Nil))` (AssignmentStatement):
-  at linked-list.wipple:12:1-12:36
-  has type `()`
 
 `Cons` (ConstructorExpression):
   at linked-list.wipple:12:8-12:12
@@ -339,10 +331,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`sum : reduce-linked-list (+) 0 list` (AssignmentStatement):
-  at linked-list.wipple:14:1-14:36
-  has type `()`
-
 `reduce-linked-list` (VariableExpression):
   at linked-list.wipple:14:7-14:25
   grouped with `(value result -> result) result (Linked-List value) -> result`
@@ -384,11 +372,6 @@ Facts (layer 2):
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show sum` (ExpressionStatement):
-  at linked-list.wipple:15:1-15:9
-  grouped with `show sum`
-  has type `()`
 
 `show sum` (CallExpression):
   at linked-list.wipple:15:1-15:9

@@ -14,10 +14,6 @@ Facts (layer 2):
   is a type
   resolved to 1 definition(s): `Number`
 
-`x : "42"` (AssignmentStatement):
-  at constant-mismatched-types.wipple:2:1-2:9
-  has type `()`
-
 `"42"` (StringExpression):
   at constant-mismatched-types.wipple:2:5-2:9
   grouped with `"42"`, `x`
@@ -32,8 +28,6 @@ error:
 1 | x :: Number
   | ^
 
-`x` is a `Number` or a `String`, but it can only be one of these.
-
-`x` must be the same type as `Number` and `"42"`; double-check these.
+`x` and `"42"` must have the same type, but `x` is a `Number` and `"42"` is a `String`.
 
 Help: use `--explain=full` to show more information

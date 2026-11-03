@@ -61,6 +61,10 @@ impl Group {
             })
     }
 
+    pub fn contains_node(&self, node: Node) -> bool {
+        self.0.contains_key(&node)
+    }
+
     pub fn unify(
         &mut self,
         db: &mut Db,
@@ -247,9 +251,9 @@ pub fn representative_types_of<'a>(
     node: Node,
     relevant: &[Node],
     prefer: Prefer,
-) -> Vec<&'a ConstructedTy> {
+) -> Vec<(NodeRank, &'a ConstructedTy)> {
     let Some(Typed(Some(group))) = db.get(node) else {
-        return Vec::new();
+        return Default::default();
     };
 
     // Prefer relevant nodes that belong to the same group
@@ -266,12 +270,13 @@ pub fn representative_types_of<'a>(
 
     for node in candidates {
         let tys = group.get_tys(node);
+        let rank = group.get_rank(node);
         if !tys.is_empty() {
-            return tys.iter().collect();
+            return tys.iter().map(|ty| (rank, ty)).collect();
         }
     }
 
-    group.tys().collect()
+    group.entries().map(|(_, rank, ty)| (rank, ty)).collect()
 }
 
 pub fn update_type(db: &Db, ty: &Ty, relevant: &[Node], prefer: Prefer) -> Ty {
@@ -279,7 +284,7 @@ pub fn update_type(db: &Db, ty: &Ty, relevant: &[Node], prefer: Prefer) -> Ty {
         Ty::Node(node) => {
             let tys = representative_types_of(db, *node, relevant, prefer);
 
-            if let Some(&ty) = tys.first() {
+            if let Some(&(_, ty)) = tys.first() {
                 Ty::Constructed(ty.clone())
             } else {
                 Ty::Node(*node)

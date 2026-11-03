@@ -139,11 +139,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `Describe`
 
-`Describe (_ :: Maybe String)` (ExpressionStatement):
-  at recursive-bounds.wipple:9:1-9:29
-  grouped with `Describe (_ :: Maybe String)`
-  has type `String`
-
 `Describe (_ :: Maybe String)` (CallExpression):
   at recursive-bounds.wipple:9:1-9:29
   grouped with `String`, `Describe (_ :: Maybe String)`
@@ -178,11 +173,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `Describe`
 
-`Describe (_ :: Maybe Number)` (ExpressionStatement):
-  at recursive-bounds.wipple:10:1-10:29
-  grouped with `Describe (_ :: Maybe Number)`
-  has type `String`
-
 `Describe (_ :: Maybe Number)` (CallExpression):
   at recursive-bounds.wipple:10:1-10:29
   grouped with `String`, `Describe (_ :: Maybe Number)`
@@ -210,6 +200,14 @@ Facts (layer 2):
   resolved to 1 definition(s): `Number`
 
 
+
+note: 
+   --> recursive-bounds.wipple:10:1
+   |
+10 | Describe (_ :: Maybe Number)
+   | ----------------------------
+
+`Describe` is called with `_ :: Maybe Number`.
 
 note: 
    --> recursive-bounds.wipple:10:16

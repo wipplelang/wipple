@@ -48,10 +48,6 @@ Facts (layer 2):
   has type `Grade`
   is a pattern
 
-`_ : A` (AssignmentStatement):
-  at enumeration.wipple:9:1-9:6
-  has type `()`
-
 `A` (ConstructorExpression):
   at enumeration.wipple:9:5-9:6
   grouped with `Grade`, `_`, `_`

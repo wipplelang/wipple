@@ -7,10 +7,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`numbers : build-sequence (Some 0) (n -> Some (n + 1))` (AssignmentStatement):
-  at build-sequence.wipple:1:1-1:54
-  has type `()`
-
 `build-sequence` (VariableExpression):
   at build-sequence.wipple:1:11-1:25
   grouped with `(Maybe element) (element -> Maybe element) -> Sequence element`
@@ -74,12 +70,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `n`
 
-`n + 1` (OperatorExpression):
-  at build-sequence.wipple:1:47-1:52
-  grouped with `n + 1`, `value`
-  has type `Number`
-  is an expression
-
 `n + 1` (CallExpression):
   at build-sequence.wipple:1:47-1:52
   grouped with `sum`, `n + 1`
@@ -102,21 +92,16 @@ Facts (layer 2):
 
 `numbers` (VisitAs):
   at build-sequence.wipple:2:1-2:8
-  grouped with `collection`, `numbers`, `collection`
+  grouped with `collection`, `numbers`
   has type `Sequence Number`
   is an expression
   resolved to 1 definition(s): `numbers`
 
 `numbers . take 5` (VisitAs):
   at build-sequence.wipple:2:1-2:17
-  grouped with `container`, `take 5`, `container`
+  grouped with `container`, `take 5`
   has type `Sequence Number`
   is an expression
-
-`numbers . take 5 . each show` (ExpressionStatement):
-  at build-sequence.wipple:2:1-2:29
-  grouped with `numbers . take 5 . each show`
-  has type `()`
 
 `numbers . take 5 . each show` (OperatorExpression):
   at build-sequence.wipple:2:1-2:29
@@ -134,7 +119,7 @@ Facts (layer 2):
 
 `take 5` (CallExpression):
   at build-sequence.wipple:2:11-2:17
-  grouped with `Sequence element`, `Sequence element`, `numbers . take 5`
+  grouped with `Sequence element`, `numbers . take 5`
   has type `Sequence Number`
   is an expression
 
@@ -160,7 +145,7 @@ Facts (layer 2):
 
 `each show` (CallExpression):
   at build-sequence.wipple:2:20-2:29
-  grouped with `()`, `()`, `numbers . take 5 . each show`
+  grouped with `()`, `numbers . take 5 . each show`
   has type `()`
   is an expression
 

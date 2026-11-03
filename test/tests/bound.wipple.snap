@@ -83,10 +83,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
 
-`foo : x -> T x` (AssignmentStatement):
-  at bound.wipple:4:1-4:15
-  has type `()`
-
 `x` (VariablePattern):
   at bound.wipple:4:7-4:8
   grouped with `x`, `value`
@@ -176,11 +172,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (foo A)` (ExpressionStatement):
-  at bound.wipple:9:1-9:13
-  grouped with `show (foo A)`
-  has type `()`
 
 `show (foo A)` (CallExpression):
   at bound.wipple:9:1-9:13

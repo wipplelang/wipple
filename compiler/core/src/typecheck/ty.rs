@@ -8,6 +8,7 @@ use crate::{
     visit::definitions::Defined,
 };
 use dyn_clone::DynClone;
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Write};
 
@@ -41,7 +42,12 @@ impl Ty {
 
     pub fn display(&self, db: &Db, root: bool, relevant: &[Node], prefer: Prefer) -> String {
         let tys = match self {
-            Ty::Node(node) => representative_types_of(db, *node, relevant, prefer),
+            Ty::Node(node) => representative_types_of(db, *node, relevant, prefer)
+                .into_iter()
+                .min_set_by_key(|&(rank, _)| rank)
+                .into_iter()
+                .map(|(_, ty)| ty)
+                .collect(),
             Ty::Constructed(ty) => vec![ty],
         };
 

@@ -15,7 +15,10 @@ use wipple_core::{
         ty::{ConstructedTy, Ty},
     },
     util::Link,
-    visit::{Visit, Visitor, definitions::ConstantDefinition},
+    visit::{
+        Resolved, Visit, Visitor,
+        definitions::{ConstantDefinition, Defined},
+    },
 };
 use wipple_parse::parser::{ParseError, Parser};
 
@@ -130,6 +133,15 @@ impl Visit for CallExpression {
             },
         );
 
+        let is_primary = db
+            .get(function)
+            .is_some_and(|Resolved { definitions, .. }| {
+                !definitions.iter().any(|&definition| {
+                    db.get(definition)
+                        .is_some_and(|Defined(definition)| !definition.comments().is_empty())
+                })
+            });
+
         db.get_mut_or_default::<Description>(node)
             .push(DescriptionEntry {
                 comments: Comments::builtin(
@@ -140,7 +152,7 @@ impl Visit for CallExpression {
                         ("inputs", Some(Link::list("and", inputs))),
                     ],
                 ),
-                is_primary: false,
+                is_primary: is_primary,
             });
     }
 }

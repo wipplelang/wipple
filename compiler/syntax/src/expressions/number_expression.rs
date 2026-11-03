@@ -67,10 +67,10 @@ impl Visit for NumberExpression {
             .push(DescriptionEntry {
                 comments: Comments::builtin(
                     node,
-                    "[`number`] is a number literal.",
+                    "[`number`] is a [`Number`].",
                     [("number", Some(Link::node(node)))],
                 ),
-                is_primary: true,
+                is_primary: false,
             });
     }
 }

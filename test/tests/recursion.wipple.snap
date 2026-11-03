@@ -7,10 +7,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`fib : n -> when n {⋯}` (AssignmentStatement):
-  at recursion.wipple:1:1-4:2
-  has type `()`
-
 `n` (VariablePattern):
   at recursion.wipple:1:7-1:8
   grouped with `n`, `n`, `n`, `n`, `n - 1`
@@ -84,12 +80,6 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`fib (n - 1) + fib (n - 2)` (OperatorExpression):
-  at recursion.wipple:3:8-3:33
-  grouped with `fib (n - 1) + fib (n - 2)`, `when n {⋯}`
-  has type `Number`
-  is an expression
-
 `fib (n - 1) + fib (n - 2)` (CallExpression):
   at recursion.wipple:3:8-3:33
   grouped with `sum`, `fib (n - 1) + fib (n - 2)`
@@ -110,12 +100,6 @@ Facts (layer 2):
   has type `Number`
   is an expression
   resolved to 1 definition(s): `n`
-
-`n - 1` (OperatorExpression):
-  at recursion.wipple:3:13-3:18
-  grouped with `n - 1`, `n - 2`, `n`, `10`
-  has type `Number`
-  is an expression
 
 `n - 1` (CallExpression):
   at recursion.wipple:3:13-3:18
@@ -157,12 +141,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `n`
 
-`n - 2` (OperatorExpression):
-  at recursion.wipple:3:27-3:32
-  grouped with `n - 2`, `n - 1`
-  has type `Number`
-  is an expression
-
 `n - 2` (CallExpression):
   at recursion.wipple:3:27-3:32
   grouped with `difference`, `n - 2`
@@ -190,11 +168,6 @@ Facts (layer 2):
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (fib 10)` (ExpressionStatement):
-  at recursion.wipple:6:1-6:14
-  grouped with `show (fib 10)`
-  has type `()`
 
 `show (fib 10)` (CallExpression):
   at recursion.wipple:6:1-6:14

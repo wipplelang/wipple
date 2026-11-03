@@ -4,7 +4,7 @@ Facts (layer 2):
   at transmute.wipple:1:1-1:10
   grouped with `a -> b`, `x -> x`
   has definition constraints
-  has type `(a or b) -> a or b`
+  has type `a -> b`
   has type parameters
   is a definition
 
@@ -19,7 +19,7 @@ Facts (layer 2):
 `a -> b` (FunctionType):
   at transmute.wipple:1:14-1:20
   grouped with `transmute`
-  has type `(a or b) -> a or b`
+  has type `a -> b`
   is a type
 
 `b` (TypeParameter):
@@ -29,10 +29,6 @@ Facts (layer 2):
   is a definition
   is a type
   resolved to 1 definition(s): `b`
-
-`transmute : x -> x` (AssignmentStatement):
-  at transmute.wipple:2:1-2:19
-  has type `()`
 
 `x` (VariablePattern):
   at transmute.wipple:2:13-2:14
@@ -44,7 +40,7 @@ Facts (layer 2):
 `x -> x` (FunctionExpression):
   at transmute.wipple:2:13-2:19
   grouped with `transmute`
-  has type `(a or b) -> a or b`
+  has type `a -> b`
   is an expression
 
 `x` (VariableExpression):
@@ -62,8 +58,6 @@ error:
 1 | transmute :: a -> b
   |              ^
 
-`a` is a `a` or a `b`, but it can only be one of these.
-
-`a` must be the same type as `b`, `x`, and `x`; double-check these.
+`a` and `b` must have the same type, but `a` is a `a` and `b` is a `b`.
 
 Help: use `--explain=full` to show more information

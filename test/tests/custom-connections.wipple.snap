@@ -89,10 +89,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
 
-`my-if : if` (AssignmentStatement):
-  at custom-connections.wipple:6:1-6:11
-  has type `()`
-
 `if` (VariableExpression):
   at custom-connections.wipple:6:9-6:11
   grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`, `my-if`
@@ -107,11 +103,6 @@ Facts (layer 2):
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (my-if True {123} {456})` (ExpressionStatement):
-  at custom-connections.wipple:8:1-8:30
-  grouped with `show (my-if True {123} {456})`
-  has type `()`
 
 `show (my-if True {123} {456})` (CallExpression):
   at custom-connections.wipple:8:1-8:30
@@ -145,11 +136,6 @@ Facts (layer 2):
   has type `{Number}`
   is an expression
 
-`123` (ExpressionStatement):
-  at custom-connections.wipple:8:19-8:22
-  grouped with `123`, `then`
-  has type `Number`
-
 `123` (NumberExpression):
   at custom-connections.wipple:8:19-8:22
   grouped with `123`, `123`
@@ -161,11 +147,6 @@ Facts (layer 2):
   grouped with `{(else :: value)}`
   has type `{Number}`
   is an expression
-
-`456` (ExpressionStatement):
-  at custom-connections.wipple:8:25-8:28
-  grouped with `456`, `else`
-  has type `Number`
 
 `456` (NumberExpression):
   at custom-connections.wipple:8:25-8:28

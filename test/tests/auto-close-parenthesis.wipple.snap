@@ -9,13 +9,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `show`
 
 `show (1 + 2
-` (ExpressionStatement):
-  at auto-close-parenthesis.wipple:1:1-2:1
-  grouped with `show (1 + 2
-`
-  has type `()`
-
-`show (1 + 2
 ` (CallExpression):
   at auto-close-parenthesis.wipple:1:1-2:1
   grouped with `()`, `show (1 + 2
@@ -26,12 +19,6 @@ Facts (layer 2):
 `1` (NumberExpression):
   at auto-close-parenthesis.wipple:1:7-1:8
   grouped with `1`, `left`
-  has type `Number`
-  is an expression
-
-`1 + 2` (OperatorExpression):
-  at auto-close-parenthesis.wipple:1:7-1:12
-  grouped with `1 + 2`, `value`
   has type `Number`
   is an expression
 

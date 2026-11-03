@@ -29,11 +29,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (when (A; B) {⋯})` (ExpressionStatement):
-  at nested-patterns.wipple:6:1-9:3
-  grouped with `show (when (A; B) {⋯})`
-  has type `()`
-
 `show (when (A; B) {⋯})` (CallExpression):
   at nested-patterns.wipple:6:1-9:3
   grouped with `()`, `show (when (A; B) {⋯})`

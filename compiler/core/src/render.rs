@@ -463,7 +463,13 @@ impl RenderSegment {
                 }
 
                 if db.debug_enabled {
-                    write!(s, " ({node:?})").unwrap();
+                    let node = format!(" ({node:?})");
+
+                    if options.color {
+                        write!(s, "{}", dim(&node)).unwrap();
+                    } else {
+                        write!(s, "{node}").unwrap();
+                    }
                 }
 
                 s

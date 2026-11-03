@@ -54,23 +54,23 @@ default error instance (Order value)
 
 instance (Order Number) : a b -> intrinsic "order" a b
 
--- [`Less-Than`] returns `True` if the left [`value@type`] is less than the right [`value@type`].
-Less-Than : value => trait (value value -> Boolean)
-instance (Less-Than value) where (Order value) : a b -> (Order a b) is Is-Less-Than
+-- [`Less-Than`] returns [`True`] if [`left`] is less than [`right`].
+Less-Than : left right => trait (left right -> Boolean)
+instance (Less-Than (left :: value) (right :: value)) where (Order value) : a b -> (Order a b) is Is-Less-Than
 
--- [`Less-Than-Or-Equal`] returns `True` if the left [`value@type`] is less than or equal to the right [`value@type`].
-Less-Than-Or-Equal : value => trait (value value -> Boolean)
-instance (Less-Than-Or-Equal value) where (Order value) : a b -> (Order a b) is (Is-Less-Than or Is-Equal-To)
+-- [`Less-Than-Or-Equal`] returns [`True`] if [`left`] is less than or equal to [`right`].
+Less-Than-Or-Equal : left right => trait (left right -> Boolean)
+instance (Less-Than-Or-Equal (left :: value) (right :: value)) where (Order value) : a b -> (Order a b) is (Is-Less-Than or Is-Equal-To)
 
--- [`Greater-Than`] returns `True` if the left [`value@type`] is greater than the right [`value@type`].
-Greater-Than : value => trait (value value -> Boolean)
-instance (Greater-Than value) where (Order value) : a b -> (Order a b) is Is-Greater-Than
+-- [`Greater-Than`] returns [`True`] if [`left`] is greater than [`right`].
+Greater-Than : left right => trait (left right -> Boolean)
+instance (Greater-Than (left :: value) (right :: value)) where (Order value) : a b -> (Order a b) is Is-Greater-Than
 
--- [`Greater-Than-Or-Equal`] returns `True` if the left [`value@type`] is greater than or equal to the right [`value@type`].
-Greater-Than-Or-Equal : value => trait (value value -> Boolean)
-instance (Greater-Than-Or-Equal value) where (Order value) : a b -> (Order a b) is (Is-Greater-Than or Is-Equal-To)
+-- [`Greater-Than-Or-Equal`] returns [`True`] if [`left`] is greater than or equal to [`right`].
+Greater-Than-Or-Equal : left right => trait (left right -> Boolean)
+instance (Greater-Than-Or-Equal (left :: value) (right :: value)) where (Order value) : a b -> (Order a b) is (Is-Greater-Than or Is-Equal-To)
 
--- [`Equal`] returns `True` if both [`value@type`] values are equal.
+-- [`Equal`] returns `True` if both sides are equal.
 Equal : value => trait (value value -> Boolean)
 
 instance (Equal String) : a b -> intrinsic "string-equal" a b

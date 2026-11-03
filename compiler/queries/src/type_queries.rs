@@ -1,5 +1,5 @@
 use crate::{QueryCtx, Trace, TraceEntry};
-use std::collections::BTreeMap;
+use itertools::{Either, Itertools};
 use std::collections::BTreeSet;
 use wipple_core::{
     db::Node,
@@ -29,24 +29,26 @@ pub fn in_group(db: &QueryCtx<'_>, node: Node) -> impl Iterator<Item = Node> {
 }
 
 #[derive(Debug, Clone)]
-pub struct ConflictingTypes<'a> {
+pub struct ConflictingTypes {
     pub source: Option<Node>,
     pub from: Node,
     pub is_primary: bool,
-    pub related: BTreeSet<Node>,
+    pub conflicting: BTreeSet<Node>,
     pub group: BTreeSet<Node>,
     pub tys: Vec<ConstructedTy>,
-    pub trace: Trace<'a>,
+    pub inferred_tys: Vec<ConstructedTy>,
+    pub trace: Trace,
+    pub primary_trace_entry: Option<TraceEntry>,
     pub summary: Option<TypeConflictSummary>,
 }
 
-pub fn conflicting_types<'a>(db: &QueryCtx<'a>, node: Node) -> Option<ConflictingTypes<'a>> {
-    let Typed(Some(group)) = db.get(node)? else {
-        return None;
+pub fn conflicting_types<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ConflictingTypes> {
+    let Some(Typed(Some(group))) = db.get(node) else {
+        return Vec::new();
     };
 
     if group.tys().count() <= 1 {
-        return None;
+        return Vec::new();
     }
 
     let is_primary = group.get_rank(node) == group.min_rank();
@@ -55,10 +57,20 @@ pub fn conflicting_types<'a>(db: &QueryCtx<'a>, node: Node) -> Option<Conflictin
         .get::<Instantiated>(node)
         .map(|instantiated| instantiated.source_node);
 
-    let mut related = group.nodes().collect::<BTreeSet<_>>();
-    related.remove(&node);
-    related.retain(|&node| group.get_rank(node) <= NodeRank::Inherited);
-    related.retain(|&node| db.filter(node));
+    let mut conflicting = group.nodes().collect::<BTreeSet<_>>();
+
+    let mut seen_tys = BTreeSet::new();
+    conflicting.retain(|&node| {
+        db.filter(node) && group.get_tys(node).iter().any(|ty| seen_tys.insert(ty))
+    });
+
+    let min_rank = conflicting
+        .iter()
+        .map(|&node| group.get_rank(node))
+        .min()
+        .unwrap_or_default();
+
+    conflicting.retain(|&node| group.get_rank(node) == min_rank);
 
     let trace = Trace::collect(db, node);
 
@@ -66,16 +78,59 @@ pub fn conflicting_types<'a>(db: &QueryCtx<'a>, node: Node) -> Option<Conflictin
     collect_summaries(db, node, &trace, &mut summaries);
     // TODO: Sort summaries
 
-    Some(ConflictingTypes {
+    let (tys, inferred_tys) = group.entries().partition_map(|(_, rank, ty)| {
+        if rank == NodeRank::Inherited {
+            // If the node directly has a type but a rank of `Inherited`, that
+            // means it's a literal
+            Either::Left(ty.clone())
+        } else {
+            Either::Right(ty.clone())
+        }
+    });
+
+    let primary_trace_entry = trace
+        .0
+        .iter()
+        .find(|entry| {
+            if !entry.is_primary || entry.comments.node != node {
+                return false;
+            }
+
+            let relevant_nodes = entry
+                .consequences
+                .iter()
+                .flat_map(|consequence| consequence.relevant_nodes())
+                .collect::<BTreeSet<_>>();
+
+            relevant_nodes.contains(&node) && relevant_nodes.is_superset(&conflicting)
+        })
+        .cloned();
+
+    let base = ConflictingTypes {
         source,
         from: node,
         is_primary,
-        related,
+        conflicting,
         group: group.nodes().collect(),
-        tys: group.tys().cloned().collect(),
+        tys,
+        inferred_tys,
         trace,
-        summary: summaries.into_iter().next(),
-    })
+        primary_trace_entry,
+        summary: None,
+    };
+
+    if summaries.is_empty() {
+        vec![base]
+    } else {
+        summaries
+            .into_iter()
+            .map(|summary| {
+                let mut feedback = base.clone();
+                feedback.summary = Some(summary);
+                feedback
+            })
+            .collect()
+    }
 }
 
 pub fn incomplete_type<'a>(db: &QueryCtx<'a>, node: Node) -> Option<(Node, &'a ConstructedTy)> {
@@ -121,11 +176,6 @@ pub struct TypeConflictSummary {
 
 #[derive(Debug, Clone)]
 pub enum TypeConflictSummarySuffix {
-    FunctionInput {
-        function: Node,
-        parameter: Node,
-        argument: Node,
-    },
     FunctionArity {
         function: Node,
         expected: usize,
@@ -136,95 +186,16 @@ pub enum TypeConflictSummarySuffix {
 fn collect_summaries(
     db: &QueryCtx<'_>,
     node: Node,
-    trace: &Trace<'_>,
+    trace: &Trace,
     summaries: &mut Vec<TypeConflictSummary>,
 ) {
-    collect_function_input_summaries(db, node, trace, summaries);
     collect_function_arity_summaries(db, node, trace, summaries);
-}
-
-fn collect_function_input_summaries(
-    db: &QueryCtx<'_>,
-    node: Node,
-    trace: &Trace<'_>,
-    summaries: &mut Vec<TypeConflictSummary>,
-) {
-    for entry in trace.0.iter() {
-        for consequence in &entry.consequences {
-            if let ConstraintConsequence::Group(left, right) = *consequence
-                && (left == node || right == node)
-            {
-                each_function_node(db, entry, |function_node, function_ty| {
-                    let Some((_, inputs)) = function_ty.children.split_first() else {
-                        return;
-                    };
-
-                    let function_inputs = inputs
-                        .iter()
-                        .copied()
-                        .map(|node| {
-                            db.get(node)
-                                .and_then(|Typed(group)| group.as_ref())
-                                .into_iter()
-                                .flat_map(|group| {
-                                    group.entries().map(|(node, rank, _)| (node, rank))
-                                })
-                                .collect::<BTreeMap<_, _>>()
-                        })
-                        .collect::<Vec<_>>();
-
-                    let as_parameter = |node: Node| {
-                        function_inputs
-                            .iter()
-                            .enumerate()
-                            .find_map(|(index, inputs)| Some((index, *inputs.get(&node)?)))
-                    };
-
-                    let is_annotated = |rank: NodeRank| rank >= NodeRank::Annotated;
-
-                    let Some((left_index, left_rank)) = as_parameter(left) else {
-                        return;
-                    };
-
-                    let Some((right_index, right_rank)) = as_parameter(right) else {
-                        return;
-                    };
-
-                    if left_index != right_index {
-                        return;
-                    }
-
-                    let left_is_annotated = is_annotated(left_rank);
-                    let right_is_annotated = is_annotated(right_rank);
-
-                    let (parameter, argument) = if left_is_annotated && right_is_annotated {
-                        return;
-                    } else if left_is_annotated {
-                        (left, right)
-                    } else if right_is_annotated {
-                        (right, left)
-                    } else {
-                        return;
-                    };
-
-                    summaries.push(TypeConflictSummary {
-                        entry: entry.clone(),
-                        suffix: TypeConflictSummarySuffix::FunctionInput {
-                            function: function_node,
-                            parameter,
-                            argument,
-                        },
-                    });
-                });
-            }
-        }
-    }
 }
 
 fn collect_function_arity_summaries(
     db: &QueryCtx<'_>,
     node: Node,
-    trace: &Trace<'_>,
+    trace: &Trace,
     summaries: &mut Vec<TypeConflictSummary>,
 ) {
     for entry in trace.0.iter() {
@@ -282,13 +253,10 @@ fn each_function_node(
             function_node = *name;
         }
 
-        if group.get_rank(function_node) >= NodeRank::Type {
-            continue;
-        }
-
-        let Some(function_ty) = representative_types_of(db, function_node, &[], Prefer::DirectType)
-            .into_iter()
-            .next()
+        let Some((_, function_ty)) =
+            representative_types_of(db, function_node, &[], Prefer::DirectType)
+                .into_iter()
+                .next()
         else {
             continue;
         };

@@ -70,11 +70,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show "should appear first"` (ExpressionStatement):
-  at bound-evaluation-order.wipple:4:3-4:29
-  grouped with `show "should appear first"`
-  has type `()`
-
 `show "should appear first"` (CallExpression):
   at bound-evaluation-order.wipple:4:3-4:29
   grouped with `()`, `show "should appear first"`
@@ -92,11 +87,6 @@ Facts (layer 2):
   grouped with `value`
   has type `Number`
   is a pattern
-
-`_ -> ()` (ExpressionStatement):
-  at bound-evaluation-order.wipple:5:3-5:10
-  grouped with `_ -> ()`, `do {⋯}`
-  has type `Number -> ()`
 
 `_ -> ()` (FunctionExpression):
   at bound-evaluation-order.wipple:5:3-5:10
@@ -155,10 +145,6 @@ Facts (layer 2):
   resolved to 1 definition(s): `value`
   resolved to type parameter `value`
 
-`f : value -> do {⋯}` (AssignmentStatement):
-  at bound-evaluation-order.wipple:9:1-12:2
-  has type `()`
-
 `value` (VariablePattern):
   at bound-evaluation-order.wipple:9:5-9:10
   grouped with `value`, `value`
@@ -193,11 +179,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show "should appear second"` (ExpressionStatement):
-  at bound-evaluation-order.wipple:10:3-10:30
-  grouped with `show "should appear second"`
-  has type `()`
-
 `show "should appear second"` (CallExpression):
   at bound-evaluation-order.wipple:10:3-10:30
   grouped with `()`, `show "should appear second"`
@@ -217,11 +198,6 @@ Facts (layer 2):
   has type `value -> ()`
   is an expression
   resolved to 1 definition(s): `T`
-
-`T value` (ExpressionStatement):
-  at bound-evaluation-order.wipple:11:3-11:10
-  grouped with `T value`, `do {⋯}`
-  has type `()`
 
 `T value` (CallExpression):
   at bound-evaluation-order.wipple:11:3-11:10
@@ -243,11 +219,6 @@ Facts (layer 2):
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `f`
-
-`f 123` (ExpressionStatement):
-  at bound-evaluation-order.wipple:14:1-14:6
-  grouped with `f 123`
-  has type `()`
 
 `f 123` (CallExpression):
   at bound-evaluation-order.wipple:14:1-14:6

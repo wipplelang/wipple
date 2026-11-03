@@ -165,21 +165,12 @@ Facts (layer 2):
   resolved to 1 definition(s): `b`
   resolved to type parameter `b`
 
-`f : todo` (AssignmentStatement):
-  at bounds-dont-influence-other-bounds.wipple:7:1-7:9
-  has type `()`
-
 `todo` (VariableExpression):
   at bounds-dont-influence-other-bounds.wipple:7:5-7:9
   grouped with `value`, `value`, `f`
   has type `(a; b)`
   is an expression
   resolved to 1 definition(s): `todo`
-
-`(f :: (Number; _))` (ExpressionStatement):
-  at bounds-dont-influence-other-bounds.wipple:10:1-10:19
-  grouped with `f :: (Number; _)`
-  has type `(Number; _)`
 
 `f` (VariableExpression):
   at bounds-dont-influence-other-bounds.wipple:10:2-10:3
@@ -211,12 +202,12 @@ Facts (layer 2):
 
 
 error: 
-   --> bounds-dont-influence-other-bounds.wipple:10:1
+   --> bounds-dont-influence-other-bounds.wipple:10:2
    |
 10 | (f :: (Number; _))
-   | ^^^^^^^^^^^^^^^^^^
+   |  ^
 
-Missing information for the type of `(f :: (Number; _))`.
+Missing information for the type of `f`.
 
 Wipple determined this code is a `(Number; _)`, but it needs some more information for the `_` placeholders.
 

@@ -20,20 +20,11 @@ Facts (layer 2):
   is a type
   resolved to 1 definition(s): `Number`
 
-`block : {⋯}` (AssignmentStatement):
-  at comment-at-end-of-block.wipple:2:1-5:2
-  has type `()`
-
 `{⋯}` (BlockExpression):
   at comment-at-end-of-block.wipple:2:9-5:2
   grouped with `block`
   has type `{Number}`
   is an expression
-
-`42` (ExpressionStatement):
-  at comment-at-end-of-block.wipple:3:3-3:5
-  grouped with `42`, `Number`
-  has type `Number`
 
 `42` (NumberExpression):
   at comment-at-end-of-block.wipple:3:3-3:5
@@ -48,11 +39,6 @@ Facts (layer 2):
   has type `Number -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (do block)` (ExpressionStatement):
-  at comment-at-end-of-block.wipple:7:1-7:16
-  grouped with `show (do block)`
-  has type `()`
 
 `show (do block)` (CallExpression):
   at comment-at-end-of-block.wipple:7:1-7:16

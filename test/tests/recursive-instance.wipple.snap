@@ -8,11 +8,6 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `show`
 
-`show (Some (Some 42))` (ExpressionStatement):
-  at recursive-instance.wipple:1:1-1:22
-  grouped with `show (Some (Some 42))`
-  has type `()`
-
 `show (Some (Some 42))` (CallExpression):
   at recursive-instance.wipple:1:1-1:22
   grouped with `()`, `show (Some (Some 42))`

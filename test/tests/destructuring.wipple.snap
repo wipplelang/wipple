@@ -27,10 +27,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`alice : Person {name : "Alice"}` (AssignmentStatement):
-  at destructuring.wipple:3:1-3:32
-  has type `()`
-
 `Person {name : "Alice"}` (StructureExpression):
   at destructuring.wipple:3:9-3:32
   grouped with `Person`, `alice`, `alice`
@@ -50,10 +46,6 @@ Facts (layer 2):
   has type `Person`
   is a pattern
   resolved to 1 definition(s): `Person`
-
-`Person {name : name} : alice` (AssignmentStatement):
-  at destructuring.wipple:4:1-4:29
-  has type `()`
 
 `name` (VariablePattern):
   at destructuring.wipple:4:16-4:20
@@ -76,11 +68,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show name` (ExpressionStatement):
-  at destructuring.wipple:5:1-5:10
-  grouped with `show name`
-  has type `()`
 
 `show name` (CallExpression):
   at destructuring.wipple:5:1-5:10
@@ -122,10 +109,6 @@ Facts (layer 2):
   is a type
   resolved to 1 definition(s): `String`
 
-`get-name : (Person {name : name}) -> name` (AssignmentStatement):
-  at destructuring.wipple:8:1-8:42
-  has type `()`
-
 `(Person {name : name}) -> name` (FunctionExpression):
   at destructuring.wipple:8:12-8:42
   grouped with `get-name`
@@ -160,10 +143,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`bob : Person {name : "Bob"}` (AssignmentStatement):
-  at destructuring.wipple:10:1-10:28
-  has type `()`
-
 `Person {name : "Bob"}` (StructureExpression):
   at destructuring.wipple:10:7-10:28
   grouped with `Person`, `bob`, `bob`
@@ -184,11 +163,6 @@ Facts (layer 2):
   has type `String -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show (get-name bob)` (ExpressionStatement):
-  at destructuring.wipple:11:1-11:20
-  grouped with `show (get-name bob)`
-  has type `()`
 
 `show (get-name bob)` (CallExpression):
   at destructuring.wipple:11:1-11:20
@@ -265,10 +239,6 @@ Facts (layer 2):
   is a definition
   is a pattern
 
-`charlie : Person {name : "Charlie"}` (AssignmentStatement):
-  at destructuring.wipple:15:1-15:36
-  has type `()`
-
 `Person {name : "Charlie"}` (StructureExpression):
   at destructuring.wipple:15:11-15:36
   grouped with `Person`, `charlie`, `charlie`
@@ -289,11 +259,6 @@ Facts (layer 2):
   has type `Person -> ()`
   is an expression
   resolved to 1 definition(s): `show`
-
-`show charlie` (ExpressionStatement):
-  at destructuring.wipple:16:1-16:13
-  grouped with `show charlie`
-  has type `()`
 
 `show charlie` (CallExpression):
   at destructuring.wipple:16:1-16:13
