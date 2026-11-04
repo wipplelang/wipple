@@ -152,7 +152,7 @@ impl Visit for CallExpression {
                         ("inputs", Some(Link::list("and", inputs))),
                     ],
                 ),
-                is_primary: is_primary,
+                is_primary,
             });
     }
 }
