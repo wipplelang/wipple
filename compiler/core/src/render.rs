@@ -2,7 +2,10 @@ use crate::{
     db::{Db, Node},
     facts::Syntax,
     span::Str,
-    typecheck::{groups::Prefer, ty::Ty},
+    typecheck::{
+        groups::{NodeRank, Prefer, Typed},
+        ty::Ty,
+    },
     util::{Link, LinkKind},
     visit::definitions::Defined,
 };
@@ -237,6 +240,20 @@ impl RenderCtx {
                     });
                 }),
             );
+
+            if let Some(&node) = link.nodes().first()
+                && let Some(Typed(Some(group))) = db.get(node)
+            {
+                let value = group
+                    .entries()
+                    .find(|&(other, rank, _)| other != node && rank == NodeRank::Inherited)
+                    .map_or(node, |(node, _, _)| node);
+
+                links.insert(
+                    format!("{name}@value"),
+                    Box::new(move |ctx| ctx.node(value)),
+                );
+            }
 
             links.insert(
                 format!("{name}@type"),

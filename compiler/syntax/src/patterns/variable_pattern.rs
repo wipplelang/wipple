@@ -5,7 +5,7 @@ use wipple_core::{
     anyhow,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::{DebugInfo, Description, DescriptionEntry},
+    facts::{DebugInfo, Description, DescriptionEntry, DescriptionKind},
     render::Comments,
     span::{Span, Str},
     util::Link,
@@ -62,8 +62,9 @@ impl Visit for VariablePattern {
         visitor.codegen(db, node, VariablePatternCodegen { node });
 
         if value != node {
-            db.get_mut_or_default::<Description>(node)
-                .push(DescriptionEntry {
+            db.get_mut_or_default::<Description>(node).insert(
+                DescriptionKind::Summary,
+                DescriptionEntry {
                     comments: Comments::builtin(
                         node,
                         "[`variable`] has a value of [`value`].",
@@ -73,7 +74,8 @@ impl Visit for VariablePattern {
                         ],
                     ),
                     is_primary: false,
-                });
+                },
+            );
         }
     }
 }

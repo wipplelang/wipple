@@ -64,20 +64,6 @@
             }))
             .filter((card) => card.span != null);
 
-        secondaryCards.sort((a, b) => {
-            if (a.span.line === b.span.line) {
-                if (a.primary && !b.primary) {
-                    return -1;
-                } else if (!a.primary && b.primary) {
-                    return 1;
-                } else {
-                    return a.span.startColumn - b.span.startColumn;
-                }
-            } else {
-                return a.span.line - b.span.line;
-            }
-        });
-
         return [...secondaryCards, primaryCard];
     });
 </script>

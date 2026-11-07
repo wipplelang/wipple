@@ -30,6 +30,7 @@ use wipple_core::{
     db::{Db, DbRef, Node, NodeId},
     default_filter,
     render::RenderMarkdownOptions,
+    util::section,
     visit::definitions::Defined,
 };
 use wipple_feedback::FeedbackWriter;
@@ -552,10 +553,15 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
 
     let mut items = HashMap::new();
     db.for_each_fact::<Defined, ()>(&mut |db, node, _| {
-        if let Some(documentation) = wipple_queries::documentation(&ctx, node) {
+        if let Some(mut documentation) = wipple_queries::documentation(&ctx, node) {
             let Some(name) = documentation.name else {
                 return ControlFlow::Continue(());
             };
+
+            // Only show the summary, hiding additional sections
+            documentation.comments.comments = section(&documentation.comments.comments, None)
+                .unwrap_or_default()
+                .to_vec();
 
             let mut writer = FeedbackWriter::default();
             writer.comments(db, &documentation.comments);

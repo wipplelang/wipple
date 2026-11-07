@@ -1,6 +1,7 @@
 use crate::{QueryCtx, Trace};
 use wipple_core::{
     db::Node,
+    facts::DescriptionKind,
     render::Comments,
     typecheck::bounds::{ResolvedBound, ResolvedBounds},
     util::get_links,
@@ -64,7 +65,7 @@ pub fn error_instances<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ErrorInstance<'
                 bound,
                 is_default: instance.default,
                 comments,
-                trace: Trace::collect(db, node),
+                trace: Trace::collect(db, node, DescriptionKind::Summary),
             })
         })
         .collect()

@@ -1,5 +1,3 @@
-#![expect(clippy::clone_on_copy)]
-
 use crate::CompileResult;
 use std::{
     collections::{BTreeMap, HashMap},
@@ -10,7 +8,7 @@ use wasm_bindgen::prelude::*;
 use wipple_core::{
     db::{Db, Node},
     default_filter,
-    facts::Syntax,
+    facts::{DescriptionKind, Syntax},
     render::{ExplainOptions, RenderCtx, RenderMarkdownOptions, RenderOptions},
     span::Span,
     typecheck::ty::Ty,
@@ -178,7 +176,8 @@ impl Ide {
             .get(&self.result.db)
             .span(&self.result.db);
 
-        let trace = wipple_queries::Trace::collect(&self.query_ctx(), node);
+        let trace =
+            wipple_queries::Trace::collect(&self.query_ctx(), node, DescriptionKind::Summary);
 
         let mut writer = FeedbackWriter::with_options(render_options.clone());
         writer.extend_trace(&self.result.db, &trace);

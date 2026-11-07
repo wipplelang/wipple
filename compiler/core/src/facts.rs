@@ -5,7 +5,7 @@ use crate::{
     render::{Comments, Render, RenderCtx},
 };
 use serde::{Deserialize, Serialize};
-use std::ops::{Deref, DerefMut};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Syntax(pub AstKey);
@@ -64,7 +64,14 @@ impl Fact for DebugInfo {}
 impl Render for DebugInfo {}
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Description(pub Vec<DescriptionEntry>);
+pub struct Description(BTreeMap<DescriptionKind, Vec<DescriptionEntry>>);
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+pub enum DescriptionKind {
+    #[default]
+    Summary,
+    DataFlow,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DescriptionEntry {
@@ -77,16 +84,21 @@ impl Fact for Description {}
 
 impl Render for Description {}
 
-impl Deref for Description {
-    type Target = Vec<DescriptionEntry>;
+impl Description {
+    pub fn entries(&self, kind: DescriptionKind) -> Option<&[DescriptionEntry]> {
+        self.0.get(&kind).map(|entries| entries.as_slice())
+    }
 
-    fn deref(&self) -> &Self::Target {
-        &self.0
+    pub fn insert(&mut self, kind: DescriptionKind, entry: DescriptionEntry) {
+        self.0.entry(kind).or_default().push(entry);
     }
 }
 
-impl DerefMut for Description {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+impl DescriptionKind {
+    pub fn comments_section(&self) -> Option<&'static str> {
+        match self {
+            DescriptionKind::Summary => None,
+            DescriptionKind::DataFlow => Some("Data Flow"),
+        }
     }
 }

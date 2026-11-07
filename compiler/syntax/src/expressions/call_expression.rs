@@ -7,7 +7,7 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Fact, Node},
-    facts::{Description, DescriptionEntry},
+    facts::{Description, DescriptionEntry, DescriptionKind},
     render::{Comments, Render},
     span::Span,
     typecheck::{
@@ -142,18 +142,20 @@ impl Visit for CallExpression {
                 })
             });
 
-        db.get_mut_or_default::<Description>(node)
-            .push(DescriptionEntry {
+        db.get_mut_or_default::<Description>(node).insert(
+            DescriptionKind::Summary,
+            DescriptionEntry {
                 comments: Comments::builtin(
                     node,
                     "[`function`] is called with [`inputs`].",
                     [
                         ("function", Some(Link::node(function))),
-                        ("inputs", Some(Link::list("and", inputs))),
+                        ("inputs", Some(Link::list("and", inputs.iter().copied()))),
                     ],
                 ),
                 is_primary,
-            });
+            },
+        );
     }
 }
 

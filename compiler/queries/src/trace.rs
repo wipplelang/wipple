@@ -2,7 +2,7 @@ use crate::QueryCtx;
 use std::{collections::BTreeSet, ops::ControlFlow};
 use wipple_core::{
     db::{Db, Node},
-    facts::Description,
+    facts::{Description, DescriptionKind},
     render::Comments,
     typecheck::{
         constraints::ConstraintConsequence,
@@ -11,7 +11,7 @@ use wipple_core::{
         solver::TypeDependsOn,
         ty::Ty,
     },
-    util::{get_links, linked_nodes_for},
+    util::{get_links, linked_nodes_for, section},
     visit::{DefinitionConstraints, Resolved, definitions::Defined},
 };
 
@@ -27,23 +27,27 @@ pub struct TraceEntry {
 pub struct Trace(pub Vec<TraceEntry>);
 
 impl Trace {
-    pub fn collect(ctx: &QueryCtx<'_>, node: Node) -> Trace {
+    pub fn collect(ctx: &QueryCtx<'_>, node: Node, description_kind: DescriptionKind) -> Trace {
         let mut entries = Vec::new();
         collect_traces(
             ctx,
+            node,
+            description_kind,
             node,
             &mut |_, node| ctx.filter(node),
             &mut BTreeSet::new(),
             &mut entries,
         );
 
-        // Remove top-level duplicate consequences (nested consequences are
-        // deduplicated by `elaborate_consequences`)
         let mut seen_consequences = BTreeSet::new();
         for entry in &mut entries {
+            // Remove top-level duplicate consequences (nested consequences are
+            // deduplicated by `elaborate_consequences`)
             entry
                 .consequences
                 .retain(|consequence| seen_consequences.insert(consequence.clone()));
+
+            entry.relevant.sort();
         }
 
         Trace(entries)
@@ -53,6 +57,8 @@ impl Trace {
 fn collect_traces(
     db: &Db,
     node: Node,
+    description_kind: DescriptionKind,
+    primary_node: Node,
     filter: &mut dyn FnMut(&Db, Node) -> bool,
     seen_nodes: &mut BTreeSet<Node>,
     entries: &mut Vec<TraceEntry>,
@@ -73,32 +79,39 @@ fn collect_traces(
 
             let links = get_links(db, definition_node, node, &mut *filter);
 
+            let comments = section(definition.comments(), description_kind.comments_section())
+                .or_else(|| section(definition.comments(), None))
+                .unwrap_or_default()
+                .to_vec();
+
             Some((
                 is_primary,
                 Comments {
                     node,
-                    comments: definition.comments().to_vec(),
+                    comments,
                     links: links.clone(),
                 },
             ))
         })
-        .chain(db.get(node).into_iter().flat_map(|Description(entries)| {
-            entries
-                .iter()
-                .map(|entry| (entry.is_primary, entry.comments.clone()))
-        }))
+        .chain(
+            db.get::<Description>(node)
+                .into_iter()
+                .flat_map(|description| {
+                    description
+                        .entries(description_kind)
+                        .or_else(|| description.entries(DescriptionKind::default()))
+                        .unwrap_or_default()
+                        .iter()
+                        .map(|entry| (entry.is_primary, entry.comments.clone()))
+                }),
+        )
         .chain([(false, Comments::empty_for(node))])
         .collect::<Vec<_>>();
 
-    let mut relevant = BTreeSet::new();
+    let mut relevant = Vec::new();
 
     for (is_primary, comments) in comments {
-        let mut entry_relevant = BTreeSet::from([comments.node]);
-
-        for link in comments.links.values() {
-            entry_relevant.extend(link.nodes());
-            entry_relevant.extend(link.related.iter().copied());
-        }
+        let mut entry_relevant = vec![comments.node];
 
         // Add all the values from the use site, in case there is no comment
         if let Some(InstantiatedTypes(substitutions)) = db.get(node) {
@@ -109,6 +122,11 @@ fn collect_traces(
             }
         }
 
+        for link in comments.links.values() {
+            entry_relevant.extend(link.nodes());
+            entry_relevant.extend(link.related.iter().copied());
+        }
+
         let mut consequences = if db.get::<DefinitionConstraints>(node).is_none() {
             entry_relevant.extend(db.consequences.relevant(node));
             db.consequences.responsible_for(node).cloned().collect()
@@ -117,9 +135,14 @@ fn collect_traces(
             Vec::new()
         };
 
-        consequences =
-            elaborate_consequences(db, consequences, &mut BTreeSet::new(), &mut entry_relevant)
-                .collect();
+        consequences = elaborate_consequences(
+            db,
+            consequences,
+            primary_node,
+            &mut BTreeSet::new(),
+            &mut entry_relevant,
+        )
+        .collect();
 
         relevant.extend(entry_relevant.iter().copied());
 
@@ -141,17 +164,26 @@ fn collect_traces(
     }
 
     for child in relevant {
-        collect_traces(db, child, filter, seen_nodes, entries);
+        collect_traces(
+            db,
+            child,
+            description_kind,
+            primary_node,
+            filter,
+            seen_nodes,
+            entries,
+        );
     }
 }
 
 fn elaborate_consequences(
     db: &Db,
     consequences: impl IntoIterator<Item = ConstraintConsequence>,
+    primary_node: Node,
     seen: &mut BTreeSet<ConstraintConsequence>,
-    relevant: &mut BTreeSet<Node>,
+    relevant: &mut Vec<Node>,
 ) -> impl Iterator<Item = ConstraintConsequence> {
-    let consequences = consequences.into_iter().flat_map(|consequence| {
+    let consequences = consequences.into_iter().flat_map(move |consequence| {
         relevant.extend(consequence.relevant_nodes());
 
         let mut dependents = Vec::new();
@@ -175,8 +207,9 @@ fn elaborate_consequences(
                 ControlFlow::Continue(())
             });
 
-            let elaborated = elaborate_consequences(db, dependents.drain(..), seen, relevant)
-                .collect::<Vec<_>>();
+            let elaborated =
+                elaborate_consequences(db, dependents.drain(..), primary_node, seen, relevant)
+                    .collect::<Vec<_>>();
 
             dependents.extend(elaborated);
         }
@@ -188,11 +221,12 @@ fn elaborate_consequences(
     });
 
     let mut seen_grouped_nodes = BTreeSet::new();
-
     consequences.filter(move |consequence| {
-        consequence
-            .relevant_nodes()
-            .into_iter()
-            .any(|node| seen_grouped_nodes.insert(node))
+        let relevant_nodes = consequence.relevant_nodes();
+
+        relevant_nodes.contains(&primary_node)
+            && relevant_nodes
+                .into_iter()
+                .any(|node| seen_grouped_nodes.insert(node))
     })
 }

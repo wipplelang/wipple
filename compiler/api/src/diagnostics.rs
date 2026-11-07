@@ -1,5 +1,3 @@
-#![expect(clippy::clone_on_copy)]
-
 use crate::{
     CompileResult,
     graph::{Graph, convert_graph},

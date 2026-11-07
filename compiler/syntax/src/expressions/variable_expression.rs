@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use wipple_core::{
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::{Description, DescriptionEntry},
+    facts::{Description, DescriptionEntry, DescriptionKind},
     render::Comments,
     span::{Span, Str},
     typecheck::{
@@ -96,15 +96,17 @@ impl Visit for VariableExpression {
                     },
                 );
 
-                db.get_mut_or_default::<Description>(node)
-                    .push(DescriptionEntry {
+                db.get_mut_or_default::<Description>(node).insert(
+                    DescriptionKind::Summary,
+                    DescriptionEntry {
                         comments: Comments::builtin(
                             node,
                             "[`definition`] is used here.",
                             [("definition", Some(Link::node(definition_node)))],
                         ),
                         is_primary: false,
-                    });
+                    },
+                );
             }
             Definition::Constant { has_comments } => {
                 let substitutions = visitor.substitutions(
@@ -126,8 +128,9 @@ impl Visit for VariableExpression {
                     },
                 );
 
-                db.get_mut_or_default::<Description>(node)
-                    .push(DescriptionEntry {
+                db.get_mut_or_default::<Description>(node).insert(
+                    DescriptionKind::Summary,
+                    DescriptionEntry {
                         comments: Comments::builtin(
                             definition_node,
                             "[`use`] is defined as a [`definition@type`].",
@@ -137,7 +140,8 @@ impl Visit for VariableExpression {
                             ],
                         ),
                         is_primary: !has_comments,
-                    });
+                    },
+                );
             }
         }
     }

@@ -14,6 +14,20 @@ use std::{
     slice,
 };
 
+pub fn section<'a, S: AsRef<str>>(mut comments: &'a [S], section: Option<&str>) -> Option<&'a [S]> {
+    if let Some(section) = section {
+        let heading = format!("# {section}");
+
+        comments = comments
+            .splitn(2, |line| line.as_ref().trim() == heading)
+            .nth(1)?;
+    }
+
+    comments
+        .splitn(2, |line| line.as_ref().trim().starts_with('#'))
+        .next()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Link {
     pub kind: LinkKind,

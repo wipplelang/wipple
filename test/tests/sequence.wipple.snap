@@ -175,7 +175,9 @@ note:
 7 | (filter positive?) box
   |  ------
 
-`filter` keeps the elements in `box` that satisfy `positive?`.
+`filter` passes the `"abc"` in `box` to `positive?`.
+
+This means `"abc"` must have the same type as `n`.
 
 note: 
   --> sequence.wipple:6:19

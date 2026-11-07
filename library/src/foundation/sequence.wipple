@@ -79,6 +79,10 @@ transform : f -> container -> do {
 }
 
 -- [`filter`] keeps the elements in [`container`] that satisfy [`condition`].
+--
+-- # Data Flow
+--
+-- [`filter`] passes the [`element@value`] in [`container`] to [`condition`].
 filter :: (condition :: (element -> Boolean)) -> container -> Sequence element where (As-Sequence container element)
 filter : include? -> container -> do {
   base : As-Sequence container
@@ -205,6 +209,10 @@ instance (From-Sequence () ()) : sequence -> loop (when (next sequence) {
 })
 
 -- [`each`] calls [`action`] for each element in [`container`].
+--
+-- # Data Flow
+--
+-- [`each`] passes the [`element@value`] in [`container`] to [`action`].
 [connect : container -> element ("element")]
 each :: (action :: (element -> ())) -> container -> () where (As-Sequence container element)
 each : action -> container -> container . transform action . collect

@@ -4,7 +4,7 @@ use wipple_core::{
     anyhow,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::{Description, DescriptionEntry},
+    facts::{Description, DescriptionEntry, DescriptionKind},
     render::Comments,
     span::{Span, Str},
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
@@ -85,8 +85,9 @@ impl Visit for SetPattern {
             },
         );
 
-        db.get_mut_or_default::<Description>(node)
-            .push(DescriptionEntry {
+        db.get_mut_or_default::<Description>(node).insert(
+            DescriptionKind::Summary,
+            DescriptionEntry {
                 comments: Comments::builtin(
                     node,
                     "[`variable`] is changed to [`value`] here.",
@@ -96,7 +97,8 @@ impl Visit for SetPattern {
                     ],
                 ),
                 is_primary: false,
-            });
+            },
+        );
     }
 }
 

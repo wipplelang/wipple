@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::{Description, DescriptionEntry},
+    facts::{Description, DescriptionEntry, DescriptionKind},
     render::Comments,
     span::{Span, Str},
     util::Link,
@@ -63,15 +63,17 @@ impl Visit for StringExpression {
             },
         );
 
-        db.get_mut_or_default::<Description>(node)
-            .push(DescriptionEntry {
+        db.get_mut_or_default::<Description>(node).insert(
+            DescriptionKind::Summary,
+            DescriptionEntry {
                 comments: Comments::builtin(
                     node,
                     "[`string`] is a [`String`].",
                     [("string", Some(Link::node(node)))],
                 ),
                 is_primary: false,
-            });
+            },
+        );
     }
 }
 
