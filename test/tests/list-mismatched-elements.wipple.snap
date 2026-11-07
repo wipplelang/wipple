@@ -92,7 +92,7 @@ note:
 2 | my-list . each show
   |           ----
 
-`each` calls `show` for each element in `my-list`.
+`each` passes the `1` in `my-list` to `show`.
 
 note: 
   --> list-mismatched-elements.wipple:2:16
