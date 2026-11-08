@@ -60,7 +60,7 @@ Facts (layer 2):
 
 `sports` (VisitAs):
   at set.wipple:3:7-3:13
-  grouped with `collection`, `sports`
+  grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
@@ -81,7 +81,7 @@ Facts (layer 2):
 
 `contains? "Basketball"` (CallExpression):
   at set.wipple:3:16-3:38
-  grouped with `Boolean`, `sports . contains? "Basketball"`
+  grouped with `Boolean`, `Boolean`, `sports . contains? "Basketball"`
   has type `Boolean`
   is an expression
 
@@ -113,7 +113,7 @@ Facts (layer 2):
 
 `sports` (VisitAs):
   at set.wipple:4:7-4:13
-  grouped with `collection`, `sports`
+  grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
@@ -134,7 +134,7 @@ Facts (layer 2):
 
 `contains? "Soccer"` (CallExpression):
   at set.wipple:4:16-4:34
-  grouped with `Boolean`, `sports . contains? "Soccer"`
+  grouped with `Boolean`, `Boolean`, `sports . contains? "Soccer"`
   has type `Boolean`
   is an expression
 
@@ -166,7 +166,7 @@ Facts (layer 2):
 
 `sports` (VisitAs):
   at set.wipple:5:7-5:13
-  grouped with `collection`, `sports`
+  grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
@@ -187,7 +187,7 @@ Facts (layer 2):
 
 `contains? "Golf"` (CallExpression):
   at set.wipple:5:16-5:32
-  grouped with `Boolean`, `sports . contains? "Golf"`
+  grouped with `Boolean`, `Boolean`, `sports . contains? "Golf"`
   has type `Boolean`
   is an expression
 
@@ -219,7 +219,7 @@ Facts (layer 2):
 
 `sports` (VisitAs):
   at set.wipple:6:7-6:13
-  grouped with `collection`, `sports`
+  grouped with `collection`, `sports`, `collection`
   has type `Set String`
   is an expression
   resolved to 1 definition(s): `sports`
@@ -240,7 +240,7 @@ Facts (layer 2):
 
 `contains? "Baseball"` (CallExpression):
   at set.wipple:6:16-6:36
-  grouped with `Boolean`, `sports . contains? "Baseball"`
+  grouped with `Boolean`, `Boolean`, `sports . contains? "Baseball"`
   has type `Boolean`
   is an expression
 

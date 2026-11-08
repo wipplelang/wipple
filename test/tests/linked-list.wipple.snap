@@ -67,7 +67,7 @@ Facts (layer 2):
 
 `value` (TypeParameter):
   at linked-list.wipple:6:24-6:29
-  grouped with `value`, `x`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -89,7 +89,7 @@ Facts (layer 2):
 
 `result` (TypeParameter):
   at linked-list.wipple:6:40-6:46
-  grouped with `result`, `f x result`
+  grouped with `result`, `result`
   has type `result`
   is a type
   resolved to 1 definition(s): `result`
@@ -231,20 +231,20 @@ Facts (layer 2):
 
 `f x result` (CallExpression):
   at linked-list.wipple:9:42-9:52
-  grouped with `result`, `result`, `result`
+  grouped with `result`, `result`
   has type `result`
   is an expression
 
 `x` (VariableExpression):
   at linked-list.wipple:9:44-9:45
-  grouped with `x`, `value`, `value`
+  grouped with `x`, `value`
   has type `value`
   is an expression
   resolved to 1 definition(s): `x`
 
 `result` (VariableExpression):
   at linked-list.wipple:9:46-9:52
-  grouped with `result`, `result`, `result`
+  grouped with `result`, `result`
   has type `result`
   is an expression
   resolved to 1 definition(s): `result`

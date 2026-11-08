@@ -197,7 +197,7 @@ Facts (layer 2):
   at bounds-dont-influence-other-bounds.wipple:10:16-10:17
   grouped with `b`
   is a type
-  missing type (group: `_`, `b`, `b`, `b`, `value`, `value`)
+  missing type (group: `value`, `value`, `b`, `b`, `b`, `_`)
 
 
 

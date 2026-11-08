@@ -149,7 +149,7 @@ Facts (layer 2):
 
 `seen` (VisitAs):
   at remove-duplicates.wipple:4:20-4:24
-  grouped with `collection`, `seen`, `a`
+  grouped with `collection`, `seen`, `collection`
   has type `Set element`
   is an expression
   resolved to 1 definition(s): `seen`
@@ -176,7 +176,7 @@ Facts (layer 2):
 
 `(not contains?) item` (CallExpression):
   at remove-duplicates.wipple:4:27-4:47
-  grouped with `Boolean`, `seen . (not contains?) item`, `b`
+  grouped with `Boolean`, `Boolean`, `seen . (not contains?) item`
   has type `Boolean`
   is an expression
 
@@ -243,7 +243,7 @@ Facts (layer 2):
 
 `seen` (VisitAs):
   at remove-duplicates.wipple:5:16-5:20
-  grouped with `set_`, `seen`
+  grouped with `set_`, `seen`, `set_`
   has type `Set element`
   is an expression
   resolved to 1 definition(s): `seen`
@@ -264,7 +264,7 @@ Facts (layer 2):
 
 `insert item` (CallExpression):
   at remove-duplicates.wipple:5:23-5:34
-  grouped with `Set element`, `seen . insert item`
+  grouped with `Set element`, `Set element`, `seen . insert item`
   has type `Set element`
   is an expression
 
@@ -382,7 +382,7 @@ Facts (layer 2):
 
 `numbers . remove-duplicates` (VisitAs):
   at remove-duplicates.wipple:11:1-11:28
-  grouped with `container`, `remove-duplicates`
+  grouped with `container`, `remove-duplicates`, `container`
   has type `Sequence Number`
   is an expression
 
@@ -416,7 +416,7 @@ Facts (layer 2):
 
 `each show` (CallExpression):
   at remove-duplicates.wipple:11:31-11:40
-  grouped with `()`, `numbers . remove-duplicates . each show`
+  grouped with `()`, `()`, `numbers . remove-duplicates . each show`
   has type `()`
   is an expression
 

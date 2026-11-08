@@ -8,7 +8,7 @@ Facts (layer 2):
 
 `1, 2, 3` (VisitAs):
   at mismatched-inferred-params.wipple:1:2-1:9
-  grouped with `container`, `1, 2, 3`
+  grouped with `container`, `1, 2, 3`, `container`
   has type `List Number`
   is an expression
 
@@ -40,7 +40,7 @@ Facts (layer 2):
 
 `transform ((x :: String) -> x)` (CallExpression):
   at mismatched-inferred-params.wipple:1:13-1:43
-  grouped with `Sequence output`, `1, 2, 3) . transform ((x :: String) -> x)`
+  grouped with `Sequence output`, `Sequence output`, `1, 2, 3) . transform ((x :: String) -> x)`
   has type `Sequence Number`
   is an expression
 
@@ -87,9 +87,9 @@ note:
 
 `1, 2, 3` is a `List Number`.
 
-This means `2` must have the same type as `1`.
+This means `1` must have the same type as `2`.
 
-This means `3` must have the same type as `1`.
+This means `1` must have the same type as `3`.
 
 note: 
   --> mismatched-inferred-params.wipple:1:13
@@ -98,6 +98,10 @@ note:
   |             ---------
 
 `transform` transforms the elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`.
+
+This means `1` must have the same type as `x`.
+
+This means `1` must have the same type as `x`.
 
 note: 
   --> mismatched-inferred-params.wipple:1:30
@@ -113,6 +117,6 @@ error:
 1 | (1, 2, 3) . transform ((x :: String) -> x)
   |  ^
 
-`1` is a `Number`, but it is used as a `String`.
+`1` is a `Number`, but it must also be a `String`.
 
 Help: use `--explain=full` to show more information

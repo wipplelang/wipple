@@ -4,20 +4,20 @@ Facts (layer 2):
   at constant-mismatched-types.wipple:1:1-1:2
   grouped with `Number`, `"42"`
   has definition constraints
-  has type `Number` or `String`
+  has type `String` or `Number`
   is a definition
 
 `Number` (NamedType):
   at constant-mismatched-types.wipple:1:6-1:12
   grouped with `x`
-  has type `Number` or `String`
+  has type `String` or `Number`
   is a type
   resolved to 1 definition(s): `Number`
 
 `"42"` (StringExpression):
   at constant-mismatched-types.wipple:2:5-2:9
   grouped with `"42"`, `x`
-  has type `Number` or `String`
+  has type `String` or `Number`
   is an expression
 
 
@@ -28,6 +28,6 @@ error:
 1 | x :: Number
   | ^
 
-`x` and `"42"` must have the same type, but `x` is a `Number` and `"42"` is a `String`.
+`x` is a `Number`, but it must also be a `String`.
 
 Help: use `--explain=full` to show more information

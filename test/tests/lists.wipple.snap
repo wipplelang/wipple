@@ -299,7 +299,7 @@ Facts (layer 2):
 
 `my-list` (VisitAs):
   at lists.wipple:7:7-7:14
-  grouped with `list`, `my-list`
+  grouped with `list`, `my-list`, `list`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `my-list`
@@ -319,7 +319,7 @@ Facts (layer 2):
 
 `nth 1` (CallExpression):
   at lists.wipple:7:17-7:22
-  grouped with `Maybe element`, `my-list . nth 1`
+  grouped with `Maybe element`, `Maybe element`, `my-list . nth 1`
   has type `Maybe Number`
   is an expression
 

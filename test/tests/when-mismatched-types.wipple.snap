@@ -3,8 +3,8 @@ Facts (layer 2):
 `show` (VariableExpression):
   at when-mismatched-types.wipple:1:1-1:5
   grouped with `value -> ()`
-  has bound(s) `Describe` `(Number or String)` (resolved as `instance (Describe Number)`)
-  has type `(Number or String) -> ()`
+  has bound(s) `Describe` `(String or Number)` (resolved as `instance (Describe String)`)
+  has type `(String or Number) -> ()`
   is an expression
   resolved to 1 definition(s): `show`
 
@@ -17,7 +17,7 @@ Facts (layer 2):
 `when True {⋯}` (WhenExpression):
   at when-mismatched-types.wipple:1:7-4:2
   grouped with `42`, `"hi"`, `value`
-  has type `Number` or `String`
+  has type `String` or `Number`
   is an expression
 
 `True` (ConstructorExpression):
@@ -37,7 +37,7 @@ Facts (layer 2):
 `42` (NumberExpression):
   at when-mismatched-types.wipple:2:11-2:13
   grouped with `42`, `when True {⋯}`
-  has type `Number` or `String`
+  has type `String` or `Number`
   is an expression
 
 `False` (ConstructorPattern):
@@ -50,7 +50,7 @@ Facts (layer 2):
 `"hi"` (StringExpression):
   at when-mismatched-types.wipple:3:12-3:16
   grouped with `"hi"`, `when True {⋯}`
-  has type `Number` or `String`
+  has type `String` or `Number`
   is an expression
 
 
@@ -73,6 +73,6 @@ error:
 4 | | })
   | \-^
 
-`42` and `"hi"` must have the same type, but `42` is a `Number` and `"hi"` is a `String`.
+`when True {⋯}` is a `String` or a `Number`, but it can only be one of these.
 
 Help: use `--explain=full` to show more information

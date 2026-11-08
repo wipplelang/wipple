@@ -40,7 +40,7 @@ Facts (layer 2):
 
 `list . enumerate` (VisitAs):
   at enumerate.wipple:2:1-2:17
-  grouped with `container`, `enumerate`
+  grouped with `container`, `enumerate`, `container`
   has type `Sequence (Number; String)`
   is an expression
 
@@ -74,7 +74,7 @@ Facts (layer 2):
 
 `each ((n; c) -> show ("_: _" n c))` (CallExpression):
   at enumerate.wipple:2:20-2:54
-  grouped with `()`, `list . enumerate . each ((n; c) -> show ("_: _" n c))`
+  grouped with `()`, `()`, `list . enumerate . each ((n; c) -> show ("_: _" n c))`
   has type `()`
   is an expression
 

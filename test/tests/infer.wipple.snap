@@ -52,7 +52,7 @@ Facts (layer 2):
 
 `languages` (VisitAs):
   at infer.wipple:3:15-3:24
-  grouped with `container`, `languages`
+  grouped with `container`, `languages`, `container`
   has type `List String`
   is an expression
   resolved to 1 definition(s): `languages`
@@ -73,7 +73,7 @@ Facts (layer 2):
 
 `filter (name -> count name < 5)` (CallExpression):
   at infer.wipple:3:27-3:58
-  grouped with `Sequence element`, `languages . filter (name -> count name < 5)`
+  grouped with `Sequence element`, `Sequence element`, `languages . filter (name -> count name < 5)`
   has type `Sequence String`
   is an expression
 
@@ -139,7 +139,7 @@ Facts (layer 2):
 
 `short-names` (VisitAs):
   at infer.wipple:4:1-4:12
-  grouped with `container`, `short-names`
+  grouped with `container`, `short-names`, `container`
   has type `Sequence String`
   is an expression
   resolved to 1 definition(s): `short-names`
@@ -160,7 +160,7 @@ Facts (layer 2):
 
 `each show` (CallExpression):
   at infer.wipple:4:15-4:24
-  grouped with `()`, `short-names . each show`
+  grouped with `()`, `()`, `short-names . each show`
   has type `()`
   is an expression
 

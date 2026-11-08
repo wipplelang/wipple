@@ -39,18 +39,32 @@ impl Render for IsBound {}
 pub struct BoundConstraint {
     pub node: Node,
     pub bound: Bound,
+    pub assume: bool,
 }
 
 impl BoundConstraint {
     pub fn new(node: Node, bound: Bound) -> Self {
-        BoundConstraint { node, bound }
+        BoundConstraint {
+            node,
+            bound,
+            assume: false,
+        }
+    }
+
+    pub fn assume(mut self, assume: bool) -> Self {
+        self.assume = assume;
+        self
     }
 }
 
 #[typetag::serde]
 impl Constraint for BoundConstraint {
     fn kind(&self) -> ConstraintKind {
-        ConstraintKind::Bound
+        if self.assume {
+            ConstraintKind::Ty
+        } else {
+            ConstraintKind::Bound
+        }
     }
 
     fn instantiate(
@@ -79,7 +93,11 @@ impl Constraint for BoundConstraint {
             is_optional: self.bound.is_optional,
         };
 
-        Some(Box::new(BoundConstraint { node, bound }))
+        Some(Box::new(BoundConstraint {
+            node,
+            bound,
+            assume: self.assume,
+        }))
     }
 
     fn run(self: Box<Self>, db: &mut Db, solver: &mut Solver) -> RunResult {

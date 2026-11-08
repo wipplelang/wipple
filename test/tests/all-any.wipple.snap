@@ -22,7 +22,7 @@ Facts (layer 2):
 
 `1, 2, 3` (VisitAs):
   at all-any.wipple:1:8-1:15
-  grouped with `collection`, `1, 2, 3`
+  grouped with `collection`, `1, 2, 3`, `collection`
   has type `List Number`
   is an expression
 
@@ -54,7 +54,7 @@ Facts (layer 2):
 
 `all? (n -> n > 0)` (CallExpression):
   at all-any.wipple:1:19-1:36
-  grouped with `Boolean`, `1, 2, 3) . all? (n -> n > 0)`
+  grouped with `Boolean`, `Boolean`, `1, 2, 3) . all? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
@@ -126,7 +126,7 @@ Facts (layer 2):
 
 `1, -2, 3` (VisitAs):
   at all-any.wipple:2:8-2:16
-  grouped with `collection`, `1, -2, 3`
+  grouped with `collection`, `1, -2, 3`, `collection`
   has type `List Number`
   is an expression
 
@@ -158,7 +158,7 @@ Facts (layer 2):
 
 `all? (n -> n > 0)` (CallExpression):
   at all-any.wipple:2:20-2:37
-  grouped with `Boolean`, `1, -2, 3) . all? (n -> n > 0)`
+  grouped with `Boolean`, `Boolean`, `1, -2, 3) . all? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
@@ -230,7 +230,7 @@ Facts (layer 2):
 
 `1, -2, 3` (VisitAs):
   at all-any.wipple:3:8-3:16
-  grouped with `collection`, `1, -2, 3`
+  grouped with `collection`, `1, -2, 3`, `collection`
   has type `List Number`
   is an expression
 
@@ -262,7 +262,7 @@ Facts (layer 2):
 
 `any? (n -> n > 0)` (CallExpression):
   at all-any.wipple:3:20-3:37
-  grouped with `Boolean`, `1, -2, 3) . any? (n -> n > 0)`
+  grouped with `Boolean`, `Boolean`, `1, -2, 3) . any? (n -> n > 0)`
   has type `Boolean`
   is an expression
 
@@ -334,7 +334,7 @@ Facts (layer 2):
 
 `-1, -2, -3` (VisitAs):
   at all-any.wipple:4:8-4:18
-  grouped with `collection`, `-1, -2, -3`
+  grouped with `collection`, `-1, -2, -3`, `collection`
   has type `List Number`
   is an expression
 
@@ -366,7 +366,7 @@ Facts (layer 2):
 
 `any? (n -> n > 0)` (CallExpression):
   at all-any.wipple:4:22-4:39
-  grouped with `Boolean`, `-1, -2, -3) . any? (n -> n > 0)`
+  grouped with `Boolean`, `Boolean`, `-1, -2, -3) . any? (n -> n > 0)`
   has type `Boolean`
   is an expression
 

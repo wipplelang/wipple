@@ -54,7 +54,7 @@ impl Group {
         self.0.iter().any(|(other, _, _)| *other == node)
     }
 
-    pub fn unify(
+    pub fn merge(
         &mut self,
         db: &mut Db,
         other: &Self,
@@ -169,15 +169,6 @@ impl Groups {
 
     pub fn remove_existing(&mut self, index: usize) -> Group {
         self.0.insert(index, None).unwrap().unwrap()
-    }
-
-    pub fn merge(
-        db: &mut Db,
-        old_group: Group,
-        new_group: &mut Group,
-        unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy) -> bool,
-    ) {
-        new_group.unify(db, &old_group, unify);
     }
 
     pub fn indices(&self) -> impl Iterator<Item = usize> {

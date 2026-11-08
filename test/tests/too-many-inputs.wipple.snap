@@ -48,6 +48,6 @@ error:
 1 | show 1 2 3
   | ^^^^^^^^^^
 
-`show` is called with `1`, `2`, and `3`. But `show` accepts 1 input, not 3.
+`show` is called with `1`, `2`, and `3`. But `value -> ()` accepts 1 input, not 3.
 
 Help: use `--explain=full` to show more information

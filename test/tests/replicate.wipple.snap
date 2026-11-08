@@ -2,13 +2,13 @@ Facts (layer 2):
 
 `"abc"` (VisitAs):
   at replicate.wipple:1:1-1:6
-  grouped with `element`, `"abc"`
+  grouped with `element`, `"abc"`, `element`
   has type `String`
   is an expression
 
 `"abc" . replicate 3` (VisitAs):
   at replicate.wipple:1:1-1:20
-  grouped with `container`, `replicate 3`
+  grouped with `container`, `replicate 3`, `container`
   has type `Sequence String`
   is an expression
 
@@ -27,7 +27,7 @@ Facts (layer 2):
 
 `replicate 3` (CallExpression):
   at replicate.wipple:1:9-1:20
-  grouped with `Sequence element`, `"abc" . replicate 3`
+  grouped with `Sequence element`, `Sequence element`, `"abc" . replicate 3`
   has type `Sequence String`
   is an expression
 
@@ -53,7 +53,7 @@ Facts (layer 2):
 
 `each show` (CallExpression):
   at replicate.wipple:1:23-1:32
-  grouped with `()`, `"abc" . replicate 3 . each show`
+  grouped with `()`, `()`, `"abc" . replicate 3 . each show`
   has type `()`
   is an expression
 

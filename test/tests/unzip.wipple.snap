@@ -34,7 +34,7 @@ Facts (layer 2):
 
 `1` (NumberExpression):
   at unzip.wipple:1:18-1:19
-  grouped with `1`, `2`, `3`, `_`, `_`, `_`, `_`, `_`, `_`, `left-element`
+  grouped with `1`, `2`, `3`, `left-element`
   has type `Number`
   is an expression
 
@@ -46,7 +46,7 @@ Facts (layer 2):
 
 `"a"` (StringExpression):
   at unzip.wipple:1:21-1:24
-  grouped with `"a"`, `"b"`, `"c"`, `_`, `_`, `_`, `_`, `_`, `_`, `right-element`
+  grouped with `"a"`, `"b"`, `"c"`, `right-element`
   has type `String`
   is an expression
 
@@ -154,7 +154,7 @@ Facts (layer 2):
 
 `left` (VisitAs):
   at unzip.wipple:4:1-4:5
-  grouped with `container`, `left`
+  grouped with `container`, `left`, `container`
   has type `List Number`
   is an expression
   resolved to 1 definition(s): `left`
@@ -175,7 +175,7 @@ Facts (layer 2):
 
 `each show` (CallExpression):
   at unzip.wipple:4:8-4:17
-  grouped with `()`, `left . each show`
+  grouped with `()`, `()`, `left . each show`
   has type `()`
   is an expression
 
@@ -215,7 +215,7 @@ Facts (layer 2):
 
 `right` (VisitAs):
   at unzip.wipple:7:1-7:6
-  grouped with `container`, `right`
+  grouped with `container`, `right`, `container`
   has type `List String`
   is an expression
   resolved to 1 definition(s): `right`
@@ -236,7 +236,7 @@ Facts (layer 2):
 
 `each show` (CallExpression):
   at unzip.wipple:7:9-7:18
-  grouped with `()`, `right . each show`
+  grouped with `()`, `()`, `right . each show`
   has type `()`
   is an expression
 

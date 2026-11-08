@@ -92,14 +92,14 @@ Facts (layer 2):
 
 `numbers` (VisitAs):
   at build-sequence.wipple:2:1-2:8
-  grouped with `collection`, `numbers`
+  grouped with `collection`, `numbers`, `collection`
   has type `Sequence Number`
   is an expression
   resolved to 1 definition(s): `numbers`
 
 `numbers . take 5` (VisitAs):
   at build-sequence.wipple:2:1-2:17
-  grouped with `container`, `take 5`
+  grouped with `container`, `take 5`, `container`
   has type `Sequence Number`
   is an expression
 
@@ -119,7 +119,7 @@ Facts (layer 2):
 
 `take 5` (CallExpression):
   at build-sequence.wipple:2:11-2:17
-  grouped with `Sequence element`, `numbers . take 5`
+  grouped with `Sequence element`, `Sequence element`, `numbers . take 5`
   has type `Sequence Number`
   is an expression
 
@@ -145,7 +145,7 @@ Facts (layer 2):
 
 `each show` (CallExpression):
   at build-sequence.wipple:2:20-2:29
-  grouped with `()`, `numbers . take 5 . each show`
+  grouped with `()`, `()`, `numbers . take 5 . each show`
   has type `()`
   is an expression
 

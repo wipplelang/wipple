@@ -475,7 +475,7 @@ Facts (layer 2):
 `output` (VariablePattern):
   at infer-constraint.wipple:20:1-20:7
   grouped with `add-infer 1 2 :: String`, `add-infer 1 2 :: String`
-  has type `String` or `Number`
+  has type `Number` or `String`
   is a definition
   is a pattern
 
@@ -490,7 +490,7 @@ Facts (layer 2):
 `add-infer 1 2` (CallExpression):
   at infer-constraint.wipple:20:11-20:24
   grouped with `sum`, `String`
-  has type `String` or `Number`
+  has type `Number` or `String`
   is an expression
 
 `1` (NumberExpression):
@@ -508,7 +508,7 @@ Facts (layer 2):
 `String` (NamedType):
   at infer-constraint.wipple:20:28-20:34
   grouped with `add-infer 1 2`, `add-infer 1 2 :: String`
-  has type `String` or `Number`
+  has type `Number` or `String`
   is a type
   resolved to 1 definition(s): `String`
 
@@ -521,8 +521,6 @@ note:
    | ---------
 
 `add-infer` is defined as a `left right -> sum`.
-
-This means `output` must have the same type as `add-infer 1 2`.
 
 note: 
    --> infer-constraint.wipple:20:11
@@ -546,6 +544,6 @@ error:
 20 | output : (add-infer 1 2 :: String)
    | ^^^^^^
 
-`output` is a `String`, but it is used as a `Number`.
+`output` is a `Number` or a `String`, but it can only be one of these.
 
 Help: use `--explain=full` to show more information

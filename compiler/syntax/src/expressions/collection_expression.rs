@@ -122,7 +122,7 @@ impl Visit for CollectionExpression {
 
         if let Some((&first, rest)) = elements.split_first() {
             for &element in rest {
-                visitor.constraint(db, TyConstraint::new(element, Ty::Node(first)));
+                visitor.constraint(db, TyConstraint::new(first, Ty::Node(element)));
             }
         }
 

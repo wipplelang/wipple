@@ -99,7 +99,7 @@ impl Visit for ConstructorExpression {
         );
 
         match definition {
-            ConstructorDefinition::Trait(_) => {
+            ConstructorDefinition::Trait(definition) => {
                 visitor.constraint(
                     db,
                     BoundConstraint::new(
@@ -112,7 +112,8 @@ impl Visit for ConstructorExpression {
                             substitutions,
                             is_optional: false,
                         },
-                    ),
+                    )
+                    .assume(definition.attributes.assume),
                 );
 
                 visitor.codegen(db, node, ConstructorExpressionCodegen::Trait { node });

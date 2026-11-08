@@ -1109,6 +1109,7 @@ dependencies = [
 name = "wipple-queries"
 version = "0.0.0"
 dependencies = [
+ "itertools",
  "levenshtein",
  "wipple-core",
  "wipple-syntax",

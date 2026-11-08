@@ -172,11 +172,15 @@ impl Definition for TraitDefinition {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TraitDefinitionAttributes {}
+pub struct TraitDefinitionAttributes {
+    pub assume: bool,
+}
 
 impl TraitDefinitionAttributes {
-    pub fn parse(_db: &mut Db, _attributes: &[Node]) -> Self {
-        TraitDefinitionAttributes {}
+    pub fn parse(db: &mut Db, attributes: &[Node]) -> Self {
+        TraitDefinitionAttributes {
+            assume: parse_attribute_named(db, attributes, "assume"),
+        }
     }
 }
 

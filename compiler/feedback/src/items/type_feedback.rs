@@ -1,7 +1,10 @@
 use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank, FeedbackWriter};
 use wipple_core::{
     render::ExplainOptions,
-    typecheck::{groups::Prefer, ty::Ty},
+    typecheck::{
+        groups::Prefer,
+        ty::{ConstructedTy, Ty},
+    },
 };
 use wipple_queries::{
     TypeConflictSummarySuffix, conflicting_types, fact, incomplete_type, unknown_type,
@@ -69,7 +72,10 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                     writer.string(", ");
                 }
 
-                if data.conflicting.len() > 1 {
+                let tys = (!data.tys.is_empty()).then_some(&data.tys);
+                let inferred_tys = (!data.inferred_tys.is_empty()).then_some(&data.inferred_tys);
+
+                if data.conflicting.len() > 1 && tys.xor(inferred_tys).is_some() {
                     if let Some(entry) = &data.primary_trace_entry {
                         let entry = {
                             let mut writer = FeedbackWriter::inherit(writer);
@@ -110,28 +116,29 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
 
                     writer.string(".");
                 } else {
-                    if data.tys.len() == 2 {
-                        let mut tys = data.tys.iter().cloned();
-                        let first = tys.next().unwrap();
-                        let second = tys.next().unwrap();
-
-                        writer.node(data.from);
-                        writer.string(" is a ");
-                        writer.ty(db, &Ty::Constructed(first), true);
-                        writer.string(", but it is used as a ");
-                        writer.ty(db, &Ty::Constructed(second), true);
-                        writer.string(".");
-                    } else {
-                        writer.node(data.from);
-                        writer.string(" is a ");
+                    let write_tys = |writer: &mut FeedbackWriter<'_>, tys: &[ConstructedTy]| {
                         writer.list("or a", |_, list| {
-                            for ty in &data.tys {
-                                list.add(|writer| {
-                                    writer.ty(db, &Ty::Constructed(ty.clone()), true);
+                            for ty in tys {
+                                let ty = ty.clone();
+                                list.add(move |writer| {
+                                    writer.ty(db, &Ty::Constructed(ty), true);
                                 });
                             }
                         });
+                    };
+
+                    if let Some(tys) = tys.xor(inferred_tys) {
+                        writer.node(data.from);
+                        writer.string(" is a ");
+                        write_tys(writer, tys);
                         writer.string(", but it can only be one of these.");
+                    } else {
+                        writer.node(data.from);
+                        writer.string(" is a ");
+                        write_tys(writer, &data.tys);
+                        writer.string(", but it must also be a ");
+                        write_tys(writer, &data.inferred_tys);
+                        writer.string(".");
                     }
                 }
             }

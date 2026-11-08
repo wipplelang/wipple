@@ -33,7 +33,7 @@ Facts (layer 2):
 
 `my-list` (VisitAs):
   at list-mismatched-elements.wipple:2:1-2:8
-  grouped with `container`, `my-list`
+  grouped with `container`, `my-list`, `container`
   has type `List (Number or String or ())`
   is an expression
   resolved to 1 definition(s): `my-list`
@@ -54,7 +54,7 @@ Facts (layer 2):
 
 `each show` (CallExpression):
   at list-mismatched-elements.wipple:2:11-2:20
-  grouped with `()`, `my-list . each show`
+  grouped with `()`, `()`, `my-list . each show`
   has type `()`
   is an expression
 
@@ -80,11 +80,11 @@ note:
 1 | my-list : 1, "hi", ()
   |           -----------
 
-`1, "hi", ()` is a `List Number`.
+`1, "hi", ()` is a `List String`.
 
-This means `"hi"` must have the same type as `1`.
+This means `1` must have the same type as `"hi"`.
 
-This means `()` must have the same type as `1`.
+This means `1` must have the same type as `()`.
 
 note: 
   --> list-mismatched-elements.wipple:2:11
@@ -102,16 +102,12 @@ note:
 
 `show` displays `()` on the screen.
 
-This means `1` must have the same type as `"hi"`.
-
-This means `1` must have the same type as `()`.
-
 error: 
   --> list-mismatched-elements.wipple:1:11
   |
 1 | my-list : 1, "hi", ()
   |           ^
 
-`1`, `"hi"`, and `()` must have the same type, but `1` is a `Number`, `"hi"` is a `String`, and `()` is a `()`.
+`"hi"` and `()` must have the same type, but `"hi"` is a `String` and `()` is a `()`.
 
 Help: use `--explain=full` to show more information
