@@ -29,14 +29,14 @@ impl Ty {
     pub fn referenced_nodes(&self) -> Vec<Node> {
         match self {
             Ty::Node(node) => vec![*node],
-            Ty::Constructed(ty) => ty.children.clone(),
+            Ty::Constructed(ty) => ty.children.iter().flatten().copied().collect(),
         }
     }
 
     pub fn referenced_nodes_mut(&mut self) -> Vec<&mut Node> {
         match self {
             Ty::Node(node) => vec![node],
-            Ty::Constructed(ty) => ty.children.iter_mut().collect(),
+            Ty::Constructed(ty) => ty.children.iter_mut().flatten().collect(),
         }
     }
 
@@ -68,11 +68,16 @@ impl Ty {
                 let children = ty
                     .children
                     .iter()
-                    .map(|&node| -> Box<dyn FnOnce(&Db, bool) -> String> {
-                        let relevant = relevant.to_vec();
-                        Box::new(move |db, root| {
-                            Ty::Node(node).display(db, root, &relevant, prefer)
-                        })
+                    .map(|children| {
+                        children
+                            .iter()
+                            .map(|&node| -> Box<dyn FnOnce(&Db, bool) -> String> {
+                                let relevant = relevant.to_vec();
+                                Box::new(move |db, root| {
+                                    Ty::Node(node).display(db, root, &relevant, prefer)
+                                })
+                            })
+                            .collect()
                     })
                     .collect::<Vec<_>>();
 
@@ -123,7 +128,7 @@ trait TyDisplay: Debug + DynClone + Send + Sync + 'static {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
+        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
         root: bool,
     ) -> String;
 
@@ -165,7 +170,7 @@ dyn_clone::clone_trait_object!(TyDisplay);
 #[derive(Clone, Serialize, Deserialize)]
 pub struct ConstructedTy {
     pub tag: TyTag,
-    pub children: Vec<Node>,
+    pub children: Vec<Vec<Node>>,
     display: Box<dyn TyDisplay>,
 }
 
@@ -201,12 +206,16 @@ impl Ord for ConstructedTy {
 }
 
 impl ConstructedTy {
-    fn new(tag: TyTag, children: Vec<Node>, display: impl TyDisplay) -> Self {
+    fn new(tag: TyTag, children: Vec<Vec<Node>>, display: impl TyDisplay) -> Self {
         ConstructedTy {
             tag,
             children,
             display: Box::new(display),
         }
+    }
+
+    pub fn all_children(&self) -> impl Iterator<Item = Node> {
+        self.children.iter().flatten().copied()
     }
 
     pub fn definition(&self) -> Option<Node> {
@@ -241,10 +250,12 @@ impl TyDisplay for NamedTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
+        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
         root: bool,
     ) -> String {
-        let wrap = !root && !children.is_empty();
+        let parameters = children.into_iter().next().unwrap();
+
+        let wrap = !root && !parameters.is_empty();
 
         let ty_name = db
             .get::<Defined>(self.definition)
@@ -255,9 +266,9 @@ impl TyDisplay for NamedTyDisplay {
             .to_string();
 
         let mut result = ty_name;
-        for child in children {
+        for parameter in parameters {
             result.push(' ');
-            result.push_str(&child(db, false));
+            result.push_str(&parameter(db, false));
         }
 
         if wrap { format!("({result})") } else { result }
@@ -268,7 +279,7 @@ impl ConstructedTy {
     pub fn named(definition: Node, parameters: Vec<Node>) -> Self {
         ConstructedTy::new(
             TyTag::Named(definition),
-            parameters,
+            vec![parameters],
             NamedTyDisplay { definition },
         )
     }
@@ -282,12 +293,12 @@ impl TyDisplay for FunctionTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
+        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
         root: bool,
     ) -> String {
         let mut children = children.into_iter();
-        let output = children.next().unwrap();
-        let inputs = children;
+        let inputs = children.next().unwrap();
+        let output = children.next().unwrap().into_iter().next().unwrap();
 
         let mut result = String::new();
         for input in inputs {
@@ -308,9 +319,11 @@ impl TyDisplay for FunctionTyDisplay {
         _node: Node,
         ty: &ConstructedTy,
     ) -> bool {
-        let (output, inputs) = ty.children.split_first().unwrap();
+        let mut children = ty.children.iter();
+        let inputs = children.next().unwrap();
+        let output = children.next().unwrap().first().unwrap();
 
-        if let [input] = inputs
+        if let [input] = inputs.as_slice()
             && should_render_child_in_consequences(db, ctx, *input)
         {
             return true;
@@ -331,9 +344,11 @@ impl TyDisplay for FunctionTyDisplay {
         node: Node,
         ty: &'a ConstructedTy,
     ) {
-        let (output, inputs) = ty.children.split_first().unwrap();
+        let mut children = ty.children.iter();
+        let inputs = children.next().unwrap();
+        let output = children.next().unwrap().first().unwrap();
 
-        if let [input] = inputs
+        if let [input] = inputs.as_slice()
             && should_render_child_in_consequences(db, ctx, *input)
         {
             list.add(move |ctx| {
@@ -357,7 +372,7 @@ impl ConstructedTy {
     pub fn function(inputs: Vec<Node>, output: Node) -> Self {
         ConstructedTy::new(
             TyTag::Function,
-            [output].into_iter().chain(inputs).collect(),
+            vec![inputs, vec![output]],
             FunctionTyDisplay,
         )
     }
@@ -371,21 +386,23 @@ impl TyDisplay for TupleTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
+        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
         _root: bool,
     ) -> String {
-        match children.len() {
+        let elements = children.into_iter().next().unwrap();
+
+        match elements.len() {
             0 => String::from("()"),
-            1 => format!("({};)", children.into_iter().next().unwrap()(db, false)),
+            1 => format!("({};)", elements.into_iter().next().unwrap()(db, false)),
             _ => {
                 let mut result = String::from("(");
 
-                for (index, child) in children.into_iter().enumerate() {
+                for (index, element) in elements.into_iter().enumerate() {
                     if index > 0 {
                         result.push_str("; ");
                     }
 
-                    result.push_str(&child(db, true));
+                    result.push_str(&element(db, true));
                 }
 
                 result.push(')');
@@ -397,7 +414,7 @@ impl TyDisplay for TupleTyDisplay {
 
 impl ConstructedTy {
     pub fn tuple(elements: Vec<Node>) -> Self {
-        ConstructedTy::new(TyTag::Tuple, elements, TupleTyDisplay)
+        ConstructedTy::new(TyTag::Tuple, vec![elements], TupleTyDisplay)
     }
 
     pub fn unit() -> Self {
@@ -413,10 +430,17 @@ impl TyDisplay for BlockTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
+        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
         _root: bool,
     ) -> String {
-        let output = children.into_iter().next().unwrap();
+        let output = children
+            .into_iter()
+            .next()
+            .unwrap()
+            .into_iter()
+            .next()
+            .unwrap();
+
         format!("{{{}}}", output(db, true))
     }
 
@@ -427,7 +451,7 @@ impl TyDisplay for BlockTyDisplay {
         _node: Node,
         ty: &ConstructedTy,
     ) -> bool {
-        let output = ty.children.first().unwrap();
+        let output = ty.children.first().unwrap().first().unwrap();
 
         should_render_child_in_consequences(db, ctx, *output)
     }
@@ -440,7 +464,7 @@ impl TyDisplay for BlockTyDisplay {
         node: Node,
         ty: &'a ConstructedTy,
     ) {
-        let output = ty.children.first().unwrap();
+        let output = ty.children.first().unwrap().first().unwrap();
 
         if should_render_child_in_consequences(db, ctx, *output) {
             list.add(move |ctx| {
@@ -454,7 +478,7 @@ impl TyDisplay for BlockTyDisplay {
 
 impl ConstructedTy {
     pub fn block(output: Node) -> Self {
-        ConstructedTy::new(TyTag::Block, vec![output], BlockTyDisplay)
+        ConstructedTy::new(TyTag::Block, vec![vec![output]], BlockTyDisplay)
     }
 }
 
@@ -468,7 +492,7 @@ impl TyDisplay for ParameterTyDisplay {
     fn display(
         &self,
         db: &Db,
-        _children: Vec<Box<dyn FnOnce(&Db, bool) -> String>>,
+        _children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
         _root: bool,
     ) -> String {
         db.get::<Defined>(self.definition)

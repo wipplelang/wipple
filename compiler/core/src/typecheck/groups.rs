@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Group(BTreeMap<Node, (NodeRank, Vec<ConstructedTy>)>);
+pub struct Group(Vec<(Node, NodeRank, Vec<ConstructedTy>)>);
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum NodeRank {
@@ -23,46 +23,35 @@ impl Group {
         Group(
             nodes
                 .into_iter()
-                .map(|node| (node, Default::default()))
+                .map(|node| (node, NodeRank::default(), Vec::new()))
                 .collect(),
         )
     }
 
     pub fn nodes(&self) -> impl Iterator<Item = Node> + '_ {
-        self.0.keys().copied()
+        self.0.iter().map(|(node, _, _)| *node)
     }
 
     pub fn tys(&self) -> impl Iterator<Item = &ConstructedTy> + '_ {
-        let mut seen = Vec::new();
-        self.0
-            .values()
-            .flat_map(|(_, tys)| tys.iter())
-            .filter(move |&ty| {
-                if seen.contains(&ty) {
-                    false
-                } else {
-                    seen.push(ty);
-                    true
-                }
-            })
+        self.0.iter().flat_map(|(_, _, tys)| tys)
     }
 
     pub fn entries(&self) -> impl Iterator<Item = (Node, NodeRank, &ConstructedTy)> {
         self.0
             .iter()
-            .flat_map(|(&node, &(rank, ref tys))| tys.iter().map(move |ty| (node, rank, ty)))
+            .flat_map(|&(node, rank, ref tys)| tys.iter().map(move |ty| (node, rank, ty)))
     }
 
     pub fn entries_mut(&mut self) -> impl Iterator<Item = (Node, NodeRank, &mut ConstructedTy)> {
         self.0
             .iter_mut()
-            .flat_map(|(&node, &mut (rank, ref mut tys))| {
+            .flat_map(|&mut (node, rank, ref mut tys)| {
                 tys.iter_mut().map(move |ty| (node, rank, ty))
             })
     }
 
     pub fn contains_node(&self, node: Node) -> bool {
-        self.0.contains_key(&node)
+        self.0.iter().any(|(other, _, _)| *other == node)
     }
 
     pub fn unify(
@@ -72,17 +61,17 @@ impl Group {
         mut unify: impl FnMut(&mut Db, &ConstructedTy, &ConstructedTy) -> bool,
     ) {
         // Merge in all the nodes even if unification fails
-        for (&node, &(rank, _)) in &other.0 {
+        for &(node, rank, _) in &other.0 {
             self.set_rank(node, rank);
         }
 
         let mut other_entries = other.entries();
-        let Some((other_node, _, other_ty)) = other_entries.next() else {
+        let Some((other_node, other_rank, other_ty)) = other_entries.next() else {
             return;
         };
 
         // Add the first type to the group...
-        let mut queue = Some((other_node, other_ty));
+        let mut queue = Some((other_node, other_rank, other_ty));
         if let Some((_, _, existing_ty)) = self.entries().next()
             && unify(db, existing_ty, other_ty)
         {
@@ -91,41 +80,52 @@ impl Group {
         }
 
         // And add the remaining types as-is
-        for (other_node, other_ty) in queue
-            .into_iter()
-            .chain(other_entries.map(|(node, _, ty)| (node, ty)))
-        {
-            self.0
-                .entry(other_node)
-                .or_default()
-                .1
-                .push(other_ty.clone());
+        for (other_node, other_rank, other_ty) in queue.into_iter().chain(other_entries) {
+            if let Some((_, _, tys)) = self.0.iter_mut().find(|(node, _, _)| *node == other_node) {
+                tys.push(other_ty.clone());
+            } else {
+                self.0
+                    .push((other_node, other_rank, vec![other_ty.clone()]));
+            }
         }
     }
 
     pub fn get_tys(&self, node: Node) -> &[ConstructedTy] {
         self.0
-            .get(&node)
-            .map(|(_, tys)| tys.as_slice())
+            .iter()
+            .find(|(other, _, _)| *other == node)
+            .map(|(_, _, tys)| tys.as_slice())
             .unwrap_or_default()
     }
 
     pub fn insert_ty(&mut self, node: Node, ty: ConstructedTy) {
-        self.0.entry(node).or_default().1.push(ty);
+        if let Some((_, _, tys)) = self.0.iter_mut().find(|(other, _, _)| *other == node) {
+            tys.push(ty);
+        } else {
+            self.0.push((node, NodeRank::default(), vec![ty]));
+        }
     }
 
     pub fn get_rank(&self, node: Node) -> NodeRank {
-        self.0.get(&node).map(|(rank, _)| *rank).unwrap_or_default()
+        self.0
+            .iter()
+            .find(|(other, _, _)| *other == node)
+            .map(|(_, rank, _)| *rank)
+            .unwrap_or_default()
     }
 
     pub fn set_rank(&mut self, node: Node, rank: NodeRank) {
-        self.0.entry(node).or_default().0 = rank;
+        if let Some((_, entry, _)) = self.0.iter_mut().find(|(other, _, _)| *other == node) {
+            *entry = rank;
+        } else {
+            self.0.push((node, rank, Vec::new()));
+        }
     }
 
     pub fn min_rank(&self) -> NodeRank {
         self.0
-            .values()
-            .map(|(rank, _)| *rank)
+            .iter()
+            .map(|(_, rank, _)| *rank)
             .min()
             .unwrap_or_default()
     }
@@ -138,7 +138,7 @@ impl Groups {
     pub fn index_of(&self, node: Node) -> Option<usize> {
         self.0
             .iter()
-            .find(|(_, slot)| slot.as_ref().is_some_and(|slot| slot.0.contains_key(&node)))
+            .find(|(_, slot)| slot.as_ref().is_some_and(|slot| slot.contains_node(node)))
             .map(|(index, _)| *index)
     }
 
@@ -260,7 +260,7 @@ pub fn representative_types_of<'a>(
     let mut candidates = relevant
         .iter()
         .copied()
-        .filter(|node| group.0.contains_key(node))
+        .filter(|&node| group.contains_node(node))
         .collect::<Vec<_>>();
 
     match prefer {

@@ -18,7 +18,7 @@ Facts (layer 2):
   at operator-without-parentheses.wipple:1:1-1:11
   grouped with `sum`, `show 1 + 2`
   is an expression
-  missing type (group: `show 1 + 2`, `show 1 + 2`, `show 1 + 2`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
+  missing type (group: `show 1 + 2`, `show 1 + 2`, `(infer sum)`, `(infer sum)`, `sum`, `show 1 + 2`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `show 1 + 2` (ConstructorExpression):
   at operator-without-parentheses.wipple:1:1-1:11
@@ -58,7 +58,7 @@ Facts (layer 2):
   at operator-without-parentheses.wipple:2:1-2:19
   grouped with `output`, `show True or False`
   is an expression
-  missing type (group: `show True or False`, `show True or False`, `show True or False`, `(infer output)`, `(infer output)`, `output`)
+  missing type (group: `show True or False`, `show True or False`, `(infer output)`, `(infer output)`, `output`, `show True or False`)
 
 `show True or False` (ConstructorExpression):
   at operator-without-parentheses.wipple:2:1-2:19
@@ -111,7 +111,7 @@ Facts (layer 2):
   at operator-without-parentheses.wipple:3:7-3:15
   grouped with `sum`, `1 + "hi"`
   is an expression
-  missing type (group: `1 + "hi"`, `1 + "hi"`, `value`, `value`, `value`, `value`, `value`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
+  missing type (group: `1 + "hi"`, `1 + "hi"`, `(infer sum)`, `(infer sum)`, `sum`, `value`, `value`, `value`, `value`, `value`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `1 + "hi"` (ConstructorExpression):
   at operator-without-parentheses.wipple:3:7-3:15

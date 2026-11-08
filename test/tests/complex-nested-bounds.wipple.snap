@@ -93,7 +93,7 @@ Facts (layer 2):
 
 `b` (TypeParameter):
   at complex-nested-bounds.wipple:5:21-5:22
-  grouped with `b`, `not (f x)`
+  grouped with `b`, `f x`
   has type `b`
   is a definition
   is a type
@@ -131,7 +131,7 @@ Facts (layer 2):
 
 `x` (VariablePattern):
   at complex-nested-bounds.wipple:5:46-5:47
-  grouped with `x`, `a`, `x`
+  grouped with `x`, `x`
   has type `a`
   is a definition
   is a pattern
@@ -153,7 +153,7 @@ Facts (layer 2):
 
 `not (f x)` (CallExpression):
   at complex-nested-bounds.wipple:5:51-5:60
-  grouped with `value`, `b`, `f x`
+  grouped with `value`, `f x`
   has type `b`
   is an expression
 
@@ -166,13 +166,13 @@ Facts (layer 2):
 
 `f x` (CallExpression):
   at complex-nested-bounds.wipple:5:56-5:59
-  grouped with `value`, `not (f x)`
+  grouped with `value`, `b`, `not (f x)`
   has type `b`
   is an expression
 
 `x` (VariableExpression):
   at complex-nested-bounds.wipple:5:58-5:59
-  grouped with `x`, `x`
+  grouped with `x`, `a`, `x`
   has type `a`
   is an expression
   resolved to 1 definition(s): `x`

@@ -89,7 +89,7 @@ Facts (layer 2):
 `"abc"` (StringExpression):
   at sequence.wipple:5:11-5:16
   grouped with `"abc"`, `value`
-  has type `String` or `Number`
+  has type `Number` or `String`
   is an expression
 
 `positive?` (VariablePattern):
@@ -108,14 +108,14 @@ Facts (layer 2):
 `n` (VariablePattern):
   at sequence.wipple:6:14-6:15
   grouped with `n :: Number`, `Number`
-  has type `String` or `Number`
+  has type `Number` or `String`
   is a definition
   is a pattern
 
 `Number` (NamedType):
   at sequence.wipple:6:19-6:25
   grouped with `n`, `n :: Number`
-  has type `String` or `Number`
+  has type `Number` or `String`
   is a type
   resolved to 1 definition(s): `Number`
 
@@ -193,6 +193,6 @@ error:
 5 | box : Box "abc"
   |           ^^^^^
 
-`"abc"` is a `String`, but it is used as a `Number`.
+`"abc"` is a `Number`, but it is used as a `String`.
 
 Help: use `--explain=full` to show more information

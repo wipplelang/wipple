@@ -330,7 +330,10 @@ fn collect_paths(
             };
 
             let mut parameters = parameters.clone();
-            for (parameter, ty) in type_parameters.iter().zip(ty.children) {
+            for (parameter, ty) in type_parameters
+                .iter()
+                .zip(ty.children.into_iter().next().unwrap())
+            {
                 parameters.insert(*parameter, ty);
             }
 
@@ -391,9 +394,11 @@ fn collect_paths(
             }
         }
         TyTag::Tuple => {
-            let len = ty.children.len();
+            let elements = ty.children.into_iter().next().unwrap();
 
-            ty.children
+            let len = elements.len();
+
+            elements
                 .into_iter()
                 .enumerate()
                 .map(|(index, element)| {

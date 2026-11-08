@@ -278,7 +278,7 @@ Facts (layer 2):
   at custom-errors.wipple:16:1-16:2
   grouped with `1 + "a"`, `1 + "a"`
   is a pattern
-  missing type (group: `1 + "a"`, `1 + "a"`, `_`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
+  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `1` (NumberExpression):
   at custom-errors.wipple:16:5-16:6
@@ -290,7 +290,7 @@ Facts (layer 2):
   at custom-errors.wipple:16:5-16:12
   grouped with `sum`, `1 + "a"`
   is an expression
-  missing type (group: `1 + "a"`, `1 + "a"`, `_`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
+  missing type (group: `_`, `1 + "a"`, `1 + "a"`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `1 + "a"` (ConstructorExpression):
   at custom-errors.wipple:16:5-16:12
@@ -310,7 +310,7 @@ Facts (layer 2):
   at custom-errors.wipple:17:1-17:2
   grouped with `() + 2`, `() + 2`
   is a pattern
-  missing type (group: `() + 2`, `() + 2`, `_`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
+  missing type (group: `_`, `() + 2`, `() + 2`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `()` (UnitExpression):
   at custom-errors.wipple:17:5-17:7
@@ -322,7 +322,7 @@ Facts (layer 2):
   at custom-errors.wipple:17:5-17:11
   grouped with `sum`, `() + 2`
   is an expression
-  missing type (group: `() + 2`, `() + 2`, `_`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
+  missing type (group: `_`, `() + 2`, `() + 2`, `(infer sum)`, `(infer sum)`, `sum`, `sum`, `sum`, `(infer sum)`, `sum`)
 
 `() + 2` (ConstructorExpression):
   at custom-errors.wipple:17:5-17:11

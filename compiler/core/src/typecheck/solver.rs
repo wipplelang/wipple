@@ -12,7 +12,7 @@ use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
-    mem,
+    iter, mem,
 };
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -243,21 +243,25 @@ impl Solver {
         right: &ConstructedTy,
         on_error: &mut dyn FnMut(bool),
     ) -> bool {
-        let left_child_count = left.children.len();
-        let right_child_count = right.children.len();
-
+        let mut equal_child_count = left.children.len() == right.children.len();
         if left.tag == right.tag {
-            for (&left_child, &right_child) in std::iter::zip(&left.children, &right.children) {
-                self.unify_inner(
-                    db,
-                    &Ty::Node(left_child),
-                    &Ty::Node(right_child),
-                    &mut || on_error(true),
-                );
+            for (left_segment, right_segment) in iter::zip(&left.children, &right.children) {
+                if left_segment.len() != right_segment.len() {
+                    equal_child_count = false;
+                }
+
+                for (&left_child, &right_child) in iter::zip(left_segment, right_segment) {
+                    self.unify_inner(
+                        db,
+                        &Ty::Node(left_child),
+                        &Ty::Node(right_child),
+                        &mut || on_error(true),
+                    );
+                }
             }
         }
 
-        if left.tag != right.tag || left_child_count != right_child_count {
+        if left.tag != right.tag || !equal_child_count {
             on_error(false);
             return false;
         }
@@ -403,7 +407,7 @@ impl Solver {
 
         db.get_mut_or_default::<TypeDependsOn>(node)
             .0
-            .extend(&ty.children);
+            .extend(ty.all_children());
 
         self.add_consequence(db, ConstraintConsequence::Ty(node, ty));
     }

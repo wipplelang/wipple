@@ -102,6 +102,6 @@ error:
 6 | accepts-text (1 + 2)
   |               ^^^^^
 
-`1 + 2` is a `Number`, but it is used as a `String`.
+`1 + 2` is a `String`, but it is used as a `Number`.
 
 Help: use `--explain=full` to show more information

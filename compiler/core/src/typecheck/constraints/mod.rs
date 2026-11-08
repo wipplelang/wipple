@@ -75,21 +75,17 @@ impl Constraints {
     }
 
     pub fn insert_front(&mut self, node: Node, constraint: Box<dyn Constraint>) {
-        self.insert_inner(node, constraint, true);
+        self.0
+            .entry(constraint.kind())
+            .or_default()
+            .push_front((node, constraint));
     }
 
     pub fn insert_back(&mut self, node: Node, constraint: Box<dyn Constraint>) {
-        self.insert_inner(node, constraint, false);
-    }
-
-    fn insert_inner(&mut self, node: Node, constraint: Box<dyn Constraint>, front: bool) {
-        let constraints = self.0.entry(constraint.kind()).or_default();
-
-        if front {
-            constraints.push_front((node, constraint));
-        } else {
-            constraints.push_back((node, constraint));
-        }
+        self.0
+            .entry(constraint.kind())
+            .or_default()
+            .push_back((node, constraint));
     }
 
     pub fn extend_front(

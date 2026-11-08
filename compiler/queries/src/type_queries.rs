@@ -1,12 +1,11 @@
 use crate::{QueryCtx, Trace, TraceEntry};
-use itertools::{Either, Itertools};
 use std::collections::BTreeSet;
 use wipple_core::{
     db::Node,
     facts::DescriptionKind,
     typecheck::{
         constraints::ConstraintConsequence,
-        groups::{NodeRank, Prefer, Typed, representative_types_of},
+        groups::{Prefer, Typed, representative_types_of},
         instantiate::Instantiated,
         ty::{ConstructedTy, TyTag},
     },
@@ -37,7 +36,6 @@ pub struct ConflictingTypes {
     pub conflicting: BTreeSet<Node>,
     pub group: BTreeSet<Node>,
     pub tys: Vec<ConstructedTy>,
-    pub inferred_tys: Vec<ConstructedTy>,
     pub trace: Trace,
     pub primary_trace_entry: Option<TraceEntry>,
     pub summary: Option<TypeConflictSummary>,
@@ -79,16 +77,6 @@ pub fn conflicting_types<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ConflictingTy
     collect_summaries(db, node, &trace, &mut summaries);
     // TODO: Sort summaries
 
-    let (tys, inferred_tys) = group.entries().partition_map(|(_, rank, ty)| {
-        if rank == NodeRank::Inherited {
-            // If the node directly has a type but a rank of `Inherited`, that
-            // means it's a literal
-            Either::Left(ty.clone())
-        } else {
-            Either::Right(ty.clone())
-        }
-    });
-
     let primary_trace_entry = trace
         .0
         .iter()
@@ -113,8 +101,7 @@ pub fn conflicting_types<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ConflictingTy
         is_primary,
         conflicting,
         group: group.nodes().collect(),
-        tys,
-        inferred_tys,
+        tys: group.tys().cloned().collect(),
         trace,
         primary_trace_entry,
         summary: None,
@@ -146,8 +133,8 @@ pub fn incomplete_type<'a>(db: &QueryCtx<'a>, node: Node) -> Option<(Node, &'a C
         return None;
     }
 
-    if ty.children.iter().any(|&ty| {
-        db.get(ty)
+    if ty.all_children().any(|child| {
+        db.get(child)
             .and_then(|Typed(group)| group.as_ref())
             .is_some_and(|group| group.tys().next().is_none())
     }) {
@@ -205,14 +192,12 @@ fn collect_function_arity_summaries(
                 && other == node
                 && let TyTag::Function = function_ty.tag
             {
-                let Some((_, call_inputs)) = function_ty.children.split_first() else {
-                    continue;
-                };
+                let mut children = function_ty.children.iter().cloned();
+                let call_inputs = children.next().unwrap();
 
                 each_function_node(db, entry, |function_node, function_ty| {
-                    let Some((_, function_inputs)) = function_ty.children.split_first() else {
-                        return;
-                    };
+                    let mut children = function_ty.children.iter().cloned();
+                    let function_inputs = children.next().unwrap();
 
                     if function_inputs.len() == call_inputs.len() {
                         return;

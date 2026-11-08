@@ -31,6 +31,9 @@ fn type_of_inner(
             let parameters = ty
                 .children
                 .into_iter()
+                .next()
+                .unwrap()
+                .into_iter()
                 .map(|ty| type_of_inner(db, ty, substitutions))
                 .collect::<Option<_>>()?;
 
@@ -40,9 +43,11 @@ fn type_of_inner(
             })
         }
         TyTag::Function => {
-            let (output, inputs) = ty.children.split_first()?;
+            let mut children = ty.children.into_iter();
+            let inputs = children.next().unwrap();
+            let output = children.next().unwrap().into_iter().next().unwrap();
 
-            let output = type_of_inner(db, *output, substitutions)?;
+            let output = type_of_inner(db, output, substitutions)?;
 
             let inputs = inputs
                 .iter()
@@ -55,19 +60,27 @@ fn type_of_inner(
             let elements = ty
                 .children
                 .into_iter()
+                .next()
+                .unwrap()
+                .into_iter()
                 .map(|child| type_of_inner(db, child, substitutions))
                 .collect::<Option<_>>()?;
 
             Some(hir::Type::Tuple(elements))
         }
         TyTag::Block => {
-            let [output] = ty.children.as_slice() else {
-                return None;
-            };
+            let output = ty
+                .children
+                .into_iter()
+                .next()
+                .unwrap()
+                .into_iter()
+                .next()
+                .unwrap();
 
             Some(hir::Type::Function(
                 Vec::new(),
-                Box::new(type_of_inner(db, *output, substitutions)?),
+                Box::new(type_of_inner(db, output, substitutions)?),
             ))
         }
         TyTag::Parameter(parameter) => Some(
