@@ -22,7 +22,7 @@ pub struct Instances(pub Vec<Instance>);
 impl Fact for Instances {}
 
 impl Render for Instances {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string(format!("has {} instances", self.0.len()));
     }
 }
@@ -34,7 +34,7 @@ pub struct ResolvedBounds(pub BTreeMap<Vec<Node>, Result<ResolvedBound, Unresolv
 impl Fact for ResolvedBounds {}
 
 impl Render for ResolvedBounds {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         if self.0.is_empty() {
             ctx.string("has no bounds");
         }
@@ -95,13 +95,13 @@ impl Instance {
 }
 
 impl Render for Instance {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         self.as_unresolved_bound().render_into(db, ctx);
     }
 }
 
 impl Render for UnresolvedBound {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let trait_definition = db
             .get::<Defined>(self.trait_node)
             .unwrap()

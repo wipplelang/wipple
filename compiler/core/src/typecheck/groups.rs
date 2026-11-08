@@ -203,7 +203,7 @@ pub struct Typed(pub Option<Group>);
 impl Fact for Typed {}
 
 impl Render for Typed {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let Some(group) = &self.0 else {
             ctx.string("types not solved");
             return;

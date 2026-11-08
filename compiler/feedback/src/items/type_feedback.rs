@@ -78,7 +78,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 if data.conflicting.len() > 1 && tys.xor(inferred_tys).is_some() {
                     if let Some(entry) = &data.primary_trace_entry {
                         let entry = {
-                            let mut writer = FeedbackWriter::with_options(writer.options.clone());
+                            let mut writer = FeedbackWriter::inherit(writer);
                             writer.options.explain = ExplainOptions::Enabled;
                             writer.trace_entry(db, entry)
                         };
@@ -116,7 +116,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
 
                     writer.string(".");
                 } else {
-                    let write_tys = |writer: &mut FeedbackWriter, tys: &[ConstructedTy]| {
+                    let write_tys = |writer: &mut FeedbackWriter<'_>, tys: &[ConstructedTy]| {
                         writer.list("or a", |_, list| {
                             for ty in tys {
                                 let ty = ty.clone();

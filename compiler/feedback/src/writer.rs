@@ -9,36 +9,47 @@ use wipple_core::{
 };
 use wipple_queries::{Trace, TraceEntry};
 
-#[derive(Debug, Default)]
-pub struct FeedbackWriter {
-    ctx: RenderCtx,
-    traces: Vec<FeedbackWriterTraceEntry>,
+pub struct FeedbackWriter<'a> {
+    ctx: RenderCtx<'a>,
+    traces: Vec<FeedbackWriterTraceEntry<'a>>,
 }
 
-impl FeedbackWriter {
-    pub fn with_options(options: RenderOptions) -> Self {
+impl<'a> FeedbackWriter<'a> {
+    pub fn new(filter: impl Fn(&Db, Node) -> bool + 'a) -> Self {
         FeedbackWriter {
-            ctx: RenderCtx::with_options(options),
+            ctx: RenderCtx::new(filter),
+            traces: Default::default(),
+        }
+    }
+
+    pub fn with_options(mut self, options: RenderOptions) -> Self {
+        self.ctx.options = options;
+        self
+    }
+
+    pub fn inherit(writer: &FeedbackWriter<'a>) -> Self {
+        FeedbackWriter {
+            ctx: RenderCtx::inherit(&writer.ctx),
             traces: Default::default(),
         }
     }
 }
 
-impl Deref for FeedbackWriter {
-    type Target = RenderCtx;
+impl<'a> Deref for FeedbackWriter<'a> {
+    type Target = RenderCtx<'a>;
 
     fn deref(&self) -> &Self::Target {
         &self.ctx
     }
 }
 
-impl DerefMut for FeedbackWriter {
+impl<'a> DerefMut for FeedbackWriter<'a> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.ctx
     }
 }
 
-impl FeedbackWriter {
+impl FeedbackWriter<'_> {
     pub fn singular_plural(&mut self, n: usize, singular: &str, plural: &str) {
         if n == 1 {
             self.ctx.string(format!("{n} {singular}"));
@@ -59,15 +70,14 @@ impl FeedbackWriter {
     }
 }
 
-#[derive(Debug)]
-pub struct FeedbackWriterTraceEntry {
+pub struct FeedbackWriterTraceEntry<'a> {
     pub node: Node,
     pub is_primary: bool,
-    pub node_ctx: RenderCtx,
-    pub consequence_ctxs: Vec<RenderCtx>,
+    pub node_ctx: RenderCtx<'a>,
+    pub consequence_ctxs: Vec<RenderCtx<'a>>,
 }
 
-impl FeedbackWriter {
+impl<'a> FeedbackWriter<'a> {
     pub fn extend_trace(&mut self, db: &Db, trace: &Trace) {
         for entry in trace.0.iter() {
             let entry = self.trace_entry(db, entry);
@@ -75,8 +85,8 @@ impl FeedbackWriter {
         }
     }
 
-    pub fn trace_entry(&mut self, db: &Db, entry: &TraceEntry) -> FeedbackWriterTraceEntry {
-        let mut node_ctx = RenderCtx::with_options(self.options.clone());
+    pub fn trace_entry(&mut self, db: &Db, entry: &TraceEntry) -> FeedbackWriterTraceEntry<'a> {
+        let mut node_ctx = RenderCtx::inherit(&self.ctx);
         node_ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
             ctx.comments(db, &entry.comments);
         });
@@ -85,7 +95,7 @@ impl FeedbackWriter {
             .consequences
             .iter()
             .filter_map(|consequence| {
-                let mut ctx = RenderCtx::with_options(self.options.clone());
+                let mut ctx = RenderCtx::inherit(&self.ctx);
                 ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
                     if consequence.should_render(db, ctx) {
                         ctx.list("and", |ctx, list| {
@@ -122,7 +132,7 @@ pub struct FeedbackTrace {
     pub consequences: Vec<String>,
 }
 
-impl FeedbackWriter {
+impl FeedbackWriter<'_> {
     pub fn finish(
         self,
         db: &Db,

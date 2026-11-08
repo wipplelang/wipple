@@ -87,7 +87,7 @@ impl Ty {
         }
     }
 
-    pub fn render_into(&self, db: &Db, ctx: &mut RenderCtx, root: bool) {
+    pub fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>, root: bool) {
         let description = self.display(db, root, &ctx.options.relevant, ctx.options.prefer);
 
         let node = match self {
@@ -104,7 +104,7 @@ impl Ty {
 }
 
 impl Render for Ty {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         self.render_into(db, ctx, true);
     }
 }
@@ -130,7 +130,7 @@ trait TyDisplay: Debug + DynClone + Send + Sync + 'static {
     fn should_render_consequences(
         &self,
         db: &Db,
-        ctx: &mut RenderCtx,
+        ctx: &mut RenderCtx<'_>,
         node: Node,
         ty: &ConstructedTy,
     ) -> bool {
@@ -145,7 +145,7 @@ trait TyDisplay: Debug + DynClone + Send + Sync + 'static {
     fn render_consequences<'a>(
         &'a self,
         db: &'a Db,
-        ctx: &mut RenderCtx,
+        ctx: &mut RenderCtx<'_>,
         list: &mut ListBuilder<'a>,
         node: Node,
         ty: &'a ConstructedTy,
@@ -216,14 +216,14 @@ impl ConstructedTy {
         }
     }
 
-    pub fn should_render_consequences(&self, db: &Db, ctx: &mut RenderCtx, node: Node) -> bool {
+    pub fn should_render_consequences(&self, db: &Db, ctx: &mut RenderCtx<'_>, node: Node) -> bool {
         self.display.should_render_consequences(db, ctx, node, self)
     }
 
     pub fn render_consequences<'a>(
         &'a self,
         db: &'a Db,
-        ctx: &mut RenderCtx,
+        ctx: &mut RenderCtx<'_>,
         list: &mut ListBuilder<'a>,
         node: Node,
     ) {
@@ -304,7 +304,7 @@ impl TyDisplay for FunctionTyDisplay {
     fn should_render_consequences(
         &self,
         db: &Db,
-        ctx: &mut RenderCtx,
+        ctx: &mut RenderCtx<'_>,
         _node: Node,
         ty: &ConstructedTy,
     ) -> bool {
@@ -326,7 +326,7 @@ impl TyDisplay for FunctionTyDisplay {
     fn render_consequences<'a>(
         &self,
         db: &'a Db,
-        ctx: &mut RenderCtx,
+        ctx: &mut RenderCtx<'_>,
         list: &mut ListBuilder<'a>,
         node: Node,
         ty: &'a ConstructedTy,
@@ -423,7 +423,7 @@ impl TyDisplay for BlockTyDisplay {
     fn should_render_consequences(
         &self,
         db: &Db,
-        ctx: &mut RenderCtx,
+        ctx: &mut RenderCtx<'_>,
         _node: Node,
         ty: &ConstructedTy,
     ) -> bool {
@@ -435,7 +435,7 @@ impl TyDisplay for BlockTyDisplay {
     fn render_consequences<'a>(
         &'a self,
         db: &'a Db,
-        ctx: &mut RenderCtx,
+        ctx: &mut RenderCtx<'_>,
         list: &mut ListBuilder<'a>,
         node: Node,
         ty: &'a ConstructedTy,
@@ -490,7 +490,7 @@ impl ConstructedTy {
     }
 }
 
-fn should_render_child_in_consequences(db: &Db, ctx: &RenderCtx, node: Node) -> bool {
+fn should_render_child_in_consequences(db: &Db, ctx: &RenderCtx<'_>, node: Node) -> bool {
     if db.is_hidden(node) || db.get::<Instantiated>(node).is_some() {
         return false;
     }

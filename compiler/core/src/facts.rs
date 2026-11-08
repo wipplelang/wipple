@@ -14,7 +14,7 @@ pub struct Syntax(pub AstKey);
 impl Fact for Syntax {}
 
 impl Render for Syntax {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("at ");
         ctx.string(self.0.get(db).span(db).to_string());
     }

@@ -22,7 +22,7 @@ pub struct InferredParameter;
 impl Fact for InferredParameter {}
 
 impl Render for InferredParameter {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("is inferred type parameter");
     }
 }

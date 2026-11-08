@@ -563,7 +563,7 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
                 .unwrap_or_default()
                 .to_vec();
 
-            let mut writer = FeedbackWriter::default();
+            let mut writer = FeedbackWriter::new(default_filter);
             writer.comments(db, &documentation.comments);
             let docs = writer
                 .finish(db, |db, segment| {

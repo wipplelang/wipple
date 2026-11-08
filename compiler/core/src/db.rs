@@ -533,14 +533,14 @@ impl Db {
             Reverse(syntax.map(|Syntax(syntax)| Reverse(syntax.get(self).span(self))))
         });
 
-        let mut ctx = RenderCtx::default();
+        let mut ctx = RenderCtx::new(&filter);
         for (node, info, syntax) in nodes {
             let mut facts = info
                 .facts
                 .0
                 .values()
                 .filter_map(|fact| {
-                    let mut ctx = RenderCtx::default();
+                    let mut ctx = RenderCtx::new(&filter);
                     fact.render_into(self, &mut ctx);
 
                     if ctx.is_empty() {

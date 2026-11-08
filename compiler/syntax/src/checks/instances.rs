@@ -27,7 +27,7 @@ pub struct OverlappingInstances(pub Vec<Node>);
 impl Fact for OverlappingInstances {}
 
 impl Render for OverlappingInstances {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string(format!("has {} overlapping instances", self.0.len()))
     }
 }

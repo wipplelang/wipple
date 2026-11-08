@@ -22,7 +22,7 @@ pub struct DirectlyGroupedWith(pub Vec<Node>);
 impl Fact for DirectlyGroupedWith {}
 
 impl Render for DirectlyGroupedWith {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("grouped with ");
 
         for (index, node) in self.0.iter().enumerate() {

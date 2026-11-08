@@ -15,7 +15,7 @@ pub struct ExtraAttributeValue;
 impl Fact for ExtraAttributeValue {}
 
 impl Render for ExtraAttributeValue {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("extra attribute value");
     }
 }
@@ -27,7 +27,7 @@ pub struct DuplicateAttribute;
 impl Fact for DuplicateAttribute {}
 
 impl Render for DuplicateAttribute {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("duplicate attribute");
     }
 }
@@ -39,7 +39,7 @@ pub struct MismatchedAttributeValue;
 impl Fact for MismatchedAttributeValue {}
 
 impl Render for MismatchedAttributeValue {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("mismatched attribute value");
     }
 }
@@ -51,7 +51,7 @@ pub struct MissingAttributeValue;
 impl Fact for MissingAttributeValue {}
 
 impl Render for MissingAttributeValue {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("missing attribute value");
     }
 }

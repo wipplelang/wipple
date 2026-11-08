@@ -14,11 +14,11 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     fmt::Write,
-    sync::LazyLock,
+    sync::{Arc, LazyLock},
 };
 
 pub trait Render {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
         let _ = db;
         let _ = ctx;
     }
@@ -39,18 +39,34 @@ pub enum ExplainOptions {
     Full,
 }
 
-#[derive(Debug, Default)]
-pub struct RenderCtx {
+pub struct RenderCtx<'a> {
     pub options: RenderOptions,
+    filter: Arc<dyn Fn(&Db, Node) -> bool + 'a>,
     segments: Vec<RenderSegment>,
     nodes: BTreeSet<Node>,
 }
 
-impl RenderCtx {
-    pub fn with_options(options: RenderOptions) -> Self {
+impl<'a> RenderCtx<'a> {
+    pub fn new(filter: impl Fn(&Db, Node) -> bool + 'a) -> Self {
         RenderCtx {
-            options,
-            ..Default::default()
+            options: Default::default(),
+            filter: Arc::new(filter),
+            segments: Default::default(),
+            nodes: Default::default(),
+        }
+    }
+
+    pub fn with_options(mut self, options: RenderOptions) -> Self {
+        self.options = options;
+        self
+    }
+
+    pub fn inherit(other: &RenderCtx<'a>) -> Self {
+        RenderCtx {
+            options: other.options.clone(),
+            filter: other.filter.clone(),
+            segments: Default::default(),
+            nodes: Default::default(),
         }
     }
 }
@@ -89,16 +105,16 @@ impl Comments {
 
 #[derive(Default)]
 pub struct ListBuilder<'a> {
-    items: Vec<Box<dyn FnOnce(&mut RenderCtx) + 'a>>,
+    items: Vec<Box<dyn FnOnce(&mut RenderCtx<'_>) + 'a>>,
 }
 
 impl<'a> ListBuilder<'a> {
-    pub fn add(&mut self, item: impl FnOnce(&mut RenderCtx) + 'a) {
+    pub fn add(&mut self, item: impl FnOnce(&mut RenderCtx<'_>) + 'a) {
         self.items.push(Box::new(item));
     }
 }
 
-impl RenderCtx {
+impl RenderCtx<'_> {
     pub fn line_break(&mut self) {
         self.segments.push(RenderSegment::LineBreak);
     }
@@ -213,7 +229,7 @@ impl RenderCtx {
         static LINK_REGEX: LazyLock<Regex> =
             LazyLock::new(|| Regex::new(r"(?s)\[`([^`]+)`\]").unwrap());
 
-        let mut links = HashMap::<String, Box<dyn Fn(&mut RenderCtx)>>::new();
+        let mut links = HashMap::<String, Box<dyn Fn(&mut RenderCtx<'_>)>>::new();
         for (name, link) in &comments.links {
             links.insert(
                 name.to_string(),
@@ -245,9 +261,11 @@ impl RenderCtx {
                 && let Some(Typed(Some(group))) = db.get(node)
             {
                 let value = group
-                    .entries()
-                    .find(|&(other, rank, _)| other != node && rank == NodeRank::Inherited)
-                    .map_or(node, |(node, _, _)| node);
+                    .nodes()
+                    .find(|&other| {
+                        (self.filter)(db, other) && group.get_rank(other) == NodeRank::Inherited
+                    })
+                    .unwrap_or(node);
 
                 links.insert(
                     format!("{name}@value"),
@@ -292,7 +310,7 @@ impl RenderCtx {
             self.string(&comments_string[index..capture.range().start]);
             index = capture.range().end;
 
-            let mut ctx = RenderCtx::with_options(self.options.clone());
+            let mut ctx = RenderCtx::inherit(self);
             let name = captures.get(1).unwrap().as_str();
             match links.get(name) {
                 Some(link) => link(&mut ctx),
@@ -333,7 +351,7 @@ impl RenderCtx {
     }
 }
 
-impl Extend<Self> for RenderCtx {
+impl Extend<Self> for RenderCtx<'_> {
     fn extend<T: IntoIterator<Item = Self>>(&mut self, iter: T) {
         for other in iter {
             self.segments.extend(other.segments);

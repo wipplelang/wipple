@@ -37,7 +37,7 @@ pub struct MissingSubpatterns(pub Vec<Node>);
 impl Fact for MissingSubpatterns {}
 
 impl Render for MissingSubpatterns {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("missing subpatterns");
     }
 }
@@ -49,7 +49,7 @@ pub struct ExtraSubpattern;
 impl Fact for ExtraSubpattern {}
 
 impl Render for ExtraSubpattern {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx) {
+    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
         ctx.string("is extra subpattern");
     }
 }

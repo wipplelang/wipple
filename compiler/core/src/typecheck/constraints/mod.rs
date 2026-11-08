@@ -201,7 +201,7 @@ impl ConstraintConsequence {
         false
     }
 
-    pub fn should_render(&self, db: &Db, ctx: &mut RenderCtx) -> bool {
+    pub fn should_render(&self, db: &Db, ctx: &mut RenderCtx<'_>) -> bool {
         match ctx.options.explain {
             ExplainOptions::None => return false,
             ExplainOptions::Enabled => {
@@ -275,7 +275,7 @@ impl ConstraintConsequence {
     pub fn render_into_list<'a>(
         &'a self,
         db: &'a Db,
-        ctx: &mut RenderCtx,
+        ctx: &mut RenderCtx<'_>,
         list: &mut ListBuilder<'a>,
     ) {
         match *self {

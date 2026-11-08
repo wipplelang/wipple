@@ -179,7 +179,7 @@ impl Ide {
         let trace =
             wipple_queries::Trace::collect(&self.query_ctx(), node, DescriptionKind::Summary);
 
-        let mut writer = FeedbackWriter::with_options(render_options.clone());
+        let mut writer = FeedbackWriter::new(default_filter).with_options(render_options.clone());
         writer.extend_trace(&self.result.db, &trace);
 
         let feedback = writer.finish(&self.result.db, |db, segment| {
@@ -256,7 +256,7 @@ impl Ide {
             && let Some(Defined(definition)) = self.result.db.get(definition_node)
             && definition.downcast_ref::<VariableDefinition>().is_none()
         {
-            let mut ctx = RenderCtx::with_options(render_options.clone());
+            let mut ctx = RenderCtx::new(default_filter).with_options(render_options.clone());
 
             if let Some(span) = definition.full_span() {
                 ctx.code(span.source.as_str());
@@ -271,7 +271,7 @@ impl Ide {
                 is_code: true,
             });
         } else if let Some(ty) = wipple_queries::has_type(&self.query_ctx(), node) {
-            let mut ctx = RenderCtx::with_options(render_options.clone());
+            let mut ctx = RenderCtx::new(default_filter).with_options(render_options.clone());
 
             if definition_node.is_some() {
                 ctx.node(node);
@@ -289,7 +289,7 @@ impl Ide {
         }
 
         for bound in wipple_queries::resolved_bounds(&self.query_ctx(), node) {
-            let mut ctx = RenderCtx::with_options(render_options.clone());
+            let mut ctx = RenderCtx::new(default_filter).with_options(render_options.clone());
             ctx.node(bound.instance.node);
 
             let (rendered, _) = ctx.finish(&self.result.db, |db, segment| segment.plain_text(db));
@@ -454,7 +454,7 @@ impl Ide {
                     return None;
                 };
 
-                let mut ctx = RenderCtx::with_options(render_options.clone());
+                let mut ctx = RenderCtx::new(default_filter).with_options(render_options.clone());
                 ctx.node(node);
 
                 let (rendered, _) =
@@ -504,7 +504,7 @@ impl Ide {
 
         let comments = wipple_queries::comments(&self.query_ctx(), node)?;
 
-        let mut writer = FeedbackWriter::with_options(render_options.clone());
+        let mut writer = FeedbackWriter::new(default_filter).with_options(render_options.clone());
         writer.comments(&self.result.db, &comments);
 
         let feedback = writer.finish(&self.result.db, |db, segment| {
