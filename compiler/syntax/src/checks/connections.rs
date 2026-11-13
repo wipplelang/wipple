@@ -15,7 +15,7 @@ pub fn create_connections(db: &mut Db, mut filter: impl FnMut(&Db, Node) -> bool
     }
 
     let mut calls = Vec::new();
-    db.for_each_fact::<ResolvedCall, ()>(&mut |db, node, call| {
+    db.for_each_fact::<ResolvedCall, ()>(false, &mut |db, node, call| {
         if filter(db, node) {
             calls.push((node, call.clone()));
         }

@@ -111,7 +111,7 @@ pub fn run_mismatched_trait(
     mut filter: impl FnMut(&Db, Node) -> bool,
 ) -> Vec<Solver> {
     let mut groups = Vec::new();
-    db.for_each_fact::<Typed, ()>(&mut |_, node, Typed(group)| {
+    db.for_each_fact::<Typed, ()>(false, &mut |_, node, Typed(group)| {
         let Some(group) = group.as_ref() else {
             return ControlFlow::Continue(());
         };

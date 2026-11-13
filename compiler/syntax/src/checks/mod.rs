@@ -18,7 +18,7 @@ pub fn run_checks(db: &mut Db, top_level: &TopLevel) {
     // Check for overlapping instances
 
     let mut all_instances = Vec::new();
-    db.for_each_fact::<Instances, ()>(&mut |_, trait_node, Instances(instances)| {
+    db.for_each_fact::<Instances, ()>(false, &mut |_, trait_node, Instances(instances)| {
         all_instances.push((trait_node, instances.clone()));
         ControlFlow::Continue(())
     });

@@ -233,7 +233,7 @@ impl Render for MissingPatterns {
 pub fn check_exhaustiveness(db: &mut Db) {
     let mut values: BTreeMap<Node, BTreeMap<Node, Vec<MatchPath>>> = Default::default();
 
-    db.for_each_fact::<Matches, ()>(&mut |_, _, Matches { value, arm, path }| {
+    db.for_each_fact::<Matches, ()>(false, &mut |_, _, Matches { value, arm, path }| {
         if let Some(arm) = arm
             && let Some(path) = path
         {

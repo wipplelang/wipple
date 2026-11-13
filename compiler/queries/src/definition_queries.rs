@@ -25,7 +25,7 @@ pub fn definitions<'a>(db: &QueryCtx<'a>, node: Node) -> Option<&'a BTreeSet<Nod
 
 pub fn references(db: &QueryCtx<'_>, node: Node) -> Vec<Node> {
     let mut references = Vec::new();
-    db.for_each_fact::<Resolved, ()>(&mut |_, other, resolved| {
+    db.for_each_fact::<Resolved, ()>(true, &mut |_, other, resolved| {
         if resolved.definitions.contains(&node) {
             references.push(other);
         }
@@ -44,7 +44,7 @@ pub fn unresolved(db: &QueryCtx<'_>, node: Node) -> Option<(Str, Option<(Node, S
     }
 
     let mut suggestion = None;
-    db.for_each_fact::<Defined, ()>(&mut |_, node, Defined(definition)| {
+    db.for_each_fact::<Defined, ()>(false, &mut |_, node, Defined(definition)| {
         if let Some(name) = definition.name() {
             let distance = levenshtein(&resolved.name, &name);
 

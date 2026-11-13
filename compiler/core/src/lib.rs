@@ -103,7 +103,7 @@ pub fn compile<'a>(
         let mut solver = Solver::with_substitutions(&top_level.substitutions);
 
         // If the definition is an instance, imply it inside itself
-        db.for_each_fact::<Instances, ()>(&mut |_, _, Instances(instances)| {
+        db.for_each_fact::<Instances, ()>(true, &mut |_, _, Instances(instances)| {
             for instance in instances {
                 if instance.node == definition_node {
                     solver.imply(instance.clone());

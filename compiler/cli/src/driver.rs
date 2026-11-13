@@ -142,7 +142,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
         let mut feedback_file_ids = HashMap::new();
 
         let mut sources = HashMap::new();
-        db.for_each_fact::<_, ()>(&mut |db, _, Syntax(syntax)| {
+        db.for_each_fact::<_, ()>(true, &mut |db, _, Syntax(syntax)| {
             if syntax.get(db).downcast_ref::<File>().is_some() {
                 let span = syntax.get(db).span(db);
                 sources.insert(span.path.clone(), span.source.clone());

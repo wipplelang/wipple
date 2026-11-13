@@ -507,7 +507,7 @@ fn doc(options: CompileOptions) -> anyhow::Result<()> {
     let ctx = QueryCtx::new(&db, Rc::new(default_filter));
 
     let mut items = HashMap::new();
-    db.for_each_fact::<Defined, ()>(&mut |db, node, _| {
+    db.for_each_fact::<Defined, ()>(true, &mut |db, node, _| {
         if let Some(mut documentation) = wipple_queries::documentation(&ctx, node) {
             let Some(name) = documentation.name else {
                 return ControlFlow::Continue(());

@@ -201,7 +201,7 @@ impl Program {
         ctx.reachable_definitions.insert(DefinitionKey::TopLevel);
 
         if include_definitions.defined {
-            db.for_each_fact::<_, ()>(&mut |db, node, Defined(definition)| {
+            db.for_each_fact::<_, ()>(true, &mut |db, node, Defined(definition)| {
                 if include_definitions.referenced && !db.in_layer(node) {
                     return ControlFlow::Continue(());
                 }

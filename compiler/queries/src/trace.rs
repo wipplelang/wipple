@@ -193,7 +193,7 @@ fn elaborate_consequences(
             let group_nodes = group.map_or_default(|group| group.nodes().collect());
             let intersect = move |nodes: &BTreeSet<_>| !nodes.is_disjoint(&group_nodes);
 
-            db.for_each_fact::<_, ()>(&mut |db, other, TypeDependsOn(dependencies)| {
+            db.for_each_fact::<_, ()>(false, &mut |db, other, TypeDependsOn(dependencies)| {
                 if intersect(dependencies)
                     && let Ty::Constructed(ty) =
                         update_type(db, &Ty::Node(other), &[node], Prefer::RepresentativeType)

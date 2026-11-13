@@ -418,10 +418,12 @@ impl Db {
 
     pub fn for_each_fact<T: Fact, U>(
         &self,
+        include_ancestors: bool,
         f: &mut dyn FnMut(&Self, Node, &T) -> ControlFlow<U>,
     ) -> Option<U> {
-        if let Some(parent) = self.parent.as_ref()
-            && let Some(result) = parent.for_each_fact(f)
+        if include_ancestors
+            && let Some(parent) = self.parent.as_ref()
+            && let Some(result) = parent.for_each_fact(true, f)
         {
             return Some(result);
         }
