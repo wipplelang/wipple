@@ -23,7 +23,6 @@ pub struct Driver<'a, Out> {
     pub compile_options: &'a CompileOptions,
     pub files: Vec<AstKey>,
     pub out: Out,
-    pub silent: bool,
     pub prefix: &'static str,
     pub progress: Option<(usize, usize)>,
     pub hide_facts: bool,
@@ -36,7 +35,6 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             compile_options,
             files,
             out,
-            silent: false,
             prefix: "",
             progress: None,
             hide_facts: false,
@@ -50,7 +48,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
         top_level: &mut TopLevel,
         name: &str,
     ) -> anyhow::Result<Option<(Node, Vec<Node>)>> {
-        if !self.silent {
+        if !self.compile_options.silent {
             if let Some((index, total)) = self.progress {
                 eprint!("\u{001B}[2K\r"); // reset line
                 eprint!("({}/{}) ", index + 1, total);
@@ -61,7 +59,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
 
         let (root_node, statements) = compile(db, top_level, &self.files, run_checks);
 
-        if !self.silent && self.progress.is_none() {
+        if !self.compile_options.silent && self.progress.is_none() {
             eprintln!();
         }
 
@@ -169,7 +167,7 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
         };
 
         for (span, feedback) in feedback_items {
-            if feedback_count == 0 && !self.silent {
+            if feedback_count == 0 && !self.compile_options.silent {
                 writeln!(f)?;
             }
 

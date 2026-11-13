@@ -1,24 +1,10 @@
 import test from "node:test";
-import * as fs from "node:fs";
 import * as path from "node:path";
 import { spawnSync } from "node:child_process";
 
-const testsPath = "test/tests";
-
-const tests = fs.readdirSync(testsPath).filter((file) => path.extname(file) === ".wipple");
-
 const cmd = spawnSync(
-    "cargo",
-    [
-        "run",
-        "--release",
-        "--",
-        "test",
-        "--lib=library/src/foundation",
-        "--explain",
-        "--facts",
-        ...tests.map((file) => path.join(testsPath, file)),
-    ],
+    "target/debug/wipple",
+    ["test", "--lib=library/src/foundation", "--explain", "--facts", "test/tests/*.wipple"],
     {
         stdio: ["ignore", "pipe", "inherit"],
     },

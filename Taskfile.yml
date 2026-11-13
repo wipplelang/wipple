@@ -11,6 +11,7 @@ tasks:
       - cargo instruments --release -t cpu -- {{.CLI_ARGS}}
   test:
     cmds:
+      - cargo build -p wipple-cli
       - node {{.CLI_ARGS}} test
   test:update:
     cmds:
@@ -74,6 +75,7 @@ tasks:
   build:library:
     dir: library
     cmds:
+      - cargo build -p wipple-cli
       - node build.js
   build:playground:
     deps:

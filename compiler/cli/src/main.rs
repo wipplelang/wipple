@@ -93,12 +93,15 @@ struct CompileOptions {
     all_feedback: bool,
 
     #[clap(long)]
+    silent: bool,
+
+    #[clap(long)]
     trace: bool,
 
     #[clap(long)]
     mir: Option<PathBuf>,
 
-    paths: Vec<PathBuf>,
+    paths: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -132,26 +135,26 @@ impl FromStr for FilterFacts {
 fn main() -> anyhow::Result<()> {
     match Args::parse() {
         Args::Compile { options } => {
-            compile(&options)?;
+            compile(options)?;
         }
         Args::Run { options } => {
-            if let Some(mir) = compile(&options)? {
+            if let Some(mir) = compile(options)? {
                 run(&mir, io::stdout())?;
             }
         }
         Args::Debug { options } => {
-            if let Some(mir) = compile(&options)? {
+            if let Some(mir) = compile(options)? {
                 debug(&mir)?;
             }
         }
         Args::Repl { options } => {
-            repl(&options)?;
+            repl(options)?;
         }
         Args::Test { options } => {
-            test(&options)?;
+            test(options)?;
         }
         Args::Doc { options } => {
-            doc(&options)?;
+            doc(options)?;
         }
         Args::Format => {
             format()?;
@@ -161,9 +164,9 @@ fn main() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn setup(
+fn setup<W: io::Write>(
     options: &CompileOptions,
-    mut out: impl io::Write,
+    mut out: W,
 ) -> anyhow::Result<(Db, TopLevel, Vec<Node>)> {
     if let Some(path) = options.lib.first()
         && path.extension().and_then(|ext| ext.to_str()) == Some("bin")
@@ -212,8 +215,8 @@ fn setup(
     Ok((db, top_level, statements))
 }
 
-fn compile(options: &CompileOptions) -> anyhow::Result<Option<codegen::mir::Program>> {
-    let (lib_db, mut top_level, lib_statements) = setup(options, io::stdout())?;
+fn compile(options: CompileOptions) -> anyhow::Result<Option<codegen::mir::Program>> {
+    let (lib_db, mut top_level, lib_statements) = setup(&options, io::stdout())?;
 
     if options.paths.is_empty() {
         return Ok(None);
@@ -224,23 +227,16 @@ fn compile(options: &CompileOptions) -> anyhow::Result<Option<codegen::mir::Prog
         db.debug_enabled = true;
     }
 
-    let files = options
-        .paths
-        .iter()
+    let files = glob(&options.paths)?
         .map(|path| {
-            let source = fs::read_to_string(path)?;
+            let source = fs::read_to_string(&path)?;
             Ok(parse(&mut db, path.to_string_lossy(), source))
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
 
-    let name = options
-        .paths
-        .iter()
-        .map(|path| path.to_string_lossy())
-        .collect::<Vec<_>>()
-        .join(", ");
+    let name = options.paths.join(", ");
 
-    let mut driver = Driver::new(options, files, io::stdout());
+    let mut driver = Driver::new(&options, files, io::stdout());
     driver.prefix = "Compiling ";
     driver.markdown_options = RenderMarkdownOptions::default()
         .rich(true)
@@ -303,8 +299,8 @@ fn run(mir: &codegen::mir::Program, mut w: impl io::Write) -> anyhow::Result<()>
     .run()
 }
 
-fn repl(options: &CompileOptions) -> anyhow::Result<()> {
-    let (lib_db, mut top_level, lib_statements) = setup(options, io::stdout())?;
+fn repl(mut options: CompileOptions) -> anyhow::Result<()> {
+    let (lib_db, mut top_level, lib_statements) = setup(&options, io::stdout())?;
 
     let mut program = codegen::mir::Program::default();
 
@@ -343,6 +339,8 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
         codegen::hir::IncludeDefinitions::for_library(),
         &[],
     )?;
+
+    options.silent = true;
 
     eprintln!("{}", "Wipple".bold());
     eprintln!(
@@ -387,8 +385,7 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
 
                 let files = vec![parse(&mut next_db, &name, &input)];
 
-                let mut driver = Driver::new(options, files, io::stdout());
-                driver.silent = true;
+                let mut driver = Driver::new(&options, files, io::stdout());
                 driver.markdown_options = RenderMarkdownOptions::default()
                     .rich(true)
                     .color(supports_color());
@@ -418,15 +415,13 @@ fn repl(options: &CompileOptions) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn test(options: &CompileOptions) -> anyhow::Result<()> {
+fn test(options: CompileOptions) -> anyhow::Result<()> {
     let mut out = Vec::new();
-    let (lib_db, top_level, lib_statements) = setup(options, &mut out)?;
+    let (lib_db, top_level, lib_statements) = setup(&options, &mut out)?;
 
     let lib_db = DbRef::new(lib_db);
 
-    let files = options
-        .paths
-        .iter()
+    let files = glob(&options.paths)?
         .map(|path| {
             let mut db = Db::new(Some(lib_db.clone()));
 
@@ -456,7 +451,7 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
     for (counter, (mut db, name, file)) in files.into_iter().enumerate() {
         let mut out = Vec::new();
 
-        let mut driver = Driver::new(options, vec![file], &mut out);
+        let mut driver = Driver::new(&options, vec![file], &mut out);
         driver.markdown_options = RenderMarkdownOptions::default().rich(true);
         driver.progress = Some((counter, files_count));
 
@@ -489,29 +484,21 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn doc(options: &CompileOptions) -> anyhow::Result<()> {
-    let (lib_db, mut top_level, _) = setup(options, io::stdout())?;
+fn doc(options: CompileOptions) -> anyhow::Result<()> {
+    let (lib_db, mut top_level, _) = setup(&options, io::stdout())?;
 
     let mut db = Db::new(Some(DbRef::new(lib_db)));
 
-    let files = options
-        .paths
-        .iter()
+    let files = glob(&options.paths)?
         .map(|path| {
-            let source = fs::read_to_string(path)?;
+            let source = fs::read_to_string(&path)?;
             Ok(parse(&mut db, path.to_string_lossy(), source))
         })
         .collect::<anyhow::Result<Vec<_>>>()?;
 
-    let name = options
-        .paths
-        .iter()
-        .map(|path| path.to_string_lossy())
-        .collect::<Vec<_>>()
-        .join(", ");
+    let name = options.paths.join(", ");
 
-    let mut driver = Driver::new(options, files, io::stdout());
-    driver.prefix = "Compiling ";
+    let driver = Driver::new(&options, files, io::stdout());
 
     driver
         .run(&mut db, &mut top_level, &name)?
@@ -569,4 +556,15 @@ fn format() -> anyhow::Result<()> {
 
 fn supports_color() -> bool {
     supports_color::on(supports_color::Stream::Stdout).is_some()
+}
+
+fn glob(
+    paths: impl IntoIterator<Item = impl AsRef<str>>,
+) -> anyhow::Result<impl Iterator<Item = PathBuf>> {
+    Ok(paths
+        .into_iter()
+        .map(|path| Ok(glob::glob(path.as_ref())?.collect::<Result<Vec<_>, _>>()?))
+        .collect::<anyhow::Result<Vec<_>>>()?
+        .into_iter()
+        .flatten())
 }

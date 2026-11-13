@@ -1,80 +1,82 @@
-const path = require("node:path");
-const fs = require("node:fs");
-const process = require("node:process");
-const { spawnSync } = require("node:child_process");
+import * as path from "node:path";
+import * as fs from "node:fs";
+import * as process from "node:process";
+import { spawn } from "node:child_process";
+import { once } from "node:events";
 
-process.chdir(__dirname);
+const { dirname } = import.meta;
+
+process.chdir(dirname);
 
 fs.rmSync("dist", { recursive: true, force: true });
 fs.mkdirSync("dist", { recursive: true });
 
-let compiledFoundation = false;
-for (let dir of ["foundation", ...fs.readdirSync("src")]) {
-    if (dir === "foundation" && compiledFoundation) {
-        continue;
-    }
-
+const compile = async (dir, dependencies) => {
     if (!fs.statSync(path.join("src", dir)).isDirectory()) {
         fs.copyFileSync(path.join("src", dir), path.join("dist", dir));
-        continue;
+        return;
     }
+
+    console.log("Building", dir);
 
     const getMetadata = (lib) =>
         JSON.parse(fs.readFileSync(path.join("src", lib, "_metadata.json"), "utf8"));
 
     const metadata = getMetadata(dir);
 
-    const files = fs
-        .readdirSync(path.join("src", dir))
-        .filter((file) => file.endsWith(".wipple"))
-        .map((file) => ({
-            path: path.join(dir, file),
-            code: fs.readFileSync(path.join("src", dir, file), "utf8"),
-        }));
-
-    const compileCmd = spawnSync(
-        "cargo",
+    const compileCmd = spawn(
+        "target/debug/wipple",
         [
-            "run",
-            "--",
             "compile",
-            ...(compiledFoundation
-                ? [`--lib=${path.join(__dirname, "dist", "foundation.bin")}`]
-                : []),
-            ...files.map((file) =>
-                path.relative(
-                    path.resolve(__dirname, ".."),
-                    path.join(__dirname, "src", file.path),
-                ),
+            ...dependencies.map(
+                (dependency) => `--lib=${path.join(dirname, "dist", `${dependency}.bin`)}`,
             ),
-            `--lib-artifact=${path.join(__dirname, "dist", `${dir}.bin`)}`,
+            path.join(dirname, "src", dir) + "/*.wipple",
+            `--lib-artifact=${path.join(dirname, "dist", `${dir}.bin`)}`,
+            "--silent",
         ],
         {
-            cwd: path.resolve(__dirname, ".."),
+            cwd: path.resolve(dirname, ".."),
             stdio: "inherit",
         },
     );
 
-    if (compileCmd.status !== 0) {
-        throw new Error(`compiler exited with status code ${compileCmd.status}`);
+    const [compileStatus] = await once(compileCmd, "close");
+
+    if (compileStatus !== 0) {
+        throw new Error(`compiler exited with status code ${compileStatus}`);
     }
 
-    const docCmd = spawnSync(
-        "cargo",
-        ["run", "--", "doc", `--lib=${path.join(__dirname, "dist", `${dir}.bin`)}`],
+    const docCmd = spawn(
+        "target/debug/wipple",
+        ["doc", `--lib=${path.join(dirname, "dist", `${dir}.bin`)}`, "--silent"],
         {
-            cwd: path.resolve(__dirname, ".."),
+            cwd: path.resolve(dirname, ".."),
             stdio: ["ignore", "pipe", "inherit"],
         },
     );
 
-    if (docCmd.status !== 0) {
-        throw new Error(`compiler exited with status code ${docCmd.status}`);
+    let docs = "";
+    docCmd.stdout.on("data", (chunk) => {
+        docs += chunk.toString();
+    });
+
+    const [docStatus] = await once(docCmd, "close");
+
+    if (docStatus !== 0) {
+        throw new Error(`compiler exited with status code ${docStatus}`);
     }
 
-    const docs = JSON.parse(docCmd.stdout.toString("utf8"));
+    fs.writeFileSync(
+        path.join("dist", `${dir}.json`),
+        JSON.stringify({ metadata, docs: JSON.parse(docs) }),
+    );
+};
 
-    fs.writeFileSync(path.join("dist", `${dir}.json`), JSON.stringify({ metadata, docs }));
-
-    compiledFoundation = true;
-}
+await compile("foundation", []);
+await Promise.all(
+    fs
+        .readdirSync("src")
+        .filter((dir) => !dir.startsWith(".") && dir !== "foundation")
+        .map((dir) => compile(dir, ["foundation"])),
+);
