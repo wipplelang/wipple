@@ -58,11 +58,15 @@ impl Visit for FunctionType {
             .collect::<Vec<_>>();
 
         for &input in &inputs {
-            db.graph.edge(input, node, "input");
+            if let Some(graph) = &mut db.graph {
+                graph.edge(input, node, "input");
+            }
         }
 
         let output = visitor.annotating(None, |visitor| visitor.visit(db, &self.output));
-        db.graph.edge(output, node, "output");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(output, node, "output");
+        }
 
         visitor.constraint(
             db,

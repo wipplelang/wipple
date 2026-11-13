@@ -44,7 +44,9 @@ impl Visit for DoExpression {
         visit_expression(db, node, visitor);
 
         let input = visitor.visit(db, &self.input);
-        db.graph.edge(input, node, "input");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(input, node, "input");
+        }
 
         visitor.constraint(
             db,

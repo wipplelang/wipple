@@ -72,7 +72,9 @@ impl Visit for SetPattern {
             db.insert(variable_definition_node, IsCaptured);
         }
 
-        db.graph.replace(node, variable_definition_node);
+        if let Some(graph) = &mut db.graph {
+            graph.replace(node, variable_definition_node);
+        }
 
         db.insert(variable_definition_node, IsMutated);
 

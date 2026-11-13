@@ -13,7 +13,6 @@
         {
             "name": "Compile and run test.wipple",
             "type": "lldb",
-
             "request": "launch",
             "cargo": {
                 "args": ["run", "--config", "profile.dev.opt-level=0"]

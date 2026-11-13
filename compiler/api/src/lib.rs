@@ -4,7 +4,7 @@ mod graph;
 mod ide;
 mod interpreter;
 
-use std::{cell::RefCell, collections::HashMap, sync::Arc};
+use std::{cell::RefCell, collections::HashMap, rc::Rc};
 use wasm_bindgen::prelude::*;
 use wipple_core::{
     LibraryArtifact,
@@ -50,22 +50,26 @@ impl File {
 }
 
 thread_local! {
-    static LIBRARIES: RefCell<HashMap<String, Arc<LibraryArtifact<DbRef>>>> = Default::default();
+    static LIBRARIES: RefCell<HashMap<String, Rc<LibraryArtifact<DbRef>>>> = Default::default();
 }
 
 #[wasm_bindgen]
 pub fn register_library(name: String, bin: Box<[u8]>) -> Result<(), JsError> {
     let artifact = rmp_serde::from_slice::<LibraryArtifact<DbRef>>(&bin)?;
-    LIBRARIES.with(|libraries| libraries.borrow_mut().insert(name, Arc::new(artifact)));
+    LIBRARIES.with(|libraries| libraries.borrow_mut().insert(name, Rc::new(artifact)));
     Ok(())
 }
 
 #[wasm_bindgen]
-pub fn compile(files: Vec<File>, library_name: Option<String>) -> Option<CompileResult> {
+pub fn compile(
+    files: Vec<File>,
+    library_name: Option<String>,
+    graph: bool,
+) -> Option<CompileResult> {
     let library = library_name
         .and_then(|name| LIBRARIES.with(|libraries| libraries.borrow().get(&name).cloned()))?;
 
-    let mut db = Db::new(Some(library.db.clone()));
+    let mut db = Db::new(Some(library.db.clone())).graph_enabled(graph);
 
     let path = files[0].path.to_string();
 

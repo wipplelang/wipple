@@ -85,7 +85,9 @@ impl Visit for CollectionExpression {
             .iter()
             .map(|element| {
                 let element_node = db.node();
-                db.graph.edge(element_node, node, "element");
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(element_node, node, "element");
+                }
 
                 let function = visitor.in_ast(
                     db,

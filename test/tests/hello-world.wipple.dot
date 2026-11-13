@@ -1,8 +1,0 @@
-digraph G {
-  node [shape=box, fontname=monospace]
-  node_2_3 [label="show \"Hello, world!\""]
-  node_2_4 [label="show"]
-  node_2_5 [label="\"Hello, world!\""]
-  node_2_4 -> node_2_3 [label="function"]
-  node_2_5 -> node_2_3 [label="input"]
-}

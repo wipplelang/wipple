@@ -8,6 +8,7 @@ unused_crate_dependencies = "warn"
 
 [workspace.lints.clippy]
 dbg_macro = "warn"
+needless_bool = "allow"
 print_stderr = "warn"
 result_large_err = "allow"
 type_complexity = "allow"

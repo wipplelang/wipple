@@ -20,17 +20,17 @@ pub use trace::*;
 pub use type_queries::*;
 pub use unused_queries::*;
 
-use std::{ops::Deref, sync::Arc};
+use std::{ops::Deref, rc::Rc};
 use wipple_core::db::{Db, Fact, Node};
 
 #[derive(Clone)]
 pub struct QueryCtx<'a> {
     db: &'a Db,
-    filter: Arc<dyn Fn(&'a Db, Node) -> bool + Send + Sync + 'a>,
+    filter: Rc<dyn Fn(&'a Db, Node) -> bool + 'a>,
 }
 
 impl<'a> QueryCtx<'a> {
-    pub fn new(db: &'a Db, filter: Arc<dyn Fn(&'a Db, Node) -> bool + Send + Sync + 'a>) -> Self {
+    pub fn new(db: &'a Db, filter: Rc<dyn Fn(&'a Db, Node) -> bool + 'a>) -> Self {
         QueryCtx { db, filter }
     }
 

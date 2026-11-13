@@ -166,7 +166,7 @@ impl Render for IsMutated {
 }
 
 #[typetag::serde]
-pub trait Visit: Debug + DynClone + Any + Send + Sync {
+pub trait Visit: Debug + DynClone + Any {
     fn span<'a>(&'a self, db: &'a Db) -> &'a Span;
 
     fn is_hidden(&self, db: &Db) -> bool {

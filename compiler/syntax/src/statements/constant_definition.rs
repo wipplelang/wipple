@@ -104,11 +104,15 @@ impl Visit for ConstantDefinition {
                 |visitor| {
                     let ty = visitor
                         .annotating(Some((node, true)), |visitor| visitor.visit(db, &self.ty));
-                    db.graph.edge(ty, node, "type");
+                    if let Some(graph) = &mut db.graph {
+                        graph.edge(ty, node, "type");
+                    }
 
                     for constraint in self.constraints {
                         let constraint = visitor.visit(db, &constraint);
-                        db.graph.edge(constraint, node, "constraint");
+                        if let Some(graph) = &mut db.graph {
+                            graph.edge(constraint, node, "constraint");
+                        }
                     }
                 },
             );

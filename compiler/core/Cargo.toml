@@ -9,6 +9,7 @@ workspace = true
 [dependencies]
 anyhow = "1"
 dyn-clone = "1"
+imbl = { version = "7", features = ["serde"] }
 itertools = "0.14"
 regex = "1"
 serde = { version = "1", features = ["derive"] }

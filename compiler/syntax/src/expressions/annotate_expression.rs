@@ -58,7 +58,9 @@ impl Visit for AnnotateExpression {
         let ty = visitor.annotating(Some((expression, true)), |visitor| {
             visitor.visit(db, &self.ty)
         });
-        db.graph.edge(ty, expression, "type");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(ty, expression, "type");
+        }
 
         visitor.constraint(db, TyConstraint::new(node, Ty::Node(ty)));
 

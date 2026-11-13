@@ -413,7 +413,9 @@ impl Visit for TypeDefinition {
                                     definition.fields.iter().zip(&representation.fields)
                                 {
                                     visitor.visit_as(db, &field.ty.clone(), field_node);
-                                    db.graph.edge(field_node, node, "field");
+                                    if let Some(graph) = &mut db.graph {
+                                        graph.edge(field_node, node, "field");
+                                    }
 
                                     if fields.iter().any(|(name, _)| name == &field.name) {
                                         db.insert(node, DuplicateFieldDefinition);
@@ -476,7 +478,9 @@ impl Visit for TypeDefinition {
                                         definition.elements.iter().zip(&variant.elements)
                                     {
                                         visitor.visit_as(db, &element.clone(), element_node);
-                                        db.graph.edge(element_node, constructor, "element");
+                                        if let Some(graph) = &mut db.graph {
+                                            graph.edge(element_node, constructor, "element");
+                                        }
                                     }
 
                                     db.insert(constructor, Typed::default());
@@ -523,7 +527,9 @@ impl Visit for TypeDefinition {
                                 }
 
                                 visitor.visit_as(db, &representation.value, definition.value);
-                                db.graph.edge(definition.value, constructor, "value");
+                                if let Some(graph) = &mut db.graph {
+                                    graph.edge(definition.value, constructor, "value");
+                                }
 
                                 db.insert(constructor, Typed::default());
 

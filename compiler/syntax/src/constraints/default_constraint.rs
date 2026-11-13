@@ -55,7 +55,9 @@ impl Visit for DefaultConstraint {
         let parameter = visitor.visit(db, &self.parameter);
         let value = visitor.visit(db, &self.value);
 
-        db.graph.edge(value, node, "value");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(value, node, "value");
+        }
 
         visitor.constraint(db, TypecheckDefaultConstraint::new(parameter, value));
     }

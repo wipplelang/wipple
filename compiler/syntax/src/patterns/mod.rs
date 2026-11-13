@@ -149,8 +149,10 @@ pub fn visit_pattern(
     let matching = visitor.set_matches(db, terminal);
     db.insert(node, Matching(matching));
 
-    if visitor.current_match.as_ref().and_then(|m| m.arm) == Some(node) {
-        db.graph.edge(matching, node, "value");
+    if let Some(graph) = &mut db.graph
+        && visitor.current_match.as_ref().and_then(|m| m.arm) == Some(node)
+    {
+        graph.edge(matching, node, "value");
     }
 
     visitor.constraint(db, TyConstraint::new(node, Ty::Node(matching)));

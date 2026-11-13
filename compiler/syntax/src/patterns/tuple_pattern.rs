@@ -69,7 +69,9 @@ impl Visit for TuplePattern {
                     MatchPathSegment::TupleElement(index, element_count),
                 );
 
-                db.graph.edge(element.0, node, "element");
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(element.0, node, "element");
+                }
 
                 element
             })

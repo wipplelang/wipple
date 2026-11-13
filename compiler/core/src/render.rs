@@ -14,7 +14,8 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap},
     fmt::Write,
-    sync::{Arc, LazyLock},
+    rc::Rc,
+    sync::LazyLock,
 };
 
 pub trait Render {
@@ -41,7 +42,7 @@ pub enum ExplainOptions {
 
 pub struct RenderCtx<'a> {
     pub options: RenderOptions,
-    filter: Arc<dyn Fn(&Db, Node) -> bool + 'a>,
+    filter: Rc<dyn Fn(&Db, Node) -> bool + 'a>,
     segments: Vec<RenderSegment>,
     nodes: BTreeSet<Node>,
 }
@@ -50,7 +51,7 @@ impl<'a> RenderCtx<'a> {
     pub fn new(filter: impl Fn(&Db, Node) -> bool + 'a) -> Self {
         RenderCtx {
             options: Default::default(),
-            filter: Arc::new(filter),
+            filter: Rc::new(filter),
             segments: Default::default(),
             nodes: Default::default(),
         }

@@ -42,7 +42,7 @@ pub struct LibraryArtifact<T> {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TopLevel {
     pub definitions: Vec<BTreeMap<Str, Vec<(Node, Box<dyn Definition>)>>>,
-    pub substitutions: Vec<Substitutions>,
+    pub substitutions: imbl::Vector<Substitutions>,
     pub utilities: VisitUtilities,
 }
 
@@ -85,7 +85,7 @@ pub fn compile<'a>(
         .definitions
         .push(mem::take(&mut visited.definitions));
 
-    top_level.substitutions = mem::take(&mut visited.substitutions);
+    top_level.substitutions = mem::take(&mut visited.substitutions).into();
 
     top_level.utilities.extend(visited.utilities);
 
@@ -100,8 +100,7 @@ pub fn compile<'a>(
         .collect::<Vec<_>>();
 
     for (definition_node, definition_constraints) in definition_constraints {
-        let mut solver = Solver::new();
-        solver.substitutions.extend(top_level.substitutions.clone());
+        let mut solver = Solver::with_substitutions(&top_level.substitutions);
 
         // If the definition is an instance, imply it inside itself
         db.for_each_fact::<Instances, ()>(&mut |_, _, Instances(instances)| {
@@ -150,14 +149,9 @@ pub fn compile<'a>(
 
     // Solve constraints from top-level expressions
 
-    let mut solver = Solver::new();
+    let mut solver = Solver::with_substitutions(&top_level.substitutions);
     solver.trace = true;
-
-    solver.extend(
-        visited.constraints,
-        visited.ranks,
-        top_level.substitutions.clone(),
-    );
+    solver.extend(visited.constraints, visited.ranks);
 
     solver.run(db);
     apply_solver(db, solver);
@@ -186,8 +180,10 @@ pub fn apply_solver(db: &mut Db, solver: Solver) {
             nodes.push(node);
         }
 
-        if !nodes.is_empty() {
-            db.graph.group(nodes, group.tys().cloned().collect());
+        if !nodes.is_empty()
+            && let Some(graph) = &mut db.graph
+        {
+            graph.group(nodes, group.tys().cloned().collect());
         }
     }
 

@@ -52,10 +52,14 @@ impl Visit for AsExpression {
         visit_expression(db, node, visitor);
 
         let left = visitor.visit(db, &self.left);
-        db.graph.edge(left, node, "left");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(left, node, "left");
+        }
 
         let right = visitor.visit(db, &self.right);
-        db.graph.edge(right, node, "right");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(right, node, "right");
+        }
 
         let as_function = visitor.in_ast(
             db,

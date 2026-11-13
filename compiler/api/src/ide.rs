@@ -2,7 +2,7 @@ use crate::CompileResult;
 use std::{
     collections::{BTreeMap, HashMap},
     fmt::Write,
-    sync::Arc,
+    rc::Rc,
 };
 use wasm_bindgen::prelude::*;
 use wipple_core::{
@@ -99,7 +99,7 @@ pub struct Ide {
 
 impl Ide {
     fn query_ctx(&self) -> QueryCtx<'_> {
-        QueryCtx::new(&self.result.db, Arc::new(default_filter))
+        QueryCtx::new(&self.result.db, Rc::new(default_filter))
     }
 }
 
@@ -112,12 +112,7 @@ impl Ide {
         }
     }
 
-    fn default_options(
-        &self,
-    ) -> (
-        &'static (dyn Fn(&Db, Node) -> bool + Send + Sync),
-        RenderOptions,
-    ) {
+    fn default_options(&self) -> (&'static dyn Fn(&Db, Node) -> bool, RenderOptions) {
         let render_options = RenderOptions {
             explain: ExplainOptions::Enabled,
             ..Default::default()

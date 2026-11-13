@@ -34,46 +34,45 @@ impl Render for OverlappingInstances {
 
 pub fn check_for_overlapping_instances(
     db: &mut Db,
-    solver: &mut Solver,
+    solver: &Solver,
     trait_node: Node,
     instances: impl IntoIterator<Item = Instance>,
 ) {
     let last_node = db.last_node();
 
-    let mut instance_groups = group_instances(db, instances);
-
-    for instance in instance_groups.iter_mut().flatten() {
-        // Instantiate the *instance's own* parameters
-
-        let substitutions = solver.insert_substitutions(Default::default(), Default::default());
-
-        solver.constraints.insert_front(
-            instance.node,
-            Box::new(InstantiateConstraint::new(
-                instance.node,
-                instance.node,
-                substitutions,
-            )),
-        );
-
-        solver.run_pass(db, ConstraintKind::Ty);
-
-        // Instantiate the parameters for the *trait*
-
-        let mut ctx = InstantiateCtx {
-            definition: instance.node,
-            source_node: instance.node,
-            bound_path: Vec::new(),
-            substitutions,
-        };
-
-        ctx.instantiate_parameters(db, solver, &mut instance.parameters);
-    }
-
-    for instances in instance_groups {
+    for instances in group_instances(db, instances) {
         let mut overlapping = Vec::new();
-        for (left_instance, right_instance) in instances.into_iter().tuple_combinations() {
+        for (mut left_instance, mut right_instance) in instances.into_iter().tuple_combinations() {
             let mut copy = solver.clone_without_constraints(None);
+
+            for instance in [&mut left_instance, &mut right_instance] {
+                // Instantiate the *instance's own* parameters
+
+                let substitutions =
+                    copy.insert_substitutions(Default::default(), Default::default());
+
+                copy.constraints.insert_front(
+                    instance.node,
+                    Box::new(InstantiateConstraint::new(
+                        instance.node,
+                        instance.node,
+                        substitutions,
+                    )),
+                );
+
+                copy.run_pass(db, ConstraintKind::Ty);
+
+                // Instantiate the parameters for the *trait*
+
+                let mut ctx = InstantiateCtx {
+                    definition: instance.node,
+                    source_node: instance.node,
+                    bound_path: Vec::new(),
+                    substitutions,
+                };
+
+                ctx.instantiate_parameters(db, &mut copy, &mut instance.parameters);
+            }
 
             let mut error = false;
             copy.unify_parameters(
@@ -106,10 +105,10 @@ pub fn check_for_overlapping_instances(
 
 pub fn run_mismatched_trait(
     db: &mut Db,
+    solver: &Solver,
     trait_node: Node,
     trait_definition: &TraitDefinition,
     mut filter: impl FnMut(&Db, Node) -> bool,
-    init: impl Fn(&mut Solver),
 ) -> Vec<Solver> {
     let mut groups = Vec::new();
     db.for_each_fact::<Typed, ()>(&mut |_, node, Typed(group)| {
@@ -137,8 +136,7 @@ pub fn run_mismatched_trait(
             parameters.insert(trait_definition.parameters[0], Ty::Node(node));
             parameters.insert(trait_definition.parameters[1], Ty::Constructed(right));
 
-            let mut solver = Solver::new();
-            init(&mut solver);
+            let mut solver = solver.clone_without_constraints(None);
 
             let substitutions = solver.insert_substitutions(Default::default(), parameters);
 

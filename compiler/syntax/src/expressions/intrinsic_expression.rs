@@ -49,7 +49,9 @@ impl Visit for IntrinsicExpression {
             .into_iter()
             .map(|input| {
                 let input = visitor.visit(db, &input);
-                db.graph.edge(input, node, "input");
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(input, node, "input");
+                }
                 input
             })
             .collect::<Vec<_>>();

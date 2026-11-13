@@ -122,13 +122,17 @@ impl Visit for TraitDefinition {
                 );
 
                 let ty = visitor.visit(db, &self.ty);
-                db.graph.edge(ty, node, "type");
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(ty, node, "type");
+                }
 
                 visitor.constraint(db, TyConstraint::new(node, Ty::Node(ty)));
 
                 for constraint in self.constraints {
                     let constraint = visitor.visit(db, &constraint);
-                    db.graph.edge(constraint, node, "constraint");
+                    if let Some(graph) = &mut db.graph {
+                        graph.edge(constraint, node, "constraint");
+                    }
                 }
 
                 visitor.pop_scope(db);

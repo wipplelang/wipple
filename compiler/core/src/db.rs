@@ -14,8 +14,8 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     fmt::{Debug, Display},
     ops::{ControlFlow, Deref, RangeInclusive},
+    rc::Rc,
     str::FromStr,
-    sync::Arc,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -58,7 +58,7 @@ impl FromStr for NodeId {
 }
 
 #[typetag::serde]
-pub trait Fact: Debug + DynClone + Any + Send + Sync + Render {}
+pub trait Fact: Debug + DynClone + Any + Render {}
 
 dyn_clone::clone_trait_object!(Fact);
 
@@ -76,7 +76,7 @@ pub struct Db {
     parent: Option<DbRef>,
     pub debug_enabled: bool,
     pub(crate) ast: Ast,
-    pub graph: GraphBuilder,
+    pub graph: Option<GraphBuilder>,
     pub consequences: Consequences,
     // For owned nodes
     nodes: Vec<Option<NodeInfo>>,
@@ -86,11 +86,11 @@ pub struct Db {
 }
 
 #[derive(Debug, Clone)]
-pub struct DbRef(Arc<Db>);
+pub struct DbRef(Rc<Db>);
 
 impl DbRef {
     pub fn new(db: Db) -> Self {
-        Self(Arc::new(db))
+        Self(Rc::new(db))
     }
 }
 
@@ -116,7 +116,7 @@ impl<'de> Deserialize<'de> for DbRef {
     where
         D: serde::Deserializer<'de>,
     {
-        Ok(DbRef(Arc::new(Db::deserialize(deserializer)?)))
+        Ok(DbRef(Rc::new(Db::deserialize(deserializer)?)))
     }
 }
 
@@ -133,7 +133,7 @@ impl Debug for Db {
 struct SerializedDb {
     parent: Option<Box<SerializedDb>>,
     debug_enabled: bool,
-    graph: GraphBuilder,
+    graph: Option<GraphBuilder>,
     consequences: Consequences,
     ast: Ast,
     nodes: Vec<Option<NodeInfo>>,
@@ -247,12 +247,17 @@ impl Db {
             parent,
             debug_enabled,
             ast: Ast::new(layer),
-            graph: Default::default(),
+            graph: None,
             consequences: Default::default(),
             nodes: Default::default(),
             overrides: Default::default(),
             cache: Default::default(),
         }
+    }
+
+    pub fn graph_enabled(mut self, enabled: bool) -> Self {
+        self.graph = enabled.then(GraphBuilder::default);
+        self
     }
 
     pub fn layer(&self) -> usize {

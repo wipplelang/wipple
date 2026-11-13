@@ -43,7 +43,9 @@ impl Visit for BlockType {
         visit_type(db, node, visitor);
 
         let output = visitor.annotating(None, |visitor| visitor.visit(db, &self.output));
-        db.graph.edge(output, node, "output");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(output, node, "output");
+        }
 
         visitor.constraint(
             db,

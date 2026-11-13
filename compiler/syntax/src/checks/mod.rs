@@ -24,9 +24,8 @@ pub fn run_checks(db: &mut Db, top_level: &TopLevel) {
     });
 
     for (trait_node, instances) in all_instances {
-        let mut solver = Solver::new();
-        solver.substitutions.extend(top_level.substitutions.clone());
-        check_for_overlapping_instances(db, &mut solver, trait_node, instances);
+        let solver = Solver::with_substitutions(&top_level.substitutions);
+        check_for_overlapping_instances(db, &solver, trait_node, instances);
     }
 
     // Resolved `Mismatched` trait for mismatched types
@@ -35,12 +34,14 @@ pub fn run_checks(db: &mut Db, top_level: &TopLevel) {
         && let Some(Defined(definition)) = db.get::<Defined>(*mismatched_trait_node)
         && let Some(trait_definition) = definition.downcast_ref::<TraitDefinition>().cloned()
     {
+        let solver = Solver::with_substitutions(&top_level.substitutions);
+
         for solver in run_mismatched_trait(
             db,
+            &solver,
             *mismatched_trait_node,
             &trait_definition,
             default_filter,
-            |solver| solver.substitutions.extend(top_level.substitutions.clone()),
         ) {
             apply_solver(db, solver);
         }

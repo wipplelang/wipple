@@ -1,6 +1,0 @@
-digraph G {
-  node [shape=box, fontname=monospace]
-  node_2_9 [label="A"]
-  node_2_10 [label="_"]
-  node_2_9 -> node_2_10 [label="value"]
-}

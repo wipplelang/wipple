@@ -81,7 +81,9 @@ impl Visit for WhenExpression {
         visit_expression(db, node, visitor);
 
         let input = visitor.visit(db, &self.input);
-        db.graph.edge(input, node, "input");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(input, node, "input");
+        }
 
         let arms = self
             .arms
@@ -101,10 +103,14 @@ impl Visit for WhenExpression {
                         visitor.push_scope(db, pattern);
 
                         visitor.visit_as(db, &arm.pattern, pattern);
-                        db.graph.edge(pattern, node, "pattern");
+                        if let Some(graph) = &mut db.graph {
+                            graph.edge(pattern, node, "pattern");
+                        }
 
                         let value = visitor.visit(db, &arm.value);
-                        db.graph.edge(value, node, "value");
+                        if let Some(graph) = &mut db.graph {
+                            graph.edge(value, node, "value");
+                        }
 
                         visitor.pop_scope(db);
 

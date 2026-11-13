@@ -62,7 +62,9 @@ impl Visit for TupleType {
             .collect::<Vec<_>>();
 
         for &element in &elements {
-            db.graph.edge(element, node, "element");
+            if let Some(graph) = &mut db.graph {
+                graph.edge(element, node, "element");
+            }
         }
 
         visitor.constraint(

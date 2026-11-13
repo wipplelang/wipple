@@ -79,13 +79,17 @@ impl Visit for FunctionExpression {
                     |visitor| visitor.visit_as(db, &input, input_node),
                 );
 
-                db.graph.edge(input_node, node, "input");
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(input_node, node, "input");
+                }
                 input_node
             })
             .collect::<Vec<_>>();
 
         let output = visitor.visit(db, &self.output);
-        db.graph.edge(output, node, "output");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(output, node, "output");
+        }
 
         visitor.pop_scope(db);
 

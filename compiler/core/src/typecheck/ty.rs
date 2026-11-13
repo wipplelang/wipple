@@ -124,7 +124,7 @@ pub enum TyTag {
 }
 
 #[typetag::serde]
-trait TyDisplay: Debug + DynClone + Send + Sync + 'static {
+trait TyDisplay: Debug + DynClone + 'static {
     fn display(
         &self,
         db: &Db,

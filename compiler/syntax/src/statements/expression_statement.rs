@@ -54,7 +54,9 @@ impl Visit for ExpressionStatement {
 
         let expression = visitor.visit(db, &self.expression);
 
-        db.graph.replace(node, expression);
+        if let Some(graph) = &mut db.graph {
+            graph.replace(node, expression);
+        }
 
         visitor.constraint(db, TyConstraint::new(node, Ty::Node(expression)));
 

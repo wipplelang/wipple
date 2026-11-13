@@ -11,6 +11,7 @@ const cmd = spawnSync(
     "cargo",
     [
         "run",
+        "--release",
         "--",
         "test",
         "--lib=library/src/foundation",
@@ -36,9 +37,5 @@ for (const entry of output) {
             path.join("test/tests", `${entry.file}.snap`),
             { serializers: [(s) => s] },
         );
-
-        t.assert.fileSnapshot(entry.graph, path.join("test/tests", `${entry.file}.dot`), {
-            serializers: [(s) => s],
-        });
     });
 }

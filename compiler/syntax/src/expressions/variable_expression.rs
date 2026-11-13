@@ -80,7 +80,9 @@ impl Visit for VariableExpression {
                     db.insert(definition_node, IsCaptured);
                 }
 
-                db.graph.replace(node, definition_node);
+                if let Some(graph) = &mut db.graph {
+                    graph.replace(node, definition_node);
+                }
 
                 visitor.constraint(db, TyConstraint::new(node, Ty::Node(definition_node)));
 

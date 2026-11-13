@@ -94,7 +94,9 @@ impl Visit for FormatExpression {
 
         let mut format_segments = Vec::new();
         for (segment, input) in segments.iter().zip(&inputs) {
-            db.graph.edge(*input, node, "input");
+            if let Some(graph) = &mut db.graph {
+                graph.edge(*input, node, "input");
+            }
 
             let describe_node = visitor.in_ast(
                 db,

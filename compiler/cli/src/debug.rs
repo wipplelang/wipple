@@ -13,7 +13,6 @@ use dap::{
     },
 };
 use std::{
-    convert::Infallible,
     io::{self, BufReader, BufWriter},
     ops::ControlFlow,
     sync::{Arc, Mutex, mpsc},
@@ -29,14 +28,10 @@ enum State {
 }
 
 pub fn debug(program: &mir::Program) -> anyhow::Result<()> {
-    let (state_tx, state_rx) = mpsc::channel();
-
-    let server = Server::new(BufReader::new(io::stdin()), BufWriter::new(io::stdout()));
+    let mut server = Server::new(BufReader::new(io::stdin()), BufWriter::new(io::stdout()));
     let output = server.output.clone();
 
-    let breakpoints: Arc<Mutex<_>> = Default::default();
-
-    let interpreter = Arc::new(Mutex::new(interpreter(program, {
+    let mut interpreter = interpreter(program, {
         let output = output.clone();
         move |s| {
             output
@@ -50,20 +45,23 @@ pub fn debug(program: &mir::Program) -> anyhow::Result<()> {
 
             Ok(())
         }
-    })));
+    });
 
+    let breakpoints: Arc<Mutex<_>> = Default::default();
+    let (state_tx, state_rx) = mpsc::channel();
+    let (stack_trace_tx, stack_trace_rx) = mpsc::channel();
     let mut ctx = Context {
-        server,
         breakpoints: breakpoints.clone(),
-        interpreter: interpreter.clone(),
         variables: Default::default(),
         state_tx,
+        stack_trace_rx,
+        output: output.clone(),
     };
 
     thread::scope(|scope| {
         let server_thread = scope.spawn(move || -> anyhow::Result<()> {
-            while let Some(req) = ctx.server.poll_request()? {
-                ctx.handle(req)?;
+            while let Some(request) = server.poll_request()? {
+                ctx.handle(request)?;
             }
 
             Ok(())
@@ -77,8 +75,6 @@ pub fn debug(program: &mir::Program) -> anyhow::Result<()> {
 
             match state {
                 State::Running => {
-                    let mut interpreter = interpreter.lock().unwrap();
-
                     let (ref path, ref breakpoints, ref mut paused) = *breakpoints.lock().unwrap();
 
                     if !*paused && let Some(path) = path {
@@ -104,6 +100,8 @@ pub fn debug(program: &mir::Program) -> anyhow::Result<()> {
 
                                 *paused = true;
 
+                                stack_trace_tx.send(interpreter.stack_trace()).unwrap();
+
                                 continue 'outer;
                             }
                         }
@@ -127,28 +125,26 @@ pub fn debug(program: &mir::Program) -> anyhow::Result<()> {
     })
 }
 
-struct Context<'a, 'ctx> {
-    server: Server<io::Stdin, io::Stdout>,
+struct Context<'a> {
     breakpoints: Arc<Mutex<(Option<String>, Vec<dap::types::SourceBreakpoint>, bool)>>,
-    interpreter: Arc<Mutex<wipple_interpreter::Interpreter<'a, 'ctx, Infallible, anyhow::Error>>>,
     variables: (Vec<Vec<usize>>, Vec<(String, String, Vec<usize>)>),
     state_tx: mpsc::Sender<State>,
+    stack_trace_rx: mpsc::Receiver<wipple_interpreter::StackTrace<'a, !>>,
+    output: Arc<Mutex<dap::server::ServerOutput<io::Stdout>>>,
 }
 
-impl<'a, 'ctx> Context<'a, 'ctx> {
-    fn handle(&mut self, req: Request) -> anyhow::Result<()> {
-        match &req.command {
+impl<'a> Context<'a> {
+    fn handle(&mut self, request: Request) -> anyhow::Result<()> {
+        match &request.command {
             Command::Initialize(_) => {
-                self.server
-                    .respond(req.success(ResponseBody::Initialize(Capabilities {
-                        supports_configuration_done_request: Some(true),
-                        ..Default::default()
-                    })))?;
+                self.respond(request.success(ResponseBody::Initialize(Capabilities {
+                    supports_configuration_done_request: Some(true),
+                    ..Default::default()
+                })))?;
             }
             Command::Launch(_) => {
-                self.server.respond(req.success(ResponseBody::Launch))?;
-
-                self.server.send_event(Event::Initialized)?;
+                self.respond(request.success(ResponseBody::Launch))?;
+                self.event(Event::Initialized)?;
             }
             Command::SetBreakpoints(command) => {
                 let path = command.source.path.clone();
@@ -156,8 +152,8 @@ impl<'a, 'ctx> Context<'a, 'ctx> {
 
                 *self.breakpoints.lock().unwrap() = (path.clone(), new_breakpoints.clone(), false);
 
-                self.server.respond(
-                    req.success(ResponseBody::SetBreakpoints(SetBreakpointsResponse {
+                self.respond(
+                    request.success(ResponseBody::SetBreakpoints(SetBreakpointsResponse {
                         breakpoints: new_breakpoints
                             .into_iter()
                             .enumerate()
@@ -177,15 +173,14 @@ impl<'a, 'ctx> Context<'a, 'ctx> {
                 )?;
             }
             Command::ConfigurationDone => {
-                self.server
-                    .respond(req.success(ResponseBody::ConfigurationDone))?;
+                self.respond(request.success(ResponseBody::ConfigurationDone))?;
 
                 self.state_tx.send(State::Running)?;
             }
             Command::Pause(_) => {
-                self.server.respond(req.success(ResponseBody::Pause))?;
+                self.respond(request.success(ResponseBody::Pause))?;
 
-                self.server.send_event(Event::Stopped(StoppedEventBody {
+                self.event(Event::Stopped(StoppedEventBody {
                     reason: StoppedEventReason::Pause,
                     description: None,
                     thread_id: Some(1),
@@ -198,29 +193,27 @@ impl<'a, 'ctx> Context<'a, 'ctx> {
                 self.state_tx.send(State::Paused)?;
             }
             Command::Continue(_) => {
-                self.server
-                    .respond(req.success(ResponseBody::Continue(ContinueResponse {
-                        ..Default::default()
-                    })))?;
+                self.respond(request.success(ResponseBody::Continue(ContinueResponse {
+                    ..Default::default()
+                })))?;
 
                 self.state_tx.send(State::Running)?;
             }
             Command::Threads => {
-                self.server
-                    .respond(req.success(ResponseBody::Threads(ThreadsResponse {
-                        threads: vec![dap::types::Thread {
-                            id: 1,
-                            name: String::from("main"),
-                        }],
-                    })))?;
+                self.respond(request.success(ResponseBody::Threads(ThreadsResponse {
+                    threads: vec![dap::types::Thread {
+                        id: 1,
+                        name: String::from("main"),
+                    }],
+                })))?;
             }
             Command::StackTrace(_) => {
-                let stack_trace = self.interpreter.lock().unwrap().stack_trace();
+                let stack_trace = self.stack_trace_rx.recv().unwrap();
 
                 self.update_variables(&stack_trace);
 
-                self.server.respond(
-                    req.success(ResponseBody::StackTrace(StackTraceResponse {
+                self.respond(
+                    request.success(ResponseBody::StackTrace(StackTraceResponse {
                         stack_frames: stack_trace
                             .frames
                             .iter()
@@ -259,19 +252,18 @@ impl<'a, 'ctx> Context<'a, 'ctx> {
                             .map(|&index| &variables[index])
                             .collect::<Vec<_>>();
 
-                        self.server
-                            .respond(req.success(ResponseBody::Scopes(ScopesResponse {
-                                scopes: vec![Scope {
-                                    name: String::from("Local"),
-                                    presentation_hint: Some(ScopePresentationhint::Locals),
-                                    named_variables: Some(variables.len() as i64),
-                                    variables_reference: frame_id + 1, // can't be 0
-                                    ..Default::default()
-                                }],
-                            })))?;
+                        self.respond(request.success(ResponseBody::Scopes(ScopesResponse {
+                            scopes: vec![Scope {
+                                name: String::from("Local"),
+                                presentation_hint: Some(ScopePresentationhint::Locals),
+                                named_variables: Some(variables.len() as i64),
+                                variables_reference: frame_id + 1, // can't be 0
+                                ..Default::default()
+                            }],
+                        })))?;
                     }
                     None => {
-                        self.server.respond(req.error("invalid stack frame"))?;
+                        self.respond(request.error("invalid stack frame"))?;
                     }
                 }
             }
@@ -285,8 +277,7 @@ impl<'a, 'ctx> Context<'a, 'ctx> {
                 } else if let Some((_, _, children)) = variables.get(reference - frames.len()) {
                     children
                 } else {
-                    self.server
-                        .respond(req.error("invalid variables reference"))?;
+                    self.respond(request.error("invalid variables reference"))?;
 
                     return Ok(());
                 };
@@ -309,27 +300,37 @@ impl<'a, 'ctx> Context<'a, 'ctx> {
                     })
                     .collect();
 
-                self.server.respond(
-                    req.success(ResponseBody::Variables(VariablesResponse { variables })),
+                self.respond(
+                    request.success(ResponseBody::Variables(VariablesResponse { variables })),
                 )?;
             }
             Command::Disconnect(_) => {
-                self.server.respond(req.success(ResponseBody::Disconnect))?;
+                self.respond(request.success(ResponseBody::Disconnect))?;
 
                 self.state_tx.send(State::Stopped)?;
             }
             _ => {
-                self.server.respond(req.error("unsupported request"))?;
+                self.respond(request.error("unsupported request"))?;
             }
         }
 
         Ok(())
     }
 
-    fn update_variables(&mut self, stack_trace: &wipple_interpreter::StackTrace<'a, Infallible>) {
+    fn respond(&self, response: dap::responses::Response) -> anyhow::Result<()> {
+        self.output.lock().unwrap().respond(response)?;
+        Ok(())
+    }
+
+    fn event(&self, event: dap::events::Event) -> anyhow::Result<()> {
+        self.output.lock().unwrap().send_event(event)?;
+        Ok(())
+    }
+
+    fn update_variables(&mut self, stack_trace: &wipple_interpreter::StackTrace<'a, !>) {
         fn enqueue(
             name: String,
-            tree: &DebugTree<Infallible>,
+            tree: &DebugTree<!>,
             variables: &mut Vec<(String, String, Vec<usize>)>,
         ) {
             match tree {

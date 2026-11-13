@@ -56,14 +56,18 @@ pub struct GraphEdge {
 
 #[wasm_bindgen]
 impl CompileResult {
-    pub fn graph(&self) -> Graph {
+    pub fn graph(&self) -> Option<Graph> {
+        let Some(graph) = &self.db.graph else {
+            return None;
+        };
+
         let mask = self
             .db
             .owned_nodes()
             .filter(|&node| !self.db.is_hidden(node))
             .collect::<BTreeSet<_>>();
 
-        convert_graph(self.db.graph.build(&self.db, &mask))
+        Some(convert_graph(graph.build(&self.db, &mask)))
     }
 }
 

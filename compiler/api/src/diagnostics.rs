@@ -191,9 +191,11 @@ impl CompileResult {
 
                 mask.extend(feedback.nodes);
 
-                let graph = item
-                    .show_graph
-                    .then(|| convert_graph(self.db.graph.build(&self.db, &mask)));
+                let graph = self
+                    .db
+                    .graph
+                    .as_ref()
+                    .map(|graph| convert_graph(graph.build(&self.db, &mask)));
 
                 Diagnostic {
                     locations,

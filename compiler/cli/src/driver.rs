@@ -129,8 +129,10 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
             writeln!(self.out, "{}", db.debug(filter, self.markdown_options))?;
         }
 
-        if self.compile_options.graph && !self.hide_facts {
-            let graph = db.graph.build(db, &db.owned_nodes().collect());
+        if let Some(graph) = &db.graph
+            && !self.hide_facts
+        {
+            let graph = graph.build(db, &db.owned_nodes().collect());
 
             let mut dot = String::new();
             graph.write_dot(&mut dot)?;

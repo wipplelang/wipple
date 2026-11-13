@@ -86,7 +86,9 @@ impl Visit for ConstructorExpression {
             return;
         };
 
-        db.graph.edge(definition_node, node, "instantiated");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(definition_node, node, "instantiated");
+        }
 
         let substitutions = visitor.substitutions(
             BTreeMap::from([(definition_node, node)]),

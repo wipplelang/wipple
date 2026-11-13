@@ -10,6 +10,10 @@ use wipple_core::{
 };
 
 pub fn create_connections(db: &mut Db, mut filter: impl FnMut(&Db, Node) -> bool) {
+    if db.graph.is_none() {
+        return;
+    }
+
     let mut calls = Vec::new();
     db.for_each_fact::<ResolvedCall, ()>(&mut |db, node, call| {
         if filter(db, node) {
@@ -45,7 +49,10 @@ pub fn create_connections(db: &mut Db, mut filter: impl FnMut(&Db, Node) -> bool
                     if let LinkKind::Node(left) = left.kind
                         && let LinkKind::Node(right) = right.kind
                     {
-                        db.graph.edge(left, right, value.label.to_string());
+                        db.graph
+                            .as_mut()
+                            .unwrap()
+                            .edge(left, right, value.label.to_string());
                     }
 
                     has_custom_edges = true;
@@ -53,11 +60,13 @@ pub fn create_connections(db: &mut Db, mut filter: impl FnMut(&Db, Node) -> bool
             }
         }
 
+        let graph = db.graph.as_mut().unwrap();
+
         if !has_custom_edges {
-            db.graph.edge(call.function, node, "function");
+            graph.edge(call.function, node, "function");
 
             for input in call.inputs {
-                db.graph.edge(input, node, "input");
+                graph.edge(input, node, "input");
             }
         }
     }

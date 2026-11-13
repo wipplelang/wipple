@@ -128,7 +128,9 @@ impl Visit for ConstructorPattern {
 
                 for element in self.elements {
                     let (pattern, _) = visitor.visit_matching(db, &element, None);
-                    db.graph.edge(pattern, node, "element");
+                    if let Some(graph) = &mut db.graph {
+                        graph.edge(pattern, node, "element");
+                    }
                     db.insert(pattern, ExtraElement);
                 }
 
@@ -164,7 +166,9 @@ impl Visit for ConstructorPattern {
                             MatchPathSegment::VariantElement(definition_node, index, element_count),
                         );
 
-                        db.graph.edge(element, node, "element");
+                        if let Some(graph) = &mut db.graph {
+                            graph.edge(element, node, "element");
+                        }
 
                         (element, temporary)
                     })
@@ -255,7 +259,9 @@ impl Visit for ConstructorPattern {
                         MatchPathSegment::Wrapper(definition_node),
                     );
 
-                    db.graph.edge(value, node, "value");
+                    if let Some(graph) = &mut db.graph {
+                        graph.edge(value, node, "value");
+                    }
 
                     let constructor_node = db.node();
                     db.insert(constructor_node, Typed::default());

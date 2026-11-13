@@ -61,6 +61,7 @@ documents.onDidChangeContent(({ document }) => {
     const result = wipple.compile(
         [new wipple.File(document.uri, document.getText())],
         "foundation",
+        false,
     );
 
     if (result == null) return;

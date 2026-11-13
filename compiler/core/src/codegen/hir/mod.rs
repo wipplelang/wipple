@@ -23,7 +23,7 @@ use std::{
 };
 
 #[typetag::serde]
-pub trait Write: Debug + Any + DynClone + Send + Sync {
+pub trait Write: Debug + Any + DynClone {
     fn write(&self, db: &Db, ctx: &mut Ctx) -> Result<(), CodegenError>;
 }
 

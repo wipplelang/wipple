@@ -79,7 +79,11 @@ const compile = async (
         program?: boolean;
     },
 ) => {
-    const result = wipple.compile([new wipple.File("input", options.code)], options.library);
+    const result = wipple.compile(
+        [new wipple.File("input", options.code)],
+        options.library,
+        options.graph,
+    );
     if (result == null) {
         throw new Error("compilation failed");
     }

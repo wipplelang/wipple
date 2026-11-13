@@ -1,11 +1,10 @@
-use std::convert::Infallible;
 use wipple_core::codegen::mir;
 use wipple_interpreter::Interpreter;
 
 pub fn interpreter<'a, 'ctx>(
     program: &'a mir::Program,
-    mut display: impl FnMut(&str) -> anyhow::Result<()> + Send + Sync + 'ctx,
-) -> Interpreter<'a, 'ctx, Infallible, anyhow::Error> {
+    mut display: impl FnMut(&str) -> anyhow::Result<()> + 'ctx,
+) -> Interpreter<'a, 'ctx, !, anyhow::Error> {
     Interpreter::new(program, move |name, input| {
         use wipple_interpreter::{Handle, Primitive};
 

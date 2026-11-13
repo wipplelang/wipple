@@ -62,7 +62,9 @@ impl Visit for OrPattern {
                 }
 
                 visitor.visit_as(db, &pattern, pattern_node);
-                db.graph.edge(pattern_node, node, "pattern");
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(pattern_node, node, "pattern");
+                }
                 visitor.constraint(db, TyConstraint::new(node, Ty::Node(pattern_node)));
 
                 pattern_node

@@ -1,6 +1,6 @@
 use ouroboros::self_referencing;
 use serde::Serialize;
-use std::{ops::ControlFlow, sync::Arc};
+use std::{ops::ControlFlow, rc::Rc};
 use wasm_bindgen::{convert::TryFromJsValue, prelude::*};
 use wipple_core::{codegen::mir, span::Location};
 use wipple_interpreter::Span;
@@ -24,7 +24,7 @@ struct InterpreterInner {
 }
 
 #[derive(Debug, Clone)]
-struct Env(Arc<JsValue>);
+struct Env(Rc<JsValue>);
 
 impl Env {
     fn call(&self, name: &str, input: JsValue) -> Result<JsValue, JsValue> {
@@ -40,7 +40,7 @@ impl Interpreter {
     pub fn new(bytes: Vec<u8>, env: JsValue) -> Result<Self, JsValue> {
         let program = rmp_serde::from_slice::<mir::Program>(&bytes).map_err(JsError::from)?;
 
-        let env = Env(Arc::new(env));
+        let env = Env(Rc::new(env));
 
         Ok(Interpreter {
             env: env.clone(),
@@ -114,7 +114,7 @@ fn handle_from_js_value<'a>(value: JsValue) -> wipple_interpreter::Handle<'a, Js
     if value.is_null_or_undefined() {
         Handle::Unit
     } else if let Some(string) = value.as_string() {
-        Handle::Primitive(Primitive::String(Arc::from(string)))
+        Handle::Primitive(Primitive::String(Rc::from(string)))
     } else if let Some(number) = value.as_f64() {
         Handle::Primitive(Primitive::Number(number))
     } else if js_sys::Array::is_array(&value) {

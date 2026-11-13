@@ -59,7 +59,9 @@ impl Visit for NamedType {
             .collect::<Vec<_>>();
 
         for &parameter in &parameters {
-            db.graph.edge(parameter, node, "parameter");
+            if let Some(graph) = &mut db.graph {
+                graph.edge(parameter, node, "parameter");
+            }
         }
 
         let Some((type_definition_node, type_definition)) =

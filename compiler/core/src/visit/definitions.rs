@@ -24,7 +24,7 @@ impl Render for Defined {
 }
 
 #[typetag::serde]
-pub trait Definition: Debug + DynClone + Send + Sync + Any {
+pub trait Definition: Debug + DynClone + Any {
     fn name(&self) -> Option<Str>;
     fn full_span(&self) -> Option<&Span>;
     fn comments(&self) -> &[Str];

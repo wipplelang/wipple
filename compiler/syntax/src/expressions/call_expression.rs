@@ -81,8 +81,12 @@ impl Visit for CallExpression {
                     ),
                 );
 
-                db.graph.edge(number, node, "number");
-                db.graph.edge(unit, node, "unit");
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(number, node, "number");
+                }
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(unit, node, "unit");
+                }
 
                 db.insert(
                     node,

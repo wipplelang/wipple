@@ -54,7 +54,9 @@ impl Visit for AnnotatePattern {
 
         let pattern = visitor.visit(db, &self.pattern);
         let ty = visitor.annotating(Some((pattern, true)), |visitor| visitor.visit(db, &self.ty));
-        db.graph.edge(ty, pattern, "type");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(ty, pattern, "type");
+        }
 
         visitor.constraint(db, TyConstraint::new(node, Ty::Node(ty)));
 

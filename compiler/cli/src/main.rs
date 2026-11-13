@@ -8,25 +8,19 @@ mod read;
 use crate::{debug::debug, driver::Driver, interpreter::interpreter, read::read_dir};
 use clap::Parser;
 use colored::Colorize;
-use rayon::iter::{IndexedParallelIterator, IntoParallelIterator, ParallelIterator};
 use serde::Serialize;
 use serde_json::json;
 use std::{
-    collections::{BTreeSet, HashMap},
+    collections::HashMap,
     env, fs,
     io::{self, Write},
     ops::ControlFlow,
     path::PathBuf,
+    rc::Rc,
     str::FromStr,
-    sync::{
-        Arc,
-        atomic::{self, AtomicUsize},
-    },
 };
 use wipple_core::{
-    LibraryArtifact, TopLevel,
-    ast::AstKey,
-    codegen,
+    LibraryArtifact, TopLevel, codegen,
     db::{Db, DbRef, Node, NodeId},
     default_filter,
     render::RenderMarkdownOptions,
@@ -88,9 +82,6 @@ struct CompileOptions {
 
     #[clap(long)]
     filter_facts: Vec<FilterFacts>,
-
-    #[clap(long)]
-    graph: bool,
 
     #[clap(long, num_args = 0..=1, default_missing_value = "1")]
     explain: Option<ExplainOptions>,
@@ -304,7 +295,7 @@ fn compile(options: &CompileOptions) -> anyhow::Result<Option<codegen::mir::Prog
     Ok(Some(mir))
 }
 
-fn run(mir: &codegen::mir::Program, mut w: impl io::Write + Send + Sync) -> anyhow::Result<()> {
+fn run(mir: &codegen::mir::Program, mut w: impl io::Write) -> anyhow::Result<()> {
     interpreter(mir, |s| {
         writeln!(w, "{s}")?;
         Ok(())
@@ -457,17 +448,17 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
     struct RunResult {
         file: String,
         output: String,
-        graph: String,
     }
 
     let files_count = files.len();
-    let counter = AtomicUsize::new(0);
-    let run = |(mut db, name, file): (Db, String, AstKey)| {
+
+    let mut results = Vec::new();
+    for (counter, (mut db, name, file)) in files.into_iter().enumerate() {
         let mut out = Vec::new();
 
         let mut driver = Driver::new(options, vec![file], &mut out);
         driver.markdown_options = RenderMarkdownOptions::default().rich(true);
-        driver.progress = Some((counter.fetch_add(1, atomic::Ordering::Relaxed), files_count));
+        driver.progress = Some((counter, files_count));
 
         if let Some((_, statements)) = driver.run(&mut db, &mut top_level.clone(), &name)? {
             let hir = codegen::hir::Program::from_statements(
@@ -485,36 +476,13 @@ fn test(options: &CompileOptions) -> anyhow::Result<()> {
             run(&mir, &mut out)?;
         }
 
-        let mask = db
-            .owned_nodes()
-            .filter(|&node| default_filter(&db, node))
-            .collect::<BTreeSet<_>>();
-
-        let mut graph = String::new();
-        db.graph.build(&db, &mask).write_dot(&mut graph)?;
-
-        Ok(RunResult {
+        results.push(RunResult {
             file: name,
             output: String::from_utf8_lossy(&out).into_owned(),
-            graph,
-        })
-    };
-
-    let block_size = if env::var("WIPPLE_TEST_SEQUENTIAL").is_ok() {
-        1
-    } else {
-        usize::MAX
-    };
-
-    let results = files
-        .into_par_iter()
-        .by_uniform_blocks(block_size)
-        .map(run)
-        .collect::<anyhow::Result<Vec<_>>>();
+        });
+    }
 
     eprintln!();
-
-    let results = results?;
 
     println!("{}", serde_json::to_string_pretty(&results)?);
 
@@ -549,7 +517,7 @@ fn doc(options: &CompileOptions) -> anyhow::Result<()> {
         .run(&mut db, &mut top_level, &name)?
         .ok_or_else(|| anyhow::format_err!("compilation failed"))?;
 
-    let ctx = QueryCtx::new(&db, Arc::new(default_filter));
+    let ctx = QueryCtx::new(&db, Rc::new(default_filter));
 
     let mut items = HashMap::new();
     db.for_each_fact::<Defined, ()>(&mut |db, node, _| {

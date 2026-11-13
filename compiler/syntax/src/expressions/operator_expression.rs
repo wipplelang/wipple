@@ -279,7 +279,9 @@ impl Visit for OperatorExpression {
             }
         };
 
-        db.graph.replace(node, resolved);
+        if let Some(graph) = &mut db.graph {
+            graph.replace(node, resolved);
+        }
 
         visitor.constraint(db, TyConstraint::new(node, Ty::Node(resolved)));
         visitor.codegen(db, node, OperatorExpressionCodegen { node, resolved });

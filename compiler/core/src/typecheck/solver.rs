@@ -58,7 +58,7 @@ pub struct Substitutions {
 pub struct Solver {
     pub trace: bool,
     pub constraints: Constraints,
-    pub substitutions: Vec<Substitutions>,
+    pub substitutions: imbl::Vector<Substitutions>,
     pub(crate) groups: Groups,
     pub(crate) implied_instances: Vec<Instance>,
     pub(crate) tracing: Vec<Node>,
@@ -66,8 +66,11 @@ pub struct Solver {
 }
 
 impl Solver {
-    pub fn new() -> Self {
-        Default::default()
+    pub fn with_substitutions(substitutions: &imbl::Vector<Substitutions>) -> Self {
+        Solver {
+            substitutions: substitutions.clone(),
+            ..Default::default()
+        }
     }
 
     pub fn clone_without_constraints(&self, source_node: impl Into<Option<Node>>) -> Self {
@@ -100,15 +103,12 @@ impl Solver {
         &mut self,
         constraints: impl IntoIterator<Item = (Node, Box<dyn Constraint>)>,
         ranks: impl IntoIterator<Item = (Node, NodeRank)>,
-        substitutions: impl IntoIterator<Item = Substitutions>,
     ) {
         self.constraints.extend_back(constraints);
 
         for (node, rank) in ranks {
             self.rank(node, rank);
         }
-
-        self.substitutions.extend(substitutions);
     }
 
     pub fn into_groups(mut self, db: &Db) -> Vec<Group> {
@@ -164,7 +164,8 @@ impl Solver {
     ) -> SubstitutionsKey {
         let key = SubstitutionsKey(self.substitutions.len());
 
-        self.substitutions.push(Substitutions { nodes, parameters });
+        self.substitutions
+            .push_back(Substitutions { nodes, parameters });
 
         key
     }

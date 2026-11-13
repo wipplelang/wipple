@@ -179,7 +179,9 @@ impl Visit for InstanceDefinition {
 
                             for constraint in constraints {
                                 let constraint = visitor.visit(db, &constraint);
-                                db.graph.edge(constraint, node, "constraint");
+                                if let Some(graph) = &mut db.graph {
+                                    graph.edge(constraint, node, "constraint");
+                                }
                             }
 
                             let substitutions = visitor.substitutions(
@@ -204,7 +206,9 @@ impl Visit for InstanceDefinition {
 
                                 visitor.visit_as(db, &instance_value, instance_value_node);
 
-                                db.graph.edge(instance_value_node, node, "value");
+                                if let Some(graph) = &mut db.graph {
+                                    graph.edge(instance_value_node, node, "value");
+                                }
 
                                 visitor.constraint(
                                     db,

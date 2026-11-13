@@ -10,7 +10,7 @@ use std::{
     fmt::Debug,
     hash::{Hash, Hasher},
     ops::ControlFlow,
-    sync::Arc,
+    rc::Rc,
 };
 use unicode_segmentation::UnicodeSegmentation;
 use wipple_core::codegen::mir;
@@ -18,8 +18,7 @@ use wipple_core::codegen::mir;
 pub use wipple_core::span::Span;
 
 pub struct Interpreter<'a, 'ctx, Ext, Err> {
-    external:
-        Box<dyn FnMut(&str, Handle<'a, Ext>) -> Result<Handle<'a, Ext>, Err> + Send + Sync + 'ctx>,
+    external: Box<dyn FnMut(&str, Handle<'a, Ext>) -> Result<Handle<'a, Ext>, Err> + 'ctx>,
     program: &'a mir::Program,
     state: Vec<State<'a, Ext>>,
     debug_events: Option<VecDeque<DebugEvent<'a, Ext>>>,
@@ -36,7 +35,7 @@ pub enum Handle<'a, Ext> {
 #[derive(Debug, Clone)]
 pub enum Primitive<T> {
     Number(f64),
-    String(Arc<str>),
+    String(Rc<str>),
     List(Vec<T>),
 }
 
@@ -61,7 +60,7 @@ pub enum DebugTree<Ext> {
 impl<'a, 'ctx, Ext: Debug + Clone, Err> Interpreter<'a, 'ctx, Ext, Err> {
     pub fn new(
         program: &'a mir::Program,
-        external: impl FnMut(&str, Handle<'a, Ext>) -> Result<Handle<'a, Ext>, Err> + Send + Sync + 'ctx,
+        external: impl FnMut(&str, Handle<'a, Ext>) -> Result<Handle<'a, Ext>, Err> + 'ctx,
     ) -> Self {
         let mut interpeter = Interpreter {
             external: Box::new(external),
@@ -104,7 +103,7 @@ enum Scope {
     Inline,
 }
 
-type Locals<'a, Ext> = Vec<Arc<Local<'a, Ext>>>;
+type Locals<'a, Ext> = Vec<Rc<Local<'a, Ext>>>;
 
 #[derive(Debug)]
 struct Local<'a, Ext> {
@@ -226,14 +225,14 @@ impl<'a, 'ctx, Ext: Debug + Clone, Err> Interpreter<'a, 'ctx, Ext, Err> {
         let mut function_locals = captures;
 
         function_locals.extend(function.inputs.iter().zip(inputs).map(|(input, value)| {
-            Arc::new(Local {
+            Rc::new(Local {
                 value: Mutex::new(Some(value)),
                 debug_info: &input.debug_info,
             })
         }));
 
         for local in &function.locals {
-            function_locals.push(Arc::new(Local {
+            function_locals.push(Rc::new(Local {
                 value: Mutex::new(None),
                 debug_info: &local.debug_info,
             }));
@@ -335,7 +334,7 @@ impl<'a, 'ctx, Ext: Debug + Clone, Err> Interpreter<'a, 'ctx, Ext, Err> {
             mir::Expression::String { value } => {
                 self.set_local_value(
                     result,
-                    Value::Primitive(Primitive::String(Arc::from(value.as_str()))),
+                    Value::Primitive(Primitive::String(Rc::from(value.as_str()))),
                 );
             }
             mir::Expression::Structure { fields } => {
@@ -514,7 +513,7 @@ impl<'a, 'ctx, Ext: Debug + Clone, Err> Interpreter<'a, 'ctx, Ext, Err> {
                 let left = eval!(left, Primitive::String);
                 let right = eval!(right, Primitive::String);
 
-                Value::Primitive(Primitive::String(Arc::from(
+                Value::Primitive(Primitive::String(Rc::from(
                     left.to_string() + right.as_ref(),
                 )))
             }
@@ -527,15 +526,15 @@ impl<'a, 'ctx, Ext: Debug + Clone, Err> Interpreter<'a, 'ctx, Ext, Err> {
                 let number = eval!(value, Primitive::Number);
 
                 let string = if number.is_nan() {
-                    Arc::from("NaN")
+                    Rc::from("NaN")
                 } else if number.is_infinite() {
                     if number.is_sign_positive() {
-                        Arc::from("Infinity")
+                        Rc::from("Infinity")
                     } else {
-                        Arc::from("-Infinity")
+                        Rc::from("-Infinity")
                     }
                 } else {
-                    Arc::from(number.to_string())
+                    Rc::from(number.to_string())
                 };
 
                 Value::Primitive(Primitive::String(string))
@@ -751,7 +750,7 @@ impl<'a, 'ctx, Ext: Debug + Clone, Err> Interpreter<'a, 'ctx, Ext, Err> {
 
                 let characters = string
                     .graphemes(true)
-                    .map(|c| Value::Primitive(Primitive::String(Arc::from(c.to_string()))))
+                    .map(|c| Value::Primitive(Primitive::String(Rc::from(c.to_string()))))
                     .collect::<Vec<_>>();
 
                 Value::Primitive(Primitive::List(characters))
@@ -795,7 +794,7 @@ impl<'a, 'ctx, Ext: Debug + Clone, Err> Interpreter<'a, 'ctx, Ext, Err> {
         })
     }
 
-    fn get_local(&mut self, index: usize) -> &Arc<Local<'a, Ext>> {
+    fn get_local(&mut self, index: usize) -> &Rc<Local<'a, Ext>> {
         let (_, locals, _) = get_storage(&mut self.state);
         &locals[index]
     }

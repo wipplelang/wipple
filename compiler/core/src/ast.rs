@@ -2,7 +2,7 @@ use crate::{db::Db, visit::Visit};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
-    sync::{Arc, Weak},
+    rc::{Rc, Weak},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -10,7 +10,7 @@ pub struct AstKey {
     layer: usize,
     index: usize,
     #[serde(skip)]
-    ptr: Option<Arc<()>>,
+    ptr: Option<Rc<()>>,
 }
 
 impl AstKey {
@@ -92,12 +92,12 @@ impl Ast {
     }
 
     pub fn insert(&mut self, visit: Box<dyn Visit>) -> AstKey {
-        let ptr = Arc::new(());
+        let ptr = Rc::new(());
 
         let index = self.next_index;
         self.next_index += 1;
 
-        self.map.insert(index, (visit, Some(Arc::downgrade(&ptr))));
+        self.map.insert(index, (visit, Some(Rc::downgrade(&ptr))));
 
         AstKey {
             layer: self.layer,

@@ -5,16 +5,16 @@ mod writer;
 pub use item::*;
 pub use writer::*;
 
-use std::sync::Arc;
+use std::rc::Rc;
 use wipple_core::db::{Db, Node};
 use wipple_queries::QueryCtx;
 
 pub fn collect_feedback<'a>(
     db: &'a Db,
-    node_filter: impl Fn(&Db, Node) -> bool + Send + Sync + 'static,
+    node_filter: impl Fn(&Db, Node) -> bool + 'static,
     feedback_filter: impl FnMut(&FeedbackItem<'a>) -> bool,
 ) -> Vec<FeedbackItem<'a>> {
-    let mut ctx = FeedbackCtx::new(Arc::new(node_filter));
+    let mut ctx = FeedbackCtx::new(Rc::new(node_filter));
     items::register(&mut ctx);
 
     let mut items = db
@@ -30,11 +30,11 @@ pub fn collect_feedback<'a>(
 
 struct FeedbackCtx<'a> {
     queries: Vec<Box<dyn Fn(&'a Db, Node) -> Box<dyn Iterator<Item = FeedbackItem<'a>> + 'a> + 'a>>,
-    filter: Arc<dyn Fn(&Db, Node) -> bool + Send + Sync + 'a>,
+    filter: Rc<dyn Fn(&Db, Node) -> bool + 'a>,
 }
 
 impl<'a> FeedbackCtx<'a> {
-    fn new(filter: Arc<dyn Fn(&Db, Node) -> bool + Send + Sync + 'a>) -> Self {
+    fn new(filter: Rc<dyn Fn(&Db, Node) -> bool + 'a>) -> Self {
         FeedbackCtx {
             queries: Vec::new(),
             filter,

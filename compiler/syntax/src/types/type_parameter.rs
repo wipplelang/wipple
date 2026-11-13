@@ -133,7 +133,9 @@ impl Visit for TypeParameter {
 
             if let Some(value) = self.value {
                 let value = visitor.annotating(None, |visitor| visitor.visit(db, &value));
-                db.graph.edge(value, node, "value");
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(value, node, "value");
+                }
 
                 visitor.constraint(
                     db,

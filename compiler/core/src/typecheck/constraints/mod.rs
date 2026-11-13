@@ -35,7 +35,7 @@ pub enum RunResult {
 }
 
 #[typetag::serde]
-pub trait Constraint: Debug + DynClone + Any + Send + Sync {
+pub trait Constraint: Debug + DynClone + Any {
     fn kind(&self) -> ConstraintKind;
 
     fn instantiate(

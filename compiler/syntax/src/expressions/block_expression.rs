@@ -55,7 +55,9 @@ impl Visit for BlockExpression {
             .into_iter()
             .map(|(statement_node, statement)| {
                 visitor.visit_as(db, &statement, statement_node);
-                db.graph.edge(statement_node, node, "statement");
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(statement_node, node, "statement");
+                }
                 statement_node
             })
             .collect::<Vec<_>>();

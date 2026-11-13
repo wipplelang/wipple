@@ -117,7 +117,9 @@ impl Visit for StructureExpression {
         let mut field_values = Vec::new();
         for field in self.fields {
             let value = visitor.visit(db, &field.value);
-            db.graph.edge(value, node, "field");
+            if let Some(graph) = &mut db.graph {
+                graph.edge(value, node, "field");
+            }
 
             field_values.push((field_values.len(), field.name.clone(), value));
         }

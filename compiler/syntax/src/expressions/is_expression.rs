@@ -49,7 +49,9 @@ impl Visit for IsExpression {
         visit_expression(db, node, visitor);
 
         let left = visitor.visit(db, &self.left);
-        db.graph.edge(left, node, "left");
+        if let Some(graph) = &mut db.graph {
+            graph.edge(left, node, "left");
+        }
 
         let right = self.right;
         let right = visitor.matching(
@@ -60,7 +62,9 @@ impl Visit for IsExpression {
             },
             |visitor| {
                 let right = visitor.visit(db, &right);
-                db.graph.edge(right, node, "right");
+                if let Some(graph) = &mut db.graph {
+                    graph.edge(right, node, "right");
+                }
                 right
             },
         );

@@ -92,7 +92,9 @@ impl Visit for StructurePattern {
                 .map(|(_, ty)| MatchPathSegment::Field(*ty));
 
             let (pattern, temporary) = visitor.visit_matching(db, &field.pattern.clone(), segment);
-            db.graph.edge(pattern, node, "field");
+            if let Some(graph) = &mut db.graph {
+                graph.edge(pattern, node, "field");
+            }
 
             field_patterns.push((field_patterns.len(), field.name.clone(), pattern, temporary));
         }
