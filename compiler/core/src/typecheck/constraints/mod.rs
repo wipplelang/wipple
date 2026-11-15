@@ -227,15 +227,14 @@ impl ConstraintConsequence {
                 let variable_definition = |node| {
                     db.get::<Resolved>(node)
                         .map_or_default(|Resolved { definitions, .. }| definitions.iter().copied())
-                        .chain([node])
                         .filter_map(|node| db.get::<Defined>(node))
                         .find_map(|Defined(definition)| {
                             definition.downcast_ref::<VariableDefinition>()
                         })
                 };
 
-                // Hide obvious consequences involving uses of the same variable
-                if variable_definition(left).is_some() && variable_definition(right).is_some() {
+                // Ignore consequences involving references to variables
+                if variable_definition(left).is_some() || variable_definition(right).is_some() {
                     return false;
                 }
 

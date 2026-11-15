@@ -101,8 +101,6 @@ note:
 
 This means `1` must have the same type as `x`.
 
-This means `1` must have the same type as `x`.
-
 note: 
   --> mismatched-inferred-params.wipple:1:30
   |
