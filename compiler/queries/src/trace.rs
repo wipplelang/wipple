@@ -86,6 +86,7 @@ fn collect_traces(
 
             Some((
                 is_primary,
+                None,
                 Comments {
                     node,
                     comments,
@@ -102,15 +103,25 @@ fn collect_traces(
                         .or_else(|| description.entries(DescriptionKind::default()))
                         .unwrap_or_default()
                         .iter()
-                        .map(|entry| (entry.is_primary, entry.comments.clone()))
+                        .map(|entry| {
+                            (
+                                entry.is_primary,
+                                entry.matching_node,
+                                entry.comments.clone(),
+                            )
+                        })
                 }),
         )
-        .chain([(false, Comments::empty_for(node))])
+        .chain([(false, None, Comments::empty_for(node))])
         .collect::<Vec<_>>();
 
     let mut relevant = Vec::new();
 
-    for (is_primary, comments) in comments {
+    for (is_primary, matching_node, comments) in comments {
+        if matching_node.is_some_and(|node| node != primary_node) {
+            continue;
+        }
+
         let mut entry_relevant = vec![comments.node];
 
         // Add all the values from the use site, in case there is no comment
@@ -155,9 +166,9 @@ fn collect_traces(
 
         if filter(db, comments.node) && !comments.comments.is_empty() {
             entries.push(TraceEntry {
-                consequences,
-                comments,
                 is_primary,
+                comments,
+                consequences,
                 relevant: Vec::from_iter(entry_relevant),
             });
         }

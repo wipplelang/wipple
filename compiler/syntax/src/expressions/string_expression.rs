@@ -65,14 +65,11 @@ impl Visit for StringExpression {
 
         db.get_mut_or_default::<Description>(node).insert(
             DescriptionKind::Summary,
-            DescriptionEntry {
-                comments: Comments::builtin(
-                    node,
-                    "[`string`] is a [`String`].",
-                    [("string", Some(Link::node(node)))],
-                ),
-                is_primary: false,
-            },
+            DescriptionEntry::secondary(Comments::builtin(
+                node,
+                "[`string`] is a [`String`].",
+                [("string", Some(Link::node(node)))],
+            )),
         );
     }
 }

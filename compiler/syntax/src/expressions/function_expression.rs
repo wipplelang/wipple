@@ -113,29 +113,23 @@ impl Visit for FunctionExpression {
 
         db.get_mut_or_default::<Description>(node).insert(
             DescriptionKind::Summary,
-            DescriptionEntry {
-                comments: Comments::builtin(
-                    node,
-                    "This function accepts [`inputs`] as input.",
-                    [
-                        ("function", Some(Link::node(node))),
-                        ("inputs", Some(Link::list("and", inputs.iter().cloned()))),
-                    ],
-                ),
-                is_primary: false,
-            },
+            DescriptionEntry::secondary(Comments::builtin(
+                node,
+                "This function accepts [`inputs`] as input.",
+                [
+                    ("function", Some(Link::node(node))),
+                    ("inputs", Some(Link::list("and", inputs.iter().cloned()))),
+                ],
+            )),
         );
 
         db.get_mut_or_default::<Description>(output).insert(
             DescriptionKind::Summary,
-            DescriptionEntry {
-                comments: Comments::builtin(
-                    output,
-                    "[`output`] is the output of this function.",
-                    [("output", Some(Link::node(output)))],
-                ),
-                is_primary: false,
-            },
+            DescriptionEntry::secondary(Comments::builtin(
+                output,
+                "[`output`] is the output of this function.",
+                [("output", Some(Link::node(output)))],
+            )),
         );
     }
 }

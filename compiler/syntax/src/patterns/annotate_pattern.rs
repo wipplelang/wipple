@@ -64,17 +64,14 @@ impl Visit for AnnotatePattern {
 
         db.get_mut_or_default::<Description>(pattern).insert(
             DescriptionKind::Summary,
-            DescriptionEntry {
-                comments: Comments::builtin(
-                    ty,
-                    "[`pattern`] is annotated as a [`type`].",
-                    [
-                        ("pattern", Some(Link::node(pattern))),
-                        ("type", Some(Link::node(ty))),
-                    ],
-                ),
-                is_primary: true,
-            },
+            DescriptionEntry::primary(Comments::builtin(
+                ty,
+                "[`pattern`] is annotated as a [`type`].",
+                [
+                    ("pattern", Some(Link::node(pattern))),
+                    ("type", Some(Link::node(ty))),
+                ],
+            )),
         );
     }
 }

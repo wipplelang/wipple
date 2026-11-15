@@ -148,8 +148,9 @@ impl Visit for CallExpression {
 
         db.get_mut_or_default::<Description>(node).insert(
             DescriptionKind::Summary,
-            DescriptionEntry {
-                comments: Comments::builtin(
+            DescriptionEntry::new(
+                is_primary,
+                Comments::builtin(
                     node,
                     "[`function`] is called with [`inputs`].",
                     [
@@ -157,8 +158,7 @@ impl Visit for CallExpression {
                         ("inputs", Some(Link::list("and", inputs.iter().copied()))),
                     ],
                 ),
-                is_primary,
-            },
+            ),
         );
     }
 }

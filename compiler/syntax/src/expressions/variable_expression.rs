@@ -100,14 +100,11 @@ impl Visit for VariableExpression {
 
                 db.get_mut_or_default::<Description>(node).insert(
                     DescriptionKind::Summary,
-                    DescriptionEntry {
-                        comments: Comments::builtin(
-                            node,
-                            "[`definition`] is used here.",
-                            [("definition", Some(Link::node(definition_node)))],
-                        ),
-                        is_primary: false,
-                    },
+                    DescriptionEntry::secondary(Comments::builtin(
+                        node,
+                        "[`definition`] is used here.",
+                        [("definition", Some(Link::node(definition_node)))],
+                    )),
                 );
             }
             Definition::Constant { has_comments } => {
@@ -132,8 +129,9 @@ impl Visit for VariableExpression {
 
                 db.get_mut_or_default::<Description>(node).insert(
                     DescriptionKind::Summary,
-                    DescriptionEntry {
-                        comments: Comments::builtin(
+                    DescriptionEntry::new(
+                        !has_comments,
+                        Comments::builtin(
                             definition_node,
                             "[`use`] is defined as a [`definition@type`].",
                             [
@@ -141,8 +139,7 @@ impl Visit for VariableExpression {
                                 ("use", Some(Link::node(node))),
                             ],
                         ),
-                        is_primary: !has_comments,
-                    },
+                    ),
                 );
             }
         }

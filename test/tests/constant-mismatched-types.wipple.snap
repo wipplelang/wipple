@@ -22,6 +22,22 @@ Facts (layer 2):
 
 
 
+note: 
+  --> constant-mismatched-types.wipple:1:1
+  |
+1 | x :: Number
+  | -
+
+`x` is annotated as a `Number`.
+
+note: 
+  --> constant-mismatched-types.wipple:2:5
+  |
+2 | x : "42"
+  |     ----
+
+`x` has the value `"42"`.
+
 error: 
   --> constant-mismatched-types.wipple:1:1
   |

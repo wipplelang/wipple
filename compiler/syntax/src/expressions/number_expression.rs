@@ -65,14 +65,11 @@ impl Visit for NumberExpression {
 
         db.get_mut_or_default::<Description>(node).insert(
             DescriptionKind::Summary,
-            DescriptionEntry {
-                comments: Comments::builtin(
-                    node,
-                    "[`number`] is a [`Number`].",
-                    [("number", Some(Link::node(node)))],
-                ),
-                is_primary: false,
-            },
+            DescriptionEntry::secondary(Comments::builtin(
+                node,
+                "[`number`] is a [`Number`].",
+                [("number", Some(Link::node(node)))],
+            )),
         );
     }
 }

@@ -141,14 +141,11 @@ impl Visit for CollectionExpression {
 
         db.get_mut_or_default::<Description>(node).insert(
             DescriptionKind::Summary,
-            DescriptionEntry {
-                comments: Comments::builtin(
-                    node,
-                    "[`collection`] is a [`collection@type`].",
-                    [("collection", Some(Link::node(node)))],
-                ),
-                is_primary: true,
-            },
+            DescriptionEntry::primary(Comments::builtin(
+                node,
+                "[`collection`] is a [`collection@type`].",
+                [("collection", Some(Link::node(node)))],
+            )),
         );
     }
 }

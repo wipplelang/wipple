@@ -89,17 +89,14 @@ impl Visit for SetPattern {
 
         db.get_mut_or_default::<Description>(node).insert(
             DescriptionKind::Summary,
-            DescriptionEntry {
-                comments: Comments::builtin(
-                    node,
-                    "[`variable`] is changed to [`value`] here.",
-                    [
-                        ("variable", Some(Link::node(node))),
-                        ("value", Some(Link::node(value))),
-                    ],
-                ),
-                is_primary: false,
-            },
+            DescriptionEntry::secondary(Comments::builtin(
+                node,
+                "[`variable`] is changed to [`value`] here.",
+                [
+                    ("variable", Some(Link::node(node))),
+                    ("value", Some(Link::node(value))),
+                ],
+            )),
         );
     }
 }

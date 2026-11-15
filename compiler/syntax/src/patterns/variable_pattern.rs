@@ -64,17 +64,14 @@ impl Visit for VariablePattern {
         if value != node {
             db.get_mut_or_default::<Description>(node).insert(
                 DescriptionKind::Summary,
-                DescriptionEntry {
-                    comments: Comments::builtin(
-                        node,
-                        "[`variable`] has a value of [`value`].",
-                        [
-                            ("variable", Some(Link::node(node))),
-                            ("value", Some(Link::node(value))),
-                        ],
-                    ),
-                    is_primary: false,
-                },
+                DescriptionEntry::secondary(Comments::builtin(
+                    node,
+                    "[`variable`] has a value of [`value`].",
+                    [
+                        ("variable", Some(Link::node(node))),
+                        ("value", Some(Link::node(value))),
+                    ],
+                )),
             );
         }
     }

@@ -74,9 +74,11 @@ pub enum DescriptionKind {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[non_exhaustive]
 pub struct DescriptionEntry {
     pub comments: Comments,
     pub is_primary: bool,
+    pub matching_node: Option<Node>,
 }
 
 #[typetag::serde]
@@ -100,5 +102,28 @@ impl DescriptionKind {
             DescriptionKind::Summary => None,
             DescriptionKind::DataFlow => Some("Data Flow"),
         }
+    }
+}
+
+impl DescriptionEntry {
+    pub fn new(is_primary: bool, comments: Comments) -> Self {
+        DescriptionEntry {
+            comments,
+            is_primary,
+            matching_node: None,
+        }
+    }
+
+    pub fn primary(comments: Comments) -> Self {
+        DescriptionEntry::new(true, comments)
+    }
+
+    pub fn secondary(comments: Comments) -> Self {
+        DescriptionEntry::new(false, comments)
+    }
+
+    pub fn matching_node(mut self, node: Node) -> Self {
+        self.matching_node = Some(node);
+        self
     }
 }

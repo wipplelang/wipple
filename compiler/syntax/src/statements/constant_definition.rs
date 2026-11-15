@@ -8,7 +8,10 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
     db::{Db, Node},
+    facts::{Description, DescriptionEntry, DescriptionKind},
+    render::Comments,
     span::{Span, Str},
+    util::Link,
     visit::{
         Visit, Visitor,
         definitions::{self, ConstantAttributes, Definition},
@@ -104,6 +107,7 @@ impl Visit for ConstantDefinition {
                 |visitor| {
                     let ty = visitor
                         .annotating(Some((node, true)), |visitor| visitor.visit(db, &self.ty));
+
                     if let Some(graph) = &mut db.graph {
                         graph.edge(ty, node, "type");
                     }
@@ -114,12 +118,23 @@ impl Visit for ConstantDefinition {
                             graph.edge(constraint, node, "constraint");
                         }
                     }
+
+                    db.get_mut_or_default::<Description>(node).insert(
+                        DescriptionKind::Summary,
+                        DescriptionEntry::primary(Comments::builtin(
+                            node,
+                            "[`constant`] is annotated as a [`type`].",
+                            [
+                                ("constant", Some(Link::node(node))),
+                                ("type", Some(Link::node(ty))),
+                            ],
+                        ))
+                        .matching_node(node),
+                    );
                 },
             );
 
             visitor.pop_scope(db);
-
-            // TODO: Check for missing constant values
         });
     }
 }

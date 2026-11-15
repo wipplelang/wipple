@@ -68,17 +68,14 @@ impl Visit for AnnotateExpression {
 
         db.get_mut_or_default::<Description>(expression).insert(
             DescriptionKind::Summary,
-            DescriptionEntry {
-                comments: Comments::builtin(
-                    ty,
-                    "[`value`] is annotated as a [`type`].",
-                    [
-                        ("value", Some(Link::node(expression))),
-                        ("type", Some(Link::node(ty))),
-                    ],
-                ),
-                is_primary: true,
-            },
+            DescriptionEntry::primary(Comments::builtin(
+                ty,
+                "[`value`] is annotated as a [`type`].",
+                [
+                    ("value", Some(Link::node(expression))),
+                    ("type", Some(Link::node(ty))),
+                ],
+            )),
         );
     }
 }

@@ -11,11 +11,14 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Node},
+    facts::{Description, DescriptionEntry, DescriptionKind},
+    render::Comments,
     span::Span,
     typecheck::{
         constraints::ty_constraint::TyConstraint,
         ty::{ConstructedTy, Ty},
     },
+    util::Link,
     visit::{
         Visit, Visitor,
         definitions::{ConstantDefinition, ConstantValue},
@@ -89,11 +92,27 @@ impl Visit for AssignmentStatement {
                         |d| &mut d.within_constant_value,
                         |visitor| {
                             let value = visitor.visit(db, &self.value);
+
                             visitor.constraint(
                                 db,
                                 TyConstraint::new(value, Ty::Node(definition_node)),
                             );
+
                             db.insert(definition_node, ConstantValue(value));
+
+                            db.get_mut_or_default::<Description>(definition_node)
+                                .insert(
+                                    DescriptionKind::Summary,
+                                    DescriptionEntry::primary(Comments::builtin(
+                                        value,
+                                        "[`constant`] has the value [`value`].",
+                                        [
+                                            ("constant", Some(Link::node(definition_node))),
+                                            ("value", Some(Link::node(value))),
+                                        ],
+                                    ))
+                                    .matching_node(definition_node),
+                                );
                         },
                     );
                 },
