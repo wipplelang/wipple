@@ -18,9 +18,14 @@ jobs:
 
             - run: rustup target add wasm32-unknown-unknown
 
+            - uses: sigoden/install-binary@v1
+              with:
+                  repo: WebAssembly/binaryen
+                  name: wasm-opt
+
             - uses: cargo-bins/cargo-binstall@main
 
-            - run: cargo binstall wasm-opt wasm-bindgen-cli mdbook
+            - run: cargo binstall wasm-bindgen-cli mdbook
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
