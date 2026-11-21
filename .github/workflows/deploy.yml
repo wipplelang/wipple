@@ -18,9 +18,11 @@ jobs:
 
             - run: rustup target add wasm32-unknown-unknown
 
-            - run: |
-                  curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
-                  cargo binstall wasm-opt wasm-bindgen-cli mdbook
+            - uses: cargo-bins/cargo-binstall@main
+
+            - run: cargo binstall wasm-opt wasm-bindgen-cli mdbook
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
             - uses: actions/cache@v5
               with:
