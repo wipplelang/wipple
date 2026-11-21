@@ -2,7 +2,14 @@ import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import { sentryVitePlugin } from "@sentry/vite-plugin";
-import { defineConfig, loadEnv, type Plugin, type PreviewServer, type ViteDevServer } from "vite";
+import {
+    defineConfig,
+    loadEnv,
+    type Plugin,
+    type PreviewServer,
+    type ViteDevServer,
+    type Rolldown,
+} from "vite";
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), "");
@@ -26,9 +33,15 @@ export default defineConfig(({ mode }) => {
         },
         worker: {
             format: "es",
+            rolldownOptions: {
+                output: { assetFileNames },
+            },
         },
         build: {
             sourcemap: true,
+            rolldownOptions: {
+                output: { assetFileNames },
+            },
         },
         server: {
             port: 8080,
@@ -52,3 +65,8 @@ const crossOriginIsolation = (): Plugin => ({
     configureServer,
     configurePreviewServer: configureServer,
 });
+
+const assetFileNames = (chunkInfo: Rolldown.PreRenderedAsset) => {
+    const fileName = chunkInfo.names[0] ?? "";
+    return fileName.endsWith(".bin") ? "assets/[name][extname]" : "assets/[name]-[hash][extname]";
+};
