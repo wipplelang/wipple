@@ -15,7 +15,7 @@
     const runtime = $derived(playground && runtimes[playground.runtime]);
 </script>
 
-{#if runtime}
+{#if runtime?.commands}
     <div class="flex flex-col gap-[14px]">
         {#each Object.entries(runtime.commands) as [sectionName, commands]}
             <div class="flex flex-col">

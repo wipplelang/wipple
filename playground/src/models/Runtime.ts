@@ -4,10 +4,10 @@ import type { Command } from "./Command";
 
 export interface Runtime {
     library: string;
-    commands: Record<string, Record<string, Command>>;
+    commands?: Record<string, Record<string, Command>>;
     units?: Record<string, UnitInfo>;
     printEnabled?: boolean;
-    visualizerEnabled?: boolean;
+    hoverEnabled?: boolean;
     Output?: Component;
 }
 

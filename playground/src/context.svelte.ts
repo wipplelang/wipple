@@ -13,7 +13,6 @@ export const context = $state({
     groups: {} as Groups,
     highlightedGroup: undefined as string | undefined,
     diagnostic: undefined as wipple.Diagnostic | undefined,
-    graph: undefined as wipple.Graph | undefined,
     runningLine: undefined as number | undefined,
     touchModeEnabled: touchSupported(),
 });

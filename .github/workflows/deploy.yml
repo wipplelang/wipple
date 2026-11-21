@@ -40,7 +40,6 @@ jobs:
 
             - run: task build
               env:
-                  VITE_VISUALIZER_URL: ${{ vars.VITE_VISUALIZER_URL }}
                   VITE_SENTRY_DSN: ${{ vars.VITE_SENTRY_DSN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}
                   SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}

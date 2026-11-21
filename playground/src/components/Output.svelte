@@ -15,18 +15,11 @@
     interface Props {
         runState: RunState | undefined;
         ondiagnostics: (diagnostics: wipple.Diagnostic[]) => void;
-        ongraph: (graph: wipple.Graph) => void;
         ongroups: (groups: wipple.DiagnosticGroup[]) => void;
         onchangeline: (line: number | undefined) => void;
     }
 
-    let {
-        runState = $bindable(),
-        ondiagnostics,
-        ongraph,
-        ongroups,
-        onchangeline,
-    }: Props = $props();
+    let { runState = $bindable(), ondiagnostics, ongroups, onchangeline }: Props = $props();
 
     let runnerWorker = $state(new RunnerWorker());
 
@@ -109,15 +102,14 @@
             terminateRunnerWorker();
         }
 
-        const { library, visualizerEnabled } = runtimes[playground.runtime];
+        const { library, hoverEnabled } = runtimes[playground.runtime];
 
         let response: CompilerWorkerResponse<"compile">;
         try {
             response = await compilerWorker.compile({
                 code: playground.code,
                 library,
-                groups: visualizerEnabled,
-                graph: visualizerEnabled,
+                groups: hoverEnabled,
                 program,
             });
         } catch (error) {
@@ -125,10 +117,6 @@
             return;
         } finally {
             runState = undefined;
-        }
-
-        if ("graph" in response && response.graph != null) {
-            ongraph(response.graph);
         }
 
         if ("groups" in response && response.groups != null) {

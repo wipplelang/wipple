@@ -1,5 +1,6 @@
 import { runtime } from "@/models/Runtime";
 import MathOutput from "./MathOutput.svelte";
+import { sharedUnits } from "../shared";
 
 const functionCode = `y : x -> 2 * x`;
 
@@ -25,9 +26,7 @@ export default runtime({
         },
     },
     units: {
-        times: {
-            presets: [1, 2, 3, 4, 5, 10, 20, 50, 100],
-        },
+        ...sharedUnits,
         degrees: {
             presets: [10, 20, 30, 45, 60, 90, 180, 270, 360],
         },

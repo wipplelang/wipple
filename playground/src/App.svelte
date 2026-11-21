@@ -18,8 +18,7 @@
     import { onMount } from "svelte";
     import Footer from "@/components/Footer.svelte";
     import type { DocumentationItem } from "@/models/Documentation";
-    import Visualizer from "@/components/Visualizer.svelte";
-    import { debounce, touchSupported } from "@/util";
+    import { debounce } from "@/util";
     import type { Diagnostic, DiagnosticGroup } from "wipple";
 
     const loadPlayground = (): Playground | undefined => {
@@ -294,12 +293,6 @@
                         </div>
                     </div>
                 </Box>
-
-                {#if runtime?.visualizerEnabled}
-                    <Box class="flex-1 shrink">
-                        <Visualizer graph={context.graph} />
-                    </Box>
-                {/if}
             </div>
 
             <div class="flex max-w-[550px] flex-1 flex-col gap-[10px] overflow-auto">
@@ -341,9 +334,6 @@
                     }}
                     {ondiagnostics}
                     {ongroups}
-                    ongraph={(graph) => {
-                        context.graph = graph;
-                    }}
                 />
             </div>
         </div>

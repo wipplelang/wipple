@@ -1,4 +1,5 @@
 import { runtime } from "@/models/Runtime";
+import { sharedUnits } from "../shared";
 
 export default runtime({
     library: "foundation",
@@ -16,9 +17,7 @@ export default runtime({
         },
     },
     units: {
-        times: {
-            presets: [1, 2, 3, 4, 5, 10, 20, 50, 100],
-        },
+        ...sharedUnits,
     },
-    visualizerEnabled: true,
+    hoverEnabled: true,
 });

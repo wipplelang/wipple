@@ -75,15 +75,10 @@ const compile = async (
     options: PlaygroundMetadata & {
         code: string;
         groups?: boolean;
-        graph?: boolean;
         program?: boolean;
     },
 ) => {
-    const result = wipple.compile(
-        [new wipple.File("input", options.code)],
-        options.library,
-        options.graph,
-    );
+    const result = wipple.compile([new wipple.File("input", options.code)], options.library, false);
     if (result == null) {
         throw new Error("compilation failed");
     }
@@ -91,11 +86,9 @@ const compile = async (
     try {
         const groups = options.groups ? result.groups() : undefined;
 
-        const graph = options.graph ? result.graph() : undefined;
-
         const diagnostics = result.diagnostics();
         if (diagnostics != null) {
-            return { groups, graph, diagnostics };
+            return { groups, diagnostics };
         }
 
         let program: ArrayBufferLike | undefined;
@@ -106,7 +99,7 @@ const compile = async (
             }
         }
 
-        return { groups, graph, program };
+        return { groups, program };
     } finally {
         result.free();
     }

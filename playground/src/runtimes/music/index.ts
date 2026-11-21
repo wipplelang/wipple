@@ -1,6 +1,7 @@
 import { soundfontInstrumentNames } from "@/assets/instruments";
 import { runtime } from "@/models/Runtime";
 import MusicOutput from "./MusicOutput.svelte";
+import { sharedUnits } from "../shared";
 
 const melody = `melody : (music-widget '{"music":{"type":"melody","color":"#38bdf8","notes":[{"duration":1,"notes":[]},{"duration":1,"notes":[]},{"duration":1,"notes":[]},{"duration":1,"notes":[]}]}}')`;
 const rhythm = `rhythm : (music-widget '{"music":{"type":"rhythm","color":"#fb7185","notes":[{"duration":1,"notes":[]},{"duration":1,"notes":[]},{"duration":1,"notes":[]},{"duration":1,"notes":[]}]}}')`;
@@ -41,9 +42,7 @@ export default runtime({
         },
     },
     units: {
-        times: {
-            presets: [1, 2, 3, 4, 5, 10, 20, 50, 100],
-        },
+        ...sharedUnits,
     },
     Output: MusicOutput,
 });
