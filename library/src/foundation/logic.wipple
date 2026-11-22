@@ -9,8 +9,8 @@ Boolean : type {
 --
 -- # Consequences
 --
--- Either [`then`] or [`else`] could be chosen, so they must both produce a
--- [`value@type`].
+-- Either [`then`] or [`else`] could be chosen, so they must both produce the
+-- same type.
 [connect : condition -> then ("then")]
 [connect : condition -> else ("else")]
 [connect : then -> output ("output")]
