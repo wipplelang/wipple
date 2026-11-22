@@ -16,7 +16,7 @@ Facts (layer 2):
 
 `if` (VariableExpression):
   at logic.wipple:1:7-1:9
-  grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
+  grouped with `(condition :: Boolean) (then :: {value}) (else :: {value}) -> (output :: value)`
   has type `Boolean {String} {String} -> String`
   is an expression
   resolved to 1 definition(s): `if`
@@ -63,7 +63,7 @@ Facts (layer 2):
 
 `{"a"}` (BlockExpression):
   at logic.wipple:1:27-1:32
-  grouped with `{(then :: value)}`
+  grouped with `then`
   has type `{String}`
   is an expression
 
@@ -75,7 +75,7 @@ Facts (layer 2):
 
 `{"b"}` (BlockExpression):
   at logic.wipple:1:33-1:38
-  grouped with `{(else :: value)}`
+  grouped with `else`
   has type `{String}`
   is an expression
 
@@ -101,7 +101,7 @@ Facts (layer 2):
 
 `if` (VariableExpression):
   at logic.wipple:2:7-2:9
-  grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`
+  grouped with `(condition :: Boolean) (then :: {value}) (else :: {value}) -> (output :: value)`
   has type `Boolean {String} {String} -> String`
   is an expression
   resolved to 1 definition(s): `if`
@@ -148,7 +148,7 @@ Facts (layer 2):
 
 `{"a"}` (BlockExpression):
   at logic.wipple:2:26-2:31
-  grouped with `{(then :: value)}`
+  grouped with `then`
   has type `{String}`
   is an expression
 
@@ -160,7 +160,7 @@ Facts (layer 2):
 
 `{"b"}` (BlockExpression):
   at logic.wipple:2:32-2:37
-  grouped with `{(else :: value)}`
+  grouped with `else`
   has type `{String}`
   is an expression
 

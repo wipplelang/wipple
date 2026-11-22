@@ -31,13 +31,13 @@ Facts (layer 2):
 
 `{(then :: value)}` (BlockType):
   at custom-connections.wipple:5:33-5:50
-  grouped with `{(then :: value)}`
+  grouped with `then`
   has type `{value}`
   is a type
 
 `then` (TypeParameter):
   at custom-connections.wipple:5:35-5:39
-  grouped with `value`, `then`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -53,13 +53,13 @@ Facts (layer 2):
 
 `{(else :: value)}` (BlockType):
   at custom-connections.wipple:5:51-5:68
-  grouped with `{(else :: value)}`
+  grouped with `else`
   has type `{value}`
   is a type
 
 `else` (TypeParameter):
   at custom-connections.wipple:5:53-5:57
-  grouped with `value`, `else`
+  grouped with `value`, `value`
   has type `value`
   is a definition
   is a type
@@ -91,7 +91,7 @@ Facts (layer 2):
 
 `if` (VariableExpression):
   at custom-connections.wipple:6:9-6:11
-  grouped with `(condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)`, `my-if`
+  grouped with `(condition :: Boolean) (then :: {value}) (else :: {value}) -> (output :: value)`, `my-if`
   has type `Boolean {value} {value} -> value`
   is an expression
   resolved to 1 definition(s): `if`

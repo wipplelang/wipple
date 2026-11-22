@@ -4,12 +4,18 @@ Boolean : type {
   True
 }
 
--- [`if`] makes a choice based on whether [`condition`] is `True` or `False`.
+-- [`if`] makes a choice based on whether [`condition`] is [`True`] or
+-- [`False`].
+--
+-- # Consequences
+--
+-- Either [`then`] or [`else`] could be chosen, so they must both produce a
+-- [`value@type`].
 [connect : condition -> then ("then")]
 [connect : condition -> else ("else")]
 [connect : then -> output ("output")]
 [connect : else -> output ("output")]
-if :: (condition :: Boolean) {(then :: value)} {(else :: value)} -> (output :: value)
+if :: (condition :: Boolean) (then :: {value}) (else :: {value}) -> (output :: value)
 if : condition then else -> when condition {
   True -> do then
   False -> do else
