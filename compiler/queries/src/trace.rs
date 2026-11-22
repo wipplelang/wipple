@@ -1,8 +1,11 @@
 use crate::QueryCtx;
-use std::{collections::BTreeSet, ops::ControlFlow};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    ops::ControlFlow,
+};
 use wipple_core::{
     db::{Db, Node},
-    facts::{Description, DescriptionKind},
+    facts::{Description, description_comments},
     render::Comments,
     typecheck::{
         constraints::ConstraintConsequence,
@@ -27,25 +30,29 @@ pub struct TraceEntry {
 pub struct Trace(pub Vec<TraceEntry>);
 
 impl Trace {
-    pub fn collect(ctx: &QueryCtx<'_>, node: Node, description_kind: DescriptionKind) -> Trace {
+    pub fn collect(ctx: &QueryCtx<'_>, node: Node) -> Trace {
         let mut entries = Vec::new();
         collect_traces(
             ctx,
             node,
-            description_kind,
             node,
             &mut |_, node| ctx.filter(node),
             &mut BTreeSet::new(),
             &mut entries,
         );
 
-        let mut seen_consequences = BTreeSet::new();
+        let mut seen_consequences = Vec::new();
         for entry in &mut entries {
             // Remove top-level duplicate consequences (nested consequences are
             // deduplicated by `elaborate_consequences`)
-            entry
-                .consequences
-                .retain(|consequence| seen_consequences.insert(consequence.clone()));
+            entry.consequences.retain(|consequence| {
+                if seen_consequences.contains(consequence) {
+                    false
+                } else {
+                    seen_consequences.push(consequence.clone());
+                    true
+                }
+            });
 
             entry.relevant.sort();
         }
@@ -57,7 +64,6 @@ impl Trace {
 fn collect_traces(
     db: &Db,
     node: Node,
-    description_kind: DescriptionKind,
     primary_node: Node,
     filter: &mut dyn FnMut(&Db, Node) -> bool,
     seen_nodes: &mut BTreeSet<Node>,
@@ -71,49 +77,65 @@ fn collect_traces(
         .get(node)
         .map_or_default(|Resolved { definitions, .. }| definitions.iter().copied());
 
-    let comments = definitions
-        .filter_map(|definition_node| {
-            let Defined(definition) = db.get(definition_node)?;
+    let mut comments = vec![(false, None, Comments::empty_for(node))];
+    let mut consequences = BTreeMap::<Node, Vec<Comments>>::new();
 
-            let is_primary = definition.name().is_some();
+    for definition_node in definitions {
+        let Some(Defined(definition)) = db.get(definition_node) else {
+            continue;
+        };
 
-            let links = get_links(db, definition_node, node, &mut *filter);
+        let is_primary = definition.name().is_some();
 
-            let comments = section(definition.comments(), description_kind.comments_section())
-                .or_else(|| section(definition.comments(), None))
-                .unwrap_or_default()
-                .to_vec();
+        let links = get_links(db, definition_node, node, &mut *filter);
 
-            Some((
+        if let Some(section) = section(definition.comments(), Some(description_comments::DATA_FLOW))
+            .or_else(|| section(definition.comments(), None))
+        {
+            comments.push((
                 is_primary,
                 None,
                 Comments {
                     node,
-                    comments,
+                    comments: section.to_vec(),
                     links: links.clone(),
                 },
-            ))
-        })
-        .chain(
-            db.get::<Description>(node)
-                .into_iter()
-                .flat_map(|description| {
-                    description
-                        .entries(description_kind)
-                        .or_else(|| description.entries(DescriptionKind::default()))
-                        .unwrap_or_default()
-                        .iter()
-                        .map(|entry| {
-                            (
-                                entry.is_primary,
-                                entry.matching_node,
-                                entry.comments.clone(),
-                            )
-                        })
-                }),
-        )
-        .chain([(false, None, Comments::empty_for(node))])
-        .collect::<Vec<_>>();
+            ));
+        }
+
+        if let Some(section) = section(
+            definition.comments(),
+            Some(description_comments::CONSEQUENCES),
+        ) {
+            consequences.entry(node).or_default().push(Comments {
+                node,
+                comments: section.to_vec(),
+                links,
+            });
+        }
+    }
+
+    if let Some(description) = db.get::<Description>(node) {
+        if let Some(section) = [&description.data_flow, &description.summary]
+            .into_iter()
+            .find(|entry| !entry.is_empty())
+        {
+            comments.extend(section.iter().map(|entry| {
+                (
+                    entry.is_primary,
+                    entry.matching_node,
+                    entry.comments.clone(),
+                )
+            }));
+        }
+
+        for entry in &description.consequences {
+            consequences
+                .entry(node)
+                .or_default()
+                .push(entry.comments.clone());
+        }
+    }
 
     let mut relevant = Vec::new();
 
@@ -138,19 +160,26 @@ fn collect_traces(
             entry_relevant.extend(link.related.iter().copied());
         }
 
-        let mut consequences = if db.get::<DefinitionConstraints>(node).is_none() {
+        let mut consequences = consequences
+            .get(&node)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(ConstraintConsequence::Custom)
+            .collect::<Vec<_>>();
+
+        if db.get::<DefinitionConstraints>(node).is_none() {
             entry_relevant.extend(db.consequences.relevant(node));
-            db.consequences.responsible_for(node).cloned().collect()
+            consequences.extend(db.consequences.responsible_for(node).cloned());
         } else {
             // Don't traverse into other generic definitions
-            Vec::new()
-        };
+        }
 
         consequences = elaborate_consequences(
             db,
             consequences,
             primary_node,
-            &mut BTreeSet::new(),
+            &mut Vec::new(),
             &mut entry_relevant,
         )
         .collect();
@@ -175,15 +204,7 @@ fn collect_traces(
     }
 
     for child in relevant {
-        collect_traces(
-            db,
-            child,
-            description_kind,
-            primary_node,
-            filter,
-            seen_nodes,
-            entries,
-        );
+        collect_traces(db, child, primary_node, filter, seen_nodes, entries);
     }
 }
 
@@ -191,7 +212,7 @@ fn elaborate_consequences(
     db: &Db,
     consequences: impl IntoIterator<Item = ConstraintConsequence>,
     primary_node: Node,
-    seen: &mut BTreeSet<ConstraintConsequence>,
+    seen: &mut Vec<ConstraintConsequence>,
     relevant: &mut Vec<Node>,
 ) -> impl Iterator<Item = ConstraintConsequence> {
     let consequences = consequences.into_iter().flat_map(move |consequence| {
@@ -210,7 +231,8 @@ fn elaborate_consequences(
                         update_type(db, &Ty::Node(other), &[node], Prefer::RepresentativeType)
                 {
                     let consequence = ConstraintConsequence::Ty(other, ty.clone());
-                    if seen.insert(consequence.clone()) {
+                    if !seen.contains(&consequence) {
+                        seen.push(consequence.clone());
                         dependents.push(consequence);
                     }
                 }

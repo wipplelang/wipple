@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
     db::{Db, Node},
-    facts::{Description, DescriptionEntry, DescriptionKind},
+    facts::{Description, DescriptionEntry},
     render::Comments,
     span::{Span, Str},
     util::Link,
@@ -119,8 +119,7 @@ impl Visit for ConstantDefinition {
                         }
                     }
 
-                    db.get_mut_or_default::<Description>(node).insert(
-                        DescriptionKind::Summary,
+                    db.get_mut_or_default::<Description>(node).summary.push(
                         DescriptionEntry::primary(Comments::builtin(
                             node,
                             "[`constant`] is annotated as a [`type`].",

@@ -8,7 +8,7 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::{Description, DescriptionEntry, DescriptionKind},
+    facts::{Description, DescriptionEntry},
     render::Comments,
     span::Span,
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
@@ -62,17 +62,16 @@ impl Visit for AnnotatePattern {
 
         visitor.codegen(db, node, AnnotatePatternCodegen { pattern });
 
-        db.get_mut_or_default::<Description>(pattern).insert(
-            DescriptionKind::Summary,
-            DescriptionEntry::primary(Comments::builtin(
+        db.get_mut_or_default::<Description>(pattern)
+            .summary
+            .push(DescriptionEntry::primary(Comments::builtin(
                 ty,
                 "[`pattern`] is annotated as a [`type`].",
                 [
                     ("pattern", Some(Link::node(pattern))),
                     ("type", Some(Link::node(ty))),
                 ],
-            )),
-        );
+            )));
     }
 }
 

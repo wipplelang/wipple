@@ -11,7 +11,7 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::{Description, DescriptionEntry, DescriptionKind},
+    facts::{Description, DescriptionEntry},
     render::Comments,
     span::Span,
     typecheck::{
@@ -101,8 +101,8 @@ impl Visit for AssignmentStatement {
                             db.insert(definition_node, ConstantValue(value));
 
                             db.get_mut_or_default::<Description>(definition_node)
-                                .insert(
-                                    DescriptionKind::Summary,
+                                .summary
+                                .push(
                                     DescriptionEntry::primary(Comments::builtin(
                                         value,
                                         "[`constant`] has the value [`value`].",

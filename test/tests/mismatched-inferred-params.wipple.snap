@@ -87,6 +87,8 @@ note:
 
 `1, 2, 3` is a `List Number`.
 
+Since the first element, `1`, is a `Number`, the remaining elements must also be a `Number`.
+
 This means `1` must have the same type as `2`.
 
 This means `1` must have the same type as `3`.

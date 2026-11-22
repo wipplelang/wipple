@@ -3,7 +3,6 @@ use itertools::{Either, Itertools};
 use std::collections::BTreeSet;
 use wipple_core::{
     db::Node,
-    facts::DescriptionKind,
     typecheck::{
         constraints::ConstraintConsequence,
         groups::{NodeRank, Prefer, Typed, representative_types_of},
@@ -73,7 +72,7 @@ pub fn conflicting_types<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ConflictingTy
 
     conflicting.retain(|&node| group.get_rank(node) == min_rank);
 
-    let trace = Trace::collect(db, node, DescriptionKind::DataFlow);
+    let trace = Trace::collect(db, node);
 
     let mut summaries = Vec::new();
     collect_summaries(db, node, &trace, &mut summaries);

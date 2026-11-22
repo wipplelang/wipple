@@ -8,7 +8,7 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::{Description, DescriptionEntry, DescriptionKind},
+    facts::{Description, DescriptionEntry},
     render::Comments,
     span::Span,
     typecheck::{
@@ -111,26 +111,24 @@ impl Visit for FunctionExpression {
             },
         );
 
-        db.get_mut_or_default::<Description>(node).insert(
-            DescriptionKind::Summary,
-            DescriptionEntry::secondary(Comments::builtin(
+        db.get_mut_or_default::<Description>(node)
+            .summary
+            .push(DescriptionEntry::secondary(Comments::builtin(
                 node,
                 "This function accepts [`inputs`] as input.",
                 [
                     ("function", Some(Link::node(node))),
                     ("inputs", Some(Link::list("and", inputs.iter().cloned()))),
                 ],
-            )),
-        );
+            )));
 
-        db.get_mut_or_default::<Description>(output).insert(
-            DescriptionKind::Summary,
-            DescriptionEntry::secondary(Comments::builtin(
+        db.get_mut_or_default::<Description>(output)
+            .summary
+            .push(DescriptionEntry::secondary(Comments::builtin(
                 output,
                 "[`output`] is the output of this function.",
                 [("output", Some(Link::node(output)))],
-            )),
-        );
+            )));
     }
 }
 

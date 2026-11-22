@@ -7,7 +7,7 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Fact, Node},
-    facts::{Description, DescriptionEntry, DescriptionKind},
+    facts::{Description, DescriptionEntry},
     render::{Comments, Render},
     span::Span,
     typecheck::{
@@ -146,9 +146,9 @@ impl Visit for CallExpression {
                 })
             });
 
-        db.get_mut_or_default::<Description>(node).insert(
-            DescriptionKind::Summary,
-            DescriptionEntry::new(
+        db.get_mut_or_default::<Description>(node)
+            .summary
+            .push(DescriptionEntry::new(
                 is_primary,
                 Comments::builtin(
                     node,
@@ -158,8 +158,7 @@ impl Visit for CallExpression {
                         ("inputs", Some(Link::list("and", inputs.iter().copied()))),
                     ],
                 ),
-            ),
-        );
+            ));
     }
 }
 

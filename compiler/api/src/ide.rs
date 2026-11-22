@@ -8,7 +8,7 @@ use wasm_bindgen::prelude::*;
 use wipple_core::{
     db::{Db, Node},
     default_filter,
-    facts::{DescriptionKind, Syntax},
+    facts::Syntax,
     render::{ExplainOptions, RenderCtx, RenderMarkdownOptions, RenderOptions},
     span::Span,
     typecheck::ty::Ty,
@@ -171,8 +171,7 @@ impl Ide {
             .get(&self.result.db)
             .span(&self.result.db);
 
-        let trace =
-            wipple_queries::Trace::collect(&self.query_ctx(), node, DescriptionKind::Summary);
+        let trace = wipple_queries::Trace::collect(&self.query_ctx(), node);
 
         let mut writer = FeedbackWriter::new(default_filter).with_options(render_options.clone());
         writer.extend_trace(&self.result.db, &trace);

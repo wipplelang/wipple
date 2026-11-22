@@ -6,7 +6,7 @@ pub mod ty_constraint;
 
 use crate::{
     db::{Db, Node},
-    render::{ExplainOptions, ListBuilder, RenderCtx},
+    render::{Comments, ExplainOptions, ListBuilder, RenderCtx},
     typecheck::{
         bounds::Instance,
         groups::{NodeRank, Typed},
@@ -143,8 +143,9 @@ impl IntoIterator for Constraints {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ConstraintConsequence {
+    Custom(Comments),
     Group(Node, Node),
     Ty(Node, ConstructedTy),
     Instance(Instance, bool),
@@ -153,14 +154,16 @@ pub enum ConstraintConsequence {
 impl ConstraintConsequence {
     pub fn sort_key(&self) -> impl Ord + use<> {
         match self {
-            ConstraintConsequence::Ty(..) => 0,
-            ConstraintConsequence::Group(..) => 1,
-            ConstraintConsequence::Instance(..) => 2,
+            ConstraintConsequence::Custom(..) => 0,
+            ConstraintConsequence::Ty(..) => 1,
+            ConstraintConsequence::Group(..) => 2,
+            ConstraintConsequence::Instance(..) => 3,
         }
     }
 
     pub fn relevant_nodes(&self) -> Vec<Node> {
         match self {
+            ConstraintConsequence::Custom(comments) => vec![comments.node],
             ConstraintConsequence::Group(left, right) => vec![*left, *right],
             ConstraintConsequence::Ty(node, _) => vec![*node],
             ConstraintConsequence::Instance(_, _) => Vec::new(),
@@ -169,6 +172,7 @@ impl ConstraintConsequence {
 
     fn requires_explain_full(&self, db: &Db) -> bool {
         match *self {
+            ConstraintConsequence::Custom(_) => {}
             ConstraintConsequence::Group(node, _) | ConstraintConsequence::Ty(node, _) => {
                 // Hide expressions without conflicts by default
                 if db
@@ -209,6 +213,13 @@ impl ConstraintConsequence {
         };
 
         match *self {
+            ConstraintConsequence::Custom(ref comments) => {
+                if db.is_hidden(comments.node) {
+                    return false;
+                }
+
+                true
+            }
             ConstraintConsequence::Group(left, right) => {
                 if left == right || db.is_hidden(left) || db.is_hidden(right) {
                     return false;
@@ -274,6 +285,9 @@ impl ConstraintConsequence {
         list: &mut ListBuilder<'a>,
     ) {
         match *self {
+            ConstraintConsequence::Custom(ref comments) => {
+                ctx.comments(db, comments);
+            }
             ConstraintConsequence::Group(left, right) => {
                 ctx.string("This means ");
                 ctx.node(left);

@@ -1,7 +1,6 @@
 use crate::{QueryCtx, Trace};
 use wipple_core::{
     db::Node,
-    facts::DescriptionKind,
     typecheck::{groups::Typed, ty::ConstructedTy},
 };
 use wipple_syntax::expressions::placeholder_expression::IsPlaceholder;
@@ -21,6 +20,6 @@ pub fn placeholder<'a>(
     Some((
         group.nodes().filter(|other| *other != node).collect(),
         group.tys().next(),
-        Trace::collect(db, node, DescriptionKind::Summary),
+        Trace::collect(db, node),
     ))
 }

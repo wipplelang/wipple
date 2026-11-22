@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use wipple_core::{
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::{Description, DescriptionEntry, DescriptionKind},
+    facts::{Description, DescriptionEntry},
     render::Comments,
     span::{Span, Str},
     typecheck::{
@@ -98,8 +98,7 @@ impl Visit for VariableExpression {
                     },
                 );
 
-                db.get_mut_or_default::<Description>(node).insert(
-                    DescriptionKind::Summary,
+                db.get_mut_or_default::<Description>(node).summary.push(
                     DescriptionEntry::secondary(Comments::builtin(
                         node,
                         "[`definition`] is used here.",
@@ -127,9 +126,9 @@ impl Visit for VariableExpression {
                     },
                 );
 
-                db.get_mut_or_default::<Description>(node).insert(
-                    DescriptionKind::Summary,
-                    DescriptionEntry::new(
+                db.get_mut_or_default::<Description>(node)
+                    .summary
+                    .push(DescriptionEntry::new(
                         !has_comments,
                         Comments::builtin(
                             definition_node,
@@ -139,8 +138,7 @@ impl Visit for VariableExpression {
                                 ("use", Some(Link::node(node))),
                             ],
                         ),
-                    ),
-                );
+                    ));
             }
         }
     }

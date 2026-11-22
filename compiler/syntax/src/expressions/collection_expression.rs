@@ -8,7 +8,7 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::{Description, DescriptionEntry, DescriptionKind},
+    facts::{Description, DescriptionEntry},
     render::Comments,
     span::{Span, Str},
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
@@ -139,14 +139,23 @@ impl Visit for CollectionExpression {
             },
         );
 
-        db.get_mut_or_default::<Description>(node).insert(
-            DescriptionKind::Summary,
-            DescriptionEntry::primary(Comments::builtin(
+        db.get_mut_or_default::<Description>(node)
+            .summary
+            .push(DescriptionEntry::primary(Comments::builtin(
                 node,
                 "[`collection`] is a [`collection@type`].",
                 [("collection", Some(Link::node(node)))],
-            )),
-        );
+            )));
+
+        if let Some(&first) = elements.first() {
+            db.get_mut_or_default::<Description>(node).consequences.push(
+                DescriptionEntry::primary(Comments::builtin(
+                    first,
+                    "Since the first element, [`first`], is a [`first@type`], the remaining elements must also be a [`first@type`]",
+                    [("first", Some(Link::node(first)))],
+                )),
+            );
+        }
     }
 }
 

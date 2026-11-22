@@ -5,7 +5,6 @@ use crate::{
     render::{Comments, Render, RenderCtx},
 };
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Syntax(pub AstKey);
@@ -63,14 +62,16 @@ impl Fact for DebugInfo {}
 
 impl Render for DebugInfo {}
 
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct Description(BTreeMap<DescriptionKind, Vec<DescriptionEntry>>);
+pub mod description_comments {
+    pub const DATA_FLOW: &str = "Data Flow";
+    pub const CONSEQUENCES: &str = "Consequences";
+}
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
-pub enum DescriptionKind {
-    #[default]
-    Summary,
-    DataFlow,
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct Description {
+    pub summary: Vec<DescriptionEntry>,
+    pub data_flow: Vec<DescriptionEntry>,
+    pub consequences: Vec<DescriptionEntry>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,25 +86,6 @@ pub struct DescriptionEntry {
 impl Fact for Description {}
 
 impl Render for Description {}
-
-impl Description {
-    pub fn entries(&self, kind: DescriptionKind) -> Option<&[DescriptionEntry]> {
-        self.0.get(&kind).map(|entries| entries.as_slice())
-    }
-
-    pub fn insert(&mut self, kind: DescriptionKind, entry: DescriptionEntry) {
-        self.0.entry(kind).or_default().push(entry);
-    }
-}
-
-impl DescriptionKind {
-    pub fn comments_section(&self) -> Option<&'static str> {
-        match self {
-            DescriptionKind::Summary => None,
-            DescriptionKind::DataFlow => Some("Data Flow"),
-        }
-    }
-}
 
 impl DescriptionEntry {
     pub fn new(is_primary: bool, comments: Comments) -> Self {

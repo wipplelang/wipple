@@ -8,7 +8,7 @@ use wipple_core::{
     ast::AstKey,
     codegen::{CodegenError, hir},
     db::{Db, Node},
-    facts::{Description, DescriptionEntry, DescriptionKind},
+    facts::{Description, DescriptionEntry},
     render::Comments,
     span::Span,
     typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
@@ -66,17 +66,16 @@ impl Visit for AnnotateExpression {
 
         visitor.codegen(db, node, AnnotateExpressionCodegen { node, expression });
 
-        db.get_mut_or_default::<Description>(expression).insert(
-            DescriptionKind::Summary,
-            DescriptionEntry::primary(Comments::builtin(
+        db.get_mut_or_default::<Description>(expression)
+            .summary
+            .push(DescriptionEntry::primary(Comments::builtin(
                 ty,
                 "[`value`] is annotated as a [`type`].",
                 [
                     ("value", Some(Link::node(expression))),
                     ("type", Some(Link::node(ty))),
                 ],
-            )),
-        );
+            )));
     }
 }
 
