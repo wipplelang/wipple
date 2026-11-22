@@ -28,9 +28,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `x`
 
-`x + 1` (CallExpression):
+`x + 1` (OperatorExpression):
   at mutable.wipple:2:9-2:14
-  grouped with `sum`, `x + 1`
+  grouped with `sum`, `x`, `x`
   has type `Number`
   is an expression
 

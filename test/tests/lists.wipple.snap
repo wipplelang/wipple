@@ -54,13 +54,7 @@ Facts (layer 2):
 
 `my-list . first` (OperatorExpression):
   at lists.wipple:3:7-3:22
-  grouped with `first`, `value`
-  has type `Maybe Number`
-  is an expression
-
-`first` (CallExpression):
-  at lists.wipple:3:17-3:22
-  grouped with `Maybe element`, `my-list . first`
+  grouped with `Maybe element`, `value`
   has type `Maybe Number`
   is an expression
 
@@ -94,13 +88,7 @@ Facts (layer 2):
 
 `my-list . last` (OperatorExpression):
   at lists.wipple:4:7-4:21
-  grouped with `last`, `value`
-  has type `Maybe Number`
-  is an expression
-
-`last` (CallExpression):
-  at lists.wipple:4:17-4:21
-  grouped with `Maybe element`, `my-list . last`
+  grouped with `Maybe element`, `value`
   has type `Maybe Number`
   is an expression
 
@@ -134,13 +122,13 @@ Facts (layer 2):
 
 `my-list . initial` (VisitAs):
   at lists.wipple:5:8-5:25
-  grouped with `initial`, `left`
+  grouped with `Maybe (List element)`, `left`
   has type `Maybe (List Number)`
   is an expression
 
-`my-list . initial) or unreachable` (CallExpression):
+`my-list . initial) or unreachable` (VisitAs):
   at lists.wipple:5:8-5:41
-  grouped with `output`, `my-list . initial) or unreachable`
+  grouped with `list`, `output`
   has type `List Number`
   is an expression
 
@@ -154,14 +142,8 @@ Facts (layer 2):
 
 `my-list . initial) or unreachable . last` (OperatorExpression):
   at lists.wipple:5:8-5:48
-  grouped with `last`, `value`
+  grouped with `Maybe element`, `value`
   has type `Maybe Number`
-  is an expression
-
-`initial` (CallExpression):
-  at lists.wipple:5:18-5:25
-  grouped with `Maybe (List element)`, `my-list . initial`
-  has type `Maybe (List Number)`
   is an expression
 
 `initial` (VisitAs):
@@ -182,12 +164,6 @@ Facts (layer 2):
   at lists.wipple:5:30-5:41
   grouped with `{right}`
   has type `{List Number}`
-  is an expression
-
-`last` (CallExpression):
-  at lists.wipple:5:44-5:48
-  grouped with `Maybe element`, `my-list . initial) or unreachable . last`
-  has type `Maybe Number`
   is an expression
 
 `last` (VisitAs):
@@ -220,13 +196,13 @@ Facts (layer 2):
 
 `my-list . tail` (VisitAs):
   at lists.wipple:6:8-6:22
-  grouped with `tail`, `left`
+  grouped with `Maybe (List element)`, `left`
   has type `Maybe (List Number)`
   is an expression
 
-`my-list . tail) or unreachable` (CallExpression):
+`my-list . tail) or unreachable` (VisitAs):
   at lists.wipple:6:8-6:38
-  grouped with `output`, `my-list . tail) or unreachable`
+  grouped with `list`, `output`
   has type `List Number`
   is an expression
 
@@ -240,14 +216,8 @@ Facts (layer 2):
 
 `my-list . tail) or unreachable . first` (OperatorExpression):
   at lists.wipple:6:8-6:46
-  grouped with `first`, `value`
+  grouped with `Maybe element`, `value`
   has type `Maybe Number`
-  is an expression
-
-`tail` (CallExpression):
-  at lists.wipple:6:18-6:22
-  grouped with `Maybe (List element)`, `my-list . tail`
-  has type `Maybe (List Number)`
   is an expression
 
 `tail` (VisitAs):
@@ -268,12 +238,6 @@ Facts (layer 2):
   at lists.wipple:6:27-6:38
   grouped with `{right}`
   has type `{List Number}`
-  is an expression
-
-`first` (CallExpression):
-  at lists.wipple:6:41-6:46
-  grouped with `Maybe element`, `my-list . tail) or unreachable . first`
-  has type `Maybe Number`
   is an expression
 
 `first` (VisitAs):
@@ -306,7 +270,7 @@ Facts (layer 2):
 
 `my-list . nth 1` (OperatorExpression):
   at lists.wipple:7:7-7:22
-  grouped with `nth 1`, `value`
+  grouped with `Maybe element`, `Maybe element`, `value`
   has type `Maybe Number`
   is an expression
 
@@ -316,12 +280,6 @@ Facts (layer 2):
   has type `Number -> (List Number) -> Maybe Number`
   is an expression
   resolved to 1 definition(s): `nth`
-
-`nth 1` (CallExpression):
-  at lists.wipple:7:17-7:22
-  grouped with `Maybe element`, `Maybe element`, `my-list . nth 1`
-  has type `Maybe Number`
-  is an expression
 
 `nth 1` (VisitAs):
   at lists.wipple:7:17-7:22

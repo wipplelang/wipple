@@ -40,9 +40,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `n`
 
-`n = 42` (CallExpression):
+`n = 42` (OperatorExpression):
   at not.wipple:2:15-2:21
-  grouped with `Boolean`, `n = 42`
+  grouped with `Boolean`, `(not is-42?) input`, `is-42? input`, `b`
   has type `Boolean`
   is an expression
 
@@ -80,9 +80,9 @@ Facts (layer 2):
   has type `Boolean`
   is an expression
 
-`(not is-42?) input = not (is-42? input)` (CallExpression):
+`(not is-42?) input = not (is-42? input)` (OperatorExpression):
   at not.wipple:3:7-3:46
-  grouped with `Boolean`, `(not is-42?) input = not (is-42? input)`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 

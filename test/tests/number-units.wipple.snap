@@ -74,9 +74,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `a`
 
-`a = b` (CallExpression):
+`a = b` (OperatorExpression):
   at number-units.wipple:3:61-3:66
-  grouped with `Boolean`, `a = b`
+  grouped with `Boolean`, `Boolean`
   has type `Boolean`
   is an expression
 
@@ -155,9 +155,9 @@ Facts (layer 2):
   has type `Elephants`
   is an expression
 
-`42 elephants = elephants 42` (CallExpression):
+`42 elephants = elephants 42` (OperatorExpression):
   at number-units.wipple:8:7-8:34
-  grouped with `Boolean`, `42 elephants = elephants 42`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 

@@ -1,15 +1,13 @@
 use crate::{
     expressions::{
         block_expression::BlockExpression, call_expression::CallExpression,
-        constructor_expression::ConstructorExpression, parse_expression_element, visit_expression,
+        constructor_expression::ConstructorExpression, parse_expression_element,
     },
     statements::expression_statement::ExpressionStatement,
 };
-
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenError, hir},
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{
@@ -235,67 +233,58 @@ impl Visit for OperatorExpression {
     }
 
     fn visit(self: Box<Self>, db: &mut Db, node: Node, visitor: &mut Visitor) {
-        visit_expression(db, node, visitor);
-
-        let resolved = if let Some(trait_name) = name_for_trait_operator(&self.operator) {
-            db.hide(node);
-
+        if let Some(trait_name) = name_for_trait_operator(&self.operator) {
             visit_trait_operator(
                 db,
+                node,
                 visitor,
                 self.span.clone(),
                 self.left.clone(),
                 self.right.clone(),
                 trait_name,
-            )
+            );
         } else {
             match self.operator.as_str() {
                 "and" => {
-                    db.hide(node);
-
                     visit_logic_operator(
                         db,
+                        node,
                         visitor,
                         self.span.clone(),
                         self.left.clone(),
                         self.right.clone(),
                         "And",
-                    )
+                    );
                 }
                 "or" => {
-                    db.hide(node);
-
                     visit_logic_operator(
                         db,
+                        node,
                         visitor,
                         self.span.clone(),
                         self.left.clone(),
                         self.right.clone(),
                         "Or",
-                    )
+                    );
                 }
-                "." => visit_apply_operator(db, visitor, self.left.clone(), self.right.clone()),
+                "." => {
+                    visit_apply_operator(db, node, visitor, self.left.clone(), self.right.clone());
+                }
                 _ => unreachable!("unknown operator: {}", self.operator),
             }
-        };
-
-        if let Some(graph) = &mut db.graph {
-            graph.replace(node, resolved);
         }
-
-        visitor.constraint(db, TyConstraint::new(node, Ty::Node(resolved)));
-        visitor.codegen(db, node, OperatorExpressionCodegen { node, resolved });
     }
 }
 
 fn visit_trait_operator(
     db: &mut Db,
+    node: Node,
     visitor: &mut Visitor,
     span: Span,
     left: AstKey,
     right: AstKey,
     trait_name: &str,
-) -> Node {
+) {
     let function = visitor.in_ast(
         db,
         Box::new(ConstructorExpression {
@@ -313,18 +302,18 @@ fn visit_trait_operator(
         }),
     );
 
-    visitor.visit(db, &call)
+    db.ast(&call).clone().visit(db, node, visitor);
 }
 
 fn visit_logic_operator(
     db: &mut Db,
+    node: Node,
     visitor: &mut Visitor,
     span: Span,
     left: AstKey,
     right: AstKey,
     trait_name: &str,
-) -> Node {
-    let node = db.node();
+) {
     let operator_node = db.node();
     let left_node = db.node();
     let right_node = db.node();
@@ -403,13 +392,16 @@ fn visit_logic_operator(
         }),
     );
 
-    visitor.visit_as(db, &call, node);
-
-    node
+    db.ast(&call).clone().visit(db, node, visitor);
 }
 
-fn visit_apply_operator(db: &mut Db, visitor: &mut Visitor, left: AstKey, right: AstKey) -> Node {
-    let node = db.node();
+fn visit_apply_operator(
+    db: &mut Db,
+    node: Node,
+    visitor: &mut Visitor,
+    left: AstKey,
+    right: AstKey,
+) {
     let left_node = db.node();
     let right_node = db.node();
 
@@ -446,27 +438,5 @@ fn visit_apply_operator(db: &mut Db, visitor: &mut Visitor, left: AstKey, right:
         }),
     );
 
-    visitor.visit_as(db, &call, node);
-
-    node
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct OperatorExpressionCodegen {
-    node: Node,
-    resolved: Node,
-}
-
-#[typetag::serde]
-impl hir::Write for OperatorExpressionCodegen {
-    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
-        ctx.write(db, self.resolved)?;
-
-        ctx.instruction(hir::Instruction::Value {
-            node: self.node,
-            value: hir::Value::Variable(self.resolved),
-        });
-
-        Ok(())
-    }
+    db.ast(&call).clone().visit(db, node, visitor);
 }

@@ -59,7 +59,7 @@ Facts (layer 2):
 
 `languages . filter (name -> count name < 5)` (OperatorExpression):
   at infer.wipple:3:15-3:58
-  grouped with `filter (name -> count name < 5)`, `short-names`, `short-names`
+  grouped with `Sequence element`, `Sequence element`, `short-names`, `short-names`
   has type `Sequence String`
   is an expression
 
@@ -70,12 +70,6 @@ Facts (layer 2):
   has type `(String -> Boolean) -> (List String) -> Sequence String`
   is an expression
   resolved to 1 definition(s): `filter`
-
-`filter (name -> count name < 5)` (CallExpression):
-  at infer.wipple:3:27-3:58
-  grouped with `Sequence element`, `Sequence element`, `languages . filter (name -> count name < 5)`
-  has type `Sequence String`
-  is an expression
 
 `filter (name -> count name < 5)` (VisitAs):
   at infer.wipple:3:27-3:58
@@ -110,9 +104,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`count name < 5` (CallExpression):
+`count name < 5` (OperatorExpression):
   at infer.wipple:3:43-3:57
-  grouped with `Boolean`, `count name < 5`
+  grouped with `Boolean`, `Boolean`
   has type `Boolean`
   is an expression
 
@@ -146,7 +140,7 @@ Facts (layer 2):
 
 `short-names . each show` (OperatorExpression):
   at infer.wipple:4:1-4:24
-  grouped with `each show`, `short-names . each show`
+  grouped with `()`, `()`, `short-names . each show`
   has type `()`
   is an expression
 
@@ -157,12 +151,6 @@ Facts (layer 2):
   has type `(String -> ()) -> (Sequence String) -> ()`
   is an expression
   resolved to 1 definition(s): `each`
-
-`each show` (CallExpression):
-  at infer.wipple:4:15-4:24
-  grouped with `()`, `()`, `short-names . each show`
-  has type `()`
-  is an expression
 
 `each show` (VisitAs):
   at infer.wipple:4:15-4:24

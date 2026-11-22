@@ -70,9 +70,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `n`
 
-`n + 1` (CallExpression):
+`n + 1` (OperatorExpression):
   at build-sequence.wipple:1:47-1:52
-  grouped with `sum`, `n + 1`
+  grouped with `sum`, `value`
   has type `Number`
   is an expression
 
@@ -99,13 +99,13 @@ Facts (layer 2):
 
 `numbers . take 5` (VisitAs):
   at build-sequence.wipple:2:1-2:17
-  grouped with `container`, `take 5`, `container`
+  grouped with `container`, `Sequence element`, `Sequence element`, `container`
   has type `Sequence Number`
   is an expression
 
 `numbers . take 5 . each show` (OperatorExpression):
   at build-sequence.wipple:2:1-2:29
-  grouped with `each show`, `numbers . take 5 . each show`
+  grouped with `()`, `()`, `numbers . take 5 . each show`
   has type `()`
   is an expression
 
@@ -116,12 +116,6 @@ Facts (layer 2):
   has type `Number -> (Sequence Number) -> Sequence Number`
   is an expression
   resolved to 1 definition(s): `take`
-
-`take 5` (CallExpression):
-  at build-sequence.wipple:2:11-2:17
-  grouped with `Sequence element`, `Sequence element`, `numbers . take 5`
-  has type `Sequence Number`
-  is an expression
 
 `take 5` (VisitAs):
   at build-sequence.wipple:2:11-2:17
@@ -142,12 +136,6 @@ Facts (layer 2):
   has type `(Number -> ()) -> (Sequence Number) -> ()`
   is an expression
   resolved to 1 definition(s): `each`
-
-`each show` (CallExpression):
-  at build-sequence.wipple:2:20-2:29
-  grouped with `()`, `()`, `numbers . take 5 . each show`
-  has type `()`
-  is an expression
 
 `each show` (VisitAs):
   at build-sequence.wipple:2:20-2:29

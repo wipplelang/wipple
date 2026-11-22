@@ -67,7 +67,7 @@ Facts (layer 2):
 
 `sports . contains? "Basketball"` (OperatorExpression):
   at set.wipple:3:7-3:38
-  grouped with `contains? "Basketball"`, `value`
+  grouped with `Boolean`, `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -78,12 +78,6 @@ Facts (layer 2):
   has type `String -> (Set String) -> Boolean`
   is an expression
   resolved to 1 definition(s): `contains?`
-
-`contains? "Basketball"` (CallExpression):
-  at set.wipple:3:16-3:38
-  grouped with `Boolean`, `Boolean`, `sports . contains? "Basketball"`
-  has type `Boolean`
-  is an expression
 
 `contains? "Basketball"` (VisitAs):
   at set.wipple:3:16-3:38
@@ -120,7 +114,7 @@ Facts (layer 2):
 
 `sports . contains? "Soccer"` (OperatorExpression):
   at set.wipple:4:7-4:34
-  grouped with `contains? "Soccer"`, `value`
+  grouped with `Boolean`, `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -131,12 +125,6 @@ Facts (layer 2):
   has type `String -> (Set String) -> Boolean`
   is an expression
   resolved to 1 definition(s): `contains?`
-
-`contains? "Soccer"` (CallExpression):
-  at set.wipple:4:16-4:34
-  grouped with `Boolean`, `Boolean`, `sports . contains? "Soccer"`
-  has type `Boolean`
-  is an expression
 
 `contains? "Soccer"` (VisitAs):
   at set.wipple:4:16-4:34
@@ -173,7 +161,7 @@ Facts (layer 2):
 
 `sports . contains? "Golf"` (OperatorExpression):
   at set.wipple:5:7-5:32
-  grouped with `contains? "Golf"`, `value`
+  grouped with `Boolean`, `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -184,12 +172,6 @@ Facts (layer 2):
   has type `String -> (Set String) -> Boolean`
   is an expression
   resolved to 1 definition(s): `contains?`
-
-`contains? "Golf"` (CallExpression):
-  at set.wipple:5:16-5:32
-  grouped with `Boolean`, `Boolean`, `sports . contains? "Golf"`
-  has type `Boolean`
-  is an expression
 
 `contains? "Golf"` (VisitAs):
   at set.wipple:5:16-5:32
@@ -226,7 +208,7 @@ Facts (layer 2):
 
 `sports . contains? "Baseball"` (OperatorExpression):
   at set.wipple:6:7-6:36
-  grouped with `contains? "Baseball"`, `value`
+  grouped with `Boolean`, `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -237,12 +219,6 @@ Facts (layer 2):
   has type `String -> (Set String) -> Boolean`
   is an expression
   resolved to 1 definition(s): `contains?`
-
-`contains? "Baseball"` (CallExpression):
-  at set.wipple:6:16-6:36
-  grouped with `Boolean`, `Boolean`, `sports . contains? "Baseball"`
-  has type `Boolean`
-  is an expression
 
 `contains? "Baseball"` (VisitAs):
   at set.wipple:6:16-6:36

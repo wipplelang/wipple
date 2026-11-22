@@ -34,9 +34,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`sum numbers / count numbers` (CallExpression):
+`sum numbers / count numbers` (OperatorExpression):
   at average.wipple:1:22-1:49
-  grouped with `quotient`, `sum numbers / count numbers`
+  grouped with `quotient`, `average (1, 2, 3, 4, 5)`
   has type `Number`
   is an expression
 

@@ -28,7 +28,7 @@ Facts (layer 2):
 
 `1, 2, 3) . all? (n -> n > 0)` (OperatorExpression):
   at all-any.wipple:1:8-1:36
-  grouped with `all? (n -> n > 0)`, `value`
+  grouped with `Boolean`, `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -51,12 +51,6 @@ Facts (layer 2):
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `all?`
-
-`all? (n -> n > 0)` (CallExpression):
-  at all-any.wipple:1:19-1:36
-  grouped with `Boolean`, `Boolean`, `1, 2, 3) . all? (n -> n > 0)`
-  has type `Boolean`
-  is an expression
 
 `all? (n -> n > 0)` (VisitAs):
   at all-any.wipple:1:19-1:36
@@ -84,9 +78,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `n`
 
-`n > 0` (CallExpression):
+`n > 0` (OperatorExpression):
   at all-any.wipple:1:30-1:35
-  grouped with `Boolean`, `n > 0`
+  grouped with `Boolean`, `Boolean`
   has type `Boolean`
   is an expression
 
@@ -132,7 +126,7 @@ Facts (layer 2):
 
 `1, -2, 3) . all? (n -> n > 0)` (OperatorExpression):
   at all-any.wipple:2:8-2:37
-  grouped with `all? (n -> n > 0)`, `value`
+  grouped with `Boolean`, `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -155,12 +149,6 @@ Facts (layer 2):
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `all?`
-
-`all? (n -> n > 0)` (CallExpression):
-  at all-any.wipple:2:20-2:37
-  grouped with `Boolean`, `Boolean`, `1, -2, 3) . all? (n -> n > 0)`
-  has type `Boolean`
-  is an expression
 
 `all? (n -> n > 0)` (VisitAs):
   at all-any.wipple:2:20-2:37
@@ -188,9 +176,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `n`
 
-`n > 0` (CallExpression):
+`n > 0` (OperatorExpression):
   at all-any.wipple:2:31-2:36
-  grouped with `Boolean`, `n > 0`
+  grouped with `Boolean`, `Boolean`
   has type `Boolean`
   is an expression
 
@@ -236,7 +224,7 @@ Facts (layer 2):
 
 `1, -2, 3) . any? (n -> n > 0)` (OperatorExpression):
   at all-any.wipple:3:8-3:37
-  grouped with `any? (n -> n > 0)`, `value`
+  grouped with `Boolean`, `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -259,12 +247,6 @@ Facts (layer 2):
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `any?`
-
-`any? (n -> n > 0)` (CallExpression):
-  at all-any.wipple:3:20-3:37
-  grouped with `Boolean`, `Boolean`, `1, -2, 3) . any? (n -> n > 0)`
-  has type `Boolean`
-  is an expression
 
 `any? (n -> n > 0)` (VisitAs):
   at all-any.wipple:3:20-3:37
@@ -292,9 +274,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `n`
 
-`n > 0` (CallExpression):
+`n > 0` (OperatorExpression):
   at all-any.wipple:3:31-3:36
-  grouped with `Boolean`, `n > 0`
+  grouped with `Boolean`, `Boolean`
   has type `Boolean`
   is an expression
 
@@ -340,7 +322,7 @@ Facts (layer 2):
 
 `-1, -2, -3) . any? (n -> n > 0)` (OperatorExpression):
   at all-any.wipple:4:8-4:39
-  grouped with `any? (n -> n > 0)`, `value`
+  grouped with `Boolean`, `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -363,12 +345,6 @@ Facts (layer 2):
   has type `(Number -> Boolean) -> (List Number) -> Boolean`
   is an expression
   resolved to 1 definition(s): `any?`
-
-`any? (n -> n > 0)` (CallExpression):
-  at all-any.wipple:4:22-4:39
-  grouped with `Boolean`, `Boolean`, `-1, -2, -3) . any? (n -> n > 0)`
-  has type `Boolean`
-  is an expression
 
 `any? (n -> n > 0)` (VisitAs):
   at all-any.wipple:4:22-4:39
@@ -396,9 +372,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `n`
 
-`n > 0` (CallExpression):
+`n > 0` (OperatorExpression):
   at all-any.wipple:4:33-4:38
-  grouped with `Boolean`, `n > 0`
+  grouped with `Boolean`, `Boolean`
   has type `Boolean`
   is an expression
 

@@ -8,13 +8,13 @@ Facts (layer 2):
 
 `"abc" . replicate 3` (VisitAs):
   at replicate.wipple:1:1-1:20
-  grouped with `container`, `replicate 3`, `container`
+  grouped with `container`, `Sequence element`, `Sequence element`, `container`
   has type `Sequence String`
   is an expression
 
 `"abc" . replicate 3 . each show` (OperatorExpression):
   at replicate.wipple:1:1-1:32
-  grouped with `each show`, `"abc" . replicate 3 . each show`
+  grouped with `()`, `()`, `"abc" . replicate 3 . each show`
   has type `()`
   is an expression
 
@@ -24,12 +24,6 @@ Facts (layer 2):
   has type `Number -> String -> Sequence String`
   is an expression
   resolved to 1 definition(s): `replicate`
-
-`replicate 3` (CallExpression):
-  at replicate.wipple:1:9-1:20
-  grouped with `Sequence element`, `Sequence element`, `"abc" . replicate 3`
-  has type `Sequence String`
-  is an expression
 
 `replicate 3` (VisitAs):
   at replicate.wipple:1:9-1:20
@@ -50,12 +44,6 @@ Facts (layer 2):
   has type `(String -> ()) -> (Sequence String) -> ()`
   is an expression
   resolved to 1 definition(s): `each`
-
-`each show` (CallExpression):
-  at replicate.wipple:1:23-1:32
-  grouped with `()`, `()`, `"abc" . replicate 3 . each show`
-  has type `()`
-  is an expression
 
 `each show` (VisitAs):
   at replicate.wipple:1:23-1:32

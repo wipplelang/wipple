@@ -14,7 +14,7 @@ Facts (layer 2):
 
 `1, 2, 3) . transform ((x :: String) -> x)` (OperatorExpression):
   at mismatched-inferred-params.wipple:1:2-1:43
-  grouped with `transform ((x :: String) -> x)`, `(1, 2, 3) . transform ((x :: String) -> x)`
+  grouped with `Sequence output`, `Sequence output`, `(1, 2, 3) . transform ((x :: String) -> x)`
   has type `Sequence Number`
   is an expression
 
@@ -37,12 +37,6 @@ Facts (layer 2):
   has type `(Number -> Number) -> (List Number) -> Sequence Number`
   is an expression
   resolved to 1 definition(s): `transform`
-
-`transform ((x :: String) -> x)` (CallExpression):
-  at mismatched-inferred-params.wipple:1:13-1:43
-  grouped with `Sequence output`, `Sequence output`, `1, 2, 3) . transform ((x :: String) -> x)`
-  has type `Sequence Number`
-  is an expression
 
 `transform ((x :: String) -> x)` (VisitAs):
   at mismatched-inferred-params.wipple:1:13-1:43

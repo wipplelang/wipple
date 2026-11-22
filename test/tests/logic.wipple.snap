@@ -34,9 +34,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `True`
 
-`True and False` (CallExpression):
+`True and False` (OperatorExpression):
   at logic.wipple:1:11-1:25
-  grouped with `output`, `True and False`
+  grouped with `output`, `condition`
   has type `Boolean`
   is an expression
 
@@ -119,9 +119,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `True`
 
-`True or False` (CallExpression):
+`True or False` (OperatorExpression):
   at logic.wipple:2:11-2:24
-  grouped with `output`, `True or False`
+  grouped with `output`, `condition`
   has type `Boolean`
   is an expression
 

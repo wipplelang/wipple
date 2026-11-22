@@ -22,9 +22,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`1 + 2` (CallExpression):
+`1 + 2` (OperatorExpression):
   at auto-close-parenthesis.wipple:1:7-1:12
-  grouped with `sum`, `1 + 2`
+  grouped with `sum`, `value`
   has type `Number`
   is an expression
 

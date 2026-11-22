@@ -80,9 +80,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`fib (n - 1) + fib (n - 2)` (CallExpression):
+`fib (n - 1) + fib (n - 2)` (OperatorExpression):
   at recursion.wipple:3:8-3:33
-  grouped with `sum`, `fib (n - 1) + fib (n - 2)`
+  grouped with `sum`, `when n {⋯}`
   has type `Number`
   is an expression
 
@@ -101,9 +101,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `n`
 
-`n - 1` (CallExpression):
+`n - 1` (OperatorExpression):
   at recursion.wipple:3:13-3:18
-  grouped with `difference`, `n - 1`
+  grouped with `difference`, `n - 2`, `n`, `10`
   has type `Number`
   is an expression
 
@@ -141,9 +141,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `n`
 
-`n - 2` (CallExpression):
+`n - 2` (OperatorExpression):
   at recursion.wipple:3:27-3:32
-  grouped with `difference`, `n - 2`
+  grouped with `difference`, `n - 1`
   has type `Number`
   is an expression
 

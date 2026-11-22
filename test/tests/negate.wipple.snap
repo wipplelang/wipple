@@ -27,9 +27,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`negate 3) = -3` (CallExpression):
+`negate 3) = -3` (OperatorExpression):
   at negate.wipple:1:8-1:22
-  grouped with `Boolean`, `negate 3) = -3`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 

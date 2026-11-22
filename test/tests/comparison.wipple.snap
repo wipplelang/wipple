@@ -20,9 +20,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`1 + 2` (CallExpression):
+`1 + 2` (OperatorExpression):
   at comparison.wipple:1:7-1:12
-  grouped with `sum`, `1 + 2`
+  grouped with `sum`, `value`
   has type `Number`
   is an expression
 
@@ -34,9 +34,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `Add`
 
-`1 + 2 = 3` (CallExpression):
+`1 + 2 = 3` (OperatorExpression):
   at comparison.wipple:1:7-1:16
-  grouped with `Boolean`, `1 + 2 = 3`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -80,9 +80,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`1 = 2` (CallExpression):
+`1 = 2` (VisitAs):
   at comparison.wipple:2:7-2:12
-  grouped with `Boolean`, `1 = 2`
+  grouped with `Boolean`, `left`
   has type `Boolean`
   is an expression
 
@@ -94,9 +94,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `Equal`
 
-`1 = 2 or 1 = 1` (CallExpression):
+`1 = 2 or 1 = 1` (OperatorExpression):
   at comparison.wipple:2:7-2:21
-  grouped with `output`, `1 = 2 or 1 = 1`
+  grouped with `output`, `value`
   has type `Boolean`
   is an expression
 
@@ -122,14 +122,14 @@ Facts (layer 2):
 
 `1 = 1` (VisitAs):
   at comparison.wipple:2:16-2:21
-  grouped with `{right}`
-  has type `{Boolean}`
+  grouped with `Boolean`, `1 = 1`, `1 = 1`, `right`
+  has type `Boolean`
   is an expression
 
-`1 = 1` (CallExpression):
+`1 = 1` (VisitAs):
   at comparison.wipple:2:16-2:21
-  grouped with `Boolean`, `1 = 1`
-  has type `Boolean`
+  grouped with `{right}`
+  has type `{Boolean}`
   is an expression
 
 `1 = 1` (ConstructorExpression):
@@ -166,9 +166,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`2 /= 3` (CallExpression):
+`2 /= 3` (OperatorExpression):
   at comparison.wipple:3:7-3:13
-  grouped with `Boolean`, `2 /= 3`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -206,9 +206,9 @@ Facts (layer 2):
   has type `String`
   is an expression
 
-`"hello" = "hello"` (CallExpression):
+`"hello" = "hello"` (OperatorExpression):
   at comparison.wipple:4:7-4:24
-  grouped with `Boolean`, `"hello" = "hello"`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -246,9 +246,9 @@ Facts (layer 2):
   has type `()`
   is an expression
 
-`() = ()` (CallExpression):
+`() = ()` (OperatorExpression):
   at comparison.wipple:5:7-5:14
-  grouped with `Boolean`, `() = ()`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -287,9 +287,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `True`
 
-`True = True` (CallExpression):
+`True = True` (OperatorExpression):
   at comparison.wipple:6:7-6:18
-  grouped with `Boolean`, `True = True`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -329,9 +329,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `False`
 
-`False = False` (CallExpression):
+`False = False` (OperatorExpression):
   at comparison.wipple:7:7-7:20
-  grouped with `Boolean`, `False = False`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -371,9 +371,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `True`
 
-`True = False` (CallExpression):
+`True = False` (OperatorExpression):
   at comparison.wipple:8:7-8:19
-  grouped with `Boolean`, `True = False`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -412,9 +412,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`2 > 1` (CallExpression):
+`2 > 1` (OperatorExpression):
   at comparison.wipple:9:7-9:12
-  grouped with `Boolean`, `2 > 1`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -452,9 +452,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`1 >= 1` (CallExpression):
+`1 >= 1` (OperatorExpression):
   at comparison.wipple:10:7-10:13
-  grouped with `Boolean`, `1 >= 1`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -492,9 +492,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`4 < 3` (CallExpression):
+`4 < 3` (OperatorExpression):
   at comparison.wipple:11:7-11:12
-  grouped with `Boolean`, `4 < 3`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -532,9 +532,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`5 <= 6` (CallExpression):
+`5 <= 6` (OperatorExpression):
   at comparison.wipple:12:7-12:13
-  grouped with `Boolean`, `5 <= 6`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 

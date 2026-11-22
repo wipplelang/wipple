@@ -41,9 +41,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`1 / 0` (CallExpression):
+`1 / 0` (OperatorExpression):
   at undefined-math-ops.wipple:2:7-2:12
-  grouped with `quotient`, `1 / 0`
+  grouped with `quotient`, `value`
   has type `Number`
   is an expression
 
@@ -81,9 +81,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`0 / 0` (CallExpression):
+`0 / 0` (OperatorExpression):
   at undefined-math-ops.wipple:3:7-3:12
-  grouped with `quotient`, `0 / 0`
+  grouped with `quotient`, `value`
   has type `Number`
   is an expression
 
@@ -154,9 +154,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`2 ^ 2` (CallExpression):
+`2 ^ 2` (OperatorExpression):
   at undefined-math-ops.wipple:5:7-5:12
-  grouped with `power`, `2 ^ 2`
+  grouped with `power`, `value`
   has type `Number`
   is an expression
 
@@ -168,9 +168,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `Power`
 
-`2 ^ 2 ^ 2` (CallExpression):
+`2 ^ 2 ^ 2` (OperatorExpression):
   at undefined-math-ops.wipple:5:7-5:16
-  grouped with `power`, `2 ^ 2 ^ 2`
+  grouped with `power`, `left`
   has type `Number`
   is an expression
 
@@ -182,9 +182,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `Power`
 
-`2 ^ 2 ^ 2 ^ 2048` (CallExpression):
+`2 ^ 2 ^ 2 ^ 2048` (OperatorExpression):
   at undefined-math-ops.wipple:5:7-5:23
-  grouped with `power`, `2 ^ 2 ^ 2 ^ 2048`
+  grouped with `power`, `left`
   has type `Number`
   is an expression
 

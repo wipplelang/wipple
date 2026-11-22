@@ -27,9 +27,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`sin (0 degrees) = 0` (CallExpression):
+`sin (0 degrees) = 0` (OperatorExpression):
   at trig.wipple:1:7-1:26
-  grouped with `Boolean`, `sin (0 degrees) = 0`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -93,9 +93,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`cos (0 degrees) = 1` (CallExpression):
+`cos (0 degrees) = 1` (OperatorExpression):
   at trig.wipple:2:7-2:26
-  grouped with `Boolean`, `cos (0 degrees) = 1`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 
@@ -159,9 +159,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`sin (45 degrees) / cos (45 degrees)` (CallExpression):
+`sin (45 degrees) / cos (45 degrees)` (OperatorExpression):
   at trig.wipple:3:7-3:42
-  grouped with `quotient`, `sin (45 degrees) / cos (45 degrees)`
+  grouped with `quotient`, `value`
   has type `Number`
   is an expression
 
@@ -173,9 +173,9 @@ Facts (layer 2):
   is an expression
   resolved to 1 definition(s): `Divide`
 
-`sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (CallExpression):
+`sin (45 degrees) / cos (45 degrees) = tan (45 degrees)` (OperatorExpression):
   at trig.wipple:3:7-3:61
-  grouped with `Boolean`, `sin (45 degrees) / cos (45 degrees) = tan (45 degrees)`
+  grouped with `Boolean`, `value`
   has type `Boolean`
   is an expression
 

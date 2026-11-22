@@ -20,9 +20,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`1 + 2` (CallExpression):
+`1 + 2` (OperatorExpression):
   at math.wipple:1:7-1:12
-  grouped with `sum`, `1 + 2`
+  grouped with `sum`, `value`
   has type `Number`
   is an expression
 
@@ -60,9 +60,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`4 - 1` (CallExpression):
+`4 - 1` (OperatorExpression):
   at math.wipple:2:7-2:12
-  grouped with `difference`, `4 - 1`
+  grouped with `difference`, `value`
   has type `Number`
   is an expression
 
@@ -100,9 +100,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`3 * 5` (CallExpression):
+`3 * 5` (OperatorExpression):
   at math.wipple:3:7-3:12
-  grouped with `product`, `3 * 5`
+  grouped with `product`, `value`
   has type `Number`
   is an expression
 
@@ -140,9 +140,9 @@ Facts (layer 2):
   has type `Number`
   is an expression
 
-`10 / 4` (CallExpression):
+`10 / 4` (OperatorExpression):
   at math.wipple:4:7-4:13
-  grouped with `quotient`, `10 / 4`
+  grouped with `quotient`, `value`
   has type `Number`
   is an expression
 

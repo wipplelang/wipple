@@ -40,20 +40,14 @@ Facts (layer 2):
 
 `list . enumerate` (VisitAs):
   at enumerate.wipple:2:1-2:17
-  grouped with `container`, `enumerate`, `container`
+  grouped with `container`, `Sequence (Number; element)`, `container`
   has type `Sequence (Number; String)`
   is an expression
 
 `list . enumerate . each ((n; c) -> show ("_: _" n c))` (OperatorExpression):
   at enumerate.wipple:2:1-2:54
-  grouped with `each ((n; c) -> show ("_: _" n c))`, `list . enumerate . each ((n; c) -> show ("_: _" n c))`
+  grouped with `()`, `()`, `list . enumerate . each ((n; c) -> show ("_: _" n c))`
   has type `()`
-  is an expression
-
-`enumerate` (CallExpression):
-  at enumerate.wipple:2:8-2:17
-  grouped with `Sequence (Number; element)`, `list . enumerate`
-  has type `Sequence (Number; String)`
   is an expression
 
 `enumerate` (VisitAs):
@@ -71,12 +65,6 @@ Facts (layer 2):
   has type `((Number; String) -> ()) -> (Sequence (Number; String)) -> ()`
   is an expression
   resolved to 1 definition(s): `each`
-
-`each ((n; c) -> show ("_: _" n c))` (CallExpression):
-  at enumerate.wipple:2:20-2:54
-  grouped with `()`, `()`, `list . enumerate . each ((n; c) -> show ("_: _" n c))`
-  has type `()`
-  is an expression
 
 `each ((n; c) -> show ("_: _" n c))` (VisitAs):
   at enumerate.wipple:2:20-2:54
