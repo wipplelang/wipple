@@ -101,9 +101,22 @@ impl<'a> FeedbackWriter<'a> {
                         ctx.list("and", |ctx, list| {
                             consequence.render_into_list(db, ctx, list);
                         });
-                        ctx.string(".");
+
+                        if !ctx
+                            .segments()
+                            .rev()
+                            .filter_map(|segment| match segment {
+                                RenderSegment::String(s) => Some(s),
+                                _ => None,
+                            })
+                            .next()
+                            .is_some_and(|s| s.trim_end().ends_with('.'))
+                        {
+                            ctx.string(".");
+                        }
                     }
                 });
+
                 (!ctx.is_empty()).then_some(ctx)
             })
             .collect::<Vec<_>>();

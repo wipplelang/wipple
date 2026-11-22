@@ -151,7 +151,7 @@ impl Visit for CollectionExpression {
             db.get_mut_or_default::<Description>(node).consequences.push(
                 DescriptionEntry::primary(Comments::builtin(
                     first,
-                    "Since the first element, [`first`], is a [`first@type`], the remaining elements must also be a [`first@type`]",
+                    "Since the first element, [`first`], is a [`first@type`], the remaining elements must also be a [`first@type`].",
                     [("first", Some(Link::node(first)))],
                 )),
             );

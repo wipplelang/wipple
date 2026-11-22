@@ -1,0 +1,9 @@
+-- [`equal?`] checks if [`left`] is equal to [`right`].
+--
+-- # Consequences
+--
+-- Since [`left`] and [`right`] are compared, they must have the same type.
+equal? :: (left :: value) (right :: value) -> Boolean
+equal? : todo
+
+equal? 1 "abc"

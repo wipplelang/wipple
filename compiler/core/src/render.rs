@@ -70,6 +70,10 @@ impl<'a> RenderCtx<'a> {
             nodes: Default::default(),
         }
     }
+
+    pub fn segments(&self) -> impl DoubleEndedIterator<Item = &RenderSegment> {
+        self.segments.iter()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]

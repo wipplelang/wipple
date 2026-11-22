@@ -1,0 +1,107 @@
+Facts (layer 2):
+
+`equal?` (ConstantDefinition):
+  at custom-consequences.wipple:6:1-6:7
+  grouped with `(left :: value) (right :: value) -> Boolean`, `todo`
+  has definition constraints
+  has type `value value -> Boolean`
+  has type parameters
+  is a definition
+
+`(left :: value) (right :: value) -> Boolean` (FunctionType):
+  at custom-consequences.wipple:6:11-6:54
+  grouped with `equal?`
+  has type `value value -> Boolean`
+  is a type
+
+`left` (TypeParameter):
+  at custom-consequences.wipple:6:12-6:16
+  grouped with `value`
+  has type `value`
+  is a definition
+  is a type
+  resolved to 1 definition(s): `left`
+
+`value` (TypeParameter):
+  at custom-consequences.wipple:6:20-6:25
+  grouped with `left`, `value`
+  has type `value`
+  is a definition
+  is a type
+  resolved to 1 definition(s): `value`
+
+`right` (TypeParameter):
+  at custom-consequences.wipple:6:28-6:33
+  grouped with `value`
+  has type `value`
+  is a definition
+  is a type
+  resolved to 1 definition(s): `right`
+
+`value` (TypeParameter):
+  at custom-consequences.wipple:6:37-6:42
+  grouped with `value`, `right`
+  has type `value`
+  is a type
+  resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
+
+`Boolean` (NamedType):
+  at custom-consequences.wipple:6:47-6:54
+  has type `Boolean`
+  is a type
+  resolved to 1 definition(s): `Boolean`
+
+`todo` (VariableExpression):
+  at custom-consequences.wipple:7:10-7:14
+  grouped with `value`, `value`, `equal?`
+  has type `value value -> Boolean`
+  is an expression
+  resolved to 1 definition(s): `todo`
+
+`equal?` (VariableExpression):
+  at custom-consequences.wipple:9:1-9:7
+  grouped with `(left :: value) (right :: value) -> Boolean`
+  has type `(Number or String) (Number or String) -> Boolean`
+  is an expression
+  resolved to 1 definition(s): `equal?`
+
+`equal? 1 "abc"` (CallExpression):
+  at custom-consequences.wipple:9:1-9:15
+  grouped with `Boolean`, `equal? 1 "abc"`
+  has type `Boolean`
+  is an expression
+
+`1` (NumberExpression):
+  at custom-consequences.wipple:9:8-9:9
+  grouped with `1`, `left`
+  has type `Number` or `String`
+  is an expression
+
+`"abc"` (StringExpression):
+  at custom-consequences.wipple:9:10-9:15
+  grouped with `"abc"`, `right`
+  has type `Number` or `String`
+  is an expression
+
+
+
+note: 
+  --> custom-consequences.wipple:9:1
+  |
+9 | equal? 1 "abc"
+  | ------
+
+`equal?` checks if `1` is equal to `"abc"`.
+
+Since `1` and `"abc"` are compared, they must have the same type.
+
+error: 
+  --> custom-consequences.wipple:9:8
+  |
+9 | equal? 1 "abc"
+  |        ^
+
+`1` is a `Number`, but it must also be a `String`.
+
+Help: use `--explain=full` to show more information

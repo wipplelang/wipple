@@ -257,7 +257,8 @@ fn elaborate_consequences(
     consequences.filter(move |consequence| {
         let relevant_nodes = consequence.relevant_nodes();
 
-        relevant_nodes.contains(&primary_node)
+        (matches!(consequence, ConstraintConsequence::Custom(_))
+            || relevant_nodes.contains(&primary_node))
             && relevant_nodes
                 .into_iter()
                 .any(|node| seen_grouped_nodes.insert(node))
