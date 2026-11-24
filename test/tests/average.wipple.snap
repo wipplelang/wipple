@@ -111,7 +111,7 @@ Facts (layer 2):
 
 `1, 2, 3, 4, 5` (CollectionExpression):
   at average.wipple:2:16-2:29
-  grouped with `1, 2, 3, 4, 5`, `numbers`
+  grouped with `collection`, `numbers`, `1, 2, 3, 4, 5`
   has type `List Number`
   is an expression
 

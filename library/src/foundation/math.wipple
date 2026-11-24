@@ -3,7 +3,7 @@
 nan :: Number
 nan : intrinsic "nan"
 
--- [`Add`] adds [`left`] and [`right`] together, returning a [`sum@type`].
+-- [`Add`] adds [`left`] and [`right`] together.
 Add : left right (infer sum) => trait (left right -> sum)
 instance (Add Number Number Number) : left right -> intrinsic "add" left right
 
@@ -18,7 +18,7 @@ default error instance (Add left right sum)
 -- the inputs to `+`.
 error instance (Add () right sum)
 
--- [`Subtract`] subtracts [`right`] from [`left`], returning a [`difference@type`].
+-- [`Subtract`] subtracts [`right`] from [`left`].
 Subtract : left right (infer difference) => trait (left right -> difference)
 instance (Subtract Number Number Number) : left right -> intrinsic "sub" left right
 
@@ -33,7 +33,7 @@ default error instance (Subtract left right difference)
 -- the inputs to `-`.
 error instance (Subtract () right difference)
 
--- [`Multiply`] multiplies [`left`] and [`right`] together, returning a [`product@type`].
+-- [`Multiply`] multiplies [`left`] and [`right`] together.
 Multiply : left right (infer product) => trait (left right -> product)
 instance (Multiply Number Number Number) : left right -> intrinsic "mul" left right
 
@@ -48,7 +48,7 @@ default error instance (Multiply left right product)
 -- the inputs to `*`.
 error instance (Multiply () right product)
 
--- [`Divide`] divides [`left`] by [`right`], returning a [`quotient@type`].
+-- [`Divide`] divides [`left`] by [`right`].
 Divide : left right (infer quotient) => trait (left right -> quotient)
 instance (Divide Number Number Number) : left right -> intrinsic "div" left right
 
@@ -78,7 +78,7 @@ default error instance (Remainder left right remainder)
 -- the inputs to `%`.
 error instance (Remainder () right remainder)
 
--- [`Power`] raises [`left`] to the power of [`right`], returning a [`power@type`].
+-- [`Power`] raises [`left`] to the power of [`right`].
 Power : left right (infer power) => trait (left right -> power)
 instance (Power Number Number Number) : left right -> intrinsic "pow" left right
 

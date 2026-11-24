@@ -2,7 +2,7 @@ use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
-        groups::{Prefer, update_type},
+        groups::update_type,
         ty::{Ty, TyTag},
     },
     visit::definitions::{Defined, TypeDefinition},
@@ -140,7 +140,7 @@ impl MatchTree {
 }
 
 impl Render for MatchTree {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, db: &Db, _node: Node, ctx: &mut RenderCtx<'_>) {
         let node = match self {
             MatchTree::Field(node, _)
             | MatchTree::Variant(node, _)
@@ -225,7 +225,7 @@ pub struct MissingPatterns(pub Vec<MatchTree>);
 impl Fact for MissingPatterns {}
 
 impl Render for MissingPatterns {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, _node: Node, ctx: &mut RenderCtx<'_>) {
         ctx.string("is missing patterns");
     }
 }
@@ -303,7 +303,7 @@ fn collect_paths(
         return vec![vec![MatchPath(prefix.to_vec())]];
     }
 
-    let mut ty = update_type(db, &ty, &[], Prefer::DirectType);
+    let mut ty = update_type(db, &ty);
 
     if let Ty::Constructed(inner) = &ty
         && let TyTag::Parameter(parameter) = inner.tag
@@ -312,7 +312,7 @@ fn collect_paths(
         ty = Ty::Node(*substitution);
     }
 
-    let Ty::Constructed(ty) = update_type(db, &ty, &[], Prefer::DirectType) else {
+    let Ty::Constructed(ty) = update_type(db, &ty) else {
         return Vec::new();
     };
 

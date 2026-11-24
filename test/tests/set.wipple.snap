@@ -15,7 +15,7 @@ Facts (layer 2):
 
 `"Basketball", "Soccer", "Golf"` (CollectionExpression):
   at set.wipple:1:11-1:41
-  grouped with `"Basketball", "Soccer", "Golf"`, `Set _`
+  grouped with `collection`, `Set _`
   has type `Set String`
   is an expression
 

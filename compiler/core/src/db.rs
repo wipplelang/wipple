@@ -548,7 +548,7 @@ impl Db {
                 .values()
                 .filter_map(|fact| {
                     let mut ctx = RenderCtx::new(&filter);
-                    fact.render_into(self, &mut ctx);
+                    fact.render_into(self, node, &mut ctx);
 
                     if ctx.is_empty() {
                         return None;

@@ -5,7 +5,7 @@ use std::{
 };
 use wipple_core::{
     ast::AstKey,
-    db::{Db, Fact},
+    db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     span::{Span, Str},
     visit::Visit,
@@ -23,7 +23,7 @@ pub struct ParseError {
 impl Fact for ParseError {}
 
 impl Render for ParseError {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, _node: Node, ctx: &mut RenderCtx<'_>) {
         ctx.string(&self.message);
 
         if let Some(committed) = &self.committed {

@@ -22,7 +22,7 @@ pub struct InferredParameter;
 impl Fact for InferredParameter {}
 
 impl Render for InferredParameter {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, _node: Node, ctx: &mut RenderCtx<'_>) {
         ctx.string("is inferred type parameter");
     }
 }
@@ -248,7 +248,10 @@ impl Constraint for BoundConstraint {
                         }),
                     );
 
-                solver.add_consequence(db, ConstraintConsequence::Instance(instance, true));
+                solver.add_consequence(
+                    db,
+                    ConstraintConsequence::Instance(self.bound.source_node, instance, true),
+                );
 
                 return RunResult::Enqueue(Vec::from_iter(constraints));
             } else if candidates.len() > 1 {
@@ -273,6 +276,7 @@ impl Constraint for BoundConstraint {
                 solver.add_consequence(
                     db,
                     ConstraintConsequence::Instance(
+                        self.bound.source_node,
                         Instance {
                             node: self.bound.bound_node,
                             trait_node: self.bound.trait_node,

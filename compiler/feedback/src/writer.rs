@@ -5,7 +5,6 @@ use std::{
 use wipple_core::{
     db::{Db, Node},
     render::{RenderCtx, RenderOptions, RenderSegment},
-    typecheck::groups::Prefer,
 };
 use wipple_queries::{Trace, TraceEntry};
 
@@ -87,35 +86,31 @@ impl<'a> FeedbackWriter<'a> {
 
     pub fn trace_entry(&mut self, db: &Db, entry: &TraceEntry) -> FeedbackWriterTraceEntry<'a> {
         let mut node_ctx = RenderCtx::inherit(&self.ctx);
-        node_ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
-            ctx.comments(db, &entry.comments);
-        });
+        node_ctx.comments(db, &entry.comments);
 
         let consequence_ctxs = entry
             .consequences
             .iter()
             .filter_map(|consequence| {
                 let mut ctx = RenderCtx::inherit(&self.ctx);
-                ctx.with_relevant(&entry.relevant, Prefer::DirectType, |ctx| {
-                    if consequence.should_render(db, ctx) {
-                        ctx.list("and", |ctx, list| {
-                            consequence.render_into_list(db, ctx, list);
-                        });
+                if consequence.should_render(db, &mut ctx) {
+                    ctx.list("and", |ctx, list| {
+                        consequence.render_into_list(db, ctx, list);
+                    });
 
-                        if !ctx
-                            .segments()
-                            .rev()
-                            .filter_map(|segment| match segment {
-                                RenderSegment::String(s) => Some(s),
-                                _ => None,
-                            })
-                            .next()
-                            .is_some_and(|s| s.trim_end().ends_with('.'))
-                        {
-                            ctx.string(".");
-                        }
+                    if !ctx
+                        .segments()
+                        .rev()
+                        .filter_map(|segment| match segment {
+                            RenderSegment::String(s) => Some(s),
+                            _ => None,
+                        })
+                        .next()
+                        .is_some_and(|s| s.trim_end().ends_with('.'))
+                    {
+                        ctx.string(".");
                     }
-                });
+                }
 
                 (!ctx.is_empty()).then_some(ctx)
             })

@@ -8,11 +8,8 @@ use wipple_core::{
     facts::{Description, description_comments},
     render::Comments,
     typecheck::{
-        constraints::ConstraintConsequence,
-        groups::{Prefer, Typed, update_type},
-        instantiate::InstantiatedTypes,
-        solver::TypeDependsOn,
-        ty::Ty,
+        bounds::ResolvedBounds, constraints::ConstraintConsequence, groups::Typed,
+        instantiate::InstantiatedTypes, solver::TypeDependsOn,
     },
     util::{get_links, linked_nodes_for, section},
     visit::{DefinitionConstraints, Resolved, definitions::Defined},
@@ -75,7 +72,14 @@ fn collect_traces(
 
     let definitions = db
         .get(node)
-        .map_or_default(|Resolved { definitions, .. }| definitions.iter().copied());
+        .map_or_default(|Resolved { definitions, .. }| definitions.iter().copied())
+        .chain(db.get(node).map_or_default(|ResolvedBounds(bounds)| {
+            bounds
+                .values()
+                .flatten()
+                .map(|bound| bound.instance.node)
+                .collect::<Vec<_>>()
+        }));
 
     let mut comments = vec![(false, None, Comments::empty_for(node))];
     let mut consequences = BTreeMap::<Node, Vec<Comments>>::new();
@@ -175,14 +179,9 @@ fn collect_traces(
             // Don't traverse into other generic definitions
         }
 
-        consequences = elaborate_consequences(
-            db,
-            consequences,
-            primary_node,
-            &mut Vec::new(),
-            &mut entry_relevant,
-        )
-        .collect();
+        consequences =
+            elaborate_consequences(db, consequences, &mut Vec::new(), &mut entry_relevant)
+                .collect();
 
         relevant.extend(entry_relevant.iter().copied());
 
@@ -211,11 +210,16 @@ fn collect_traces(
 fn elaborate_consequences(
     db: &Db,
     consequences: impl IntoIterator<Item = ConstraintConsequence>,
-    primary_node: Node,
-    seen: &mut Vec<ConstraintConsequence>,
+    seen_consequences: &mut Vec<ConstraintConsequence>,
     relevant: &mut Vec<Node>,
 ) -> impl Iterator<Item = ConstraintConsequence> {
     let consequences = consequences.into_iter().flat_map(move |consequence| {
+        if seen_consequences.contains(&consequence) {
+            return Vec::new();
+        }
+
+        seen_consequences.push(consequence.clone());
+
         relevant.extend(consequence.relevant_nodes());
 
         let mut dependents = Vec::new();
@@ -227,21 +231,18 @@ fn elaborate_consequences(
 
             db.for_each_fact::<_, ()>(false, &mut |db, other, TypeDependsOn(dependencies)| {
                 if intersect(dependencies)
-                    && let Ty::Constructed(ty) =
-                        update_type(db, &Ty::Node(other), &[node], Prefer::RepresentativeType)
+                    && let Some(Typed(Some(group))) = db.get(other)
+                    && let Some((_, ty)) = group.representative_types(Some(node)).into_iter().next()
                 {
                     let consequence = ConstraintConsequence::Ty(other, ty.clone());
-                    if !seen.contains(&consequence) {
-                        seen.push(consequence.clone());
-                        dependents.push(consequence);
-                    }
+                    dependents.push(consequence);
                 }
 
                 ControlFlow::Continue(())
             });
 
             let elaborated =
-                elaborate_consequences(db, dependents.drain(..), primary_node, seen, relevant)
+                elaborate_consequences(db, dependents.drain(..), seen_consequences, relevant)
                     .collect::<Vec<_>>();
 
             dependents.extend(elaborated);
@@ -254,13 +255,5 @@ fn elaborate_consequences(
     });
 
     let mut seen_grouped_nodes = BTreeSet::new();
-    consequences.filter(move |consequence| {
-        let relevant_nodes = consequence.relevant_nodes();
-
-        (matches!(consequence, ConstraintConsequence::Custom(_))
-            || relevant_nodes.contains(&primary_node))
-            && relevant_nodes
-                .into_iter()
-                .any(|node| seen_grouped_nodes.insert(node))
-    })
+    consequences.filter(move |consequence| seen_grouped_nodes.insert(consequence.relevant_nodes()))
 }

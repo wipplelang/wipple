@@ -5,7 +5,7 @@ use wipple_core::{
     db::Node,
     typecheck::{
         constraints::ConstraintConsequence,
-        groups::{NodeRank, Prefer, Typed, representative_types_of},
+        groups::{NodeRank, Typed},
         instantiate::Instantiated,
         ty::{ConstructedTy, TyTag},
     },
@@ -249,10 +249,14 @@ fn each_function_node(
             function_node = *name;
         }
 
-        let Some((_, function_ty)) =
-            representative_types_of(db, function_node, &[], Prefer::DirectType)
-                .into_iter()
-                .next()
+        let Some(Typed(Some(group))) = db.get(function_node) else {
+            continue;
+        };
+
+        let Some((_, function_ty)) = group
+            .representative_types(Some(function_node))
+            .into_iter()
+            .next()
         else {
             continue;
         };

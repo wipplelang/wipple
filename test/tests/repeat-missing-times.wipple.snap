@@ -56,6 +56,14 @@ note:
 
 `repeat` runs `body` repeatedly.
 
+note: 
+  --> repeat-missing-times.wipple:2:3
+  |
+2 |   show "Hello, world!"
+  |   ----
+
+`show` displays `"Hello, world!"` on the screen.
+
 error: 
   --> repeat-missing-times.wipple:1:1
   |

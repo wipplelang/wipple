@@ -15,7 +15,7 @@ Facts (layer 2):
 
 `"Basketball", "Soccer", "Golf"` (CollectionExpression):
   at dictionary.wipple:1:10-1:40
-  grouped with `"Basketball", "Soccer", "Golf"`, `sports`, `sports`
+  grouped with `collection`, `sports`, `sports`, `"Basketball", "Soccer", "Golf"`
   has type `List String`
   is an expression
 
@@ -67,9 +67,11 @@ Facts (layer 2):
 
 `,` (CollectionExpression):
   at dictionary.wipple:2:28-2:29
-  grouped with `,`, `result`
+  grouped with `collection`, `result`
+  has bound(s) `Initial-Collection` `(Dictionary String Number)` `(String; Number)` (resolved as `instance (Initial-Collection (collection :: Dictionary key value) (key; value))`)
   has type `Dictionary String Number`
   is an expression
+  resolved to 1 definition(s): `Initial-Collection`
 
 `sports` (VariablePattern):
   at dictionary.wipple:2:32-2:38

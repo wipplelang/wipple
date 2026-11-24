@@ -12,10 +12,10 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             secondary: others.iter().copied().collect::<BTreeSet<_>>(),
         })
         .show_graph()
-        .display(|db, writer, _, (_, ty, trace)| {
+        .display(|db, writer, node, (_, ty, trace)| {
             if let Some(ty) = *ty {
                 writer.string("Found a placeholder of type ");
-                writer.ty(db, &Ty::Constructed(ty.clone()), true);
+                writer.ty(db, &Ty::Constructed(ty.clone()), Some(node), true);
                 writer.string(".");
             } else {
                 writer.string("Found a placeholder.");
@@ -25,7 +25,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
 
             if let Some(ty) = *ty {
                 writer.string("Add a ");
-                writer.ty(db, &Ty::Constructed(ty.clone()), true);
+                writer.ty(db, &Ty::Constructed(ty.clone()), Some(node), true);
                 writer.string(" value here before running your program.");
             } else {
                 writer.string("Add a value here before running your program.");

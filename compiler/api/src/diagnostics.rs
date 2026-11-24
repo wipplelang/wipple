@@ -10,7 +10,7 @@ use wipple_core::{
     facts::Syntax,
     render::{ExplainOptions, RenderMarkdownOptions, RenderOptions, RenderSegment},
     typecheck::{
-        groups::{Group, Prefer, Typed, update_type},
+        groups::{Group, Typed},
         instantiate::Instantiated,
         ty::Ty,
     },
@@ -105,16 +105,7 @@ impl CompileResult {
             } else {
                 let mut labels = group
                     .tys()
-                    .map(|ty| {
-                        let ty = update_type(
-                            &self.db,
-                            &Ty::Constructed(ty.clone()),
-                            &[],
-                            Prefer::DirectType,
-                        );
-
-                        ty.display(&self.db, true, &[], Prefer::DirectType)
-                    })
+                    .map(|ty| Ty::Constructed(ty.clone()).display(&self.db, None, true))
                     .collect::<Vec<_>>();
 
                 if labels.is_empty() {
@@ -143,7 +134,6 @@ impl CompileResult {
 
         let render_options = RenderOptions {
             explain: ExplainOptions::Enabled,
-            ..Default::default()
         };
 
         let items = collect_feedback(&self.db, filter, |item| {

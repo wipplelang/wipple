@@ -15,7 +15,7 @@ Facts (layer 2):
 
 `1, 2, 3` (CollectionExpression):
   at lists.wipple:1:11-1:18
-  grouped with `1, 2, 3`, `my-list`, `my-list`
+  grouped with `collection`, `my-list`, `my-list`
   has type `List Number`
   is an expression
 

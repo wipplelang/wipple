@@ -9,7 +9,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
         .display(|db, writer, node, (bound, trace)| {
             writer.node(node);
             writer.string(" requires the instance ");
-            writer.render(db, *bound);
+            writer.render(db, node, *bound);
             writer.string(", but this instance isn't defined.");
             writer.line_break();
             writer.string("Double-check that these types are correct.");

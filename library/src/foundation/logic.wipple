@@ -64,7 +64,7 @@ instance (Order Number) : a b -> intrinsic "order" a b
 --
 -- # Data Flow
 --
--- [`left@value`] is compared to [`right`].
+-- [`left`] is compared to [`right`].
 Less-Than : left right => trait (left right -> Boolean)
 instance (Less-Than (left :: value) (right :: value)) where (Order value) : a b -> (Order a b) is Is-Less-Than
 
@@ -72,7 +72,7 @@ instance (Less-Than (left :: value) (right :: value)) where (Order value) : a b 
 --
 -- # Data Flow
 --
--- [`left@value`] is compared to [`right`].
+-- [`left`] is compared to [`right`].
 Less-Than-Or-Equal : left right => trait (left right -> Boolean)
 instance (Less-Than-Or-Equal (left :: value) (right :: value)) where (Order value) : a b -> (Order a b) is (Is-Less-Than or Is-Equal-To)
 
@@ -80,7 +80,7 @@ instance (Less-Than-Or-Equal (left :: value) (right :: value)) where (Order valu
 --
 -- # Data Flow
 --
--- [`left@value`] is compared to [`right`].
+-- [`left`] is compared to [`right`].
 Greater-Than : left right => trait (left right -> Boolean)
 instance (Greater-Than (left :: value) (right :: value)) where (Order value) : a b -> (Order a b) is Is-Greater-Than
 
@@ -88,7 +88,7 @@ instance (Greater-Than (left :: value) (right :: value)) where (Order value) : a
 --
 -- # Data Flow
 --
--- [`left@value`] is compared to [`right`].
+-- [`left`] is compared to [`right`].
 Greater-Than-Or-Equal : left right => trait (left right -> Boolean)
 instance (Greater-Than-Or-Equal (left :: value) (right :: value)) where (Order value) : a b -> (Order a b) is (Is-Greater-Than or Is-Equal-To)
 

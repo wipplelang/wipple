@@ -15,7 +15,7 @@ Facts (layer 2):
 
 `"a", "b", "c"` (CollectionExpression):
   at enumerate.wipple:1:8-1:21
-  grouped with `"a", "b", "c"`, `list`, `list`
+  grouped with `collection`, `list`, `list`, `"a", "b", "c"`
   has type `List String`
   is an expression
 

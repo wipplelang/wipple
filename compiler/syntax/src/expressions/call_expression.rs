@@ -39,6 +39,7 @@ pub struct CallExpression {
     pub span: Span,
     pub function: AstKey,
     pub inputs: Vec<AstKey>,
+    pub desugared: bool,
 }
 
 pub fn parse_call_expression(parser: &mut Parser<'_>) -> Result<CallExpression, ParseError> {
@@ -49,6 +50,7 @@ pub fn parse_call_expression(parser: &mut Parser<'_>) -> Result<CallExpression, 
         span: span(parser),
         function,
         inputs,
+        desugared: false,
     })
 }
 
@@ -137,28 +139,30 @@ impl Visit for CallExpression {
             },
         );
 
-        let is_primary = db
-            .get(function)
-            .is_some_and(|Resolved { definitions, .. }| {
-                !definitions.iter().any(|&definition| {
-                    db.get(definition)
-                        .is_some_and(|Defined(definition)| !definition.comments().is_empty())
-                })
-            });
+        if !self.desugared {
+            let is_primary = db
+                .get(function)
+                .is_some_and(|Resolved { definitions, .. }| {
+                    !definitions.iter().any(|&definition| {
+                        db.get(definition)
+                            .is_some_and(|Defined(definition)| !definition.comments().is_empty())
+                    })
+                });
 
-        db.get_mut_or_default::<Description>(node)
-            .summary
-            .push(DescriptionEntry::new(
-                is_primary,
-                Comments::builtin(
-                    node,
-                    "[`function`] is called with [`inputs`].",
-                    [
-                        ("function", Some(Link::node(function))),
-                        ("inputs", Some(Link::list("and", inputs.iter().copied()))),
-                    ],
-                ),
-            ));
+            db.get_mut_or_default::<Description>(node)
+                .summary
+                .push(DescriptionEntry::new(
+                    is_primary,
+                    Comments::builtin(
+                        node,
+                        "[`function`] is called with [`inputs`].",
+                        [
+                            ("function", Some(Link::node(function))),
+                            ("inputs", Some(Link::list("and", inputs.iter().copied()))),
+                        ],
+                    ),
+                ));
+        }
     }
 }
 

@@ -299,6 +299,7 @@ fn visit_trait_operator(
             span,
             function,
             inputs: vec![left, right],
+            desugared: true,
         }),
     );
 
@@ -389,6 +390,7 @@ fn visit_logic_operator(
             span,
             function,
             inputs: vec![left_input, block],
+            desugared: true,
         }),
     );
 
@@ -435,6 +437,7 @@ fn visit_apply_operator(
             span: db.ast(&right).span(db).clone(),
             function,
             inputs: vec![input],
+            desugared: false,
         }),
     );
 

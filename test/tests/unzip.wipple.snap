@@ -22,7 +22,7 @@ Facts (layer 2):
 
 `(1; "a"), (2; "b"), (3; "c")` (VisitAs):
   at unzip.wipple:1:17-1:45
-  grouped with `collection`, `(1; "a"), (2; "b"), (3; "c")`
+  grouped with `collection`, `collection`, `(1; "a"), (2; "b"), (3; "c")`
   has type `List (Number; String)`
   is an expression
 

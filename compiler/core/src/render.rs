@@ -3,7 +3,7 @@ use crate::{
     facts::Syntax,
     span::Str,
     typecheck::{
-        groups::{NodeRank, Prefer, Typed},
+        groups::{NodeRank, Typed},
         ty::Ty,
     },
     util::{Link, LinkKind},
@@ -19,16 +19,15 @@ use std::{
 };
 
 pub trait Render {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, db: &Db, node: Node, ctx: &mut RenderCtx<'_>) {
         let _ = db;
+        let _ = node;
         let _ = ctx;
     }
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct RenderOptions {
-    pub relevant: Vec<Node>,
-    pub prefer: Prefer,
     pub explain: ExplainOptions,
 }
 
@@ -124,30 +123,6 @@ impl RenderCtx<'_> {
         self.segments.push(RenderSegment::LineBreak);
     }
 
-    pub fn resetting_relevant<T>(&mut self, f: impl FnOnce(&mut Self) -> T) -> T {
-        let prev = self.options.relevant.clone();
-        self.options.relevant.clear();
-        let result = f(self);
-        self.options.relevant = prev;
-        result
-    }
-
-    pub fn with_relevant<T>(
-        &mut self,
-        relevant: &[Node],
-        prefer: Prefer,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
-        let prev_relevant = self.options.relevant.clone();
-        let prev_prefer = self.options.prefer;
-        self.options.relevant = relevant.iter().chain(&prev_relevant).copied().collect();
-        self.options.prefer = prefer;
-        let result = f(self);
-        self.options.relevant = prev_relevant;
-        self.options.prefer = prev_prefer;
-        result
-    }
-
     pub fn string(&mut self, s: impl Into<String>) {
         let s = s.into();
 
@@ -167,8 +142,8 @@ impl RenderCtx<'_> {
         self.nodes.insert(node);
     }
 
-    pub fn ty(&mut self, db: &Db, ty: &Ty, root: bool) {
-        ty.render_into(db, self, root);
+    pub fn ty(&mut self, db: &Db, ty: &Ty, source_node: Option<Node>, root: bool) {
+        ty.render_into(db, source_node, self, root);
     }
 
     pub fn link(&mut self, label: impl Into<String>, node: Node) {
@@ -240,7 +215,7 @@ impl RenderCtx<'_> {
                 name.to_string(),
                 Box::new(|ctx| match &link.kind {
                     LinkKind::Node(node) => ctx.node(*node),
-                    LinkKind::Type(node) => ctx.ty(db, &Ty::Node(*node), true),
+                    LinkKind::Type(node) => ctx.ty(db, &Ty::Node(*node), Some(*node), true),
                     LinkKind::List { nodes, separator } => {
                         ctx.list(separator, |_, list| {
                             for &node in nodes {
@@ -282,12 +257,12 @@ impl RenderCtx<'_> {
                 format!("{name}@type"),
                 Box::new(|writer| match &link.kind {
                     LinkKind::Node(node) | LinkKind::Type(node) => {
-                        writer.ty(db, &Ty::Node(*node), true);
+                        writer.ty(db, &Ty::Node(*node), Some(*node), true);
                     }
                     LinkKind::List { nodes, separator } => {
                         writer.list(separator, |_, list| {
                             for &node in nodes {
-                                list.add(move |ctx| ctx.ty(db, &Ty::Node(node), true));
+                                list.add(move |ctx| ctx.ty(db, &Ty::Node(node), Some(node), true));
                             }
                         });
                     }
@@ -330,8 +305,8 @@ impl RenderCtx<'_> {
         self.hover_link(comments.node);
     }
 
-    pub fn render(&mut self, db: &Db, render: &impl Render) {
-        render.render_into(db, self);
+    pub fn render(&mut self, db: &Db, node: Node, render: &impl Render) {
+        render.render_into(db, node, self);
     }
 
     pub fn nodes(&self) -> impl Iterator<Item = Node> {

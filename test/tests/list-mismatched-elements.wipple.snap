@@ -15,7 +15,7 @@ Facts (layer 2):
 
 `1, "hi", ()` (CollectionExpression):
   at list-mismatched-elements.wipple:1:11-1:22
-  grouped with `1, "hi", ()`, `my-list`, `my-list`
+  grouped with `collection`, `my-list`, `my-list`, `1, "hi", ()`
   has type `List (Number or String or ())`
   is an expression
 
@@ -39,13 +39,15 @@ note:
 1 | my-list : 1, "hi", ()
   |           -----------
 
-`1, "hi", ()` is a `List Number`.
+`1, "hi", ()` is a collection of `Number` elements.
 
 Since the first element, `1`, is a `Number`, the remaining elements must also be a `Number`.
 
-This means `1` must have the same type as `"hi"`.
+This means `1` must be a `String`, like `"hi"`.
 
-This means `1` must have the same type as `()`.
+This means `1` must be a `()`, like `()`.
+
+This means `"hi"` must be a `()`, like `()`.
 
 error: 
   --> list-mismatched-elements.wipple:1:11

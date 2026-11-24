@@ -1,17 +1,22 @@
-use crate::expressions::{
-    call_expression::CallExpression, constructor_expression::ConstructorExpression,
-    parse_expression_element, visit_expression,
+use crate::{
+    expressions::{
+        call_expression::CallExpression, constructor_expression::ConstructorExpression,
+        parse_expression_element, placeholder_expression::PlaceholderExpression, visit_expression,
+    },
+    types::named_type::NamedType,
 };
 
 use serde::{Deserialize, Serialize};
 use wipple_core::{
     ast::AstKey,
-    codegen::{CodegenError, hir},
     db::{Db, Node},
     facts::{Description, DescriptionEntry},
     render::Comments,
     span::{Span, Str},
-    typecheck::{constraints::ty_constraint::TyConstraint, ty::Ty},
+    typecheck::{
+        constraints::{default_constraint::DefaultConstraint, ty_constraint::TyConstraint},
+        ty::Ty,
+    },
     util::Link,
     visit::{Hidden, Visit, VisitAs, Visitor},
 };
@@ -111,6 +116,7 @@ impl Visit for CollectionExpression {
                         span: self.span.clone(),
                         function,
                         inputs: vec![collection.clone(), input],
+                        desugared: true,
                     }),
                 );
 
@@ -118,34 +124,56 @@ impl Visit for CollectionExpression {
             })
             .collect::<Vec<_>>();
 
-        let collection_node = db.node();
+        collection.get(db).clone().visit(db, node, visitor);
 
-        visitor.visit_as(db, &collection, collection_node);
+        // Default to a `List`
+
+        let default_element_type = visitor.in_ast(
+            db,
+            Hidden::new(PlaceholderExpression {
+                span: self.span.clone(),
+            }),
+        );
+
+        let default_type = visitor.in_ast(
+            db,
+            Hidden::new(NamedType {
+                span: self.span.clone(),
+                name: Str::from("List"),
+                parameters: vec![default_element_type],
+            }),
+        );
+
+        let default_node = visitor.visit(db, &default_type);
+
+        visitor.constraint(db, DefaultConstraint::new(node, default_node));
+
+        // Constraint all elements to be the same type
 
         if let Some((&first, rest)) = elements.split_first() {
             for &element in rest {
                 visitor.constraint(db, TyConstraint::new(first, Ty::Node(element)));
             }
+
+            db.get_mut_or_default::<Description>(node)
+                .summary
+                .push(DescriptionEntry::primary(Comments::builtin(
+                    node,
+                    "[`collection`] is a collection of [`element@type`] elements.",
+                    [
+                        ("collection", Some(Link::node(node))),
+                        ("element", Some(Link::node(first))),
+                    ],
+                )));
+        } else {
+            db.get_mut_or_default::<Description>(node)
+                .summary
+                .push(DescriptionEntry::primary(Comments::builtin(
+                    node,
+                    "[`collection`] is an empty [`collection@type`].",
+                    [("collection", Some(Link::node(node)))],
+                )));
         }
-
-        visitor.constraint(db, TyConstraint::new(collection_node, Ty::Node(node)));
-
-        visitor.codegen(
-            db,
-            node,
-            CollectionExpressionCodegen {
-                node,
-                collection_node,
-            },
-        );
-
-        db.get_mut_or_default::<Description>(node)
-            .summary
-            .push(DescriptionEntry::primary(Comments::builtin(
-                node,
-                "[`collection`] is a [`collection@type`].",
-                [("collection", Some(Link::node(node)))],
-            )));
 
         if let Some(&first) = elements.first() {
             db.get_mut_or_default::<Description>(node).consequences.push(
@@ -156,25 +184,5 @@ impl Visit for CollectionExpression {
                 )),
             );
         }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-struct CollectionExpressionCodegen {
-    node: Node,
-    collection_node: Node,
-}
-
-#[typetag::serde]
-impl hir::Write for CollectionExpressionCodegen {
-    fn write(&self, db: &Db, ctx: &mut hir::Ctx) -> Result<(), CodegenError> {
-        ctx.write(db, self.collection_node)?;
-
-        ctx.instruction(hir::Instruction::Value {
-            node: self.node,
-            value: hir::Value::Variable(self.collection_node),
-        });
-
-        Ok(())
     }
 }

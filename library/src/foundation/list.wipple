@@ -1,6 +1,6 @@
 [intrinsic] List : element => type
 
-instance (Initial (List element)) : intrinsic "empty-list"
+instance (Initial (List element)) : (,)
 
 -- [`first`] retrieves the first [`element@type`] inside [`list`], or `None` if the list is empty.
 first :: (list :: (List element)) -> Maybe element

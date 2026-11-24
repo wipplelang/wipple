@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
-    typecheck::{groups::Prefer, solver::SubstitutionsKey, ty::Ty},
+    typecheck::{solver::SubstitutionsKey, ty::Ty},
     visit::definitions::{Defined, TraitDefinition},
 };
 use serde::{Deserialize, Serialize};
@@ -22,7 +22,7 @@ pub struct Instances(pub Vec<Instance>);
 impl Fact for Instances {}
 
 impl Render for Instances {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, _node: Node, ctx: &mut RenderCtx<'_>) {
         ctx.string(format!("has {} instances", self.0.len()));
     }
 }
@@ -34,7 +34,7 @@ pub struct ResolvedBounds(pub BTreeMap<Vec<Node>, Result<ResolvedBound, Unresolv
 impl Fact for ResolvedBounds {}
 
 impl Render for ResolvedBounds {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, db: &Db, node: Node, ctx: &mut RenderCtx<'_>) {
         if self.0.is_empty() {
             ctx.string("has no bounds");
         }
@@ -48,13 +48,13 @@ impl Render for ResolvedBounds {
 
             match result {
                 Ok(bound) => {
-                    ctx.render(db, &bound.instance);
+                    ctx.render(db, node, &bound.instance);
                     ctx.string(" (resolved as ");
                     ctx.node(bound.instance.node);
                     ctx.string(")");
                 }
                 Err(bound) => {
-                    ctx.render(db, bound);
+                    ctx.render(db, node, bound);
                     ctx.string(" (unresolved)");
                 }
             }
@@ -95,13 +95,13 @@ impl Instance {
 }
 
 impl Render for Instance {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        self.as_unresolved_bound().render_into(db, ctx);
+    fn render_into(&self, db: &Db, node: Node, ctx: &mut RenderCtx<'_>) {
+        self.as_unresolved_bound().render_into(db, node, ctx);
     }
 }
 
 impl Render for UnresolvedBound {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, db: &Db, node: Node, ctx: &mut RenderCtx<'_>) {
         let trait_definition = db
             .get::<Defined>(self.trait_node)
             .unwrap()
@@ -115,7 +115,7 @@ impl Render for UnresolvedBound {
             ctx.string(" ");
 
             if let Some(ty) = self.parameters.get(parameter) {
-                ctx.ty(db, ty, false);
+                ctx.ty(db, ty, Some(node), false);
             } else {
                 ctx.code("_");
             }
@@ -124,13 +124,13 @@ impl Render for UnresolvedBound {
 }
 
 impl Instance {
-    pub fn display(&self, db: &Db, relevant: &[Node], prefer: Prefer) -> String {
-        self.as_unresolved_bound().display(db, relevant, prefer)
+    pub fn display(&self, db: &Db, source_node: Option<Node>) -> String {
+        self.as_unresolved_bound().display(db, source_node)
     }
 }
 
 impl UnresolvedBound {
-    pub fn display(&self, db: &Db, relevant: &[Node], prefer: Prefer) -> String {
+    pub fn display(&self, db: &Db, source_node: Option<Node>) -> String {
         let trait_definition = db
             .get::<Defined>(self.trait_node)
             .unwrap()
@@ -144,7 +144,7 @@ impl UnresolvedBound {
             write!(result, " ").unwrap();
 
             if let Some(ty) = self.parameters.get(parameter) {
-                write!(result, "{}", ty.display(db, false, relevant, prefer)).unwrap();
+                write!(result, "{}", ty.display(db, source_node, false)).unwrap();
             } else {
                 write!(result, "_").unwrap();
             }

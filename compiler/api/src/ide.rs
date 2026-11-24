@@ -115,7 +115,6 @@ impl Ide {
     fn default_options(&self) -> (&'static dyn Fn(&Db, Node) -> bool, RenderOptions) {
         let render_options = RenderOptions {
             explain: ExplainOptions::Enabled,
-            ..Default::default()
         };
 
         (&default_filter, render_options)
@@ -264,7 +263,7 @@ impl Ide {
                 value: rendered.to_string(),
                 is_code: true,
             });
-        } else if let Some(ty) = wipple_queries::has_type(&self.query_ctx(), node) {
+        } else if wipple_queries::has_type(&self.query_ctx(), node).is_some() {
             let mut ctx = RenderCtx::new(default_filter).with_options(render_options.clone());
 
             if definition_node.is_some() {
@@ -272,7 +271,7 @@ impl Ide {
                 ctx.string(" :: ");
             }
 
-            ctx.ty(&self.result.db, &Ty::Constructed(ty.clone()), true);
+            ctx.ty(&self.result.db, &Ty::Node(node), Some(node), true);
 
             let (rendered, _) = ctx.finish(&self.result.db, |db, segment| segment.plain_text(db));
 

@@ -8,14 +8,14 @@ Facts (layer 2):
 
 `1, 2, 3` (VisitAs):
   at mismatched-inferred-params.wipple:1:2-1:9
-  grouped with `container`, `1, 2, 3`, `container`
-  has type `List Number`
+  grouped with `container`, `collection`, `container`, `1, 2, 3`
+  has type `List (Number or String)`
   is an expression
 
 `1, 2, 3) . transform ((x :: String) -> x)` (OperatorExpression):
   at mismatched-inferred-params.wipple:1:2-1:43
   grouped with `Sequence output`, `Sequence output`, `(1, 2, 3) . transform ((x :: String) -> x)`
-  has type `Sequence Number`
+  has type `Sequence (Number or String)`
   is an expression
 
 `2` (VisitAs):
@@ -33,21 +33,21 @@ Facts (layer 2):
 `transform` (VariableExpression):
   at mismatched-inferred-params.wipple:1:13-1:22
   grouped with `(f :: (input -> output)) -> container -> Sequence output`
-  has bound(s) `As-Sequence` `(List Number)` `Number` (resolved as `instance (As-Sequence (List element) element)`)
-  has type `(Number -> Number) -> (List Number) -> Sequence Number`
+  has bound(s) `As-Sequence` `(List (Number or String))` `(Number or String)` (resolved as `instance (As-Sequence (List element) element)`)
+  has type `((Number or String) -> Number or String) -> (List (Number or String)) -> Sequence (Number or String)`
   is an expression
   resolved to 1 definition(s): `transform`
 
 `transform ((x :: String) -> x)` (VisitAs):
   at mismatched-inferred-params.wipple:1:13-1:43
   grouped with `container -> Sequence output`
-  has type `(List Number) -> Sequence Number`
+  has type `(List (Number or String)) -> Sequence (Number or String)`
   is an expression
 
 `(x :: String) -> x` (FunctionExpression):
   at mismatched-inferred-params.wipple:1:24-1:42
   grouped with `f`
-  has type `Number -> Number`
+  has type `(Number or String) -> Number or String`
   is an expression
 
 `x` (VariablePattern):
@@ -79,7 +79,7 @@ note:
 1 | (1, 2, 3) . transform ((x :: String) -> x)
   |  -------
 
-`1, 2, 3` is a `List Number`.
+`1, 2, 3` is a collection of `Number` elements.
 
 Since the first element, `1`, is a `Number`, the remaining elements must also be a `Number`.
 
@@ -87,15 +87,21 @@ This means `1` must have the same type as `2`.
 
 This means `1` must have the same type as `3`.
 
+This means `2` must have the same type as `3`.
+
 note: 
   --> mismatched-inferred-params.wipple:1:13
   |
 1 | (1, 2, 3) . transform ((x :: String) -> x)
   |             ---------
 
-`transform` transforms the elements in `1, 2, 3` into `String` elements using `(x :: String) -> x`.
+`transform` transforms the elements in `1, 2, 3` into `Number or String` elements using `(x :: String) -> x`.
 
 This means `1` must have the same type as `x`.
+
+This means `2` must have the same type as `x`.
+
+This means `3` must have the same type as `x`.
 
 note: 
   --> mismatched-inferred-params.wipple:1:30

@@ -15,7 +15,7 @@ Facts (layer 2):
 
 `"C", "Python", "Java", "JavaScript", "Wipple"` (CollectionExpression):
   at infer.wipple:1:13-1:58
-  grouped with `"C", "Python", "Java", "JavaScript", "Wipple"`, `languages`, `languages`
+  grouped with `collection`, `languages`, `languages`, `"C", "Python", "Java", "JavaScript", "Wipple"`
   has type `List String`
   is an expression
 

@@ -2,7 +2,7 @@ use crate::{
     codegen::{CodegenError, hir},
     db::{Db, Node},
     typecheck::{
-        groups::{Prefer, update_type},
+        groups::update_type,
         ty::{Ty, TyTag},
     },
     visit::{
@@ -22,7 +22,7 @@ fn type_of_inner(
     node: Node,
     substitutions: &BTreeMap<Node, hir::Type>,
 ) -> Option<hir::Type> {
-    let Ty::Constructed(ty) = update_type(db, &Ty::Node(node), &[], Prefer::DirectType) else {
+    let Ty::Constructed(ty) = update_type(db, &Ty::Node(node)) else {
         return None;
     };
 

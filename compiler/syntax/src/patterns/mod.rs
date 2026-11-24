@@ -81,7 +81,7 @@ pub struct IsPattern;
 impl Fact for IsPattern {}
 
 impl Render for IsPattern {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, _node: Node, ctx: &mut RenderCtx<'_>) {
         ctx.string("is a pattern");
     }
 }

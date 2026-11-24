@@ -1,14 +1,10 @@
 use crate::{
     db::{Db, Node},
     render::{ExplainOptions, ListBuilder, Render, RenderCtx},
-    typecheck::{
-        groups::{Prefer, representative_types_of},
-        instantiate::Instantiated,
-    },
+    typecheck::{groups::Typed, instantiate::Instantiated},
     visit::definitions::Defined,
 };
 use dyn_clone::DynClone;
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::fmt::{Debug, Write};
 
@@ -40,15 +36,14 @@ impl Ty {
         }
     }
 
-    pub fn display(&self, db: &Db, root: bool, relevant: &[Node], prefer: Prefer) -> String {
-        let tys = match self {
-            Ty::Node(node) => representative_types_of(db, *node, relevant, prefer)
-                .into_iter()
-                .min_set_by_key(|&(rank, _)| rank)
-                .into_iter()
-                .map(|(_, ty)| ty)
-                .collect(),
-            Ty::Constructed(ty) => vec![ty],
+    pub fn display(&self, db: &Db, source_node: Option<Node>, root: bool) -> String {
+        self.display_from(db, source_node, root)
+    }
+
+    fn display_from(&self, db: &Db, source_node: Option<Node>, root: bool) -> String {
+        let tys = match *self {
+            Ty::Node(node) => display_types_of(db, node, source_node),
+            Ty::Constructed(ref ty) => vec![ty],
         };
 
         if tys.is_empty() {
@@ -71,10 +66,9 @@ impl Ty {
                     .map(|children| {
                         children
                             .iter()
-                            .map(|&node| -> Box<dyn FnOnce(&Db, bool) -> String> {
-                                let relevant = relevant.to_vec();
+                            .map(|&node| -> Box<dyn FnOnce(&Db, bool) -> String + '_> {
                                 Box::new(move |db, root| {
-                                    Ty::Node(node).display(db, root, &relevant, prefer)
+                                    Ty::Node(node).display_from(db, source_node, root)
                                 })
                             })
                             .collect()
@@ -92,8 +86,14 @@ impl Ty {
         }
     }
 
-    pub fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>, root: bool) {
-        let description = self.display(db, root, &ctx.options.relevant, ctx.options.prefer);
+    pub fn render_into(
+        &self,
+        db: &Db,
+        source_node: Option<Node>,
+        ctx: &mut RenderCtx<'_>,
+        root: bool,
+    ) {
+        let description = self.display_from(db, source_node, root);
 
         let node = match self {
             Ty::Node(node) => Some(*node),
@@ -109,8 +109,8 @@ impl Ty {
 }
 
 impl Render for Ty {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
-        self.render_into(db, ctx, true);
+    fn render_into(&self, db: &Db, node: Node, ctx: &mut RenderCtx<'_>) {
+        self.render_into(db, Some(node), ctx, true);
     }
 }
 
@@ -128,7 +128,7 @@ trait TyDisplay: Debug + DynClone + 'static {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
+        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String + '_>>>,
         root: bool,
     ) -> String;
 
@@ -160,7 +160,7 @@ trait TyDisplay: Debug + DynClone + 'static {
         list.add(move |ctx| {
             ctx.node(node);
             ctx.string(" is a ");
-            ctx.ty(db, &Ty::Constructed(ty.clone()), true);
+            ctx.ty(db, &Ty::Constructed(ty.clone()), Some(node), true);
         });
     }
 }
@@ -250,7 +250,7 @@ impl TyDisplay for NamedTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
+        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String + '_>>>,
         root: bool,
     ) -> String {
         let parameters = children.into_iter().next().unwrap();
@@ -293,7 +293,7 @@ impl TyDisplay for FunctionTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
+        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String + '_>>>,
         root: bool,
     ) -> String {
         let mut children = children.into_iter();
@@ -354,7 +354,7 @@ impl TyDisplay for FunctionTyDisplay {
             list.add(move |ctx| {
                 ctx.node(node);
                 ctx.string(" accepts a ");
-                ctx.ty(db, &Ty::Node(*input), true);
+                ctx.ty(db, &Ty::Node(*input), Some(node), true);
             });
         }
 
@@ -362,7 +362,7 @@ impl TyDisplay for FunctionTyDisplay {
             list.add(move |ctx| {
                 ctx.node(node);
                 ctx.string(" returns a ");
-                ctx.ty(db, &Ty::Node(*output), true);
+                ctx.ty(db, &Ty::Node(*output), Some(node), true);
             });
         }
     }
@@ -386,7 +386,7 @@ impl TyDisplay for TupleTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
+        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String + '_>>>,
         _root: bool,
     ) -> String {
         let elements = children.into_iter().next().unwrap();
@@ -430,7 +430,7 @@ impl TyDisplay for BlockTyDisplay {
     fn display(
         &self,
         db: &Db,
-        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
+        children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String + '_>>>,
         _root: bool,
     ) -> String {
         let output = children
@@ -470,7 +470,7 @@ impl TyDisplay for BlockTyDisplay {
             list.add(move |ctx| {
                 ctx.node(node);
                 ctx.string(" returns a ");
-                ctx.ty(db, &Ty::Node(*output), true);
+                ctx.ty(db, &Ty::Node(*output), Some(node), true);
             });
         }
     }
@@ -492,7 +492,7 @@ impl TyDisplay for ParameterTyDisplay {
     fn display(
         &self,
         db: &Db,
-        _children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String>>>,
+        _children: Vec<Vec<Box<dyn FnOnce(&Db, bool) -> String + '_>>>,
         _root: bool,
     ) -> String {
         db.get::<Defined>(self.definition)
@@ -523,6 +523,21 @@ fn should_render_child_in_consequences(db: &Db, ctx: &RenderCtx<'_>, node: Node)
         return true;
     }
 
-    let tys = representative_types_of(db, node, &[], Prefer::DirectType);
-    tys.len() > 1
+    let Some(Typed(Some(group))) = db.get(node) else {
+        return false;
+    };
+
+    group.representative_types(None).len() > 1
+}
+
+fn display_types_of(db: &Db, node: Node, source_node: Option<Node>) -> Vec<&ConstructedTy> {
+    let Some(Typed(Some(group))) = db.get(node) else {
+        return Default::default();
+    };
+
+    group
+        .representative_types(source_node)
+        .into_iter()
+        .map(|(_, ty)| ty)
+        .collect()
 }

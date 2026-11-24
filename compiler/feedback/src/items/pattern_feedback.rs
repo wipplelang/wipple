@@ -73,7 +73,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                 writer.string(" could be ");
                 writer.list("or", |_, list| {
                     for tree in &missing.0 {
-                        list.add(move |writer| writer.render(db, tree));
+                        list.add(move |writer| writer.render(db, node, tree));
                     }
                 });
                 writer.string(", but these patterns are missing.");

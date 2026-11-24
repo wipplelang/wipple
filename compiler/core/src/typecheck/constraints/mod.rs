@@ -12,7 +12,7 @@ use crate::{
         groups::{NodeRank, Typed},
         instantiate::InstantiateCtx,
         solver::Solver,
-        ty::ConstructedTy,
+        ty::{ConstructedTy, Ty},
     },
     visit::{
         Resolved,
@@ -148,7 +148,7 @@ pub enum ConstraintConsequence {
     Custom(Comments),
     Group(Node, Node),
     Ty(Node, ConstructedTy),
-    Instance(Instance, bool),
+    Instance(Node, Instance, bool),
 }
 
 impl ConstraintConsequence {
@@ -166,7 +166,7 @@ impl ConstraintConsequence {
             ConstraintConsequence::Custom(comments) => vec![comments.node],
             ConstraintConsequence::Group(left, right) => vec![*left, *right],
             ConstraintConsequence::Ty(node, _) => vec![*node],
-            ConstraintConsequence::Instance(_, _) => Vec::new(),
+            ConstraintConsequence::Instance(node, _, _) => vec![*node],
         }
     }
 
@@ -183,16 +183,9 @@ impl ConstraintConsequence {
                     return true;
                 }
             }
-            ConstraintConsequence::Instance(ref instance, resolved) => {
-                // Hide resolved non-error instances by default
-                if resolved
-                    && db
-                        .get(instance.node)
-                        .and_then(|Defined(definition)| {
-                            definition.downcast_ref::<InstanceDefinition>()
-                        })
-                        .is_none_or(|definition| !definition.error)
-                {
+            ConstraintConsequence::Instance(_, _, resolved) => {
+                // Hide resolved instances by default
+                if resolved {
                     return true;
                 }
             }
@@ -230,22 +223,31 @@ impl ConstraintConsequence {
                 };
 
                 // Hide obvious consequences involving type annotations
-                if group.get_rank(left) == NodeRank::Type || group.get_rank(right) == NodeRank::Type
+                if group.get_rank(left) == NodeRank::Hidden
+                    || group.get_rank(right) == NodeRank::Hidden
                 {
                     return false;
                 }
 
-                let variable_definition = |node| {
+                let defined_variable = |node| {
+                    db.get::<Defined>(node).and_then(|Defined(definition)| {
+                        definition.downcast_ref::<VariableDefinition>()
+                    })
+                };
+
+                let resolved_variable = |node| {
                     db.get::<Resolved>(node)
                         .map_or_default(|Resolved { definitions, .. }| definitions.iter().copied())
-                        .filter_map(|node| db.get::<Defined>(node))
-                        .find_map(|Defined(definition)| {
-                            definition.downcast_ref::<VariableDefinition>()
-                        })
+                        .find(|&definition| defined_variable(definition).is_some())
                 };
 
                 // Ignore consequences involving references to variables
-                if variable_definition(left).is_some() || variable_definition(right).is_some() {
+
+                if defined_variable(left)
+                    .xor(defined_variable(right))
+                    .is_some()
+                    || resolved_variable(left).is_some() && resolved_variable(right).is_some()
+                {
                     return false;
                 }
 
@@ -272,7 +274,7 @@ impl ConstraintConsequence {
 
                 ty.should_render_consequences(db, ctx, node)
             }
-            ConstraintConsequence::Instance(_, _) => true,
+            ConstraintConsequence::Instance(_, _, _) => true,
         }
     }
 }
@@ -289,16 +291,29 @@ impl ConstraintConsequence {
                 ctx.comments(db, comments);
             }
             ConstraintConsequence::Group(left, right) => {
+                let show_ty = db
+                    .get(left)
+                    .and_then(|Typed(group)| group.as_ref())
+                    .is_some_and(|group| !group.get_tys(right).is_empty());
+
                 ctx.string("This means ");
                 ctx.node(left);
-                ctx.string(" must have the same type as ");
-                ctx.node(right);
+
+                if show_ty {
+                    ctx.string(" must be a ");
+                    ctx.ty(db, &Ty::Node(right), Some(right), true);
+                    ctx.string(", like ");
+                    ctx.node(right);
+                } else {
+                    ctx.string(" must have the same type as ");
+                    ctx.node(right);
+                }
             }
             ConstraintConsequence::Ty(node, ref ty) => {
                 ctx.string("This means ");
                 ty.render_consequences(db, ctx, list, node);
             }
-            ConstraintConsequence::Instance(ref instance, resolved) => {
+            ConstraintConsequence::Instance(node, ref instance, resolved) => {
                 if resolved {
                     let mut instance_string = String::new();
                     if let Some(definition) =
@@ -318,7 +333,7 @@ impl ConstraintConsequence {
                     write!(
                         instance_string,
                         "instance ({})",
-                        instance.display(db, &ctx.options.relevant, ctx.options.prefer)
+                        instance.display(db, Some(node))
                     )
                     .unwrap();
 
@@ -326,7 +341,7 @@ impl ConstraintConsequence {
                     ctx.link(instance_string, instance.node);
                 } else {
                     ctx.string("This requires ");
-                    ctx.render(db, instance);
+                    ctx.render(db, node, instance);
                 }
             }
         }

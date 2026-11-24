@@ -340,14 +340,6 @@ Facts (layer 2):
 
 
 
-note: 
-   --> custom-errors.wipple:17:5
-   |
-17 | _ : () + 2
-   |     ------
-
-`() + 2` is called with `()` and `2`.
-
 error: 
    --> custom-errors.wipple:17:5
    |

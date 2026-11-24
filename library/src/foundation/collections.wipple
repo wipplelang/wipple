@@ -1,4 +1,13 @@
 [assume]
+Initial-Collection : collection (infer element) => trait collection
+
+instance (Initial-Collection (collection :: List element) element) : intrinsic "empty-list"
+
+instance (Initial-Collection (collection :: Dictionary key value) (key; value)) : Initial
+
+instance (Initial-Collection (collection :: Set element) element) : Initial
+
+[assume]
 Build-Collection : collection (infer element) => trait (collection element -> collection)
 
 -- Can't create [`collection`] from items that are [`element@type`].
@@ -7,13 +16,8 @@ Build-Collection : collection (infer element) => trait (collection element -> co
 -- you're providing the right kinds of items here.
 default error instance (Build-Collection collection element)
 
-[assume]
-Initial-Collection : collection (infer element) => trait collection
+instance (Build-Collection (collection :: List element) element) : l element -> l . append element
 
-instance (Initial-Collection collection element) where (Build-Collection collection element) (Initial collection) (collection :: List element) : Initial
+instance (Build-Collection (collection :: Dictionary key value) (key; value)) where (Equal key) (Hash key) : d (key; value) -> d . insert-entry key value
 
-instance (Build-Collection (List element) element) : l element -> l . append element
-
-instance (Build-Collection (Dictionary key value) (key; value)) where (Equal key) (Hash key) : d (key; value) -> d . insert-entry key value
-
-instance (Build-Collection (Set element) element) where (Equal element) (Hash element) : s element -> s . insert element
+instance (Build-Collection (collection :: Set element) element) where (Equal element) (Hash element) : s element -> s . insert element

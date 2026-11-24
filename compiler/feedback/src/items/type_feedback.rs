@@ -1,10 +1,7 @@
 use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank, FeedbackWriter};
 use wipple_core::{
     render::ExplainOptions,
-    typecheck::{
-        groups::Prefer,
-        ty::{ConstructedTy, Ty},
-    },
+    typecheck::ty::{ConstructedTy, Ty},
 };
 use wipple_queries::{
     TypeConflictSummarySuffix, conflicting_types, fact, incomplete_type, unknown_type,
@@ -41,30 +38,28 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
         .show_graph()
         .display(|db, writer, _, data| {
             if let Some(summary) = &data.summary {
-                writer.with_relevant(&summary.entry.relevant, Prefer::DirectType, |writer| {
-                    writer.comments(db, &summary.entry.comments);
+                writer.comments(db, &summary.entry.comments);
 
-                    match &summary.suffix {
-                        TypeConflictSummarySuffix::FunctionArity {
-                            function,
-                            expected,
-                            actual,
-                        } => {
-                            writer.string(" But ");
-                            writer.node(*function);
-                            writer.string(" accepts ");
-                            writer.string(expected.to_string());
-                            if *expected > 1 {
-                                writer.string(" inputs");
-                            } else {
-                                writer.string(" input");
-                            }
-                            writer.string(", not ");
-                            writer.string(actual.to_string());
-                            writer.string(".")
+                match &summary.suffix {
+                    TypeConflictSummarySuffix::FunctionArity {
+                        function,
+                        expected,
+                        actual,
+                    } => {
+                        writer.string(" But ");
+                        writer.node(*function);
+                        writer.string(" accepts ");
+                        writer.string(expected.to_string());
+                        if *expected > 1 {
+                            writer.string(" inputs");
+                        } else {
+                            writer.string(" input");
                         }
+                        writer.string(", not ");
+                        writer.string(actual.to_string());
+                        writer.string(".")
                     }
-                });
+                }
             } else {
                 if let Some(source) = data.source {
                     writer.string("In ");
@@ -109,7 +104,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                             list.add(move |writer| {
                                 writer.node(node);
                                 writer.string(" is a ");
-                                writer.ty(db, &Ty::Node(node), true);
+                                writer.ty(db, &Ty::Node(node), Some(node), true);
                             });
                         }
                     });
@@ -121,7 +116,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                             for ty in tys {
                                 let ty = ty.clone();
                                 list.add(move |writer| {
-                                    writer.ty(db, &Ty::Constructed(ty), true);
+                                    writer.ty(db, &Ty::Constructed(ty), Some(data.from), true);
                                 });
                             }
                         });
@@ -158,7 +153,7 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             writer.string(".");
             writer.line_break();
             writer.string("Wipple determined this code is a ");
-            writer.ty(db, &Ty::Constructed((*ty).clone()), true);
+            writer.ty(db, &Ty::Constructed((*ty).clone()), Some(*node), true);
             writer.string(", but it needs some more information for the ");
             writer.code("_");
             writer.string(" placeholders.");

@@ -8,7 +8,6 @@ use crate::{
         ty::{ConstructedTy, Ty},
     },
 };
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{BTreeMap, BTreeSet},
@@ -22,7 +21,7 @@ pub struct DirectlyGroupedWith(pub Vec<Node>);
 impl Fact for DirectlyGroupedWith {}
 
 impl Render for DirectlyGroupedWith {
-    fn render_into(&self, _db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, _db: &Db, _node: Node, ctx: &mut RenderCtx<'_>) {
         ctx.string("grouped with ");
 
         for (index, node) in self.0.iter().enumerate() {
@@ -194,7 +193,20 @@ impl Solver {
     }
 
     pub fn unify(&mut self, db: &mut Db, node: Node, ty: &Ty, mut on_error: impl FnMut()) {
+        if let Ty::Node(source) = ty {
+            self.record_dependency(db, node, *source);
+        }
         self.unify_inner(db, &Ty::Node(node), ty, &mut on_error);
+    }
+
+    // A constraint can also check nodes belonging to other expressions. Record
+    // a display source only for the node whose constraint is being solved.
+    fn record_dependency(&self, db: &mut Db, node: Node, source: Node) {
+        if node != source && self.tracing.last() == Some(&node) {
+            db.get_mut_or_default::<TypeDependsOn>(node)
+                .0
+                .insert(source);
+        }
     }
 
     fn unify_inner(&mut self, db: &mut Db, left: &Ty, right: &Ty, on_error: &mut dyn FnMut()) {
@@ -252,6 +264,8 @@ impl Solver {
                 }
 
                 for (&left_child, &right_child) in iter::zip(left_segment, right_segment) {
+                    self.record_dependency(db, left_child, right_child);
+                    self.record_dependency(db, right_child, left_child);
                     self.unify_inner(
                         db,
                         &Ty::Node(left_child),
@@ -308,7 +322,7 @@ impl Solver {
 
         let (index, group, consequences) = match (left_index, right_index) {
             (Some(left_index), Some(right_index)) => {
-                let mut existing_nodes = if self.trace {
+                let existing_nodes = if self.trace {
                     self.groups.get(left_index).nodes().collect()
                 } else {
                     Vec::new()
@@ -316,32 +330,16 @@ impl Solver {
 
                 let right_group = self.groups.remove_existing(right_index);
 
-                if self.trace {
-                    existing_nodes.extend(right_group.nodes());
-                }
+                let primary_node = right_group.nodes().find(|&node| !db.is_hidden(node));
 
-                (
-                    Some(left_index),
-                    right_group,
+                let consequences = primary_node.map_or_default(|primary_node| {
                     existing_nodes
                         .into_iter()
-                        .filter(|&node| {
-                            // Don't add consequences for hidden nodes because
-                            // they will be filtered out later anyway
-                            !db.is_hidden(node)
-                        })
-                        .tuple_combinations()
-                        .flat_map(|(left, right)| {
-                            [
-                                ConstraintConsequence::Group(left, right),
-                                ConstraintConsequence::Group(left, left_node),
-                                ConstraintConsequence::Group(left, right_node),
-                                ConstraintConsequence::Group(right, right_node),
-                                ConstraintConsequence::Group(right, left_node),
-                            ]
-                        })
-                        .collect(),
-                )
+                        .map(|node| ConstraintConsequence::Group(node, primary_node))
+                        .collect()
+                });
+
+                (Some(left_index), right_group, consequences)
             }
             (Some(left_index), None) => {
                 let existing_nodes = if self.trace {

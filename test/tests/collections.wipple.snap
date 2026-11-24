@@ -29,7 +29,7 @@ Facts (layer 2):
 
 `1, 2, 3` (CollectionExpression):
   at collections.wipple:2:11-2:18
-  grouped with `1, 2, 3`, `my-list`
+  grouped with `collection`, `my-list`
   has type `List Number`
   is an expression
 

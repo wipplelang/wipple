@@ -50,7 +50,7 @@ impl Visit for ExpressionStatement {
         visit_statement(db, node, visitor);
 
         db.insert(node, Typed::default());
-        visitor.rank(node, NodeRank::Statement);
+        visitor.rank(node, NodeRank::Hidden);
 
         let expression = visitor.visit(db, &self.expression);
 

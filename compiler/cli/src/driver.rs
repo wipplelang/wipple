@@ -69,7 +69,6 @@ impl<'a, Out: io::Write> Driver<'a, Out> {
                 Some(crate::ExplainOptions::Full) => ExplainOptions::Full,
                 None => ExplainOptions::None,
             },
-            ..Default::default()
         };
 
         let mut seen_feedback = BTreeMap::<Node, HashSet<String>>::new();

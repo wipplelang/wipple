@@ -14,8 +14,7 @@ pub enum NodeRank {
     #[default]
     Inherited,
     Annotated,
-    Type,
-    Statement,
+    Hidden,
 }
 
 impl Group {
@@ -106,6 +105,21 @@ impl Group {
         }
     }
 
+    pub fn representative_types(
+        &self,
+        source_node: Option<Node>,
+    ) -> Vec<(NodeRank, &ConstructedTy)> {
+        if let Some(node) = source_node {
+            let tys = self.get_tys(node);
+            if !tys.is_empty() {
+                let rank = self.get_rank(node);
+                return tys.iter().map(|ty| (rank, ty)).collect();
+            }
+        }
+
+        self.entries().map(|(_, rank, ty)| (rank, ty)).collect()
+    }
+
     pub fn get_rank(&self, node: Node) -> NodeRank {
         self.0
             .iter()
@@ -194,7 +208,7 @@ pub struct Typed(pub Option<Group>);
 impl Fact for Typed {}
 
 impl Render for Typed {
-    fn render_into(&self, db: &Db, ctx: &mut RenderCtx<'_>) {
+    fn render_into(&self, db: &Db, node: Node, ctx: &mut RenderCtx<'_>) {
         let Some(group) = &self.0 else {
             ctx.string("types not solved");
             return;
@@ -224,63 +238,19 @@ impl Render for Typed {
                     ctx.string(" or ");
                 }
 
-                ctx.render(db, &Ty::Constructed(ty.clone()));
+                ctx.render(db, node, &Ty::Constructed(ty.clone()));
             }
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum Prefer {
-    #[default]
-    DirectType,
-    RepresentativeType,
-}
-
-pub fn representative_types_of<'a>(
-    db: &'a Db,
-    node: Node,
-    relevant: &[Node],
-    prefer: Prefer,
-) -> Vec<(NodeRank, &'a ConstructedTy)> {
-    let Some(Typed(Some(group))) = db.get(node) else {
-        return Default::default();
-    };
-
-    // Prefer relevant nodes that belong to the same group
-    let mut candidates = relevant
-        .iter()
-        .copied()
-        .filter(|&node| group.contains_node(node))
-        .collect::<Vec<_>>();
-
-    match prefer {
-        Prefer::DirectType => candidates.insert(0, node),
-        Prefer::RepresentativeType => candidates.push(node),
+pub fn update_type(db: &Db, ty: &Ty) -> Ty {
+    if let Ty::Node(node) = ty
+        && let Some(Typed(Some(group))) = db.get(*node)
+        && let Some((_, ty)) = group.representative_types(None).into_iter().next()
+    {
+        return Ty::Constructed(ty.clone());
     }
 
-    for node in candidates {
-        let tys = group.get_tys(node);
-        let rank = group.get_rank(node);
-        if !tys.is_empty() {
-            return tys.iter().map(|ty| (rank, ty)).collect();
-        }
-    }
-
-    group.entries().map(|(_, rank, ty)| (rank, ty)).collect()
-}
-
-pub fn update_type(db: &Db, ty: &Ty, relevant: &[Node], prefer: Prefer) -> Ty {
-    match ty {
-        Ty::Node(node) => {
-            let tys = representative_types_of(db, *node, relevant, prefer);
-
-            if let Some(&(_, ty)) = tys.first() {
-                Ty::Constructed(ty.clone())
-            } else {
-                Ty::Node(*node)
-            }
-        }
-        Ty::Constructed(ty) => Ty::Constructed(ty.clone()),
-    }
+    ty.clone()
 }
