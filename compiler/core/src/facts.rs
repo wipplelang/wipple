@@ -63,7 +63,6 @@ impl Fact for DebugInfo {}
 impl Render for DebugInfo {}
 
 pub mod description_comments {
-    pub const DATA_FLOW: &str = "Data Flow";
     pub const CONSEQUENCES: &str = "Consequences";
 }
 

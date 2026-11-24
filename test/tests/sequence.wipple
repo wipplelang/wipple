@@ -1,7 +1,0 @@
-Box : value => type value
-
-instance (As-Sequence (Box value) value) : _
-
-box : Box "abc"
-positive? : (n :: Number) -> _
-(filter positive?) box

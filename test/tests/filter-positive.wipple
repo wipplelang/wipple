@@ -1,0 +1,3 @@
+letters : "a", "b"
+positive? : n -> n > 0
+(filter positive?) letters

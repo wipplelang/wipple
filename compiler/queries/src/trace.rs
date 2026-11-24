@@ -93,9 +93,7 @@ fn collect_traces(
 
         let links = get_links(db, definition_node, node, &mut *filter);
 
-        if let Some(section) = section(definition.comments(), Some(description_comments::DATA_FLOW))
-            .or_else(|| section(definition.comments(), None))
-        {
+        if let Some(section) = section(definition.comments(), None) {
             comments.push((
                 is_primary,
                 None,
