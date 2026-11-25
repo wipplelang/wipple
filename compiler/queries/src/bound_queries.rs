@@ -1,7 +1,7 @@
 use crate::{QueryCtx, Trace};
 use wipple_core::{
     db::Node,
-    typecheck::bounds::{ResolvedBound, ResolvedBounds, UnresolvedBound},
+    typecheck::resolved::{ResolvedBound, ResolvedBounds, UnresolvedBound},
 };
 
 pub fn resolved_bounds<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<&'a ResolvedBound> {

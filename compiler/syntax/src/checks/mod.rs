@@ -10,7 +10,7 @@ use wipple_core::{
     TopLevel, apply_solver,
     db::Db,
     default_filter,
-    typecheck::{bounds::Instances, solver::Solver},
+    typecheck::{resolved::Instances, solver::Solver},
     visit::definitions::{Defined, TraitDefinition},
 };
 

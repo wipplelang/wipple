@@ -1,0 +1,131 @@
+Facts (layer 2):
+
+`Box` (TypeDefinition):
+  at generic-structure-field.wipple:1:1-1:4
+  grouped with `Box`
+  has definition constraints
+  has type `Box value`
+  has type parameters
+  is a definition
+
+`Box` (TypeDefinition):
+  at generic-structure-field.wipple:1:1-1:4
+  grouped with `Box`
+  has definition constraints
+  has type `Box value`
+  is a definition
+
+`value` (TypeParameter):
+  at generic-structure-field.wipple:1:7-1:12
+  grouped with `value`
+  has type `value`
+  is a definition
+  is a type
+  resolved to 1 definition(s): `value`
+
+`value` (TypeParameter):
+  at generic-structure-field.wipple:1:31-1:36
+  grouped with `value`
+  has type `value`
+  is a type
+  resolved to 1 definition(s): `value`
+  resolved to type parameter `value`
+
+`a` (VariablePattern):
+  at generic-structure-field.wipple:3:1-3:2
+  grouped with `Box {inner : 123}`, `Box {inner : 123}`, `a`
+  has type `Box Number`
+  is a definition
+  is a pattern
+
+`Box {inner : 123}` (StructureExpression):
+  at generic-structure-field.wipple:3:5-3:22
+  grouped with `Box`, `a`, `a`
+  has type `Box Number`
+  is an expression
+  resolved to 1 definition(s): `Box`
+
+`123` (NumberExpression):
+  at generic-structure-field.wipple:3:18-3:21
+  grouped with `123`, `value`
+  has type `Number`
+  is an expression
+
+`show` (VariableExpression):
+  at generic-structure-field.wipple:4:1-4:5
+  grouped with `value -> ()`
+  has bound(s) `Describe` `Number` (resolved as `instance (Describe Number)`)
+  has type `Number -> ()`
+  is an expression
+  resolved to 1 definition(s): `show`
+
+`show (inner of a)` (CallExpression):
+  at generic-structure-field.wipple:4:1-4:18
+  grouped with `()`, `show (inner of a)`
+  has type `()`
+  is an expression
+
+`inner of a` (OfExpression):
+  at generic-structure-field.wipple:4:7-4:17
+  grouped with `value`, `value`
+  has type `Number`
+  is an expression
+
+`a` (VariableExpression):
+  at generic-structure-field.wipple:4:16-4:17
+  grouped with `a`
+  has type `Box Number`
+  is an expression
+  resolved to 1 definition(s): `a`
+
+`b` (VariablePattern):
+  at generic-structure-field.wipple:6:1-6:2
+  grouped with `Box {inner : "abc"}`, `Box {inner : "abc"}`, `b`
+  has type `Box String`
+  is a definition
+  is a pattern
+
+`Box {inner : "abc"}` (StructureExpression):
+  at generic-structure-field.wipple:6:5-6:24
+  grouped with `Box`, `b`, `b`
+  has type `Box String`
+  is an expression
+  resolved to 1 definition(s): `Box`
+
+`"abc"` (StringExpression):
+  at generic-structure-field.wipple:6:18-6:23
+  grouped with `"abc"`, `value`
+  has type `String`
+  is an expression
+
+`show` (VariableExpression):
+  at generic-structure-field.wipple:7:1-7:5
+  grouped with `value -> ()`
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> ()`
+  is an expression
+  resolved to 1 definition(s): `show`
+
+`show (inner of b)` (CallExpression):
+  at generic-structure-field.wipple:7:1-7:18
+  grouped with `()`, `show (inner of b)`
+  has type `()`
+  is an expression
+
+`inner of b` (OfExpression):
+  at generic-structure-field.wipple:7:7-7:17
+  grouped with `value`, `value`
+  has type `String`
+  is an expression
+
+`b` (VariableExpression):
+  at generic-structure-field.wipple:7:16-7:17
+  grouped with `b`
+  has type `Box String`
+  is an expression
+  resolved to 1 definition(s): `b`
+
+
+Output:
+123
+abc

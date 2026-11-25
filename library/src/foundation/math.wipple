@@ -114,15 +114,15 @@ degrees : degrees -> Angle {degrees : degrees}
 
 -- [`sin`] calculates the sine of [`angle`].
 sin :: (angle :: Angle) -> Number
-sin : (Angle {degrees : degrees}) -> intrinsic "sin" degrees
+sin : angle -> intrinsic "sin" (degrees of angle)
 
 -- [`cos`] calculates the cosine of [`angle`].
 cos :: (angle :: Angle) -> Number
-cos : (Angle {degrees : degrees}) -> intrinsic "cos" degrees
+cos : angle -> intrinsic "cos" (degrees of angle)
 
 -- [`tan`] calculates the tangent of [`angle`].
 tan :: (angle :: Angle) -> Number
-tan : (Angle {degrees : degrees}) -> intrinsic "tan" degrees
+tan : angle -> intrinsic "tan" (degrees of angle)
 
 -- [`negate`] negates the sign of [`n`].
 negate :: (n :: Number) -> Number

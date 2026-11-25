@@ -1,6 +1,7 @@
 use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
+    span::Str,
     typecheck::{solver::SubstitutionsKey, ty::Ty},
     visit::definitions::{Defined, TraitDefinition},
 };
@@ -153,3 +154,14 @@ impl UnresolvedBound {
         result
     }
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResolvedField {
+    pub value: Node,
+    pub index: Result<usize, Str>,
+}
+
+#[typetag::serde]
+impl Fact for ResolvedField {}
+
+impl Render for ResolvedField {}

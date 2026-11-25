@@ -2,7 +2,7 @@ use crate::{QueryCtx, Trace};
 use wipple_core::{
     db::Node,
     render::Comments,
-    typecheck::bounds::{ResolvedBound, ResolvedBounds},
+    typecheck::resolved::{ResolvedBound, ResolvedBounds},
     util::get_links,
     visit::{
         Resolved,

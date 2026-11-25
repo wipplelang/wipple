@@ -18,19 +18,19 @@ const tokens = {
     },
     binaryOperator: {
         regex: withBoundary(
-            /(?:and|as|to|by|<=|>=|\/=|is|or|\x2d>|\^|\*|\/|%|\+|\x2d|<|>|=|\.)(?!(?:[\.\d]|(?:and|as|to|by|<=|>=|\/=|is|or|\x2d>|\^|\*|\/|%|\+|\x2d|<|>|=|\.)))/,
+            /(?:and|as|to|by|<=|>=|\/=|is|or|\x2d>|\^|\*|\/|%|\+|\x2d|<|>|=|\.)(?!(?:[\.\d]|(?:and|as|to|by|<=|>=|\/=|is|of|or|\x2d>|\^|\*|\/|%|\+|\x2d|<|>|=|\.)))/,
         ),
         highlight: "operator",
     },
     variadicOperator: {
         regex: withBoundary(
-            /(?:;|,)(?!(?:[\.\d]|(?:and|as|to|by|<=|>=|\/=|is|or|\x2d>|\^|\*|\/|%|\+|\x2d|<|>|=|\.)))/,
+            /(?:;|,)(?!(?:[\.\d]|(?:and|as|to|by|<=|>=|\/=|is|of|or|\x2d>|\^|\*|\/|%|\+|\x2d|<|>|=|\.)))/,
         ),
         highlight: "operator",
     },
     keywordOperator: {
         regex: withBoundary(
-            /(?:where|=>|::|:)(?!(?:[\.\d]|(?:and|as|to|by|<=|>=|\/=|is|or|\x2d>|\^|\*|\/|%|\+|\x2d|<|>|=|\.)))/,
+            /(?:where|=>|::|:)(?!(?:[\.\d]|(?:and|as|to|by|<=|>=|\/=|is|of|or|\x2d>|\^|\*|\/|%|\+|\x2d|<|>|=|\.)))/,
         ),
         highlight: "operator",
     },

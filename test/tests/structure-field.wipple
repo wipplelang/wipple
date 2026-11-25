@@ -1,0 +1,4 @@
+Structure : type {message :: String}
+
+s : Structure {message : "Hello, world!"}
+show (message of s)

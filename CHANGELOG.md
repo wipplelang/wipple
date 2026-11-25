@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+-   Added back the `of` operator to access a single field of a structure value.
+
 -   Added the `--explain` flag to adjust the level of context provided with error messages, as well as an IDE code action to explain errors.
 
 -   Added support for debugging in VSCode.

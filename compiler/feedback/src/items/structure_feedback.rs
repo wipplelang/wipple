@@ -1,5 +1,6 @@
 use crate::{FeedbackCtx, FeedbackRank};
-use wipple_queries::fact;
+use wipple_core::typecheck::ty::Ty;
+use wipple_queries::{fact, unknown_field};
 use wipple_syntax::expressions::structure_expression::{DuplicateField, ExtraField, MissingField};
 
 pub fn register(ctx: &mut FeedbackCtx<'_>) {
@@ -37,6 +38,21 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
             writer.string(" is defined more than once.");
             writer.line_break();
             writer.string("Try removing this field.");
+        })
+        .register();
+
+    ctx.feedback("unknown-field")
+        .query(unknown_field)
+        .rank(|_| FeedbackRank::Bounds)
+        .display(|db, writer, _, (field, value)| {
+            writer.node(*value);
+            writer.string(" does not have a field named ");
+            writer.code(field.as_str());
+            writer.string(".");
+            writer.line_break();
+            writer.string("Double-check the definition of ");
+            writer.ty(db, &Ty::Node(*value), Some(*value), true);
+            writer.string(".");
         })
         .register();
 }

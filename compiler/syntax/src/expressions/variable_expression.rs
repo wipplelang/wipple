@@ -8,7 +8,7 @@ use wipple_core::{
     render::Comments,
     span::{Span, Str},
     typecheck::{
-        bounds::ResolvedBounds,
+        resolved::ResolvedBounds,
         constraints::{instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint},
         groups::NodeRank,
         ty::Ty,

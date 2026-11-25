@@ -16,7 +16,7 @@ use wipple_core::{
     render::Render,
     span::{Span, Str},
     typecheck::{
-        bounds::{Instance, Instances},
+        resolved::{Instance, Instances},
         constraints::{instantiate_constraint::InstantiateConstraint, ty_constraint::TyConstraint},
         ty::Ty,
     },

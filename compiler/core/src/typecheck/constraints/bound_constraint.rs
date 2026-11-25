@@ -2,7 +2,7 @@ use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
-        bounds::{Bound, Instance, Instances, ResolvedBound, ResolvedBounds, UnresolvedBound},
+        resolved::{Bound, Instance, Instances, ResolvedBound, ResolvedBounds, UnresolvedBound},
         constraints::{
             Constraint, ConstraintConsequence, ConstraintKind, RunResult, Solver,
             instantiate_constraint::InstantiateConstraint,

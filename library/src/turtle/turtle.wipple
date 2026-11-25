@@ -17,23 +17,23 @@ error instance (Mismatched (n :: Number) Angle)
 
 -- Move the turtle forward by a distance.
 forward :: Distance -> ()
-forward : (Distance {pixels : pixels}) -> external "forward" pixels
+forward : distance -> external "forward" (pixels of distance)
 
 -- Move the turtle backward by a distance.
 backward :: Distance -> ()
-backward : (Distance {pixels : pixels}) -> external "backward" pixels
+backward : distance -> external "backward" (pixels of distance)
 
 -- Rotate the turtle counterclockwise by an angle.
 left :: Angle -> ()
-left : (Angle {degrees : degrees}) -> external "left" degrees
+left : angle -> external "left" (degrees of angle)
 
 -- Rotate the turtle clockwise by an angle.
 right :: Angle -> ()
-right : (Angle {degrees : degrees}) -> external "right" degrees
+right : angle -> external "right" (degrees of angle)
 
 -- Go to a position on the screen without drawing.
 go :: Distance Distance -> ()
-go : (Distance {pixels : x}) (Distance {pixels : y}) -> external "go" (x, y)
+go : x y -> external "go" ((pixels of x), (pixels of y))
 
 -- Set the pen color.
 color :: Color -> ()

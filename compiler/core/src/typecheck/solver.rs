@@ -2,7 +2,7 @@ use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
-        bounds::Instance,
+        resolved::Instance,
         constraints::{Constraint, ConstraintConsequence, ConstraintKind, Constraints},
         groups::{Group, Groups, NodeRank},
         ty::{ConstructedTy, Ty},

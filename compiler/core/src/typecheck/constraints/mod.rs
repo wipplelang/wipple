@@ -1,5 +1,6 @@
 pub mod bound_constraint;
 pub mod default_constraint;
+pub mod field_constraint;
 pub mod generic_constraint;
 pub mod instantiate_constraint;
 pub mod ty_constraint;
@@ -8,7 +9,7 @@ use crate::{
     db::{Db, Node},
     render::{Comments, ExplainOptions, ListBuilder, RenderCtx},
     typecheck::{
-        bounds::Instance,
+        resolved::Instance,
         groups::{NodeRank, Typed},
         instantiate::InstantiateCtx,
         solver::Solver,

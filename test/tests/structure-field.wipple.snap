@@ -1,0 +1,72 @@
+Facts (layer 2):
+
+`Structure` (TypeDefinition):
+  at structure-field.wipple:1:1-1:10
+  grouped with `Structure`
+  has definition constraints
+  has type `Structure`
+  is a definition
+
+`Structure` (TypeDefinition):
+  at structure-field.wipple:1:1-1:10
+  grouped with `Structure`
+  has definition constraints
+  has type `Structure`
+  is a definition
+
+`String` (NamedType):
+  at structure-field.wipple:1:30-1:36
+  has type `String`
+  is a type
+  resolved to 1 definition(s): `String`
+
+`s` (VariablePattern):
+  at structure-field.wipple:3:1-3:2
+  grouped with `Structure {message : "Hello, world!"}`, `Structure {message : "Hello, world!"}`, `s`
+  has type `Structure`
+  is a definition
+  is a pattern
+
+`Structure {message : "Hello, world!"}` (StructureExpression):
+  at structure-field.wipple:3:5-3:42
+  grouped with `Structure`, `s`, `s`
+  has type `Structure`
+  is an expression
+  resolved to 1 definition(s): `Structure`
+
+`"Hello, world!"` (StringExpression):
+  at structure-field.wipple:3:26-3:41
+  grouped with `"Hello, world!"`
+  has type `String`
+  is an expression
+
+`show` (VariableExpression):
+  at structure-field.wipple:4:1-4:5
+  grouped with `value -> ()`
+  has bound(s) `Describe` `String` (resolved as `instance (Describe String)`)
+  has type `String -> ()`
+  is an expression
+  resolved to 1 definition(s): `show`
+
+`show (message of s)` (CallExpression):
+  at structure-field.wipple:4:1-4:20
+  grouped with `()`, `show (message of s)`
+  has type `()`
+  is an expression
+
+`message of s` (OfExpression):
+  at structure-field.wipple:4:7-4:19
+  grouped with `value`
+  has type `String`
+  is an expression
+
+`s` (VariableExpression):
+  at structure-field.wipple:4:18-4:19
+  grouped with `s`
+  has type `Structure`
+  is an expression
+  resolved to 1 definition(s): `s`
+
+
+Output:
+Hello, world!

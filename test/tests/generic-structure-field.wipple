@@ -1,0 +1,7 @@
+Box : value => type {inner :: value}
+
+a : Box {inner : 123}
+show (inner of a)
+
+b : Box {inner : "abc"}
+show (inner of b)

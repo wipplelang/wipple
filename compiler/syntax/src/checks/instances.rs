@@ -5,7 +5,7 @@ use wipple_core::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
     typecheck::{
-        bounds::{Bound, Instance},
+        resolved::{Bound, Instance},
         constraints::{
             ConstraintKind,
             bound_constraint::{BoundConstraint, group_instances},

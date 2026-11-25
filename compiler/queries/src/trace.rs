@@ -8,7 +8,7 @@ use wipple_core::{
     facts::{Description, description_comments},
     render::Comments,
     typecheck::{
-        bounds::ResolvedBounds, constraints::ConstraintConsequence, groups::Typed,
+        resolved::ResolvedBounds, constraints::ConstraintConsequence, groups::Typed,
         instantiate::InstantiatedTypes, solver::TypeDependsOn,
     },
     util::{get_links, linked_nodes_for, section},

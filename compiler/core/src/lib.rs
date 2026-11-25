@@ -18,7 +18,7 @@ use crate::{
     facts::{Parent, Syntax},
     span::Str,
     typecheck::{
-        bounds::{Instance, Instances, ResolvedBounds},
+        resolved::{Instance, Instances, ResolvedBounds},
         constraints::bound_constraint::{BoundConstraint, IsBound},
         groups::Typed,
         solver::{Solver, Substitutions},

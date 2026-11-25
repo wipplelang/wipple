@@ -8,7 +8,7 @@ use crate::{
     codegen::CodegenError,
     db::{Db, Node},
     facts::{Codegen, Parent},
-    typecheck::bounds::ResolvedBounds,
+    typecheck::resolved::ResolvedBounds,
     visit::{
         Bounds, TypeParameters,
         definitions::{ConstantDefinition, ConstantValue, Defined, InstanceDefinition},

@@ -13,8 +13,8 @@ while : condition -> While {condition : condition}
 
 While : type {condition :: {Boolean}}
 
-instance (Repeat-Condition While) : (While {condition : condition}) -> sequence {
-  if (do condition) {Some ()} {None}
+instance (Repeat-Condition While) : while -> sequence {
+  if (do (condition of while)) {Some ()} {None}
 }
 
 -- [`forever`] repeats forever.

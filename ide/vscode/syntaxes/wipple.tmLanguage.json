@@ -37,7 +37,7 @@
         },
         "keyword.operator": {
             "name": "keyword.operator.wipple",
-            "match": "_|\\-|\\->|\\,|;|:|::|\\.|\\*|\\/|\\/=|%|\\^|\\+|<|<=|=|=>|>|>=|\\b(?:and|as|by|is|or|to)\\b"
+            "match": "_|\\-|\\->|\\,|;|:|::|\\.|\\*|\\/|\\/=|%|\\^|\\+|<|<=|=|=>|>|>=|\\b(?:and|as|by|is|of|or|to)\\b"
         },
         "capitalName": {
             "name": "entity.name.type.wipple",

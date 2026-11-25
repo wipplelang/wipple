@@ -10,7 +10,7 @@ use wipple_core::{
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{
-        bounds::Bound,
+        resolved::Bound,
         constraints::{
             bound_constraint::{BoundConstraint as TypecheckBoundConstraint, IsBound},
             instantiate_constraint::InstantiateConstraint,

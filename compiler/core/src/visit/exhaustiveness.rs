@@ -1,6 +1,7 @@
 use crate::{
     db::{Db, Fact, Node},
     render::{Render, RenderCtx},
+    span::Str,
     typecheck::{
         groups::update_type,
         ty::{Ty, TyTag},
@@ -24,7 +25,7 @@ impl Render for MarkerType {}
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StructureFields {
     pub constructor: Node,
-    pub fields: Vec<Node>,
+    pub fields: Vec<(Str, Node)>,
 }
 
 #[typetag::serde]
@@ -345,7 +346,7 @@ fn collect_paths(
             } else if let Some(StructureFields { fields, .. }) = db.get(definition) {
                 fields
                     .iter()
-                    .map(|&field| {
+                    .map(|&(_, field)| {
                         let mut prefix = prefix.to_vec();
                         prefix.push(MatchPathSegment::Field(field));
 

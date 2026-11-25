@@ -169,7 +169,7 @@ pub fn representation(
         hir::TypeRepresentation::Structure(
             fields
                 .iter()
-                .map(|field| {
+                .map(|(_, field)| {
                     let mut ty = type_of(db, *field)?;
                     ty.substitute(&substitutions);
                     Ok(ty)

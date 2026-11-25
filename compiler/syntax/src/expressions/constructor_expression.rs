@@ -6,7 +6,7 @@ use wipple_core::{
     db::{Db, Node},
     span::{Span, Str},
     typecheck::{
-        bounds::{Bound, ResolvedBounds},
+        resolved::{Bound, ResolvedBounds},
         constraints::{
             bound_constraint::BoundConstraint, instantiate_constraint::InstantiateConstraint,
             ty_constraint::TyConstraint,

@@ -255,7 +255,7 @@ impl Visit for TypeDefinition {
             let fields = representation
                 .fields
                 .iter()
-                .map(|_| db.node())
+                .map(|field| (field.name.clone(), db.node()))
                 .collect::<Vec<_>>();
 
             definitions.push((
@@ -263,11 +263,7 @@ impl Visit for TypeDefinition {
                 Box::new(definitions::StructureConstructorDefinition {
                     name: self.name.clone(),
                     comments: self.comments.clone(),
-                    fields: fields
-                        .iter()
-                        .zip(&representation.fields)
-                        .map(|(&node, field)| (field.name.clone(), node))
-                        .collect(),
+                    fields: fields.clone(),
                 }),
             ));
 

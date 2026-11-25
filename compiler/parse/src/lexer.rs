@@ -98,6 +98,8 @@ pub enum TokenKind {
     ByOperator,
     #[regex(r#"is"#)]
     IsOperator,
+    #[regex(r#"of"#)]
+    OfOperator,
     #[regex(r#"and"#)]
     AndOperator,
     #[regex(r#"or"#)]
@@ -299,6 +301,7 @@ impl TokenKind {
             TokenKind::ToOperator => "`to`",
             TokenKind::ByOperator => "`by`",
             TokenKind::IsOperator => "`is`",
+            TokenKind::OfOperator => "`of`",
             TokenKind::AndOperator => "`and`",
             TokenKind::OrOperator => "`or`",
             TokenKind::Number => "a number",
@@ -350,6 +353,7 @@ impl TokenKind {
                 | TokenKind::ToOperator
                 | TokenKind::ByOperator
                 | TokenKind::IsOperator
+                | TokenKind::OfOperator
                 | TokenKind::AndOperator
                 | TokenKind::OrOperator
                 | TokenKind::WhereKeyword
