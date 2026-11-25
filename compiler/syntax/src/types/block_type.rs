@@ -50,7 +50,7 @@ impl Visit for BlockType {
         visitor.constraint(
             db,
             TyConstraint::new(
-                visitor.current_annotating.map_or(node, |(node, _)| node),
+                visitor.current_annotating.unwrap_or(node),
                 Ty::Constructed(ConstructedTy::block(output)),
             ),
         );

@@ -112,7 +112,7 @@ impl Visit for TypeParameter {
             visitor.constraint(
                 db,
                 TyConstraint::new(
-                    visitor.current_annotating.map_or(node, |(node, _)| node),
+                    visitor.current_annotating.unwrap_or(node),
                     Ty::Node(existing_node),
                 ),
             );
@@ -139,17 +139,14 @@ impl Visit for TypeParameter {
 
                 visitor.constraint(
                     db,
-                    TyConstraint::new(
-                        visitor.current_annotating.map_or(node, |(node, _)| node),
-                        Ty::Node(value),
-                    ),
+                    TyConstraint::new(visitor.current_annotating.unwrap_or(node), Ty::Node(value)),
                 );
 
                 visitor.constraint(
                     db,
                     GenericConstraint::new(
                         Box::new(TyConstraint::new(
-                            visitor.current_annotating.map_or(node, |(node, _)| node),
+                            visitor.current_annotating.unwrap_or(node),
                             Ty::Constructed(ConstructedTy::parameter(node)),
                         )),
                         GenericConstraintMode::SourceOnly,
@@ -159,7 +156,7 @@ impl Visit for TypeParameter {
                 visitor.constraint(
                     db,
                     TyConstraint::new(
-                        visitor.current_annotating.map_or(node, |(node, _)| node),
+                        visitor.current_annotating.unwrap_or(node),
                         Ty::Constructed(ConstructedTy::parameter(node)),
                     ),
                 );

@@ -90,7 +90,7 @@ impl Visit for NamedType {
         let substitutions = visitor.substitutions(
             BTreeMap::from([(
                 type_definition_node,
-                visitor.current_annotating.map_or(node, |(node, _)| node),
+                visitor.current_annotating.unwrap_or(node),
             )]),
             ty_parameters,
         );
@@ -98,7 +98,7 @@ impl Visit for NamedType {
         visitor.constraint(
             db,
             InstantiateConstraint::new(
-                visitor.current_annotating.map_or(node, |(node, _)| node),
+                visitor.current_annotating.unwrap_or(node),
                 type_definition_node,
                 substitutions,
             ),

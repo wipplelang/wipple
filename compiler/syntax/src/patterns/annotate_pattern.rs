@@ -53,7 +53,7 @@ impl Visit for AnnotatePattern {
         db.hide(node);
 
         let pattern = visitor.visit(db, &self.pattern);
-        let ty = visitor.annotating(Some((pattern, true)), |visitor| visitor.visit(db, &self.ty));
+        let ty = visitor.annotating(Some(pattern), |visitor| visitor.visit(db, &self.ty));
         if let Some(graph) = &mut db.graph {
             graph.edge(ty, pattern, "type");
         }

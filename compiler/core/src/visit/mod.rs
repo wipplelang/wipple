@@ -353,7 +353,7 @@ pub struct Visitor {
     pub current_node: Node,
     pub current_definition: Option<CurrentDefinition>,
     pub current_match: Option<CurrentMatch>,
-    pub current_annotating: Option<(Node, bool)>,
+    pub current_annotating: Option<Node>,
     scopes: Vec<(Option<Node>, ScopeValues)>,
     top_level_statements: Vec<(Node, AstKey)>,
     constraints: Vec<(Node, Box<dyn Constraint>)>,
@@ -688,11 +688,7 @@ impl Visitor {
         result
     }
 
-    pub fn annotating<T>(
-        &mut self,
-        value: Option<(Node, bool)>,
-        f: impl FnOnce(&mut Self) -> T,
-    ) -> T {
+    pub fn annotating<T>(&mut self, value: Option<Node>, f: impl FnOnce(&mut Self) -> T) -> T {
         let prev = mem::replace(&mut self.current_annotating, value);
         let result = f(self);
         self.current_annotating = prev;

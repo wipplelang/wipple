@@ -112,11 +112,11 @@ note:
 `x` is annotated as a `String`.
 
 error: 
-  --> mismatched-inferred-params.wipple:1:2
+  --> mismatched-inferred-params.wipple:1:25
   |
 1 | (1, 2, 3) . transform ((x :: String) -> x)
-  |  ^
+  |                         ^
 
-`1` is a `Number`, but it must also be a `String`.
+`x` is a `Number` or a `String`, but it can only be one of these.
 
 Help: use `--explain=full` to show more information

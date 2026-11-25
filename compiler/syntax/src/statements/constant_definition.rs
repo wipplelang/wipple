@@ -105,8 +105,7 @@ impl Visit for ConstantDefinition {
             visitor.with_definition_flag(
                 |d| &mut d.implicit_type_parameters,
                 |visitor| {
-                    let ty = visitor
-                        .annotating(Some((node, true)), |visitor| visitor.visit(db, &self.ty));
+                    let ty = visitor.annotating(Some(node), |visitor| visitor.visit(db, &self.ty));
 
                     if let Some(graph) = &mut db.graph {
                         graph.edge(ty, node, "type");

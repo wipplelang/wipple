@@ -50,11 +50,11 @@ This means `1` must be a `()`, like `()`.
 This means `"hi"` must be a `()`, like `()`.
 
 error: 
-  --> list-mismatched-elements.wipple:1:11
+  --> list-mismatched-elements.wipple:1:20
   |
 1 | my-list : 1, "hi", ()
-  |           ^
+  |                    ^^
 
-`1` is a `Number`, but it must also be a `String` or a `()`.
+`()` is a `Number`, `String`, or a `()`, but it can only be one of these.
 
 Help: use `--explain=full` to show more information

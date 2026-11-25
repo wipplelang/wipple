@@ -23,14 +23,6 @@ Facts (layer 2):
 
 
 note: 
-  --> constant-mismatched-types.wipple:1:1
-  |
-1 | x :: Number
-  | -
-
-`x` is annotated as a `Number`.
-
-note: 
   --> constant-mismatched-types.wipple:2:5
   |
 2 | x : "42"
@@ -38,12 +30,20 @@ note:
 
 `x` has the value `"42"`.
 
+note: 
+  --> constant-mismatched-types.wipple:1:1
+  |
+1 | x :: Number
+  | -
+
+`x` is annotated as a `Number`.
+
 error: 
   --> constant-mismatched-types.wipple:1:1
   |
 1 | x :: Number
   | ^
 
-`x` is a `Number`, but it must also be a `String`.
+`x` is a `String` or a `Number`, but it can only be one of these.
 
 Help: use `--explain=full` to show more information

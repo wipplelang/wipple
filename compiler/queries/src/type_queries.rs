@@ -1,11 +1,10 @@
 use crate::{QueryCtx, Trace, TraceEntry};
-use itertools::{Either, Itertools};
 use std::collections::BTreeSet;
 use wipple_core::{
     db::Node,
     typecheck::{
         constraints::ConstraintConsequence,
-        groups::{NodeRank, Typed},
+        groups::Typed,
         instantiate::Instantiated,
         ty::{ConstructedTy, TyTag},
     },
@@ -36,7 +35,6 @@ pub struct ConflictingTypes {
     pub conflicting: BTreeSet<Node>,
     pub group: BTreeSet<Node>,
     pub tys: Vec<ConstructedTy>,
-    pub inferred_tys: Vec<ConstructedTy>,
     pub trace: Trace,
     pub primary_trace_entry: Option<TraceEntry>,
     pub summary: Option<TypeConflictSummary>,
@@ -78,13 +76,7 @@ pub fn conflicting_types<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ConflictingTy
     collect_summaries(db, node, &trace, &mut summaries);
     // TODO: Sort summaries
 
-    let (tys, inferred_tys) = group.entries().partition_map(|(other, rank, ty)| {
-        if other == node && rank == NodeRank::Inherited {
-            Either::Left(ty.clone())
-        } else {
-            Either::Right(ty.clone())
-        }
-    });
+    let tys = group.tys().cloned().collect::<Vec<_>>();
 
     let primary_trace_entry = trace
         .0
@@ -111,7 +103,6 @@ pub fn conflicting_types<'a>(db: &QueryCtx<'a>, node: Node) -> Vec<ConflictingTy
         conflicting,
         group: group.nodes().collect(),
         tys,
-        inferred_tys,
         trace,
         primary_trace_entry,
         summary: None,

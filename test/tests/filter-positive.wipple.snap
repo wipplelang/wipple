@@ -121,18 +121,6 @@ Since the first element, `"a"`, is a `String`, the remaining elements must also 
 This means `"a"` must have the same type as `"b"`.
 
 note: 
-  --> filter-positive.wipple:2:18
-  |
-2 | positive? : n -> n > 0
-  |                  -----
-
-`n > 0` returns `True` if `n` is greater than `0`.
-
-Since `n` and `0` are compared, they must have the same type.
-
-This means `n` must be a `Number`, like `0`.
-
-note: 
   --> filter-positive.wipple:3:2
   |
 3 | (filter positive?) letters
@@ -144,12 +132,24 @@ This means `"a"` must have the same type as `n`.
 
 This means `"b"` must have the same type as `n`.
 
-error: 
-  --> filter-positive.wipple:1:11
+note: 
+  --> filter-positive.wipple:2:18
   |
-1 | letters : "a", "b"
-  |           ^^^
+2 | positive? : n -> n > 0
+  |                  -----
 
-`"a"` is a `String`, but it must also be a `Number`.
+`n > 0` returns `True` if `n` is greater than `0`.
+
+Since `n` and `0` are compared, they must have the same type.
+
+This means `n` must be a `Number`, like `0`.
+
+error: 
+  --> filter-positive.wipple:2:13
+  |
+2 | positive? : n -> n > 0
+  |             ^
+
+`n` is a `String` or a `Number`, but it can only be one of these.
 
 Help: use `--explain=full` to show more information

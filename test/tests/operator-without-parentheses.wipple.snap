@@ -133,17 +133,17 @@ note:
   --> operator-without-parentheses.wipple:1:1
   |
 1 | show 1 + 2
-  | ----------
+  | ----
 
-`show 1 + 2` adds `show 1` and `2` together.
+`show` displays `1` on the screen.
 
 note: 
   --> operator-without-parentheses.wipple:1:1
   |
 1 | show 1 + 2
-  | ----
+  | ----------
 
-`show` displays `1` on the screen.
+`show 1 + 2` adds `show 1` and `2` together.
 
 error: 
   --> operator-without-parentheses.wipple:1:1

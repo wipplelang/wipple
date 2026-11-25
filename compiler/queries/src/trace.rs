@@ -8,8 +8,8 @@ use wipple_core::{
     facts::{Description, description_comments},
     render::Comments,
     typecheck::{
-        resolved::ResolvedBounds, constraints::ConstraintConsequence, groups::Typed,
-        instantiate::InstantiatedTypes, solver::TypeDependsOn,
+        constraints::ConstraintConsequence, groups::Typed, instantiate::InstantiatedTypes,
+        resolved::ResolvedBounds, solver::TypeDependsOn,
     },
     util::{get_links, linked_nodes_for, section},
     visit::{DefinitionConstraints, Resolved, definitions::Defined},
@@ -53,6 +53,8 @@ impl Trace {
 
             entry.relevant.sort();
         }
+
+        entries.reverse();
 
         Trace(entries)
     }

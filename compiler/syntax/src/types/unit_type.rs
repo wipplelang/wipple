@@ -39,7 +39,7 @@ impl Visit for UnitType {
         visitor.constraint(
             db,
             TyConstraint::new(
-                visitor.current_annotating.map_or(node, |(node, _)| node),
+                visitor.current_annotating.unwrap_or(node),
                 Ty::Constructed(ConstructedTy::unit()),
             ),
         );

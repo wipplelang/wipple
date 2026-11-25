@@ -1,8 +1,5 @@
-use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank, FeedbackWriter};
-use wipple_core::{
-    render::ExplainOptions,
-    typecheck::ty::{ConstructedTy, Ty},
-};
+use crate::{FeedbackCtx, FeedbackLocation, FeedbackRank};
+use wipple_core::typecheck::ty::Ty;
 use wipple_queries::{
     TypeConflictSummarySuffix, conflicting_types, fact, incomplete_type, unknown_type,
 };
@@ -67,75 +64,17 @@ pub fn register(ctx: &mut FeedbackCtx<'_>) {
                     writer.string(", ");
                 }
 
-                let tys = (!data.tys.is_empty()).then_some(&data.tys);
-                let inferred_tys = (!data.inferred_tys.is_empty()).then_some(&data.inferred_tys);
-
-                if data.conflicting.len() > 1 && tys.xor(inferred_tys).is_some() {
-                    if let Some(entry) = &data.primary_trace_entry {
-                        let entry = {
-                            let mut writer = FeedbackWriter::inherit(writer);
-                            writer.options.explain = ExplainOptions::Enabled;
-                            writer.trace_entry(db, entry)
-                        };
-
-                        for ctx in [entry.node_ctx].into_iter().chain(
-                            entry
-                                .consequence_ctxs
-                                .into_iter()
-                                // Only show the first consequence
-                                .take(1),
-                        ) {
-                            writer.extend([ctx]);
-                            writer.string(" ");
-                        }
-
-                        writer.string("But ");
-                    } else {
-                        writer.list("and", |_, list| {
-                            for &node in &data.conflicting {
-                                list.add(move |writer| writer.node(node));
-                            }
+                writer.node(data.from);
+                writer.string(" is a ");
+                writer.list("or a", |_, list| {
+                    for ty in &data.tys {
+                        let ty = ty.clone();
+                        list.add(move |writer| {
+                            writer.ty(db, &Ty::Constructed(ty), Some(data.from), true);
                         });
-                        writer.string(" must have the same type, but ");
                     }
-
-                    writer.list("and", |_, list| {
-                        for &node in &data.conflicting {
-                            list.add(move |writer| {
-                                writer.node(node);
-                                writer.string(" is a ");
-                                writer.ty(db, &Ty::Node(node), Some(node), true);
-                            });
-                        }
-                    });
-
-                    writer.string(".");
-                } else {
-                    let write_tys = |writer: &mut FeedbackWriter<'_>, tys: &[ConstructedTy]| {
-                        writer.list("or a", |_, list| {
-                            for ty in tys {
-                                let ty = ty.clone();
-                                list.add(move |writer| {
-                                    writer.ty(db, &Ty::Constructed(ty), Some(data.from), true);
-                                });
-                            }
-                        });
-                    };
-
-                    if let Some(tys) = tys.xor(inferred_tys) {
-                        writer.node(data.from);
-                        writer.string(" is a ");
-                        write_tys(writer, tys);
-                        writer.string(", but it can only be one of these.");
-                    } else {
-                        writer.node(data.from);
-                        writer.string(" is a ");
-                        write_tys(writer, &data.tys);
-                        writer.string(", but it must also be a ");
-                        write_tys(writer, &data.inferred_tys);
-                        writer.string(".");
-                    }
-                }
+                });
+                writer.string(", but it can only be one of these.");
             }
 
             writer.extend_trace(db, &data.trace);

@@ -121,11 +121,8 @@ pub fn visit_type(db: &mut Db, node: Node, visitor: &mut Visitor) {
 
     // Prefer to apply constraints on the annotated value directly to improve
     // feedback
-    if let Some((value, explicit)) = visitor.current_annotating {
-        if explicit {
-            visitor.rank(value, NodeRank::Annotated);
-        }
-
+    if let Some(value) = visitor.current_annotating {
+        visitor.rank(value, NodeRank::Annotated);
         visitor.constraint(db, TyConstraint::new(value, Ty::Node(node)));
     }
 }

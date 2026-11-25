@@ -55,9 +55,7 @@ impl Visit for AnnotateExpression {
         db.hide(node);
 
         let expression = visitor.visit(db, &self.expression);
-        let ty = visitor.annotating(Some((expression, true)), |visitor| {
-            visitor.visit(db, &self.ty)
-        });
+        let ty = visitor.annotating(Some(expression), |visitor| visitor.visit(db, &self.ty));
         if let Some(graph) = &mut db.graph {
             graph.edge(ty, expression, "type");
         }

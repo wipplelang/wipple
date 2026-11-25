@@ -73,12 +73,14 @@ Facts (layer 2):
 
 
 note: 
-  --> mismatched-call.wipple:6:1
+  --> mismatched-call.wipple:6:15
   |
 6 | accepts-text (1 + 2)
-  | --------------------
+  |               -----
 
-`accepts-text` is called with `1 + 2`.
+`1 + 2` adds `1` and `2` together.
+
+This means `1 + 2` is a `Number`.
 
 note: 
   --> mismatched-call.wipple:1:1
@@ -91,14 +93,12 @@ note:
 This means `1 + 2` is a `String`.
 
 note: 
-  --> mismatched-call.wipple:6:15
+  --> mismatched-call.wipple:6:1
   |
 6 | accepts-text (1 + 2)
-  |               -----
+  | --------------------
 
-`1 + 2` adds `1` and `2` together.
-
-This means `1 + 2` is a `Number`.
+`accepts-text` is called with `1 + 2`.
 
 error: 
   --> mismatched-call.wipple:6:15
