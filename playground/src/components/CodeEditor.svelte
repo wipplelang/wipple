@@ -617,7 +617,7 @@
 
 {#if hoverState != null}
     {@const { element, groupId } = hoverState}
-    {@const { labels } = groups[groupId]}
+    {@const labels = groups[groupId]?.labels}
 
     {#if labels != null}
         <Tooltip reference={element} delay={500}>
